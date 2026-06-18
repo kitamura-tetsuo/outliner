@@ -17,11 +17,53 @@ export const DEMO_PROJECT_TITLE = "demo";
 
 export const DEMO_LANDING_PAGE_TITLE = "Demo";
 
+// A structured demo item, used for pages that need to seed more than plain
+// text: live components (table/chart), aliases, votes, comments, attachments.
+// This is the richer alternative to the `lines` form below and lets the demo
+// double as a deterministic verification surface for coding agents: every
+// non-text feature is seeded with concrete, reproducible data.
+export interface DemoItem {
+    // The item's plain text. Optional for component/alias items.
+    text?: string;
+    // Render this item as a live component instead of plain text.
+    componentType?: "table" | "chart";
+    // For chart components: a self-contained SQL query (CREATE + INSERT +
+    // SELECT) so the chart renders without any external data source.
+    chartQuery?: string;
+    // Seed votes from these voter ids.
+    votes?: string[];
+    // Seed a comment thread.
+    comments?: { author: string; text: string; }[];
+    // Seed attachment urls (e.g. data: URIs so they render offline).
+    attachments?: string[];
+    // Label this item so an alias elsewhere on the same page can target it.
+    ref?: string;
+    // Make this item an alias mirroring the item declared with `ref: <aliasTo>`.
+    aliasTo?: string;
+    // Nested child items.
+    children?: DemoItem[];
+}
+
 export interface DemoPageTemplate {
     title: string;
     // Item text lines. Two leading spaces per nesting level.
-    lines: string[];
+    // Use this for text-only pages.
+    lines?: string[];
+    // Structured items. Use this when a page seeds non-text content
+    // (components, aliases, votes, comments, attachments).
+    items?: DemoItem[];
 }
+
+// A small, self-contained SVG image encoded as a data URI so the seeded
+// attachment renders without any network access (handy for verification).
+const DEMO_ATTACHMENT_IMAGE =
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2740%27%20height%3D%2740%27%3E%3Crect%20width%3D%2740%27%20height%3D%2740%27%20fill%3D%27%233b82f6%27%2F%3E%3Ctext%20x%3D%2720%27%20y%3D%2725%27%20font-size%3D%2710%27%20fill%3D%27white%27%20text-anchor%3D%27middle%27%3EIMG%3C%2Ftext%3E%3C%2Fsvg%3E";
+
+// A self-contained SQL query that builds its own data and selects it, so the
+// chart component renders a deterministic bar chart with no external source.
+const DEMO_CHART_QUERY = "CREATE TABLE sales(id TEXT PRIMARY KEY, month TEXT, revenue INTEGER);"
+    + ' INSERT INTO sales VALUES("1","Jan",120),("2","Feb",180),("3","Mar",150),("4","Apr",210);'
+    + " SELECT month AS sales_month, revenue AS sales_revenue FROM sales";
 
 export const demoPages: DemoPageTemplate[] = [
     {
@@ -39,9 +81,9 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Search and Commands]: full-text search and the inline command palette.",
             "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
             "  [Collaboration]: real-time editing with other users.",
-            "  [Comments and Votes]: discussing and voting on items.",
+            "  [Comments and Votes]: discussing and voting on items, with live seeded threads and votes.",
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
-            "  [Advanced Features]: charts, SQL queries, aliases, and attachments.",
+            "  [Advanced Features]: live charts, SQL tables, aliases, and attachments.",
             "Give it a try! Everything in this project is editable.",
         ],
     },
@@ -140,14 +182,33 @@ export const demoPages: DemoPageTemplate[] = [
     },
     {
         title: "Comments and Votes",
-        lines: [
-            "Items can carry comment threads and votes.",
-            "Comments:",
-            "  Open an item's comment thread to discuss it with others.",
-            "  Items show a badge with the number of comments.",
-            "Votes:",
-            "  Vote for an item to show agreement.",
-            "Try commenting on this item!",
+        items: [
+            { text: "Items can carry comment threads and votes." },
+            {
+                text: "Comments:",
+                children: [
+                    { text: "Open an item's comment thread to discuss it with others." },
+                    { text: "Items show a badge with the number of comments." },
+                ],
+            },
+            {
+                text: "This item already has a seeded comment thread — open it to read the messages.",
+                comments: [
+                    { author: "alice", text: "This is a seeded demo comment." },
+                    { author: "bob", text: "Comment threads sync in real time across everyone viewing the demo." },
+                ],
+            },
+            {
+                text: "Votes:",
+                children: [
+                    { text: "Vote for an item to show agreement." },
+                ],
+            },
+            {
+                text: "This item is already popular (3 votes). Click the vote button to add yours.",
+                votes: ["alice", "bob", "carol"],
+            },
+            { text: "Try commenting on or voting for the items above!" },
         ],
     },
     {
@@ -162,14 +223,35 @@ export const demoPages: DemoPageTemplate[] = [
     },
     {
         title: "Advanced Features",
-        lines: [
-            "A quick tour of the more advanced capabilities.",
-            "Charts: an item can render a chart from a data query.",
-            "SQL: query your outline data with client-side SQL.",
-            'SQL Table: define a table with a CREATE TABLE statement and edit its rows in an embedded GUI grid (set an item\'s type to "SQL Table").',
-            "Aliases: an item can mirror another item and stay in sync with the original.",
-            "Attachments: drag and drop images or files onto an item to attach them.",
-            "Schedule: the Schedule view shows date-tagged items as a timeline.",
+        items: [
+            {
+                text:
+                    "A quick tour of the more advanced capabilities. The items below are live components, not just descriptions.",
+            },
+            {
+                text: "Charts: this item renders a bar chart from a self-contained SQL query.",
+                componentType: "chart",
+                chartQuery: DEMO_CHART_QUERY,
+            },
+            {
+                text: "SQL Tables: this item renders an editable, query-backed table grid.",
+                componentType: "table",
+            },
+            { text: "Aliases: an item can mirror another item and stay in sync with the original." },
+            {
+                text: "Original item: edit me and watch the alias below update.",
+                ref: "alias-source",
+            },
+            {
+                text: "Alias (mirrors the original item above):",
+                aliasTo: "alias-source",
+            },
+            {
+                text:
+                    "Attachments: drag and drop images or files onto an item to attach them. This item has a seeded image attachment.",
+                attachments: [DEMO_ATTACHMENT_IMAGE],
+            },
+            { text: "Schedule: the Schedule view shows date-tagged items as a timeline." },
         ],
     },
 ];
@@ -181,9 +263,24 @@ export const demoPages: DemoPageTemplate[] = [
 // YTree "root" marker a concurrent write, which can lose against tombstoned
 // entries from earlier resets and corrupt the tree.
 export function populateDemoProject(project: Project, author = "seed-server"): void {
+    // Aliases reference a target item by its `ref` label. Build every page
+    // first (recording refs and pending aliases), then resolve the alias
+    // targets so that aliases can point to an item declared anywhere.
+    const refs = new Map<string, Item>();
+    const pendingAliases: { item: Item; aliasTo: string; }[] = [];
+
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
-        addLinesToPage(page, pageTemplate.lines, author);
+        if (pageTemplate.items) {
+            addDemoItems(page.items, pageTemplate.items, author, refs, pendingAliases);
+        } else if (pageTemplate.lines) {
+            addLinesToPage(page, pageTemplate.lines, author);
+        }
+    }
+
+    for (const { item, aliasTo } of pendingAliases) {
+        const target = refs.get(aliasTo);
+        if (target) item.aliasTargetId = target.id;
     }
 }
 
@@ -192,6 +289,36 @@ export function buildDemoProject(author = "seed-server"): Project {
     const project = Project.createInstance(DEMO_PROJECT_TITLE);
     populateDemoProject(project, author);
     return project;
+}
+
+// Recursively create structured demo items, seeding non-text content
+// (components, votes, comments, attachments) and collecting alias references
+// so that `populateDemoProject` can resolve alias targets in a later pass.
+function addDemoItems(
+    parent: Items,
+    defs: DemoItem[],
+    author: string,
+    refs: Map<string, Item>,
+    pendingAliases: { item: Item; aliasTo: string; }[],
+): void {
+    for (const def of defs) {
+        const node = parent.addNode(author);
+        if (def.text !== undefined) node.text = def.text;
+        if (def.componentType) node.componentType = def.componentType;
+        if (def.chartQuery !== undefined) node.chartQuery = def.chartQuery;
+        if (def.votes) {
+            for (const voter of def.votes) node.toggleVote(voter);
+        }
+        if (def.comments) {
+            for (const comment of def.comments) node.addComment(comment.author, comment.text);
+        }
+        if (def.attachments) {
+            for (const url of def.attachments) node.addAttachment(url);
+        }
+        if (def.ref) refs.set(def.ref, node);
+        if (def.aliasTo) pendingAliases.push({ item: node, aliasTo: def.aliasTo });
+        if (def.children) addDemoItems(node.items, def.children, author, refs, pendingAliases);
+    }
 }
 
 function addLinesToPage(page: Item, lines: string[], author: string) {
