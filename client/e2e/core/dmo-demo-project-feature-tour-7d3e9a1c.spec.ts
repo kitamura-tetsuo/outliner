@@ -14,7 +14,7 @@ test.describe("Demo project feature tour", () => {
 
         for (
             const title of [
-                "Demo",
+                "Welcome",
                 "Formatting",
                 "Outliner Basics",
                 "Checkboxes and Tasks",
