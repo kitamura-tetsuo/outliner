@@ -20,6 +20,7 @@
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let isSearchPanelVisible = $state(false);
+    let isDestroyed = false;
 
     function findPage(name: string): Item | undefined {
         const items = store.project?.items;
@@ -45,8 +46,13 @@
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
                 await seedDemo();
+                if (isDestroyed) return;
 
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+                if (isDestroyed) {
+                    client?.dispose();
+                    return;
+                }
                 if (!client) {
                     throw new Error("Failed to connect to the demo project.");
                 }
@@ -59,6 +65,7 @@
             let retries = 0;
             while (!targetPage && retries < 50) {
                 await new Promise(r => setTimeout(r, 100));
+                if (isDestroyed) return;
                 targetPage = findPage(name);
                 retries++;
             }
@@ -95,6 +102,7 @@
     });
 
     onDestroy(() => {
+        isDestroyed = true;
         try {
             yjsStore.yjsClient?.dispose();
             yjsStore.yjsClient = undefined;

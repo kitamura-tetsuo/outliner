@@ -15,6 +15,7 @@
     let isResetting = $state(false);
     let resetDone = $state(false);
     let error: string | undefined = $state(undefined);
+    let isDestroyed = false;
 
     // Reactive page list (depends on store.pagesVersion)
     let pages = $derived.by(() => {
@@ -29,9 +30,14 @@
 
             // Seed demo project via API (no-op when already seeded)
             await seedDemo();
+            if (isDestroyed) return;
 
             // Connect to demo room
             const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+            if (isDestroyed) {
+                client?.dispose();
+                return;
+            }
             if (!client) {
                 throw new Error("Failed to connect to the demo project.");
             }
@@ -56,10 +62,12 @@
             isResetting = true;
             resetDone = false;
             await seedDemo({ force: true });
+            if (isDestroyed) return;
             removeYjsClientByProjectId(DEMO_PROJECT_NAME);
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             await initializeDemo();
+            if (isDestroyed) return;
             resetDone = error === undefined;
         } finally {
             isResetting = false;
@@ -79,6 +87,7 @@
     });
 
     onDestroy(() => {
+        isDestroyed = true;
         try {
             yjsStore.yjsClient?.dispose();
             yjsStore.yjsClient = undefined;
