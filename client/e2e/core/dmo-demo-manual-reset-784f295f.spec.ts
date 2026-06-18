@@ -31,7 +31,7 @@ test.describe("Demo manual reset button", () => {
         await expect(page.getByTestId("demo-reset-done")).toBeVisible({ timeout: 15000 });
 
         // The reseeded demo content is still shown afterwards.
-        await expect(pageList.getByText("Demo", { exact: true }).first()).toBeVisible({ timeout: 15000 });
+        await expect(pageList.getByText("Welcome", { exact: true }).first()).toBeVisible({ timeout: 15000 });
         await expect(pageList.getByText("Formatting", { exact: true }).first()).toBeVisible({ timeout: 15000 });
     });
 });
