@@ -178,8 +178,6 @@ import SqlTableGrid from "./SqlTableGrid.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-const mirrorAttachment = (_url: string) => {}; // eslint-disable-line @typescript-eslint/no-unused-vars
-let attachmentsMirror: string[] = []; // eslint-disable-line @typescript-eslint/no-unused-vars
 let e2eTimer: ReturnType<typeof setInterval> | undefined = undefined;
 
 /**
@@ -1733,8 +1731,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                             addAttachmentToDomTargetOrModel((event as any) as DragEvent, url);
-                            // Reflect to Doc after connection
-                            try { mirrorAttachment(url); } catch {}
                         } else {
                             // Dispatch event for top/bottom insertion
                             dispatch("drop", {
@@ -1751,7 +1747,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 try { model.original.addAttachment(localUrl); } catch { try { (model.original as any as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
-                                try { mirrorAttachment(localUrl); } catch {}
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             } else {
@@ -1788,7 +1783,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const localUrl = URL.createObjectURL(blob);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         addAttachmentToDomTargetOrModel((event as any) as DragEvent, localUrl);
-                        try { mirrorAttachment(localUrl); } catch {}
 
                     } catch {}
                 }
@@ -1805,7 +1799,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
             addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
-            try { mirrorAttachment(localUrl); } catch {}
         } catch {}
         dropTargetPosition = null;
         return;
@@ -1961,18 +1954,6 @@ onMount(() => {
                         const blob = new Blob([text ?? 'e2e'], { type: 'text/plain' });
                         const localUrl = URL.createObjectURL(blob);
                         addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
-                        try { mirrorAttachment(localUrl); } catch {}
-                        // Immediately reflect to mirror in test environment to ensure visibility
-                        try {
-                            // Test environment immediate mirror update - attachmentsMirror is handled in OutlinerItemAttachments component
-                            // if (IS_TEST) {
-
-                            //     const arr: unknown[][] = ((model?.original as any)?.attachments?.toArray?.() ?? []);
-                            //     if (arr.length > 0) {
-                            //         attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
-                            //     }
-                            // }
-                        } catch {}
                         try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                     }
                 } catch {}
