@@ -68,15 +68,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Clear orderedTree completely, except for the 'root' key
+                        // Clear orderedTree completely
                         const orderedTree = ydoc.getMap("orderedTree");
-                        let hasRoot = false;
                         Array.from(orderedTree.keys()).forEach(key => {
-                            if (key !== "root") {
-                                orderedTree.delete(key);
-                            } else {
-                                hasRoot = true;
-                            }
+                            orderedTree.delete(key);
                         });
 
                         // Clear items map completely
@@ -89,17 +84,14 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-                        // If the document was completely empty (no 'root' key existed),
-                        // we must inject it here. yjs-orderedtree requires the 'root' key
+                        // Inject a fresh 'root' key. yjs-orderedtree requires the 'root' key
                         // to be present before the wrapper (Project.fromDoc -> YTree) is
                         // instantiated, otherwise it will hang connecting clients.
-                        if (!hasRoot) {
-                            orderedTree.set("root", new Y.Map());
-                        }
+                        orderedTree.set("root", new Y.Map());
                     });
 
                     // Note: yjs-orderedtree expects the 'root' key to be present in orderedTree.
-                    // We do not delete 'root' inside the transact block above.
+                    // We ensure it is present (and fresh) at the end of the transact block above.
                     // Therefore, we can safely initialize Project.fromDoc() below without
                     // needing to merge state from a newly created Y.Doc, preventing
                     // concurrent write conflicts.
