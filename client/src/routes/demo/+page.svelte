@@ -3,7 +3,10 @@
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
+    import { getLogger } from "../../lib/logger";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
+
+    const logger = getLogger("DemoListPage");
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolvePath } from "../../utils/pathUtils";
@@ -37,7 +40,7 @@
             const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
             store.project = project;
         } catch (err) {
-            console.error("Failed to initialize demo:", err);
+            logger.error(err, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
             isLoading = false;
@@ -106,6 +109,7 @@
                 onclick={resetDemo}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
+                aria-label={isResetting ? "Resetting demo content" : "Reset demo content"}
                 class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {isResetting ? "Resetting..." : "Reset demo content"}

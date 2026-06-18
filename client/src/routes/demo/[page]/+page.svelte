@@ -24,12 +24,12 @@
     function findPage(name: string): Item | undefined {
         const items = store.project?.items;
         if (!items) return undefined;
-        const len = items.length || 0;
-        for (let i = 0; i < len; i++) {
-            const item = items.at?.(i);
-            const text = item?.text?.toString?.() ?? String(item?.text ?? "");
+        // Use iterator for better performance ($O(N \log N)$ vs $O(N^2 \log N)$)
+        for (const item of items) {
+            if (!item) continue;
+            const text = item.text;
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
-                return item as unknown as Item;
+                return item;
             }
         }
         return undefined;
@@ -71,7 +71,7 @@
 
             store.currentPage = targetPage;
         } catch (err) {
-            console.error("Failed to load demo page:", err);
+            logger.error(err, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
             isLoading = false;
