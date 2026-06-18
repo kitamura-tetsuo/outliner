@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
+import { YTree } from "yjs-orderedtree";
 
 type HocuspocusInstance = Hocuspocus;
 
@@ -64,19 +65,15 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 if (shouldReset) {
                     logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
-                    // Initialize YTree wrapper FIRST so we can use its API safely.
-                    // Bypassing YTree to manually delete map keys causes active observers
-                    // to crash when they process the Yjs update.
-                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
-
+                    // Clear the data manually FIRST so that the wrapper isn't tracking stale/deleted keys
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Safely delete all pages via YTree API
-                        const children = Array.from(docProject.items);
-                        for (const child of children) {
-                            child.delete();
-                        }
+                        // Safely clear orderedTree manually via map, preserving the 'root' key
+                        const orderedTreeMap = ydoc.getMap("orderedTree");
+                        Array.from(orderedTreeMap.keys()).forEach(key => {
+                            if (key !== "root") orderedTreeMap.delete(key);
+                        });
 
                         // Clear items map completely
                         const itemsMap = ydoc.getMap("items");
@@ -88,6 +85,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
+
+                    // We need to use YTree API safely, but initializing the wrapper BEFORE a massive
+                    // deletion transaction causes observers to crash.
+                    // So we clear manually, then initialize YTree
+                    // Then wrap in Project, then generate new items
+                    new YTree(doc.getMap("orderedTree"));
+                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
