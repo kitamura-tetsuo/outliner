@@ -3,7 +3,10 @@
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
+    import { getLogger } from "../../lib/logger";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
+
+    const logger = getLogger("DemoListPage");
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolvePath } from "../../utils/pathUtils";
@@ -37,7 +40,7 @@
             const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
             store.project = project;
         } catch (err) {
-            console.error("Failed to initialize demo:", err);
+            logger.error(err, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
             isLoading = false;
@@ -106,6 +109,7 @@
                 onclick={resetDemo}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
+                aria-label={isResetting ? "Resetting demo content" : "Reset demo content"}
                 class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
                 {isResetting ? "Resetting..." : "Reset demo content"}
@@ -115,18 +119,19 @@
             This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours, or immediately with the reset button.
         </p>
         {#if resetDone}
-            <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done">
+            <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done" role="status" aria-live="polite">
                 Demo content has been reset.
             </p>
         {/if}
     </div>
 
     {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading Demo...</div>
+        <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
+            <div class="loader" aria-hidden="true"></div>
+            <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
     {:else if error}
-        <div class="rounded-md bg-red-50 p-4">
+        <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <span class="text-red-400">⚠️</span>

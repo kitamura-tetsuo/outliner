@@ -24,12 +24,12 @@
     function findPage(name: string): Item | undefined {
         const items = store.project?.items;
         if (!items) return undefined;
-        const len = items.length || 0;
-        for (let i = 0; i < len; i++) {
-            const item = items.at?.(i);
-            const text = item?.text?.toString?.() ?? String(item?.text ?? "");
+        // Use iterator for better performance ($O(N \log N)$ vs $O(N^2 \log N)$)
+        for (const item of items) {
+            if (!item) continue;
+            const text = item.text;
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
-                return item as unknown as Item;
+                return item;
             }
         }
         return undefined;
@@ -71,7 +71,7 @@
 
             store.currentPage = targetPage;
         } catch (err) {
-            console.error("Failed to load demo page:", err);
+            logger.error(err, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
             isLoading = false;
@@ -147,11 +147,12 @@
     </div>
 
     {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading Demo...</div>
+        <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
+            <div class="loader" aria-hidden="true"></div>
+            <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
     {:else if error}
-        <div class="rounded-md bg-red-50 p-4">
+        <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <span class="text-red-400">⚠️</span>
@@ -173,7 +174,7 @@
             </div>
         </div>
     {:else if pageNotFound}
-        <div class="rounded-md bg-yellow-50 p-4">
+        <div class="rounded-md bg-yellow-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <span class="text-yellow-400">⚠️</span>
