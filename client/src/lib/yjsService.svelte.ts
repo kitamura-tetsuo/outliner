@@ -478,7 +478,8 @@ export function cleanupClient() {
  * Used by the demo manual reset to re-sync after the server reseeds the doc.
  */
 export function removeClientByProjectId(projectId: string): void {
-    const key = keyFor(undefined, projectId);
+    const userId = userManager.getCurrentUser()?.id || (projectId === "demo" ? "anonymous-demo" : undefined);
+    const key = keyFor(userId, projectId);
     const entry = registry.get(key);
     if (entry) {
         try {
