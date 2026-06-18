@@ -34,6 +34,14 @@ $effect(() => {
         };
     }
 });
+
+    function formatDate(ts: number | undefined): string {
+        if (!ts) return "";
+        const date = new Date(ts);
+        if (isNaN(date.getTime())) return "";
+        return date.toLocaleDateString();
+    }
+
 </script>
 
 {#if isGridView}
@@ -63,7 +71,7 @@ $effect(() => {
             </div>
 
             <div class="p-3 pt-0 mt-auto text-xs text-gray-400 text-right">
-                {lastChanged ? new Date(lastChanged).toLocaleDateString() : ""}
+                {formatDate(lastChanged)}
             </div>
         </button>
     </li>
@@ -96,7 +104,7 @@ $effect(() => {
                 </div>
             </div>
             <div class="ml-4 shrink-0 text-xs text-gray-400">
-                {lastChanged ? new Date(lastChanged).toLocaleDateString() : ""}
+                {formatDate(lastChanged)}
             </div>
         </button>
     </li>

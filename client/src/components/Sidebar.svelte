@@ -34,6 +34,14 @@
         }
         return result;
     });
+
+    function formatDate(ts: number | undefined): string {
+        if (!ts) return "";
+        const date = new Date(ts);
+        if (isNaN(date.getTime())) return "";
+        return date.toLocaleDateString();
+    }
+
 </script>
 
 <aside class="sidebar" class:open={isOpen}>
@@ -162,9 +170,7 @@
                                         >
                                     </span>
                                     <span class="page-date"
-                                        >{new Date(
-                                            page.lastChanged,
-                                        ).toLocaleDateString()}</span
+                                        >{formatDate(page.lastChanged)}</span
                                     >
                                 </a>
                             </li>
