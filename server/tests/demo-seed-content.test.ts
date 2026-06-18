@@ -88,4 +88,75 @@ describe("Demo seed content", () => {
         expect(texts).to.contain("[-strike through]");
         expect(texts).to.contain("`code`");
     });
+
+    it("seeds a live chart component with a self-contained SQL query", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        expect(advanced).to.not.equal(undefined);
+
+        const chart = findChildByText(
+            advanced!.items,
+            "Charts: this item renders a bar chart from a self-contained SQL query.",
+        );
+        expect(chart, "chart item exists").to.not.equal(undefined);
+        expect(chart!.componentType).to.equal("chart");
+        // The query must be fully self-contained so the chart renders with no
+        // external data source.
+        expect(chart!.chartQuery).to.contain("CREATE TABLE");
+        expect(chart!.chartQuery).to.contain("INSERT INTO");
+        expect(chart!.chartQuery!.toUpperCase()).to.contain("SELECT");
+    });
+
+    it("seeds a live table component", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        const table = findChildByText(
+            advanced!.items,
+            "SQL Tables: this item renders an editable, query-backed table grid.",
+        );
+        expect(table, "table item exists").to.not.equal(undefined);
+        expect(table!.componentType).to.equal("table");
+    });
+
+    it("seeds an alias that mirrors a target item on the same page", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        const original = findChildByText(
+            advanced!.items,
+            "Original item: edit me and watch the alias below update.",
+        );
+        const alias = findChildByText(advanced!.items, "Alias (mirrors the original item above):");
+        expect(original, "alias target exists").to.not.equal(undefined);
+        expect(alias, "alias item exists").to.not.equal(undefined);
+        expect(alias!.aliasTargetId, "alias points at the target item id").to.equal(original!.id);
+    });
+
+    it("seeds an attachment on an item", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        const attached = findChildByText(
+            advanced!.items,
+            "Attachments: drag and drop images or files onto an item to attach them. This item has a seeded image attachment.",
+        );
+        expect(attached, "attachment item exists").to.not.equal(undefined);
+        expect(attached!.attachments.length).to.equal(1);
+        expect(String(attached!.attachments.get(0))).to.contain("data:image/svg+xml");
+    });
+
+    it("seeds votes and a comment thread on the Comments and Votes page", () => {
+        const page = findChildByText(project.items, "Comments and Votes");
+        expect(page).to.not.equal(undefined);
+
+        const voted = findChildByText(
+            page!.items,
+            "This item is already popular (3 votes). Click the vote button to add yours.",
+        );
+        expect(voted, "voted item exists").to.not.equal(undefined);
+        expect(voted!.votes.toArray()).to.deep.equal(["alice", "bob", "carol"]);
+
+        const commented = findChildByText(
+            page!.items,
+            "This item already has a seeded comment thread — open it to read the messages.",
+        );
+        expect(commented, "commented item exists").to.not.equal(undefined);
+        const comments = commented!.comments.toPlain();
+        expect(comments.length).to.equal(2);
+        expect(comments.map(c => c.author)).to.deep.equal(["alice", "bob"]);
+    });
 });
