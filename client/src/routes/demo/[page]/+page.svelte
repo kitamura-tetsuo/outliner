@@ -147,11 +147,12 @@
     </div>
 
     {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading Demo...</div>
+        <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
+            <div class="loader" aria-hidden="true"></div>
+            <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
     {:else if error}
-        <div class="rounded-md bg-red-50 p-4">
+        <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <span class="text-red-400">⚠️</span>
@@ -173,7 +174,7 @@
             </div>
         </div>
     {:else if pageNotFound}
-        <div class="rounded-md bg-yellow-50 p-4">
+        <div class="rounded-md bg-yellow-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <span class="text-yellow-400">⚠️</span>
