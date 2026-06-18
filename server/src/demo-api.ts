@@ -85,10 +85,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
 
-                    // Ensure tree structure is instantiated sequentially if the document was previously empty
-                    if (isEmpty) {
-                        new YTree(doc.getMap("orderedTree"));
-                    }
+                    // Ensure tree structure is instantiated sequentially after the deletion transaction
+                    new YTree(doc.getMap("orderedTree"));
 
                     // Now safe to use fromDoc to manipulate the live document
                     const docProject = Project.fromDoc(doc as unknown as Y.Doc);
