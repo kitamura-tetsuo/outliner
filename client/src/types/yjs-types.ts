@@ -16,6 +16,7 @@ export type ItemValueType =
     | Y.Text
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>
+    | Y.Array<Y.Map<RowValueType>>
     | undefined;
 
 /**
@@ -23,6 +24,12 @@ export type ItemValueType =
  * Y.Map stores values as a union type, not as an interface
  */
 export type CommentValueType = string | number;
+
+/**
+ * Type for a single editable cell value in a SQL-defined table row.
+ * Cells are stored as strings and coerced for display/persistence.
+ */
+export type RowValueType = string;
 
 /**
  * Type for Y.Doc options
@@ -64,6 +71,8 @@ export interface PlainItemData {
     componentType?: string;
     chartQuery?: string;
     aliasTargetId?: string;
+    tableSchema?: string;
+    tableColumns?: string[];
 }
 
 /**
