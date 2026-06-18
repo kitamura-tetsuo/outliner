@@ -3,7 +3,7 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
 
 export type Comment = {
     id: string;
@@ -80,6 +80,57 @@ export class Comments {
     [Symbol.iterator](): Iterator<Comment> {
         const arr = this.toPlain();
         return arr[Symbol.iterator]();
+    }
+}
+
+// Wrapper for the editable rows of a SQL-defined table (Y.Array<Y.Map<string>>).
+// Each row is a Y.Map keyed by column name so that concurrent edits to
+// different cells merge cleanly (cell-level CRDT granularity).
+export class TableRows {
+    private readonly yArray: Y.Array<Y.Map<RowValueType>>;
+    constructor(yArray: Y.Array<Y.Map<RowValueType>>) {
+        this.yArray = yArray;
+    }
+
+    get length() {
+        return this.yArray.length;
+    }
+
+    /** Append a row, optionally seeded with values keyed by column name. */
+    addRow(values: Record<string, string> = {}): void {
+        const row = new Y.Map<RowValueType>();
+        for (const [key, value] of Object.entries(values)) {
+            row.set(key, value);
+        }
+        this.yArray.push([row]);
+    }
+
+    /** Set a single cell value. No-op when the row index is out of range. */
+    updateCell(rowIndex: number, column: string, value: string): void {
+        const row = this.yArray.get(rowIndex);
+        if (row) row.set(column, value);
+    }
+
+    deleteRow(rowIndex: number): void {
+        if (rowIndex >= 0 && rowIndex < this.yArray.length) {
+            this.yArray.delete(rowIndex, 1);
+        }
+    }
+
+    toArray(): Y.Array<Y.Map<RowValueType>> {
+        return this.yArray;
+    }
+
+    /** Plain snapshot of every row keyed by column name. */
+    toPlain(columns: string[]): Record<string, string>[] {
+        return this.yArray.toArray().map((row) => {
+            const obj: Record<string, string> = {};
+            for (const col of columns) {
+                const v = row.get(col);
+                obj[col] = v === undefined || v === null ? "" : String(v);
+            }
+            return obj;
+        });
     }
 }
 
@@ -203,6 +254,51 @@ export class Item {
     set chartQuery(v: string | undefined) {
         this.value.set("chartQuery", v);
         this.value.set("lastChanged", Date.now());
+    }
+
+    // SQL CREATE TABLE statement that defines this item's embedded table.
+    get tableSchema(): string | undefined {
+        return this.value.get("tableSchema") as string | undefined;
+    }
+    set tableSchema(v: string | undefined) {
+        this.value.set("tableSchema", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Column names derived from the CREATE TABLE statement, cached as JSON so the
+    // grid keeps a stable column order independent of row contents.
+    get tableColumns(): string[] {
+        const raw = this.value.get("tableColumns") as string | undefined;
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? (parsed as string[]) : [];
+        } catch {
+            return [];
+        }
+    }
+    set tableColumns(v: string[]) {
+        this.value.set("tableColumns", JSON.stringify(v ?? []));
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Editable rows for the embedded SQL table (lazily created Y.Array<Y.Map>).
+    get tableRows(): TableRows {
+        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<RowValueType>>();
+            this.value.set("tableRows", arr);
+        }
+        return new TableRows(arr);
+    }
+
+    // Replace the whole table definition: persist the SQL, the derived column
+    // order, and reset the rows so the grid starts empty for the new schema.
+    defineTable(sql: string, columns: string[]): void {
+        this.tableSchema = sql;
+        this.tableColumns = columns;
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (arr && arr.length > 0) arr.delete(0, arr.length);
     }
 
     // alias target id stored in Y.Map
