@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
+import { YTree } from "yjs-orderedtree";
 import { createDemoRouter } from "../src/demo-api.js";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "../src/demo-content.js";
 
@@ -10,15 +11,16 @@ describe("Demo API", () => {
     let mockDoc: Y.Doc;
     let mockDirectConnection: any;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         mockDoc = new Y.Doc();
         const metadata = mockDoc.getMap("metadata");
         metadata.set("lastReset", Date.now());
         metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
         const orderedTree = mockDoc.getMap("orderedTree");
-        orderedTree.set("root", { id: "root" });
-        orderedTree.set("item1", { id: "item1" }); // Make it not empty
+        const { YTree } = await import("yjs-orderedtree");
+        const tree = new YTree(orderedTree);
+        tree.createNode("root", "item1", new Y.Map());
 
         mockDirectConnection = {
             document: mockDoc,
@@ -32,7 +34,12 @@ describe("Demo API", () => {
     });
 
     it("should reset empty document", async () => {
-        mockDoc.getMap("orderedTree").clear();
+        const emptyDoc = new Y.Doc();
+        emptyDoc.getMap("metadata").set("lastReset", Date.now());
+        emptyDoc.getMap("metadata").set("templateVersion", DEMO_TEMPLATE_VERSION);
+
+        mockDirectConnection.document = emptyDoc;
+        mockDirectConnection.transact = jest.fn((cb: any) => cb(emptyDoc));
 
         const app = express();
         app.use(express.json());
@@ -43,7 +50,7 @@ describe("Demo API", () => {
         expect(response.body.reset).toBe(true);
         expect(response.body.success).toBe(true);
 
-        const metadata = mockDoc.getMap("metadata");
+        const metadata = emptyDoc.getMap("metadata");
         expect(metadata.get("title")).toBe(DEMO_PROJECT_TITLE);
         expect(mockDirectConnection.disconnect).toHaveBeenCalled();
     });

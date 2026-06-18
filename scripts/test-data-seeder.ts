@@ -61,9 +61,11 @@ class TestDataSeeder {
             const ydoc = project.ydoc;
 
             ydoc.transact(() => {
-                // Clear orderedTree completely
-                const orderedTree = ydoc.getMap("orderedTree");
-                Array.from(orderedTree.keys()).forEach(key => orderedTree.delete(key));
+                // Safely delete all pages via YTree API
+                const children = Array.from(project.items);
+                for (const child of children) {
+                    child.delete();
+                }
 
                 // Clear items map completely
                 const itemsMap = ydoc.getMap("items");

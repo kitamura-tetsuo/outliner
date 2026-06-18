@@ -64,19 +64,19 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 if (shouldReset) {
                     logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
+                    // Initialize YTree wrapper FIRST so we can use its API safely.
+                    // Bypassing YTree to manually delete map keys causes active observers
+                    // to crash when they process the Yjs update.
+                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
+
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Clear orderedTree completely, except for the 'root' key
-                        const orderedTree = ydoc.getMap("orderedTree");
-                        let hasRoot = false;
-                        Array.from(orderedTree.keys()).forEach(key => {
-                            if (key !== "root") {
-                                orderedTree.delete(key);
-                            } else {
-                                hasRoot = true;
-                            }
-                        });
+                        // Safely delete all pages via YTree API
+                        const children = Array.from(docProject.items);
+                        for (const child of children) {
+                            child.delete();
+                        }
 
                         // Clear items map completely
                         const itemsMap = ydoc.getMap("items");
@@ -87,24 +87,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("title", DEMO_PROJECT_TITLE);
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
-
-                        // If the document was completely empty (no 'root' key existed),
-                        // we must inject it here. yjs-orderedtree requires the 'root' key
-                        // to be present before the wrapper (Project.fromDoc -> YTree) is
-                        // instantiated, otherwise it will hang connecting clients.
-                        if (!hasRoot) {
-                            orderedTree.set("root", new Y.Map());
-                        }
                     });
-
-                    // Note: yjs-orderedtree expects the 'root' key to be present in orderedTree.
-                    // We do not delete 'root' inside the transact block above.
-                    // Therefore, we can safely initialize Project.fromDoc() below without
-                    // needing to merge state from a newly created Y.Doc, preventing
-                    // concurrent write conflicts.
-
-                    // Now safe to use fromDoc to manipulate the live document
-                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
