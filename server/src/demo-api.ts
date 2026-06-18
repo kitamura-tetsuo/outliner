@@ -1,10 +1,10 @@
 import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
+import { YTree } from "yjs-orderedtree";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
-import { YTree } from "yjs-orderedtree";
 
 type HocuspocusInstance = Hocuspocus;
 
