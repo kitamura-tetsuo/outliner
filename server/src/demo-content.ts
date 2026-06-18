@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 5;
+export const DEMO_TEMPLATE_VERSION = 6;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -166,6 +166,7 @@ export const demoPages: DemoPageTemplate[] = [
             "A quick tour of the more advanced capabilities.",
             "Charts: an item can render a chart from a data query.",
             "SQL: query your outline data with client-side SQL.",
+            'SQL Table: define a table with a CREATE TABLE statement and edit its rows in an embedded GUI grid (set an item\'s type to "SQL Table").',
             "Aliases: an item can mirror another item and stay in sync with the original.",
             "Attachments: drag and drop images or files onto an item to attach them.",
             "Schedule: the Schedule view shows date-tagged items as a timeline.",
