@@ -266,7 +266,7 @@ export async function createMinimalYjsConnection(
                     provider.isSynced,
                     "url=",
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (provider as any as { configuration?: { url: string; }; }).configuration?.url,
+                    (provider as unknown as { configuration?: { url: string; }; }).configuration?.url,
                 );
             }
             try {
@@ -513,7 +513,7 @@ export async function prepareTwoFullBrowserPages(
                 return false;
             }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const items = project.items as any as { length: number; };
+            const items = project.items as unknown as { length: number; };
             const pageCount = items?.length ?? 0;
             console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);

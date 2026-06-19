@@ -49,7 +49,7 @@ describe("yjsService", () => {
             },
         };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (globalThis as any as { presenceStore: unknown; }).presenceStore = presenceStore;
+        (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
         expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
@@ -82,7 +82,7 @@ describe("yjsService", () => {
             },
         };
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (globalThis as any as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
+        (globalThis as unknown as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
