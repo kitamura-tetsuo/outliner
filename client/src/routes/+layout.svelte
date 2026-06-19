@@ -427,20 +427,20 @@ onDestroy(async () => {
 </script>
 
 <SvelteSEO
-    titleTemplate="%s | Cats Blog"
-    description="A blog for cat lovers."
+    title="Outliner"
+    description="A hierarchical outliner application."
     openGraph={{
-        description: "A blog for cat lovers.",
+        description: "A hierarchical outliner application.",
         images: [
             {
-                url: "/cats.png",
-                alt: "Cats"
+                url: "/favicon.png",
+                alt: "Outliner logo"
             }
         ]
     }}
     twitter={{
-        description: "A blog for cat lovers.",
-        image: "/cats.png"
+        description: "A hierarchical outliner application.",
+        image: "/favicon.png"
     }}
 />
 
