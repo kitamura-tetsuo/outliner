@@ -767,7 +767,7 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore })?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post): showing AliasPicker for activeId",
@@ -845,7 +845,7 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-                                        (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
+                                        (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore })?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
                                                 "KeyEventHandler(Post2): showing AliasPicker for activeId",
