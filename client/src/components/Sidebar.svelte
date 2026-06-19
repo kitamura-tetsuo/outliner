@@ -3,8 +3,6 @@
     import { store } from "../stores/store.svelte";
     import { resolvePath } from "../utils/pathUtils";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 
     import { page as pageStore } from "$app/stores";
 
