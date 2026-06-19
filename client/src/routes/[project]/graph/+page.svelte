@@ -2,8 +2,6 @@
 import { goto } from "$app/navigation";
 import { resolvePath } from "../../../utils/pathUtils";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 
 import GraphView from "../../../components/GraphView.svelte";
 

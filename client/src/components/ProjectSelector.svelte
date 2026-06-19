@@ -2,8 +2,6 @@
     import { onMount } from "svelte";
     import { resolvePath } from "../utils/pathUtils";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 
     import { createYjsClient } from "../services";
     import { getLogger } from "../lib/logger";
