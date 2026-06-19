@@ -405,7 +405,10 @@ export class UserManager {
         }
         try {
             logger.info(`[UserManager] Attempting email/password login for: ${email}`);
-            logger.debug({ state: this.auth.currentUser ? "authenticated" : "not authenticated" }, "[UserManager] Current auth state");
+            logger.debug(
+                { state: this.auth.currentUser ? "authenticated" : "not authenticated" },
+                "[UserManager] Current auth state",
+            );
 
             // In development environment
             if (this.isDevelopment) {
