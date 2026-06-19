@@ -1,19 +1,23 @@
-import { describe, test, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import { Project, Page } from "../../../schema/app-schema";
+import { Page, Project } from "../../../schema/app-schema";
 
 vi.mock("../../../stores/store.svelte", () => ({
     store: {
-        get currentPage() { return mockCurrentPage; },
-        set currentPage(page) { mockCurrentPage = page; },
+        get currentPage() {
+            return mockCurrentPage;
+        },
+        set currentPage(page) {
+            mockCurrentPage = page;
+        },
         startCursorBlink: vi.fn(),
         project: {
             sendCursor: vi.fn(),
             awareness: {
-                setLocalStateField: vi.fn()
-            }
-        }
-    }
+                setLocalStateField: vi.fn(),
+            },
+        },
+    },
 }));
 
 let mockCurrentPage: Page | null = null;
@@ -41,7 +45,7 @@ describe("Cursor moveToDocumentStart and End", () => {
             itemId: rootItem1.id,
             offset: 0,
             isActive: true,
-            userId: "test-user"
+            userId: "test-user",
         });
 
         cursor.applyToStore = vi.fn();
