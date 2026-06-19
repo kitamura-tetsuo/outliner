@@ -1,17 +1,17 @@
-const fs = require('fs');
+const fs = require("fs");
 
 function str_replace_editor(filepath, search, replace) {
-  const content = fs.readFileSync(filepath, 'utf8');
-  if (content.indexOf(search) === -1) {
-    console.error(`Search string not found in ${filepath}`);
-    process.exit(1);
-  }
-  const updatedContent = content.replace(search, replace);
-  fs.writeFileSync(filepath, updatedContent);
-  console.log(`Replaced content in ${filepath}`);
+    const content = fs.readFileSync(filepath, "utf8");
+    if (content.indexOf(search) === -1) {
+        console.error(`Search string not found in ${filepath}`);
+        process.exit(1);
+    }
+    const updatedContent = content.replace(search, replace);
+    fs.writeFileSync(filepath, updatedContent);
+    console.log(`Replaced content in ${filepath}`);
 }
 
-const file1 = 'client/src/components/GlobalTextArea.svelte';
+const file1 = "client/src/components/GlobalTextArea.svelte";
 const search1 = `    onpaste={async event => {
         try {
             await handlePaste(event);
@@ -41,7 +41,7 @@ const replace1 = `    onpaste={async event => {
 
 str_replace_editor(file1, search1, replace1);
 
-const file2 = 'client/src/lib/KeyEventHandler.ts';
+const file2 = "client/src/lib/KeyEventHandler.ts";
 const search2 = `        } catch (error) {
             // Log error and notify UI if error occurs
             if (
