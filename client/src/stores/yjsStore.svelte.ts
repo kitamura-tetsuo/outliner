@@ -72,33 +72,33 @@ class YjsStore {
                             const prevPage: any = prevItems.at ? prevItems.at(i) : prevItems[i];
                             const title = prevPage?.text?.toString?.() ?? String(prevPage?.text ?? "");
                             if (!title) continue;
-                            const cp: any = connectedProject as any;
+                            const cp = connectedProject as unknown;
                             try {
-                                const newPage: any = (typeof cp.addPage === "function")
+                                const newPage = (typeof cp.addPage === "function")
                                     ? cp.addPage(title, "tester")
                                     : (cp.items?.addNode ? cp.items.addNode("tester") : null);
                                 if (!newPage) continue;
                                 // Inherit page ID
                                 try {
-                                    (newPage as any).value?.set?.("id", String(prevPage.id));
+                                    (newPage as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevPage.id));
                                 } catch {}
                                 try {
                                     newPage.updateText?.(title);
                                 } catch {}
                                 // Inherit ID/text for child rows as well
                                 try {
-                                    const prevLines: any = prevPage?.items as any;
+                                    const prevLines = prevPage?.items as unknown;
                                     const len = prevLines?.length ?? 0;
                                     for (let j = 0; j < len; j++) {
                                         const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
                                         if (!prevLine) continue;
                                         const txt = prevLine.text?.toString?.() ?? String(prevLine.text ?? "");
-                                        const newLine: any = newPage.items?.addNode
+                                        const newLine = newPage.items?.addNode
                                             ? newPage.items.addNode("tester")
                                             : null;
                                         if (!newLine) continue;
                                         try {
-                                            (newLine as any).value?.set?.("id", String(prevLine.id));
+                                            (newLine as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                         try {
                                             newLine.updateText?.(txt);
@@ -129,19 +129,19 @@ class YjsStore {
                                 if (!matchPrev) continue;
                                 // Overwrite page ID
                                 try {
-                                    (curPage as any).value?.set?.("id", String(matchPrev.id));
+                                    (curPage as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(matchPrev.id));
                                 } catch {}
                                 // Overwrite ID of child rows with corresponding index
                                 try {
-                                    const prevLines: any = matchPrev?.items as any;
-                                    const newLines: any = curPage?.items as any;
+                                    const prevLines = matchPrev?.items as unknown;
+                                    const newLines = curPage?.items as unknown;
                                     const len = Math.min(prevLines?.length ?? 0, newLines?.length ?? 0);
                                     for (let j = 0; j < len; j++) {
                                         const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
-                                        const curLine: any = newLines.at ? newLines.at(j) : newLines[j];
+                                        const curLine = newLines.at ? newLines.at(j) : newLines[j];
                                         if (!prevLine || !curLine) continue;
                                         try {
-                                            (curLine as any).value?.set?.("id", String(prevLine.id));
+                                            (curLine as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevLine.id));
                                         } catch {}
                                     }
                                 } catch {}

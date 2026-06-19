@@ -1,3 +1,4 @@
+import type { Awareness } from "y-protocols/awareness";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { yjsService } from "../lib/yjs/service";
@@ -1294,13 +1295,17 @@ export class EditorOverlayStore {
                     if (currentPage.items) {
                         // Use iterateUnordered if available to avoid O(N log N) sorting
 
-                        const iter = (currentPage.items as any as { iterateUnordered?: () => Iterable<unknown>; })
+                        const iter = (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
                                 .iterateUnordered
-                            ? (currentPage.items as any as { iterateUnordered?: () => Iterable<unknown>; })
+                            ? (currentPage.items as unknown as { iterateUnordered?: () => Iterable<unknown>; })
                                 .iterateUnordered!()
                             : currentPage.items;
 
-                        for (const item of iter as any) {
+                        for (
+                            const item of iter as Iterable<
+                                { id: string; text?: { toString?: () => string; } | string; }
+                            >
+                        ) {
                             if (item && item.id === itemId) {
                                 return String(item.text || "");
                             }
@@ -1844,7 +1849,7 @@ export class EditorOverlayStore {
 
     private pushPresenceState() {
         try {
-            const client = yjsStore.yjsClient as any as { [key: string]: unknown; };
+            const client = yjsStore.yjsClient as unknown as { [key: string]: unknown; };
             if (!client) {
                 console.log("[pushPresenceState] No client");
                 return;
@@ -1866,11 +1871,13 @@ export class EditorOverlayStore {
                 return;
             }
 
-            const pageAwareness = (client as any).getPageAwareness?.(pageId);
+            const pageAwareness = (client as { getPageAwareness?: (p: string) => Awareness; }).getPageAwareness?.(
+                pageId,
+            );
             if (!pageAwareness) {
                 console.log("[pushPresenceState] No pageAwareness", {
                     pageId,
-                    hasGetPageAwareness: !!client.getPageAwareness,
+                    hasGetPageAwareness: !!(client as { getPageAwareness?: (p: string) => unknown; }).getPageAwareness,
                 });
                 return;
             }

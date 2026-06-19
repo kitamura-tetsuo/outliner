@@ -3,8 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // Mock module
 // Provide a local mock instead of importing .svelte.ts in tests
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockCursor: any = {
+const mockCursor = {
     itemId: "test-item",
     offset: 5,
     findTarget: vi.fn(() => ({ text: "hello/", updateText: vi.fn() })),
@@ -12,8 +11,7 @@ const mockCursor: any = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: vi.fn(() => [mockCursor]),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-} as any as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
 // Access global store if available; otherwise provide a local minimal implementation
@@ -35,8 +33,7 @@ const commandPaletteStore = (() => {
     // Minimal replica sufficient for this test
     const state = {
         isVisible: false,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        position: { top: 0, left: 0 } as any,
+        position: { top: 0, left: 0 } as unknown,
         query: "",
         selectedIndex: 0,
         _cmdItemId: null as string | null,
@@ -123,8 +120,7 @@ describe("CommandPaletteStore", () => {
         vi.clearAllMocks();
 
         // reset spies/state on our local mocks
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mockEditorOverlayStore.getCursorInstances as any).mockClear?.();
+        (mockEditorOverlayStore.getCursorInstances as import("vitest").Mock).mockClear?.();
         mockCursor.findTarget.mockClear();
         mockCursor.applyToStore.mockClear();
     });
