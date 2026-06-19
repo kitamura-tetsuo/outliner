@@ -2284,7 +2284,9 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
             ) {
-                console.error(`Error in handlePaste:`, error);
+                if ((error as Error)?.name !== "NotAllowedError") {
+                    console.error(`Error in handlePaste:`, error);
+                }
             }
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
