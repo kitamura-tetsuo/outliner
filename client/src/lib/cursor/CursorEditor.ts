@@ -212,7 +212,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; }).items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -300,7 +300,7 @@ export class CursorEditor {
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as unknown as { items: import("../../schema/app-schema").Items; })?.items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; }).items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
