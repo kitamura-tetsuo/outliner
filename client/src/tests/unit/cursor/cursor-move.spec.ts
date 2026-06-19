@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Cursor } from "../../../lib/Cursor";
-import { Page, Project } from "../../../schema/app-schema";
+import { Item as Page, Project } from "../../../schema/app-schema";
 
 vi.mock("../../../stores/store.svelte", () => ({
     store: {
