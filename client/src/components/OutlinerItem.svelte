@@ -36,8 +36,8 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
-const DEBUG_LOG: boolean = (typeof window !== 'undefined') && (((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && ((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__ === true));
+const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,7 +96,7 @@ onMount(() => {
                     try {
                         if (name === 'data-alias-target-id') {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const ap = (window as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+                            const ap = window.aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
@@ -610,7 +610,7 @@ const aliasTargetIdEffective = $derived.by(() => {
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
-                const w = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { generalStore?: unknown, __ITEM_ID_MAP__?: Record<string, string> }) : null;
+                const w = (typeof window !== "undefined") ? window : null;
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
                 const curPage = (w?.generalStore as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
@@ -1501,7 +1501,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     const e = Math.max(0, Math.min(full.length, Math.max(r.startOffset, r.endOffset)));
                     lines.push(full.substring(s, e));
                 }
-                (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).lastCopiedText = lines.join('\n');
+                window.lastCopiedText = lines.join('\n');
             }
         } catch {}
 
@@ -1693,7 +1693,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ && Array.isArray((window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__)) ? (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ as File[] : [];
+    const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
     const hasE2eFiles = e2eFiles.length > 0;
 
     if (hasFileList || hasFileItems || hasE2eFiles) {
@@ -1711,7 +1711,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else if (hasE2eFiles) {
                 // Playwright fallback: Use last files recorded via DataTransfer.items.add
                 files.push(...e2eFiles);
-                try { (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E_LAST_FILES__ = []; } catch {}
+                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
@@ -1720,7 +1720,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 try { containerId = await getDefaultContainerId(); } catch {}
                 if (!containerId && typeof window !== "undefined") {
                     try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                    try { containerId = containerId || (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__CURRENT_PROJECT_TITLE__; } catch {}
+                    try { containerId = containerId || window.__CURRENT_PROJECT_TITLE__; } catch {}
                 }
                 containerId = containerId || "test-container";
 
@@ -1776,7 +1776,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean, __E2E_DEBUG__?: boolean, __E2E_ATTEMPTED_DROP__?: boolean, generalStore?: unknown, __E2E_LAST_FILES__?: File[], DataTransferItemList?: unknown, __E2E_DT_ADD_PATCHED__?: boolean, __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean, __E2E_FILE_CTOR_PATCHED__?: boolean, __E2E_DT_CTOR_PATCHED__?: boolean, __E2E_LAST_DROP_EVENT__?: Event, editorStore?: unknown, aliasPickerStore?: unknown }).__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1792,7 +1792,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
@@ -1911,7 +1911,7 @@ onMount(() => {
 // E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
 onMount(() => {
     try {
-        const anyWin = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[], __E2E__?: boolean }) : undefined;
+        const anyWin = (typeof window !== 'undefined') ? window : undefined;
         if (!anyWin) return;
         if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
         const fn = (el: Element, ev: DragEvent) => {

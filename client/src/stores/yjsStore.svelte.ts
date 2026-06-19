@@ -190,5 +190,5 @@ class YjsStore {
 
 export const yjsStore = $state(new YjsStore());
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & { __YJS_STORE__?: YjsStore; }).__YJS_STORE__ = yjsStore;
+    window.__YJS_STORE__ = yjsStore;
 }

@@ -136,7 +136,7 @@
                     try {
                         if (
                             typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__
+                            window.__E2E__
                         ) {
                             logger.debug("OutlinerTree: observeDeep tick");
                             events.forEach((e) => {
@@ -167,7 +167,7 @@
     // Fallback for E2E environment: Ensure DOM updates in environments where observe rarely arrives
     onMount(() => {
         try {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
+            if (typeof window !== "undefined" && window.__E2E__) {
                 const timer = setInterval(() => {
                     __displayItemsTick = Date.now();
                 }, 200);
@@ -246,7 +246,7 @@
         try { containerId = await getDefaultContainerId(); } catch {}
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
-        if (!containerId && !(typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
+        if (!containerId && !(typeof window !== 'undefined' && window.__E2E__)) {
               logger.error("No valid container ID found for file upload");
             return;
         }
@@ -266,7 +266,7 @@
                     } catch (uploadErr) {
                           logger.error({ error: uploadErr }, "Upload failed via file select");
                         // E2E fallback local URL for test environment (mocking network)
-                        if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
+                        if (typeof window !== 'undefined' && window.__E2E__) {
                             const localUrl = URL.createObjectURL(file);
                             newItem.addAttachment(localUrl);
                             window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
@@ -1310,7 +1310,7 @@
 
         try {
             const w = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
+                ? window
                 : null;
             if (w && Array.isArray(w.E2E_LOGS)) {
                 w.E2E_LOGS.push({
@@ -1691,7 +1691,7 @@
 
         try {
             const w = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { E2E_LOGS?: unknown[] })
+                ? window
                 : null;
             if (w && Array.isArray(w.E2E_LOGS)) {
                 w.E2E_LOGS.push({
@@ -1970,7 +1970,7 @@
 
         const hasFileList = dt.files && dt.files.length > 0;
         const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        const e2eFiles: File[] = (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ && Array.isArray((window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__)) ? (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ as File[] : [];
+        const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
         const hasE2eFiles = e2eFiles.length > 0;
 
         if (hasFileList || hasFileItems || hasE2eFiles) {
@@ -1986,7 +1986,7 @@
                 }
             } else if (hasE2eFiles) {
                 files.push(...e2eFiles);
-                try { (window as Window & typeof globalThis & { __E2E_LAST_FILES__?: unknown[] }).__E2E_LAST_FILES__ = []; } catch {}
+                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
@@ -2019,7 +2019,7 @@
                                     try { (newItem as any as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
                                 }
                                 try {
-                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
+                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
                                         window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
                                     }
                                 } catch {}

@@ -39,7 +39,7 @@ let verificationResult = $state("");
 // Expose environment variables to window object for testing
 onMount(() => {
     if (typeof window !== "undefined") {
-        (window as Window & typeof globalThis & { testEnvVars?: Record<string, string> }).testEnvVars = {
+        window.testEnvVars = {
             VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ?? "",
             VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? "",
             VITE_TOKEN_VERIFY_URL: import.meta.env.VITE_TOKEN_VERIFY_URL ?? "",

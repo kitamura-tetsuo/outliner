@@ -113,7 +113,7 @@ export class UserManager {
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined"
-                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+                && window.__E2E__ === true);
 
         // Never use emulator in production environment
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
@@ -225,7 +225,7 @@ export class UserManager {
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined"
-                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+                && window.__E2E__ === true);
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 

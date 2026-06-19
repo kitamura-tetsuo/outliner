@@ -37,7 +37,7 @@
         } catch {}
         if (isTestEnv && typeof window !== "undefined") {
             const update = () => {
-                const flag = (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ === true;
+                const flag = window.__SEARCH_PANEL_VISIBLE__ === true;
                 if (flag !== e2eForceShow) e2eForceShow = flag;
             };
             update();
@@ -231,7 +231,7 @@
         }
         matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
         try {
-            (window as Window & typeof globalThis & { __E2E_LAST_MATCH_COUNT__?: number }).__E2E_LAST_MATCH_COUNT__ = matchCount;
+            window.__E2E_LAST_MATCH_COUNT__ = matchCount;
             console.log("SearchPanel.handleSearch matches", {
                 matchCount,
                 items: matches.map((m) => ({
@@ -254,7 +254,7 @@
                 matches = localMatches;
                 matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
                 try {
-                    (window as Window & typeof globalThis & { __E2E_LAST_MATCH_COUNT__?: number }).__E2E_LAST_MATCH_COUNT__ = matchCount;
+                    window.__E2E_LAST_MATCH_COUNT__ = matchCount;
                     console.log(
                         "SearchPanel.handleSearch page fallback matches",
                         { matchCount },
@@ -280,7 +280,7 @@
                 matches = fallback;
                 matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
                 try {
-                    (window as Window & typeof globalThis & { __E2E_LAST_MATCH_COUNT__?: number }).__E2E_LAST_MATCH_COUNT__ = matchCount;
+                    window.__E2E_LAST_MATCH_COUNT__ = matchCount;
                     console.log("SearchPanel.handleSearch fallback matches", {
                         matchCount,
                         items: matches.map((m) => ({
