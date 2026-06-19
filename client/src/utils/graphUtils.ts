@@ -74,15 +74,13 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
         const texts = [srcText, ...childTexts];
 
         for (const dst of pageNodes) {
-
-            if ((src as { id: string }).id === (dst as { id: string }).id) continue;
+            if ((src as { id: string; }).id === (dst as { id: string; }).id) continue;
             const target = dst.lowerName;
 
             // Check if any text block in src contains a link to dst
             // Using the optimized string inclusion check
             if (texts.some(t => containsLink(t, target, normalizedProjectTitle))) {
-
-                links.push({ source: (src as { id: string }).id, target: (dst as { id: string }).id });
+                links.push({ source: (src as { id: string; }).id, target: (dst as { id: string; }).id });
             }
         }
     }
