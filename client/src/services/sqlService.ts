@@ -1,4 +1,5 @@
 import initSqlJs, { type Database } from "sql.js";
+import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import { writable } from "svelte/store";
 import type { EditInfo } from "./editMapper";
 import { type Op, type SqlJsDatabase, SyncWorker } from "./syncWorker";
@@ -41,10 +42,9 @@ export async function getSqlStatic(): Promise<SqlJsStatic> {
     if (SQL) return SQL;
 
     // Load WASM from appropriate path in test or production environment
-    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.VITEST)) {
         const fs = await import("fs");
         const path = await import("path");
-        // Try multiple possible paths for the WASM file
         const possiblePaths = [
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
@@ -52,41 +52,17 @@ export async function getSqlStatic(): Promise<SqlJsStatic> {
         ];
 
         let wasmBinary: Uint8Array | null = null;
-        let wasmPath = "";
         for (const possiblePath of possiblePaths) {
             try {
-                const buffer = fs.readFileSync(possiblePath);
-                wasmBinary = new Uint8Array(buffer);
-                wasmPath = possiblePath;
+                wasmBinary = new Uint8Array(fs.readFileSync(possiblePath));
                 break;
-            } catch {
-                // Continue to next path
-            }
+            } catch {}
         }
-
-        if (!wasmBinary) {
-            throw new Error("Could not find sql-wasm.wasm file in any expected location");
-        }
-
-        SQL = await initSqlJs({
-            wasmBinary: wasmBinary,
-            locateFile: (file: string) => {
-                if (file.endsWith(".wasm")) {
-                    return wasmPath;
-                }
-                return file;
-            },
-        });
+        if (!wasmBinary) throw new Error("Could not find sql-wasm.wasm in test env");
+        SQL = await initSqlJs({ wasmBinary });
     } else {
-        // Load WASM from Vite's public directory in development environment
         SQL = await initSqlJs({
-            locateFile: (file: string) => {
-                if (file.endsWith(".wasm")) {
-                    // Use WASM file in public directory in development environment
-                    return `/node_modules/sql.js/dist/sql-wasm.wasm`;
-                }
-                return file;
-            },
+            locateFile: (file: string) => file.endsWith(".wasm") ? sqlWasmUrl : file,
         });
     }
 
@@ -100,10 +76,9 @@ export async function initDb() {
     if (db) return;
 
     // Load WASM from appropriate path in test or production environment
-    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "production")) {
+    if (typeof process !== "undefined" && (process.env.NODE_ENV === "test" || process.env.VITEST)) {
         const fs = await import("fs");
         const path = await import("path");
-        // Try multiple possible paths for the WASM file
         const possiblePaths = [
             path.resolve(process.cwd(), "node_modules/sql.js/dist/sql-wasm.wasm"),
             path.resolve(__dirname, "../../node_modules/sql.js/dist/sql-wasm.wasm"),
@@ -111,41 +86,17 @@ export async function initDb() {
         ];
 
         let wasmBinary: Uint8Array | null = null;
-        let wasmPath = "";
         for (const possiblePath of possiblePaths) {
             try {
-                const buffer = fs.readFileSync(possiblePath);
-                wasmBinary = new Uint8Array(buffer);
-                wasmPath = possiblePath;
+                wasmBinary = new Uint8Array(fs.readFileSync(possiblePath));
                 break;
-            } catch {
-                // Continue to next path
-            }
+            } catch {}
         }
-
-        if (!wasmBinary) {
-            throw new Error("Could not find sql-wasm.wasm file in any expected location");
-        }
-
-        SQL = await initSqlJs({
-            wasmBinary: wasmBinary,
-            locateFile: (file: string) => {
-                if (file.endsWith(".wasm")) {
-                    return wasmPath;
-                }
-                return file;
-            },
-        });
+        if (!wasmBinary) throw new Error("Could not find sql-wasm.wasm in test env");
+        SQL = await initSqlJs({ wasmBinary });
     } else {
-        // Load WASM from Vite's public directory in development environment
         SQL = await initSqlJs({
-            locateFile: (file: string) => {
-                if (file.endsWith(".wasm")) {
-                    // Use WASM file in public directory in development environment
-                    return `/node_modules/sql.js/dist/sql-wasm.wasm`;
-                }
-                return file;
-            },
+            locateFile: (file: string) => file.endsWith(".wasm") ? sqlWasmUrl : file,
         });
     }
 
