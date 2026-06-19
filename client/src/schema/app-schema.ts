@@ -356,14 +356,7 @@ export class Item {
     addAttachment(url: string) {
         // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
         try {
-            type WindowWithStore = Window & {
-                generalStore?: {
-                    currentPage?: Item;
-                };
-                __ITEM_ID_MAP__?: Record<string, string>;
-                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            };
-            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
+            const w = (typeof window !== "undefined") ? window : null;
             const currentPage = w?.generalStore?.currentPage;
             const thisDoc = this.ydoc;
             const targetDoc = currentPage?.ydoc;
@@ -413,10 +406,7 @@ export class Item {
             console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
         } catch {}
         try {
-            interface WindowWithLogs extends Window {
-                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
-            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithLogs) : null;
+            const w = (typeof window !== "undefined") ? window : null;
             if (w) {
                 w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
                 w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });

@@ -244,7 +244,7 @@
             isLoading = false;
             __loadingInProgress = false;
             if (typeof window !== "undefined") {
-                (window as Window & typeof globalThis & { __PAGE_STATE__?: unknown }).__PAGE_STATE__ = {
+                window.__PAGE_STATE__ = {
                     loaded: true,
                     projectName,
                     pageName,
@@ -376,7 +376,7 @@
         const before = isSearchPanelVisible;
         isSearchPanelVisible = !isSearchPanelVisible;
         if (typeof window !== "undefined") {
-            (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
+            window.__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
         }
         logger.debug(
             `toggleSearchPanel called: ${JSON.stringify({
@@ -448,7 +448,7 @@
 
         // For E2E Debug: Expose function to forcibly open search panel
         if (typeof window !== "undefined") {
-            (window as Window & typeof globalThis & { __OPEN_SEARCH__?: () => Promise<void> }).__OPEN_SEARCH__ = async () => {
+            window.__OPEN_SEARCH__ = async () => {
                 // Click toggle button to open only when currently hidden (prevent double toggle)
                 if (!isSearchPanelVisible) {
                     const btn =
@@ -466,7 +466,7 @@
                     await new Promise((r) => setTimeout(r, 25));
                     tries++;
                 }
-                (window as Window & typeof globalThis & { __SEARCH_PANEL_VISIBLE__?: boolean }).__SEARCH_PANEL_VISIBLE__ = true;
+                window.__SEARCH_PANEL_VISIBLE__ = true;
                 logger.debug(
                     `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
                         {

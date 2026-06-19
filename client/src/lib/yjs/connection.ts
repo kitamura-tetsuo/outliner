@@ -112,7 +112,7 @@ async function getFreshIdToken(): Promise<string> {
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-                || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true));
+                || window.__E2E__ === true));
     console.log(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
 
     const generateMockToken = () => {

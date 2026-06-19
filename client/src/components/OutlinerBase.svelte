@@ -94,7 +94,7 @@
 
         // Item comments patching - wrapped in try for safety
         try {
-            const W = typeof window !== "undefined" ? (window as Window & typeof globalThis & { __itemCommentPatched?: boolean, commentCountsByItemId?: Map<string, number> }) : null;
+            const W = typeof window !== "undefined" ? window : null;
             if (W && !W.__itemCommentPatched) {
                 W.__itemCommentPatched = true;
 
@@ -226,7 +226,7 @@
                 const patchItems = () => {
                     try {
                         const gs =
-                            (typeof window !== "undefined" && (window as Window & typeof globalThis & { generalStore?: unknown }).generalStore) ||
+                            (typeof window !== "undefined" && window.generalStore) ||
                             generalStore;
                         const pageAny = (gs as { currentPage?: unknown })?.currentPage;
                         const items = (pageAny as { items?: unknown })?.items;

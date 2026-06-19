@@ -2,8 +2,8 @@
 import { firestoreStore as moduleStore } from "../../stores/firestoreStore.svelte";
 import { onMount } from "svelte";
 // Workaround for double loading in Vitest + JSDOM: Use the instance exposed on window if available
-const storeRef = (typeof window !== "undefined" && (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__)
-    ? (window as Window & typeof globalThis & { __FIRESTORE_STORE__?: unknown }).__FIRESTORE_STORE__
+const storeRef = (typeof window !== "undefined" && window.__FIRESTORE_STORE__)
+    ? window.__FIRESTORE_STORE__
     : moduleStore;
 
 // Local state updating UI by direct assignment (independent of $derived)

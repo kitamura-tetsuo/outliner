@@ -78,7 +78,7 @@ class CommandPaletteStore {
             // 3) Fallback from window keystream
             try {
                 const wAny = typeof window !== "undefined"
-                    ? (window as Window & typeof globalThis & { __KEYSTREAM__?: string; })
+                    ? window
                     : null;
                 const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
                 if (ks) {
@@ -456,6 +456,5 @@ export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & { commandPaletteStore?: typeof commandPaletteStore; }).commandPaletteStore =
-        commandPaletteStore;
+    window.commandPaletteStore = commandPaletteStore;
 }
