@@ -65,19 +65,34 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 if (shouldReset) {
                     logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
-                    // Clear the data manually FIRST so that the wrapper isn't tracking stale/deleted keys
+                    // Initialize YTree wrapper on the live doc FIRST, so we can use safe deletion API
+                    new YTree(doc.getMap("orderedTree"));
+                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
+
+                    // We do not use transact() for massive deletion because it bypasses the wrapper
+                    // and causes observers on connected clients to crash.
+                    // Instead, safely delete items one by one using the wrapper API.
+                    const rootItems = docProject.items;
+                    if (rootItems) {
+                        for (let i = rootItems.length - 1; i >= 0; i--) {
+                            const child = rootItems.at(i);
+                            if (child) {
+                                child.delete();
+                            }
+                        }
+                    }
+
                     await directConnection.transact((document: any) => {
                         const ydoc = document as unknown as Y.Doc;
 
-                        // Safely clear orderedTree manually via map, preserving the 'root' key
+                        // Clear items map of any orphaned nodes completely
                         const orderedTreeMap = ydoc.getMap("orderedTree");
-                        Array.from(orderedTreeMap.keys()).forEach(key => {
-                            if (key !== "root") orderedTreeMap.delete(key);
-                        });
-
-                        // Clear items map completely
                         const itemsMap = ydoc.getMap("items");
-                        Array.from(itemsMap.keys()).forEach(key => itemsMap.delete(key));
+                        Array.from(itemsMap.keys()).forEach(key => {
+                            if (!orderedTreeMap.has(key)) {
+                                itemsMap.delete(key);
+                            }
+                        });
 
                         // Re-initialize metadata
                         const meta = ydoc.getMap("metadata");
@@ -85,13 +100,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         meta.set("lastReset", now);
                         meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                     });
-
-                    // We need to use YTree API safely, but initializing the wrapper BEFORE a massive
-                    // deletion transaction causes observers to crash.
-                    // So we clear manually, then initialize YTree
-                    // Then wrap in Project, then generate new items
-                    new YTree(doc.getMap("orderedTree"));
-                    const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                     // Rebuild the template directly in the live document.
                     // This is done sequentially outside the transaction because
