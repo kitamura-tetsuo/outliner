@@ -12,7 +12,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
     try {
         const decoded = await verifyIdTokenCached(token);
-        (req as any).user = decoded;
+        req.user = decoded;
         next();
     } catch (error) {
         logger.warn({ event: "auth_failed", error: (error as Error).message, ip: req.ip });

@@ -44,5 +44,5 @@ export function getClientIp(req: IncomingMessage | Request): string {
         return first(xff);
     }
 
-    return (req as any).socket?.remoteAddress || "";
+    return (req as IncomingMessage).socket?.remoteAddress || "";
 }
