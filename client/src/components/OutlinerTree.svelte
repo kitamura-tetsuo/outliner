@@ -538,7 +538,7 @@
         try {
             const flag = localStorage.getItem("DEBUG_MODE");
             if (flag === "1" || flag === "true") {
-                (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE = true;
+                window.DEBUG_MODE = true;
             }
         } catch {}
     }
@@ -553,7 +553,7 @@
             editorOverlayStore.clearSelections();
         }
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `Navigation event received: direction=${direction}, fromItemId=${fromItemId}, toItemId=${toItemId}, cursorScreenX=${cursorScreenX}`,
             );
@@ -707,7 +707,7 @@
             targetIndex = currentIndex + 1;
         }
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `Navigation calculation: currentIndex=${currentIndex}, targetIndex=${targetIndex}, items count=${displayItems.length}`,
             );
@@ -732,7 +732,7 @@
         shiftKey = false,
         direction?: string,
     ) {
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `Focusing item ${itemId} with cursor X: ${cursorScreenX}px, shift=${shiftKey}, direction=${direction}`,
             );
@@ -770,7 +770,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(
                         `Dispatched focus-item event to ${itemId} with X: ${cursorXValue}px, shift=${shiftKey}`,
@@ -793,7 +793,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(
                         `Sent finish-edit event to active item ${activeItem}`,
@@ -844,7 +844,7 @@
         const { lines, selections, activeItemId } = event.detail;
 
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`handlePasteMultiItem called with lines:`, lines);
             logger.debug(`Selections:`, selections);
             logger.debug(`Active item ID: ${activeItemId}`);
@@ -892,7 +892,7 @@
 
         // Use first item if active item not found
         if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Active item not found, aborting paste`);
             }
             return;
@@ -921,7 +921,7 @@
     // Paste into selection spanning multiple items
     function handleMultiItemSelectionPaste(selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number }, lines: string[]) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleMultiItemSelectionPaste called with selection:");
             logger.debug({ lines }, "Lines to paste:");
         }
@@ -939,7 +939,7 @@
         );
 
         if (startIndex < 0 || endIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Start or end item not found: startIndex=${startIndex}, endIndex=${endIndex}`,
                 );
@@ -953,7 +953,7 @@
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Selection direction: isReversed=${isReversed}`);
             logger.debug(
                 `Actual indices: start=${actualStartIndex}, end=${actualEndIndex}`,
@@ -971,7 +971,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(
                         `Updated first item text to: "${lines[0] || ""}"`,
@@ -981,7 +981,7 @@
                 // Delete other items
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(`Removing item at index ${i}`);
                 }
@@ -992,7 +992,7 @@
         // Add remaining lines as new items
         for (let i = 1; i < lines.length; i++) {
             const newIndex = actualStartIndex + i;
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
                 );
@@ -1010,7 +1010,7 @@
         // Update cursor position
         const newCursorItemId = displayItems[actualStartIndex]?.model.id;
         if (newCursorItemId) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Setting cursor to item ${newCursorItemId} at offset ${(lines[0] || "").length}`,
                 );
@@ -1029,7 +1029,7 @@
             // Clear selection
             editorOverlayStore.clearSelections();
         } else {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Could not find cursor item at index ${actualStartIndex}`,
                 );
@@ -1040,7 +1040,7 @@
     // Paste into selection within single item
     function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[]) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleSingleItemSelectionPaste called with selection:");
             logger.debug({ lines }, "Lines to paste:");
         }
@@ -1055,7 +1055,7 @@
         // Get item index
         const itemIndex = displayItems.findIndex((d) => d.model.id === itemId);
         if (itemIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Item not found: itemId=${itemId}, itemIndex=${itemIndex}`,
                 );
@@ -1067,7 +1067,7 @@
         const item = displayItems[itemIndex].model.original;
         const text: string = (item.text as { toString?: () => string })?.toString?.() ?? "";
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Original text: "${text}"`);
             logger.debug(
                 `Selection range: start=${startOffset}, end=${endOffset}`,
@@ -1082,7 +1082,7 @@
                 text.substring(endOffset);
             item.updateText(newText);
 
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated text to: "${newText}"`);
             }
 
@@ -1102,7 +1102,7 @@
             const newFirstText = text.substring(0, startOffset) + lines[0];
             item.updateText(newFirstText);
 
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated first item text to: "${newFirstText}"`);
             }
 
@@ -1112,7 +1112,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(`Adding new item at index ${newIndex}`);
                 }
@@ -1131,7 +1131,7 @@
 
                         if (
                             typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                            window.DEBUG_MODE
                         ) {
                             logger.debug(
                                 `Last item text set to: "${lastItemText}"`,
@@ -1142,7 +1142,7 @@
 
                         if (
                             typeof window !== "undefined" &&
-                            (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                            window.DEBUG_MODE
                         ) {
                             logger.debug(`Item ${i} text set to: "${lines[i]}"`);
                         }
@@ -1159,7 +1159,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(
                         `Setting cursor to last item ${lastItemId} at offset ${newOffset}`,
@@ -1181,7 +1181,7 @@
             } else {
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(
                         `Could not find last item at index ${lastItemIndex}`,
@@ -1231,7 +1231,7 @@
         dragCurrentItemId = itemId;
         dragCurrentOffset = offset;
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Drag start: itemId=${itemId}, offset=${offset}`);
         }
     }
@@ -1250,7 +1250,7 @@
         // Update selection range
         updateDragSelection();
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Dragging: itemId=${itemId}, offset=${offset}`);
         }
     }
@@ -1324,7 +1324,7 @@
             }
         } catch {}
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `Drop event: targetItemId=${targetItemId}, position=${position}, sourceItemId=${sourceItemId}`,
             );
@@ -1376,7 +1376,7 @@
     function handleItemDragEnd(event: CustomEvent) {
         const { itemId } = event.detail;
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Drag end: itemId=${itemId}`);
         }
 
@@ -1394,7 +1394,7 @@
         _dropEffect: string, // eslint-disable-line @typescript-eslint/no-unused-vars
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleSingleItemSelectionDrop called with selection:");
             logger.debug(`Target: itemId=${targetItemId}, position=${position}`);
         }
@@ -1415,7 +1415,7 @@
         );
 
         if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1434,7 +1434,7 @@
         // Get selected text
         const selectedText = sourceText.substring(startOffset, endOffset);
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Selected text: "${selectedText}"`);
         }
 
@@ -1444,7 +1444,7 @@
             sourceText.substring(endOffset);
         sourceItem.updateText(newSourceText);
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Updated source text: "${newSourceText}"`);
         }
 
@@ -1465,7 +1465,7 @@
             );
         }
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Updated target text: "${targetItem.text}"`);
         }
 
@@ -1497,7 +1497,7 @@
         text: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleMultiItemSelectionDrop called with selection:");
             logger.debug(`Target: itemId=${targetItemId}, position=${position}`);
         }
@@ -1518,7 +1518,7 @@
         );
 
         if (startIndex < 0 || endIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Start, end, or target item not found: startIndex=${startIndex}, endIndex=${endIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1533,7 +1533,7 @@
         // Get text within selection
         const selectedText = text;
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Selected text: "${selectedText}"`);
         }
 
@@ -1548,7 +1548,7 @@
 
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(`Cleared first item text`);
                 }
@@ -1556,7 +1556,7 @@
                 // Delete other items
                 if (
                     typeof window !== "undefined" &&
-                    (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE
+                    window.DEBUG_MODE
                 ) {
                     logger.debug(`Removing item at index ${i}`);
                 }
@@ -1618,7 +1618,7 @@
             }
         }
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Updated target text: "${targetItem.text}"`);
         }
 
@@ -1649,7 +1649,7 @@
         position: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`,
             );
@@ -1664,7 +1664,7 @@
         );
 
         if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
                 );
@@ -1674,7 +1674,7 @@
 
         // Do nothing if source and target are the same item
         if (sourceIndex === targetIndex) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Source and target are the same item, no action needed`,
                 );
@@ -1841,7 +1841,7 @@
         text: string,
     ) {
         // Debug info
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
                 `handleExternalTextDrop called with targetItemId=${targetItemId}, position=${position}`,
             );
@@ -1854,7 +1854,7 @@
         );
 
         if (targetIndex < 0) {
-            if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Target item not found: targetIndex=${targetIndex}`,
                 );
@@ -1919,7 +1919,7 @@
             }
         }
 
-        if (typeof window !== "undefined" && (window as Window & typeof globalThis & { DEBUG_MODE?: boolean }).DEBUG_MODE) {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Updated target text: "${targetItem.text}"`);
         }
 

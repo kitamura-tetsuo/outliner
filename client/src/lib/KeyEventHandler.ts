@@ -452,7 +452,7 @@ export class KeyEventHandler {
                 // Continue normal input even if failed
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.warn("Slash pre-show failed:", e);
                 }
@@ -597,7 +597,7 @@ export class KeyEventHandler {
         if (cursorInstances.length === 0) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`No cursor instances found, skipping key event`);
             }
@@ -702,7 +702,7 @@ export class KeyEventHandler {
             } catch (e) {
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.warn("Enter alias fallback failed:", e);
                 }
@@ -721,7 +721,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`Looking for handler with key combo:`, keyCombo);
             console.log(`Handler found: ${handler !== undefined}`);
@@ -763,7 +763,7 @@ export class KeyEventHandler {
                                         );
                                     }
                                 } catch (e) {
-                                    console.error(
+                                    console.warn(
                                         "KeyEventHandler(Post): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -771,7 +771,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            console.error(
+                            console.warn(
                                 "KeyEventHandler(Post): failed to schedule AliasPicker open after default handler",
                                 e,
                             );
@@ -840,7 +840,7 @@ export class KeyEventHandler {
                                         );
                                     }
                                 } catch (e) {
-                                    console.error(
+                                    console.warn(
                                         "KeyEventHandler(Post2): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -848,7 +848,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            console.error(
+                            console.warn(
                                 "KeyEventHandler(Post2): failed to schedule AliasPicker open after cursor.onKeyDown",
                                 e,
                             );
@@ -861,7 +861,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`Key event handled: ${handled}`);
             if (handled) {
@@ -908,7 +908,7 @@ export class KeyEventHandler {
         if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Skipping input event during composition`);
             }
@@ -967,7 +967,7 @@ export class KeyEventHandler {
         if (cursorInstances.length === 0) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`No cursor instances found, skipping input event`);
             }
@@ -977,7 +977,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`Applying input to ${cursorInstances.length} cursor instances`);
             console.log(`Current cursors:`, Object.values(store.cursors));
@@ -1011,7 +1011,7 @@ export class KeyEventHandler {
                     if (
                         typeof window !== "undefined"
                         && typeof document !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(
                             `Focus set after input. Active element is textarea: ${
@@ -1025,7 +1025,7 @@ export class KeyEventHandler {
             // Log error if textarea not found
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.error(`Global textarea not found in handleInput`);
             }
@@ -1037,7 +1037,7 @@ export class KeyEventHandler {
         // Output cursor state to log
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             store.logCursorState();
         }
@@ -1118,7 +1118,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`KeyEventHandler.handleCopy called`);
         }
@@ -1146,7 +1146,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Box selection text: "${selectedText}"`);
             }
@@ -1157,7 +1157,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Selected text from store: "${selectedText}"`);
             }
@@ -1191,7 +1191,7 @@ export class KeyEventHandler {
                             // Debug info
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.log(`VS Code metadata added:`, vscodeMetadata);
                             }
@@ -1199,7 +1199,7 @@ export class KeyEventHandler {
                             // Log if setting metadata fails
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.error(
                                     `Failed to set VS Code metadata:`,
@@ -1228,7 +1228,7 @@ export class KeyEventHandler {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.error(
                                 `navigator.clipboard.writeText failed in handleCopy:`,
@@ -1251,7 +1251,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
@@ -1261,7 +1261,7 @@ export class KeyEventHandler {
                 // Log if error occurs
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.error(`Error in handleCopy:`, error);
                 }
@@ -1278,7 +1278,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`KeyEventHandler.handleBoxSelection called with key=${event.key}`);
         }
@@ -1288,7 +1288,7 @@ export class KeyEventHandler {
         if (cursorInstances.length === 0) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`No cursor instances found, skipping box selection`);
             }
@@ -1300,7 +1300,7 @@ export class KeyEventHandler {
         if (!activeCursor || !activeCursor.itemId) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`No active cursor or invalid cursor, skipping box selection`);
             }
@@ -1381,7 +1381,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
             }
@@ -1501,7 +1501,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Box selection updated:`, KeyEventHandler.boxSelectionState);
                 }
@@ -1509,7 +1509,7 @@ export class KeyEventHandler {
                 // Log if error occurs
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.error(`Error in handleBoxSelection:`, error);
                     if (error instanceof Error) {
@@ -1524,7 +1524,7 @@ export class KeyEventHandler {
             // Log if range is invalid
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Invalid box selection range, cancelling`);
             }
@@ -1540,7 +1540,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`updateBoxSelectionRanges called`);
         }
@@ -1548,7 +1548,7 @@ export class KeyEventHandler {
         if (!KeyEventHandler.boxSelectionState.startItemId || !KeyEventHandler.boxSelectionState.endItemId) {
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(
                     `Invalid item IDs: startItemId=${KeyEventHandler.boxSelectionState.startItemId}, endItemId=${KeyEventHandler.boxSelectionState.endItemId}`,
@@ -1567,7 +1567,7 @@ export class KeyEventHandler {
             if (itemsInRange.length === 0) {
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`No items found in range`);
                 }
@@ -1616,7 +1616,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Box selection ranges updated:`, ranges);
             }
@@ -1624,7 +1624,7 @@ export class KeyEventHandler {
             // Log if error occurs
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.error(`Error in updateBoxSelectionRanges:`, error);
                 if (error instanceof Error) {
@@ -1705,7 +1705,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`getItemsBetween called with startItemId=${startItemId}, endItemId=${endItemId}`);
         }
@@ -1773,7 +1773,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Found ${itemsInRange.length} items between ${startItemId} and ${endItemId}`);
             }
@@ -1783,7 +1783,7 @@ export class KeyEventHandler {
             // Log if error occurs
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.error(`Error in getItemsBetween:`, error);
             }
@@ -1846,7 +1846,7 @@ export class KeyEventHandler {
             // Log if error occurs
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.error(`Error in getBoxSelectionDirection:`, error);
             }
@@ -1861,7 +1861,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`KeyEventHandler.cancelBoxSelection called`);
         }
@@ -1883,7 +1883,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Box selection cancelled`);
             }
@@ -1891,7 +1891,7 @@ export class KeyEventHandler {
             // Log if error occurs
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.error(`Error in cancelBoxSelection:`, error);
                 if (error instanceof Error) {
@@ -1921,7 +1921,7 @@ export class KeyEventHandler {
 
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`KeyEventHandler.handlePaste called`);
         }
@@ -1940,7 +1940,7 @@ export class KeyEventHandler {
                 } catch (error: unknown) {
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         if ((error as Error)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
@@ -1991,7 +1991,7 @@ export class KeyEventHandler {
                     // Debug info
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`VS Code metadata detected:`, vscodeMetadata);
                     }
@@ -2000,7 +2000,7 @@ export class KeyEventHandler {
                 // Ignore if metadata parsing fails
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.error(`Failed to parse VS Code metadata:`, error);
                 }
@@ -2009,7 +2009,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Pasting text: "${text}"`);
             }
@@ -2044,7 +2044,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     console.log(`VS Code multicursor text detected:`, (vscodeMetadata as any).multicursorText);
@@ -2081,7 +2081,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Pasting into box selection:`, boxSelection);
                 }
@@ -2093,7 +2093,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Box selection ranges:`, boxRanges);
                     console.log(`Lines to paste:`, lines);
@@ -2111,7 +2111,7 @@ export class KeyEventHandler {
                     if (!itemEl) {
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.warn(`Item element not found for ID: ${itemId}`);
                         }
@@ -2123,7 +2123,7 @@ export class KeyEventHandler {
                     if (!textEl) {
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.warn(`Text element not found for item ID: ${itemId}`);
                         }
@@ -2142,7 +2142,7 @@ export class KeyEventHandler {
                     // Debug info
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`Item ${i} (ID: ${itemId}): Replacing text from ${startOffset} to ${endOffset}`);
                         console.log(`Current text: "${currentText}"`);
@@ -2164,7 +2164,7 @@ export class KeyEventHandler {
 
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.log(`Created new cursor for item ID: ${itemId}`);
                         }
@@ -2181,7 +2181,7 @@ export class KeyEventHandler {
 
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.log(`Updated text for item ID: ${itemId}`);
                                 console.log(`New cursor offset: ${cursor.offset}`);
@@ -2189,7 +2189,7 @@ export class KeyEventHandler {
                         } else {
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.warn(`Target item not found for cursor with item ID: ${itemId}`);
                             }
@@ -2197,7 +2197,7 @@ export class KeyEventHandler {
                     } else {
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.warn(`Cursor not found or created for item ID: ${itemId}`);
                         }
@@ -2236,7 +2236,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Box selection paste detected, lines:`, lines);
                 }
@@ -2261,7 +2261,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Multi-line paste detected, lines:`, lines);
                 }
@@ -2282,7 +2282,7 @@ export class KeyEventHandler {
             // Log error and notify UI if error occurs
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 if ((error as Error)?.name !== "NotAllowedError") {
                     console.error(`Error in handlePaste:`, error);
@@ -2302,7 +2302,7 @@ export class KeyEventHandler {
         // Debug info
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`KeyEventHandler.handleCut called`);
         }
@@ -2330,7 +2330,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Box selection text: "${selectedText}"`);
             }
@@ -2341,7 +2341,7 @@ export class KeyEventHandler {
             // Debug info
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Selected text from store: "${selectedText}"`);
             }
@@ -2375,7 +2375,7 @@ export class KeyEventHandler {
                             // Debug info
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.log(`VS Code metadata added:`, vscodeMetadata);
                             }
@@ -2383,7 +2383,7 @@ export class KeyEventHandler {
                             // Log if setting metadata fails
                             if (
                                 typeof window !== "undefined"
-                                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                && window.DEBUG_MODE
                             ) {
                                 console.error(
                                     `Failed to set VS Code metadata:`,
@@ -2413,7 +2413,7 @@ export class KeyEventHandler {
                     (navigator as any).clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.error(
                                 `navigator.clipboard.writeText failed in handleCut:`,
@@ -2436,7 +2436,7 @@ export class KeyEventHandler {
                 // Debug info
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
@@ -2446,7 +2446,7 @@ export class KeyEventHandler {
                 // Log if error occurs
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.error(`Error in handleCut:`, error);
                 }

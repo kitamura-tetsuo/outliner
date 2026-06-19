@@ -118,7 +118,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(
                 `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
@@ -167,7 +167,7 @@ export class Cursor implements CursorEditingContext {
                         // Debug information
                         if (
                             typeof window !== "undefined"
-                            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                            && window.DEBUG_MODE
                         ) {
                             console.log(
                                 `Cursor.applyToStore: Focus set. Active element is textarea: ${
@@ -181,7 +181,7 @@ export class Cursor implements CursorEditingContext {
                 // Log error if textarea is not found
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.error(
                         `Cursor.applyToStore: Global textarea not found`,
@@ -283,7 +283,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
@@ -294,7 +294,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
@@ -331,7 +331,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -350,7 +350,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
@@ -391,7 +391,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
@@ -407,7 +407,7 @@ export class Cursor implements CursorEditingContext {
                     // Debug information
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`Moved to start of current item: offset=${this.offset}`);
                     }
@@ -423,7 +423,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
@@ -434,7 +434,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`getVisualLineInfo result:`, visualLineInfo);
         }
@@ -472,7 +472,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -491,7 +491,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
@@ -511,7 +511,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
@@ -529,7 +529,7 @@ export class Cursor implements CursorEditingContext {
                     // Debug information
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`Moved to end of current item: offset=${this.offset}`);
                     }
@@ -588,7 +588,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
         }
@@ -600,7 +600,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`Has selection: ${hasSelection}`);
             if (activeSelection) {
@@ -1439,7 +1439,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(
                 `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
@@ -1461,7 +1461,7 @@ export class Cursor implements CursorEditingContext {
         // Debug information
         if (
             typeof window !== "undefined"
-            && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+            && window.DEBUG_MODE
         ) {
             console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
@@ -1521,7 +1521,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
@@ -1534,7 +1534,7 @@ export class Cursor implements CursorEditingContext {
                     // Debug information
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
@@ -1595,7 +1595,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
@@ -1629,7 +1629,7 @@ export class Cursor implements CursorEditingContext {
                                 // Debug information
                                 if (
                                     typeof window !== "undefined"
-                                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                    && window.DEBUG_MODE
                                 ) {
                                     console.log(
                                         `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
@@ -1661,7 +1661,7 @@ export class Cursor implements CursorEditingContext {
 
                                 if (
                                     typeof window !== "undefined"
-                                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                    && window.DEBUG_MODE
                                 ) {
                                     console.log(
                                         `Moving right to next item (tree fallback): id=${nextItemId}, offset=${newOffset}`,
@@ -1691,7 +1691,7 @@ export class Cursor implements CursorEditingContext {
 
                                 if (
                                     typeof window !== "undefined"
-                                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                                    && window.DEBUG_MODE
                                 ) {
                                     console.log(
                                         `Moving right to next item (breadth-first fallback): id=${nextItemId}, offset=${newOffset}`,
@@ -1712,7 +1712,7 @@ export class Cursor implements CursorEditingContext {
                     newOffset = text.length;
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(
                             `No next item found after all attempts. Staying at end of current item: offset=${newOffset}`,
@@ -1728,7 +1728,7 @@ export class Cursor implements CursorEditingContext {
                     // Debug information
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -1788,7 +1788,7 @@ export class Cursor implements CursorEditingContext {
 
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
@@ -1801,7 +1801,7 @@ export class Cursor implements CursorEditingContext {
                 // Debug information
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
@@ -1850,7 +1850,7 @@ export class Cursor implements CursorEditingContext {
                 );
                 if (
                     typeof window !== "undefined"
-                    && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                    && window.DEBUG_MODE
                 ) {
                     console.log(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
@@ -1865,7 +1865,7 @@ export class Cursor implements CursorEditingContext {
                     // Debug information
                     if (
                         typeof window !== "undefined"
-                        && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                        && window.DEBUG_MODE
                     ) {
                         console.log(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
@@ -1878,7 +1878,7 @@ export class Cursor implements CursorEditingContext {
             // Debug information
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
@@ -1896,7 +1896,7 @@ export class Cursor implements CursorEditingContext {
             // Debug information
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
@@ -1913,7 +1913,7 @@ export class Cursor implements CursorEditingContext {
             // Debug information
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
@@ -1961,7 +1961,7 @@ export class Cursor implements CursorEditingContext {
             // Debug information
             if (
                 typeof window !== "undefined"
-                && ((window as Window & typeof globalThis & { DEBUG_MODE?: boolean; }).DEBUG_MODE)
+                && window.DEBUG_MODE
             ) {
                 console.log(`Item not changed, updated offset: ${newOffset}`);
             }
