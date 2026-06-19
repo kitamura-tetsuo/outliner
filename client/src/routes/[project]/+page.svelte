@@ -85,10 +85,6 @@
         }
     }
 
-    // Return to home
-    function goHome() {
-        goto(resolvePath("/"));
-    }
 
     $effect(() => {
         if (isAuthenticated && projectName) {
@@ -112,12 +108,12 @@
 
 <main class="container mx-auto px-4 py-4">
     <div class="mb-4 flex items-center">
-        <button
-            onclick={goHome}
+        <a
+            href={resolvePath("/")}
             class="mr-4 text-blue-600 hover:text-blue-800 hover:underline"
         >
             ← Return to Home
-        </button>
+        </a>
         <h1 class="text-2xl font-bold">
             {#if projectName}
                 {projectName}
