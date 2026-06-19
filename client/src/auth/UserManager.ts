@@ -126,7 +126,7 @@ export class UserManager {
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_USE_FIREBASE_EMULATOR === "true")
             || useEmulatorInLocalStorage;
 
-        console.log("[DEBUG] UserManager Init", {
+        logger.debug("[DEBUG] UserManager Init", {
             isTestEnv,
             isProduction,
             useEmulator,
@@ -137,7 +137,7 @@ export class UserManager {
         });
 
         if (isProduction && useEmulator) {
-            console.warn("[DEBUG] Production && Emulator detected. Disabling...");
+            logger.warn("[DEBUG] Production && Emulator detected. Disabling...");
             logger.warn("Firebase Emulator is enabled in production. Disabling emulator to prevent crash.");
             useEmulator = false;
         }

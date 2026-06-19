@@ -1,3 +1,7 @@
+import { getLogger } from "../logger";
+
+const logger = getLogger("CursorEditor");
+
 import type { Item } from "../../schema/yjs-schema";
 import { Items } from "../../schema/yjs-schema";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
@@ -40,7 +44,7 @@ export class CursorEditor {
         const cursor = this.cursor;
         const node = cursor.findTarget();
         if (!node) {
-            console.error(`insertText: Target item not found for itemId: ${cursor.itemId}`);
+            logger.error(`insertText: Target item not found for itemId: ${cursor.itemId}`);
             return;
         }
 

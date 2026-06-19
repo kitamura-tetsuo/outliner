@@ -1,5 +1,9 @@
 import type { Item } from "../../schema/yjs-schema";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+import { getLogger } from "../logger";
+
+const logger = getLogger("CursorNavigation");
+
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
 
 // Define a generic cursor interface that we expect
@@ -88,7 +92,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`moveUp called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
+            logger.debug(`moveUp called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
         // Get visual line information
@@ -96,7 +100,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
@@ -129,7 +133,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(
+            logger.debug(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
         }
@@ -145,7 +149,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(
+                    logger.debug(
                         `Moved to previous visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
                 }
@@ -162,7 +166,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(`Moved to previous item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
+                    logger.debug(`Moved to previous item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
                 // If there is no previous item, move to the beginning of the same item
@@ -175,7 +179,7 @@ export class CursorNavigation {
 
                     // Debug info
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        console.log(`Moved to start of current item: offset=${this.cursor.offset}`);
+                        logger.debug(`Moved to start of current item: offset=${this.cursor.offset}`);
                     }
                 }
             }
@@ -191,7 +195,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`moveDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
+            logger.debug(`moveDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
         }
 
         // Get visual line information
@@ -199,7 +203,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
@@ -233,7 +237,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(
+            logger.debug(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
         }
@@ -249,7 +253,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(
+                    logger.debug(
                         `Moved to next visual line in same item: offset=${this.cursor.offset}, targetColumn=${targetColumn}`,
                     );
                 }
@@ -266,7 +270,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(`Moved to next item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
+                    logger.debug(`Moved to next item: itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
                 }
             } else {
                 // If there is no next item, move to the end of the same item
@@ -280,7 +284,7 @@ export class CursorNavigation {
 
                     // Debug info
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        console.log(`Moved to end of current item: offset=${this.cursor.offset}`);
+                        logger.debug(`Moved to end of current item: offset=${this.cursor.offset}`);
                     }
                 }
             }
@@ -294,7 +298,7 @@ export class CursorNavigation {
     navigateToItem(direction: "left" | "right" | "up" | "down") {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(
+            logger.debug(
                 `navigateToItem called with direction=${direction}, itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
             );
         }
@@ -314,7 +318,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
+            logger.debug(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
         // Process item movement
@@ -327,7 +331,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
+                    logger.debug(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else {
                 // If there is no previous item, move to the beginning of the same item
@@ -337,7 +341,7 @@ export class CursorNavigation {
 
                     // Debug info
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                        logger.debug(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -350,7 +354,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
+                    logger.debug(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
             } else {
                 // If there is no next item, move to the end of the same item
@@ -360,7 +364,7 @@ export class CursorNavigation {
 
                     // Debug info
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        logger.debug(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -395,11 +399,11 @@ export class CursorNavigation {
                 itemChanged = true;
 
                 // Debug info
-                console.log(
+                logger.debug(
                     `navigateToItem up - Moving to previous item's last line: itemId=${prevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
                 );
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(
+                    logger.debug(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
                 }
@@ -409,7 +413,7 @@ export class CursorNavigation {
 
                 // Debug info
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                    logger.debug(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }
         } else if (direction === "down") {
@@ -448,11 +452,11 @@ export class CursorNavigation {
                 itemChanged = true;
 
                 // Debug info
-                console.log(
+                logger.debug(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    console.log(
+                    logger.debug(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
                 }
@@ -464,7 +468,7 @@ export class CursorNavigation {
 
                     // Debug info
                     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        logger.debug(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -474,7 +478,7 @@ export class CursorNavigation {
         if (itemChanged) {
             // Debug info
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
+                logger.debug(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
             // Ensure the cursor on the old item is removed before moving
@@ -488,7 +492,7 @@ export class CursorNavigation {
 
             // Debug info
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
+                logger.debug(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
             // Clear the selection
@@ -502,7 +506,7 @@ export class CursorNavigation {
 
             // Debug info
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
+                logger.debug(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
             // Set the new item and offset
@@ -547,7 +551,7 @@ export class CursorNavigation {
 
             // Debug info
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                console.log(`Item not changed, updated offset: ${newOffset}`);
+                logger.debug(`Item not changed, updated offset: ${newOffset}`);
             }
         }
     }
