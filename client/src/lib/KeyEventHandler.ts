@@ -3,6 +3,8 @@ import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../utils/domUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
+import { getLogger } from "./logger";
+const logger = getLogger("KeyEventHandler");
 
 /**
  * Handler that distributes key and input events to each cursor instance
@@ -1027,7 +1029,10 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.error(`Global textarea not found in handleInput`);
+                logger.error(
+                    { message: `Global textarea not found in handleInput` },
+                    "Global textarea not found in handleInput",
+                );
             }
         }
 
@@ -1201,10 +1206,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.error(
-                                    `Failed to set VS Code metadata:`,
-                                    error,
-                                );
+                                logger.error({ error }, "Failed to set VS Code metadata:");
                             }
                         }
                     }
@@ -1230,10 +1232,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.error(
-                                `navigator.clipboard.writeText failed in handleCopy:`,
-                                err,
-                            );
+                            logger.error({ error: err }, "navigator.clipboard.writeText failed in handleCopy:");
                         }
                     });
                 }
@@ -1263,7 +1262,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.error(`Error in handleCopy:`, error);
+                    logger.error({ error }, "Error in handleCopy:");
                 }
             }
             return;
@@ -1511,11 +1510,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.error(`Error in handleBoxSelection:`, error);
-                    if (error instanceof Error) {
-                        console.error(`Error message: ${error.message}`);
-                        console.error(`Error stack: ${error.stack}`);
-                    }
+                    logger.error({ error }, "Error in handleBoxSelection:");
                 }
                 // Cancel box selection
                 KeyEventHandler.cancelBoxSelection();
@@ -1626,11 +1621,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.error(`Error in updateBoxSelectionRanges:`, error);
-                if (error instanceof Error) {
-                    console.error(`Error message: ${error.message}`);
-                    console.error(`Error stack: ${error.stack}`);
-                }
+                logger.error({ error }, "Error in updateBoxSelectionRanges:");
             }
             // Set empty range
             KeyEventHandler.boxSelectionState.ranges = [];
@@ -1785,7 +1776,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.error(`Error in getItemsBetween:`, error);
+                logger.error({ error }, "Error in getItemsBetween:");
             }
             return [];
         }
@@ -1848,7 +1839,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.error(`Error in getBoxSelectionDirection:`, error);
+                logger.error({ error }, "Error in getBoxSelectionDirection:");
             }
             return "";
         }
@@ -1893,11 +1884,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.error(`Error in cancelBoxSelection:`, error);
-                if (error instanceof Error) {
-                    console.error(`Error message: ${error.message}`);
-                    console.error(`Error stack: ${error.stack}`);
-                }
+                logger.error({ error }, "Error in cancelBoxSelection:");
             }
 
             // Minimal state reset
@@ -1945,10 +1932,7 @@ export class KeyEventHandler {
                         if ((error as Error)?.name === "NotAllowedError") {
                             console.warn("Clipboard permission denied", error);
                         } else {
-                            console.error(
-                                "navigator.clipboard.readText failed",
-                                error,
-                            );
+                            logger.error({ error }, "navigator.clipboard.readText failed");
                         }
                     }
 
@@ -2002,7 +1986,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.error(`Failed to parse VS Code metadata:`, error);
+                    logger.error({ error }, "Failed to parse VS Code metadata:");
                 }
             }
 
@@ -2285,7 +2269,7 @@ export class KeyEventHandler {
                 && window.DEBUG_MODE
             ) {
                 if ((error as Error)?.name !== "NotAllowedError") {
-                    console.error(`Error in handlePaste:`, error);
+                    logger.error({ error }, "Error in handlePaste:");
                 }
             }
             if (typeof window !== "undefined") {
@@ -2385,10 +2369,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.error(
-                                    `Failed to set VS Code metadata:`,
-                                    error,
-                                );
+                                logger.error({ error }, "Failed to set VS Code metadata:");
                             }
                         }
                     }
@@ -2415,10 +2396,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.error(
-                                `navigator.clipboard.writeText failed in handleCut:`,
-                                err,
-                            );
+                            logger.error({ error: err }, "navigator.clipboard.writeText failed in handleCut:");
                         }
                     });
                 }
@@ -2448,7 +2426,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.error(`Error in handleCut:`, error);
+                    logger.error({ error }, "Error in handleCut:");
                 }
             }
         }
