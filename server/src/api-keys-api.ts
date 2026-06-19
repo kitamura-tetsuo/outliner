@@ -20,7 +20,7 @@ export function hashApiKey(apiKey: string): string {
 
 router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promise<void> => {
     try {
-        const { uid } = (req as any).user;
+        const uid = req.user!.uid;
         const { description } = req.body;
 
         const rawKey = crypto.randomBytes(32).toString("hex");
@@ -54,7 +54,7 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
 
 router.get("/api-keys", requireAuth, async (req: Request, res: Response): Promise<void> => {
     try {
-        const { uid } = (req as any).user;
+        const uid = req.user!.uid;
         const db = getFirestore();
         const snapshot = await db.collection("apiKeys").where("userId", "==", uid).get();
 
@@ -74,7 +74,7 @@ router.get("/api-keys", requireAuth, async (req: Request, res: Response): Promis
 
 router.delete("/api-keys/:id", requireAuth, async (req: Request, res: Response): Promise<void> => {
     try {
-        const { uid } = (req as any).user;
+        const uid = req.user!.uid;
         const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
         const db = getFirestore();
@@ -140,7 +140,7 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
         });
 
         // Set user context
-        (req as any).user = { uid: data.userId };
+        req.user = { uid: data.userId } as any;
         next();
     } catch (error: any) {
         logger.error({ error: new Error(error.message), event: "api_key_validation_error" }, "An error occurred");

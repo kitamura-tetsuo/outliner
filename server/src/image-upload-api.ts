@@ -28,8 +28,8 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
         async (req: Request, res: Response): Promise<void> => {
             try {
                 const projectId = Array.isArray(req.params.projectId) ? req.params.projectId[0] : req.params.projectId;
-                const { uid } = (req as any).user;
-                const file = (req as any).file;
+                const uid = req.user!.uid;
+                const file = req.file;
                 const { pageTitle, insertAfter, insertBefore } = req.body;
 
                 if (!file) {
