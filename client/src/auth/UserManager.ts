@@ -126,7 +126,7 @@ export class UserManager {
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_USE_FIREBASE_EMULATOR === "true")
             || useEmulatorInLocalStorage;
 
-        logger.debug("[DEBUG] UserManager Init", {
+        logger.debug({
             isTestEnv,
             isProduction,
             useEmulator,
@@ -134,7 +134,7 @@ export class UserManager {
             VITE_IS_TEST: import.meta.env?.VITE_IS_TEST,
             MODE: import.meta.env?.MODE,
             DEV: import.meta.env?.DEV,
-        });
+        }, "[DEBUG] UserManager Init");
 
         if (isProduction && useEmulator) {
             logger.warn("[DEBUG] Production && Emulator detected. Disabling...");
@@ -406,7 +406,8 @@ export class UserManager {
         try {
             logger.info(`[UserManager] Attempting email/password login for: ${email}`);
             logger.debug(
-                `[UserManager] Current auth state: ${this.auth.currentUser ? "authenticated" : "not authenticated"}`,
+                { state: this.auth.currentUser ? "authenticated" : "not authenticated" },
+                "[UserManager] Current auth state",
             );
 
             // In development environment
