@@ -325,15 +325,8 @@
         } catch {}
     }
 
-    // Return to Home
-    function goHome() {
-        goto(resolvePath("/"));
-    }
 
     // Return to Project Page
-    function goToProject() {
-        goto(resolvePath(`/${projectName}`));
-    }
 
     function goToSchedule() {
         goto(resolvePath(`/${projectName}/${pageName}/schedule`));
@@ -516,20 +509,20 @@
     <div class="mb-4">
         <!-- Breadcrumb Navigation -->
         <nav class="mb-2 flex items-center text-sm text-gray-600">
-            <button
-                onclick={goHome}
+            <a
+                href={resolvePath("/")}
                 class="text-blue-600 hover:text-blue-800 hover:underline"
             >
                 Home
-            </button>
+            </a>
             {#if projectName}
                 <span class="mx-2">/</span>
-                <button
-                    onclick={goToProject}
+                <a
+                    href={resolvePath(`/${projectName}`)}
                     class="text-blue-600 hover:text-blue-800 hover:underline"
                 >
                     {projectName}
-                </button>
+                </a>
             {/if}
             {#if pageName}
                 <span class="mx-2">/</span>
