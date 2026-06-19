@@ -485,7 +485,9 @@ function handleBlur(event: FocusEvent) {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));
             }
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                  console.error("GlobalTextArea.handlePaste failed", error);
+                if ((error as Error)?.name !== "NotAllowedError") {
+                    console.error("GlobalTextArea.handlePaste failed", error);
+                }
             }
         }
     }}
