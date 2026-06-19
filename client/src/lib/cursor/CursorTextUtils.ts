@@ -1,3 +1,7 @@
+import { getLogger } from "../logger";
+
+const logger = getLogger("CursorTextUtils");
+
 export interface VisualLineSegment {
     startOffset: number;
     endOffset: number;
@@ -182,7 +186,7 @@ export function getVisualLineInfo(itemId: string, offset: number): VisualLineInf
             lines: segments,
         };
     } catch (error) {
-        console.error("Error getting visual line info:", error);
+        logger.error("Error getting visual line info:", error);
         return null;
     }
 }
