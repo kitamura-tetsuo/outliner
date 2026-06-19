@@ -27,14 +27,14 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
     test("Home link is displayed in breadcrumb navigation", async ({ page }) => {
         // Verify that home link is displayed
-        const homeLink = page.locator('nav button:has-text("Home")');
+        const homeLink = page.locator('nav a:has-text("Home")');
         await expect(homeLink).toBeVisible();
         await expect(homeLink).toHaveClass(/text-blue-600/);
     });
 
     test("Project page link is displayed in breadcrumb navigation", async ({ page }) => {
         // Verify that project page link is displayed
-        const projectLink = page.locator(`nav button:has-text("${projectName}")`);
+        const projectLink = page.locator(`nav a:has-text("${projectName}")`);
         await expect(projectLink).toBeVisible();
         await expect(projectLink).toHaveClass(/text-blue-600/);
     });
@@ -48,7 +48,7 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
     test("Clicking project page link navigates to project page", async ({ page }) => {
         // Click the project page link
-        const projectLink = page.locator(`nav button:has-text("${projectName}")`);
+        const projectLink = page.locator(`nav a:has-text("${projectName}")`);
         await projectLink.click();
 
         // Verify transition to project page
@@ -65,7 +65,7 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
     test("Clicking home link navigates to home page", async ({ page }) => {
         // Click the home link
-        const homeLink = page.locator('nav button:has-text("Home")');
+        const homeLink = page.locator('nav a:has-text("Home")');
         await homeLink.click();
 
         // Verify transition to home page
