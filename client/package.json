@@ -13,6 +13,7 @@
         "playwright-core": "1.61.0",
         "rrule": "^2.8.1",
         "sql.js": "^1.14.1",
+        "svelte-seo": "^2.0.0",
         "uuid": "^14.0.0",
         "wx-svelte-grid": "^2.6.2",
         "y-indexeddb": "^9.0.12",

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { browser } from "$app/environment";
+import SvelteSEO from "svelte-seo";
 import { getEnv } from "$lib/env";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
@@ -424,6 +425,24 @@ onDestroy(async () => {
 });
 // HMR Trigger
 </script>
+
+<SvelteSEO
+    titleTemplate="%s | Cats Blog"
+    description="A blog for cat lovers."
+    openGraph={{
+        description: "A blog for cat lovers.",
+        images: [
+            {
+                url: "/cats.png",
+                alt: "Cats"
+            }
+        ]
+    }}
+    twitter={{
+        description: "A blog for cat lovers.",
+        image: "/cats.png"
+    }}
+/>
 
 <div data-testid="app-layout">
     <!-- Accessible skip link -->
