@@ -29,7 +29,10 @@ declare global {
         __selectionList?: SelectionRange[];
         __FIRESTORE_STORE__?: unknown;
         __E2E__?: boolean;
+        itemsStore?: { allItems?: { id?: string; text?: unknown; }[]; };
+        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
         appStore?: {
+            currentPage?: { id?: string; };
             project?: Project;
         };
         DEBUG_MODE?: boolean;
