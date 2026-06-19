@@ -262,18 +262,18 @@ export class KeyEventHandler {
                                 };
                                 const aliasItem = find(root, aliasId);
 
-                                if (aliasItem && !(aliasItem as { aliasTargetId?: string }).aliasTargetId) {
+                                if (aliasItem && !(aliasItem as { aliasTargetId?: string; }).aliasTargetId) {
                                     try {
                                         console.log(
                                             "KeyEventHandler: fallback setting aliasTargetId on",
                                             aliasId,
                                             "to",
-
-                                            (firstContent as { id?: string }).id,
+                                            (firstContent as { id?: string; }).id,
                                         );
                                     } catch {}
 
-                                    (aliasItem as { aliasTargetId?: string }).aliasTargetId = (firstContent as { id?: string }).id;
+                                    (aliasItem as { aliasTargetId?: string; }).aliasTargetId =
+                                        (firstContent as { id?: string; }).id;
                                 }
                                 try {
                                     const aliasEl = document.querySelector(
@@ -288,8 +288,7 @@ export class KeyEventHandler {
                                         } catch {}
                                         aliasEl.setAttribute(
                                             "data-alias-target-id",
-
-                                            String((firstContent as { id?: string }).id),
+                                            String((firstContent as { id?: string; }).id),
                                         );
                                     }
                                     const outlinerRoot = document.querySelector(".outliner") || document.body;
@@ -320,25 +319,28 @@ export class KeyEventHandler {
                                             );
                                         } catch {}
 
-                                        last.setAttribute("data-alias-target-id", String((firstContent as { id?: string }).id));
+                                        last.setAttribute(
+                                            "data-alias-target-id",
+                                            String((firstContent as { id?: string; }).id),
+                                        );
                                     }
 
                                     // Fallback setting on model side for the last item as well
                                     if (lastId && lastId !== aliasId) {
                                         const aliasItem2 = find(root, lastId);
 
-                                        if (aliasItem2 && !(aliasItem2 as { aliasTargetId?: string }).aliasTargetId) {
+                                        if (aliasItem2 && !(aliasItem2 as { aliasTargetId?: string; }).aliasTargetId) {
                                             try {
                                                 console.log(
                                                     "KeyEventHandler: fallback setting aliasTargetId on lastId",
                                                     lastId,
                                                     "to",
-
-                                                    (firstContent as { id?: string }).id,
+                                                    (firstContent as { id?: string; }).id,
                                                 );
                                             } catch {}
 
-                                            (aliasItem2 as { aliasTargetId?: string }).aliasTargetId = (firstContent as { id?: string }).id;
+                                            (aliasItem2 as { aliasTargetId?: string; }).aliasTargetId =
+                                                (firstContent as { id?: string; }).id;
                                         }
                                     }
                                 } catch {}
@@ -765,7 +767,6 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-
                                         (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
@@ -844,7 +845,6 @@ export class KeyEventHandler {
                                 try {
                                     const activeId = store.getActiveItem?.();
                                     if (activeId) {
-
                                         (w?.aliasPickerStore ?? aliasPickerStore).show(activeId);
                                         try {
                                             console.log(
