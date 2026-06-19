@@ -48,7 +48,7 @@ describe("yjsService", () => {
                 this.users = updatedUsers;
             },
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
@@ -81,7 +81,7 @@ describe("yjsService", () => {
                 this.selections = updatedSelections;
             },
         };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         (globalThis as unknown as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
