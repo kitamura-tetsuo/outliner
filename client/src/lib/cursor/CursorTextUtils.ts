@@ -186,7 +186,7 @@ export function getVisualLineInfo(itemId: string, offset: number): VisualLineInf
             lines: segments,
         };
     } catch (error) {
-        logger.error("Error getting visual line info:", error);
+        logger.error({ error }, "Error getting visual line info:");
         return null;
     }
 }

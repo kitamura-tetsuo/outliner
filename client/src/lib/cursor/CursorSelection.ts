@@ -486,7 +486,7 @@ export class CursorSelection {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Selection created with ID: ${selectionId}, isReversed=${isReversed}`);
-            logger.debug(`Current selections:`, store.selections);
+            logger.debug({ selections: store.selections }, `Current selections:`);
         }
 
         // Set global textarea selection
@@ -758,7 +758,7 @@ export class CursorSelection {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Selection created with ID: ${selectionId}`);
-            logger.debug(`Current selections:`, store.selections);
+            logger.debug({ selections: store.selections }, `Current selections:`);
         }
 
         // Move cursor position to end of line

@@ -100,7 +100,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug({ visualLineInfo }, `getVisualLineInfo result:`);
         }
 
         if (!visualLineInfo) {
@@ -203,7 +203,7 @@ export class CursorNavigation {
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug({ visualLineInfo }, `getVisualLineInfo result:`);
         }
 
         if (!visualLineInfo) {
