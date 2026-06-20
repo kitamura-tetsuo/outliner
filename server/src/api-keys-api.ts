@@ -48,7 +48,10 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
             createdAt: apiKeyData.createdAt,
         });
     } catch (error: unknown) {
-        logger.error({ error: new Error((error as Error).message), event: "api_key_create_error" }, "An error occurred");
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_create_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Failed to create API key" });
     }
 });
@@ -97,7 +100,10 @@ router.delete("/api-keys/:id", requireAuth, async (req: Request, res: Response):
 
         res.status(200).json({ success: true });
     } catch (error: unknown) {
-        logger.error({ error: new Error((error as Error).message), event: "api_key_delete_error" }, "An error occurred");
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_delete_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Failed to delete API key" });
     }
 });
@@ -144,7 +150,10 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
         req.user = { uid: data.userId } as unknown as DecodedIdToken;
         next();
     } catch (error: unknown) {
-        logger.error({ error: new Error((error as Error).message), event: "api_key_validation_error" }, "An error occurred");
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_validation_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Internal Server Error during API Key validation" });
     }
 }
