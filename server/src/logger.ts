@@ -1,6 +1,5 @@
 import pino from "pino";
 
-
 // Patched logger interface to prevent strict type checks on first argument
 export interface EnhancedLogger extends pino.Logger {
     trace(...args: any[]): void;
