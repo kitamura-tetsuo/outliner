@@ -172,7 +172,7 @@
                         }
                     }
                     if (len > 0) {
-                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
+                        logger.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
@@ -234,7 +234,7 @@
                 );
             }
         } catch (err) {
-            console.error("Failed to load project and page:", err);
+            logger.error({ error: err }, "Failed to load project and page:");
             error =
                 err instanceof Error
                     ? err.message
@@ -268,7 +268,7 @@
             // Attempt initial load
             scheduleLoadIfNeeded();
         } catch (e) {
-            console.error("[DEBUG] onMount error:", e);
+            logger.error({ error: e }, "[DEBUG] onMount error:");
         }
 
         // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed

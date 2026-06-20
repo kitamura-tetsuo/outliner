@@ -55,7 +55,7 @@ async function initializeFluidClient() {
         console.log(`[debug] Registering debug project: ${projectId}`);
         const saved = await saveFirestoreContainerIdToServer(projectId);
         if (!saved) {
-            console.error("[debug] Failed to register debug project");
+            logger.error("[debug] Failed to register debug project");
             networkError = "Failed to register debug project.";
             return;
         }
@@ -65,7 +65,7 @@ async function initializeFluidClient() {
         updateConnectionStatus();
     }
     catch (err) {
-        console.error("Fluid client initialization error:", err);
+        logger.error({ error: err }, "Fluid client initialization error:");
         networkError = "Failed to initialize Fluid client.";
     }
     finally {
@@ -163,7 +163,7 @@ onMount(() => {
         }, 5000);
     }
     catch (err) {
-        console.error("Error initializing debug page:", err);
+        logger.error({ error: err }, "Error initializing debug page:");
         error = err instanceof Error
             ? err.message
             : "An error occurred during initialization.";

@@ -1,3 +1,6 @@
+import { getLogger } from "../logger";
+const logger = getLogger("Yjs");
+
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { userManager } from "../../auth/UserManager";
 
@@ -85,7 +88,7 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
                     await provider.connect();
                     console.log("[tokenRefresh] connect() called");
                 } catch (e) {
-                    console.error("[tokenRefresh] connect() failed:", e);
+                    logger.error({ error: e }, "[tokenRefresh] connect() failed:");
                 }
                 return;
             }
@@ -102,7 +105,7 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
                 await provider.connect();
             }
         } catch (err) {
-            console.error("[tokenRefresh] Error in refreshAuthAndReconnect:", err);
+            logger.error({ error: err }, "[tokenRefresh] Error in refreshAuthAndReconnect:");
         }
     };
 }

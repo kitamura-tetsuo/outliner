@@ -1,3 +1,6 @@
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("API");
+
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -43,7 +46,7 @@ export const POST: RequestHandler = async ({ request }) => {
         const result = await response.json();
         return json(result);
     } catch (error) {
-        console.error("Seed demo API error:", error);
+        logger.error({ error }, "Seed demo API error");
         return json({ error: "Internal server error" }, { status: 500 });
     }
 };

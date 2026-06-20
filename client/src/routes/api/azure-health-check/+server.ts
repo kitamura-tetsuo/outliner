@@ -1,3 +1,6 @@
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("API");
+
 import { json } from "@sveltejs/kit";
 import { getFirebaseFunctionUrl } from "../../../lib/firebaseFunctionsUrl";
 import type { RequestHandler } from "./$types";
@@ -13,7 +16,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error("Azure health check failed:", response.status, errorText);
+            logger.error({ status: response.status, errorText }, "Azure health check failed");
             return json(
                 {
                     error: "Azure health check failed",
@@ -27,7 +30,7 @@ export const GET: RequestHandler = async ({ fetch }) => {
         const data = await response.json();
         return json(data);
     } catch (error) {
-        console.error("Azure health check error:", error);
+        logger.error({ error: error }, "Azure health check error:");
         return json(
             {
                 error: "Internal server error",

@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
 import {
     getAuth,
     GoogleAuthProvider,
@@ -64,7 +66,7 @@ async function signIn() {
         verificationResult = JSON.stringify(data, null, 2);
     }
     catch (error) {
-        console.error("Error occurred during login or verification:", error);
+        logger.error({ error: error }, "Error occurred during login or verification:");
     }
 }
 </script>

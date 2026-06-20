@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
 import { page } from "$app/stores";
 import { onMount } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
@@ -19,11 +21,11 @@ onMount(() => {
             console.log("Diff page initialized:", { project, pageTitle, content });
         }
         else {
-            console.error("Page params not available");
+            logger.error("Page params not available");
         }
     }
     catch (error) {
-        console.error("Error initializing diff page:", error);
+        logger.error({ error: error }, "Error initializing diff page:");
     }
 });
 </script>

@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
 import { goto } from "$app/navigation";
 import { resolvePath } from "../../../../utils/pathUtils";
 
@@ -441,7 +443,7 @@ onMount(async () => {
     }
 
     if (!pageId) {
-        console.error("Schedule page: pageId is empty, cannot load schedules");
+        logger.error("Schedule page: pageId is empty, cannot load schedules");
         return;
     }
 
@@ -482,7 +484,7 @@ $effect(() => {
 
 async function refresh() {
     if (!pageId) {
-        console.error("Schedule page: Cannot refresh, pageId is empty");
+        logger.error("Schedule page: Cannot refresh, pageId is empty");
         return;
     }
     console.log("Schedule page: Refreshing schedules for pageId:", pageId);
@@ -491,17 +493,17 @@ async function refresh() {
         console.log("Schedule page: Loaded schedules:", schedules);
     }
     catch (err) {
-        console.error("Schedule page: Error loading schedules:", err);
+        logger.error({ error: err }, "Schedule page: Error loading schedules:");
     }
 }
 
 async function addSchedule() {
     if (!publishTime) {
-        console.error("Schedule page: Cannot add schedule, publishTime is empty");
+        logger.error("Schedule page: Cannot add schedule, publishTime is empty");
         return;
     }
     if (!pageId) {
-        console.error("Schedule page: Cannot add schedule, pageId is empty");
+        logger.error("Schedule page: Cannot add schedule, pageId is empty");
         return;
     }
     console.log("Schedule page: Adding schedule for pageId:", pageId, "publishTime:", publishTime);
@@ -513,7 +515,7 @@ async function addSchedule() {
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error creating schedule:", err);
+        logger.error({ error: err }, "Schedule page: Error creating schedule:");
     }
 }
 
@@ -525,7 +527,7 @@ async function cancel(id: string) {
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error canceling schedule:", err);
+        logger.error({ error: err }, "Schedule page: Error canceling schedule:");
     }
 }
 
@@ -536,7 +538,7 @@ function startEdit(sch: Schedule) {
 
 async function saveEdit() {
     if (!editingId || !editingTime) {
-        console.error("Schedule page: Missing editing values");
+        logger.error("Schedule page: Missing editing values");
         return;
     }
     const ts = new Date(editingTime).getTime();
@@ -550,7 +552,7 @@ async function saveEdit() {
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error updating schedule:", err);
+        logger.error({ error: err }, "Schedule page: Error updating schedule:");
     }
 }
 
@@ -560,7 +562,7 @@ async function back() {
 
 async function downloadIcs() {
     if (!pageId) {
-        console.error("Schedule page: Cannot export schedules, pageId is empty");
+        logger.error("Schedule page: Cannot export schedules, pageId is empty");
         return;
     }
     try {
@@ -577,7 +579,7 @@ async function downloadIcs() {
         console.log("Schedule page: Exported schedules to iCal", filename);
     }
     catch (err) {
-        console.error("Schedule page: Error exporting schedules:", err);
+        logger.error({ error: err }, "Schedule page: Error exporting schedules:");
     }
     finally {
         isDownloading = false;

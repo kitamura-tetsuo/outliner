@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
 import { onMount } from "svelte";
 
 type ScheduleEntry = {
@@ -43,7 +45,7 @@ onMount(async () => {
         }
     }
     catch (e) {
-        console.error("failed to fetch schedules", e);
+        logger.error({ error: e }, "failed to fetch schedules");
     }
 });
 </script>
