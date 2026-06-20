@@ -7,6 +7,9 @@ import { firestoreStore, saveProjectIdToServer } from "../stores/firestoreStore.
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
+import { getLogger } from "./logger";
+const logger = getLogger("yjsService");
+
 import {
     getContainerTitleFromMetaDoc,
     getProjectIdByTitle,
@@ -150,7 +153,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
         projectId = isTest ? stableIdFromTitle(projectName) : uuid();
     }
 
-    console.log(
+    logger.info(
         `[yjsService] createNewProject: isTest=${isTest}, projectName="${projectName}", projectId="${projectId}"`,
     );
 
@@ -161,26 +164,24 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     if (!isTest) {
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            console.log(
-                `[yjsService] Saving project ID to server (attempt ${attempt}/${maxRetries}):`,
-                projectId,
-                "User:",
-                userId,
+            logger.info(
+                { projectId, userId },
+                `[yjsService] Saving project ID to server (attempt ${attempt}/${maxRetries})`,
             );
             try {
                 // Call saveProject API
                 const saved = await saveProjectIdToServer(projectId, projectName);
                 if (saved) {
-                    console.log(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
+                    logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
                     registrationSuccess = true;
                     // Wait for Firestore propagation (important for subsequent reads)
                     await new Promise(resolve => setTimeout(resolve, 500));
                     break;
                 } else {
-                    console.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+                    logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
                 }
             } catch (saveError) {
-                console.error(`[yjsService] Exception saving project ID (attempt ${attempt}):`, saveError);
+                logger.error({ error: saveError }, `[yjsService] Exception saving project ID (attempt ${attempt})`);
             }
 
             // Wait before retry
@@ -190,7 +191,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
         }
 
         if (!registrationSuccess) {
-            console.error(
+            logger.error(
                 `[yjsService] Failed to register project after ${maxRetries} attempts. WebSocket connection may fail.`,
             );
             // Throw error to notify user instead of silently failing
@@ -199,9 +200,9 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     }
 
     const project = Project.createInstance(projectName);
-    console.log(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
+    logger.info(`[yjsService] createNewProject: Connecting to YjsClient for projectId "${projectId}"...`);
     const client = await YjsClient.connect(projectId, project);
-    console.log(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
+    logger.info(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
     // Save title to metadata Y.Doc for dropdown display
@@ -223,7 +224,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 // Debug helper for E2E tests
 
 export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
-    console.log(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
+    logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
     // Special bypass for demo project
     if (projectTitle === "demo") {
@@ -244,18 +245,18 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     // First, check the registry for a matching client
     for (const [, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) {
-            console.log(`[getClientByProjectTitle] Found existing client in registry`);
+            logger.info(`[getClientByProjectTitle] Found existing client in registry`);
             return client;
         }
     }
 
     // If not in registry, try to find the projectId by title in metaDoc
-    console.log(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
+    logger.info(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
 
     // 1. Check local memory cache first (fastest, handles redirect immediately after creation)
     let projectId = localTitleMap.get(projectTitle);
     if (projectId) {
-        console.log(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
+        logger.info(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
     } else {
         // 2. Wait for IndexedDB to load (handles reload)
         // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
@@ -265,32 +266,32 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         projectId = getProjectIdByTitle(projectTitle);
     }
 
-    console.log(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
+    logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
 
     if (projectId) {
         const user = userManager.getCurrentUser();
         let userId = user?.id;
         const isTest = isTestEnvironment();
-        console.log(`[getClientByProjectTitle] userId=${userId}, isTest=${isTest}`);
+        logger.info(`[getClientByProjectTitle] userId=${userId}, isTest=${isTest}`);
 
         if (!userId && isTest) userId = "test-user-id";
         if (!userId) {
             // Cannot create a new client without a user ID
-            console.log(`[getClientByProjectTitle] No userId, returning undefined`);
+            logger.info(`[getClientByProjectTitle] No userId, returning undefined`);
             return undefined;
         }
 
         const project = Project.createInstance(projectTitle);
-        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for projectId=${projectId}`);
+        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for projectId=${projectId}`);
         const client = await YjsClient.connect(projectId, project);
-        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
+        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
         registry.set(keyFor(userId, projectId), [client, project]);
         return client;
     }
 
     // 4. Check Firestore Store for Name -> ID mapping (robust cross-device resolution)
     if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
-        console.log(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
+        logger.info(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
         await new Promise<void>((resolve, reject) => {
             const start = Date.now();
             const check = () => {
@@ -308,7 +309,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
             };
             check();
         });
-        console.log(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
+        logger.info(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
     }
 
     if (firestoreStore.userProject?.projectTitles) {
@@ -321,7 +322,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 
         if (matches.length > 0) {
             if (matches.length > 1) {
-                console.warn(
+                logger.warn(
                     `[getClientByProjectTitle] Multiple IDs found for title "${projectTitle}": ${matches.join(", ")}`,
                 );
             }
@@ -335,11 +336,11 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
             });
 
             projectId = registryMatch || matches[0];
-            console.log(`[getClientByProjectTitle] Selected ID: ${projectId}`);
+            logger.info(`[getClientByProjectTitle] Selected ID: ${projectId}`);
         }
     }
 
-    console.log(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
+    logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
 
     if (projectId) {
         const user = userManager.getCurrentUser();
@@ -347,7 +348,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 
         if (userId) {
             const project = Project.createInstance(projectTitle);
-            console.log(`[getClientByProjectTitle] Connecting to found Firestore ID: ${projectId}`);
+            logger.info(`[getClientByProjectTitle] Connecting to found Firestore ID: ${projectId}`);
             const client = await YjsClient.connect(projectId, project);
             registry.set(keyFor(userId, projectId), [client, project]);
             return client;
@@ -355,7 +356,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     }
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(projectTitle)) {
-        console.log(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
+        logger.info(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
         const projectId = projectTitle; // Treat title as ID
         const user = userManager.getCurrentUser();
         const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
@@ -370,12 +371,12 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 
     // In test environment, attempt to auto-connect if we can derive the ID
     const isTest = isTestEnvironment();
-    console.log(`[getClientByProjectTitle] projectId not found, isTest=${isTest}`);
+    logger.info(`[getClientByProjectTitle] projectId not found, isTest=${isTest}`);
 
     // Check if the title is actually a test ID format (e.g. "pa4cc30c")
     // This handles the case where we navigate to /projectId directly in tests
     if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
-        console.log(`[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
+        logger.info(`[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
         const projectId = projectTitle;
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
 
@@ -383,13 +384,13 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         let realTitle = projectId;
         if (firestoreStore.userProject?.projectTitles && firestoreStore.userProject.projectTitles[projectId]) {
             realTitle = firestoreStore.userProject.projectTitles[projectId];
-            console.log(`[getClientByProjectTitle] Resolved real title from Firestore: "${realTitle}"`);
+            logger.info(`[getClientByProjectTitle] Resolved real title from Firestore: "${realTitle}"`);
         }
 
         const project = Project.createInstance(realTitle);
-        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for test projectId=${projectId}`);
+        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for test projectId=${projectId}`);
         const client = await YjsClient.connect(projectId, project);
-        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
+        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
 
         registry.set(keyFor(userId, projectId), [client, project]);
         return client;
@@ -398,21 +399,21 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     if (isTest) {
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
         const projectId = stableIdFromTitle(projectTitle);
-        console.log(`[getClientByProjectTitle] Using stableIdFromTitle, projectId=${projectId}`);
+        logger.info(`[getClientByProjectTitle] Using stableIdFromTitle, projectId=${projectId}`);
 
         // Check if already connected by ID (but title mismatch? unlikely for stable ID)
         if (registry.has(keyFor(userId, projectId))) {
             const [c] = registry.get(keyFor(userId, projectId))!;
             if (c) {
-                console.log(`[getClientByProjectTitle] Found client by stable ID`);
+                logger.info(`[getClientByProjectTitle] Found client by stable ID`);
                 return c;
             }
         }
 
         const project = Project.createInstance(projectTitle);
-        console.log(`[getClientByProjectTitle] Calling YjsClient.connect for derived projectId=${projectId}`);
+        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for derived projectId=${projectId}`);
         const client = await YjsClient.connect(projectId, project);
-        console.log(`[getClientByProjectTitle] YjsClient.connect completed`);
+        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
 
         registry.set(keyFor(userId, projectId), [client, project]);
         // Also save title to persistence so next time it might appear
@@ -420,7 +421,7 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         return client;
     }
 
-    console.log(`[getClientByProjectTitle] Returning undefined`);
+    logger.info(`[getClientByProjectTitle] Returning undefined`);
     return undefined;
 }
 
@@ -490,11 +491,11 @@ export function removeClientByProjectId(projectId: string): void {
 }
 
 export async function deleteProject(projectId: string): Promise<boolean> {
-    console.log(`[yjsService] deleteProject called for: ${projectId}`);
+    logger.info(`[yjsService] deleteProject called for: ${projectId}`);
 
     const currentUser = userManager.auth.currentUser;
     if (!currentUser) {
-        console.error("[yjsService] deleteProject: User not logged in");
+        logger.error("[yjsService] deleteProject: User not logged in");
         throw new Error("User not logged in");
     }
 
@@ -515,20 +516,20 @@ export async function deleteProject(projectId: string): Promise<boolean> {
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[yjsService] deleteProject failed: ${response.status} ${response.statusText}`, errorText);
+            logger.error({ errorText }, `[yjsService] deleteProject failed: ${response.status} ${response.statusText}`);
             throw new Error(`Failed to delete project: ${response.statusText}`);
         }
 
         const data = await response.json();
         if (data.success) {
-            console.log(`[yjsService] deleteProject success for ${projectId}`);
+            logger.info(`[yjsService] deleteProject success for ${projectId}`);
             return true;
         } else {
-            console.error(`[yjsService] deleteProject returned failure`, data);
+            logger.error({ data }, `[yjsService] deleteProject returned failure`);
             return false;
         }
     } catch (error) {
-        console.error(`[yjsService] deleteProject exception`, error);
+        logger.error({ error }, `[yjsService] deleteProject exception`);
         throw error;
     }
 }
