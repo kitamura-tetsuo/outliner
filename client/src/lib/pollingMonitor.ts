@@ -1,3 +1,6 @@
+import { getLogger } from "./logger";
+const logger = getLogger("PollingMonitor");
+
 /**
  * Polling Monitor
  *
@@ -80,7 +83,7 @@ class PollingMonitor {
                 this.calls.set(id, call);
 
                 if (call.disabled) {
-                    console.log(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
+                    logger.debug(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);
                     // Return a dummy ID
                     return id;
                 }
@@ -123,7 +126,7 @@ class PollingMonitor {
                 this.calls.set(id, call);
 
                 if (call.disabled) {
-                    console.log(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
+                    logger.debug(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);
                     return id;
                 }
 
@@ -166,7 +169,7 @@ class PollingMonitor {
             this.calls.set(id, call);
 
             if (call.disabled) {
-                console.log(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);
+                logger.debug(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);
                 return id;
             }
 
@@ -183,7 +186,7 @@ class PollingMonitor {
             return frameId;
         };
 
-        console.log("[PollingMonitor] Monitoring started");
+        logger.debug("[PollingMonitor] Monitoring started");
     }
 
     /**
@@ -200,7 +203,7 @@ class PollingMonitor {
         window.cancelAnimationFrame = this.originalCancelAnimationFrame;
 
         this.enabled = false;
-        console.log("[PollingMonitor] Monitoring stopped");
+        logger.debug("[PollingMonitor] Monitoring stopped");
     }
 
     /**

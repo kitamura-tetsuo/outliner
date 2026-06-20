@@ -1,3 +1,6 @@
+import { getLogger } from "./logger";
+const logger = getLogger("metaDoc");
+
 // Metadata Y.Doc module for persisting container metadata (titles, etc.) locally
 import { IndexeddbPersistence } from "y-indexeddb";
 import * as Y from "yjs";
@@ -99,11 +102,11 @@ export function getProjectIdByTitle(title: string): string | undefined {
 
 // Log initialization status
 if (typeof window !== "undefined") {
-    console.log("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");
+    logger.debug("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");
 
     // Optional: Log when IndexedDB data is loaded
     persistence.once("synced", () => {
-        console.log("[metaDoc] IndexedDB data loaded");
+        logger.debug("[metaDoc] IndexedDB data loaded");
     });
 }
 

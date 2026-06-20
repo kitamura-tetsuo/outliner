@@ -1,3 +1,6 @@
+import { getLogger } from "./logger";
+const logger = getLogger("yjsPersistence");
+
 import { IndexeddbPersistence } from "y-indexeddb";
 import type * as Y from "yjs";
 
@@ -21,7 +24,7 @@ export function createPersistence(
 
     // Log when initial sync from IndexedDB is complete
     persistence.once("synced", () => {
-        console.log(`[yjsPersistence] Local cache loaded for container: ${containerId}`);
+        logger.debug(`[yjsPersistence] Local cache loaded for container: ${containerId}`);
     });
 
     return persistence;

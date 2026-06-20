@@ -1,3 +1,7 @@
+import { serverLogger as logger } from "./utils/log-manager.js";
+
+
+
 import { getApps, initializeApp } from "firebase-admin/app";
 import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
@@ -8,10 +12,10 @@ if (!getApps().length) {
     const serviceAccount = getServiceAccount();
     const projectId = serviceAccount.project_id || process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
     if (projectId) {
-        console.log(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
+        logger.debug(`[Auth] Initializing Firebase Admin with projectId=${projectId}`);
         initializeApp({ projectId });
     } else {
-        console.warn("[Auth] No project ID found, skipping auto-initialization");
+        logger.warn("[Auth] No project ID found, skipping auto-initialization");
     }
 }
 
@@ -46,10 +50,10 @@ export function extractAuthToken(req: IncomingMessage | Request): string | undef
         const url = new URL(urlString ?? "", "http://localhost");
         // Check for 'token' parameter (used by y-websocket when token option is provided)
         const token = url.searchParams.get("token") || url.searchParams.get("auth");
-        console.log(`[Auth] req.url=${sanitizeUrl(urlString)}, token=${token ? "FOUND" : "MISSING"}`);
+        logger.debug(`[Auth] req.url=${sanitizeUrl(urlString)}, token=${token ? "FOUND" : "MISSING"}`);
         return token || undefined;
     } catch {
-        /* eslint-disable-next-line no-console */ console.error("[Auth] URL parse error");
+        logger.error({ error: new Error("URL parse error") }, "[Auth] URL parse error");
         return undefined;
     }
 }
@@ -73,11 +77,11 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
             const isTestEnv = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development"
                 || process.env.ALLOW_TEST_ACCESS === "true" || process.env.CI === "true";
             if (!isTestEnv) {
-                console.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
+                logger.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
                 throw new Error("alg:none tokens are not allowed in this environment");
             }
 
-            console.log("[Auth] Detected alg:none token");
+            logger.debug("[Auth] Detected alg:none token");
             // ... continue with logic
             const parts = token.split(".");
 
@@ -95,7 +99,7 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
                 auth_time: payload.auth_time || Math.floor(now / 1000),
                 firebase: payload.firebase || { identities: {}, sign_in_provider: "custom" },
             };
-            console.log("[Auth] Test mode: allowing alg:none token", decoded.uid);
+            logger.debug({ uid: decoded.uid }, "[Auth] Test mode: allowing alg:none token");
             const expKey = Math.min(decoded.exp * 1000, now + CACHE_TTL_MS);
             tokenCache.set(token, { decoded, exp: expKey });
             return decoded;
@@ -104,12 +108,12 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         if (e.message && e.message.includes("alg:none tokens are not allowed")) {
             throw e;
         }
-        console.warn("[Auth] Test mode: failed to parse alg:none token", e);
+        logger.warn("[Auth] Test mode: failed to parse alg:none token", e);
     }
 
     try {
         const decoded = await getAuth().verifyIdToken(token);
-        console.log(`[Auth] Verified token for uid=${decoded.uid}`);
+        logger.debug(`[Auth] Verified token for uid=${decoded.uid}`);
         const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
         tokenCache.set(token, { decoded, exp });
         return decoded;
@@ -119,7 +123,7 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         const isExpired = errorCode === "auth/id-token-expired" || e.message?.includes("expired");
 
         if (isExpired) {
-            console.warn(`[Auth] Token expired (normal during reconnect)`);
+            logger.warn(`[Auth] Token expired (normal during reconnect)`);
             throw Object.assign(new Error("auth/id-token-expired"), { code: "auth/id-token-expired" });
         }
 
@@ -128,16 +132,16 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
             if (parts.length === 3) {
                 const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                 const nowSec = Math.floor(Date.now() / 1000);
-                /* eslint-disable-next-line no-console */ console.error(
+                logger.error({ error: e },
                     `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
                         payload.exp - nowSec
                     }, uid=${payload.uid || payload.user_id}`,
                 );
             }
         } catch (parseErr) {
-            /* eslint-disable-next-line no-console */ console.error("[Auth] Failed to parse failed token for debug");
+            logger.error({ error: e }, "[Auth] Failed to parse failed token for debug");
         }
-        /* eslint-disable-next-line no-console */ console.error(`[Auth] Token verification failed: ${e.message}`);
+        logger.error({ error: e }, `[Auth] Token verification failed: ${e.message}`);
         throw e;
     }
 }

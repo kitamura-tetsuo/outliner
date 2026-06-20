@@ -1,3 +1,6 @@
+import { getLogger } from "./logger";
+const logger = getLogger("firebaseFunctionsUrl");
+
 /**
  * Firebase Functions URL Helper
  * Generates appropriate Firebase Functions URLs based on the environment.
@@ -71,7 +74,7 @@ export function isLocalDevelopment(): boolean {
 export function debugFirebaseFunctionsConfig(): void {
     const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
     const isTest = getEnv("VITE_IS_TEST", "false") === "true";
-    console.log("Firebase Functions URL Config:", {
+    logger.debug("Firebase Functions URL Config:", {
         apiBaseUrl,
         isTest,
         isLocal: isLocalDevelopment(),

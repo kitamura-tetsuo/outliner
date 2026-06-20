@@ -171,7 +171,7 @@ export class KeyEventHandler {
                                 const tid = (opts[si] as { id?: string; })?.id;
                                 if (tid) {
                                     try {
-                                        console.log("KeyEventHandler(Enter@Picker): confirmById via store", {
+                                        logger.debug("KeyEventHandler(Enter@Picker): confirmById via store", {
                                             si,
                                             tid,
                                             opts: opts.length,
@@ -188,18 +188,18 @@ export class KeyEventHandler {
                             ".alias-picker li button",
                         ) as NodeListOf<HTMLButtonElement>;
                         try {
-                            console.log("KeyEventHandler: alias-picker buttons found:", all.length);
+                            logger.debug("KeyEventHandler: alias-picker buttons found:", all.length);
                         } catch {}
                         const index = Math.min(1, Math.max(0, all.length - 1));
                         const btn = all[index] ?? null;
                         if (btn) {
                             try {
-                                console.log("KeyEventHandler: clicking alias option index", index);
+                                logger.debug("KeyEventHandler: clicking alias option index", index);
                             } catch {}
                             btn.click();
                         } else {
                             try {
-                                console.log("KeyEventHandler: no alias option button yet; ignoring this Enter");
+                                logger.debug("KeyEventHandler: no alias option button yet; ignoring this Enter");
                             } catch {}
                             // Do nothing (don't hide) as DOM might not be ready
                         }
@@ -264,7 +264,7 @@ export class KeyEventHandler {
 
                                 if (aliasItem && !(aliasItem as { aliasTargetId?: string; }).aliasTargetId) {
                                     try {
-                                        console.log(
+                                        logger.debug(
                                             "KeyEventHandler: fallback setting aliasTargetId on",
                                             aliasId,
                                             "to",
@@ -281,7 +281,7 @@ export class KeyEventHandler {
                                     ) as HTMLElement | null;
                                     if (aliasEl && !aliasEl.getAttribute("data-alias-target-id")) {
                                         try {
-                                            console.log(
+                                            logger.debug(
                                                 "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
                                                 aliasId,
                                             );
@@ -313,7 +313,7 @@ export class KeyEventHandler {
                                     const lastId = last?.getAttribute("data-item-id");
                                     if (last && lastId && !last.getAttribute("data-alias-target-id")) {
                                         try {
-                                            console.log(
+                                            logger.debug(
                                                 "KeyEventHandler: setting DOM data-alias-target-id for lastId",
                                                 lastId,
                                             );
@@ -331,7 +331,7 @@ export class KeyEventHandler {
 
                                         if (aliasItem2 && !(aliasItem2 as { aliasTargetId?: string; }).aliasTargetId) {
                                             try {
-                                                console.log(
+                                                logger.debug(
                                                     "KeyEventHandler: fallback setting aliasTargetId on lastId",
                                                     lastId,
                                                     "to",
@@ -358,7 +358,7 @@ export class KeyEventHandler {
         const cursorInstances = store.getCursorInstances();
 
         // Debug info
-        console.log(
+        logger.debug(
             `KeyEventHandler.handleKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}, altKey=${event.altKey}`,
         );
         const target = event.target as Element | null;
@@ -371,8 +371,8 @@ export class KeyEventHandler {
                 || typeof activeElement?.nodeName === "string"
             ? activeElement.nodeName
             : typeof document.activeElement;
-        console.log(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
-        console.log(`Current cursor instances: ${cursorInstances.length}`);
+        logger.debug(`KeyEventHandler.handleKeyDown: target=${tgt}, active=${ae}`);
+        logger.debug(`Current cursor instances: ${cursorInstances.length}`);
 
         // Pre-evaluate if "/alias" trigger exists on Enter (flag to open picker after subsequent default processing)
         let shouldOpenAliasPickerAfterDefault = false;
@@ -404,7 +404,7 @@ export class KeyEventHandler {
             const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
                 || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
             try {
-                console.log(
+                logger.debug(
                     "KeyEventHandler Early Enter check: before=",
                     before,
                     " cmd=",
@@ -414,7 +414,7 @@ export class KeyEventHandler {
                 );
             } catch {}
             try {
-                console.log(
+                logger.debug(
                     "KeyEventHandler Early aliasDetected=",
                     aliasDetected,
                     " srcBefore=",
@@ -488,7 +488,7 @@ export class KeyEventHandler {
                     const hasAlias = filtered.some(c => c?.type === "alias");
                     if (hasAlias) {
                         try {
-                            console.log(
+                            logger.debug(
                                 "KeyEventHandler Palette Enter: forcing alias insert based on filtered results",
                             );
                         } catch {}
@@ -508,7 +508,7 @@ export class KeyEventHandler {
                     const lastSlash = before.lastIndexOf("/");
                     const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
                     try {
-                        console.log("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
+                        logger.debug("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
                     } catch {}
                     if (/^alias$/i.test(cmd)) {
                         commandPaletteStore.hide();
@@ -562,7 +562,7 @@ export class KeyEventHandler {
                                 newItm.text = "";
                                 newItm.aliasTargetId = undefined;
                                 try {
-                                    console.log(
+                                    logger.debug(
                                         "KeyEventHandler(Palette): showing AliasPicker for",
                                         newItm.id,
                                     );
@@ -617,7 +617,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`No cursor instances found, skipping key event`);
+                logger.debug(`No cursor instances found, skipping key event`);
             }
             return;
         }
@@ -646,7 +646,7 @@ export class KeyEventHandler {
                 const aliasDetected = /\/alias$/i.test(srcBefore) || /(^|[^a-zA-Z])alias$/i.test(before)
                     || /^alias$/i.test(cmd) || /^alias$/i.test(srcCmd);
                 try {
-                    console.log(
+                    logger.debug(
                         "KeyEventHandler Enter fallback: before=",
                         before,
                         " cmd=",
@@ -696,7 +696,7 @@ export class KeyEventHandler {
 
                             (newItem as { aliasTargetId?: string; }).aliasTargetId = undefined;
                             try {
-                                console.log(
+                                logger.debug(
                                     "KeyEventHandler: showing AliasPicker for",
                                     (newItem as { id: string; }).id,
                                 );
@@ -749,8 +749,8 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`Looking for handler with key combo:`, keyCombo);
-            console.log(`Handler found: ${handler !== undefined}`);
+            logger.debug(`Looking for handler with key combo:`, keyCombo);
+            logger.debug(`Handler found: ${handler !== undefined}`);
         }
 
         if (handler) {
@@ -772,7 +772,7 @@ export class KeyEventHandler {
                                         (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
                                             ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                         try {
-                                            console.log(
+                                            logger.debug(
                                                 "KeyEventHandler(Post): showing AliasPicker for activeId",
                                                 activeId,
                                                 " after default handler. before=",
@@ -851,7 +851,7 @@ export class KeyEventHandler {
                                         (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
                                             ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                         try {
-                                            console.log(
+                                            logger.debug(
                                                 "KeyEventHandler(Post2): showing AliasPicker for activeId",
                                                 activeId,
                                             );
@@ -889,7 +889,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`Key event handled: ${handled}`);
+            logger.debug(`Key event handled: ${handled}`);
             if (handled) {
                 // Output cursor state to log
                 store.logCursorState();
@@ -909,11 +909,11 @@ export class KeyEventHandler {
         } catch {}
 
         // Debug info
-        console.log(
+        logger.debug(
             `KeyEventHandler.handleInput called with inputType=${inputEvent.inputType}, isComposing=${inputEvent.isComposing}`,
         );
-        console.log(`Input data: "${inputEvent.data}"`);
-        console.log(`Current active element: ${document.activeElement?.tagName}`);
+        logger.debug(`Input data: "${inputEvent.data}"`);
+        logger.debug(`Current active element: ${document.activeElement?.tagName}`);
 
         // Buffer the latest input stream (for fallback detection of palette)
         try {
@@ -936,7 +936,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Skipping input event during composition`);
+                logger.debug(`Skipping input event during composition`);
             }
             return;
         }
@@ -995,7 +995,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`No cursor instances found, skipping input event`);
+                logger.debug(`No cursor instances found, skipping input event`);
             }
             return;
         }
@@ -1005,14 +1005,14 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`Applying input to ${cursorInstances.length} cursor instances`);
-            console.log(`Current cursors:`, Object.values(store.cursors));
+            logger.debug(`Applying input to ${cursorInstances.length} cursor instances`);
+            logger.debug(`Current cursors:`, Object.values(store.cursors));
         }
 
         // Apply input to each cursor
-        console.log(`Applying input to ${cursorInstances.length} cursor instances`);
+        logger.debug(`Applying input to ${cursorInstances.length} cursor instances`);
         cursorInstances.forEach((cursor, index) => {
-            console.log(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            logger.debug(`Applying input to cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
             cursor.onInput(inputEvent);
         });
 
@@ -1039,7 +1039,7 @@ export class KeyEventHandler {
                         && typeof document !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(
+                        logger.debug(
                             `Focus set after input. Active element is textarea: ${
                                 document.activeElement === textareaElement
                             }`,
@@ -1074,17 +1074,17 @@ export class KeyEventHandler {
         // Check current value of textarea
         const textareaRef = store.getTextareaRef();
         if (textareaRef) {
-            console.log(`Textarea value: "${textareaRef.value}"`);
-            console.log(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
+            logger.debug(`Textarea value: "${textareaRef.value}"`);
+            logger.debug(`Textarea selection: start=${textareaRef.selectionStart}, end=${textareaRef.selectionEnd}`);
         } else {
-            console.log(`Textarea not found in KeyEventHandler.handleInput`);
+            logger.debug(`Textarea not found in KeyEventHandler.handleInput`);
         }
 
         // Check state of cursor instances
         const cursorInstancesAfter = store.getCursorInstances();
-        console.log(`Number of cursor instances: ${cursorInstancesAfter.length}`);
+        logger.debug(`Number of cursor instances: ${cursorInstancesAfter.length}`);
         cursorInstancesAfter.forEach((cursor, index) => {
-            console.log(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
+            logger.debug(`Cursor ${index}: itemId=${cursor.itemId}, offset=${cursor.offset}`);
         });
     }
 
@@ -1149,7 +1149,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`KeyEventHandler.handleCopy called`);
+            logger.debug(`KeyEventHandler.handleCopy called`);
         }
 
         // Do nothing if no selection
@@ -1177,7 +1177,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Box selection text: "${selectedText}"`);
+                logger.debug(`Box selection text: "${selectedText}"`);
             }
         } else {
             // If normal selection range
@@ -1188,7 +1188,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Selected text from store: "${selectedText}"`);
+                logger.debug(`Selected text from store: "${selectedText}"`);
             }
         }
 
@@ -1222,7 +1222,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.log(`VS Code metadata added:`, vscodeMetadata);
+                                logger.debug(`VS Code metadata added:`, vscodeMetadata);
                             }
                         } catch (error) {
                             // Log if setting metadata fails
@@ -1274,7 +1274,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
                     );
                 }
@@ -1301,7 +1301,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`KeyEventHandler.handleBoxSelection called with key=${event.key}`);
+            logger.debug(`KeyEventHandler.handleBoxSelection called with key=${event.key}`);
         }
 
         // Get current cursor position
@@ -1311,7 +1311,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`No cursor instances found, skipping box selection`);
+                logger.debug(`No cursor instances found, skipping box selection`);
             }
             return;
         }
@@ -1323,7 +1323,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`No active cursor or invalid cursor, skipping box selection`);
+                logger.debug(`No active cursor or invalid cursor, skipping box selection`);
             }
             return;
         }
@@ -1404,7 +1404,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
+                logger.debug(`Box selection started at item=${activeItemId}, offset=${activeOffset}`);
             }
         }
 
@@ -1524,7 +1524,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Box selection updated:`, KeyEventHandler.boxSelectionState);
+                    logger.debug(`Box selection updated:`, KeyEventHandler.boxSelectionState);
                 }
             } catch (error) {
                 // Log if error occurs
@@ -1543,7 +1543,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Invalid box selection range, cancelling`);
+                logger.debug(`Invalid box selection range, cancelling`);
             }
             // Cancel box selection
             KeyEventHandler.cancelBoxSelection();
@@ -1559,7 +1559,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`updateBoxSelectionRanges called`);
+            logger.debug(`updateBoxSelectionRanges called`);
         }
 
         if (!KeyEventHandler.boxSelectionState.startItemId || !KeyEventHandler.boxSelectionState.endItemId) {
@@ -1567,7 +1567,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(
+                logger.debug(
                     `Invalid item IDs: startItemId=${KeyEventHandler.boxSelectionState.startItemId}, endItemId=${KeyEventHandler.boxSelectionState.endItemId}`,
                 );
             }
@@ -1586,7 +1586,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`No items found in range`);
+                    logger.debug(`No items found in range`);
                 }
                 return;
             }
@@ -1635,7 +1635,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Box selection ranges updated:`, ranges);
+                logger.debug(`Box selection ranges updated:`, ranges);
             }
         } catch (error) {
             // Log if error occurs
@@ -1720,7 +1720,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`getItemsBetween called with startItemId=${startItemId}, endItemId=${endItemId}`);
+            logger.debug(`getItemsBetween called with startItemId=${startItemId}, endItemId=${endItemId}`);
         }
 
         if (!startItemId || !endItemId) {
@@ -1788,7 +1788,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Found ${itemsInRange.length} items between ${startItemId} and ${endItemId}`);
+                logger.debug(`Found ${itemsInRange.length} items between ${startItemId} and ${endItemId}`);
             }
 
             return itemsInRange;
@@ -1876,7 +1876,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`KeyEventHandler.cancelBoxSelection called`);
+            logger.debug(`KeyEventHandler.cancelBoxSelection called`);
         }
 
         try {
@@ -1898,7 +1898,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Box selection cancelled`);
+                logger.debug(`Box selection cancelled`);
             }
         } catch (error) {
             // Log if error occurs
@@ -1932,7 +1932,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`KeyEventHandler.handlePaste called`);
+            logger.debug(`KeyEventHandler.handlePaste called`);
         }
 
         // Prevent browser default paste action to avoid native insertion before await completes
@@ -1982,7 +1982,7 @@ export class KeyEventHandler {
                 text = String(
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText || "",
                 );
-                console.log(`Using text from global variable: "${text}"`);
+                logger.debug(`Using text from global variable: "${text}"`);
             }
 
             if (!text) return;
@@ -1999,7 +1999,7 @@ export class KeyEventHandler {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`VS Code metadata detected:`, vscodeMetadata);
+                        logger.debug(`VS Code metadata detected:`, vscodeMetadata);
                     }
                 }
             } catch (error) {
@@ -2017,7 +2017,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Pasting text: "${text}"`);
+                logger.debug(`Pasting text: "${text}"`);
             }
 
             // Save to global variable (E2E test environment only)
@@ -2050,7 +2050,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `VS Code multicursor text detected:`,
                         (vscodeMetadata as { multicursorText?: string[]; }).multicursorText,
                     );
@@ -2088,7 +2088,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Pasting into box selection:`, boxSelection);
+                    logger.debug(`Pasting into box selection:`, boxSelection);
                 }
 
                 // Split text to paste into lines
@@ -2100,8 +2100,8 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Box selection ranges:`, boxRanges);
-                    console.log(`Lines to paste:`, lines);
+                    logger.debug(`Box selection ranges:`, boxRanges);
+                    logger.debug(`Lines to paste:`, lines);
                 }
 
                 // Paste text corresponding to each line of box selection
@@ -2149,10 +2149,10 @@ export class KeyEventHandler {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`Item ${i} (ID: ${itemId}): Replacing text from ${startOffset} to ${endOffset}`);
-                        console.log(`Current text: "${currentText}"`);
-                        console.log(`Line text to paste: "${lineText}"`);
-                        console.log(`New text: "${newText}"`);
+                        logger.debug(`Item ${i} (ID: ${itemId}): Replacing text from ${startOffset} to ${endOffset}`);
+                        logger.debug(`Current text: "${currentText}"`);
+                        logger.debug(`Line text to paste: "${lineText}"`);
+                        logger.debug(`New text: "${newText}"`);
                     }
 
                     // Get or create cursor instance
@@ -2171,7 +2171,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.log(`Created new cursor for item ID: ${itemId}`);
+                            logger.debug(`Created new cursor for item ID: ${itemId}`);
                         }
                     }
 
@@ -2188,8 +2188,8 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.log(`Updated text for item ID: ${itemId}`);
-                                console.log(`New cursor offset: ${cursor.offset}`);
+                                logger.debug(`Updated text for item ID: ${itemId}`);
+                                logger.debug(`New cursor offset: ${cursor.offset}`);
                             }
                         } else {
                             if (
@@ -2247,7 +2247,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Box selection paste detected, lines:`, lines);
+                    logger.debug(`Box selection paste detected, lines:`, lines);
                 }
 
                 // Insert lines corresponding to each cursor
@@ -2272,7 +2272,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Multi-line paste detected, lines:`, lines);
+                    logger.debug(`Multi-line paste detected, lines:`, lines);
                 }
 
                 // Process multi-line text
@@ -2313,7 +2313,7 @@ export class KeyEventHandler {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`KeyEventHandler.handleCut called`);
+            logger.debug(`KeyEventHandler.handleCut called`);
         }
 
         // Do nothing if no selection
@@ -2341,7 +2341,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Box selection text: "${selectedText}"`);
+                logger.debug(`Box selection text: "${selectedText}"`);
             }
         } else {
             // If normal selection range
@@ -2352,7 +2352,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Selected text from store: "${selectedText}"`);
+                logger.debug(`Selected text from store: "${selectedText}"`);
             }
         }
 
@@ -2386,7 +2386,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.log(`VS Code metadata added:`, vscodeMetadata);
+                                logger.debug(`VS Code metadata added:`, vscodeMetadata);
                             }
                         } catch (error) {
                             // Log if setting metadata fails
@@ -2439,7 +2439,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Clipboard updated with: "${selectedText}" (using navigator.clipboard & execCommand fallback)`,
                     );
                 }
