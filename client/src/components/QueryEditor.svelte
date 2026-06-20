@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("QueryEditor");
+
 import {
     initDb,
     runQuery,
@@ -12,7 +15,7 @@ async function run() {
         runQuery(sql);
     }
     catch (error) {
-          console.error("Error running query:", error);
+          logger.error({ error }, "Error running query");
     }
 }
 </script>

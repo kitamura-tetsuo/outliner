@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("GlobalTextArea");
+
 import {
     onDestroy,
     onMount,
@@ -486,7 +489,7 @@ function handleBlur(event: FocusEvent) {
             }
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 if ((error as Error)?.name !== "NotAllowedError") {
-                    console.error("GlobalTextArea.handlePaste failed", error);
+                    logger.error({ error }, "GlobalTextArea.handlePaste failed");
                 }
             }
         }

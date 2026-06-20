@@ -1,5 +1,7 @@
+import { getLogger } from "../lib/logger";
 import type { Item, Items } from "../schema/app-schema";
 import { store as generalStore } from "./store.svelte";
+const logger = getLogger("AliasPickerStore");
 
 interface Option {
     id: string;
@@ -106,7 +108,7 @@ class AliasPickerStore {
         }
 
         if (!generalStore.currentPage) {
-            console.error("AliasPickerStore: No current page available");
+            logger.error({}, "AliasPickerStore: No current page available");
             this.hide();
             return;
         }
@@ -143,10 +145,10 @@ class AliasPickerStore {
 
                 // Do not change DOM directly (leave UI update to reactivity system)
             } else {
-                console.error("AliasPickerStore: Item not found:", this.itemId);
+                logger.error({ itemId: this.itemId }, "AliasPickerStore: Item not found");
             }
         } catch (error) {
-            console.error("AliasPickerStore error finding item:", error);
+            logger.error({ error }, "AliasPickerStore error finding item");
         }
 
         this.hide();
@@ -164,7 +166,7 @@ class AliasPickerStore {
             }
             return undefined;
         } catch (e) {
-            console.error("AliasPickerStore findItemDFS error:", e);
+            logger.error({ error: e }, "AliasPickerStore findItemDFS error");
             return undefined;
         }
     }
@@ -343,7 +345,7 @@ class AliasPickerStore {
         }
 
         if (iterations >= maxIterations) {
-            console.error("AliasPickerStore findItemSafe: Maximum iterations exceeded");
+            logger.error({}, "AliasPickerStore findItemSafe: Maximum iterations exceeded");
         }
 
         return undefined;
@@ -351,7 +353,7 @@ class AliasPickerStore {
 
     private findItem(node: Item, id: string, depth = 0): Item | undefined {
         if (depth > 100) {
-            console.error("AliasPickerStore findItem: Maximum depth exceeded, possible infinite loop");
+            logger.error({}, "AliasPickerStore findItem: Maximum depth exceeded, possible infinite loop");
             return undefined;
         }
 

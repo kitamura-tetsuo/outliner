@@ -106,7 +106,7 @@ export class OutlinerViewModel {
                 debugLog("OutlinerViewModel: visibleOrder is EMPTY!");
             }
         } catch (err) {
-            console.error("OutlinerViewModel: Error in updateFromModel:", err);
+            logger.error({ error: err }, "OutlinerViewModel: Error in updateFromModel");
         } finally {
             this._isUpdating = false;
         }

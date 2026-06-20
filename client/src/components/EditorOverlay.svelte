@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("EditorOverlay");
+
 import { SvelteSet } from "svelte/reactivity";
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
@@ -198,7 +201,7 @@ function updateTextareaPosition() {
             }
         }
     } catch (e) {
-          console.error("Error in updateTextareaPosition:", e);
+          logger.error({ error: e }, "Error in updateTextareaPosition");
     }
 }
 
@@ -450,7 +453,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         }
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
-          console.error('Error calculating cursor position:', error);
+          logger.error({ error }, "Error calculating cursor position");
         return null;
     }
 }
@@ -546,7 +549,7 @@ function calculateSelectionPixelRange(
             height
         };
     } catch (error) {
-          console.error('Error calculating selection range:', error);
+          logger.error({ error }, "Error calculating selection range");
         return null;
     }
 }
