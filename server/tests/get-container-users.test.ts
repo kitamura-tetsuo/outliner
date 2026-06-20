@@ -12,7 +12,7 @@ process.env.FIRESTORE_EMULATOR_HOST = "localhost:58080";
 process.env.GCLOUD_PROJECT = "test-project";
 
 // Use the Express app defined for testing
-// @ts-ignore
+// @ts-expect-error
 import { app } from "./log-service-test-helper.js";
 
 describe("/api/get-container-users admin role check (API-0003)", function() {

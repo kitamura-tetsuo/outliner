@@ -10,7 +10,7 @@ import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
-// @ts-ignore
+// @ts-expect-error
 global.WebSocket = WebSocket;
 
 const mockDecodedIdToken = {

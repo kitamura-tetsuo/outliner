@@ -2,10 +2,10 @@ import { expect } from "chai";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
-// @ts-ignore
+// @ts-expect-error
 import LogManager from "../src/utils/log-manager.js";
 let app: any;
-// @ts-ignore
+// @ts-expect-error
 import { app as helper } from "./log-service-test-helper.js";
 
 describe("/api/rotate-logs endpoint (LOG-0002)", function() {
