@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
     import { page } from "$app/stores";
@@ -102,7 +104,7 @@
                 isSaving = false;
             }
         } catch (e) {
-            console.error(e);
+            logger.error({ error: e }, "Error");
             error = "An error occurred while saving.";
             isSaving = false;
         }
@@ -151,7 +153,7 @@
             }
 
         } catch (e: unknown) {
-            console.error("Generate link error:", e);
+            logger.error({ error: e }, "Generate link error:");
             shareError = e instanceof Error ? e.message : "Failed to generate invitation link";
         } finally {
             isGeneratingLink = false;

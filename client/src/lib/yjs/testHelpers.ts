@@ -1,3 +1,6 @@
+import { getLogger } from "../logger";
+const logger = getLogger("Yjs");
+
 /**
  * Yjs Test Helpers
  *
@@ -211,7 +214,7 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
             }
             console.log(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
-            console.error(`[${pv}] reconnect failed:`, e);
+            logger.error({ error: e }, `[${pv}] reconnect failed:`);
         }
     }, { pv: providerVar });
 }
@@ -306,7 +309,7 @@ export async function setupUpdateTracking(
         ({ docVar, counterVar, counterV2Var }) => {
             const doc = (window as Window & typeof globalThis & Record<string, unknown>)[docVar];
             if (!doc) {
-                console.error(`setupUpdateTracking: ${docVar} not found`);
+                logger.error(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
 

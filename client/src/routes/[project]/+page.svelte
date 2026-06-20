@@ -69,7 +69,7 @@
                 logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as unknown as { ydoc?: { guid?: string } }).ydoc?.guid}`);
             }
         } catch (err) {
-            console.error("Failed to load project:", err);
+            logger.error({ error: err }, "Failed to load project:");
             error = err instanceof Error ? err.message : "An error occurred while loading the project.";
         } finally {
             isLoading = false;

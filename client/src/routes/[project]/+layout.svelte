@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getLogger } from "$lib/logger";
+    const logger = getLogger("Route");
 import { onMount } from "svelte";
 import { goto } from "$app/navigation";
     import { resolvePath } from "../../utils/pathUtils";
@@ -55,7 +57,7 @@ async function loadProject(projectNameFromParam?: string) {
             }
         }
     } catch (err) {
-        console.error("Failed to load project:", err);
+        logger.error({ error: err }, "Failed to load project:");
         if (err instanceof Error && err.message.includes("Access Denied")) {
             goto(resolvePath("/error/project-unavailable"));
         }

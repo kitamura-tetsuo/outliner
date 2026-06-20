@@ -1,3 +1,6 @@
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("API");
+
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
@@ -31,7 +34,7 @@ export const GET: RequestHandler = async ({ url }) => {
         const result = await response.json();
         return json(result);
     } catch (error) {
-        console.error("List schedules API error:", error);
+        logger.error({ error }, "List schedules API error");
         return json({ error: "Internal server error" }, { status: 500 });
     }
 };
