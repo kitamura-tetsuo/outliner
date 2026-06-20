@@ -149,8 +149,8 @@ onMount(async () => {
                 hasProject,
                 hasCurrentPage,
                 projectHasItems,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                currentPageTitle: (gs?.currentPage as any)?.text?.toString?.() ?? "",
+
+                currentPageTitle: (gs?.currentPage as { text?: { toString?: () => string } })?.text?.toString?.() ?? "",
             });
             break;
         }
@@ -203,8 +203,8 @@ onMount(async () => {
 
         // First check store.project.items (more reliable after reload)
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const projAny = store.project as any;
+
+            const projAny = store.project as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
             if (projAny?.items) {
                 const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
@@ -213,8 +213,8 @@ onMount(async () => {
                     projectItemsCount: projLen
                 });
                 for (let i = 0; i < projLen; i++) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
+
+                    const p = projItems?.at ? projItems.at(i) : projItems?.[i];
                     if (!p) continue;
                     const pId = String(p.id);
                     const match = pId === String(sessionPinnedPageId);
@@ -311,8 +311,8 @@ onMount(async () => {
                 if (!p) continue;
                 const title = p.text?.toString?.() ?? "";
                 if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    foundPageRef = p as any;
+
+                    foundPageRef = p as Item;
                     break;
                 }
             }
@@ -321,15 +321,15 @@ onMount(async () => {
         // Also check store.project.items directly
         if (!foundPageRef) {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const projAny = store.project as any;
+
+                const projAny = store.project as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
                 if (projAny && typeof projAny.findPage === "function") {
                     // Try to find page by iterating through project items
                     const projItems = projAny.items;
                     const projLen = projItems?.length ?? 0;
                     for (let i = 0; i < projLen; i++) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        const p = (projItems as any)?.at ? (projItems as any).at(i) : (projItems as any)[i];
+
+                        const p = projItems?.at ? projItems.at(i) : projItems?.[i];
                         if (!p) continue;
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {
