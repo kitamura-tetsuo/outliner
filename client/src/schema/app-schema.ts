@@ -317,7 +317,6 @@ export class Item {
     set preview(v: { lines: string[]; image: string | null; } | undefined) {
         if (v === undefined) this.value.delete("preview");
         else this.value.set("preview", v as unknown as ItemValueType);
-        this.value.set("lastChanged", Date.now());
     }
 
     updateText(text: string) {
