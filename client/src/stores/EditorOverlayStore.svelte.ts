@@ -1,10 +1,10 @@
 import type { Awareness } from "y-protocols/awareness";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
+import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
 import { yjsStore } from "./yjsStore.svelte";
-import { getLogger } from "../lib/logger";
 const logger = getLogger("EditorOverlayStore");
 
 // Exported types

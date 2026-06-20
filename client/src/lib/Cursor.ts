@@ -18,8 +18,8 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
-import { yjsService } from "./yjs/service";
 import { getLogger } from "./logger";
+import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
 export interface CursorOptions {

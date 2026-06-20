@@ -1,6 +1,6 @@
+import { getLogger } from "../lib/logger";
 import type { Item, Items } from "../schema/app-schema";
 import { store as generalStore } from "./store.svelte";
-import { getLogger } from "../lib/logger";
 const logger = getLogger("AliasPickerStore");
 
 interface Option {
