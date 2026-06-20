@@ -3,11 +3,13 @@ const functions = require("firebase-functions-test")();
 
 // Mock dependencies before requiring index
 describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveContainer", () => {
-    let myFunctions;
+  let admin;
+  let myFunctions;
   let transactionUpdateSpy;
 
   beforeEach(() => {
     jest.resetModules();
+    admin = require("firebase-admin");
 
     // Mock admin.auth
     jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue({

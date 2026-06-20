@@ -1,4 +1,5 @@
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
+const admin = require("firebase-admin");
 const functions = require("firebase-functions-test")();
 
 // Mock dependencies

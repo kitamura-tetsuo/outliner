@@ -2,7 +2,8 @@ const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
 const functions = require("firebase-functions-test")();
 
 describe("deleteProject Logic Tests", () => {
-    let myFunctions;
+  let admin;
+  let myFunctions;
   let transactionUpdateSpy;
   let transactionDeleteSpy;
 
@@ -12,6 +13,7 @@ describe("deleteProject Logic Tests", () => {
 
   beforeEach(() => {
     jest.resetModules();
+    admin = require("firebase-admin");
 
     // Reset Mock Data
     mockUserProjects = {

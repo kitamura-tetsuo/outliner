@@ -1,8 +1,9 @@
 const { describe, it, expect, beforeEach, afterEach } = require(
   "@jest/globals",
 );
+const admin = require("firebase-admin");
 
-describe("initializeApp try-catch tests", () => {
+describe("admin.initializeApp try-catch tests", () => {
   beforeEach(() => {
     // Clear the require cache to allow re-evaluating index.js
     delete require.cache[require.resolve("../index.js")];
@@ -14,8 +15,9 @@ describe("initializeApp try-catch tests", () => {
 
   it("should catch error when initializing more than once", () => {
     // Force first initialization if it doesn't exist
-    if (require("firebase-admin/app").getApps().length === 0) {
-      require("firebase-admin/app").initializeApp({ projectId: "first-init" });
+    const { getApps, initializeApp } = require('firebase-admin/app');
+      if (getApps().length === 0) {
+      initializeApp({ projectId: "first-init" });
     }
 
     // Attempt to require index.js which will try to initialize again
