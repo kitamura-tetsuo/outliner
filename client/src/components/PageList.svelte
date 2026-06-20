@@ -69,7 +69,7 @@ function selectPage(page: Item) {
         const event = new CustomEvent("pageSelected", {
             detail: {
                 pageId: page.id,
-                pageName: page.text,
+                pageName: page.text.toString(),
             },
         });
         onPageSelected(event);
@@ -78,7 +78,7 @@ function selectPage(page: Item) {
     // Dispatch custom event
     dispatch("pageSelected", {
         pageId: page.id,
-        pageName: page.text,
+        pageName: page.text.toString(),
     });
 }
 </script>
