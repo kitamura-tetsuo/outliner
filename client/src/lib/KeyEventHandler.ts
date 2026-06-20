@@ -693,27 +693,31 @@ export class KeyEventHandler {
 
                         if (newItem) {
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (newItem as { text?: string }).text = "";
+                            (newItem as { text?: string; }).text = "";
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (newItem as { aliasTargetId?: string }).aliasTargetId = undefined;
+                            (newItem as { aliasTargetId?: string; }).aliasTargetId = undefined;
                             try {
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                console.log("KeyEventHandler: showing AliasPicker for", (newItem as { id: string }).id);
+                                console.log(
+                                    "KeyEventHandler: showing AliasPicker for",
+                                    (newItem as { id: string; }).id,
+                                );
                             } catch {}
                             {
                                 const w: unknown = typeof window !== "undefined"
                                     ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                     : null;
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                ((w as { aliasPickerStore?: typeof aliasPickerStore })?.aliasPickerStore ?? aliasPickerStore).show((newItem as { id: string }).id);
+                                ((w as { aliasPickerStore?: typeof aliasPickerStore; })?.aliasPickerStore
+                                    ?? aliasPickerStore).show((newItem as { id: string; }).id);
                             }
                             // Move cursor
                             store.clearCursorAndSelection(userId);
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            cursor.itemId = (newItem as { id: string }).id;
+                            cursor.itemId = (newItem as { id: string; }).id;
                             cursor.offset = 0;
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            store.setActiveItem((newItem as { id: string }).id);
+                            store.setActiveItem((newItem as { id: string; }).id);
                             cursor.applyToStore();
                             store.startCursorBlink();
 
@@ -2041,9 +2045,9 @@ export class KeyEventHandler {
             // If VS Code multi-cursor text is included
             if (
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                vscodeMetadata && Array.isArray((vscodeMetadata as { multicursorText?: string[] }).multicursorText)
+                vscodeMetadata && Array.isArray((vscodeMetadata as { multicursorText?: string[]; }).multicursorText)
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                && (vscodeMetadata as { multicursorText?: string[] }).multicursorText!.length > 0
+                && (vscodeMetadata as { multicursorText?: string[]; }).multicursorText!.length > 0
             ) {
                 // Debug info
                 if (
@@ -2051,14 +2055,17 @@ export class KeyEventHandler {
                     && window.DEBUG_MODE
                 ) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    console.log(`VS Code multicursor text detected:`, (vscodeMetadata as { multicursorText?: string[] }).multicursorText);
+                    console.log(
+                        `VS Code multicursor text detected:`,
+                        (vscodeMetadata as { multicursorText?: string[]; }).multicursorText,
+                    );
                 }
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const multicursorText = (vscodeMetadata as { multicursorText?: string[] }).multicursorText!;
+                const multicursorText = (vscodeMetadata as { multicursorText?: string[]; }).multicursorText!;
                 const cursorInstances = store.getCursorInstances();
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const pasteMode = (vscodeMetadata as { pasteMode?: string }).pasteMode || "spread"; // Default is spread
+                const pasteMode = (vscodeMetadata as { pasteMode?: string; }).pasteMode || "spread"; // Default is spread
 
                 // pasteMode: 'spread' - Insert different text for each cursor
                 // pasteMode: 'full' - Insert same text for each cursor
