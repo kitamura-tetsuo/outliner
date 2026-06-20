@@ -6,8 +6,10 @@ import {
     Project,
 } from "../schema/app-schema";
 import PageListItem from "./PageListItem.svelte";
+import { resolvePath } from "../utils/pathUtils";
 
 interface Props {
+    projectName?: string;
     project: Project;
     rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
@@ -19,6 +21,7 @@ let {
     rootItems,
     currentUser = "anonymous",
     onPageSelected,
+    projectName = project?.title || "demo"
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
@@ -133,7 +136,7 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each rootItems as page (page.id)}
-            <PageListItem {page} {isGridView} onSelect={selectPage} />
+            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text.toString())}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text.toString())}`)} />
         {/each}
 
         {#if rootItems.length === 0}
