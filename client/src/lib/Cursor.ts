@@ -590,7 +590,9 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            logger.debug(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
+            logger.debug(
+                `onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`,
+            );
         }
 
         // Check if there is a selection
