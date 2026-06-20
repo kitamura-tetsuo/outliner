@@ -1072,7 +1072,7 @@ function handleContentClick(e: MouseEvent) {
 
     // Prevent component selector clicks from triggering item editing (focusing textarea)
     // which would immediately close the select dropdown
-    if (el.closest('.component-selector') || el.tagName.toLowerCase() === 'select') {
+    if (el.closest('.component-selector') || el.closest('select')) {
         e.stopPropagation();
         return;
     }
@@ -1096,7 +1096,7 @@ function handleClick(event: MouseEvent) {
     }
 
     // Component selector clicks should not trigger item editing (focusing textarea)
-    if ((event.target as HTMLElement).closest(".component-selector") || (event.target as HTMLElement).tagName.toLowerCase() === 'select') {
+    if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
         return;
     }
 
@@ -1183,7 +1183,7 @@ function handleMouseDown(event: MouseEvent) {
     }
 
     // Component selector clicks should not trigger item editing (focusing textarea)
-    if ((event.target as HTMLElement).closest(".component-selector") || (event.target as HTMLElement).tagName.toLowerCase() === 'select') {
+    if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
         return;
     }
 
