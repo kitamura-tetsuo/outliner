@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("GraphView");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
 
@@ -133,7 +135,7 @@
 
             const layoutData = { nodes: mergedNodes };
 
-            console.log("Saving layout data:", layoutData);
+            logger.debug("Saving layout data:", layoutData);
             localStorage.setItem("graph-layout", JSON.stringify(layoutData));
         } catch (error) {
             console.warn("Failed to save graph layout:", error);
@@ -148,7 +150,7 @@
             const layoutData = JSON.parse(savedLayout) as {
                 nodes?: GraphLayout["nodes"];
             };
-            console.log("Loading layout data:", layoutData);
+            logger.debug("Loading layout data:", layoutData);
 
             if (layoutData.nodes) {
                 const savedById = new Map(
@@ -161,7 +163,7 @@
                         typeof savedNode.x === "number" &&
                         typeof savedNode.y === "number"
                     ) {
-                        console.log(
+                        logger.debug(
                             `Restored layout for node ${node.id}: x=${savedNode.x}, y=${savedNode.y}, fixed=${savedNode.fixed || false}`,
                         );
                         return {

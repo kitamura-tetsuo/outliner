@@ -122,7 +122,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(
+            logger.debug(
                 `Cursor.applyToStore called for cursorId=${this.cursorId}, itemId=${this.itemId}, offset=${this.offset}`,
             );
         }
@@ -171,7 +171,7 @@ export class Cursor implements CursorEditingContext {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.log(
+                            logger.debug(
                                 `Cursor.applyToStore: Focus set. Active element is textarea: ${
                                     document.activeElement === textarea
                                 }`,
@@ -285,7 +285,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
+            logger.debug(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
         // Get visual line information
@@ -296,7 +296,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
@@ -333,7 +333,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(
+            logger.debug(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
         }
@@ -352,7 +352,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
                 }
@@ -393,7 +393,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
+                    logger.debug(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
                 // If there is no previous or parent item, move to the start of the same item
@@ -409,7 +409,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`Moved to start of current item: offset=${this.offset}`);
+                        logger.debug(`Moved to start of current item: offset=${this.offset}`);
                     }
                 }
             }
@@ -425,7 +425,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
+            logger.debug(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
         }
 
         // Get visual line information
@@ -436,7 +436,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`getVisualLineInfo result:`, visualLineInfo);
+            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
         }
 
         if (!visualLineInfo) {
@@ -474,7 +474,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(
+            logger.debug(
                 `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
             );
         }
@@ -493,7 +493,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
                     );
                 }
@@ -513,7 +513,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
+                    logger.debug(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
                 }
             } else {
                 // If there is no next item, move to the end of the same item
@@ -531,7 +531,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`Moved to end of current item: offset=${this.offset}`);
+                        logger.debug(`Moved to end of current item: offset=${this.offset}`);
                     }
                 }
             }
@@ -590,7 +590,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
+            logger.debug(`onKeyDown called with key=${event.key}, ctrlKey=${event.ctrlKey}, shiftKey=${event.shiftKey}`);
         }
 
         // Check if there is a selection
@@ -602,9 +602,9 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`Has selection: ${hasSelection}`);
+            logger.debug(`Has selection: ${hasSelection}`);
             if (activeSelection) {
-                console.log(`Selections:`, [activeSelection]);
+                logger.debug(`Selections:`, [activeSelection]);
             }
         }
 
@@ -1441,7 +1441,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(
+            logger.debug(
                 `navigateToItem called with direction=${direction}, itemId=${this.itemId}, offset=${this.offset}`,
             );
         }
@@ -1463,7 +1463,7 @@ export class Cursor implements CursorEditingContext {
             typeof window !== "undefined"
             && window.DEBUG_MODE
         ) {
-            console.log(`Current column: ${currentColumn}, current text: "${currentText}"`);
+            logger.debug(`Current column: ${currentColumn}, current text: "${currentText}"`);
         }
 
         // Handle item navigation
@@ -1523,7 +1523,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
+                    logger.debug(`Moving left to previous item: id=${prevItem.id}, offset=${newOffset}`);
                 }
             } else if (!itemChanged) {
                 // If no previous item, move to the start of the same item
@@ -1536,7 +1536,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                        logger.debug(`No previous item, moving to start of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -1597,7 +1597,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
+                    logger.debug(`Moving right to next item: id=${nextItem.id}, offset=${newOffset}`);
                 }
             } else if (atEndOfCurrentItem) {
                 // DOM-based approach to find the next item by looking for visually adjacent elements
@@ -1631,7 +1631,7 @@ export class Cursor implements CursorEditingContext {
                                     typeof window !== "undefined"
                                     && window.DEBUG_MODE
                                 ) {
-                                    console.log(
+                                    logger.debug(
                                         `Moving right to next item (DOM direct lookup): id=${nextItemId}, offset=${newOffset}`,
                                     );
                                 }
@@ -1663,7 +1663,7 @@ export class Cursor implements CursorEditingContext {
                                     typeof window !== "undefined"
                                     && window.DEBUG_MODE
                                 ) {
-                                    console.log(
+                                    logger.debug(
                                         `Moving right to next item (tree fallback): id=${nextItemId}, offset=${newOffset}`,
                                     );
                                 }
@@ -1693,7 +1693,7 @@ export class Cursor implements CursorEditingContext {
                                     typeof window !== "undefined"
                                     && window.DEBUG_MODE
                                 ) {
-                                    console.log(
+                                    logger.debug(
                                         `Moving right to next item (breadth-first fallback): id=${nextItemId}, offset=${newOffset}`,
                                     );
                                 }
@@ -1714,7 +1714,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(
+                        logger.debug(
                             `No next item found after all attempts. Staying at end of current item: offset=${newOffset}`,
                         );
                     }
@@ -1730,7 +1730,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        logger.debug(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -1790,7 +1790,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
                     );
                 }
@@ -1803,7 +1803,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(`No previous item, moving to start of current item: offset=${newOffset}`);
+                    logger.debug(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }
         } else if (direction === "down") {
@@ -1845,14 +1845,14 @@ export class Cursor implements CursorEditingContext {
                 itemChanged = true;
 
                 // Debug information
-                console.log(
+                logger.debug(
                     `navigateToItem down - Moving to next item's first line: itemId=${nextItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}`,
                 );
                 if (
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Moving down to next item's first line: id=${nextItem.id}, firstLineIndex=${firstLineIndex}, firstLineStart=${firstLineStart}, firstLineLength=${firstLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
                 }
@@ -1867,7 +1867,7 @@ export class Cursor implements CursorEditingContext {
                         typeof window !== "undefined"
                         && window.DEBUG_MODE
                     ) {
-                        console.log(`No next item, moving to end of current item: offset=${newOffset}`);
+                        logger.debug(`No next item, moving to end of current item: offset=${newOffset}`);
                     }
                 }
             }
@@ -1880,7 +1880,7 @@ export class Cursor implements CursorEditingContext {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
+                logger.debug(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
             // Ensure old item's cursor is removed before moving
@@ -1898,7 +1898,7 @@ export class Cursor implements CursorEditingContext {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Removing cursors: ${cursorsToRemove.join(", ")}`);
+                logger.debug(`Removing cursors: ${cursorsToRemove.join(", ")}`);
             }
 
             // Clear selection
@@ -1915,7 +1915,7 @@ export class Cursor implements CursorEditingContext {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
+                logger.debug(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
             }
 
             // Set new item and offset
@@ -1963,7 +1963,7 @@ export class Cursor implements CursorEditingContext {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                console.log(`Item not changed, updated offset: ${newOffset}`);
+                logger.debug(`Item not changed, updated offset: ${newOffset}`);
             }
         }
     }
