@@ -20,7 +20,7 @@ import {
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { yjsService } from "./yjs/service";
 
-interface CursorOptions {
+export interface CursorOptions {
     itemId: string;
     offset: number;
     isActive: boolean;

@@ -12,7 +12,7 @@ vi.mock("../stores/store.svelte", () => ({
 }));
 
 // Lazy import (after vi.mock)
-import { Cursor } from "../lib/Cursor";
+import { Cursor, type CursorOptions } from "../lib/Cursor";
 import { store as generalStore } from "../stores/store.svelte";
 
 describe("Items.asArrayLike iterable characteristics", () => {
@@ -72,15 +72,13 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
                 offset: 0,
                 isActive: true,
                 userId: "u1",
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any,
+            } as CursorOptions
         );
 
         // Ensure no exception is thrown and the target is found
         let found: Item | null | undefined;
         expect(() => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            found = cursor.findTarget() as any;
+            found = cursor.findTarget() as Item | null | undefined;
         }).not.toThrow();
         expect(found?.id).toBe(c2.id);
     });
