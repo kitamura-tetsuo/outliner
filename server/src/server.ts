@@ -1,7 +1,5 @@
 import { serverLogger as logger } from "./utils/log-manager.js";
 
-
-
 import { Logger } from "@hocuspocus/extension-logger";
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";

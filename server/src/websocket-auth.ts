@@ -1,7 +1,5 @@
 import { serverLogger as logger } from "./utils/log-manager.js";
 
-
-
 import { getApps, initializeApp } from "firebase-admin/app";
 import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
@@ -132,7 +130,8 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
             if (parts.length === 3) {
                 const payload = JSON.parse(Buffer.from(parts[1], "base64").toString());
                 const nowSec = Math.floor(Date.now() / 1000);
-                logger.error({ error: e },
+                logger.error(
+                    { error: e },
                     `[Auth] Verification failed. Token debug: exp=${payload.exp}, iat=${payload.iat}, now=${nowSec}, diff=${
                         payload.exp - nowSec
                     }, uid=${payload.uid || payload.user_id}`,
