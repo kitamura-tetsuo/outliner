@@ -49,7 +49,6 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 let devAuthHelper: any;
 if (isDevelopment) {
     try {
-        // @ts-expect-error - dynamic import of script outside src
         devAuthHelper = await import("./scripts/setup-dev-auth.js");
         logger.info("Development auth helper loaded");
     } catch (error: any) {
