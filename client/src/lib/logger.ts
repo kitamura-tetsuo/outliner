@@ -191,7 +191,18 @@ const consoleStyles = {
  * Returns the child logger with caller filename and line number added to context
  * Set enableConsole to true if you want to output to console at the same time
  */
-export function getLogger(componentName?: string, enableConsole: boolean = true): pino.Logger {
+
+// Patched logger interface to prevent strict type checks on first argument
+export interface EnhancedLogger extends pino.Logger {
+    trace(...args: any[]): void;
+    debug(...args: any[]): void;
+    info(...args: any[]): void;
+    warn(...args: any[]): void;
+    error(...args: any[]): void;
+    fatal(...args: any[]): void;
+}
+
+export function getLogger(componentName?: string, enableConsole: boolean = true): EnhancedLogger {
     const file = getCallerFile();
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
@@ -201,7 +212,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
     // Create an extended logger that also outputs to the console if console output is enabled (suppressed in test environment)
     if (enableConsole && useConsoleAPI && !isTestEnvironment) {
-        return new Proxy(childLogger, {
+        return new Proxy(childLogger as any, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
@@ -283,10 +294,10 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                 }
                 return Reflect.get(target, prop);
             },
-        }) as pino.Logger;
+        }) as unknown as EnhancedLogger;
     }
 
-    return childLogger;
+    return childLogger as unknown as EnhancedLogger;
 }
 
 /**
