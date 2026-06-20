@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("ChartPanel");
+
 import * as echarts from "echarts";
 import { onMount } from "svelte";
 import { queryStore } from "../services/sqlService";
@@ -34,7 +37,7 @@ onMount(() => {
         }
         unsub = queryStore.subscribe(update);
     }).catch(error => {
-        console.error("Error initializing chart:", error);
+        logger.error({ error }, "Error initializing chart");
     });
     return () => {
         if (unsub) unsub();
@@ -49,7 +52,7 @@ async function runItemQuery() {
             await initDb();
             runQuery(item.chartQuery);
         } catch (error) {
-              console.error("Error running item query:", error);
+              logger.error({ error }, "Error running item query");
         }
     }
 }

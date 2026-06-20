@@ -1,5 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { getLogger } from "../lib/logger";
+const logger = getLogger("ChartQueryEditor");
 import { initDb, runQuery } from "../services/sqlService";
 import type { Item } from "../schema/app-schema";
 
@@ -21,7 +23,7 @@ onMount(async () => {
             runQuery(item.chartQuery as string);
         }
     } catch (error) {
-          console.error("Error initializing database:", error);
+          logger.error({ error }, "Error initializing database");
     }
 });
 
@@ -34,7 +36,7 @@ async function run() {
         await initDb();
         runQuery(sql as string);
     } catch (error) {
-          console.error("Error running query:", error);
+          logger.error({ error }, "Error running query");
     }
 }
 

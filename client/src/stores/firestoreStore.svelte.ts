@@ -87,7 +87,7 @@ class GeneralStore {
             await setDoc(userProjectRef, this.userProject);
             console.log(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
         } catch (e) {
-            console.error("[firestoreStore] Failed to save userProject to Firestore", e);
+            logger.error({ error: e }, "[firestoreStore] Failed to save userProject to Firestore");
             throw e;
         }
     }

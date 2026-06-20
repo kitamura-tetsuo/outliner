@@ -19,6 +19,8 @@ import {
 } from "./cursor";
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { yjsService } from "./yjs/service";
+import { getLogger } from "./logger";
+const logger = getLogger("Cursor");
 
 export interface CursorOptions {
     itemId: string;
@@ -183,9 +185,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.error(
-                        `Cursor.applyToStore: Global textarea not found`,
-                    );
+                    logger.error({}, "Cursor.applyToStore: Global textarea not found");
                 }
             }
         }
@@ -1639,7 +1639,7 @@ export class Cursor implements CursorEditingContext {
                         }
                     }
                 } catch (e) {
-                    console.error("Error in DOM-based next item lookup:", e);
+                    logger.error({ error: e }, "Error in DOM-based next item lookup");
                 }
 
                 // If still not found, try a different approach by using a depth-first traversal of the tree
@@ -1700,7 +1700,7 @@ export class Cursor implements CursorEditingContext {
                             }
                         }
                     } catch (e) {
-                        console.error("Error in ultimate fallback:", e);
+                        logger.error({ error: e }, "Error in ultimate fallback");
                     }
                 }
 

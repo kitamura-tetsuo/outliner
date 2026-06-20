@@ -1,5 +1,7 @@
 import { userManager } from "../auth/UserManager";
 import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
+import { getLogger } from "../lib/logger";
+const logger = getLogger("scheduleService");
 
 export interface Schedule {
     id: string;
@@ -28,7 +30,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
     });
     if (!res.ok) {
         const errorText = await res.text();
-        console.error(`Schedule API error: ${res.status} - ${errorText}`);
+        logger.error({ status: res.status, errorText }, "Schedule API error");
         throw new Error(`API error ${res.status}: ${errorText}`);
     }
     return res.json();

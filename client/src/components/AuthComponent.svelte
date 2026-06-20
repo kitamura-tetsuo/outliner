@@ -7,6 +7,8 @@ import {
     type IUser,
     userManager,
 } from "../auth/UserManager";
+import { getLogger } from "../lib/logger";
+const logger = getLogger("AuthComponent");
 
 interface AuthSuccessEvent {
     detail?: {
@@ -105,7 +107,7 @@ async function handleLogin() {
         await userManager.loginWithGoogle();
     }
     catch (err: unknown) {
-          console.error("Login error:", err);
+          logger.error({ error: err }, "Login error");
         loginError = (err as Error).message || "An error occurred during login";
     } finally {
         isLoggingIn = false;
@@ -120,7 +122,7 @@ async function handleDevLogin() {
         await userManager.loginWithEmailPassword(email, password);
     }
     catch (err: unknown) {
-          console.error("Development login error:", err);
+          logger.error({ error: err }, "Development login error");
         loginError = (err as Error).message ||
             "An error occurred during development login";
     } finally {
@@ -135,7 +137,7 @@ async function handleLogout() {
         await userManager.logout();
     }
     catch (err) {
-          console.error("Logout error:", err);
+          logger.error({ error: err }, "Logout error");
         error = (err as Error).message || "An error occurred during logout";
         isLoading = false;
     }

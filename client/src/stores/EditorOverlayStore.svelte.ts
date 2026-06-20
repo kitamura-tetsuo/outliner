@@ -4,6 +4,8 @@ import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
 import { yjsStore } from "./yjsStore.svelte";
+import { getLogger } from "../lib/logger";
+const logger = getLogger("EditorOverlayStore");
 
 // Exported types
 export interface CursorPosition {
@@ -291,7 +293,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.error(`Global textarea not found in addCursor (existing cursor)`);
+                    logger.error({}, "Global textarea not found in addCursor (existing cursor)");
                 }
             }
 
@@ -368,7 +370,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error(`Global textarea not found in addCursor (new cursor)`);
+                logger.error({}, "Global textarea not found in addCursor (new cursor)");
             }
         }
 
@@ -501,7 +503,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error(`Invalid item IDs: startItemId=${startItemId}, endItemId=${endItemId}`);
+                logger.error({ startItemId, endItemId }, "Invalid item IDs");
             }
             return;
         }
@@ -1326,7 +1328,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error("Error getting original text from item:", error);
+                logger.error({ error }, "Error getting original text from item");
             }
         }
 
@@ -1376,7 +1378,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error("Error getting original text from items store:", error);
+                logger.error({ error }, "Error getting original text from items store");
             }
         }
 
@@ -1426,7 +1428,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error("Error getting original text from editor store:", error);
+                logger.error({ error }, "Error getting original text from editor store");
             }
         }
 
@@ -1498,10 +1500,10 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.error(`Error in getTextFromSelection:`, error);
+                logger.error({ error }, "Error in getTextFromSelection");
                 if (error instanceof Error) {
-                    console.error(`Error message: ${error.message}`);
-                    console.error(`Error stack: ${error.stack}`);
+                    // Error message is logged above
+                    // Error stack is logged above
                 }
             }
             // Return empty string if an error occurs
