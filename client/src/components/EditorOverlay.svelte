@@ -348,7 +348,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`calculateCursorPixelPosition: no itemInfo for ${itemId}`, Object.keys(positionMap));
+            logger.debug(`calculateCursorPixelPosition: no itemInfo for ${itemId}`, Object.keys(positionMap));
         }
         // Skip rendering if item info is missing
         return null;
@@ -358,7 +358,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`calculateCursorPixelPosition: tree container not found for ${itemId}`);
+            logger.debug(`calculateCursorPixelPosition: tree container not found for ${itemId}`);
         }
         return null;
     }
@@ -449,7 +449,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         // Subtract 4px to compensate for the .outliner-item's padding-top
         const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
+            logger.debug(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
@@ -468,7 +468,7 @@ function calculateSelectionPixelRange(
     // Do not display if start and end positions are the same
     if (startOffset === endOffset) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
+            logger.debug(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
         }
         return null;
     }
@@ -476,7 +476,7 @@ function calculateSelectionPixelRange(
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: no itemInfo for ${itemId}`, Object.keys(positionMap));
+            logger.debug(`calculateSelectionPixelRange: no itemInfo for ${itemId}`, Object.keys(positionMap));
         }
         return null;
     }
@@ -487,7 +487,7 @@ function calculateSelectionPixelRange(
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`calculateSelectionPixelRange: tree container not found for ${itemId}`);
+            logger.debug(`calculateSelectionPixelRange: tree container not found for ${itemId}`);
         }
         return null;
     }
@@ -532,7 +532,7 @@ function calculateSelectionPixelRange(
         const height = lineHeight || textRect.height || 20;
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            console.log(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, {
+            logger.debug(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, {
                 relativeLeft, relativeTop, width, height,
                 contentLeft,
                 textRectTop: textRect.top,
@@ -616,7 +616,7 @@ function updatePositionMap() {
     positionMap = newMap;
 
     if (typeof window !== "undefined" && window.DEBUG_MODE) {
-        console.log("Position map updated (targeted):", Object.keys(newMap));
+        logger.debug("Position map updated (targeted):", Object.keys(newMap));
     }
 }
 
@@ -852,7 +852,7 @@ function getTextByItemId(itemId: string): string {
 function handleCopy(event: ClipboardEvent) {
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`handleCopy called`);
+    logger.debug(`handleCopy called`);
   }
 
   // Do nothing if no selection (reference store directly to avoid reactive lag)
@@ -867,7 +867,7 @@ function handleCopy(event: ClipboardEvent) {
 
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`Selected text from store: "${selectedText}"`);
+    logger.debug(`Selected text from store: "${selectedText}"`);
   }
 
   // Process rectangular selection (box selection) existence first
@@ -959,7 +959,7 @@ function handleCopy(event: ClipboardEvent) {
 
           // Debug info
           if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            console.log(`VS Code metadata added:`, vscodeMetadata);
+            logger.debug(`VS Code metadata added:`, vscodeMetadata);
           }
         }
       }
@@ -993,7 +993,7 @@ function handleCopy(event: ClipboardEvent) {
 
         // Debug info
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-          console.log(`VS Code metadata added for multi-line text:`, vscodeMetadata);
+          logger.debug(`VS Code metadata added for multi-line text:`, vscodeMetadata);
         }
       }
     }
@@ -1007,14 +1007,14 @@ function handleCopy(event: ClipboardEvent) {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(selectedText).catch((err) => {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-          console.log(`Failed to write to navigator.clipboard: ${err}`);
+          logger.debug(`Failed to write to navigator.clipboard: ${err}`);
         }
       });
     }
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Clipboard updated with: "${selectedText}"`);
+      logger.debug(`Clipboard updated with: "${selectedText}"`);
     }
     return;
   }
@@ -1034,7 +1034,7 @@ function handleCopy(event: ClipboardEvent) {
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Single item selection: "${selectedText}"`);
+      logger.debug(`Single item selection: "${selectedText}"`);
     }
 
     // Write to clipboard
@@ -1101,7 +1101,7 @@ function handleCopy(event: ClipboardEvent) {
 
     if (startIdx === -1 || endIdx === -1) {
       if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-        console.log(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
+        logger.debug(`Start or end item not found in DOM: startIdx=${startIdx}, endIdx=${endIdx}`);
       }
       continue;
     }
@@ -1115,7 +1115,7 @@ function handleCopy(event: ClipboardEvent) {
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Multi-item selection: firstIdx=${firstIdx}, lastIdx=${lastIdx}, isReversed=${isReversed}`);
+      logger.debug(`Multi-item selection: firstIdx=${firstIdx}, lastIdx=${lastIdx}, isReversed=${isReversed}`);
     }
 
     // Process each item within the selection range
@@ -1145,7 +1145,7 @@ function handleCopy(event: ClipboardEvent) {
 
       // Debug info
       if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-        console.log(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}, text="${text.substring(startOff, endOff)}"`);
+        logger.debug(`Item ${i} (${itemId}) offsets: start=${startOff}, end=${endOff}, text="${text.substring(startOff, endOff)}"`);
       }
 
       // Append text
@@ -1165,7 +1165,7 @@ function handleCopy(event: ClipboardEvent) {
 
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`Final combined text: "${combinedText}"`);
+    logger.debug(`Final combined text: "${combinedText}"`);
   }
 
   // Write to clipboard
@@ -1197,7 +1197,7 @@ function handleCopy(event: ClipboardEvent) {
 function handleCut(event: ClipboardEvent) {
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`handleCut called`);
+    logger.debug(`handleCut called`);
   }
 
   // Do nothing if no selection
@@ -1217,7 +1217,7 @@ function handleCut(event: ClipboardEvent) {
   // Not used in production, but needed to verify cut content in E2E tests
   if (typeof window !== 'undefined' && selectedText) {
     (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
-    console.log(`Cut: Saved text to global variable: "${selectedText}"`);
+    logger.debug(`Cut: Saved text to global variable: "${selectedText}"`);
   }
 
   // Execute copy process first
@@ -1232,7 +1232,7 @@ function handleCut(event: ClipboardEvent) {
 
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`Cut operation completed`);
+    logger.debug(`Cut operation completed`);
   }
 }
 
@@ -1265,8 +1265,8 @@ function handlePaste(event: ClipboardEvent) {
 
   // Debug info
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`handlePaste called with text: "${text}"`);
-    console.log(`Current selections:`, selections);
+    logger.debug(`handlePaste called with text: "${text}"`);
+    logger.debug(`Current selections:`, selections);
   }
 
   // Consider as multi-item paste if it is multi-line text
@@ -1276,9 +1276,9 @@ function handlePaste(event: ClipboardEvent) {
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Multi-line paste detected, lines:`, lines);
-      console.log(`Lines count: ${lines.length}`);
-      lines.forEach((line, i) => console.log(`Line ${i}: "${line}"`));
+      logger.debug(`Multi-line paste detected, lines:`, lines);
+      logger.debug(`Lines count: ${lines.length}`);
+      lines.forEach((line, i) => logger.debug(`Line ${i}: "${line}"`));
     }
 
     // Notify selected range
@@ -1299,7 +1299,7 @@ function handlePaste(event: ClipboardEvent) {
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Multi-item selection paste detected, text: "${text}"`);
+      logger.debug(`Multi-item selection paste detected, text: "${text}"`);
     }
 
     // Notify selected range
@@ -1316,14 +1316,14 @@ function handlePaste(event: ClipboardEvent) {
     // Leave to browser default behavior if there is a selection
     // Cursor.insertText() method deletes selection before inserting text
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-      console.log(`Single item selection paste, using default browser behavior`);
+      logger.debug(`Single item selection paste, using default browser behavior`);
     }
     return;
   }
 
   // Leave to browser default behavior if there is no selection
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-    console.log(`No selection paste, using default browser behavior`);
+    logger.debug(`No selection paste, using default browser behavior`);
   }
 }
     // Temporary flag per selection box (remove class by setting to false in 300ms)
@@ -1350,7 +1350,7 @@ function handlePaste(event: ClipboardEvent) {
             mo.observe(node, { attributes: true, attributeFilter: ['class'] });
             try {
                 if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-                    console.log('EditorOverlay: setupUpdatingFlag set true for', key, 'class=', node.className);
+                    logger.debug('EditorOverlay: setupUpdatingFlag set true for', key, 'class=', node.className);
                 }
             } catch {
                 // Intentionally empty - catch potential errors without further handling
@@ -1363,7 +1363,7 @@ function handlePaste(event: ClipboardEvent) {
             updatingFlags[key] = false;
             try {
                 if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-                    console.log('EditorOverlay: setupUpdatingFlag set false for', key, 'class=', node.className);
+                    logger.debug('EditorOverlay: setupUpdatingFlag set false for', key, 'class=', node.className);
                 }
             } catch {}
         }, 1200);
@@ -1374,7 +1374,7 @@ function handlePaste(event: ClipboardEvent) {
                 delete updatingFlags[key];
                 try {
                     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-                        console.log('EditorOverlay: setupUpdatingFlag destroy for', key);
+                        logger.debug('EditorOverlay: setupUpdatingFlag destroy for', key);
                     }
                 } catch {}
             },

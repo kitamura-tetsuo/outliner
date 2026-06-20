@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("SlashCommandPalette");
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 function handleClick(type: "table" | "chart" | "alias") {
@@ -21,11 +23,11 @@ $effect(() => {
     
     // Log component state for debugging
     try {
-        console.log('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
-        console.log('[SlashCommandPalette] visible length:', visible.length);
-        console.log('[SlashCommandPalette] visible items:', visible.map(c => c.label));
-        console.log('[SlashCommandPalette] query:', query);
-        console.log('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
+        logger.debug('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
+        logger.debug('[SlashCommandPalette] visible length:', visible.length);
+        logger.debug('[SlashCommandPalette] visible items:', visible.map(c => c.label));
+        logger.debug('[SlashCommandPalette] query:', query);
+        logger.debug('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
     } catch {}
 });
 </script>

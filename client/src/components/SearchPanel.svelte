@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount, untrack } from "svelte";
@@ -133,7 +135,7 @@
         };
         const pages = getPagesToSearch();
         try {
-            console.log("SearchPanel.handleSearch invoked", {
+            logger.debug("SearchPanel.handleSearch invoked", {
                 query: searchQuery,
                 pagesLen: pages.length,
             });
@@ -232,7 +234,7 @@
         matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
         try {
             window.__E2E_LAST_MATCH_COUNT__ = matchCount;
-            console.log("SearchPanel.handleSearch matches", {
+            logger.debug("SearchPanel.handleSearch matches", {
                 matchCount,
                 items: matches.map((m) => ({
                     page:
@@ -255,7 +257,7 @@
                 matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
                 try {
                     window.__E2E_LAST_MATCH_COUNT__ = matchCount;
-                    console.log(
+                    logger.debug(
                         "SearchPanel.handleSearch page fallback matches",
                         { matchCount },
                     );
@@ -281,7 +283,7 @@
                 matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
                 try {
                     window.__E2E_LAST_MATCH_COUNT__ = matchCount;
-                    console.log("SearchPanel.handleSearch fallback matches", {
+                    logger.debug("SearchPanel.handleSearch fallback matches", {
                         matchCount,
                         items: matches.map((m) => ({
                             page:

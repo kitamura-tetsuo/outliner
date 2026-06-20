@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("OutlinerBase");
     /* eslint-disable @typescript-eslint/no-explicit-any */
     // moved to onMount to avoid initial-value capture warnings
 
@@ -74,7 +76,7 @@
 
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
     onMount(() => {
-        console.log("OutlinerBase effectivePageItem:", effectivePageItem);
+        logger.debug("OutlinerBase effectivePageItem:", effectivePageItem);
 
         // Prototype patch for updating comment counts (for test stabilization and deterministic reflection)
         try {
@@ -100,14 +102,14 @@
 
                 // Log for debugging
                 try {
-                    console.log("OutlinerBase script executed - console.log");
-                    console.log("OutlinerBase props received:", {
+                    logger.debug("OutlinerBase script executed - logger.debug");
+                    logger.debug("OutlinerBase props received:", {
                         pageItemExists: !!pageItem,
                         pageItemId: pageItem?.id,
                         isTemporary,
                         onEditExists: !!onEdit,
                     });
-                    console.log("Store state in OutlinerBase:", {
+                    logger.debug("Store state in OutlinerBase:", {
                         projectExists: !!generalStore.project,
                         projectTitle: generalStore.project?.title,
                         currentPageExists: !!generalStore.currentPage,
@@ -115,7 +117,7 @@
                         pagesExists: !!generalStore.pages,
                         pagesLength: generalStore.pages?.current?.length,
                     });
-                    console.log("OutlinerBase script completed successfully");
+                    logger.debug("OutlinerBase script completed successfully");
                 } catch {}
 
                 const ItemCls = Item as unknown as Record<string, unknown> & { prototype: Record<string, unknown> };

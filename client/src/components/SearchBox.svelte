@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import type { Project } from "../schema/app-schema";
@@ -112,7 +114,7 @@
                                 typeof window !== "undefined" &&
                                 window.__E2E__
                             ) {
-                                console.log(
+                                logger.debug(
                                     "[SearchBox Debug] Source found items:",
                                     arr.map((p) => p.text),
                                 );
@@ -159,11 +161,11 @@
             }
 
             if (typeof window !== "undefined" && window.__E2E__) {
-                console.log(
+                logger.debug(
                     "[SearchBox Debug] collectPages found NO items. Sources tried:",
                     sources.length,
                 );
-                console.log("[SearchBox Debug] Store state:", {
+                logger.debug("[SearchBox Debug] Store state:", {
                     project: !!store.project,
                     projectItems: store.project?.items?.length,
                     pagesCurrent: store.pages?.current?.length,
