@@ -88,7 +88,6 @@ function createPreviewContent(pageName: string, projectName?: string): HTMLEleme
 
     // Apply styles
     Object.entries(PREVIEW_STYLES).forEach(([key, value]) => {
-
         previewElement.style.setProperty(key, value);
     });
 

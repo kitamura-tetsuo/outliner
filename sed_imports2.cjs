@@ -1,7 +1,7 @@
-const fs = require('fs');
+const fs = require("fs");
 
-const path = 'client/src/lib/cursor/CursorFormatting.ts';
-let content = fs.readFileSync(path, 'utf8');
+const path = "client/src/lib/cursor/CursorFormatting.ts";
+let content = fs.readFileSync(path, "utf8");
 
 const importStatement = `import { searchItem } from "../cursor";\n`;
 

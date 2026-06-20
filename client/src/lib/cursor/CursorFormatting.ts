@@ -157,7 +157,10 @@ export class CursorFormatting {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
 
-            const item = searchItem(generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item, itemId);
+            const item = searchItem(
+                generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item,
+                itemId,
+            );
 
             if (!item) {
                 if (current === lastEl) break;

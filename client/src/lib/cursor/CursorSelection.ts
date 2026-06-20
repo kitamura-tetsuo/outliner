@@ -1,8 +1,8 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../../utils/domUtils";
+import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "../cursor";
 import { getLogger } from "../logger";
-import { getCurrentLineIndex, getLineStartOffset, getLineEndOffset } from "../cursor";
 
 const logger = getLogger("CursorSelection");
 
