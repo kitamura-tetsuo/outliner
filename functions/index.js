@@ -10,7 +10,7 @@ try {
       path: path.join(__dirname, ".env.test"),
     });
   }
-} catch {
+} catch (e) {
   // Continue processing even without dotenvx (Secrets are used in production)
 }
 
@@ -36,7 +36,10 @@ if (!process.env.FUNCTIONS_EMULATOR) {
 const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 
-const admin = require("firebase-admin");
+const { initializeApp, getApps, getApp } = require("firebase-admin/app");
+const adminAuth = require("firebase-admin/auth");
+const { getFirestore } = require("firebase-admin/firestore");
+const { getStorage } = require("firebase-admin/storage");
 const Sentry = require("@sentry/node");
 
 if (process.env.SENTRY_DSN) {
@@ -137,7 +140,7 @@ function setCorsHeaders(req, res) {
 }
 
 // Initialize Firebase Admin SDK
-if (admin.apps.length === 0) {
+if (!getApps().length) {
   // Explicitly set project ID (required in emulator environment)
   const projectId = process.env.GCLOUD_PROJECT || "outliner-d57b0";
 
@@ -177,7 +180,7 @@ if (admin.apps.length === 0) {
   }
 
   try {
-    admin.initializeApp(config);
+    initializeApp(config);
   } catch (e) {
     // catch error when initializing more than once
   }
@@ -185,9 +188,9 @@ if (admin.apps.length === 0) {
   // Confirmation of Admin SDK instance
   try {
     // eslint-disable-next-line no-unused-vars
-    const auth = admin.auth();
+    const auth = adminAuth.getAuth();
     // eslint-disable-next-line no-unused-vars
-    const firestore = admin.firestore();
+    const firestore = getFirestore();
 
     if (isEmulatorEnv) {
       logger.info("✅ Firebase Admin Auth instance created for emulator");
@@ -207,7 +210,7 @@ if (admin.apps.length === 0) {
   }
 }
 
-logger.info(`Firebase project ID: ${(admin.app ? admin.app().options.projectId : admin.getApps()[0].options.projectId)}`);
+logger.info(`Firebase project ID: ${getApp().options.projectId}`);
 
 // Storage Emulator settings
 if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
@@ -215,7 +218,7 @@ if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
 }
 
 // Get Firestore reference
-const db = admin.firestore();
+const db = getFirestore();
 const userProjectsCollection = db.collection("userProjects");
 const projectUsersCollection = db.collection("projectUsers");
 const userContainersCollection = db.collection("userContainers");
@@ -366,7 +369,7 @@ exports.saveProject = onRequest(
       }
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
@@ -484,7 +487,7 @@ exports.getUserProjects = onRequest(
       const { idToken } = req.body;
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       const userDoc = await userProjectsCollection.doc(userId).get();
@@ -533,7 +536,7 @@ exports.saveContainer = onRequest(
       }
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
@@ -646,7 +649,7 @@ exports.getUserContainers = onRequest(
       const { idToken } = req.body;
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       const userDoc = await userContainersCollection.doc(userId).get();
@@ -715,7 +718,7 @@ exports.createTestUser = onRequest(
       }
 
       try {
-        const userRecord = await admin.auth().createUser({
+        const userRecord = await adminAuth.getAuth().createUser({
           email,
           password,
           displayName: displayName || email,
@@ -724,7 +727,7 @@ exports.createTestUser = onRequest(
         return res.status(200).json({ uid: userRecord.uid });
       } catch (err) {
         if (err.code === "auth/email-already-exists") {
-          const existing = await admin.auth().getUserByEmail(email);
+          const existing = await adminAuth.getAuth().getUserByEmail(email);
           return res.status(200).json({ uid: existing.uid });
         }
         Sentry.captureException(err);
@@ -764,7 +767,7 @@ exports.deleteUser = onRequest(
       }
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
@@ -814,7 +817,7 @@ exports.deleteUser = onRequest(
         });
 
         // Delete user from Firebase Auth
-        await admin.auth().deleteUser(userId);
+        await adminAuth.getAuth().deleteUser(userId);
 
         logger.info(`User ${userId} and related data deleted successfully`);
         return res.status(200).json({ success: true });
@@ -872,7 +875,7 @@ exports.deleteProject = onRequest(
       }
 
       // Verify Firebase token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       try {
@@ -1000,7 +1003,7 @@ exports.generateProjectShareLink = onRequest(
         return res.status(400).json({ error: "Invalid request" });
       }
 
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       const projectDoc = await projectUsersCollection.doc(projectId).get();
@@ -1048,7 +1051,7 @@ exports.acceptProjectShareLink = onRequest(
         return res.status(400).json({ error: "Invalid request" });
       }
 
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       const linkDoc = await db.collection("shareLinks").doc(token).get();
@@ -1183,7 +1186,7 @@ exports.getProjectUsers = onRequest(
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
           try {
             // Test if emulator is available
-            await admin.auth().listUsers(1);
+            await adminAuth.getAuth().listUsers(1);
           } catch (emulatorError) {
             logger.error(
               `Firebase Auth emulator not ready: ${emulatorError.message}`,
@@ -1195,7 +1198,7 @@ exports.getProjectUsers = onRequest(
         }
 
         // Verify Firebase token
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
 
         // Check if decoded token is valid
         if (!decodedToken || !decodedToken.uid) {
@@ -1292,7 +1295,7 @@ exports.listUsers = onRequest(
         if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
           try {
             // Test if emulator is available
-            await admin.auth().listUsers(1);
+            await adminAuth.getAuth().listUsers(1);
           } catch (emulatorError) {
             logger.error(
               `Firebase Auth emulator not ready: ${emulatorError.message}`,
@@ -1303,7 +1306,7 @@ exports.listUsers = onRequest(
           }
         }
 
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
 
         // Check if decoded token is valid
         if (!decodedToken || !decodedToken.uid) {
@@ -1325,7 +1328,7 @@ exports.listUsers = onRequest(
         return res.status(403).json({ error: "Admin privileges required" });
       }
 
-      const result = await admin.auth().listUsers();
+      const result = await adminAuth.getAuth().listUsers();
       const users = result.users.map(u => ({
         uid: u.uid,
         email: u.email,
@@ -1423,7 +1426,7 @@ exports.createSchedule = onRequest(
 
       try {
         // Set checkRevoked: false in emulator environment
-        const decoded = await admin.auth().verifyIdToken(
+        const decoded = await adminAuth.getAuth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
         );
@@ -1567,7 +1570,7 @@ exports.updateSchedule = onRequest(
 
       try {
         // Set checkRevoked: false in emulator environment
-        const decoded = await admin.auth().verifyIdToken(
+        const decoded = await adminAuth.getAuth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
         );
@@ -1669,7 +1672,7 @@ exports.listSchedules = onRequest(
 
       try {
         // Set checkRevoked: false in emulator environment
-        const decoded = await admin.auth().verifyIdToken(
+        const decoded = await adminAuth.getAuth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
         );
@@ -1755,7 +1758,7 @@ exports.exportSchedulesIcal = onRequest(
 
       let decoded;
       try {
-        decoded = await admin.auth().verifyIdToken(idToken, !isEmulatorEnv);
+        decoded = await adminAuth.getAuth().verifyIdToken(idToken, !isEmulatorEnv);
         logger.info(
           `exportSchedulesIcal: Token verified for user: ${decoded.uid} (emulator: ${isEmulatorEnv})`,
         );
@@ -1867,7 +1870,7 @@ exports.cancelSchedule = onRequest(
 
       try {
         // Set checkRevoked: false in emulator environment
-        const decoded = await admin.auth().verifyIdToken(
+        const decoded = await adminAuth.getAuth().verifyIdToken(
           idToken,
           !isEmulatorEnv,
         );
@@ -2037,7 +2040,7 @@ exports.uploadAttachment = onRequest(
     }
 
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
+      const decoded = await adminAuth.getAuth().verifyIdToken(idToken);
       const uid = decoded.uid;
       logger.info(`uploadAttachment authenticated user: ${uid}`);
 
@@ -2054,7 +2057,7 @@ exports.uploadAttachment = onRequest(
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
-      const bucket = admin.storage().bucket(bucketName);
+      const bucket = getStorage().bucket(bucketName);
       logger.info(
         `uploadAttachment using bucket: ${bucket.name}, isEmulator: ${isEmulator}`,
       );
@@ -2192,7 +2195,7 @@ exports.listAttachments = onRequest(
     }
 
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
+      const decoded = await adminAuth.getAuth().verifyIdToken(idToken);
       const uid = decoded.uid;
 
       // Check if user has access to the container
@@ -2205,7 +2208,7 @@ exports.listAttachments = onRequest(
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
-      const bucket = admin.storage().bucket(bucketName);
+      const bucket = getStorage().bucket(bucketName);
 
       const prefix = `attachments/${containerId}/${itemId}/`;
       const [files] = await bucket.getFiles({ prefix });
@@ -2278,7 +2281,7 @@ exports.deleteAttachment = onRequest(
     }
 
     try {
-      const decoded = await admin.auth().verifyIdToken(idToken);
+      const decoded = await adminAuth.getAuth().verifyIdToken(idToken);
       const uid = decoded.uid;
 
       // Check if user has access to the container
@@ -2291,7 +2294,7 @@ exports.deleteAttachment = onRequest(
       const isEmulator = process.env.FIREBASE_STORAGE_EMULATOR_HOST ||
         process.env.NODE_ENV === "development";
       const bucketName = isEmulator ? "test-project-id.appspot.com" : undefined;
-      const bucket = admin.storage().bucket(bucketName);
+      const bucket = getStorage().bucket(bucketName);
 
       const filePath = `attachments/${containerId}/${itemId}/${fileName}`;
       await bucket.file(filePath).delete();
@@ -2347,11 +2350,11 @@ exports.adminCheckForProjectUserListing = onRequest(
       }
 
       // Verify ID token with Firebase Admin SDK
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
 
       // Check admin privileges
-      const userRecord = await admin.auth().getUser(uid);
+      const userRecord = await adminAuth.getAuth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
       if (!customClaims.admin && customClaims.role !== "admin") {
@@ -2359,7 +2362,7 @@ exports.adminCheckForProjectUserListing = onRequest(
       }
 
       // Get project user list (fetched from Firestore in actual implementation)
-      const db = admin.firestore();
+      const db = getFirestore();
       const projectDoc = await db.collection("projects").doc(projectId)
         .get();
 
@@ -2411,11 +2414,11 @@ exports.adminUserList = onRequest(
       }
 
       // Verify ID token with Firebase Admin SDK
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const uid = decodedToken.uid;
 
       // Check admin privileges
-      const userRecord = await admin.auth().getUser(uid);
+      const userRecord = await adminAuth.getAuth().getUser(uid);
       const customClaims = userRecord.customClaims || {};
 
       if (!customClaims.admin && customClaims.role !== "admin") {
@@ -2423,7 +2426,7 @@ exports.adminUserList = onRequest(
       }
 
       // Get user list
-      const listUsersResult = await admin.auth().listUsers();
+      const listUsersResult = await adminAuth.getAuth().listUsers();
       const users = listUsersResult.users.map(user => ({
         uid: user.uid,
         email: user.email,
@@ -2472,7 +2475,7 @@ exports.debugUserProjects = onRequest(
       }
 
       // Verify Firebase ID token
-      const decodedToken = await admin.auth().verifyIdToken(idToken);
+      const decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
       logger.info(`Debug: Checking projects for user: ${userId}`);
@@ -2546,7 +2549,7 @@ exports.deleteAllProductionData = onRequest(
 
       let decodedToken;
       try {
-        decodedToken = await admin.auth().verifyIdToken(idToken);
+        decodedToken = await adminAuth.getAuth().verifyIdToken(idToken);
       } catch (authError) {
         logger.warn(
           `deleteAllProductionData: Invalid ID token: ${authError.message}`,
@@ -2612,7 +2615,7 @@ exports.deleteAllProductionData = onRequest(
       // 1. Delete Firestore data
       try {
         logger.info("Deleting all Firestore data...");
-        const db = admin.firestore();
+        const db = getFirestore();
 
         // Delete major collections
         const collections = [
@@ -2678,7 +2681,7 @@ exports.deleteAllProductionData = onRequest(
         let totalDeleted = 0;
 
         do {
-          const listUsersResult = await admin.auth().listUsers(
+          const listUsersResult = await adminAuth.getAuth().listUsers(
             1000,
             nextPageToken,
           );
@@ -2686,7 +2689,7 @@ exports.deleteAllProductionData = onRequest(
           const uids = listUsersResult.users.map(user => user.uid);
 
           if (uids.length > 0) {
-            await admin.auth().deleteUsers(uids);
+            await adminAuth.getAuth().deleteUsers(uids);
             totalDeleted += uids.length;
             logger.info(
               `Deleted ${uids.length} users (total: ${totalDeleted})`,
@@ -2711,7 +2714,7 @@ exports.deleteAllProductionData = onRequest(
       try {
         logger.info("Deleting all Firebase Storage files...");
 
-        const bucket = admin.storage().bucket();
+        const bucket = getStorage().bucket();
         const [files] = await bucket.getFiles();
 
         let deletedCount = 0;

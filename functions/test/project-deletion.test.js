@@ -2,8 +2,7 @@ const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
 const functions = require("firebase-functions-test")();
 
 describe("deleteProject Logic Tests", () => {
-  let admin;
-  let myFunctions;
+    let myFunctions;
   let transactionUpdateSpy;
   let transactionDeleteSpy;
 
@@ -13,7 +12,6 @@ describe("deleteProject Logic Tests", () => {
 
   beforeEach(() => {
     jest.resetModules();
-    admin = require("firebase-admin");
 
     // Reset Mock Data
     mockUserProjects = {
@@ -31,7 +29,7 @@ describe("deleteProject Logic Tests", () => {
     };
 
     // Mock admin.auth
-    jest.spyOn(admin, "auth").mockReturnValue({
+    jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue({
       verifyIdToken: jest.fn().mockImplementation(async token => {
         if (token === "token-user1") { return { uid: "user1" }; }
         if (token === "token-user2") { return { uid: "user2" }; }
@@ -56,7 +54,7 @@ describe("deleteProject Logic Tests", () => {
       }),
     };
 
-    jest.spyOn(admin, "firestore").mockReturnValue(mockDb);
+    jest.spyOn(require("firebase-admin/firestore"), "getFirestore").mockReturnValue(mockDb);
 
     // Mock Collection References
     mockDb.collection.mockImplementation(name => {

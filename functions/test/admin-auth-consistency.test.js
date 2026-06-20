@@ -1,5 +1,4 @@
 const { describe, it, expect, afterAll } = require("@jest/globals");
-const admin = require("firebase-admin");
 const functions = require("firebase-functions-test")();
 const myFunctions = require("../index");
 
@@ -29,7 +28,7 @@ describe("Admin Authorization Consistency", () => {
     };
 
     // Spy on admin.auth()
-    const authSpy = jest.spyOn(admin, "auth");
+    const authSpy = jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue(require("firebase-admin/auth").getAuth());
 
     // Create a mock auth service
     const verifyIdTokenMock = jest.fn().mockResolvedValue({

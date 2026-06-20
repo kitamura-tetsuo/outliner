@@ -3,16 +3,14 @@ const functions = require("firebase-functions-test")();
 
 // Mock dependencies before requiring index
 describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveContainer", () => {
-  let admin;
-  let myFunctions;
+    let myFunctions;
   let transactionUpdateSpy;
 
   beforeEach(() => {
     jest.resetModules();
-    admin = require("firebase-admin");
 
     // Mock admin.auth
-    jest.spyOn(admin, "auth").mockReturnValue({
+    jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue({
       verifyIdToken: jest.fn().mockResolvedValue({ uid: "attacker-user" }),
     });
 
@@ -31,7 +29,7 @@ describe("Vulnerability Reproduction: Insecure Direct Object Reference in saveCo
       }),
     };
 
-    jest.spyOn(admin, "firestore").mockReturnValue(mockDb);
+    jest.spyOn(require("firebase-admin/firestore"), "getFirestore").mockReturnValue(mockDb);
 
     // Setup mocks for collections and docs
     const mockUserContainersDoc = {

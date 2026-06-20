@@ -1,5 +1,4 @@
 const { describe, it, expect, afterAll, beforeAll } = require("@jest/globals");
-const admin = require("firebase-admin");
 const functions = require("firebase-functions-test")();
 const myFunctions = require("../index");
 
@@ -7,7 +6,7 @@ describe("Security Fix: deleteAllProductionData", () => {
   let authSpy;
 
   beforeAll(() => {
-    authSpy = jest.spyOn(admin, "auth");
+    authSpy = jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue(require("firebase-admin/auth").getAuth());
   });
 
   afterAll(() => {

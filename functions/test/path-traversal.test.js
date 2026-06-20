@@ -1,5 +1,4 @@
 const { describe, it, expect, afterAll, beforeEach } = require("@jest/globals");
-const admin = require("firebase-admin");
 const functions = require("firebase-functions-test")();
 
 // Mock dependencies
@@ -21,7 +20,7 @@ mockFile.delete.mockResolvedValue();
 mockBucket.getFiles.mockResolvedValue([[]]);
 
 // Mock admin.storage
-jest.spyOn(admin, "storage").mockReturnValue({
+jest.spyOn(require("firebase-admin/storage"), "getStorage").mockReturnValue({
   bucket: jest.fn().mockReturnValue(mockBucket),
 });
 
@@ -30,7 +29,7 @@ const mockAuth = {
   verifyIdToken: jest.fn().mockResolvedValue({ uid: "test-user" }),
   getUser: jest.fn(),
 };
-jest.spyOn(admin, "auth").mockReturnValue(mockAuth);
+jest.spyOn(require("firebase-admin/auth"), "getAuth").mockReturnValue(mockAuth);
 
 // Set NODE_ENV to test to bypass container access checks
 process.env.NODE_ENV = "test";

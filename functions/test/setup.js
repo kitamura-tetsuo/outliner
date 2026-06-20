@@ -1,10 +1,9 @@
 // Jest test setup file
 /* global jest, afterAll */
-const admin = require("firebase-admin");
 
 // Initialize Firebase Admin SDK for testing
-if (admin.apps === undefined && typeof admin.getApps === "function" ? admin.getApps().length === 0 : admin.apps && admin.apps.length === 0) {
-  admin.initializeApp({
+if (require("firebase-admin/app").getApps().length === 0) {
+  require("firebase-admin/app").initializeApp({
     projectId: "test-project-id",
   });
 }
@@ -19,5 +18,5 @@ jest.setTimeout(30000);
 // Cleanup after tests
 afterAll(async () => {
   // Cleanup Firebase Admin SDK
-  if (admin.app) { await admin.app().delete(); } else { await Promise.all(admin.getApps().map(app => app.delete())); }
+  try { await require("firebase-admin/app").getApp().delete(); } catch { /* ignore */ }
 });
