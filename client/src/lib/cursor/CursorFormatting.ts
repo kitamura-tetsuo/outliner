@@ -3,6 +3,7 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { searchItem } from "../cursor";
 
 export class CursorFormatting {
     private cursor: import("../Cursor").Cursor;
@@ -155,8 +156,8 @@ export class CursorFormatting {
         while (walker.currentNode) {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const item = (this.cursor as any).searchItem(generalStore.currentPage!, itemId);
+
+            const item = searchItem(generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item, itemId);
 
             if (!item) {
                 if (current === lastEl) break;

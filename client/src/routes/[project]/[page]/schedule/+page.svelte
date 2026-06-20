@@ -204,7 +204,7 @@ onMount(async () => {
         // First check store.project.items (more reliable after reload)
         try {
 
-            const projAny = store.project as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
+            const projAny = store.project as unknown as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
             if (projAny?.items) {
                 const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
@@ -322,7 +322,7 @@ onMount(async () => {
         if (!foundPageRef) {
             try {
 
-                const projAny = store.project as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
+                const projAny = store.project as unknown as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
                 if (projAny && typeof projAny.findPage === "function") {
                     // Try to find page by iterating through project items
                     const projItems = projAny.items;
@@ -333,7 +333,7 @@ onMount(async () => {
                         if (!p) continue;
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                            foundPageRef = p;
+                            foundPageRef = p as unknown as Item;
                             break;
                         }
                     }
