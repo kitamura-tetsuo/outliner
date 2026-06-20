@@ -3,12 +3,12 @@ import type { Item } from "../schema/app-schema";
 import { extractPagePreview } from "../lib/pagePreview";
 
 interface Props {
+    href?: string;
     page: Item;
     isGridView: boolean;
-    onSelect: (page: Item) => void;
-}
+    }
 
-let { page, isGridView, onSelect }: Props = $props();
+let { page, isGridView, href }: Props = $props();
 
 let preview = $state<{ lines: string[]; image: string | null }>({ lines: [], image: null });
 let pageTitle = $state("");
@@ -46,10 +46,10 @@ $effect(() => {
 
 {#if isGridView}
     <li class="flex flex-col overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md h-full">
-        <button
-            type="button"
+        <a
+            href={href}
             class="flex h-full w-full cursor-pointer flex-col text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            onclick={() => onSelect(page)}
+
         >
             <div class="p-3 pb-2 w-full font-medium text-gray-900 border-b border-gray-100 bg-gray-50/50 truncate">
                 {pageTitle}
@@ -73,14 +73,14 @@ $effect(() => {
             <div class="p-3 pt-0 mt-auto text-xs text-gray-400 text-right">
                 {formatDate(lastChanged)}
             </div>
-        </button>
+        </a>
     </li>
 {:else}
     <li class="flex items-center justify-between rounded-md border border-gray-200 bg-white p-3 shadow-sm transition-colors hover:bg-gray-50">
-        <button
-            type="button"
+        <a
+            href={href}
             class="flex w-full cursor-pointer items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-            onclick={() => onSelect(page)}
+
         >
             <div class="flex items-center gap-3 overflow-hidden">
                 {#if preview.image}
@@ -106,6 +106,6 @@ $effect(() => {
             <div class="ml-4 shrink-0 text-xs text-gray-400">
                 {formatDate(lastChanged)}
             </div>
-        </button>
+        </a>
     </li>
 {/if}
