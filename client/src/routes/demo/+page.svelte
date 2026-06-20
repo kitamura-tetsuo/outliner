@@ -46,7 +46,7 @@
             const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
             store.project = project;
         } catch (err) {
-            logger.error(err, "Failed to initialize demo");
+            logger.error({ error: err }, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
             isLoading = false;
