@@ -40,6 +40,7 @@
     let debouncedQuery = $state("");
     let selected = $state(-1);
     let inputEl: HTMLInputElement | null = null;
+    let isFocused = $state(false);
     // Preserve focus across reactive project changes to keep dropdown stable in tests
     let shouldRefocus = $state(false);
     // Micro-sync tick to retrigger results during early init so that fallback pages populate
@@ -459,8 +460,17 @@
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
-        onfocus={() => {
+        onfocus={(e) => {
             shouldRefocus = true;
+            isFocused = true;
+            if (e.target && "value" in e.target && e.target.value !== query) {
+                query = e.target.value as string;
+            }
+        }}
+        onblur={() => {
+            setTimeout(() => {
+                isFocused = false;
+            }, 200);
         }}
         oninput={() => {
             shouldRefocus = true;
@@ -492,10 +502,10 @@
             </svg>
         </button>
     {/if}
-    {#if query.length > 0 && results.length === 0}
+    {#if isFocused && query.length > 0 && results.length === 0}
         <div class="no-results" role="status">No results found</div>
     {/if}
-    {#if results.length && query.length > 0}
+    {#if isFocused && results.length && query.length > 0}
         <ul id="search-results-listbox" role="listbox">
             {#each results as page, i (page.id)}
                 <li
