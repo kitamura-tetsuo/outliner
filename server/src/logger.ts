@@ -1,13 +1,14 @@
 import pino from "pino";
 
+
 // Patched logger interface to prevent strict type checks on first argument
 export interface EnhancedLogger extends pino.Logger {
-    trace(...args: any[]): void;
-    debug(...args: any[]): void;
-    info(...args: any[]): void;
-    warn(...args: any[]): void;
-    error(...args: any[]): void;
-    fatal(...args: any[]): void;
+    trace(...args: unknown[]): void;
+    debug(...args: unknown[]): void;
+    info(...args: unknown[]): void;
+    warn(...args: unknown[]): void;
+    error(...args: unknown[]): void;
+    fatal(...args: unknown[]): void;
 }
 
 export function createLogger(destination: pino.DestinationStream = pino.destination(1)): EnhancedLogger {

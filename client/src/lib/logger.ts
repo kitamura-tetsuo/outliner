@@ -194,12 +194,12 @@ const consoleStyles = {
 
 // Patched logger interface to prevent strict type checks on first argument
 export interface EnhancedLogger extends pino.Logger {
-    trace(...args: any[]): void;
-    debug(...args: any[]): void;
-    info(...args: any[]): void;
-    warn(...args: any[]): void;
-    error(...args: any[]): void;
-    fatal(...args: any[]): void;
+    trace(...args: unknown[]): void;
+    debug(...args: unknown[]): void;
+    info(...args: unknown[]): void;
+    warn(...args: unknown[]): void;
+    error(...args: unknown[]): void;
+    fatal(...args: unknown[]): void;
 }
 
 export function getLogger(componentName?: string, enableConsole: boolean = true): EnhancedLogger {
@@ -212,7 +212,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
     // Create an extended logger that also outputs to the console if console output is enabled (suppressed in test environment)
     if (enableConsole && useConsoleAPI && !isTestEnvironment) {
-        return new Proxy(childLogger as any, {
+        return new Proxy(childLogger as unknown as Record<string, unknown>, {
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
