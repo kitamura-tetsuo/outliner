@@ -1,3 +1,5 @@
+import { serverLogger as logger } from "./utils/log-manager.js";
+
 import { Logger } from "@hocuspocus/extension-logger";
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";
@@ -94,10 +96,10 @@ export async function startServer(
     // Additional check to ensure Persistence is ready
     if (persistence) {
         logger.info({ event: "persistence_ready" }, "Persistence initialized: ENABLED");
-        console.log("Persistence: ENABLED (SQLite)");
+        logger.debug("Persistence: ENABLED (SQLite)");
     } else {
         logger.warn({ event: "persistence_disabled" }, "Persistence initialized: DISABLED");
-        console.log("Persistence: DISABLED");
+        logger.debug("Persistence: DISABLED");
     }
 
     const intervals: NodeJS.Timeout[] = [];
@@ -207,7 +209,7 @@ export async function startServer(
         async onConnect(data: any) {
             const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
                 || data.request.socket?.remoteAddress || "unknown";
-            console.log(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
+            logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
         },
         async onAuthenticate(data: any) {
             // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
@@ -217,7 +219,7 @@ export async function startServer(
             const request = data.request;
             const requestHeaders = data.requestHeaders;
             const token = data.token || extractAuthToken(request);
-            console.log(
+            logger.debug(
                 `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
                     token ? "FOUND" : "MISSING"
                 }, data.token=${data.token}`,
@@ -226,7 +228,7 @@ export async function startServer(
             const room = parseRoom(data.documentName);
 
             if (room?.project === "demo") {
-                console.log(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
+                logger.debug(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
                 return {
                     user: { uid: "anonymous-demo" },
                     room,
@@ -254,7 +256,7 @@ export async function startServer(
                 throw Object.assign(new Error("Access denied"), { code: 4003, reason: "FORBIDDEN" });
             }
 
-            console.log(`[Hocuspocus] onAuthenticate: Authorized uid=${decoded.uid} for room=${data.documentName}`);
+            logger.debug(`[Hocuspocus] onAuthenticate: Authorized uid=${decoded.uid} for room=${data.documentName}`);
             // Return context additions — merged into connection context
             return {
                 user: { uid: decoded.uid },
@@ -262,14 +264,14 @@ export async function startServer(
             };
         },
         async onAfterAuthenticate(data: any) {
-            console.log(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
+            logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
         },
         async onLoadDocument(data: any) {
-            console.log(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
+            logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
             return data.document;
         },
         async onDisconnect(data: any) {
-            console.log(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
+            logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
         },
     } as any);
 
@@ -349,8 +351,8 @@ export async function startServer(
             const ip = getClientIp(request);
             const origin = request.headers.origin || "";
             if (process.env.NODE_ENV === "production") {
-                console.log("[DEBUG] Upgrade Headers:", JSON.stringify(request.headers, null, 2));
-                console.log("[DEBUG] Detected IP:", ip);
+                logger.debug({ headers: request.headers }, "[DEBUG] Upgrade Headers");
+                logger.debug({ ip }, "[DEBUG] Detected IP");
             }
 
             const rejectSync = (code: number, reason: string) => {
@@ -454,7 +456,7 @@ export async function startServer(
                     clientConnection.handleClose({ code, reason: reason.toString() });
                 });
             } catch (e) {
-                /* eslint-disable-next-line no-console */ console.error("Error handling Hocuspocus connection:", e);
+                logger.error({ error: e }, "Error handling Hocuspocus connection");
                 ws.close(1011);
             }
         });

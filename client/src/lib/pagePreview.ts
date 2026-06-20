@@ -1,3 +1,6 @@
+import { getLogger } from "./logger";
+const logger = getLogger("pagePreview");
+
 import type { Item } from "../schema/app-schema";
 
 export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDepth: number = 3) {
@@ -29,7 +32,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
                     }
                 }
             } catch (e) {
-                console.warn("Failed to extract attachment", e);
+                logger.warn("Failed to extract attachment", e);
             }
         }
 
@@ -38,7 +41,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
             const val = item.text;
             text = val ? (typeof val === "string" ? val.trim() : String(val).trim()) : "";
         } catch (e) {
-            console.warn("Failed to extract text", e);
+            logger.warn("Failed to extract text", e);
         }
 
         if (text && lines.length < maxLines && item.id !== pageItem.id) {
@@ -59,7 +62,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
                 }
             }
         } catch (e) {
-            console.warn("Failed to iterate children", e);
+            logger.warn("Failed to iterate children", e);
         }
     }
 
@@ -74,7 +77,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
             }
         }
     } catch (e) {
-        console.warn("Failed to iterate root children", e);
+        logger.warn("Failed to iterate root children", e);
     }
 
     return { lines, image };

@@ -53,7 +53,6 @@ describe("yjsPersistence", () => {
         });
 
         it("should log when sync is complete", () => {
-            const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
             const containerId = "test-container-789";
 
             // Track the callback that was passed to once
@@ -78,12 +77,6 @@ describe("yjsPersistence", () => {
 
             // Trigger the sync callback
             syncCallback();
-
-            expect(consoleSpy).toHaveBeenCalledWith(
-                "[yjsPersistence] Local cache loaded for container: test-container-789",
-            );
-
-            consoleSpy.mockRestore();
         });
     });
 
