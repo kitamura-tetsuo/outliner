@@ -16,7 +16,7 @@ let lastChanged = $state<number | undefined>();
 
 function updatePreview() {
     preview = page.preview || extractPagePreview(page);
-    pageTitle = page.text || "Untitled Page";
+    pageTitle = page.text.toString() || "Untitled Page";
     lastChanged = page.lastChanged;
 }
 

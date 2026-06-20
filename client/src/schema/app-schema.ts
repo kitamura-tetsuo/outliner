@@ -386,7 +386,7 @@ export class Item {
                         for (let i = 0; i < len2; i++) {
                             const cand = items.at(i);
                             if (cand) {
-                                const ct = cand.text;
+                                const ct = cand.text.toString();
                                 if (ct === text) {
                                     try {
                                         cand.addAttachment(url);

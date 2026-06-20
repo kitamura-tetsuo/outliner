@@ -28,7 +28,7 @@
         // Use iterator for better performance ($O(N \log N)$ vs $O(N^2 \log N)$)
         for (const item of items) {
             if (!item) continue;
-            const text = item.text;
+            const text = item.text.toString();
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
                 return item;
             }
