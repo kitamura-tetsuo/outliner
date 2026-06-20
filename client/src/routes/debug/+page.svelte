@@ -52,20 +52,20 @@ async function initializeFluidClient() {
     try {
         // Use a fixed UUID for the debug page to avoid creating new projects on every reload
         const projectId = "00000000-0000-0000-0000-000000000000";
-        console.log(`[debug] Registering debug project: ${projectId}`);
+        logger.info({ projectId }, "[debug] Registering debug project");
         const saved = await saveFirestoreContainerIdToServer(projectId);
         if (!saved) {
-            console.error("[debug] Failed to register debug project");
+            logger.error("[debug] Failed to register debug project");
             networkError = "Failed to register debug project.";
             return;
         }
 
-        console.log(`[debug] Connecting to debug project: ${projectId}`);
+        logger.info({ projectId }, "[debug] Connecting to debug project");
         await createYjsClient(projectId);
         updateConnectionStatus();
     }
     catch (err) {
-        console.error("Fluid client initialization error:", err);
+        logger.error({ err }, "Fluid client initialization error:");
         networkError = "Failed to initialize Fluid client.";
     }
     finally {
@@ -163,7 +163,7 @@ onMount(() => {
         }, 5000);
     }
     catch (err) {
-        console.error("Error initializing debug page:", err);
+        logger.error({ err }, "Error initializing debug page:");
         error = err instanceof Error
             ? err.message
             : "An error occurred during initialization.";

@@ -172,7 +172,7 @@
                         }
                     }
                     if (len > 0) {
-                        console.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
+                        logger.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
@@ -234,7 +234,7 @@
                 );
             }
         } catch (err) {
-            console.error("Failed to load project and page:", err);
+            logger.error({ err }, "Failed to load project and page");
             error =
                 err instanceof Error
                     ? err.message
@@ -263,12 +263,12 @@
         try {
             // DIRECT DEBUG: This should appear if onMount is called
             if (typeof console !== "undefined") {
-                console.log("[DEBUG] onMount called");
+                logger.info("[DEBUG] onMount called");
             }
             // Attempt initial load
             scheduleLoadIfNeeded();
         } catch (e) {
-            console.error("[DEBUG] onMount error:", e);
+            logger.error({ e }, "[DEBUG] onMount error");
         }
 
         // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
@@ -315,11 +315,7 @@
             if (id) {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
                 window.sessionStorage?.setItem(key, String(id));
-                console.log(
-                    "[+page.svelte] capturePageIdForSchedule saved:",
-                    key,
-                    id,
-                );
+                logger.info({ key, id }, "[+page.svelte] capturePageIdForSchedule saved");
             }
         } catch {}
     }

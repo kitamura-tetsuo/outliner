@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../../../../lib/logger";
+const logger = getLogger("SchedulePage");
 import { goto } from "$app/navigation";
 import { resolvePath } from "../../../../utils/pathUtils";
 
@@ -58,7 +60,7 @@ let navState = $state({
 
 onMount(async () => {
     navState.onMountCount++;
-    console.log("Schedule page: onMount started", {
+    logger.info({
         count: navState.onMountCount,
         project,
         pageTitle,
@@ -79,7 +81,7 @@ onMount(async () => {
     const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
     const savedPageId = typeof window !== "undefined" ? window.sessionStorage?.getItem(sessionKey) : null;
 
-    console.log("Schedule page: Initial check", {
+    logger.info({
         hasProjectData,
         itemsLength: store.project?.items?.length ?? 0,
         isCorrectProject,
@@ -92,7 +94,7 @@ onMount(async () => {
     // If project data is not loaded OR we don't have a saved pageId, we need to navigate to main page first
     // Only navigate if store is empty or project title doesn't match
     if (!hasProjectData || !savedPageId) {
-        console.log("Schedule page: Project data not loaded or no saved pageId, navigating to main page first", {
+        logger.info({
             hasProjectData,
             hasSavedPageId: !!savedPageId,
             storeProjectItems: store.project?.items?.length ?? 0,
@@ -101,27 +103,27 @@ onMount(async () => {
 
         // Navigate to main page to trigger loadProjectAndPage
         const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
-        console.log("Schedule page: Navigating to main page:", mainPageUrl);
+        logger.info({ mainPageUrl }, "Schedule page: Navigating to main page:");
         await goto(mainPageUrl);
-        console.log("Schedule page: Back from main page, waiting for store.project to be populated...");
+        logger.info("Schedule page: Back from main page, waiting for store.project to be populated...");
 
         // Wait for store.project to be populated after navigation
         for (let i = 0; i < 50; i++) {
             if ((store.project?.items?.length ?? 0) > 0) {
-                console.log("Schedule page: store.project populated after", i * 100, "ms");
+                logger.info({ timeMs: i * 100 }, "Schedule page: store.project populated after");
                 break;
             }
             await new Promise(r => setTimeout(r, 100));
         }
-        console.log("Schedule page: store.project?.items?.length =", store.project?.items?.length ?? 0);
+        logger.info({ projectItemsLength: store.project?.items?.length ?? 0 }, "Schedule page: store.project?.items?.length =");
 
         // Navigate back to schedule page
         const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
-        console.log("Schedule page: Navigating back to schedule:", scheduleUrl);
+        logger.info({ scheduleUrl }, "Schedule page: Navigating back to schedule:");
         await goto(scheduleUrl);
-        console.log("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
+        logger.info({ projectItemsLength: store.project?.items?.length ?? 0 }, "Schedule page: Back on schedule page");
     } else {
-        console.log("Schedule page: Using saved pageId, no navigation needed");
+        logger.info("Schedule page: Using saved pageId, no navigation needed");
     }
 
     // E2E stabilization: Wait for parent page's loadProjectAndPage to complete
@@ -145,7 +147,7 @@ onMount(async () => {
         const projectHasItems = projectItemsLength > 0;
 
         if (hasProject && hasCurrentPage && projectHasItems) {
-            console.log("Schedule page: Parent page loading complete", {
+            logger.info({
                 hasProject,
                 hasCurrentPage,
                 projectHasItems,
@@ -164,7 +166,7 @@ onMount(async () => {
 
         // If project exists but has no items, try to trigger parent load
         if (hasProject && !projectHasItems) {
-            console.log("Schedule page: Project exists but has no items, triggering parent load");
+            logger.info("Schedule page: Project exists but has no items, triggering parent load");
             await triggerParentPageLoad();
         }
 
@@ -173,7 +175,7 @@ onMount(async () => {
     }
 
     // After waiting, check store.project directly for debugging
-    console.log("Schedule page: Final store state", {
+    logger.info({
         storeProjectTitle: store.project?.title ?? "null",
         storeProjectItemsLength: store.project?.items?.length ?? 0,
         storeCurrentPageTitle: store.currentPage?.text?.toString?.() ?? "null",
@@ -189,7 +191,7 @@ onMount(async () => {
             const saved = window.sessionStorage?.getItem(key) || "";
             if (saved) {
                 sessionPinnedPageId = String(saved);
-                console.log("Schedule page: Found session pinned pageId=", sessionPinnedPageId);
+                logger.info({ sessionPinnedPageId }, "Schedule page: Found session pinned pageId=");
             }
         }
     } catch {}
@@ -208,7 +210,7 @@ onMount(async () => {
             if (projAny?.items) {
                 const projItems = projAny.items;
                 const projLen = projItems?.length ?? 0;
-                console.log("Schedule page: Checking session pageId in store.project.items", {
+                logger.info({
                     sessionPageId: sessionPinnedPageId,
                     projectItemsCount: projLen
                 });
@@ -218,22 +220,22 @@ onMount(async () => {
                     if (!p) continue;
                     const pId = String(p.id);
                     const match = pId === String(sessionPinnedPageId);
-                    console.log("Schedule page:   Item", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
+                    logger.info({ index: i, pId, title: p.text?.toString?.() ?? "", match }, "Schedule page: Item");
                     if (match) {
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {
                             isValid = true;
                             validatedPageId = sessionPinnedPageId;
-                            console.log("Schedule page: Session pageId validated in project.items");
+                            logger.info("Schedule page: Session pageId validated in project.items");
                             break;
                         }
                     }
                 }
             } else {
-                console.log("Schedule page: store.project.items is empty or undefined");
+                logger.info("Schedule page: store.project.items is empty or undefined");
             }
         } catch (e) {
-            console.log("Schedule page: Error checking project.items:", e);
+            logger.info({ e }, "Schedule page: Error checking project.items:");
         }
 
         // If not found in project.items, check store.pages?.current
@@ -241,7 +243,7 @@ onMount(async () => {
             try {
                 const items = store.pages?.current;
                 const len = items?.length ?? 0;
-                console.log("Schedule page: Checking session pageId in store.pages.current", {
+                logger.info({
                     sessionPageId: sessionPinnedPageId,
                     pagesCurrentCount: len
                 });
@@ -250,27 +252,27 @@ onMount(async () => {
                     if (!p) continue;
                     const pId = String(p.id);
                     const match = pId === String(sessionPinnedPageId);
-                    console.log("Schedule page:   Page", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
+                    logger.info({ index: i, pId, title: p.text?.toString?.() ?? "", match }, "Schedule page: Page");
                     if (match) {
                         const title = p.text?.toString?.() ?? "";
                         if (title.toLowerCase() === pageTitle.toLowerCase()) {
                             isValid = true;
                             validatedPageId = sessionPinnedPageId;
-                            console.log("Schedule page: Session pageId validated in pages.current");
+                            logger.info("Schedule page: Session pageId validated in pages.current");
                             break;
                         }
                     }
                 }
             } catch (e) {
-                console.log("Schedule page: Error checking pages.current:", e);
+                logger.info({ e }, "Schedule page: Error checking pages.current:");
             }
         }
 
         if (isValid && validatedPageId) {
             pageId = validatedPageId;
-            console.log("Schedule page: Using validated session pinned pageId=", pageId);
+            logger.info({ pageId }, "Schedule page: Using validated session pinned pageId=");
         } else {
-            console.log("Schedule page: Session pinned pageId NOT found, will resolve fresh", {
+            logger.info({
                 sessionPinnedPageId,
                 pageTitle,
                 storeProjectItemsLength: store.project?.items?.length ?? 0,
@@ -348,7 +350,7 @@ onMount(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         waitAttempts++;
     }
-    console.log("Schedule page: After wait", {
+    logger.info({
         waitAttempts,
         hasFoundPage: !!foundPageRef,
         foundPageTitle: foundPageRef?.text?.toString?.() ?? "",
@@ -364,7 +366,7 @@ onMount(async () => {
     // If we found the page during the wait, use it
     if (foundPageRef && !pageId) {
         pageId = String(foundPageRef.id ?? "");
-        console.log("Schedule page: Found page during wait", { pageId, title: foundPageRef.text?.toString?.() });
+        logger.info({ pageId, title: foundPageRef.text?.toString?.() }, "Schedule page: Found page during wait");
     }
 
     // 1) Top priority: Use when currentPage points to the current page (exclude cases where values from other pages remain)
@@ -404,7 +406,7 @@ onMount(async () => {
     // 3) Use the session candidate as a last resort (E2E stabilization)
     if (!pageId && sessionPinnedPageId) {
         pageId = sessionPinnedPageId;
-        console.log("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
+        logger.info({ sessionPinnedPageId }, "Schedule page: Using session fallback pageId=");
     }
 
     // Wait for page subdocument to be connected before proceeding (E2E stability)
@@ -428,7 +430,7 @@ onMount(async () => {
                     if (pageRef) {
                         const itemCount = pageRef?.items?.length ?? 0;
                         if (itemCount > 0) {
-                            console.log("Schedule page: Page items found", { pageId, itemCount });
+                            logger.info({ pageId, itemCount }, "Schedule page: Page items found");
                             break;
                         }
                     }
@@ -441,7 +443,7 @@ onMount(async () => {
     }
 
     if (!pageId) {
-        console.error("Schedule page: pageId is empty, cannot load schedules");
+        logger.error("Schedule page: pageId is empty, cannot load schedules");
         return;
     }
 
@@ -450,17 +452,17 @@ onMount(async () => {
         if (typeof window !== "undefined") {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             window.sessionStorage?.setItem(key, String(pageId));
-            console.log("Schedule page: Saved pageId to sessionStorage:", pageId);
+            logger.info({ pageId }, "Schedule page: Saved pageId to sessionStorage:");
         }
     } catch {}
 
-    console.log("Schedule page: Final pageId before refresh:", pageId);
+    logger.info({ pageId }, "Schedule page: Final pageId before refresh:");
     await refresh();
 
     // E2E stability: Export refresh function to window for test access
     if (typeof window !== "undefined") {
         (window as unknown as { refreshSchedules?: (pid?: string) => Promise<void> }).refreshSchedules = async (pid?: string) => {
-            console.log("Schedule page: E2E refreshSchedules called with pid=", pid);
+            logger.info({ pid }, "Schedule page: E2E refreshSchedules called with pid=");
             if (pid) {
                 pageId = pid;
             }
@@ -472,7 +474,7 @@ onMount(async () => {
 // E2E stability: Re-call refresh when pageId changes (handles race conditions during navigation)
 $effect(() => {
     if (pageId) {
-        console.log("Schedule page: $effect triggered with pageId:", pageId, "schedules.length:", schedules.length);
+        logger.info({ pageId, schedulesLength: schedules.length }, "Schedule page: $effect triggered with pageId");
         // Small delay to ensure DOM is ready
         setTimeout(() => {
             refresh();
@@ -482,50 +484,50 @@ $effect(() => {
 
 async function refresh() {
     if (!pageId) {
-        console.error("Schedule page: Cannot refresh, pageId is empty");
+        logger.error("Schedule page: Cannot refresh, pageId is empty");
         return;
     }
-    console.log("Schedule page: Refreshing schedules for pageId:", pageId);
+    logger.info({ pageId }, "Schedule page: Refreshing schedules for pageId:");
     try {
         schedules = await listSchedules(pageId);
-        console.log("Schedule page: Loaded schedules:", schedules);
+        logger.info({ schedules }, "Schedule page: Loaded schedules:");
     }
     catch (err) {
-        console.error("Schedule page: Error loading schedules:", err);
+        logger.error({ err }, "Schedule page: Error loading schedules:");
     }
 }
 
 async function addSchedule() {
     if (!publishTime) {
-        console.error("Schedule page: Cannot add schedule, publishTime is empty");
+        logger.error("Schedule page: Cannot add schedule, publishTime is empty");
         return;
     }
     if (!pageId) {
-        console.error("Schedule page: Cannot add schedule, pageId is empty");
+        logger.error("Schedule page: Cannot add schedule, pageId is empty");
         return;
     }
-    console.log("Schedule page: Adding schedule for pageId:", pageId, "publishTime:", publishTime);
+    logger.info({ pageId, publishTime }, "Schedule page: Adding schedule for pageId");
     try {
         const ts = new Date(publishTime).getTime();
         const result = await createSchedule(pageId, { strategy: "one_shot", nextRunAt: ts });
-        console.log("Schedule page: Schedule created successfully:", result);
+        logger.info({ result }, "Schedule page: Schedule created successfully:");
         publishTime = "";
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error creating schedule:", err);
+        logger.error({ err }, "Schedule page: Error creating schedule:");
     }
 }
 
 async function cancel(id: string) {
-    console.log("Schedule page: Canceling schedule:", id);
+    logger.info({ id }, "Schedule page: Canceling schedule:");
     try {
         await cancelSchedule(pageId, id);
-        console.log("Schedule page: Schedule canceled successfully");
+        logger.info("Schedule page: Schedule canceled successfully");
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error canceling schedule:", err);
+        logger.error({ err }, "Schedule page: Error canceling schedule:");
     }
 }
 
@@ -536,7 +538,7 @@ function startEdit(sch: Schedule) {
 
 async function saveEdit() {
     if (!editingId || !editingTime) {
-        console.error("Schedule page: Missing editing values");
+        logger.error("Schedule page: Missing editing values");
         return;
     }
     const ts = new Date(editingTime).getTime();
@@ -550,7 +552,7 @@ async function saveEdit() {
         await refresh();
     }
     catch (err) {
-        console.error("Schedule page: Error updating schedule:", err);
+        logger.error({ err }, "Schedule page: Error updating schedule:");
     }
 }
 
@@ -560,7 +562,7 @@ async function back() {
 
 async function downloadIcs() {
     if (!pageId) {
-        console.error("Schedule page: Cannot export schedules, pageId is empty");
+        logger.error("Schedule page: Cannot export schedules, pageId is empty");
         return;
     }
     try {
@@ -574,10 +576,10 @@ async function downloadIcs() {
         anchor.click();
         anchor.remove();
         setTimeout(() => URL.revokeObjectURL(url), 0);
-        console.log("Schedule page: Exported schedules to iCal", filename);
+        logger.info({ filename }, "Schedule page: Exported schedules to iCal");
     }
     catch (err) {
-        console.error("Schedule page: Error exporting schedules:", err);
+        logger.error({ err }, "Schedule page: Error exporting schedules:");
     }
     finally {
         isDownloading = false;
