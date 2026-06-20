@@ -81,7 +81,6 @@ export async function startServer(
     app.use(cors(corsOptions));
 
     // Add security headers
-    // @ts-expect-error
     app.use(helmet());
 
     // Add JSON body parser middleware

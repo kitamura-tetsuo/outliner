@@ -1,5 +1,4 @@
 import type { Logger } from "pino";
-// @ts-expect-error
 import { SQLite } from "@hocuspocus/extension-sqlite";
 import { Config } from "./config.js";
 
