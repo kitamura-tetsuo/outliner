@@ -42,7 +42,7 @@ function pruneExpiredTokens(now: number) {
 
 export function extractAuthToken(req: IncomingMessage | Request): string | undefined {
     try {
-        const urlString = "url" in req ? (req as any).url : (req as IncomingMessage).url;
+        const urlString = "url" in req ? (req as Request).url : (req as IncomingMessage).url;
         const url = new URL(urlString ?? "", "http://localhost");
         // Check for 'token' parameter (used by y-websocket when token option is provided)
         const token = url.searchParams.get("token") || url.searchParams.get("auth");

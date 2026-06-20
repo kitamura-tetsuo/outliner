@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import express, { NextFunction, Request, Response } from "express";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { requireAuth } from "./auth-middleware.js";
 import { logger } from "./logger.js";
@@ -46,8 +47,11 @@ router.post("/api-keys", requireAuth, async (req: Request, res: Response): Promi
             description: apiKeyData.description,
             createdAt: apiKeyData.createdAt,
         });
-    } catch (error: any) {
-        logger.error({ error: new Error(error.message), event: "api_key_create_error" }, "An error occurred");
+    } catch (error: unknown) {
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_create_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Failed to create API key" });
     }
 });
@@ -66,8 +70,8 @@ router.get("/api-keys", requireAuth, async (req: Request, res: Response): Promis
         }));
 
         res.status(200).json(keys);
-    } catch (error: any) {
-        logger.error({ error: new Error(error.message), event: "api_key_list_error" }, "An error occurred");
+    } catch (error: unknown) {
+        logger.error({ error: new Error((error as Error).message), event: "api_key_list_error" }, "An error occurred");
         res.status(500).json({ error: "Failed to list API keys" });
     }
 });
@@ -95,8 +99,11 @@ router.delete("/api-keys/:id", requireAuth, async (req: Request, res: Response):
         logger.info({ event: "api_key_deleted", userId: uid, keyId: id });
 
         res.status(200).json({ success: true });
-    } catch (error: any) {
-        logger.error({ error: new Error(error.message), event: "api_key_delete_error" }, "An error occurred");
+    } catch (error: unknown) {
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_delete_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Failed to delete API key" });
     }
 });
@@ -140,10 +147,13 @@ export async function validateApiKey(req: Request, res: Response, next: NextFunc
         });
 
         // Set user context
-        req.user = { uid: data.userId } as any;
+        req.user = { uid: data.userId } as unknown as DecodedIdToken;
         next();
-    } catch (error: any) {
-        logger.error({ error: new Error(error.message), event: "api_key_validation_error" }, "An error occurred");
+    } catch (error: unknown) {
+        logger.error(
+            { error: new Error((error as Error).message), event: "api_key_validation_error" },
+            "An error occurred",
+        );
         res.status(500).json({ error: "Internal Server Error during API Key validation" });
     }
 }

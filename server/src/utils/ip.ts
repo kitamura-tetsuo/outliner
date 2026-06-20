@@ -7,7 +7,7 @@ import { IncomingMessage } from "http";
  */
 export function getClientIp(req: IncomingMessage | Request): string {
     const getHeader = (name: string): string | string[] | null | undefined => {
-        if ("headers" in req && typeof (req.headers as any).get === "function") {
+        if ("headers" in req && typeof (req.headers as Headers).get === "function") {
             return (req.headers as Headers).get(name);
         }
         return (req as IncomingMessage).headers[name.toLowerCase()];

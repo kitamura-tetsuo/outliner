@@ -82,7 +82,7 @@ export async function startServer(
 
     // Add security headers
     // @ts-ignore
-    app.use((helmet as any)());
+    app.use(helmet());
 
     // Add JSON body parser middleware
     app.use(express.json());
@@ -417,7 +417,7 @@ export async function startServer(
                 const protocol = request.headers["x-forwarded-proto"] || "http";
                 const host = request.headers.host || "localhost";
                 const webRequest = new Request(new URL(request.url || "/", `${protocol}://${host}`).toString(), {
-                    headers: request.headers as any,
+                    headers: request.headers as unknown as Record<string, string>,
                     method: request.method,
                 });
 
