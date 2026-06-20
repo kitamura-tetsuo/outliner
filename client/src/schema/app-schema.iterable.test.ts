@@ -72,7 +72,7 @@ describe("Cursor.searchItem recursion over children (no exceptions)", () => {
                 offset: 0,
                 isActive: true,
                 userId: "u1",
-            } as CursorOptions
+            } as CursorOptions,
         );
 
         // Ensure no exception is thrown and the target is found
