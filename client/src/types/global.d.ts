@@ -22,6 +22,7 @@ declare global {
         __CURRENT_PROJECT__?: Project;
         __CURRENT_PROJECT_TITLE__?: string;
         generalStore?: GeneralStore;
+        __GRAPH_CHART__?: unknown;
         __YJS_SERVICE__?: unknown;
         __YJS_STORE__?: unknown;
         __YJS_CLIENT_REGISTRY__?: unknown;

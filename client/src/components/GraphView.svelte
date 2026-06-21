@@ -130,8 +130,7 @@ const logger = getLogger("GraphView");
             // Merge: Start with existing nodes that are NOT in current, then add current
             const mergedNodes = existingNodes
                 .filter((n) => !currentNodesMap.has(n.id))
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .concat(currentNodes as any);
+                .concat(currentNodes as GraphLayout["nodes"]);
 
             const layoutData = { nodes: mergedNodes };
 
@@ -221,10 +220,7 @@ const logger = getLogger("GraphView");
 
     onMount(() => {
         chart = echarts.init(graphDiv);
-        (
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            window as any as { __GRAPH_CHART__?: echarts.ECharts }
-        ).__GRAPH_CHART__ = chart;
+        window.__GRAPH_CHART__ = chart;
         chart.on("click", (params: ECElementEvent) => {
             if (params.dataType === "node") {
                 const pageName =
