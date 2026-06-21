@@ -908,10 +908,6 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     // Normal deletion processing if event is undefined or Alt key is not pressed
     const preserveAltClick = event?.altKey === true;
 
-    // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-        // Intentionally empty: placeholder for debug logging
-    }
 
     // Clear all cursors then set new cursor
     // Keep existing cursors if adding multi-cursor with Alt+Click
@@ -1110,10 +1106,6 @@ function handleClick(event: MouseEvent) {
         // Get click position
         const pos = getClickPosition(event, textString);
 
-        // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            // Intentionally empty: placeholder for debug logging
-        }
 
         // Add new cursor (existing cursor check is done in addCursor)
         editorOverlayStore.addCursor({
@@ -1123,10 +1115,6 @@ function handleClick(event: MouseEvent) {
             userId: "local",
         });
 
-        // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            // Intentionally empty: placeholder for debug logging
-        }
 
         // Set active item
         editorOverlayStore.setActiveItem(model.id);
@@ -1145,10 +1133,6 @@ function handleClick(event: MouseEvent) {
                 setTimeout(() => {
                     textarea.focus();
 
-                    // Check if focus was set
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        // Intentionally empty: placeholder for debug logging
-                    }
                 }, 10);
             });
         }
@@ -1329,10 +1313,6 @@ function handleMouseMove(event: MouseEvent) {
  * @param currentPosition Current cursor position
  */
 function handleBoxSelection(event: MouseEvent, currentPosition: number) {
-    // Debug info
-    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-        // Intentionally empty: placeholder for debug logging
-    }
 
     // Start and end positions of box selection (in pixels)
     const startPixelX = Math.min(dragStartClientX, event.clientX);
