@@ -1,4 +1,7 @@
 import { Items, Project } from "../schema/app-schema";
+import { getLogger } from "../lib/logger";
+
+const logger = getLogger("importExportService");
 
 function escapeHtml(str: unknown): string {
     const s = (typeof str === "string" || (str != null && typeof (str as object)?.toString === "function"))
@@ -78,14 +81,14 @@ export function importOpmlIntoProject(opml: string, project: Project) {
 }
 
 export function importMarkdownIntoProject(md: string, project: Project) {
-    console.log("importMarkdownIntoProject: Starting import with markdown:", md);
+    logger.debug(undefined, "importMarkdownIntoProject: Starting import with markdown:", md);
 
     const rootItems = project.items as Items;
     while (rootItems.length > 0) {
         rootItems.removeAt(rootItems.length - 1);
     }
     const lines = md.split(/\r?\n/);
-    console.log("importMarkdownIntoProject: Lines to process:", lines);
+    logger.debug(undefined, "importMarkdownIntoProject: Lines to process:", lines);
 
     // Simplify stack structure
     const stack: { indent: number; items: Items; }[] = [
@@ -101,7 +104,7 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         const indent = m[1].length;
         const text = m[2];
 
-        console.log(`importMarkdownIntoProject: Processing line "${line}" -> indent=${indent}, text="${text}"`);
+        logger.debug(undefined, `importMarkdownIntoProject: Processing line "${line}" -> indent=${indent}, text="${text}"`);
 
         // Pop stack to the appropriate level
         while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
@@ -109,30 +112,30 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         }
 
         const parentInfo = stack[stack.length - 1];
-        console.log(
+        logger.debug(undefined,
             `importMarkdownIntoProject: Parent stack level: ${stack.length}, parent indent: ${parentInfo.indent}`,
         );
 
         let node;
         if (isFirstRootItem && indent === 0) {
             // Create only the first root-level item as a page
-            console.log(`importMarkdownIntoProject: Creating page "${text}"`);
+            logger.debug(undefined, `importMarkdownIntoProject: Creating page "${text}"`);
             node = project.addPage(text, "import");
             firstPageItems = node.items as Items;
             isFirstRootItem = false;
         } else if (indent === 0 && firstPageItems) {
             // Create 2nd and subsequent root-level items as children of the first page
-            console.log(`importMarkdownIntoProject: Creating root-level child "${text}" under first page`);
+            logger.debug(undefined, `importMarkdownIntoProject: Creating root-level child "${text}" under first page`);
             node = firstPageItems.addNode("import");
             node.updateText(text);
         } else {
             // Create as a normal child item
-            console.log(`importMarkdownIntoProject: Creating child "${text}" under parent`);
+            logger.debug(undefined, `importMarkdownIntoProject: Creating child "${text}" under parent`);
             node = parentInfo.items.addNode("import");
             node.updateText(text);
         }
 
-        console.log(`importMarkdownIntoProject: Created node "${node.text}" with ${node.items?.length || 0} children`);
+        logger.debug(undefined, `importMarkdownIntoProject: Created node "${node.text}" with ${node.items?.length || 0} children`);
 
         // Add stack info for the next item
         stack.push({
@@ -141,11 +144,11 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         });
     }
 
-    console.log(`importMarkdownIntoProject: Import completed. Project has ${project.items.length} root items`);
+    logger.debug(undefined, `importMarkdownIntoProject: Import completed. Project has ${project.items.length} root items`);
     if (project.items.length > 0) {
         const firstItem = project.items.at(0);
         if (firstItem) {
-            console.log(
+            logger.debug(undefined,
                 `importMarkdownIntoProject: First item "${firstItem.text}" has ${
                     firstItem.items?.length || 0
                 } children`,
