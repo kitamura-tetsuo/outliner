@@ -93,7 +93,7 @@ class AliasPickerStore {
     confirm(targetPath: string) {
         // Avoid duplicate processing if already hidden or already confirming
         if (!this.isVisible || this.isConfirming) {
-            console.warn("AliasPickerStore confirm ignored (hidden or already confirming)");
+            logger.warn("AliasPickerStore confirm ignored (hidden or already confirming)");
             return;
         }
         this.isConfirming = true;
@@ -102,7 +102,7 @@ class AliasPickerStore {
 
         // Input validation
         if (!this.itemId) {
-            console.warn("AliasPickerStore: No itemId provided");
+            logger.warn("AliasPickerStore: No itemId provided");
             this.hide();
             return;
         }
@@ -116,14 +116,14 @@ class AliasPickerStore {
         const option = this.options.find(o => o.path === targetPath);
 
         if (!option) {
-            console.warn("AliasPickerStore: No option found for path:", targetPath);
+            logger.warn("AliasPickerStore: No option found for path:", targetPath);
             this.hide();
             return;
         }
 
         // Self-reference check
         if (option.id === this.itemId) {
-            console.warn("AliasPickerStore: Cannot create alias to self");
+            logger.warn("AliasPickerStore: Cannot create alias to self");
             this.hide();
             return;
         }
@@ -174,7 +174,7 @@ class AliasPickerStore {
     confirmById(id: string) {
         // Self-reference is rejected immediately
         if (!id || id === this.itemId) {
-            console.warn("AliasPickerStore.confirmById: invalid id or self", { id, itemId: this.itemId });
+            logger.warn("AliasPickerStore.confirmById: invalid id or self", { id, itemId: this.itemId });
             // If self-reference, do nothing and close (assuming self button does not exist in tests, but as a precaution)
             this.hide();
             return;
@@ -190,7 +190,7 @@ class AliasPickerStore {
                 const eos = w?.editorOverlayStore;
                 const activeId: string | null = eos?.getActiveItem?.() ?? null;
                 if (activeId) {
-                    console.log("AliasPickerStore.confirmById: patched missing itemId from activeId:", activeId);
+                    logger.debug("AliasPickerStore.confirmById: patched missing itemId from activeId:", activeId);
                     this.itemId = activeId;
                 } else {
                     const items = (generalStore.currentPage as unknown as {
@@ -230,17 +230,17 @@ class AliasPickerStore {
                         ymap.set("aliasTargetId", id);
                     }
                 } catch (e) {
-                    console.warn("AliasPickerStore.confirmById: failed to set via Y.Map", e);
+                    logger.warn("AliasPickerStore.confirmById: failed to set via Y.Map", e);
                 }
 
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = id;
                 this.lastConfirmedAt = Date.now();
             } else {
-                console.warn("AliasPickerStore.confirmById: target item not found for", this.itemId);
+                logger.warn("AliasPickerStore.confirmById: target item not found for", this.itemId);
             }
         } catch (e) {
-            console.warn("AliasPickerStore.confirmById: error while setting alias by id", e);
+            logger.warn("AliasPickerStore.confirmById: error while setting alias by id", e);
         }
         this.hide();
     }
@@ -264,7 +264,7 @@ class AliasPickerStore {
                     }
                 }
             } catch (e) {
-                console.warn("AliasPickerStore.collectOptions model traversal failed", e);
+                logger.warn("AliasPickerStore.collectOptions model traversal failed", e);
             }
         }
 
@@ -277,13 +277,13 @@ class AliasPickerStore {
     private traverse(node: Item, path: string[], out: Option[], visited = new Set<string>(), depth = 0) {
         // Input validation
         if (!node || !node.id) {
-            console.warn("AliasPickerStore traverse: Invalid node", node);
+            logger.warn("AliasPickerStore traverse: Invalid node", node);
             return;
         }
 
         // Infinite loop protection
         if (depth > 100 || visited.has(node.id)) {
-            console.warn(
+            logger.warn(
                 `AliasPickerStore traverse: Skipping node ${node.id} (depth: ${depth}, visited: ${
                     visited.has(node.id)
                 })`,
@@ -307,7 +307,7 @@ class AliasPickerStore {
                 }
             }
         } catch (e) {
-            console.warn("AliasPickerStore.traverse: children iteration error", e);
+            logger.warn("AliasPickerStore.traverse: children iteration error", e);
         }
 
         visited.delete(node.id); // Remove during backtracking

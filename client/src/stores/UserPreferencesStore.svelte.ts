@@ -1,3 +1,5 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("Store");
 export interface UserPreferences {
     theme: "light" | "dark";
 }
@@ -16,7 +18,7 @@ function loadPreferencesFromStorage(): UserPreferences {
             return { theme: parsed.theme === "dark" ? "dark" : "light" };
         }
     } catch (error) {
-        console.warn("Failed to load user preferences from localStorage:", error);
+        logger.warn("Failed to load user preferences from localStorage:", error);
     }
 
     return { theme: "light" };
@@ -30,7 +32,7 @@ function savePreferencesToStorage(preferences: UserPreferences) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
     } catch (error) {
-        console.warn("Failed to save user preferences to localStorage:", error);
+        logger.warn("Failed to save user preferences to localStorage:", error);
     }
 }
 
