@@ -199,9 +199,9 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`EditorOverlayStore.addCursor called with:`, omitProps);
-            console.log(`Current cursors:`, this.cursors);
-            console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
+            logger.debug(`EditorOverlayStore.addCursor called with:`, omitProps);
+            logger.debug(`Current cursors:`, this.cursors);
+            logger.debug(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
         // Generate new cursor ID
@@ -228,7 +228,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.log(
+                logger.debug(
                     `Cursor already exists at this position, returning existing ID: ${existingCursor.cursorId}`,
                 );
             }
@@ -271,7 +271,7 @@ export class EditorOverlayStore {
                                 editorOverlayStore?: unknown;
                             }).DEBUG_MODE
                         ) {
-                            console.log(
+                            logger.debug(
                                 `Focus set after finding existing cursor. Active element is textarea: ${
                                     document.activeElement === textarea
                                 }`,
@@ -348,7 +348,7 @@ export class EditorOverlayStore {
                             editorOverlayStore?: unknown;
                         }).DEBUG_MODE
                     ) {
-                        console.log(
+                        logger.debug(
                             `Focus set after adding new cursor. Active element is textarea: ${
                                 document.activeElement === textarea
                             }`,
@@ -390,9 +390,9 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`New cursor added with ID: ${newId}`);
-            console.log(`Updated cursors:`, this.cursors);
-            console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
+            logger.debug(`New cursor added with ID: ${newId}`);
+            logger.debug(`Updated cursors:`, this.cursors);
+            logger.debug(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
         this.cursorHistory = [...this.cursorHistory, newId];
@@ -479,7 +479,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`setBoxSelection called with:`, {
+            logger.debug(`setBoxSelection called with:`, {
                 startItemId,
                 startOffset,
                 endItemId,
@@ -539,8 +539,8 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Box selection set with key: ${key}`);
-            console.log(`Current selections:`, this.selections);
+            logger.debug(`Box selection set with key: ${key}`);
+            logger.debug(`Current selections:`, this.selections);
         }
 
         // Set isUpdating to false after 300ms
@@ -569,7 +569,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.log(`Box selection isUpdating set to false for key: ${key}`);
+                    logger.debug(`Box selection isUpdating set to false for key: ${key}`);
                 }
             }
         }, 300);
@@ -606,8 +606,8 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`clearSelectionForUser called with userId=${userId}`);
-            console.log(`Current selections before clearing:`, this.selections);
+            logger.debug(`clearSelectionForUser called with userId=${userId}`);
+            logger.debug(`Current selections before clearing:`, this.selections);
         }
 
         // Remove selection ranges for the specified user (both normal and box selections)
@@ -634,7 +634,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Selections after clearing:`, this.selections);
+            logger.debug(`Selections after clearing:`, this.selections);
 
             // Check if selection ranges were correctly cleared
             const remainingSelections = [];
@@ -647,7 +647,7 @@ export class EditorOverlayStore {
             if (remainingSelections.length > 0) {
                 console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
             } else {
-                console.log(`All selections for userId=${userId} were successfully cleared`);
+                logger.debug(`All selections for userId=${userId} were successfully cleared`);
             }
         }
 
@@ -720,10 +720,10 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(
+            logger.debug(
                 `clearCursorAndSelection called with userId=${userId}, clearSelections=${clearSelections}, preserveAltClick=${preserveAltClick}`,
             );
-            console.log(`Current cursors before clearing:`, this.cursors);
+            logger.debug(`Current cursors before clearing:`, this.cursors);
         }
 
         // When preserving cursors added with Alt+Click
@@ -758,7 +758,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.log(
+                logger.debug(
                     `Cursors to remove: ${cursorIdsToRemove.length}, Cursors to keep: ${cursorIdsToKeep.length}`,
                 );
             }
@@ -844,7 +844,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Cursors after clearing:`, this.cursors);
+            logger.debug(`Cursors after clearing:`, this.cursors);
         }
 
         if ((userId ?? "local") === "local") {
@@ -908,15 +908,15 @@ export class EditorOverlayStore {
         ) {
             const cursorInstances = this.getCursorInstances();
             const cursors = Object.values(this.cursors);
-            console.log(`=== Cursor State Debug Info ===`);
-            console.log(`Current cursor instances: ${cursorInstances.length}`);
-            console.log(`Current cursors in store: ${cursors.length}`);
-            console.log(`Active item ID: ${this.getActiveItem()}`);
-            console.log(`Textarea reference exists: ${!!this.textareaRef}`);
+            logger.debug(`=== Cursor State Debug Info ===`);
+            logger.debug(`Current cursor instances: ${cursorInstances.length}`);
+            logger.debug(`Current cursors in store: ${cursors.length}`);
+            logger.debug(`Active item ID: ${this.getActiveItem()}`);
+            logger.debug(`Textarea reference exists: ${!!this.textareaRef}`);
             if (this.textareaRef) {
-                console.log(`Textarea has focus: ${document.activeElement === this.textareaRef}`);
+                logger.debug(`Textarea has focus: ${document.activeElement === this.textareaRef}`);
             }
-            console.log(
+            logger.debug(
                 `Cursor instances:`,
                 Array.from(this.cursorInstances.entries()).map(([id, cursor]) => ({
                     id,
@@ -926,8 +926,8 @@ export class EditorOverlayStore {
                     userId: cursor.userId,
                 })),
             );
-            console.log(`Cursors:`, cursors);
-            console.log(`=== End Debug Info ===`);
+            logger.debug(`Cursors:`, cursors);
+            logger.debug(`=== End Debug Info ===`);
         }
     }
 
@@ -962,8 +962,8 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`setCursor called for userId=${userId}, itemId=${itemId}, offset=${cursorProps.offset}`);
-            console.log(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
+            logger.debug(`setCursor called for userId=${userId}, itemId=${itemId}, offset=${cursorProps.offset}`);
+            logger.debug(`Current cursor instances:`, Array.from(this.cursorInstances.keys()));
         }
 
         // Clear all existing active cursors for the same user (unless multi-cursor)
@@ -1005,7 +1005,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.log(`Removed ${cursorIdsToRemove.length} existing cursors:`, cursorIdsToRemove);
+                logger.debug(`Removed ${cursorIdsToRemove.length} existing cursors:`, cursorIdsToRemove);
             }
 
             // Notify change after removing cursors to ensure UI updates
@@ -1065,9 +1065,9 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Created new cursor with ID=${id}`);
-            console.log(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
-            console.log(`Updated cursor history:`, this.cursorHistory);
+            logger.debug(`Created new cursor with ID=${id}`);
+            logger.debug(`Updated cursor instances:`, Array.from(this.cursorInstances.keys()));
+            logger.debug(`Updated cursor history:`, this.cursorHistory);
         }
         this.notifyChange();
 
@@ -1472,7 +1472,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`getTextFromSelection called with:`, sel);
+            logger.debug(`getTextFromSelection called with:`, sel);
         }
 
         try {
@@ -1534,7 +1534,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`getTextFromBoxSelection called with:`, sel);
+            logger.debug(`getTextFromBoxSelection called with:`, sel);
         }
 
         // Get text for each line
@@ -1557,7 +1557,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.log(`Text element not found for item ${range.itemId}`);
+                    logger.debug(`Text element not found for item ${range.itemId}`);
                 }
                 lines.push(""); // Add empty line
                 continue;
@@ -1581,7 +1581,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.log(`Empty selection for item ${range.itemId}`);
+                    logger.debug(`Empty selection for item ${range.itemId}`);
                 }
                 lines.push(""); // Add empty line
                 continue;
@@ -1601,7 +1601,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.log(
+                    logger.debug(
                         `Invalid offsets for item ${range.itemId}: startOffset=${startOffset}, endOffset=${endOffset}, text.length=${text.length}`,
                     );
                 }
@@ -1643,7 +1643,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Start index: ${sIdx}, End index: ${eIdx}`);
+            logger.debug(`Start index: ${sIdx}, End index: ${eIdx}`);
         }
 
         // Return empty string if index not found
@@ -1660,7 +1660,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                console.log(`Invalid indices, skipping selection`);
+                logger.debug(`Invalid indices, skipping selection`);
             }
             return "";
         }
@@ -1681,7 +1681,7 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`First index: ${firstIdx}, Last index: ${lastIdx}, isReversed: ${sel.isReversed || false}`);
+            logger.debug(`First index: ${firstIdx}, Last index: ${lastIdx}, isReversed: ${sel.isReversed || false}`);
         }
 
         // Get all items within the selection range
@@ -1699,8 +1699,8 @@ export class EditorOverlayStore {
                 editorOverlayStore?: unknown;
             }).DEBUG_MODE
         ) {
-            console.log(`Items in range: ${itemsInRange.length}`);
-            console.log(`Items in range:`, itemsInRange.map(item => item.getAttribute("data-item-id")));
+            logger.debug(`Items in range: ${itemsInRange.length}`);
+            logger.debug(`Items in range:`, itemsInRange.map(item => item.getAttribute("data-item-id")));
         }
 
         let result = "";
@@ -1724,7 +1724,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    console.log(`Text element not found for item ${itemId}`);
+                    logger.debug(`Text element not found for item ${itemId}`);
                 }
                 continue;
             }
@@ -1853,7 +1853,7 @@ export class EditorOverlayStore {
         try {
             const client = yjsStore.yjsClient as unknown as { [key: string]: unknown; };
             if (!client) {
-                console.log("[pushPresenceState] No client");
+                logger.debug("[pushPresenceState] No client");
                 return;
             }
 
@@ -1869,7 +1869,7 @@ export class EditorOverlayStore {
             }).appStore?.currentPage;
             const pageId = currentPage?.id;
             if (!pageId) {
-                console.log("[pushPresenceState] No pageId", { currentPage });
+                logger.debug("[pushPresenceState] No pageId", { currentPage });
                 return;
             }
 
@@ -1877,13 +1877,13 @@ export class EditorOverlayStore {
                 pageId,
             );
             if (!pageAwareness) {
-                console.log("[pushPresenceState] No pageAwareness", {
+                logger.debug("[pushPresenceState] No pageAwareness", {
                     pageId,
                     hasGetPageAwareness: !!(client as { getPageAwareness?: (p: string) => unknown; }).getPageAwareness,
                 });
                 return;
             }
-            console.log("[pushPresenceState] Got pageAwareness", { pageId });
+            logger.debug("[pushPresenceState] Got pageAwareness", { pageId });
 
             const cursor = this.getLocalPrimaryCursor();
             const selection = this.getLocalPrimarySelection();

@@ -1,3 +1,5 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("store");
 import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
@@ -311,7 +313,7 @@ if (typeof window !== "undefined") {
             const parts = window.location.pathname.split("/").filter(Boolean);
             const title = decodeURIComponent(parts[0] || "Untitled Project");
             (store as { project: Project; }).project = Project.createInstance(title);
-            console.log("INIT: Provisional Project set in store.svelte.ts", { title });
+            logger.debug("INIT: Provisional Project set in store.svelte.ts", { title });
         }
     } catch {
         // Ignore errors during initial project setup
