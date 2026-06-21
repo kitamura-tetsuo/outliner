@@ -1,6 +1,8 @@
 <script lang="ts">
 // Disable SSR (Clipboard API only works in browser environment)
 import { onMount } from "svelte";
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("ClipboardTest");
 
 // State management
 let clipboardText = $state("");
@@ -14,7 +16,7 @@ let logs = $state<string[]>([]);
 
 // Log function
 function log(message: string) {
-    console.log(message);
+    logger.debug(message);
     logs = [...logs, `${new Date().toLocaleTimeString()}: ${message}`];
 }
 

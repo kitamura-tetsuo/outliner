@@ -52,7 +52,7 @@ async function initializeFluidClient() {
     try {
         // Use a fixed UUID for the debug page to avoid creating new projects on every reload
         const projectId = "00000000-0000-0000-0000-000000000000";
-        console.log(`[debug] Registering debug project: ${projectId}`);
+        logger.debug(`[debug] Registering debug project: ${projectId}`);
         const saved = await saveFirestoreContainerIdToServer(projectId);
         if (!saved) {
             logger.error("[debug] Failed to register debug project");
@@ -60,7 +60,7 @@ async function initializeFluidClient() {
             return;
         }
 
-        console.log(`[debug] Connecting to debug project: ${projectId}`);
+        logger.debug(`[debug] Connecting to debug project: ${projectId}`);
         await createYjsClient(projectId);
         updateConnectionStatus();
     }

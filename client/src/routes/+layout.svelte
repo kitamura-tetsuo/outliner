@@ -234,7 +234,7 @@ onMount(async () => {
                     window.__E2E_DROP_PATCHED__ = true;
 
                     const wrap = function(this: unknown, orig: (...args: unknown[]) => unknown, event: Event): boolean {
-                        try { console.log('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
+                        try { logger.debug('[E2E] dispatchEvent:', event?.type, 'instanceof DragEvent=', event instanceof DragEvent); } catch {}
                         try { if (event && event.type === 'drop') { window.__E2E_ATTEMPTED_DROP__ = true; } } catch {}
                         try {
                             if (event && event.type === 'drop' && !(event instanceof DragEvent)) {
@@ -265,13 +265,13 @@ onMount(async () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     Element.prototype.dispatchEvent = function(event: any): boolean { return wrap.call(this, origDispatchElement as any, event); };
 
-                    console.log('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
+                    logger.debug('[E2E] Patched EventTarget.prototype.dispatchEvent and Element.prototype.dispatchEvent for drop events');
                     try {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         window.addEventListener('drop', (e: any) => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            try { console.log('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!(e as any)?.dataTransfer, dtTypes: (e as any)?.dataTransfer?.types }); } catch {}
+                            try { logger.debug('[E2E] window drop listener:', { type: e?.type, isDragEvent: e instanceof DragEvent, hasDT: !!(e as any)?.dataTransfer, dtTypes: (e as any)?.dataTransfer?.types }); } catch {}
                         }, true);
                     } catch {}
 
@@ -288,7 +288,7 @@ onMount(async () => {
                                 try {
                                     if (data instanceof File) {
                                         anyWin.__E2E_LAST_FILES__?.push(data);
-                                        try { console.log('[E2E] DataTransfer.items.add(File): recorded', { name: data.name, type: data.type, size: data.size }); } catch {}
+                                        try { logger.debug('[E2E] DataTransfer.items.add(File): recorded', { name: data.name, type: data.type, size: data.size }); } catch {}
                                     }
                                 } catch {}
                                 return origAdd ? origAdd.call(this, data, type) : undefined;
@@ -318,7 +318,7 @@ onMount(async () => {
                                                 } as (...args: unknown[]) => void;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 (list as any as { __e2eAddPatched: boolean }).__e2eAddPatched = true;
-                                                try { console.log('[E2E] Patched DT.items.add via getter'); } catch {}
+                                                try { logger.debug('[E2E] Patched DT.items.add via getter'); } catch {}
                                             }
                                         } catch {}
                                         return list;
@@ -338,7 +338,7 @@ onMount(async () => {
                                     construct(target: any, args: unknown[]) {
                                         const f = new target(...args);
                                         try { anyWin.__E2E_LAST_FILES__?.push(f); } catch {}
-                                        try { console.log('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
+                                        try { logger.debug('[E2E] File constructed:', { name: f.name, type: f.type, size: f.size }); } catch {}
                                         return f;
                                     }
                                 });
@@ -366,7 +366,7 @@ onMount(async () => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                 list.add = function(this: any, data: unknown, _type?: string) {
                                                     try { if (data instanceof File) anyWin.__E2E_LAST_FILES__?.push(data); } catch {}
-                                                    try { console.log('[E2E] DT(instance).items.add called'); } catch {}
+                                                    try { logger.debug('[E2E] DT(instance).items.add called'); } catch {}
                                                     return origAdd.apply(this, [data, _type]);
                                                 } as (...args: unknown[]) => void;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -388,13 +388,13 @@ onMount(async () => {
         // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
         try {
             window.addEventListener('drop', (ev: Event) => {
-                try { console.log('[GlobalDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
+                try { logger.debug('[GlobalDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
             }, { capture: true });
             document.addEventListener('drop', (ev: Event) => {
-                try { console.log('[DocDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
+                try { logger.debug('[DocDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
             }, { capture: true });
             window.addEventListener('dragover', (ev: Event) => {
-                try { console.log('[GlobalDrop] dragover received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
+                try { logger.debug('[GlobalDrop] dragover received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
             }, { capture: true });
         } catch {}
 

@@ -1,6 +1,8 @@
 <script lang="ts">
 import { onMount } from "svelte";
 import { store } from "../../../stores/store.svelte";
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("Layout");
 
 // currentPage configuration has been consolidated into +page.svelte.
 // This layout does not have that responsibility and only renders child content.
@@ -19,11 +21,11 @@ onMount(async () => {
         const isChildRoute = path.includes("/schedule") || path.includes("/graph");
 
         if (isChildRoute && (!store.project?.items?.length || store.project?.items?.length === 0)) {
-            console.log("[+layout.svelte] Child route detected with empty project, checking loadProjectAndPage availability");
+            logger.debug("[+layout.svelte] Child route detected with empty project, checking loadProjectAndPage availability");
 
             // If loadProjectAndPage is available, trigger it
             if (win.loadProjectAndPage) {
-                console.log("[+layout.svelte] Triggering loadProjectAndPage for child route");
+                logger.debug("[+layout.svelte] Triggering loadProjectAndPage for child route");
                 const loadInProgressKey = "__loadingInProgress";
                 if (!win[loadInProgressKey]) {
                     win[loadInProgressKey] = true;
@@ -34,7 +36,7 @@ onMount(async () => {
                     }
                 }
             } else {
-                console.log("[+layout.svelte] loadProjectAndPage not available yet, project might be provisional");
+                logger.debug("[+layout.svelte] loadProjectAndPage not available yet, project might be provisional");
             }
         }
     }

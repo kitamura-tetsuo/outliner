@@ -263,7 +263,7 @@
         try {
             // DIRECT DEBUG: This should appear if onMount is called
             if (typeof console !== "undefined") {
-                console.log("[DEBUG] onMount called");
+                logger.debug("[DEBUG] onMount called");
             }
             // Attempt initial load
             scheduleLoadIfNeeded();
@@ -315,7 +315,7 @@
             if (id) {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
                 window.sessionStorage?.setItem(key, String(id));
-                console.log(
+                logger.debug(
                     "[+page.svelte] capturePageIdForSchedule saved:",
                     key,
                     id,

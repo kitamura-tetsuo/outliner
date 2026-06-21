@@ -18,7 +18,7 @@ onMount(() => {
             project = decodeURIComponent(params.project || "");
             pageTitle = decodeURIComponent(params.page || "");
             content = getCurrentContent(project, pageTitle);
-            console.log("Diff page initialized:", { project, pageTitle, content });
+            logger.debug("Diff page initialized:", { project, pageTitle, content });
         }
         else {
             logger.error("Page params not available");
