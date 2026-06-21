@@ -225,19 +225,19 @@ onMount(() => {
                 // Use fallback if Canvas context is not available
                 measureCtx = measureCanvas.getContext('2d');
                 if (!measureCtx) {
-                    console.warn('Canvas 2D context not available, using fallback text measurement');
+                    logger.warn('Canvas 2D context not available, using fallback text measurement');
                 }
             } catch (error) {
                 // Canvas API might not be available in test environments or specific browsers
-                console.warn('Canvas API not available, using fallback text measurement:', error);
+                logger.warn('Canvas API not available, using fallback text measurement:', error);
                 measureCtx = null;
             }
         } else {
-            console.warn('Canvas API not available in jsdom environment, using fallback text measurement');
+            logger.warn('Canvas API not available in jsdom environment, using fallback text measurement');
             measureCtx = null;
         }
     } else {
-        console.warn('Canvas API not available in this environment, using fallback text measurement');
+        logger.warn('Canvas API not available in this environment, using fallback text measurement');
         measureCtx = null;
     }
 
