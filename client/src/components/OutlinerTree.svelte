@@ -36,10 +36,8 @@
     let currentUser = $state("anonymous");
     // Remount key to eliminate any possibility of Y.Doc switching within a mounted instance
     const outlinerKey = $derived.by(() => {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ydocGuid = (pageItem as any as import("../schema/app-schema").Item)?.ydoc?.guid as string | undefined;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const id = (pageItem as any as import("../schema/app-schema").Item)?.id as string | undefined;
+        const ydocGuid = pageItem?.ydoc?.guid as string | undefined;
+        const id = pageItem?.id as string | undefined;
         return ydocGuid ?? id ?? `${projectName}:${pageName}`;
     });
 
@@ -128,8 +126,7 @@
     let __displayItemsTick = $state(0);
     onMount(() => {
         try {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const ymap = (pageItem as any as import("../schema/app-schema").Item)?.ydoc?.getMap?.("orderedTree");
+            const ymap = pageItem?.ydoc?.getMap?.("orderedTree");
             if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
                 const handler = (events: unknown[]) => {
                     try {
@@ -215,11 +212,9 @@
     });
 
     function handleAddItem() {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (pageItem && !isReadOnly && (pageItem as any as import("../schema/app-schema").Item).items) {
+        if (pageItem && !isReadOnly && pageItem.items) {
             // Add item to end
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (pageItem as any as import("../schema/app-schema").Item).items.addNode(currentUser);
+            pageItem.items.addNode(currentUser);
             // Trigger a re-render
             __displayItemsTick = Date.now();
         }
