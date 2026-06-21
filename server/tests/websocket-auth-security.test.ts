@@ -1,9 +1,9 @@
-import { serverLogger as logger } from "../src/utils/log-manager.js";
 import { expect } from "chai";
 import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import sinon from "sinon";
+import { serverLogger as logger } from "../src/utils/log-manager.js";
 import { clearTokenCache, verifyIdTokenCached } from "../src/websocket-auth.js";
 
 describe("websocket auth security (regression)", () => {
