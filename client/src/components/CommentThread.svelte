@@ -236,7 +236,7 @@ function add() {
                     value.set("comments", arr);
                 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                commentsObj = new Comments(item.tree.getNodeValueFromKey(item.key) as any, "comments");
                 logger.debug({}, '[CommentThread] initialized comments via tree/key fallback');
             }
         } catch (e) {
@@ -347,7 +347,7 @@ function remove(id: string) {
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                commentsObj = new Comments(item.tree.getNodeValueFromKey(item.key) as any, "comments");
                 logger.debug({}, '[CommentThread] ensured comments for remove via tree/key');
             }
         } catch (e) {
@@ -392,7 +392,7 @@ function saveEdit(id: string) {
                 let arr = value.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
                 if (!arr) { arr = new Y.Array<Y.Map<unknown>>(); value.set("comments", arr); }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                commentsObj = new Comments(arr as any);
+                commentsObj = new Comments(item.tree.getNodeValueFromKey(item.key) as any, "comments");
                 logger.debug({}, '[CommentThread] ensured comments for saveEdit via tree/key');
             }
         } catch (e) {

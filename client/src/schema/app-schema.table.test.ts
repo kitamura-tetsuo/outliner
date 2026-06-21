@@ -20,7 +20,9 @@ describe("Item SQL table persistence", () => {
         const item = new Item({ text: "grid" });
         item.defineTable("CREATE TABLE t (a TEXT, b TEXT)", ["a", "b"]);
 
+        item.initTableRows();
         item.tableRows.addRow({ a: "1", b: "x" });
+        item.initTableRows();
         item.tableRows.addRow({ a: "2" });
         expect(item.tableRows.length).toBe(2);
 
@@ -38,6 +40,7 @@ describe("Item SQL table persistence", () => {
     it("defineTable resets existing rows for the new schema", () => {
         const item = new Item({ text: "grid" });
         item.defineTable("CREATE TABLE t (a TEXT)", ["a"]);
+        item.initTableRows();
         item.tableRows.addRow({ a: "1" });
         expect(item.tableRows.length).toBe(1);
 

@@ -155,9 +155,9 @@ const logger = getLogger("OutlinerBase");
                             if (!arr) {
                                 const fallback = new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
                                 // Do not write to map in getter to avoid infinite loops in Observers
-                                return new Comments(fallback);
+                                return new Comments(fallback as any, "comments");
                             }
-                            return new Comments(arr as any);
+                            return new Comments(arr as any, "comments");
                         },
                     });
                 }
@@ -199,7 +199,7 @@ const logger = getLogger("OutlinerBase");
                         result = origAdd.call(this, author, text);
                     } else {
                         const wrapper = ensureCommentsArrayOn(this as any);
-                        const comments = wrapper ? new Comments(wrapper as any) : null;
+                        const comments = wrapper ? new Comments(wrapper as any, "comments") : null;
                         result = comments?.addComment?.(author, text);
                     }
                     broadcastCommentCount(this);
@@ -216,7 +216,7 @@ const logger = getLogger("OutlinerBase");
                         result = origDel.call(this, commentId);
                     } else {
                         const wrapper = ensureCommentsArrayOn(this as any);
-                        const comments = wrapper ? new Comments(wrapper as any) : null;
+                        const comments = wrapper ? new Comments(wrapper as any, "comments") : null;
                         comments?.deleteComment?.(commentId);
                         result = undefined;
                     }
@@ -256,11 +256,9 @@ const logger = getLogger("OutlinerBase");
                                                 const fallbackArr =
                                                     new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
                                                 // Do not write to map in getter to avoid infinite loops in Observers
-                                                return new Comments(
-                                                    fallbackArr,
-                                                );
+                                                return new Comments(fallbackArr as any, "comments");
                                             }
-                                            return new Comments(arr as any);
+                                            return new Comments(arr as any, "comments");
                                         },
                                     });
                                 }
@@ -285,7 +283,7 @@ const logger = getLogger("OutlinerBase");
                                         const wrapper =
                                             ensureCommentsArrayOn(this as any);
                                         const comments = wrapper
-                                            ? new Comments(wrapper as any)
+                                            ? new Comments(wrapper as any, "comments")
                                             : null;
                                         const res = comments?.addComment?.(
                                             author,
@@ -314,7 +312,7 @@ const logger = getLogger("OutlinerBase");
                                         const wrapper =
                                             ensureCommentsArrayOn(this as any);
                                         const comments = wrapper
-                                            ? new Comments(wrapper as any)
+                                            ? new Comments(wrapper as any, "comments")
                                             : null;
                                         comments?.deleteComment?.(commentId);
                                         broadcastCommentCount(this);

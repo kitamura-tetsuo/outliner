@@ -16,9 +16,24 @@ export type CommentValueType = string | number;
 
 // Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
-    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
-    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, private readonly itemId: string) {
-        this.yArray = yArray;
+    private readonly map: Y.Map<any>;
+    private readonly key: string;
+    private readonly itemId: string;
+    constructor(map: Y.Map<any>, key: string, itemId: string) {
+        this.map = map;
+        this.key = key;
+        this.itemId = itemId;
+    }
+    private get yArray(): Y.Array<Y.Map<CommentValueType>> | undefined {
+        return this.map.get(this.key) as Y.Array<Y.Map<CommentValueType>> | undefined;
+    }
+    private getOrCreateYArray(): Y.Array<Y.Map<CommentValueType>> {
+        let arr = this.yArray;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<CommentValueType>>();
+            this.map.set(this.key, arr);
+        }
+        return arr;
     }
 
     addComment(author: string, text: string) {
@@ -30,33 +45,33 @@ export class Comments {
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
-        this.yArray.push([c]);
+        this.getOrCreateYArray().push([c]);
 
         // Client side event dispatch for UI updates (badge count)
         if (typeof window !== "undefined") {
             window.dispatchEvent(
-                new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
+                new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: (this.yArray?.length ?? 0) } }),
             );
         }
         return { id: id };
     }
 
     deleteComment(commentId: string) {
-        const ids = this.yArray.toArray().map((m) => m.get("id"));
+        const ids = (this.yArray?.toArray() ?? []).map((m) => m.get("id"));
         const idx = ids.findIndex((id) => id === commentId);
 
         if (idx >= 0) {
-            this.yArray.delete(idx, 1);
+            this.yArray?.delete(idx, 1);
             if (typeof window !== "undefined") {
                 window.dispatchEvent(
-                    new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
+                    new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: (this.yArray?.length ?? 0) } }),
                 );
             }
         }
     }
 
     get length() {
-        return this.yArray.length;
+        return (this.yArray?.length ?? 0);
     }
 }
 
@@ -127,18 +142,17 @@ export class Item {
     }
 
     // Attachments: Ensure Y.Array<string> is returned
-    get attachments(): Y.Array<string> {
+    get attachments(): Y.Array<string> | undefined {
+        return this.value.get("attachments") as Y.Array<string> | undefined;
+    }
+
+    // Add attachment (ignore duplicates). Also fires CustomEvent for test synchronization
+    addAttachment(url: string) {
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
             this.value.set("attachments", arr);
         }
-        return arr;
-    }
-
-    // Add attachment (ignore duplicates). Also fires CustomEvent for test synchronization
-    addAttachment(url: string) {
-        const arr = this.attachments;
         const existing = arr.toArray();
         if (!existing.includes(url)) {
             arr.push([url]);
@@ -155,7 +169,8 @@ export class Item {
 
     // Remove attachment
     removeAttachment(url: string) {
-        const arr = this.attachments;
+        const arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) return;
         const existing = arr.toArray();
         const idx = existing.indexOf(url);
         if (idx >= 0) {
@@ -178,14 +193,8 @@ export class Item {
         // For E2E test dispatch, we need basic operations.
         // Assuming 'comments' is a Y.Array in the item's map
         // Fix: Explicitly cast to match Comments constructor expectation
-        const yarr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>>;
-        if (!yarr) {
-            // Initialize if missing (schema should ensure, but safety first)
-            const arr = new Y.Array<Y.Map<CommentValueType>>();
-            this.value.set("comments", arr);
-            return new Comments(arr, this.id);
-        }
-        return new Comments(yarr, this.id);
+        const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        return new Comments(this.value as Y.Map<any>, "comments", this.id);
     }
 
     addComment(author: string, text: string) {

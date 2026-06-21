@@ -39,6 +39,7 @@ function syncFromItem() {
 
 onMount(() => {
     // Touch tableRows so the backing Y.Array exists before we observe it.
+    item.initTableRows();
     const rowsArray = item.tableRows.toArray() as unknown as Observable;
     const valueMap = item.tree.getNodeValueFromKey(item.key) as unknown as Observable;
 
