@@ -138,10 +138,10 @@
                             events.forEach((e) => {
                                 logger.debug(
                                     " [Yjs Event]",
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    (e as any).path,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    (e as any).keysChanged,
+
+                                    (e as import("yjs").YEvent<import("yjs").AbstractType<unknown>>).path,
+
+                                    (e as unknown as { keysChanged: Set<string> }).keysChanged,
                                 );
                             });
                         }
@@ -298,10 +298,10 @@
             const idx = parent.indexOf(last.model.original);
             parent.addNode(currentUser, idx + 1);
         } else if (pageItem.items) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const idx = (pageItem.items as any as import("../schema/app-schema").Items).indexOf(last.model.original);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (pageItem.items as any as import("../schema/app-schema").Items).addNode(currentUser, idx + 1);
+
+            const idx = (pageItem.items as import("../schema/app-schema").Items).indexOf(last.model.original);
+
+            (pageItem.items as import("../schema/app-schema").Items).addNode(currentUser, idx + 1);
         }
     }
 
@@ -319,8 +319,8 @@
         const itemViewModel = viewModel.getViewModel(itemId);
         if (!itemViewModel) return;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = itemViewModel.original as any as { tree?: unknown; ydoc?: unknown; key?: string };
+
+        const item = itemViewModel.original as unknown as { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string };
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -339,8 +339,8 @@
             !tree ||
             !doc ||
             !key ||
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            typeof (tree as any).getNodeParentFromKey !== "function"
+
+            typeof tree.getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn({ itemId }, "Indent skipped: missing tree context");
@@ -348,14 +348,14 @@
             return;
         }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parentKey = (tree as any).getNodeParentFromKey(key);
+
+        const parentKey = tree.getNodeParentFromKey(key);
         if (!parentKey) return;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const siblingKeys: string[] = (tree as any).sortChildrenByOrder(
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (tree as any).getNodeChildrenFromKey(parentKey),
+
+        const siblingKeys: string[] = tree.sortChildrenByOrder(
+
+            tree.getNodeChildrenFromKey(parentKey),
             parentKey,
         );
 
@@ -380,10 +380,10 @@
 
         const run = () => {
             try {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tree as any).moveChildToParent(key, targetParentKey);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tree as any).setNodeOrderToEnd(key);
+
+                tree.moveChildToParent(key, targetParentKey);
+
+                tree.setNodeOrderToEnd(key);
             } catch (error) {
                 // The Y.Tree implementation throws when reordering with a stale parent reference.
                 // Swallow the error so mobile indent tests do not fail and log for follow-up.
@@ -395,10 +395,10 @@
             }
         };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (typeof (doc as any).transact === "function") {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (doc as any).transact(run, "mobile-indent");
+
+        if (typeof doc.transact === "function") {
+
+            doc.transact(run, "mobile-indent");
         } else {
             run();
         }
@@ -406,8 +406,8 @@
         try {
             logger.debug({ data: {
                     itemId,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    newParent: (tree as any).getNodeParentFromKey(key),
+
+                    newParent: tree.getNodeParentFromKey(key),
                 } }, "handleIndent new parent");
         } catch {}
 
@@ -425,8 +425,8 @@
         const itemViewModel = viewModel.getViewModel(itemId);
         if (!itemViewModel) return;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const item = itemViewModel.original as any as { tree?: unknown; ydoc?: unknown; key?: string };
+
+        const item = itemViewModel.original as unknown as { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string };
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -435,8 +435,8 @@
             !tree ||
             !doc ||
             !key ||
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            typeof (tree as any).getNodeParentFromKey !== "function"
+
+            typeof tree.getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn(
@@ -447,30 +447,30 @@
             return;
         }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parentKey = (tree as any).getNodeParentFromKey(key);
+
+        const parentKey = tree.getNodeParentFromKey(key);
         if (!parentKey || parentKey === "root") return;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const grandParentKey = (tree as any).getNodeParentFromKey(parentKey);
+
+        const grandParentKey = tree.getNodeParentFromKey(parentKey);
         if (!grandParentKey) return;
 
         const run = () => {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (tree as any).moveChildToParent(key, grandParentKey);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (typeof (tree as any).recomputeParentsAndChildren === "function") {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (tree as any).recomputeParentsAndChildren();
+
+            tree.moveChildToParent(key, grandParentKey);
+
+            if (typeof tree.recomputeParentsAndChildren === "function") {
+
+                tree.recomputeParentsAndChildren();
             }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (tree as any).setNodeAfter(key, parentKey);
+
+            tree.setNodeAfter(key, parentKey);
         };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (typeof (doc as any).transact === "function") {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (doc as any).transact(run, "mobile-unindent");
+
+        if (typeof doc.transact === "function") {
+
+            doc.transact(run, "mobile-unindent");
         } else {
             run();
         }
@@ -823,8 +823,8 @@
                 parent.addNode(currentUser, itemIndex + 1);
             } else {
                 // Add as root level item
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const items = pageItem.items as any as import("../schema/app-schema").Items;
+
+                const items = pageItem.items as import("../schema/app-schema").Items;
                 if (items) {
                     const itemIndex = items.indexOf(currentItem.model.original);
                     items.addNode(currentUser, itemIndex + 1);
@@ -903,8 +903,8 @@
             const newIndex = itemIndex + i;
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+
+                newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -942,8 +942,8 @@
         }
 
         // Consider selection direction
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const isReversed = (selection as any).isReversed || false;
+
+        const isReversed = (selection as unknown as { isReversed?: boolean }).isReversed || false;
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -993,8 +993,8 @@
             }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+
+                newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -1113,8 +1113,8 @@
 
                 let newItem = items.addNode(currentUser, newIndex);
                 if (!newItem) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    newItem = (items as any).at ? (items as any).at(newIndex) : (items as any)[newIndex];
+
+                    newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     if (i === lines.length - 1) {
@@ -1574,8 +1574,8 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
+
+                    newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     newItem.updateText(lines[i]);
@@ -1699,30 +1699,30 @@
         } catch {}
 
         try {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const tree = items.tree as any as any & { getNodeParentFromKey?: (k: string) => string };
+
+            const tree = items.tree;
             const doc = pageItem?.ydoc;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const sourceParent = (tree as any).getNodeParentFromKey?.(sourceKey);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const targetParent = (tree as any).getNodeParentFromKey?.(targetKey);
+
+            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
+
+            const targetParent = tree.getNodeParentFromKey?.(targetKey);
 
             const run = () => {
                 // Middle drop should nest under the target item.
                 if (position === "middle") {
                     if (sourceParent !== targetKey) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (tree as any).moveChildToParent(sourceKey, targetKey);
+
+                        tree.moveChildToParent(sourceKey, targetKey);
                     }
                     if (
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        typeof (tree as any).recomputeParentsAndChildren === "function"
+
+                        typeof tree.recomputeParentsAndChildren === "function"
                     ) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (tree as any).recomputeParentsAndChildren();
+
+                        tree.recomputeParentsAndChildren();
                     }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (tree as any).setNodeOrderToEnd(sourceKey);
+
+                    tree.setNodeOrderToEnd(sourceKey);
                     return;
                 }
 
@@ -1732,26 +1732,26 @@
                     targetParent &&
                     sourceParent !== targetParent
                 ) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (tree as any).moveChildToParent(sourceKey, targetParent);
+
+                    tree.moveChildToParent(sourceKey, targetParent);
                 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                if (typeof (tree as any).recomputeParentsAndChildren === "function") {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (tree as any).recomputeParentsAndChildren();
+
+                if (typeof tree.recomputeParentsAndChildren === "function") {
+
+                    tree.recomputeParentsAndChildren();
                 }
 
                 if (position === "top") {
                     tree.setNodeBefore(sourceKey, targetKey);
                 } else {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (tree as any).setNodeAfter(sourceKey, targetKey);
+
+                    tree.setNodeAfter(sourceKey, targetKey);
                 }
             };
 
             if (typeof doc?.transact === "function") {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (doc as any).transact(run, "item-drop-reorder");
+
+                doc.transact(run, "item-drop-reorder");
             } else {
                 run();
             }
@@ -1797,8 +1797,8 @@
             try {
                 targetItem.addAttachment(url);
             } catch {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                try { (targetItem as any as { attachments: [string][] }).attachments.push([url]); } catch {}
+
+                try { (targetItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
             }
         } else {
             // Create new item at top or bottom relative to targetItem
@@ -1809,8 +1809,8 @@
                     if (position === "top") {
                         parentItems.tree.setNodeBefore(newItem.key, targetItem.key);
                     } else {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (parentItems.tree as any).setNodeAfter(newItem.key, targetItem.key);
+
+                        parentItems.tree.setNodeAfter(newItem.key, targetItem.key);
                     }
                 } catch (e) {
                     logger.error({ error: e as Error }, "Failed to reorder dropped item");
@@ -1819,8 +1819,8 @@
                 try {
                     newItem.addAttachment(url);
                 } catch {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    try { (newItem as any as { attachments: [string][] }).attachments.push([url]); } catch {}
+
+                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                 }
             }
         }
@@ -1874,8 +1874,8 @@
             for (let i = 1; i < lines.length; i++) {
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
+
+                    newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     newItem.text = lines[i];
@@ -1888,8 +1888,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
+
+                const newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -1905,8 +1905,8 @@
             // Add remaining lines as new items
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const newItem = items.at ? items.at(targetIndex + i) : (items as any)[targetIndex + i];
+
+                const newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -2000,8 +2000,8 @@
                                 try {
                                     newItem.addAttachment(url);
                                 } catch {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    try { (newItem as any as { attachments: [string][] }).attachments.push([url]); } catch {}
+
+                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
@@ -2009,8 +2009,8 @@
                                 try {
                                     newItem.addAttachment(localUrl);
                                 } catch {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    try { (newItem as any as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
+
+                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
                                 }
                                 try {
                                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
@@ -2243,8 +2243,8 @@
             if (!activeItemId) return;
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const activeCursor = (editorOverlayStore as any).getCursorForItem?.(activeItemId);
+
+            const activeCursor = (editorOverlayStore as unknown as { getCursorForItem?: (id: string) => unknown }).getCursorForItem?.(activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {
