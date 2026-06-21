@@ -374,7 +374,7 @@ const logger = getLogger("SearchBox");
                       cls: (eCenter as HTMLElement).className,
                   }
                 : null;
-            console.info(logPrefix, "mount", {
+            logger.info(logPrefix, "mount", {
                 inputReady: !!inputEl,
                 inputRect: rect
                     ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height }
@@ -414,11 +414,11 @@ const logger = getLogger("SearchBox");
                 node = node.parentElement;
                 count++;
             }
-            console.info(logPrefix, "ancestor-styles", chain);
+            logger.info(logPrefix, "ancestor-styles", chain);
             const toolbar = document.querySelector(
                 '[data-testid="main-toolbar"]',
             ) as HTMLElement | null;
-            console.info(logPrefix, "main-toolbar styles", styles(toolbar));
+            logger.info(logPrefix, "main-toolbar styles", styles(toolbar));
         } catch {}
         // schedule a few ticks to help early reactivity with global generalStore
         for (let i = 0; i < 8; i++)
