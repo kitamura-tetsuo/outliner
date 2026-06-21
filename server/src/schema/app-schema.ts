@@ -278,9 +278,6 @@ export class Item {
         // 2) Add to this node itself as usual
         const arr = this.attachments; // ensure exists
         try {
-            console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
-        } catch {}
-        try {
             interface WindowWithLogs extends Window {
                 E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
             }
