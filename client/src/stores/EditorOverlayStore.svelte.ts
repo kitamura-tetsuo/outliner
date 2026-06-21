@@ -645,7 +645,7 @@ export class EditorOverlayStore {
             }
 
             if (remainingSelections.length > 0) {
-                console.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
+                logger.warn(`Warning: Some selections for userId=${userId} were not cleared:`, remainingSelections);
             } else {
                 logger.debug(`All selections for userId=${userId} were successfully cleared`);
             }

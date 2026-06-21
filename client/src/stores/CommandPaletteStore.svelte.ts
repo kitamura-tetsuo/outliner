@@ -1,3 +1,5 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("Store");
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
@@ -30,7 +32,7 @@ class CommandPaletteStore {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
         try {
-            console.log(
+            logger.debug(
                 '[Palette.visible] q="' + q + '" list=',
                 this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
             );
@@ -56,7 +58,7 @@ class CommandPaletteStore {
                 if (lastSlash >= 0) {
                     const seg = stream.slice(lastSlash + 1);
                     if (seg && seg.length <= 8) {
-                        console.log("[deriveQueryFromDoc] Using stream:", seg);
+                        logger.debug("[deriveQueryFromDoc] Using stream:", seg);
                         return seg; // Noise suppression
                     }
                 }
@@ -70,7 +72,7 @@ class CommandPaletteStore {
                 const lastSlash = before.lastIndexOf("/");
                 if (lastSlash >= 0) {
                     const result = before.slice(lastSlash + 1);
-                    console.log("[deriveQueryFromDoc] Using textarea:", result);
+                    logger.debug("[deriveQueryFromDoc] Using textarea:", result);
                     return result;
                 }
             }
@@ -86,7 +88,7 @@ class CommandPaletteStore {
                     if (lastSlash >= 0) {
                         const seg = ks.slice(lastSlash + 1);
                         if (seg && seg.length <= 8) {
-                            console.log("[deriveQueryFromDoc] Using keystream:", seg);
+                            logger.debug("[deriveQueryFromDoc] Using keystream:", seg);
                             return seg;
                         }
                     }
@@ -96,13 +98,13 @@ class CommandPaletteStore {
             // 4) Fallback from model side (node text)
             const cursors = editorOverlayStore.getCursorInstances();
             if (cursors.length === 0) {
-                console.log("[deriveQueryFromDoc] No cursors found");
+                logger.debug("[deriveQueryFromDoc] No cursors found");
                 return "";
             }
             const cursor = cursors[0];
             const node = cursor.findTarget();
             if (!node) {
-                console.log("[deriveQueryFromDoc] No node found");
+                logger.debug("[deriveQueryFromDoc] No node found");
                 return "";
             }
             const text = (node as unknown as { text?: unknown; }).text ?? "";
@@ -113,10 +115,10 @@ class CommandPaletteStore {
             );
             const src = typeof text === "string" ? text : (text?.toString?.() ?? "");
             const result = src.slice(s, e);
-            console.log("[deriveQueryFromDoc] Using node text:", result);
+            logger.debug("[deriveQueryFromDoc] Using node text:", result);
             return result;
         } catch (error) {
-            console.log("[deriveQueryFromDoc] Error:", error);
+            logger.debug("[deriveQueryFromDoc] Error:", error);
             return "";
         }
     }
@@ -124,15 +126,15 @@ class CommandPaletteStore {
     get filtered() {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
-        console.log("[CommandPaletteStore.filtered] q:", q);
+        logger.debug("[CommandPaletteStore.filtered] q:", q);
         // Special filtering for chart commands
         if (q === "ch") {
             const result = this.commands.filter(c => c.type === "chart");
-            console.log('[CommandPaletteStore.filtered] Special filtering for "ch", result:', result.map(c => c.label));
+            logger.debug('[CommandPaletteStore.filtered] Special filtering for "ch", result:', result.map(c => c.label));
             return result;
         }
         const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
-        console.log("[CommandPaletteStore.filtered] Normal filtering, result:", result.map(c => c.label));
+        logger.debug("[CommandPaletteStore.filtered] Normal filtering, result:", result.map(c => c.label));
         return result;
     }
 
@@ -160,19 +162,19 @@ class CommandPaletteStore {
     }
 
     updateQuery(q: string) {
-        console.log("[CommandPaletteStore] updateQuery:", q);
+        logger.debug("[CommandPaletteStore] updateQuery:", q);
         this.query = q;
         this.selectedIndex = 0;
     }
 
     // Lightweight input that updates only the query without rewriting the model
     inputLight(ch: string) {
-        console.log("[CommandPaletteStore] inputLight:", ch);
+        logger.debug("[CommandPaletteStore] inputLight:", ch);
         this.query = (this.query || "") + ch;
         this.selectedIndex = 0;
     }
     backspaceLight() {
-        console.log("[CommandPaletteStore] backspaceLight, current query:", this.query);
+        logger.debug("[CommandPaletteStore] backspaceLight, current query:", this.query);
         if (!this.query) return;
         this.query = this.query.slice(0, -1);
         this.selectedIndex = 0;
@@ -213,7 +215,7 @@ class CommandPaletteStore {
         this.query = newCommandText;
         this.selectedIndex = 0;
         try {
-            console.log(
+            logger.debug(
                 "CommandPaletteStore.handleCommandInput: query=",
                 this.query,
                 "filtered=",
@@ -299,7 +301,7 @@ class CommandPaletteStore {
         const list = this.visible;
         const cmd = list[this.selectedIndex];
         try {
-            console.log(
+            logger.debug(
                 "[CommandPaletteStore.confirm] selectedIndex=",
                 this.selectedIndex,
                 "visible=",
@@ -308,12 +310,12 @@ class CommandPaletteStore {
         } catch {}
         if (cmd) {
             try {
-                console.log("[CommandPaletteStore.confirm] confirming type=", cmd.type);
+                logger.debug("[CommandPaletteStore.confirm] confirming type=", cmd.type);
             } catch {}
             this.insert(cmd.type);
         } else {
             try {
-                console.warn("[CommandPaletteStore.confirm] no command at selectedIndex");
+                logger.warn("[CommandPaletteStore.confirm] no command at selectedIndex");
             } catch {}
         }
         this.hide();
@@ -416,7 +418,7 @@ class CommandPaletteStore {
                 n.aliasTargetId = undefined;
             }
             try {
-                console.log("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
+                logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
             } catch {}
             if (n.id) aliasPickerStore.show(n.id);
         } else {
@@ -448,7 +450,7 @@ class CommandPaletteStore {
         }, 0);
 
         // Output component type to log for debugging
-        console.log("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
+        logger.debug("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
     }
 }
 

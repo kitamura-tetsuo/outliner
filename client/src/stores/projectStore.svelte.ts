@@ -1,3 +1,5 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("Store");
 import { getProjectTitleFromMetaDoc } from "../lib/metaDoc.svelte";
 import { getProjectTitle } from "../lib/projectTitleProvider";
 import { firestoreStore, type UserProject } from "./firestoreStore.svelte";
@@ -49,7 +51,7 @@ export function projectsFromUserProject(
                     name = id;
                 }
             } catch (error) {
-                console.warn(`Failed to get project title for ${id}:`, error);
+                logger.warn(`Failed to get project title for ${id}:`, error);
                 name = id;
             }
             // Use default name if name is empty in test environment
@@ -121,7 +123,7 @@ if (typeof originalSetUserProject === "function") {
         try {
             projectStore.syncFromFirestore();
         } catch (error) {
-            console.warn("projectStore.syncFromFirestore failed", error);
+            logger.warn("projectStore.syncFromFirestore failed", error);
         }
     };
     // Ensure the initial mirror uses the latest data when this module loads after setUserProject was patched
