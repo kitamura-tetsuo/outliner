@@ -24,8 +24,7 @@ describe("Yjs service basic operations", () => {
         expect(project.items.at(1)?.id).toBe(second.id);
 
         yjsService.indentItem(project, second.key);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const tree = project.tree as any as ParentReadableTree;
+        const tree = project.tree as unknown as ParentReadableTree;
         expect(tree.getNodeParentFromKey(second.key)).toBe(first.key);
 
         yjsService.outdentItem(project, second.key);
@@ -37,7 +36,7 @@ describe("Yjs service basic operations", () => {
 
         const awareness = new Awareness(new Y.Doc());
         yjsService.setPresence(awareness, { cursor: { itemId: second.key, offset: 1 } });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        expect((yjsService.getPresence(awareness) as any)?.cursor?.itemId).toBe(second.key);
+        expect((yjsService.getPresence(awareness) as { cursor?: { itemId?: string; }; } | undefined)?.cursor?.itemId)
+            .toBe(second.key);
     });
 });

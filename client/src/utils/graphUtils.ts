@@ -54,11 +54,11 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
     // Pre-calculate node names and their lowercase versions to avoid
     // repeated toLowerCase() calls in the nested loop.
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pageNodes = pages.map((p: any) => {
+    const pageNodes = pages.map((p: unknown) => {
         const name = getText(p);
+        const typedP = p as { id: string; };
         return {
-            id: p.id,
+            id: typedP.id,
             name: name,
             lowerName: name.toLowerCase(),
         };

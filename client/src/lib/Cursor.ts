@@ -368,13 +368,13 @@ export class Cursor implements CursorEditingContext {
             const currentTarget = this.findTarget();
             const parentCollection = currentTarget?.parent;
             // Get the parent Item by creating it from parentKey
-            let parentItemInstance: import("../schema/app-schema").Item | null = null;
+            let parentItemInstance: import("../schema/app-schema").Item | import("../schema/yjs-schema").Item | null =
+                null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
 
                 parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    new(...args: unknown[]): any;
+                    new(...args: unknown[]): import("../schema/yjs-schema").Item;
                 })(
                     currentTarget!.ydoc,
                     currentTarget!.tree,
@@ -1746,8 +1746,7 @@ export class Cursor implements CursorEditingContext {
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                     prevItem = new (currentTarget!.constructor as unknown as {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        new(...args: unknown[]): any;
+                        new(...args: unknown[]): import("../schema/yjs-schema").Item;
                     })(
                         currentTarget!.ydoc,
                         currentTarget!.tree,

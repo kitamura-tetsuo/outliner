@@ -114,8 +114,7 @@ export class CursorFormatting {
      * Apply Scrapbox syntax formatting to selection spanning multiple items
      */
     private applyScrapboxFormattingToMultipleItems(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        selection: any,
+        selection: import("../../stores/EditorOverlayStore.svelte").SelectionRange,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         // Get start and end item IDs

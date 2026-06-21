@@ -28,8 +28,7 @@ describe("YjsClient", () => {
 
     let provider: import("@hocuspocus/provider").HocuspocusProvider;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let project: any;
+    let project: Project;
 
     beforeEach(async () => {
         // Reset mocks
@@ -59,14 +58,12 @@ describe("YjsClient", () => {
             addPage: () => {},
             title: "Test Project",
             items: { length: 0 },
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any as Project;
+        } as unknown as Project;
 
         client = new YjsClient({
             clientId,
             projectId,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            project: project as any,
+            project: project,
             doc,
             provider,
             awareness: null,

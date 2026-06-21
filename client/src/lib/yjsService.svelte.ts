@@ -213,9 +213,9 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     yjsStore.yjsClient = client;
 
     if (typeof window !== "undefined") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        window.__CURRENT_PROJECT__ = project as any;
-        window.__CURRENT_PROJECT_TITLE__ = projectName;
+        const win = window as Window & typeof globalThis;
+        win.__CURRENT_PROJECT__ = project as unknown as import("../schema/app-schema").Project;
+        win.__CURRENT_PROJECT_TITLE__ = projectName;
     }
 
     return client;

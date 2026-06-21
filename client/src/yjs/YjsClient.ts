@@ -108,11 +108,13 @@ export class YjsClient {
             const p = this._provider;
             if (!p) return true; // treat offline as connected for local mode
             // HocuspocusProvider doesn't have .status directly, check websocketProvider
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return p.isSynced || (p as any as { status?: string; }).status === "connected"
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                || (p as any as { websocketProvider?: { status?: string; }; }).websocketProvider?.status
-                    === "connected";
+            const unknownP = p as unknown as {
+                isSynced?: boolean;
+                status?: string;
+                websocketProvider?: { status?: string; };
+            };
+            return unknownP.isSynced || unknownP.status === "connected"
+                || unknownP.websocketProvider?.status === "connected";
         } catch {
             return true;
         }
@@ -133,28 +135,27 @@ export class YjsClient {
             const arr: Record<string, unknown>[] = [];
             const len = (it as { length?: number; }).length ?? 0;
             for (let i = 0; i < len; i++) {
-                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                const item = (it as { at?: (i: number) => any; }).at
-                    ? (it as { at: (i: number) => unknown; }).at(i)
-                    /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                    : (it as Record<number, any>)[i];
-                if (!item) continue;
+                const typedIt = it as { at?: (i: number) => unknown; [key: number]: unknown; };
+                const rawItem = typedIt.at
+                    ? typedIt.at(i)
+                    : typedIt[i];
+                if (!rawItem) continue;
+                const item = rawItem as import("../schema/app-schema").Item;
                 const node: Record<string, unknown> = {
                     id: item.id,
                     text: item.text?.toString?.() ?? "",
-                    author: (item as { author?: string; }).author,
-                    votes: [...((item as { votes?: string[]; }).votes ?? [])],
-                    created: (item as { created?: number; }).created,
-                    lastChanged: (item as { lastChanged?: number; }).lastChanged,
+                    author: item.author,
+                    votes: [...(item.votes ?? [])],
+                    created: item.created,
+                    lastChanged: item.lastChanged,
                 };
-                const children = item.items as Items;
-                if (children && ((children as { length?: number; }).length ?? 0) > 0) {
+                const children = item.items as import("../schema/app-schema").Items;
+                if (children && children.length > 0) {
                     node.items = collect(children);
                 }
                 arr.push(node);
             }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            return arr as any;
+            return arr as unknown as Array<Record<string, unknown>>;
         };
         return collect(items);
     }
@@ -182,17 +183,14 @@ export class YjsClient {
     }
 
     public getDebugInfo() {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const provider = this._provider as any as {
+        const provider = this._provider as unknown as {
             disconnect?: () => void;
             url?: string;
             name?: string;
             connected?: boolean;
             configuration?: {
                 token: string | (() => string | Promise<string>);
-
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                websocketProvider?: any;
+                websocketProvider?: { url?: string; status?: string; };
                 url?: string;
                 name?: string;
             };
@@ -224,12 +222,10 @@ export class YjsClient {
 
     public dispose() {
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (this._provider as any as { destroy?: () => void; })?.destroy?.();
+            (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (this._doc as any as { destroy?: () => void; })?.destroy?.();
+            (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
         } catch {}
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
