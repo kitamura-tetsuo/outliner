@@ -2065,7 +2065,7 @@
                     onchange={handleFileSelect}
                     style="display: none;"
                 />
-                <a href={resolvePath(`/${projectName}/${pageName}/diff`)} style="text-decoration:none; appearance:button; padding:2px 6px; border:1px solid #ccc; background-color:#f0f0f0; border-radius:3px; color:inherit; font-size: 0.8rem; display:inline-flex; align-items:center; cursor:pointer;" class="button-style">History / Diff</a>
+                <a href={resolvePath(`/${projectName}/${pageName}/diff`)} class="button-style">History / Diff</a>
             </div>
         </div>
 
@@ -2331,7 +2331,12 @@
         gap: 8px;
     }
 
-    .actions button {
+    .actions button, .actions a.button-style {
+        text-decoration: none;
+        color: inherit;
+        display: inline-flex;
+        align-items: center;
+        box-sizing: border-box;
         background: #f0f0f0;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -2340,7 +2345,7 @@
         font-size: 14px;
     }
 
-    .actions button:hover {
+    .actions button:hover, .actions a.button-style:hover {
         background: #e8e8e8;
     }
 
