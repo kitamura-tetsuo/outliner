@@ -556,9 +556,7 @@ async function saveEdit() {
     }
 }
 
-async function back() {
-    await goto(resolvePath(`/${project}/${pageTitle}`));
-}
+
 
 async function downloadIcs() {
     if (!pageId) {
@@ -613,7 +611,7 @@ function toLocalISOString(timestamp: number): string {
         <label for="publish-time" class="mr-2">Publish Time:</label>
         <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
         <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
-        <button onclick={back} class="ml-2 px-2 py-1 bg-gray-300 rounded">Back</button>
+        <a href={resolvePath(`/${project}/${pageTitle}`)} class="ml-2 px-2 py-1 bg-gray-300 rounded inline-block" style="text-decoration:none; color:black">Back</a>
         <button
             onclick={downloadIcs}
             class="ml-2 px-2 py-1 bg-green-700 text-white rounded disabled:opacity-60"
