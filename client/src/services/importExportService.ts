@@ -1,5 +1,5 @@
-import { Items, Project } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
+import { Items, Project } from "../schema/app-schema";
 
 const logger = getLogger("importExportService");
 
@@ -104,7 +104,10 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         const indent = m[1].length;
         const text = m[2];
 
-        logger.debug(undefined, `importMarkdownIntoProject: Processing line "${line}" -> indent=${indent}, text="${text}"`);
+        logger.debug(
+            undefined,
+            `importMarkdownIntoProject: Processing line "${line}" -> indent=${indent}, text="${text}"`,
+        );
 
         // Pop stack to the appropriate level
         while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
@@ -112,7 +115,8 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         }
 
         const parentInfo = stack[stack.length - 1];
-        logger.debug(undefined,
+        logger.debug(
+            undefined,
             `importMarkdownIntoProject: Parent stack level: ${stack.length}, parent indent: ${parentInfo.indent}`,
         );
 
@@ -135,7 +139,10 @@ export function importMarkdownIntoProject(md: string, project: Project) {
             node.updateText(text);
         }
 
-        logger.debug(undefined, `importMarkdownIntoProject: Created node "${node.text}" with ${node.items?.length || 0} children`);
+        logger.debug(
+            undefined,
+            `importMarkdownIntoProject: Created node "${node.text}" with ${node.items?.length || 0} children`,
+        );
 
         // Add stack info for the next item
         stack.push({
@@ -144,11 +151,15 @@ export function importMarkdownIntoProject(md: string, project: Project) {
         });
     }
 
-    logger.debug(undefined, `importMarkdownIntoProject: Import completed. Project has ${project.items.length} root items`);
+    logger.debug(
+        undefined,
+        `importMarkdownIntoProject: Import completed. Project has ${project.items.length} root items`,
+    );
     if (project.items.length > 0) {
         const firstItem = project.items.at(0);
         if (firstItem) {
-            logger.debug(undefined,
+            logger.debug(
+                undefined,
                 `importMarkdownIntoProject: First item "${firstItem.text}" has ${
                     firstItem.items?.length || 0
                 } children`,
