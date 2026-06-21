@@ -31,7 +31,7 @@ onMount(async () => {
     const { connectProjectDoc } = await import("$lib/yjs/connection");
     await connectProjectDoc(doc, PROJECT_ID);
   } catch (e) {
-    console.warn("/yjs-outliner: connectProjectDoc failed (continuing offline)", e);
+    logger.warn("/yjs-outliner: connectProjectDoc failed (continuing offline)", e);
   }
 });
 </script>

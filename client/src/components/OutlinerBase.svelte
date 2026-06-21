@@ -62,7 +62,7 @@ const logger = getLogger("OutlinerBase");
                         effectivePageItem.preview = newPreview;
                     }
                 } catch (e) {
-                    console.warn("Failed to update page preview:", e);
+                    logger.warn("Failed to update page preview:", e);
                 }
             }, 1000);
         };

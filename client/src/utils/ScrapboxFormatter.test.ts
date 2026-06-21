@@ -2,6 +2,9 @@ import { beforeAll, describe, expect, it } from "vitest";
 /**
  * @vitest-environment jsdom
  */
+import { getLogger } from "../lib/logger";
+const logger = getLogger("ScrapboxFormatter.test");
+
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
 describe("ScrapboxFormatter", () => {
@@ -241,7 +244,7 @@ describe("ScrapboxFormatter", () => {
                 const input = "[[bold text with [internal-link]]]";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                console.log("Bold with internal link result:", result);
+                logger.debug("Bold with internal link result:", result);
 
                 expect(result).toContain("<strong>");
                 // Since the HTML structure becomes complex when there is an internal link inside bold text,
@@ -274,7 +277,7 @@ describe("ScrapboxFormatter", () => {
                 const input = "This is [[bold and [/ italic] combination]].";
                 const result = ScrapboxFormatter.formatToHtml(input);
 
-                console.log("Bold with italic result:", result);
+                logger.debug("Bold with italic result:", result);
 
                 // Verify that the combination of bold and italic is processed correctly
                 expect(result).toContain("<strong>");

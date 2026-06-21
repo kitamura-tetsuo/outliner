@@ -438,7 +438,7 @@ onMount(async () => {
                 }
             }
         } catch (e) {
-            console.warn("Schedule page: Error waiting for page items:", e);
+            logger.warn("Schedule page: Error waiting for page items:", e);
         }
     }
 

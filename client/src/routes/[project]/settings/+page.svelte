@@ -92,7 +92,7 @@
                     project = client.getProject() as unknown as Project;
                 }
             } catch (err) {
-                console.warn("SettingsPage: Failed to connect to Yjs", err);
+                logger.warn("SettingsPage: Failed to connect to Yjs", err);
             }
         }
 

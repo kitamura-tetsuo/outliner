@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("TestProjectSelector");
+
     import ProjectSelector from "../../components/ProjectSelector.svelte";
     import { firestoreStore } from "../../stores/firestoreStore.svelte";
     import { projectStore } from "../../stores/projectStore.svelte";
@@ -48,7 +51,7 @@
                 try {
                     await performTestLogin();
                 } catch (err) {
-                    console.error("Login failed:", err);
+                    logger.error("Login failed:", err);
                 }
             }}
             class="debug-button"
@@ -60,9 +63,9 @@
             onclick={() => {
                 try {
                     createTestUserData();
-                    console.log("Test data created successfully");
+                    logger.debug("Test data created successfully");
                 } catch (err) {
-                    console.error("Error creating test data:", err);
+                    logger.error("Error creating test data:", err);
                 }
             }}
             class="debug-button"

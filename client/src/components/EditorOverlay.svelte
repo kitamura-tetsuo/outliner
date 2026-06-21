@@ -141,7 +141,7 @@ function resolveTreeContainer(): HTMLElement | null {
     if (fallback instanceof HTMLElement) return fallback;
 
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-        console.warn('EditorOverlay: tree container element not found');
+        logger.warn('EditorOverlay: tree container element not found');
     }
     return null;
 }
@@ -225,19 +225,19 @@ onMount(() => {
                 // Use fallback if Canvas context is not available
                 measureCtx = measureCanvas.getContext('2d');
                 if (!measureCtx) {
-                    console.warn('Canvas 2D context not available, using fallback text measurement');
+                    logger.warn('Canvas 2D context not available, using fallback text measurement');
                 }
             } catch (error) {
                 // Canvas API might not be available in test environments or specific browsers
-                console.warn('Canvas API not available, using fallback text measurement:', error);
+                logger.warn('Canvas API not available, using fallback text measurement:', error);
                 measureCtx = null;
             }
         } else {
-            console.warn('Canvas API not available in jsdom environment, using fallback text measurement');
+            logger.warn('Canvas API not available in jsdom environment, using fallback text measurement');
             measureCtx = null;
         }
     } else {
-        console.warn('Canvas API not available in this environment, using fallback text measurement');
+        logger.warn('Canvas API not available in this environment, using fallback text measurement');
         measureCtx = null;
     }
 
@@ -278,7 +278,7 @@ onMount(() => {
             }, 16) as any as number; // Update at ~60fps interval
         });
     } catch (error) {
-        console.warn('Failed to subscribe to store changes:', error);
+        logger.warn('Failed to subscribe to store changes:', error);
     }
 
     // Initialization
@@ -305,7 +305,7 @@ onMount(() => {
             localCursorVisible = store.cursorVisible;
         }
     } catch (error) {
-        console.warn('Failed to update textarea position on init:', error);
+        logger.warn('Failed to update textarea position on init:', error);
     }
 
     // cleanup
@@ -313,7 +313,7 @@ onMount(() => {
         try {
             unsubscribe();
         } catch (error) {
-            console.warn('Error during unsubscribe:', error);
+            logger.warn('Error during unsubscribe:', error);
         }
         if (updateTimeout) {
             clearTimeout(updateTimeout);
@@ -1527,7 +1527,7 @@ function handlePaste(event: ClipboardEvent) {
                 }
                 return pos || { left: 0, top: 0 };
             } catch (e) {
-                console.warn('Error calculating cursor position:', e);
+                logger.warn('Error calculating cursor position:', e);
                 return { left: 0, top: 0 };
             }
         })()}

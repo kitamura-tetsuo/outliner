@@ -138,14 +138,14 @@ function updateConnectionStatus() {
 let statusInterval: ReturnType<typeof setInterval> | undefined;
 
 onMount(() => {
-    console.debug("[debug/+page] Component mounted");
+    logger.debug("[debug/+page] Component mounted");
 
     try {
         // Get host info - execute only in browser environment
         if (browser) {
             hostInfo = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
             portInfo = window.location.port || "7070/default";
-            console.info("Running on host:", hostInfo);
+            logger.info("Running on host:", hostInfo);
         }
 
         // Check UserManager authentication status
@@ -171,7 +171,7 @@ onMount(() => {
 });
 
 onDestroy(() => {
-    console.debug("[debug/+page] Component destroying");
+    logger.debug("[debug/+page] Component destroying");
     // Clear periodic update
     if (statusInterval) {
         clearInterval(statusInterval);

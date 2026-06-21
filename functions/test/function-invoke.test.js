@@ -1,3 +1,4 @@
+const { logger } = require("firebase-functions");
 const { describe, it, expect } = require("@jest/globals");
 const axios = require("axios");
 
@@ -74,7 +75,7 @@ describe("Firebase function invocation", () => {
         if (error.response) {
           expect(typeof error.response.status).toBe("number");
         } else {
-          console.warn("Firebase Emulator not running, skipping test");
+          logger.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
       }
@@ -89,7 +90,7 @@ describe("Firebase function invocation", () => {
       if (error.response) {
         expect(typeof error.response.status).toBe("number");
       } else {
-        console.warn("Firebase Emulator not running, skipping test");
+        logger.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }

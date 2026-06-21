@@ -94,7 +94,7 @@ const logger = getLogger("GraphView");
                     }
                 }
             } catch (e) {
-                console.warn("Failed to parse existing layout:", e);
+                logger.warn("Failed to parse existing layout:", e);
             }
 
             // Get actual positions from ECharts internal state
@@ -138,7 +138,7 @@ const logger = getLogger("GraphView");
             logger.debug("Saving layout data:", layoutData);
             localStorage.setItem("graph-layout", JSON.stringify(layoutData));
         } catch (error) {
-            console.warn("Failed to save graph layout:", error);
+            logger.warn("Failed to save graph layout:", error);
         }
     }
 
@@ -178,7 +178,7 @@ const logger = getLogger("GraphView");
             }
             return nodes;
         } catch (error) {
-            console.warn("Failed to load graph layout:", error);
+            logger.warn("Failed to load graph layout:", error);
             return nodes;
         }
     }
@@ -269,7 +269,7 @@ const logger = getLogger("GraphView");
                     }
                 })
                 .catch((err) =>
-                    console.warn("GraphView: Failed to connect to Yjs", err),
+                    logger.warn("GraphView: Failed to connect to Yjs", err),
                 );
         }
 

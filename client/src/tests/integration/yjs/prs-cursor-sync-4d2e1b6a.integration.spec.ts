@@ -1,3 +1,6 @@
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("prsCursorSync");
+
 import { describe, expect, it } from "vitest";
 import { createProjectConnection } from "../../../lib/yjs/connection";
 
@@ -53,10 +56,10 @@ describe("yjs presence", () => {
         await new Promise(r => setTimeout(r, 100));
 
         const states = c2.awareness!.getStates() as Map<number, AwarenessState>;
-        console.log("States size:", states.size);
-        console.log("States values:", Array.from(states.values()));
+        logger.debug("States size:", states.size);
+        logger.debug("States values:", Array.from(states.values()));
         const received = Array.from(states.values()).some(s => s.presence?.cursor?.itemId === "root");
-        console.log("Received:", received);
+        logger.debug("Received:", received);
         expect(received).toBe(true);
 
         c1.dispose();

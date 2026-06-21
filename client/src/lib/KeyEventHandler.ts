@@ -466,7 +466,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.warn("Slash pre-show failed:", e);
+                    logger.warn("Slash pre-show failed:", e);
                 }
             }
         }
@@ -593,7 +593,7 @@ export class KeyEventHandler {
                 } catch (e) {
                     // Fallback to confirm if fallback fails
                     try {
-                        console.warn("KeyEventHandler Palette Enter alias handling failed:", e);
+                        logger.warn("KeyEventHandler Palette Enter alias handling failed:", e);
                     } catch {}
                 }
                 // Normal palette confirm
@@ -730,7 +730,7 @@ export class KeyEventHandler {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    console.warn("Enter alias fallback failed:", e);
+                    logger.warn("Enter alias fallback failed:", e);
                 }
             }
         }
@@ -784,12 +784,12 @@ export class KeyEventHandler {
                                     if (attempt < 10) {
                                         setTimeout(() => tryOpen(attempt + 1), 10);
                                     } else {
-                                        console.warn(
+                                        logger.warn(
                                             "KeyEventHandler(Post): active item not found to open AliasPicker",
                                         );
                                     }
                                 } catch (e) {
-                                    console.warn(
+                                    logger.warn(
                                         "KeyEventHandler(Post): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -797,7 +797,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            console.warn(
+                            logger.warn(
                                 "KeyEventHandler(Post): failed to schedule AliasPicker open after default handler",
                                 e,
                             );
@@ -861,12 +861,12 @@ export class KeyEventHandler {
                                     if (attempt < 10) {
                                         setTimeout(() => tryOpen(attempt + 1), 10);
                                     } else {
-                                        console.warn(
+                                        logger.warn(
                                             "KeyEventHandler(Post2): active item not found to open AliasPicker",
                                         );
                                     }
                                 } catch (e) {
-                                    console.warn(
+                                    logger.warn(
                                         "KeyEventHandler(Post2): error while trying to open AliasPicker via active item",
                                         e,
                                     );
@@ -874,7 +874,7 @@ export class KeyEventHandler {
                             };
                             tryOpen(0);
                         } catch (e) {
-                            console.warn(
+                            logger.warn(
                                 "KeyEventHandler(Post2): failed to schedule AliasPicker open after cursor.onKeyDown",
                                 e,
                             );
@@ -1952,7 +1952,7 @@ export class KeyEventHandler {
                         && window.DEBUG_MODE
                     ) {
                         if ((error as Error)?.name === "NotAllowedError") {
-                            console.warn("Clipboard permission denied", error);
+                            logger.warn("Clipboard permission denied", error);
                         } else {
                             logger.error({ error }, "navigator.clipboard.readText failed");
                         }
@@ -2118,7 +2118,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.warn(`Item element not found for ID: ${itemId}`);
+                            logger.warn(`Item element not found for ID: ${itemId}`);
                         }
                         continue;
                     }
@@ -2130,7 +2130,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.warn(`Text element not found for item ID: ${itemId}`);
+                            logger.warn(`Text element not found for item ID: ${itemId}`);
                         }
                         continue;
                     }
@@ -2196,7 +2196,7 @@ export class KeyEventHandler {
                                 typeof window !== "undefined"
                                 && window.DEBUG_MODE
                             ) {
-                                console.warn(`Target item not found for cursor with item ID: ${itemId}`);
+                                logger.warn(`Target item not found for cursor with item ID: ${itemId}`);
                             }
                         }
                     } else {
@@ -2204,7 +2204,7 @@ export class KeyEventHandler {
                             typeof window !== "undefined"
                             && window.DEBUG_MODE
                         ) {
-                            console.warn(`Cursor not found or created for item ID: ${itemId}`);
+                            logger.warn(`Cursor not found or created for item ID: ${itemId}`);
                         }
                     }
                 }

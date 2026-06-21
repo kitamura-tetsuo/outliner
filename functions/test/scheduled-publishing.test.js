@@ -1,3 +1,4 @@
+const { logger } = require("firebase-functions");
 const { describe, it, expect } = require("@jest/globals");
 const axios = require("axios");
 
@@ -15,7 +16,7 @@ describe("Scheduled Publishing", () => {
       if (error.response) {
         expect(error.response.status).toBe(400);
       } else {
-        console.warn("Emulator not running, skipping test");
+        logger.warn("Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }
@@ -31,7 +32,7 @@ describe("Scheduled Publishing", () => {
       expect(response.status).toBe(200);
       expect(response.data.scheduleId).toBeDefined();
     } catch {
-      console.warn("Emulator not running, skipping test");
+      logger.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
   });
@@ -52,7 +53,7 @@ describe("Scheduled Publishing", () => {
       });
       expect(updateRes.status).toBe(200);
     } catch {
-      console.warn("Emulator not running, skipping test");
+      logger.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
   });
@@ -66,7 +67,7 @@ describe("Scheduled Publishing", () => {
       expect(response.status).toBe(200);
       expect(Array.isArray(response.data.schedules)).toBe(true);
     } catch {
-      console.warn("Emulator not running, skipping test");
+      logger.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
   });
@@ -84,7 +85,7 @@ describe("Scheduled Publishing", () => {
       if (error.response) {
         expect(error.response.status).toBeGreaterThanOrEqual(400);
       } else {
-        console.warn("Emulator not running, skipping test");
+        logger.warn("Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }
@@ -111,7 +112,7 @@ describe("Scheduled Publishing", () => {
       expect(response.data).toContain("BEGIN:VCALENDAR");
       expect(response.data).toContain("SUMMARY:Outliner publish (one_shot)");
     } catch {
-      console.warn("Emulator not running, skipping test");
+      logger.warn("Emulator not running, skipping test");
       expect(true).toBe(true);
     }
   });

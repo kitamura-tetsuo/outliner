@@ -1,3 +1,4 @@
+const { logger } = require("firebase-functions");
 const { describe, it, expect, beforeAll, afterAll } = require("@jest/globals");
 const axios = require("axios");
 
@@ -31,7 +32,7 @@ describe("Firebase Functions HTTP API Tests", () => {
         );
       } catch {
         // Skip if emulator is not running
-        console.warn("Firebase Emulator not running, skipping test");
+        logger.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     });
@@ -43,7 +44,7 @@ describe("Firebase Functions HTTP API Tests", () => {
         expect(response.status).toBe(204);
       } catch {
         // Skip if emulator is not running
-        console.warn("Firebase Emulator not running, skipping test");
+        logger.warn("Firebase Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     });
@@ -66,7 +67,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           });
         } else {
           // Skip if emulator is not running
-          console.warn("Firebase Emulator not running, skipping test");
+          logger.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
       }
@@ -88,7 +89,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           });
         } else {
           // Skip if emulator is not running
-          console.warn("Firebase Emulator not running, skipping test");
+          logger.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
       }
@@ -105,7 +106,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           expect(error.response.data).toEqual({ error: "Method Not Allowed" });
         } else {
           // Skip if emulator is not running
-          console.warn("Firebase Emulator not running, skipping test");
+          logger.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
       }
@@ -128,7 +129,7 @@ describe("Firebase Functions HTTP API Tests", () => {
           });
         } else {
           // Skip if emulator is not running
-          console.warn("Firebase Emulator not running, skipping test");
+          logger.warn("Firebase Emulator not running, skipping test");
           expect(true).toBe(true);
         }
       }

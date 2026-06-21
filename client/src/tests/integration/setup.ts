@@ -1,3 +1,6 @@
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("integrationSetup");
+
 // Setup file for integration tests
 import { vi } from "vitest";
 import { applyAwarenessUpdate, Awareness, encodeAwarenessUpdate } from "y-protocols/awareness";
@@ -84,7 +87,7 @@ class MockHocuspocusProvider {
                     try {
                         action(peer);
                     } catch (e) {
-                        console.error("Error broadcasting to peer:", e);
+                        logger.error("Error broadcasting to peer:", e);
                     }
                 }
             });
@@ -178,7 +181,7 @@ class MockHocuspocusProvider {
                 try {
                     callback(...args);
                 } catch (e) {
-                    console.error("Error in event listener:", e);
+                    logger.error("Error in event listener:", e);
                 }
             });
         }
