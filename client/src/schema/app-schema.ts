@@ -7,22 +7,34 @@ import * as Y from "yjs";
 
 // A dummy Y.Array-like object to return for empty collections without mutating the document or causing Yjs warnings about unattached types.
 class EmptyYArray {
-    get length() { return 0; }
-    toArray() { return []; }
-    push() { throw new Error("Cannot mutate empty Y.Array stub"); }
-    delete() { throw new Error("Cannot mutate empty Y.Array stub"); }
-    insert() { throw new Error("Cannot mutate empty Y.Array stub"); }
-    get() { return undefined; }
+    get length() {
+        return 0;
+    }
+    toArray() {
+        return [];
+    }
+    push() {
+        throw new Error("Cannot mutate empty Y.Array stub");
+    }
+    delete() {
+        throw new Error("Cannot mutate empty Y.Array stub");
+    }
+    insert() {
+        throw new Error("Cannot mutate empty Y.Array stub");
+    }
+    get() {
+        return undefined;
+    }
     observe() {}
     unobserve() {}
     observeDeep() {}
     unobserveDeep() {}
-    [Symbol.iterator]() { return [][Symbol.iterator](); }
+    [Symbol.iterator]() {
+        return [][Symbol.iterator]();
+    }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EMPTY_Y_ARRAY = new EmptyYArray() as unknown as Y.Array<any>;
-
-
 
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
