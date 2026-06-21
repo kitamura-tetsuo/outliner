@@ -130,7 +130,10 @@ class CommandPaletteStore {
         // Special filtering for chart commands
         if (q === "ch") {
             const result = this.commands.filter(c => c.type === "chart");
-            logger.debug('[CommandPaletteStore.filtered] Special filtering for "ch", result:', result.map(c => c.label));
+            logger.debug(
+                '[CommandPaletteStore.filtered] Special filtering for "ch", result:',
+                result.map(c => c.label),
+            );
             return result;
         }
         const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
