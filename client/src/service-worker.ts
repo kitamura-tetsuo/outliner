@@ -1,5 +1,8 @@
 /// <reference types="@sveltejs/kit" />
 /// <reference lib="webworker" />
+import { getLogger } from "./lib/logger";
+const logger = getLogger("ServiceWorker");
+
 import { version } from "$service-worker";
 
 const CACHE_NAME = `outliner-cache-${version}`;
@@ -45,7 +48,7 @@ self.addEventListener("install", event => {
     event.waitUntil(
         caches.open(CACHE_NAME).then(cache => {
             return cache.addAll(ASSETS).catch(err => {
-                console.warn("Failed to cache some assets:", err);
+                logger.warn("Failed to cache some assets:", err);
                 // Continue even if caching some assets fails
             });
         }),
@@ -82,7 +85,7 @@ async function queueOp(url: string, body: Record<string, unknown> | null) {
             request.onerror = () => reject(request.error);
         });
     } catch (err) {
-        console.warn("Failed to queue operation:", err);
+        logger.warn("Failed to queue operation:", err);
     }
 }
 
@@ -117,7 +120,7 @@ async function sendQueuedOps() {
             }
         }
     } catch (err) {
-        console.warn("Failed to send queued operations:", err);
+        logger.warn("Failed to send queued operations:", err);
     }
 }
 
@@ -144,13 +147,13 @@ self.addEventListener("fetch", event => {
                         const copy = response.clone();
                         caches.open(CACHE_NAME).then(cache => {
                             cache.put(req, copy).catch(err => {
-                                console.warn("Failed to cache response:", err);
+                                logger.warn("Failed to cache response:", err);
                             });
                         });
                     }
                     return response;
                 }).catch(err => {
-                    console.warn("Fetch failed, trying cache:", err);
+                    logger.warn("Fetch failed, trying cache:", err);
                     return caches.match(req) || new Response("Network error", { status: 503 });
                 });
             }),
@@ -170,7 +173,7 @@ self.addEventListener("fetch", event => {
                         headers: { "Content-Type": "application/json" },
                     });
                 } catch (err) {
-                    console.warn("Failed to queue operation:", err);
+                    logger.warn("Failed to queue operation:", err);
                     return new Response(JSON.stringify({ error: "Failed to queue operation" }), {
                         status: 500,
                         headers: { "Content-Type": "application/json" },

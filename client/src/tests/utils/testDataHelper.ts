@@ -1,3 +1,6 @@
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("testDataHelper");
+
 import { firestoreStore } from "../../stores/firestoreStore.svelte";
 
 /**
@@ -65,12 +68,12 @@ export async function performTestLogin(): Promise<void> {
         }).__USER_MANAGER__;
         if (userManager && userManager.loginWithEmailPassword) {
             await userManager.loginWithEmailPassword("test@example.com", "password");
-            console.log("Manual test login successful");
+            logger.debug("Manual test login successful");
         } else {
             throw new Error("UserManager not available");
         }
     } catch (err) {
-        console.error("Manual test login failed:", err);
+        logger.error("Manual test login failed:", err);
         throw err;
     }
 }
@@ -80,19 +83,19 @@ export async function performTestLogin(): Promise<void> {
  * Only available in test environments
  */
 export function logDebugInfo(): void {
-    console.log("=== Test Debug Info ===");
-    console.log(
+    logger.debug("=== Test Debug Info ===");
+    logger.debug(
         "Current user:",
         (window as unknown as { __USER_MANAGER__?: { getCurrentUser: () => unknown; }; }).__USER_MANAGER__
             ?.getCurrentUser(),
     );
-    console.log(
+    logger.debug(
         "Auth state:",
         (window as unknown as { __USER_MANAGER__?: { auth?: { currentUser: unknown; }; }; }).__USER_MANAGER__?.auth
             ?.currentUser,
     );
-    console.log("Firestore userProject:", firestoreStore.userProject);
-    console.log("======================");
+    logger.debug("Firestore userProject:", firestoreStore.userProject);
+    logger.debug("======================");
 }
 
 // Export test utilities for global access in test environments only

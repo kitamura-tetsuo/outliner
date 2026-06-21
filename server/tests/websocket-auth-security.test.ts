@@ -3,6 +3,7 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import sinon from "sinon";
+import { serverLogger as logger } from "../src/utils/log-manager.js";
 import { clearTokenCache, verifyIdTokenCached } from "../src/websocket-auth.js";
 
 describe("websocket auth security (regression)", () => {
@@ -84,7 +85,7 @@ describe("websocket auth security (regression)", () => {
             const decoded = await getAuth().verifyIdToken(token);
             */
 
-            // If the `try` block fails (e.g. JSON parse error), it swallows the error (console.warn) and falls through to `getAuth().verifyIdToken(token)`.
+            // If the `try` block fails (e.g. JSON parse error), it swallows the error (logger.warn) and falls through to `getAuth().verifyIdToken(token)`.
             // In the previous test failure, `e.message` was `Firebase ID token has no "kid" claim...`.
             // This means it FELL THROUGH.
             // Why did the `try` block fail?
@@ -107,7 +108,7 @@ describe("websocket auth security (regression)", () => {
                 if (!isTestEnv) throw new Error("alg:none tokens are not allowed");
                 // ...
             } catch (e) {
-                console.warn("[Auth] Test mode: failed to parse alg:none token", e);
+                logger.warn("[Auth] Test mode: failed to parse alg:none token", e);
             }
             */
             // It catches the security error and swallows it!
@@ -121,7 +122,7 @@ describe("websocket auth security (regression)", () => {
             // The fix I implemented was:
             /*
                 if (!isTestEnv) {
-                    console.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
+                    logger.warn("[Auth] Security Warning: alg:none token rejected in non-test environment");
                     throw new Error("alg:none tokens are not allowed in this environment");
                 }
             */

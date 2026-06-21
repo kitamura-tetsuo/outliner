@@ -1,4 +1,7 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("AliasPicker");
+
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { onMount } from "svelte";
 
@@ -45,7 +48,7 @@ function confirm(id: string) {
     try {
         aliasPickerStore.confirmById(id);
     } catch (error) {
-        console.warn("AliasPicker confirm error:", error);
+        logger.warn("AliasPicker confirm error:", error);
     }
 }
 

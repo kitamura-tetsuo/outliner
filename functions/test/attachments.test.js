@@ -1,3 +1,4 @@
+const { logger } = require("firebase-functions");
 const { describe, it, expect } = require("@jest/globals");
 const axios = require("axios");
 
@@ -13,7 +14,7 @@ describe("Attachments API", () => {
       if (error.response) {
         expect(error.response.status).toBeGreaterThanOrEqual(400);
       } else {
-        console.warn("Emulator not running, skipping test");
+        logger.warn("Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }
@@ -27,7 +28,7 @@ describe("Attachments API", () => {
       if (error.response) {
         expect(error.response.status).toBeGreaterThanOrEqual(400);
       } else {
-        console.warn("Emulator not running, skipping test");
+        logger.warn("Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }
@@ -41,7 +42,7 @@ describe("Attachments API", () => {
       if (error.response) {
         expect(error.response.status).toBeGreaterThanOrEqual(400);
       } else {
-        console.warn("Emulator not running, skipping test");
+        logger.warn("Emulator not running, skipping test");
         expect(true).toBe(true);
       }
     }

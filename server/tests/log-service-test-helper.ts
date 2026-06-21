@@ -1,3 +1,4 @@
+import { serverLogger as logger } from "../src/utils/log-manager.js";
 /**
  * Helper file to make log-service.js testable.
  * This file does not start the server directly but exports the Express middleware.
@@ -44,12 +45,12 @@ function getSafeOrigins(): string[] {
             try {
                 new URL(origin);
                 if (origin.includes("pathToRegexpError") || origin.includes("git.new")) {
-                    console.warn(`Filtering out invalid origin: ${origin}`);
+                    logger.warn(`Filtering out invalid origin: ${origin}`);
                     return false;
                 }
                 return true;
             } catch (e) {
-                console.warn(`Invalid origin URL format: ${origin}`);
+                logger.warn(`Invalid origin URL format: ${origin}`);
                 return false;
             }
         });
@@ -60,7 +61,7 @@ function getSafeOrigins(): string[] {
 
         return safeOrigins;
     } catch (error: any) {
-        console.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
+        logger.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
         return defaultOrigins;
     }
 }
@@ -134,7 +135,7 @@ app.post("/api/save-container", async (req, res) => {
         if (error.message === "Invalid token") {
             return res.status(401).json({ error: "Authentication failed", details: error.message });
         } else {
-            console.error("Error saving container ID:", error);
+            logger.error("Error saving container ID:", error);
             return res.status(500).json({ error: "Failed to save container ID", details: error.message });
         }
     }
@@ -170,7 +171,7 @@ app.post("/api/get-container-users", async (req, res) => {
             users: containerDoc.data()?.accessibleUserIds || [],
         });
     } catch (error) {
-        console.error("Error getting container users:", error);
+        logger.error("Error getting container users:", error);
         return res.status(500).json({ error: "Failed to get container users" });
     }
 });
@@ -199,7 +200,7 @@ app.post("/api/list-users", async (req, res) => {
 
         return res.status(200).json({ users });
     } catch (error) {
-        console.error("Error listing users:", error);
+        logger.error("Error listing users:", error);
         return res.status(500).json({ error: "Failed to list users" });
     }
 });
@@ -227,7 +228,7 @@ app.get("/debug/token-info", async (req, res) => {
             issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
         });
     } catch (error) {
-        console.error("Token debug error:", error);
+        logger.error("Token debug error:", error);
         return res.status(500).json({ error: "Failed to get token info" });
     }
 });

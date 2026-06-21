@@ -33,15 +33,15 @@ onMount(() => {
             // In test environments, getContext may not be implemented, so handle with try-catch
             measureCtx = measureCanvas.getContext("2d");
             if (!measureCtx) {
-                console.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
+                logger.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
             }
         } catch (error) {
             // Canvas API might not be available in test environments or specific browsers
-            console.warn('GlobalTextArea: Canvas API not available, text measurement may be affected:', error);
+            logger.warn('GlobalTextArea: Canvas API not available, text measurement may be affected:', error);
             measureCtx = null;
         }
     } else {
-        console.warn('GlobalTextArea: Canvas API not available in this environment, text measurement may be affected');
+        logger.warn('GlobalTextArea: Canvas API not available in this environment, text measurement may be affected');
     }
 
     store.setTextareaRef(textareaRef);

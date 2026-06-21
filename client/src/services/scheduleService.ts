@@ -21,7 +21,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
 
     const url = getFirebaseFunctionUrl(path);
 
-    console.log(`Schedule API: Calling ${url}`);
+    logger.debug(`Schedule API: Calling ${url}`);
 
     const res = await fetch(url, {
         method: "POST",

@@ -1,3 +1,6 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("ScrapboxFormatter.security.test");
+
 import { describe, expect, it } from "vitest";
 import { ScrapboxFormatter } from "./ScrapboxFormatter";
 
@@ -5,16 +8,16 @@ describe("ScrapboxFormatter Security", () => {
     it("should not allow javascript: URIs in external links", () => {
         const input = "[javascript:alert('xss')]";
         const html = ScrapboxFormatter.formatToHtml(input);
-        console.log("Input: " + input);
-        console.log("Output: " + html);
+        logger.debug("Input: " + input);
+        logger.debug("Output: " + html);
         expect(html).not.toContain('href="javascript:');
     });
 
     it("should not allow javascript: URIs in external links with label", () => {
         const input = "[javascript:alert('xss') Click Me]";
         const html = ScrapboxFormatter.formatToHtml(input);
-        console.log("Input: " + input);
-        console.log("Output: " + html);
+        logger.debug("Input: " + input);
+        logger.debug("Output: " + html);
         expect(html).not.toContain('href="javascript:');
     });
 
@@ -24,7 +27,7 @@ describe("ScrapboxFormatter Security", () => {
         const tokens = ScrapboxFormatter.tokenize(input);
         const linkToken = tokens.find(t => t.type === "link");
         if (linkToken) {
-            console.log("Token URL: " + linkToken.url);
+            logger.debug("Token URL: " + linkToken.url);
             expect(linkToken.url).not.toMatch(/^javascript:/i);
         }
     });
@@ -75,9 +78,9 @@ describe("ScrapboxFormatter Security", () => {
         // escapeHtml strips null bytes
         const finalUrl = ScrapboxFormatter.escapeHtml(sanitized);
 
-        console.log(`Malicious: ${JSON.stringify(maliciousUrl)}`);
-        console.log(`Sanitized: ${JSON.stringify(sanitized)}`);
-        console.log(`Final:     ${JSON.stringify(finalUrl)}`);
+        logger.debug(`Malicious: ${JSON.stringify(maliciousUrl)}`);
+        logger.debug(`Sanitized: ${JSON.stringify(sanitized)}`);
+        logger.debug(`Final:     ${JSON.stringify(finalUrl)}`);
 
         // The final result MUST NOT start with javascript:
         expect(finalUrl).not.toMatch(/^javascript:/i);

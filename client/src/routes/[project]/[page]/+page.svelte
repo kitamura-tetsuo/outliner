@@ -366,7 +366,7 @@
                 editorOverlayStore.setActiveItem(node.id);
             }
         } catch (e) {
-            console.warn("addItemFromTopToolbar failed", e);
+            logger.warn("addItemFromTopToolbar failed", e);
         }
     }
 

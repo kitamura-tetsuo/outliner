@@ -1,3 +1,6 @@
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("productionSetup");
+
 import { afterAll, beforeAll } from "vitest";
 
 // Production environment test setup
@@ -8,10 +11,10 @@ beforeAll(async () => {
         if (!response.ok) {
             throw new Error("Firebase Functions not available");
         }
-        console.log("✓ Firebase Functions (Production) is running");
+        logger.debug("✓ Firebase Functions (Production) is running");
     } catch (error) {
-        console.error("❌ Firebase Functions (Production) is not running");
-        console.error("Please start Production Cloud Backend Servers first");
+        logger.error("❌ Firebase Functions (Production) is not running");
+        logger.error("Please start Production Cloud Backend Servers first");
         throw error;
     }
 
@@ -19,17 +22,17 @@ beforeAll(async () => {
     try {
         const response = await fetch("http://localhost:7073/");
         if (!response.ok) {
-            console.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
+            logger.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
         } else {
-            console.log("✓ SvelteKit server (Production) is running");
+            logger.debug("✓ SvelteKit server (Production) is running");
         }
     } catch {
-        console.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
+        logger.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
     }
 });
 
 afterAll(async () => {
     // Cleanup for production environment is not required
     // Since production Firebase Auth is used, test users must be deleted manually
-    console.log("Production tests completed");
+    logger.debug("Production tests completed");
 });
