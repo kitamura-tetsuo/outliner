@@ -1,5 +1,4 @@
 <script lang="ts">
-import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";
 
 
@@ -60,16 +59,7 @@ function togglePanel() {
     }
 }
 
-// Navigate to source page
-async function navigateToPage(_pageId: string, pageName: string) {
-    if (!projectName) {
-        // Use current project if not specified
-        await goto(resolvePath(`/${pageName}`));
-    }
-    else {
-        await goto(resolvePath(`/${projectName}/${pageName}`));
-    }
-}
+
 
 // Reload backlinks
 function refreshBacklinks() {
@@ -159,13 +149,12 @@ onDestroy(() => {
                     {#each backlinks as backlink (`${backlink.sourcePageId}-${backlink.context}`)}
                         <li class="backlink-item">
                             <div class="backlink-source">
-                                <button
-                                    type="button"
-                                    onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
+                                <a
+                                    href={projectName ? resolvePath(`/${projectName}/${backlink.sourcePageName}`) : resolvePath(`/${backlink.sourcePageName}`)}
                                     class="source-page-link"
                                 >
                                     {backlink.sourcePageName}
-                                </button>
+                                </a>
                             </div>
                             <div class="backlink-context">
                                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
