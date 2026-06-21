@@ -1,3 +1,4 @@
+import type { AliasPickerStore } from "../stores/AliasPickerStore.svelte";
 // Global type definitions to avoid ESLint no-undef errors
 // These types are available in the browser environment but ESLint may not recognize them
 
@@ -62,7 +63,7 @@ declare global {
         __OPEN_SEARCH__?: () => Promise<void>;
         testEnvVars?: Record<string, string>;
         editorStore?: unknown;
-        aliasPickerStore?: unknown;
+        aliasPickerStore?: AliasPickerStore;
         appStore?: {
             project?: Project;
         };

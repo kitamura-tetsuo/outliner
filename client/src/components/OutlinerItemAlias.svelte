@@ -64,14 +64,14 @@ onMount(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-    void (aliasPickerStore as unknown as { tick?: number })?.tick;
+    void aliasPickerStore?.tick;
     void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
 
-    const lastItemId = (aliasPickerStore as unknown as { lastConfirmedItemId?: string | null })?.lastConfirmedItemId;
-    const lastTargetId = (aliasPickerStore as unknown as { lastConfirmedTargetId?: string | null })?.lastConfirmedTargetId;
-    const lastAt = (aliasPickerStore as unknown as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
+    const lastItemId = aliasPickerStore?.lastConfirmedItemId;
+    const lastTargetId = aliasPickerStore?.lastConfirmedTargetId;
+    const lastAt = aliasPickerStore?.lastConfirmedAt;
 
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
@@ -98,7 +98,7 @@ const aliasTarget = $derived.by(() => {
 });
 
 const aliasPath = $derived.by(() => {
-    void (aliasPickerStore as unknown as { tick?: number })?.tick;
+    void aliasPickerStore?.tick;
     void aliasLastConfirmedPulse;
     void aliasTargetIdEffective;
     

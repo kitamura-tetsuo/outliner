@@ -69,8 +69,8 @@ onMount(() => {
                 document.querySelector = ((sel: string) => {
                     try {
                         if (/^\[data-item-id="/.test(sel)) {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const ap = (W as Window & typeof globalThis & { aliasPickerStore?: unknown }).aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+
+                            const ap = window.aliasPickerStore;
                             const li = ap?.lastConfirmedItemId;
                             if (li) {
                                 const el = origQS(`[data-item-id="${li}"]`);
@@ -95,8 +95,8 @@ onMount(() => {
                 Element.prototype.getAttribute = function(this: HTMLElement, name: string): string | null {
                     try {
                         if (name === 'data-alias-target-id') {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            const ap = window.aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+
+                            const ap = window.aliasPickerStore;
                             const itemId = (this as HTMLElement).getAttribute('data-item-id');
                             if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
                                 return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
@@ -283,10 +283,10 @@ let ensuredComments = $derived.by(() => item.comments);
 // Comment count subscription (follow Yjs directly)
 
 // Comment thread open/close state (explicitly subscribe with Svelte 5 $derived)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let openCommentItemId = $derived.by(() => (generalStore as any as { openCommentItemId: string | null }).openCommentItemId);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let openCommentItemIndex = $derived.by(() => (generalStore as any as { openCommentItemIndex: number | null }).openCommentItemIndex);
+
+let openCommentItemId = $derived.by(() => generalStore.openCommentItemId);
+
+let openCommentItemIndex = $derived.by(() => generalStore.openCommentItemIndex);
 
 let isCommentsVisible = $derived(
     !isPageTitle && (
@@ -493,8 +493,8 @@ onMount(() => {
 // This replaces the polling approach with proper Svelte 5 reactivity
 let aliasLastConfirmedPulse = $derived.by(() => {
     // Subscribe to aliasPickerStore changes
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ap = aliasPickerStore as any as { lastConfirmedItemId?: string, lastConfirmedTargetId?: string, lastConfirmedAt?: number };
+
+    const ap = aliasPickerStore;
     const li = ap?.lastConfirmedItemId;
     const lt = ap?.lastConfirmedTargetId;
     const la = ap?.lastConfirmedAt as number | null;
@@ -561,17 +561,17 @@ $effect(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    void (aliasPickerStore as any as { tick?: unknown })?.tick;
+
+    void aliasPickerStore?.tick;
     void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastItemId = (aliasPickerStore as any as { lastConfirmedItemId?: string })?.lastConfirmedItemId;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastTargetId = (aliasPickerStore as any as { lastConfirmedTargetId?: string })?.lastConfirmedTargetId;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const lastAt = (aliasPickerStore as any as { lastConfirmedAt?: number | null })?.lastConfirmedAt;
+
+    const lastItemId = aliasPickerStore?.lastConfirmedItemId;
+
+    const lastTargetId = aliasPickerStore?.lastConfirmedTargetId;
+
+    const lastAt = aliasPickerStore?.lastConfirmedAt;
     const isE2E = typeof window !== 'undefined' && window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
     const isEmpty = (textString ?? '').toString().trim().length === 0;
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
@@ -2074,13 +2074,13 @@ export function setSelectionPosition(start: number, end: number = start) {
     data-item-id={model.id}
     data-active={isItemActive}
     data-alias-target-id={
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        [ (aliasPickerStore as any as { tick?: unknown })?.tick,
+
+        [ aliasPickerStore?.tick,
           (aliasTargetIdEffective
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            || (((aliasPickerStore as any as { lastConfirmedItemId?: string })?.lastConfirmedItemId === model.id)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                && (aliasPickerStore as any)?.lastConfirmedTargetId)
+
+            || ((aliasPickerStore?.lastConfirmedItemId === model.id)
+
+                && aliasPickerStore?.lastConfirmedTargetId)
             || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
             || "") ][1] as any
