@@ -229,7 +229,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(items.first().getByText(`${newTime.replace("T", " ")}`)).toBeVisible({ timeout: 10000 });
 
         // Navigate back to page list
-        await page.locator('button:has-text("Back")').click();
+        await page.locator('a:has-text("Back")').click();
 
         // Navigate to the other page using navigateToProjectPage for reliable sync
         // Pass the actual seed lines to ensure correct item count expectation (1 line + title = 2 items)
@@ -249,7 +249,7 @@ test.describe("Multi-Page Schedule Management", () => {
         await expect(page.locator('[data-testid="schedule-item"]')).toHaveCount(0, { timeout: 5000 });
 
         // Navigate back to the first page
-        const backButton = page.locator('button:has-text("Back")');
+        const backButton = page.locator('a:has-text("Back")');
         await expect(backButton).toBeEnabled();
         await backButton.click();
 
