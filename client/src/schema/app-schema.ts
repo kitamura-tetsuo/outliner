@@ -33,8 +33,7 @@ class EmptyYArray {
         return [][Symbol.iterator]();
     }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const EMPTY_Y_ARRAY = new EmptyYArray() as unknown as Y.Array<any>;
+const EMPTY_Y_ARRAY = new EmptyYArray() as unknown as Y.Array<unknown>;
 
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";

@@ -95,8 +95,8 @@ describe("yjsService", () => {
             user: { userId: "u2", name: "Bob" },
             presence: { cursor: { itemId: "i1", offset: 0 } },
         });
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (awareness as any).emit("change", [
+        const awarenessWithEmit = awareness as unknown as { emit: (event: string, args: unknown[]) => void; };
+        awarenessWithEmit.emit("change", [
             { added: new Set([42]), updated: new Set(), removed: new Set() },
             "test",
         ]);
@@ -104,8 +104,7 @@ describe("yjsService", () => {
         const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
         expect(cursor?.itemId).toBe("i1");
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (awareness as any).emit("change", [
+        awarenessWithEmit.emit("change", [
             { added: new Set(), updated: new Set(), removed: new Set([42]) },
             "test",
         ]);

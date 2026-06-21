@@ -18,8 +18,7 @@ function computeDisplayed(ids: string[], def?: string) {
 onMount(() => {
     const apply = () => {
         try {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const u = (storeRef as any)?.userProject;
+            const u = (storeRef as unknown as { userProject?: { accessibleProjectIds?: string[], defaultProjectId?: string } })?.userProject;
             idsLocal = Array.from(u?.accessibleProjectIds ?? []);
             defaultIdLocal = u?.defaultProjectId;
         } catch {}

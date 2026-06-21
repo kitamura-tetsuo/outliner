@@ -69,9 +69,8 @@ const logger = getLogger("GraphView");
         const data = firstSeries?.data;
         if (!Array.isArray(data)) return [];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return data.filter((node: any): node is GraphNodeWithLayout =>
-            Boolean(node?.id),
+        return data.filter((node: unknown): node is GraphNodeWithLayout =>
+            Boolean((node as { id?: string })?.id),
         );
     };
 
@@ -119,10 +118,9 @@ const logger = getLogger("GraphView");
                 })
                 .filter(
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    (node: any): node is GraphLayout["nodes"][number] =>
-                        typeof node.x === "number" &&
-                        typeof node.y === "number",
+                    (node: unknown): node is GraphLayout["nodes"][number] =>
+                        typeof (node as { x?: number }).x === "number" &&
+                        typeof (node as { y?: number }).y === "number",
                 ); // Only save nodes with defined positions
 
             const currentNodesMap = new Map(currentNodes.map((n) => [n.id, n]));

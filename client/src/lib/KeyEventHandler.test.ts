@@ -56,20 +56,17 @@ describe("KeyEventHandler.handlePaste", () => {
     });
 
     afterEach(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (navigator as any).clipboard;
+        delete (navigator as unknown as { clipboard?: unknown; }).clipboard;
     });
 
     const createEvent = (text: string): ClipboardEvent => {
         const clipboardData = {
             getData: vi.fn((_format: string) => text), // eslint-disable-line @typescript-eslint/no-unused-vars
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any as DataTransfer;
+        } as unknown as DataTransfer;
         return {
             clipboardData,
             preventDefault: vi.fn(),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any as ClipboardEvent;
+        } as unknown as ClipboardEvent;
     };
 
     it("inserts clipboard text when available", async () => {
@@ -120,8 +117,8 @@ describe("KeyEventHandler.handlePaste", () => {
 
     it("dispatches read error when cursor insertion throws", async () => {
         const event = createEvent("oops");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (mockInsertText as any).mockImplementationOnce(() => {
+        const mockFn = mockInsertText as import("vitest").Mock;
+        mockFn.mockImplementationOnce(() => {
             throw new Error("boom");
         });
         const listener = vi.fn();

@@ -20,8 +20,7 @@ let attachmentsMirror = $state<string[]>([]);
 // Subscribe to attachments via Yjs observe
 onMount(() => {
     try {
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const yArr = (item as any as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
+        const yArr = (item as unknown as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
         const read = () => {
             try {
                 const arr = (yArr?.toArray?.() ?? []);
@@ -33,12 +32,10 @@ onMount(() => {
             read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            onDestroy(() => { try { (yArr as any)?.unobserve?.(yHandler); } catch {} });
+            onDestroy(() => { try { (yArr as unknown as { unobserve?: (cb: () => void) => void })?.unobserve?.(yHandler); } catch {} });
         } else {
             // Fallback: Reflect once even if observe is unavailable
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            attachmentsMirror = (((item as any as { attachments?: { toArray?: () => unknown[] } })?.attachments?.toArray?.() ?? []) as any[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
+            attachmentsMirror = (((item as unknown as { attachments?: { toArray?: () => unknown[] } })?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
         }
     } catch {}
 });
@@ -50,8 +47,7 @@ onMount(() => {
             const eid = String((_e && (_e as CustomEvent).detail && (_e as CustomEvent).detail.id) ?? "");
             logger.debug({ eid, id: modelId }, '[OutlinerItemAttachments][TEST] item-attachments-changed received');
             if (eid && String(modelId) !== eid) return;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const yArr = (item as any as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
+            const yArr = (item as unknown as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
             const arr = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
