@@ -1,5 +1,4 @@
 <script>
-    import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
 </script>
 
@@ -8,10 +7,10 @@
     <p class="text-lg mb-8">
         The project you are trying to access does not exist or you do not have permission to view it.
     </p>
-    <button
+    <a href={resolvePath("/")}
         class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        onclick={() => goto(resolvePath("/"))}
+
     >
         Go Home
-    </button>
+    </a>
 </div>

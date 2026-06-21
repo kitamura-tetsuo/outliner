@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -2066,11 +2065,7 @@
                     onchange={handleFileSelect}
                     style="display: none;"
                 />
-                <button
-                    onclick={() => goto(resolvePath(`/${projectName}/${pageName}/diff`))}
-                >
-                    History / Diff
-                </button>
+                <a href={resolvePath(`/${projectName}/${pageName}/diff`)} style="text-decoration:none; appearance:button; padding:2px 6px; border:1px solid #ccc; background-color:#f0f0f0; border-radius:3px; color:inherit; font-size: 0.8rem; display:inline-flex; align-items:center; cursor:pointer;" class="button-style">History / Diff</a>
             </div>
         </div>
 

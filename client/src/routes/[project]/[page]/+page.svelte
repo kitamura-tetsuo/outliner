@@ -1,5 +1,4 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
     // Use SvelteKit page store from $app/stores (not $app/state)
     import { page } from "$app/stores";
@@ -327,14 +326,6 @@
 
     // Return to Project Page
 
-    function goToSchedule() {
-        goto(resolvePath(`/${projectName}/${pageName}/schedule`));
-    }
-
-    function goToGraphView() {
-        goto(resolvePath(`/${projectName}/graph`));
-    }
-
     // Auxiliary button to add items from top of screen (for E2E stabilization)
     function addItemFromTopToolbar() {
         try {
@@ -553,19 +544,8 @@
                 >
                     Add Item
                 </button>
-                <button
-                    onclick={goToSchedule}
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                    Schedule
-                </button>
-                <button
-                    onclick={goToGraphView}
-                    data-testid="graph-view-button"
-                    class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
-                >
-                    Graph View
-                </button>
+                <a href={resolvePath(`/${projectName}/${pageName}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
+                <a href={resolvePath(`/${projectName}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
     </div>
