@@ -2,8 +2,8 @@
 // This ensures that when navigating directly to child routes like /schedule,
 // the project data is already loaded and available in the store
 
-import type { LayoutLoad } from "./$types";
 import { getLogger } from "../../../lib/logger";
+import type { LayoutLoad } from "./$types";
 const logger = getLogger("LayoutTS");
 
 export const load: LayoutLoad = async ({ params, url }) => {
