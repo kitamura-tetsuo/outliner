@@ -66,11 +66,9 @@ class GeneralStore {
         const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
         const nextDefault = this.userProject?.defaultProjectId;
 
-        if (typeof console !== "undefined" && typeof console.info === "function") {
-            console.info(
-                `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
-            );
-        }
+        logger.info(
+            `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
+        );
     }
 
     setUserContainer(value: UserProject | null) {
@@ -85,7 +83,7 @@ class GeneralStore {
             const userId = this.userProject.userId;
             const userProjectRef = doc(db, "userProjects", userId);
             await setDoc(userProjectRef, this.userProject);
-            console.log(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
+            logger.debug(`[firestoreStore] Saved userProject to Firestore for ${userId}`);
         } catch (e) {
             logger.error({ error: e }, "[firestoreStore] Failed to save userProject to Firestore");
             throw e;
@@ -592,7 +590,7 @@ if (typeof window !== "undefined") {
             unsubscribeAuth();
         });
     } else {
-        console.warn(
+        logger.warn(
             "[firestoreStore] Firestore sync is DISABLED because environment is identified as non-E2E test environment. (isProd=false, isTest=true)",
         );
     }

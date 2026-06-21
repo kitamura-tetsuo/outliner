@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 import { store } from "../stores/store.svelte";
@@ -98,14 +100,14 @@ function dumpToolbarState(tag: string) {
             i,
             innerHTMLHead: n.innerHTML.substring(0, 100),
         }));
-        console.info("[SEA-0001][Toolbar][%s] toolbar count=", tag, toolbars.length, summary);
+        logger.info("[SEA-0001][Toolbar][%s] toolbar count=", tag, toolbars.length, summary);
 
         const root = toolbarEl ?? toolbars[0] ?? null;
         if (!root) {
-            console.info("[SEA-0001][Toolbar][%s] no root toolbar found", tag);
+            logger.info("[SEA-0001][Toolbar][%s] no root toolbar found", tag);
             return;
         }
-        console.info("[SEA-0001][Toolbar][%s] root styles", tag, styles(root));
+        logger.info("[SEA-0001][Toolbar][%s] root styles", tag, styles(root));
         const inputs = Array.from(root.querySelectorAll<HTMLInputElement>('input, [role="textbox"]'));
         const details = inputs.map((el, i) => ({
             i,
@@ -118,11 +120,11 @@ function dumpToolbarState(tag: string) {
             rect: el.getBoundingClientRect ? (() => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; })() : null,
             styles: styles(el),
         }));
-        console.info("[SEA-0001][Toolbar][%s] textboxes in main-toolbar:", tag, details);
+        logger.info("[SEA-0001][Toolbar][%s] textboxes in main-toolbar:", tag, details);
         const target = inputs.find(el => getAccessibleName(el) === "Search pages");
-        console.info("[SEA-0001][Toolbar][%s] has target textbox?", tag, !!target);
+        logger.info("[SEA-0001][Toolbar][%s] has target textbox?", tag, !!target);
     } catch (e) {
-        console.info("[SEA-0001][Toolbar][%s] dump error", tag, e);
+        logger.info("[SEA-0001][Toolbar][%s] dump error", tag, e);
     }
 }
 
@@ -132,7 +134,7 @@ function dedupeToolbars() {
         // Previously we removed duplicate toolbars which could detach the element
         // Playwright had already scoped to, causing getByTestId(...).getByRole(...).waitFor()
         // to hang. To avoid destabilizing locators, we now keep all nodes and only log.
-        console.info("[Toolbar][dedupe] toolbar nodes present:", nodes.length);
+        logger.info("[Toolbar][dedupe] toolbar nodes present:", nodes.length);
         // If necessary in the future, we could hide duplicates instead of removing:
         // nodes.forEach((n, i) => { if (toolbarEl && n !== toolbarEl) n.style.display = 'none'; });
     } catch {}
@@ -172,7 +174,7 @@ function dedupeToolbars() {
 	            }
 	        }
 	    } catch (e) {
-	        console.warn("Toolbar: failed to resolve project by title", e);
+	        logger.warn("Toolbar: failed to resolve project by title", e);
     }
 });
 

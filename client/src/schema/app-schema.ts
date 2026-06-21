@@ -1,6 +1,8 @@
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
 import { v4 as uuid } from "uuid";
+import { getLogger } from "../lib/logger";
+const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
@@ -29,11 +31,11 @@ export class Comments {
         c.set("created", time);
         c.set("lastChanged", time);
         try {
-            console.info("[Comments.addComment] pushing comment to Y.Array");
+            logger.info("[Comments.addComment] pushing comment to Y.Array");
         } catch {}
         this.yArray.push([c]);
         try {
-            console.info("[Comments.addComment] pushed. current length=", this.yArray.length);
+            logger.info("[Comments.addComment] pushed. current length=", this.yArray.length);
         } catch {}
         return { id: c.get("id") as string };
     }
@@ -444,7 +446,7 @@ export class Item {
 
     addComment(author: string, text: string) {
         try {
-            console.info("[Item.addComment] id=", this.id);
+            logger.info("[Item.addComment] id=", this.id);
         } catch {}
         const res = this.comments.addComment(author, text);
         try {
@@ -456,7 +458,7 @@ export class Item {
             // Window broadcast (for immediate UI reflection, deterministic)
             try {
                 if (typeof window !== "undefined") {
-                    console.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
+                    logger.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
                     window.dispatchEvent(
                         new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
                     );
