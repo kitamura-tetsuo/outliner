@@ -1,5 +1,7 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
+    import { getLogger } from "../../../lib/logger";
+    const logger = getLogger("SettingsPage");
     import { resolvePath } from "../../../utils/pathUtils";
     import { page } from "$app/stores";
     import { onMount } from "svelte";
@@ -103,13 +105,13 @@
     });
 
     async function doExport(format: "opml" | "markdown") {
-        console.log("doExport: Function started, format:", format);
+        logger.debug("doExport: Function started, format:", format);
 
         hydrateFromSnapshotIfNeeded();
 
         let projectForExport =
             yjsStore.yjsClient?.getProject() || store.project;
-        console.log("doExport: using project from store:", !!projectForExport);
+        logger.debug("doExport: using project from store:", !!projectForExport);
 
         const projectName = $page.params.project as string | undefined;
 
@@ -122,7 +124,7 @@
         ) {
             const snapshot = loadProjectSnapshot(projectName);
             if (snapshot) {
-                console.log(
+                logger.debug(
                     "doExport: Hydrating project from snapshot for export",
                     { projectName },
                 );
@@ -138,13 +140,13 @@
                 format === "opml"
                     ? exportProjectToOpml(projectForExport as unknown as Project)
                     : exportProjectToMarkdown(projectForExport as unknown as Project);
-            console.log("doExport: Export content:", exportContent);
+            logger.debug("doExport: Export content:", exportContent);
         }
 
         if (!hasMeaningfulContent(exportContent) && projectName) {
             const snapshot = loadProjectSnapshot(projectName);
             if (snapshot) {
-                console.log("doExport: Using snapshot fallback for export", {
+                logger.debug("doExport: Using snapshot fallback for export", {
                     projectName,
                 });
                 exportContent =
@@ -168,30 +170,30 @@
         const currentProject = yjsProject || store.project || project;
 
         if (!currentProject) {
-            console.log("doImport: No project available");
+            logger.debug("doImport: No project available");
             return;
         }
 
         const projectName = $page.params.project as string | undefined;
 
-        console.log("doImport: Starting import process");
-        console.log("doImport: Import format:", importFormat);
-        console.log("doImport: Import text:", importText);
-        console.log("doImport: Project before import:", currentProject);
-        console.log(
+        logger.debug("doImport: Starting import process");
+        logger.debug("doImport: Import format:", importFormat);
+        logger.debug("doImport: Import text:", importText);
+        logger.debug("doImport: Project before import:", currentProject);
+        logger.debug(
             "doImport: Project items before import:",
             currentProject.items?.length || 0,
         );
 
         if (importFormat === "opml") {
-            console.log("doImport: Calling importOpmlIntoProject");
+            logger.debug("doImport: Calling importOpmlIntoProject");
             importOpmlIntoProject(importText, currentProject as unknown as Project);
         } else {
-            console.log("doImport: Calling importMarkdownIntoProject");
+            logger.debug("doImport: Calling importMarkdownIntoProject");
             importMarkdownIntoProject(importText, currentProject as unknown as Project);
         }
 
-        console.log(
+        logger.debug(
             "doImport: Project items after import:",
             currentProject.items?.length || 0,
         );
@@ -204,26 +206,26 @@
                     : (firstPage.text?.toString?.() ??
                       String(firstPage.text ?? ""))
                 : "";
-            console.log("doImport: First page after import:", text);
+            logger.debug("doImport: First page after import:", text);
         }
 
         // If we modified a Yjs-backed project, make sure the changes are reflected in the stores
         if (yjsProject) {
-            console.log(
+            logger.debug(
                 "doImport: Using Yjs-connected project, updating stores",
             );
             yjsStore.yjsClient = yjsStore.yjsClient; // This triggers reactivity in yjsStore
             store.project = yjsProject as unknown as import("../../../schema/app-schema").Project;
         } else {
             // If no Yjs project was available, update as before
-            console.log("doImport: No Yjs project, using fallback");
+            logger.debug("doImport: No Yjs project, using fallback");
             store.project = currentProject as unknown as Project;
         }
 
         // Clear import text after successful import
         importText = "";
 
-        console.log(
+        logger.debug(
             "doImport: Import completed, waiting for Yjs sync before navigation",
         );
 
@@ -261,22 +263,22 @@
                 if (pageName) {
                     const encodedProject = encodeURIComponent(projectName ?? "");
                     const encodedPage = encodeURIComponent(pageName);
-                    console.log(
+                    logger.debug(
                         `doImport: Navigating to /${encodedProject}/${encodedPage}`,
                     );
                     await goto(resolvePath(`/${encodedProject}/${encodedPage}`));
                 } else {
-                    console.log(
+                    logger.debug(
                         "doImport: First page has no title, cannot navigate",
                     );
                 }
             } else {
-                console.log(
+                logger.debug(
                     "doImport: First page is undefined despite length > 0",
                 );
             }
         } else {
-            console.log("doImport: No pages found after import");
+            logger.debug("doImport: No pages found after import");
         }
     }
 

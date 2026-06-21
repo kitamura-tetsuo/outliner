@@ -5,6 +5,8 @@ import { store as generalStore } from "../../stores/store.svelte";
 import * as Y from "yjs";
 import { onMount } from "svelte";
 import type { Item } from "../../schema/app-schema";
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("YjsOutlinerPage");
 
 let pageItem = $state<Item | undefined>(undefined);
 
@@ -21,7 +23,7 @@ onMount(async () => {
   pageItem = p.items?.at(0);
   generalStore.project = p;
   generalStore.currentPage = pageItem;
-  console.log("/yjs-outliner: pageItem set", { hasPageItem: !!pageItem });
+  logger.debug("/yjs-outliner: pageItem set", { hasPageItem: !!pageItem });
 
   // 2) Connect to server in background; UI continues offline if auth not ready
   //    Import connection module only on client to avoid SSR crashes

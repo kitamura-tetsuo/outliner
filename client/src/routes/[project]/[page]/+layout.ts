@@ -3,6 +3,8 @@
 // the project data is already loaded and available in the store
 
 import type { LayoutLoad } from "./$types";
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("LayoutTS");
 
 export const load: LayoutLoad = async ({ params, url }) => {
     const projectName = decodeURIComponent(params.project ?? "");
@@ -14,7 +16,7 @@ export const load: LayoutLoad = async ({ params, url }) => {
     }
 
     // Log for debugging
-    console.log(`[+layout.ts] Loading for project="${projectName}", page="${pageName}", url="${url.pathname}"`);
+    logger.debug(`[+layout.ts] Loading for project="${projectName}", page="${pageName}", url="${url.pathname}"`);
 
     return {
         projectName,
