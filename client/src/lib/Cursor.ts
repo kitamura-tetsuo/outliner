@@ -95,7 +95,7 @@ export class Cursor implements CursorEditingContext {
             }
         } catch {}
         if (typeof window !== "undefined") {
-            console.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
+            logger.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
         }
         return undefined;
     }
