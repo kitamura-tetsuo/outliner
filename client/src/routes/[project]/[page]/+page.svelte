@@ -262,9 +262,7 @@
     onMount(() => {
         try {
             // DIRECT DEBUG: This should appear if onMount is called
-            if (typeof console !== "undefined") {
-                logger.debug("[DEBUG] onMount called");
-            }
+            logger.debug("[DEBUG] onMount called");
             // Attempt initial load
             scheduleLoadIfNeeded();
         } catch (e) {
