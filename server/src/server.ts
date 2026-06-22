@@ -202,78 +202,82 @@ export async function startServer(
         extensions.push(persistence);
     }
 
-    const hocuspocus = new Hocuspocus({
-        name: "hocuspocus-fluid-outliner",
-        extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
-        debounce: 500,
-        async onConnect(data: any) {
-            const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
-                || data.request.socket?.remoteAddress || "unknown";
-            logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
-        },
-        async onAuthenticate(data: any) {
-            // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
-            // We cannot do this before handleConnection because the client immediately sends the Auth message
-            // after the WS handshake, and if we await async operations first the message would be lost
-            // (no listener registered yet), causing a 30-second timeout.
-            const request = data.request;
-            const requestHeaders = data.requestHeaders;
-            const token = data.token || extractAuthToken(request);
-            logger.debug(
-                `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
-                    token ? "FOUND" : "MISSING"
-                }, data.token=${data.token}`,
-            );
+    const hocuspocus = new Hocuspocus(
+        {
+            name: "hocuspocus-fluid-outliner",
+            extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
+            debounce: 500,
+            async onConnect(data: any) {
+                const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
+                    || data.request.socket?.remoteAddress || "unknown";
+                logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
+            },
+            async onAuthenticate(data: any) {
+                // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
+                // We cannot do this before handleConnection because the client immediately sends the Auth message
+                // after the WS handshake, and if we await async operations first the message would be lost
+                // (no listener registered yet), causing a 30-second timeout.
+                const request = data.request;
+                const requestHeaders = data.requestHeaders;
+                const token = data.token || extractAuthToken(request);
+                logger.debug(
+                    `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
+                        token ? "FOUND" : "MISSING"
+                    }, data.token=${data.token}`,
+                );
 
-            const room = parseRoom(data.documentName);
+                const room = parseRoom(data.documentName);
 
-            if (room?.project === "demo") {
-                logger.debug(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
+                if (room?.project === "demo") {
+                    logger.debug(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
+                    return {
+                        user: { uid: "anonymous-demo" },
+                        room,
+                    };
+                }
+
+                if (!room?.project) {
+                    throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
+                }
+
+                if (!token) {
+                    throw Object.assign(new Error("Authentication failed: No token provided"), { code: 4001 });
+                }
+
+                let decoded;
+                try {
+                    decoded = await verifyIdTokenCached(token);
+                } catch (err: any) {
+                    // Re-throw so Hocuspocus sends 4001 Unauthorized to client
+                    throw err;
+                }
+
+                const hasAccess = await checkContainerAccess(decoded.uid, room.project);
+                if (!hasAccess) {
+                    throw Object.assign(new Error("Access denied"), { code: 4003, reason: "FORBIDDEN" });
+                }
+
+                logger.debug(
+                    `[Hocuspocus] onAuthenticate: Authorized uid=${decoded.uid} for room=${data.documentName}`,
+                );
+                // Return context additions — merged into connection context
                 return {
-                    user: { uid: "anonymous-demo" },
+                    user: { uid: decoded.uid },
                     room,
                 };
-            }
-
-            if (!room?.project) {
-                throw Object.assign(new Error("Authentication failed: Invalid room format"), { code: 4001 });
-            }
-
-            if (!token) {
-                throw Object.assign(new Error("Authentication failed: No token provided"), { code: 4001 });
-            }
-
-            let decoded;
-            try {
-                decoded = await verifyIdTokenCached(token);
-            } catch (err: any) {
-                // Re-throw so Hocuspocus sends 4001 Unauthorized to client
-                throw err;
-            }
-
-            const hasAccess = await checkContainerAccess(decoded.uid, room.project);
-            if (!hasAccess) {
-                throw Object.assign(new Error("Access denied"), { code: 4003, reason: "FORBIDDEN" });
-            }
-
-            logger.debug(`[Hocuspocus] onAuthenticate: Authorized uid=${decoded.uid} for room=${data.documentName}`);
-            // Return context additions — merged into connection context
-            return {
-                user: { uid: decoded.uid },
-                room,
-            };
-        },
-        async onAfterAuthenticate(data: any) {
-            logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
-        },
-        async onLoadDocument(data: any) {
-            logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
-            return data.document;
-        },
-        async onDisconnect(data: any) {
-            logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
-        },
-    } as unknown as import("@hocuspocus/server").Configuration);
+            },
+            async onAfterAuthenticate(data: any) {
+                logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
+            },
+            async onLoadDocument(data: any) {
+                logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
+                return data.document;
+            },
+            async onDisconnect(data: any) {
+                logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
+            },
+        } as unknown as import("@hocuspocus/server").Configuration,
+    );
 
     const wss = new WebSocketServer({ noServer: true });
 
@@ -469,8 +473,8 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        if (typeof (hocuspocus as unknown as { destroy?: () => void }).destroy === "function") {
-            (hocuspocus as unknown as { destroy?: () => void }).destroy?.();
+        if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
+            (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
         } else {
             hocuspocus.closeConnections();
         }
