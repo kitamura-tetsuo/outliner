@@ -124,7 +124,7 @@ onMount(() => {
 // $effect(() => {
 //     try {
 
-//         const list = (commentsSubscriber.current as any) ?? [];
+//         const list = (commentsSubscriber.current as unknown as Comment[]) ?? [];
 //         commentsList = list as Comment[];
 //         recompute();
 //         onCountChanged?.(commentsList.length);

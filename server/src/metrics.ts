@@ -22,7 +22,7 @@ export function recordMessage() {
 export function getMetrics(server: Server) {
     const msgPerSec = history.length === 0 ? 0 : history.reduce((a, b) => a + b, 0) / history.length;
     return {
-        connections: (server as any).getConnectionsCount(),
+        connections: (server as unknown as { getConnectionsCount: () => number; }).getConnectionsCount(),
         totalMessages,
         msgPerSec,
     };
