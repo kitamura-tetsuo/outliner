@@ -1,7 +1,7 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
 const logger = getLogger("OutlinerBase");
-    /* eslint-disable @typescript-eslint/no-explicit-any */
+
     // moved to onMount to avoid initial-value capture warnings
 
     import { Comments, Item } from "../schema/app-schema";
@@ -157,29 +157,29 @@ const logger = getLogger("OutlinerBase");
                                 // Do not write to map in getter to avoid infinite loops in Observers
                                 return new Comments(fallback);
                             }
-                            return new Comments(arr as any);
+                            return new Comments(arr as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>);
                         },
                     });
                 }
 
                 const broadcastCommentCount = (ctx: unknown) => {
-                    const arr = ensureCommentsArrayOn(ctx as any);
-                    const len = (arr as any)?.length ?? 0;
+                    const arr = ensureCommentsArrayOn(ctx);
+                    const len = (arr as unknown as { length?: number })?.length ?? 0;
                     W.commentCountsByItemId =
                         W.commentCountsByItemId || new Map();
                     try {
-                        W.commentCountsByItemId.set(String((ctx as any)?.id), len);
+                        W.commentCountsByItemId.set(String((ctx as { id?: string })?.id), len);
                     } catch {}
                     try {
-                        (ctx as any)?.value?.set?.("commentCountCache", len);
+                        (ctx as { value?: { set?: (k: string, v: unknown) => void } })?.value?.set?.("commentCountCache", len);
                     } catch {}
                     try {
-                        (ctx as any)?.value?.set?.("lastChanged", Date.now());
+                        (ctx as { value?: { set?: (k: string, v: unknown) => void } })?.value?.set?.("lastChanged", Date.now());
                     } catch {}
                     try {
                         window.dispatchEvent(
                             new CustomEvent("item-comment-count", {
-                                detail: { id: String((ctx as any)?.id), count: len },
+                                detail: { id: String((ctx as { id?: string })?.id), count: len },
                             }),
                         );
                     } catch {}
@@ -198,8 +198,8 @@ const logger = getLogger("OutlinerBase");
                     if (origAdd) {
                         result = origAdd.call(this, author, text);
                     } else {
-                        const wrapper = ensureCommentsArrayOn(this as any);
-                        const comments = wrapper ? new Comments(wrapper as any) : null;
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>) : null;
                         result = comments?.addComment?.(author, text);
                     }
                     broadcastCommentCount(this);
@@ -215,8 +215,8 @@ const logger = getLogger("OutlinerBase");
                     if (origDel) {
                         result = origDel.call(this, commentId);
                     } else {
-                        const wrapper = ensureCommentsArrayOn(this as any);
-                        const comments = wrapper ? new Comments(wrapper as any) : null;
+                        const wrapper = ensureCommentsArrayOn(this);
+                        const comments = wrapper ? new Comments(wrapper as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>) : null;
                         comments?.deleteComment?.(commentId);
                         result = undefined;
                     }
@@ -251,7 +251,7 @@ const logger = getLogger("OutlinerBase");
                                     Object.defineProperty(proto, "comments", {
                                         get() {
                                             const arr =
-                                                ensureCommentsArrayOn(this as any);
+                                                ensureCommentsArrayOn(this);
                                             if (!arr) {
                                                 const fallbackArr =
                                                     new Y.Array<Y.Map<import('../types/yjs-types.js').CommentValueType>>();
@@ -260,7 +260,7 @@ const logger = getLogger("OutlinerBase");
                                                     fallbackArr,
                                                 );
                                             }
-                                            return new Comments(arr as any);
+                                            return new Comments(arr as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>);
                                         },
                                     });
                                 }
@@ -283,9 +283,9 @@ const logger = getLogger("OutlinerBase");
                                             return r;
                                         }
                                         const wrapper =
-                                            ensureCommentsArrayOn(this as any);
+                                            ensureCommentsArrayOn(this);
                                         const comments = wrapper
-                                            ? new Comments(wrapper as any)
+                                            ? new Comments(wrapper as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>)
                                             : null;
                                         const res = comments?.addComment?.(
                                             author,
@@ -312,9 +312,9 @@ const logger = getLogger("OutlinerBase");
                                             return r;
                                         }
                                         const wrapper =
-                                            ensureCommentsArrayOn(this as any);
+                                            ensureCommentsArrayOn(this);
                                         const comments = wrapper
-                                            ? new Comments(wrapper as any)
+                                            ? new Comments(wrapper as unknown as import("yjs").Array<import("yjs").Map<import("../types/yjs-types").CommentValueType>>)
                                             : null;
                                         comments?.deleteComment?.(commentId);
                                         broadcastCommentCount(this);

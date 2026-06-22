@@ -192,7 +192,7 @@ export async function startServer(
                 connection.close(4005, "MESSAGE_TOO_LARGE");
             }
         },
-    } as any;
+    } as unknown as Partial<import("@hocuspocus/server").Configuration>;
 
     const extensions = [
         new Logger({}),
@@ -204,7 +204,7 @@ export async function startServer(
 
     const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
-        extensions: extensions as any[],
+        extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
         debounce: 500,
         async onConnect(data: any) {
             const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
@@ -273,7 +273,7 @@ export async function startServer(
         async onDisconnect(data: any) {
             logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
         },
-    } as any);
+    } as unknown as import("@hocuspocus/server").Configuration);
 
     const wss = new WebSocketServer({ noServer: true });
 
@@ -283,7 +283,7 @@ export async function startServer(
     });
 
     app.get("/metrics", requireAuth, (_req, res) => {
-        res.json(getMetrics(hocuspocus as any));
+        res.json(getMetrics(hocuspocus as unknown as import("@hocuspocus/server").Server));
     });
 
     // Seed API - use Hocuspocus's openDirectConnection for proper document lifecycle
@@ -469,8 +469,8 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        if (typeof (hocuspocus as any).destroy === "function") {
-            (hocuspocus as any).destroy();
+        if (typeof (hocuspocus as unknown as { destroy?: () => void }).destroy === "function") {
+            (hocuspocus as unknown as { destroy?: () => void }).destroy?.();
         } else {
             hocuspocus.closeConnections();
         }

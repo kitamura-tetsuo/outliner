@@ -1,5 +1,5 @@
 <script lang="ts">
-    /* eslint-disable @typescript-eslint/no-explicit-any */
+
 import { onMount, onDestroy } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";
@@ -30,7 +30,7 @@ onMount(() => {
             const obs = (e?: { keysChanged?: { has?: (key: string) => boolean } }) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('aliasTargetId'))) {
-                        const newValue = (ymap as any).get?.('aliasTargetId');
+                        const newValue = (ymap as unknown as { get?: (k: string) => string }).get?.('aliasTargetId');
                         if (newValue !== aliasTargetId) {
                             aliasTargetId = newValue;
                             logger.debug({ itemId: modelId, newValue }, "OutlinerItemAlias: aliasTargetId updated via observe");
@@ -40,7 +40,7 @@ onMount(() => {
             };
             ymap.observe(obs);
             obs(); // Initial reflection
-            onDestroy(() => { try { (ymap as any)?.unobserve?.(obs); } catch {} });
+            onDestroy(() => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch {} });
         }
     } catch {}
 });
@@ -52,9 +52,9 @@ onMount(() => {
     const iv = setInterval(() => {
         try {
             const ap = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { aliasPickerStore?: { confirmById?: (id: string) => void, show?: (id: string) => void } }).aliasPickerStore : null;
-            const li = (ap as any)?.lastConfirmedItemId;
-            const lt = (ap as any)?.lastConfirmedTargetId;
-            const la = (ap as any)?.lastConfirmedAt as number | null;
+            const li = ap?.lastConfirmedItemId;
+            const lt = ap?.lastConfirmedTargetId;
+            const la = ap?.lastConfirmedAt as number | null;
             if (li && lt && la && (Date.now() - la < 6000) && li === modelId) {
                 aliasLastConfirmedPulse = { itemId: li, targetId: lt, at: la };
             }
