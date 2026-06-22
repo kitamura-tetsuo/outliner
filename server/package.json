@@ -3,7 +3,7 @@
         "@dotenvx/dotenvx": "^1.71.0",
         "@google-cloud/secret-manager": "^6.1.3",
         "@hocuspocus/extension-logger": "^4.2.0",
-        "@hocuspocus/extension-sqlite": "^4.2.0",
+        "@hocuspocus/extension-sqlite": "^4.3.0",
         "@hocuspocus/server": "^4.2.0",
         "@sentry/node": "^10.58.0",
         "cors": "^2.8.6",
