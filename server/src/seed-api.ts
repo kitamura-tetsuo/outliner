@@ -129,7 +129,11 @@ export function createSeedRouter(
             // Use Hocuspocus's official openDirectConnection API
             // This properly handles document lifecycle, caching, and sync
             const directConnection = await (hocuspocus as unknown as {
-                openDirectConnection: (room: string, opts: unknown) => Promise<{ document: import("yjs").Doc; }>;
+                openDirectConnection: (room: string, opts: unknown) => Promise<{
+                document: import("yjs").Doc;
+                transact: (fn: (document: any) => void) => Promise<void>;
+                disconnect: () => Promise<void>;
+            }>;
             }).openDirectConnection(projectRoom, {
                 isSeeding: true,
             });
