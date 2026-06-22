@@ -69,7 +69,7 @@ class YjsStore {
                     // Case A: Connected project is empty -> Port the entire previous page (maintain ID)
                     if (newCount === 0) {
                         for (let i = 0; i < prevCount; i++) {
-                            const prevPage: any = prevItems.at ? prevItems.at(i) : prevItems[i];
+                            const prevPage: unknown = prevItems.at ? prevItems.at(i) : prevItems[i];
                             const title = prevPage?.text?.toString?.() ?? String(prevPage?.text ?? "");
                             if (!title) continue;
                             const cp = connectedProject as unknown;
@@ -90,7 +90,7 @@ class YjsStore {
                                     const prevLines = prevPage?.items as unknown;
                                     const len = prevLines?.length ?? 0;
                                     for (let j = 0; j < len; j++) {
-                                        const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
+                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
                                         if (!prevLine) continue;
                                         const txt = prevLine.text?.toString?.() ?? String(prevLine.text ?? "");
                                         const newLine = newPage.items?.addNode
@@ -110,15 +110,15 @@ class YjsStore {
                     } else {
                         // Case B: Existing page in connected project -> Overwrite ID with matching title (overwrite row with matching index as well)
                         try {
-                            const newPages: any = newItems;
-                            const getTitle = (p: any) => p?.text?.toString?.() ?? String(p?.text ?? "");
+                            const newPages: unknown = newItems;
+                            const getTitle = (p: { text?: { toString?: () => string } | string }) => p?.text?.toString?.() ?? String(p?.text ?? "");
                             const newLen = newPages?.length ?? 0;
                             for (let i = 0; i < newLen; i++) {
-                                const curPage: any = newPages.at ? newPages.at(i) : newPages[i];
+                                const curPage: unknown = newPages.at ? newPages.at(i) : newPages[i];
                                 if (!curPage) continue;
                                 const title = getTitle(curPage);
                                 // Search for a page with the same name from the previous project
-                                let matchPrev: any = null;
+                                let matchPrev: unknown = null;
                                 for (let k = 0; k < prevCount; k++) {
                                     const pp = prevItems.at ? prevItems.at(k) : prevItems[k];
                                     if (getTitle(pp) === title) {
@@ -137,7 +137,7 @@ class YjsStore {
                                     const newLines = curPage?.items as unknown;
                                     const len = Math.min(prevLines?.length ?? 0, newLines?.length ?? 0);
                                     for (let j = 0; j < len; j++) {
-                                        const prevLine: any = prevLines.at ? prevLines.at(j) : prevLines[j];
+                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
                                         const curLine = newLines.at ? newLines.at(j) : newLines[j];
                                         if (!prevLine || !curLine) continue;
                                         try {
