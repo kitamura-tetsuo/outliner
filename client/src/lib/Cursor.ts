@@ -81,9 +81,7 @@ export class Cursor implements CursorEditingContext {
                 for (let i = 0; i < len; i++) {
                     const p = pages.at(i);
                     if (!p) continue;
-                    const f = searchItem(p as unknown as unknown as import("../schema/yjs-schema").Item, this.itemId) as
-                        | Item
-                        | undefined;
+                    const f = searchItem(p as unknown as import("../schema/yjs-schema").Item, this.itemId) as Item | undefined;
                     if (f) return f;
                 }
             }
