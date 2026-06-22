@@ -333,9 +333,9 @@ function handleCompositionStart(event: CompositionEvent) {
 // Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
     logger.debug("GlobalTextArea.handleKeyDown called with key:", event.key);
-    logger.debug("GlobalTextArea.handleKeyDown: event.target:", event.target);
-    logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef);
-    logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement);
+    logger.debug("GlobalTextArea.handleKeyDown: event.target:", (event.target as Element | null)?.tagName);
+    logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef?.tagName);
+    logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
 
 
     KeyEventHandler.handleKeyDown(event);
@@ -359,10 +359,10 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
-    logger.debug("GlobalTextArea.handleInput called with event:", event);
-    logger.debug("GlobalTextArea.handleInput: event.target:", event.target);
-    logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef);
-    logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement);
+    logger.debug("GlobalTextArea.handleInput called with event.type:", event.type);
+    logger.debug("GlobalTextArea.handleInput: event.target:", (event.target as Element | null)?.tagName);
+    logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef?.tagName);
+    logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
 
 
     KeyEventHandler.handleInput(event);
