@@ -21,7 +21,8 @@
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "resolveJsonModule": true
+        "resolveJsonModule": true,
+        "rootDir": "./src"
     },
     "include": [
         "src/**/*",
@@ -30,6 +31,8 @@
     "exclude": [
         "node_modules",
         "dist",
-        "tests"
+        "tests",
+        "package.json",
+        "package-lock.json"
     ]
 }
