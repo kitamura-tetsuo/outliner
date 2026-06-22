@@ -1655,7 +1655,7 @@ export class KeyEventHandler {
      * @param itemId Item ID
      * @returns Item text
      */
-    private static getItemText(itemId: string | null): string {
+    static getItemText(itemId: string | null): string {
         if (!itemId) return "";
 
         // Get item efficiently using attribute selector.
@@ -1672,7 +1672,7 @@ export class KeyEventHandler {
      * @param direction Direction ('prev' or 'next')
      * @returns Adjacent item info
      */
-    private static getAdjacentItem(
+    static getAdjacentItem(
         itemId: string | null,
         direction: "prev" | "next",
     ): { id: string; text: string; } | null {
@@ -1714,7 +1714,7 @@ export class KeyEventHandler {
      * @param endItemId End Item ID
      * @returns Array of items
      */
-    private static getItemsBetween(startItemId: string, endItemId: string): Array<{ id: string; text: string; }> {
+    static getItemsBetween(startItemId: string, endItemId: string): Array<{ id: string; text: string; }> {
         // Debug info
         if (
             typeof window !== "undefined"

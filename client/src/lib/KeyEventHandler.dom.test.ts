@@ -25,18 +25,15 @@ describe("KeyEventHandler DOM methods", () => {
     });
 
     it("getItemText returns correct text", () => {
-        // @ts-expect-error - accessing private method for test
         expect(KeyEventHandler.getItemText("item1")).toBe("Text 1");
     });
 
     it("getAdjacentItem works", () => {
-        // @ts-expect-error - accessing private method for test
         const next = KeyEventHandler.getAdjacentItem("item1", "next");
         expect(next?.id).toBe("item2");
     });
 
     it("getItemsBetween works", () => {
-        // @ts-expect-error - accessing private method for test
         const range = KeyEventHandler.getItemsBetween("item1", "item3");
         expect(range.map(i => i.id)).toEqual(["item1", "item2", "item3"]);
     });
