@@ -17,6 +17,9 @@ const config = {
         mdsvex(),
     ],
 
+    // compilerOptions: { runes: true },
+    // compilerOptions: { runes: true },
+
     kit: {
         adapter: adapter({
             // Output to Firebase Hosting public directory
