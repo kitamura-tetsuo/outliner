@@ -85,19 +85,19 @@ export async function setupTestUser(): Promise<UserRecord> {
 if (import.meta.url === `file://${process.argv[1]}`) {
     setupTestUser()
         .then(user => {
-            console.log("=================================================");
-            console.log("Development test user setup completed");
-            console.log("=================================================");
-            console.log("Email:", user.email);
-            console.log("UID:", user.uid);
-            console.log("DisplayName:", user.displayName);
-            console.log("Password: password");
-            console.log("=================================================");
-            console.log("Please use this user information to log in to the app.");
+            logger.info("=================================================");
+            logger.info("Development test user setup completed");
+            logger.info("=================================================");
+            logger.info(`Email: ${user.email}`);
+            logger.info(`UID: ${user.uid}`);
+            logger.info(`DisplayName: ${user.displayName}`);
+            logger.info("Password: password");
+            logger.info("=================================================");
+            logger.info("Please use this user information to log in to the app.");
             process.exit(0);
         })
         .catch(error => {
-            /* eslint-disable-next-line no-console */ console.error("Failed to setup test user:", error);
+            logger.error({ error }, "Failed to setup test user");
             process.exit(1);
         });
 }

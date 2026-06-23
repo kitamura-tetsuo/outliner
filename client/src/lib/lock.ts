@@ -65,17 +65,13 @@ export class AsyncLockManager {
 
 //     async methodA() {
 //         return this.lockManager.runExclusive('methodA', async () => {
-//             console.log('methodA start');
 //             await new Promise(r => setTimeout(r, 1000));
-//             console.log('methodA end');
 //         });
 //     }
 
 //     async methodB() {
 //         return this.lockManager.runExclusive('methodB', async () => {
-//             console.log('methodB start');
 //             await new Promise(r => setTimeout(r, 500));
-//             console.log('methodB end');
 //         });
 //     }
 
@@ -98,13 +94,9 @@ export class AsyncLockManager {
 
 //     // Locking with an arbitrary key
 //     service.runWithCustomLock('custom', async () => {
-//         console.log('custom lock start');
 //         await new Promise(r => setTimeout(r, 700));
-//         console.log('custom lock end');
 //     });
 //     service.runWithCustomLock('custom', async () => {
-//         console.log('custom lock 2 start');
 //         await new Promise(r => setTimeout(r, 700));
-//         console.log('custom lock 2 end');
 //     });
 // })();
