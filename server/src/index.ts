@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { loadConfig } from "./config.js";
 import { initializeFirebase } from "./firebase-init.js";
 import { startServer } from "./server.js";
+import { serverLogger as logger } from "./utils/log-manager.js";
 
 const config = loadConfig();
 
@@ -34,7 +35,7 @@ if (config.SENTRY_DSN) {
         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
         process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));
     } catch (err) {
-        /* eslint-disable-next-line no-console */ console.error("Failed to start server:", err);
+        logger.error({ err }, "Failed to start server");
         process.exit(1);
     }
 })();
