@@ -808,7 +808,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
     if (!textareaEl) {
         textareaEl = document.querySelector(".global-textarea") as HTMLTextAreaElement | null;
         if (!textareaEl) {
-            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
+            logger.warn({ error: new Error("Global textarea not found") }, "Global textarea not found");
             return;
         }
         // Re-register to store
@@ -1090,7 +1090,7 @@ function handleClick(event: MouseEvent) {
             });
         }
         else {
-            logger.error({ error: new Error("Global textarea not found") }, "Global textarea not found");
+            logger.warn({ error: new Error("Global textarea not found") }, "Global textarea not found");
         }
 
         // Start cursor blinking

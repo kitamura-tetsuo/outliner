@@ -185,7 +185,7 @@ export class Cursor implements CursorEditingContext {
                     typeof window !== "undefined"
                     && window.DEBUG_MODE
                 ) {
-                    logger.error({}, "Cursor.applyToStore: Global textarea not found");
+                    logger.warn({}, "Cursor.applyToStore: Global textarea not found");
                 }
             }
         }
