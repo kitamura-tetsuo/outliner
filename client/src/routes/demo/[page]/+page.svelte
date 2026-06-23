@@ -25,12 +25,15 @@
     function findPage(name: string): Item | undefined {
         const items = store.project?.items;
         if (!items) return undefined;
-        // Use iterator for better performance ($O(N \log N)$ vs $O(N^2 \log N)$)
-        for (const item of items) {
+        // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
+        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
+            ? items.iterateUnordered()
+            : items;
+        for (const item of iter) {
             if (!item) continue;
             const text = item.text.toString();
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
-                return item;
+                return item as Item;
             }
         }
         return undefined;

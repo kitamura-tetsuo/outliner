@@ -160,18 +160,20 @@
             const findPage = () => {
                 const items = project?.items;
                 if (items) {
-                    const len = items.length ?? 0;
                     const titles: string[] = [];
-                    for (let i = 0; i < len; i++) {
-                        const p = items.at(i);
+                    const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
+                        ? items.iterateUnordered()
+                        : (items as unknown as Iterable<{ text?: { toString?: () => string } }>);
+                    for (const p of iter) {
+                        if (!p) continue;
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);
                         if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;
                         }
                     }
-                    if (len > 0) {
-                        logger.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${len} items: ${titles.join(", ")}`);
+                    if (titles.length > 0) {
+                        logger.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${titles.length} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
