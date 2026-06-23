@@ -212,9 +212,9 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
                 await new Promise(r => setTimeout(r, 100));
                 attempts++;
             }
-            logger.info(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
+            console.log(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
-            logger.error(`[${pv}] reconnect failed:`, e);
+            console.error(`[${pv}] reconnect failed:`, e);
         }
     }, { pv: providerVar });
 }
@@ -259,12 +259,12 @@ export async function createMinimalYjsConnection(
             (window as Window & typeof globalThis & Record<string, unknown>)[providerVar] = provider;
 
             if (enableLogging) {
-                provider.on("status", (e: { status: string; }) => logger.info(`[${providerVar}] status`, e.status));
+                provider.on("status", (e: { status: string; }) => console.log(`[${providerVar}] status`, e.status));
                 provider.on(
                     "synced",
-                    (data: { state: boolean; }) => logger.info(`[${providerVar}] synced`, data.state),
+                    (data: { state: boolean; }) => console.log(`[${providerVar}] synced`, data.state),
                 );
-                logger.info(
+                console.log(
                     `[${providerVar}] init isSynced=`,
                     provider.isSynced,
                     "url=",
@@ -309,7 +309,7 @@ export async function setupUpdateTracking(
         ({ docVar, counterVar, counterV2Var }) => {
             const doc = (window as Window & typeof globalThis & Record<string, unknown>)[docVar];
             if (!doc) {
-                logger.error(`setupUpdateTracking: ${docVar} not found`);
+                console.error(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
 
