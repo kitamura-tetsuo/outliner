@@ -53,7 +53,7 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 onMount(() => {
     try {
-        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + (compTypeValue as unknown as { current: unknown })?.current + " id=" + model?.id);
+        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + compTypeValue + " id=" + model?.id);
     } catch {}
 });
 onMount(() => {
