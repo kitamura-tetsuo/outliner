@@ -1,6 +1,3 @@
-import { getLogger } from "../logger";
-const logger = getLogger("Yjs");
-
 /**
  * Yjs Test Helpers
  *
@@ -57,7 +54,7 @@ export async function waitForSyncedAndDataForTest(
     for (let i = 0; i < maxIterations; i++) {
         if (provider.isSynced === true) {
             if (debugEnabled) {
-                logger.debug(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
+                console.log(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
             }
             break;
         }
@@ -68,7 +65,7 @@ export async function waitForSyncedAndDataForTest(
     for (let i = 0; i < maxIterations; i++) {
         if (checkDataAvailable()) {
             if (debugEnabled) {
-                logger.debug(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
+                console.log(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
             }
             return true;
         }
@@ -76,7 +73,7 @@ export async function waitForSyncedAndDataForTest(
     }
 
     if (debugEnabled) {
-        logger.debug(
+        console.log(
             `[${label}] timeout after ${timeoutMs}ms, isSynced=${provider.isSynced}, dataAvailable=${checkDataAvailable()}`,
         );
     }
@@ -130,7 +127,7 @@ export async function initializeBrowserPage(
     const page = await context.newPage();
 
     // Set up console logging
-    page.on("console", (m) => logger.debug(`[${consolePrefix} console]`, m.text().slice(0, 100)));
+    page.on("console", (m) => console.log(`[${consolePrefix} console]`, m.text().slice(0, 100)));
 
     // Set up localStorage flags
     await page.addInitScript(
@@ -212,7 +209,7 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
                 await new Promise(r => setTimeout(r, 100));
                 attempts++;
             }
-            logger.debug(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
+            console.log(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
             console.error(`[${pv}] reconnect failed:`, e);
         }
@@ -259,12 +256,12 @@ export async function createMinimalYjsConnection(
             (window as Window & typeof globalThis & Record<string, unknown>)[providerVar] = provider;
 
             if (enableLogging) {
-                provider.on("status", (e: { status: string; }) => logger.debug(`[${providerVar}] status`, e.status));
+                provider.on("status", (e: { status: string; }) => console.log(`[${providerVar}] status`, e.status));
                 provider.on(
                     "synced",
-                    (data: { state: boolean; }) => logger.debug(`[${providerVar}] synced`, data.state),
+                    (data: { state: boolean; }) => console.log(`[${providerVar}] synced`, data.state),
                 );
-                logger.debug(
+                console.log(
                     `[${providerVar}] init isSynced=`,
                     provider.isSynced,
                     "url=",
@@ -476,7 +473,7 @@ export async function prepareTwoFullBrowserPages(
 
     // Set up console logging for page1
     page1.on("console", (msg) => {
-        logger.debug(`[page1 console.${msg.type()}]`, msg.text().slice(0, 100));
+        console.log(`[page1 console.${msg.type()}]`, msg.text().slice(0, 100));
     });
 
     // Ensure WS is forced for Yjs E2E on page1 (TestHelpers defaults to WS disabled)
@@ -502,7 +499,7 @@ export async function prepareTwoFullBrowserPages(
 
     // Get the page URL from page1
     const pageUrl = page1.url();
-    logger.debug(`Page1 URL: ${pageUrl}`);
+    console.log(`Page1 URL: ${pageUrl}`);
 
     // Wait for page1 to initialize Yjs client and project
     await page1.waitForFunction(
@@ -510,24 +507,24 @@ export async function prepareTwoFullBrowserPages(
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
             const client = (yjsStore as unknown as { yjsClient?: { getProject?: () => unknown; }; })?.yjsClient;
             if (!client) {
-                logger.debug("page1: yjsClient not found");
+                console.log("page1: yjsClient not found");
                 return false;
             }
             const project = client.getProject?.();
             if (!project) {
-                logger.debug("page1: project not found");
+                console.log("page1: project not found");
                 return false;
             }
 
             const items = (project as unknown as { items?: { length: number; }; }).items;
             const pageCount = items?.length ?? 0;
-            logger.debug(`page1: Yjs client initialized, pageCount=${pageCount}`);
+            console.log(`page1: Yjs client initialized, pageCount=${pageCount}`);
             return !!(project && items);
         },
         { timeout: 15000 },
     );
 
-    logger.debug("Page1 Yjs client initialized");
+    console.log("Page1 Yjs client initialized");
 
     // Create second browser context
     const context2 = await browser.newContext();
@@ -535,7 +532,7 @@ export async function prepareTwoFullBrowserPages(
 
     // Set up console logging for page2
     page2.on("console", (msg) => {
-        logger.debug(`[page2 console.${msg.type()}]`, msg.text().slice(0, 100));
+        console.log(`[page2 console.${msg.type()}]`, msg.text().slice(0, 100));
     });
 
     // Enable WebSocket and test flags for page2
@@ -582,26 +579,26 @@ export async function prepareTwoFullBrowserPages(
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
             const client = (yjsStore as unknown as { yjsClient?: { getProject?: () => unknown; }; })?.yjsClient;
             if (!client) {
-                logger.debug("page2: yjsClient not found");
+                console.log("page2: yjsClient not found");
                 return false;
             }
             const project = client.getProject?.();
             if (!project || !(project as unknown as { items?: unknown; }).items) {
-                logger.debug("page2: project or items not found");
+                console.log("page2: project or items not found");
                 return false;
             }
             const appStore = (window as Window & typeof globalThis & Record<string, unknown>).appStore;
             if (!appStore) {
-                logger.debug("page2: appStore not found");
+                console.log("page2: appStore not found");
                 return false;
             }
-            logger.debug("page2: Yjs client and appStore initialized");
+            console.log("page2: Yjs client and appStore initialized");
             return true;
         },
         { timeout: 15000 },
     );
 
-    logger.debug("Page2 Yjs client and appStore initialized");
+    console.log("Page2 Yjs client and appStore initialized");
 
     return {
         context1,
