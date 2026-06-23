@@ -819,7 +819,7 @@ export class ScrapboxFormatter {
             (match, p1, p2, p3) => {
                 if (p2 === " " || p2 === "x") return match;
                 return `<span class="control-char">${p1}</span>${p2}<span class="control-char">${p3}</span>`;
-            }
+            },
         );
 
         // Quote
