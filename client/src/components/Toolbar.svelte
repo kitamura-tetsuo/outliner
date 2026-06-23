@@ -18,56 +18,10 @@ let toolbarEl: HTMLDivElement | null = null;
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
 
-	// Helper: resolve accessible name for inputs
-	function getAccessibleName(el: HTMLElement): string {
-    try {
-        const aria = el.getAttribute("aria-label");
-        if (aria) return aria.trim();
-        const labelledBy = el.getAttribute("aria-labelledby");
-        if (labelledBy) {
-            const txt = labelledBy
-                .split(/\s+/)
-                .map(id => document.getElementById(id)?.textContent?.trim() || "")
-                .filter(Boolean)
-                .join(" ");
-            if (txt) return txt;
-        }
-        const id = el.getAttribute("id");
-        if (id) {
-            const lab = document.querySelector(`label[for="${CSS.escape(id)}"]`);
-            const txt = lab?.textContent?.trim();
-            if (txt) return txt;
-        }
-        const labWrap = el.closest("label");
-        if (labWrap?.textContent) return labWrap.textContent.trim();
-        const ph = (el as HTMLInputElement).placeholder;
-        if (ph) return ph.trim();
-    } catch {}
-	    return "";
-	}
 
-	type ToolbarNodeStyles = {
-	    display: string;
-	    visibility: string;
-	    opacity: string;
-	    transform: string;
-	    clipPath?: string;
-	    pointerEvents: string;
-	};
 
-	function styles(el: Element | null): ToolbarNodeStyles | null {
-	    if (!el) return null;
-	    const cs = getComputedStyle(el);
-	    const clipPath = cs.clipPath || cs.getPropertyValue("clip-path") || undefined;
-	    return {
-	        display: cs.display,
-	        visibility: cs.visibility,
-	        opacity: cs.opacity,
-	        transform: cs.transform,
-	        clipPath,
-	        pointerEvents: cs.pointerEvents,
-	    };
-	}
+
+
 
 	type FluidClientLike = { getProject: () => Project };
 	type FluidServiceLike = {
@@ -92,53 +46,6 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	        && "ydoc" in value
 	        && "tree" in value;
 	}
-
-function dumpToolbarState(tag: string) {
-    try {
-        const toolbars = Array.from(document.querySelectorAll('[data-testid="main-toolbar"]')) as HTMLDivElement[];
-        const summary = toolbars.map((n, i) => ({
-            i,
-            innerHTMLHead: n.innerHTML.substring(0, 100),
-        }));
-        logger.info("[SEA-0001][Toolbar][%s] toolbar count=", tag, toolbars.length, summary);
-
-        const root = toolbarEl ?? toolbars[0] ?? null;
-        if (!root) {
-            logger.info("[SEA-0001][Toolbar][%s] no root toolbar found", tag);
-            return;
-        }
-        logger.info("[SEA-0001][Toolbar][%s] root styles", tag, styles(root));
-        const inputs = Array.from(root.querySelectorAll<HTMLInputElement>('input, [role="textbox"]'));
-        const details = inputs.map((el, i) => ({
-            i,
-            type: el.getAttribute("type"),
-            ariaLabel: el.getAttribute("aria-label"),
-            ariaLabelledBy: el.getAttribute("aria-labelledby"),
-            id: el.id,
-            placeholder: el.placeholder,
-            accessibleName: getAccessibleName(el),
-            rect: el.getBoundingClientRect ? (() => { const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; })() : null,
-            styles: styles(el),
-        }));
-        logger.info("[SEA-0001][Toolbar][%s] textboxes in main-toolbar:", tag, details);
-        const target = inputs.find(el => getAccessibleName(el) === "Search pages");
-        logger.info("[SEA-0001][Toolbar][%s] has target textbox?", tag, !!target);
-    } catch (e) {
-        logger.info("[SEA-0001][Toolbar][%s] dump error", tag, e);
-    }
-}
-
-function dedupeToolbars() {
-    try {
-        const nodes = Array.from(document.querySelectorAll('[data-testid="main-toolbar"]')) as HTMLDivElement[];
-        // Previously we removed duplicate toolbars which could detach the element
-        // Playwright had already scoped to, causing getByTestId(...).getByRole(...).waitFor()
-        // to hang. To avoid destabilizing locators, we now keep all nodes and only log.
-        logger.info("[Toolbar][dedupe] toolbar nodes present:", nodes.length);
-        // If necessary in the future, we could hide duplicates instead of removing:
-        // nodes.forEach((n, i) => { if (toolbarEl && n !== toolbarEl) n.style.display = 'none'; });
-    } catch {}
-}
 
 	// As a last resort, resolve from service by URL param to support tests
 	onMount(async () => {
@@ -178,24 +85,7 @@ function dedupeToolbars() {
     }
 });
 
-// Debug and dedupe on mount and after navigation
-onMount(() => {
-    // Initial dedupe and dump
-    dedupeToolbars();
-    dumpToolbarState("mount");
-    // After hydration/microtask
-    setTimeout(() => { dedupeToolbars(); dumpToolbarState("mount-setTimeout-0ms"); }, 0);
-});
 
-if (typeof window !== "undefined") {
-    import("$app/navigation").then(({ afterNavigate }) => {
-        try {
-            afterNavigate(() => {
-                setTimeout(() => { dedupeToolbars(); dumpToolbarState("afterNavigate-0ms"); }, 0);
-            });
-        } catch {}
-    }).catch(() => {});
-}
 </script>
 
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
