@@ -53,8 +53,10 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         try {
             if (item.items) {
                 let i = 0;
-                for (let idx = 0; idx < item.items.length; idx++) {
-                    const child = item.items.at(idx);
+                const iter = "iterateUnordered" in item.items && typeof item.items.iterateUnordered === "function"
+                    ? item.items.iterateUnordered()
+                    : item.items;
+                for (const child of iter) {
                     if (i++ > 10) break;
                     if (child) traverse(child, currentDepth + 1);
                     if (lines.length >= maxLines && image) return;
@@ -69,8 +71,10 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
     try {
         if (pageItem.items) {
             let i = 0;
-            for (let idx = 0; idx < pageItem.items.length; idx++) {
-                const child = pageItem.items.at(idx);
+            const iter = "iterateUnordered" in pageItem.items && typeof pageItem.items.iterateUnordered === "function"
+                ? pageItem.items.iterateUnordered()
+                : pageItem.items;
+            for (const child of iter) {
                 if (i++ > 20) break;
                 if (child) traverse(child, 1);
                 if (lines.length >= maxLines && image) break;
