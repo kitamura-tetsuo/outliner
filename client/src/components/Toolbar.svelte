@@ -18,33 +18,7 @@ let toolbarEl: HTMLDivElement | null = null;
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
 
-	// Helper: resolve accessible name for inputs
-	function getAccessibleName(el: HTMLElement): string {
-    try {
-        const aria = el.getAttribute("aria-label");
-        if (aria) return aria.trim();
-        const labelledBy = el.getAttribute("aria-labelledby");
-        if (labelledBy) {
-            const txt = labelledBy
-                .split(/\s+/)
-                .map(id => document.getElementById(id)?.textContent?.trim() || "")
-                .filter(Boolean)
-                .join(" ");
-            if (txt) return txt;
-        }
-        const id = el.getAttribute("id");
-        if (id) {
-            const lab = document.querySelector(`label[for="${CSS.escape(id)}"]`);
-            const txt = lab?.textContent?.trim();
-            if (txt) return txt;
-        }
-        const labWrap = el.closest("label");
-        if (labWrap?.textContent) return labWrap.textContent.trim();
-        const ph = (el as HTMLInputElement).placeholder;
-        if (ph) return ph.trim();
-    } catch {}
-	    return "";
-	}
+
 
 
 
