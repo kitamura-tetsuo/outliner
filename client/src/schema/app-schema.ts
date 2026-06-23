@@ -467,7 +467,7 @@ export class Item {
             this.value.set("attachments", arr);
         }
         try {
-            console.debug("[Item.addAttachment] pushing url=", url, "id=", this.id);
+            logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
         } catch {}
         try {
             const w = (typeof window !== "undefined") ? window : null;
