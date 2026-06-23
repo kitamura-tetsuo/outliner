@@ -18,7 +18,7 @@ const config = {
     ],
 
     // compilerOptions: { runes: true },
-    compilerOptions: { runes: true },
+    // compilerOptions: { runes: true },
 
     kit: {
         adapter: adapter({
