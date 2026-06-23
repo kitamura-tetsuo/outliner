@@ -375,10 +375,6 @@ function attachCommentObserver(): (() => void) | null {
     return null;
     }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function handleCommentCountChanged() {
-    syncCommentCountFromItem();
-}
 
 onMount(() => {
     syncCommentCountFromItem();
