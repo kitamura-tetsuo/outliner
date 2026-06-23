@@ -1,5 +1,6 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import fs from "fs";
+import { serverLogger as logger } from "./utils/log-manager.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -43,7 +44,7 @@ export class SecretManager {
                 }
             } catch (error: any) {
                 // Log but don't crash, allowing fallback to process.env if needed (though requirement says remove dotenvx for secrets)
-                console.warn(`[SecretManager] Failed to load secret ${name}: ${error.message}`);
+                logger.warn(`[SecretManager] Failed to load secret ${name}: ${error.message}`);
             }
         }
     }

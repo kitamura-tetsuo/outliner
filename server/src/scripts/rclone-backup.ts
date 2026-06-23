@@ -4,6 +4,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
+import { serverLogger as logger } from "../utils/log-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,7 +38,7 @@ export async function createArchive() {
 export async function uploadArchive(archivePath: string) {
     const { rcloneBin, rcloneRemote } = getConfig();
     if (!rcloneRemote) {
-        console.log("RCLONE_REMOTE not set, skipping upload");
+        logger.info("RCLONE_REMOTE not set, skipping upload");
         return;
     }
     await execFileAsync(rcloneBin, ["copy", archivePath, rcloneRemote]);
@@ -67,7 +68,7 @@ async function main() {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
     main().catch((err) => {
-        /* eslint-disable-next-line no-console */ console.error(err);
+        logger.error({ err }, "Backup failed");
         process.exit(1);
     });
 }
