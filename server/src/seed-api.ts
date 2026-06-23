@@ -135,8 +135,8 @@ export function createSeedRouter(
                 ) => Promise<
                     {
                         document: import("yjs").Doc;
-                        transact: (fn: (doc: import("yjs").Doc) => void) => void;
-                        disconnect: () => void;
+                        transact: (fn: (doc: import("yjs").Doc) => void) => Promise<void>;
+                        disconnect: () => Promise<void>;
                     }
                 >;
             }).openDirectConnection(projectRoom, {

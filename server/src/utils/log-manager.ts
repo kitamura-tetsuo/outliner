@@ -158,8 +158,6 @@ export async function rotateLogFile(logFilePath: string, maxBackups = 2): Promis
 
         const directory = path.dirname(logFilePath);
         const basename = path.basename(logFilePath);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const timestamp = new Date().toISOString().replace(/:/g, "-");
 
         // Get list of old backup files (suffixes .1, .2, ...)
         const files = await fsExtra.readdir(directory);
