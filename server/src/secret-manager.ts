@@ -1,8 +1,8 @@
 import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import fs from "fs";
-import { serverLogger as logger } from "./utils/log-manager.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { serverLogger as logger } from "./utils/log-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
