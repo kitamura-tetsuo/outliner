@@ -666,6 +666,8 @@ export class ScrapboxFormatter {
             // [text] format where text does not contain [ or ]
             if (input.includes("[")) {
                 input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
+                    // Ignore checkboxes
+                    if (text === " " || text === "x") return match;
                     // Add class for page existence check
                     const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
@@ -814,7 +816,10 @@ export class ScrapboxFormatter {
         // Normal internal link - display only control characters when cursor is present
         html = html.replace(
             ScrapboxFormatter.RX_CTRL_INT_LINK,
-            '<span class="control-char">$1</span>$2<span class="control-char">$3</span>',
+            (match, p1, p2, p3) => {
+                if (p2 === " " || p2 === "x") return match;
+                return `<span class="control-char">${p1}</span>${p2}<span class="control-char">${p3}</span>`;
+            },
         );
 
         // Quote
