@@ -292,7 +292,7 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    logger.error({}, "Global textarea not found in addCursor (existing cursor)");
+                    logger.warn({}, "Global textarea not found in addCursor (existing cursor)");
                 }
             }
 
@@ -369,7 +369,7 @@ export class EditorOverlayStore {
                     editorOverlayStore?: unknown;
                 }).DEBUG_MODE
             ) {
-                logger.error({}, "Global textarea not found in addCursor (new cursor)");
+                logger.warn({}, "Global textarea not found in addCursor (new cursor)");
             }
         }
 

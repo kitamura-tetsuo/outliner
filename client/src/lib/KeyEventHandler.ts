@@ -1053,7 +1053,7 @@ export class KeyEventHandler {
                 typeof window !== "undefined"
                 && window.DEBUG_MODE
             ) {
-                logger.error(
+                logger.warn(
                     { message: `Global textarea not found in handleInput` },
                     "Global textarea not found in handleInput",
                 );
