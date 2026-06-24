@@ -2114,7 +2114,7 @@ exports.uploadAttachment = onRequest(
       if (claimsToBeImage) {
         // If it claims to be an image, the magic number MUST match an image type
         // If type is null because the dynamic import failed in the test env, fallback to magic number checks
-        if (type === null && process.env.NODE_ENV === "test") {
+        if (type === null) {
           if (
             buffer.length > 8 && buffer[0] === 0x89 && buffer[1] === 0x50 &&
             buffer[2] === 0x4E && buffer[3] === 0x47
