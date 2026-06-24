@@ -18,10 +18,7 @@
     let isDestroyed = false;
 
     // Reactive page list (depends on store.pagesVersion)
-    let pages = $derived.by(() => {
-        void store.pagesVersion;
-        return store.pages?.current;
-    });
+    let pages = $derived(store.pages?.current);
 
     async function initializeDemo() {
         try {
