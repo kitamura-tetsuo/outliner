@@ -96,8 +96,8 @@ describe("Hocuspocus Server", () => {
             const timeout = setTimeout(() => {
                 if (done) return;
                 done = true;
-                resolve(); // Resolve to avoid hanging the test runner forever
-            }, 500);
+                reject(new Error("Timeout waiting for auth failure"));
+            }, 1000);
 
             prov.on("authenticationFailed", finish);
             prov.on("disconnect", finish);
