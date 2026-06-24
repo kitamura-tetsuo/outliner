@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
+
     import { resolvePath } from "../../utils/pathUtils";
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
@@ -77,12 +77,9 @@
     }
 
     // Process when a page is selected
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
-        const pageName = event.detail.pageName;
-
-        if (pageName) {
-            goto(resolvePath(`/${projectName}/${pageName}`));
-        }
+        // Navigation is now handled by the <a> tag in PageListItem
     }
 
 

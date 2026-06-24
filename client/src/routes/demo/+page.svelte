@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
+
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
@@ -76,11 +76,9 @@
     }
 
     // Navigate to the demo page view when a page is selected
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
-        const pageName = event.detail.pageName;
-        if (pageName) {
-            goto(resolvePath(`/demo/${pageName}`));
-        }
+        // Navigation is now handled by the <a> tag in PageListItem
     }
 
     onMount(() => {
