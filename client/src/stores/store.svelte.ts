@@ -234,6 +234,8 @@ export class GeneralStore {
                 // Ignore errors during snapshot saving
             }
             this.pagesVersion++; // Trigger signal
+            // Make sure to re-assign to trigger Svelte 5 reactivity on the items wrapper itself
+            this._pagesData.items = project.items;
 
             // Check if we need to rebuild the page name cache
             let shouldRebuild = false;
