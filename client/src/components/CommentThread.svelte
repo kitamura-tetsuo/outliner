@@ -27,7 +27,7 @@ interface E2ELogEntry {
 interface Props {
     comments?: Comments;
     currentUser: string;
-    doc: unknown;
+
     onCountChanged?: (count: number) => void;
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }

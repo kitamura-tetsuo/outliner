@@ -227,7 +227,7 @@ export class GeneralStore {
         const ymap = project?.ydoc?.getMap?.("orderedTree");
 
         // Setup observer immediately on the project itself
-        const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => {
+        const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => { // eslint-disable-line @typescript-eslint/no-unused-vars
             try {
                 saveProjectSnapshot(project);
             } catch {

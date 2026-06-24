@@ -1094,7 +1094,7 @@ export class KeyEventHandler {
     /**
      * Process IME compositionstart event
      */
-    static handleCompositionStart(_event: CompositionEvent) {
+    static handleCompositionStart(_event: CompositionEvent) { // eslint-disable-line @typescript-eslint/no-unused-vars
         KeyEventHandler.lastCompositionLength = 0;
     }
     /**

@@ -2172,7 +2172,6 @@ export function setSelectionPosition(start: number, end: number = start) {
             comments={ensuredComments}
             item={item}
             currentUser={currentUser}
-            doc={item.ydoc}
         />
     {/if}
 </div>
