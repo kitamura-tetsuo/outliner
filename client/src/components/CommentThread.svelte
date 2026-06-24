@@ -27,12 +27,12 @@ interface E2ELogEntry {
 interface Props {
     comments?: Comments;
     currentUser: string;
-    doc: unknown;
+
     onCountChanged?: (count: number) => void;
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }
 
-let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
+let props: Props = $props();
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");

@@ -23,7 +23,6 @@ describe("cmt-derived-renders", () => {
         render(CommentThread, {
             comments: item.comments,
             currentUser: "me",
-            doc: item.ydoc,
         });
 
         // Initially 0 items
