@@ -204,6 +204,7 @@ export async function startServer(
 
     const hocuspocus = new Hocuspocus({
         name: "hocuspocus-fluid-outliner",
+        timeout: config.IDLE_TIMEOUT_MS,
         extensions: extensions as any[],
         debounce: 500,
         async onConnect(data: any) {
