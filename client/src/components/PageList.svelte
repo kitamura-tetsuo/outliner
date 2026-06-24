@@ -1,5 +1,6 @@
 <script lang="ts">
 import { createEventDispatcher } from "svelte";
+import { goto } from "$app/navigation";
 import {
     Item,
     Items,
@@ -13,14 +14,14 @@ interface Props {
     project: Project;
     rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
-
+    onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
 }
 
 let {
     project,
     rootItems,
     currentUser = "anonymous",
-
+    onPageSelected,
     projectName = project?.title || "demo"
 }: Props = $props();
 
@@ -57,6 +58,12 @@ function handleCreatePage() {
     // Add a page directly to the project
     const newPage = project.addPage(pageTitle, currentUser);
     selectPage(newPage);
+
+    // Also explicitly route to the new page when created via UI (e.g. hitting Enter)
+    const encodedTitle = encodeURIComponent(newPage.text.toString());
+    const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
+    goto(resolvePath(`${basePath}/${encodedTitle}`));
+
     pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
 }
 
@@ -66,8 +73,25 @@ function handleKeyDown(e: KeyboardEvent) {
     }
 }
 
+
 function selectPage(page: Item) {
-    // Left for tracking UI updates (e.g. tracking last selected) if needed in future
+    // Fire event for UI updates (e.g. tracking last selected),
+    // but don't handle navigation here anymore, let the <a> tag handle it.
+    if (onPageSelected) {
+        const event = new CustomEvent("pageSelected", {
+            detail: {
+                pageId: page.id,
+                pageName: page.text.toString(),
+            },
+        });
+        onPageSelected(event);
+    }
+
+    // Dispatch custom event
+    dispatch("pageSelected", {
+        pageId: page.id,
+        pageName: page.text.toString(),
+    });
 }
 </script>
 

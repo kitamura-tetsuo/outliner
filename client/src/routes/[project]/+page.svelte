@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { goto } from "$app/navigation";
+
     import { resolvePath } from "../../utils/pathUtils";
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
@@ -76,7 +76,11 @@
         }
     }
 
-
+    // Process when a page is selected
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
+        // Navigation is now handled by the <a> tag in PageListItem
+    }
 
 
     $effect(() => {
@@ -137,7 +141,7 @@
                         "anonymous"}
                     project={store.project!}
                     rootItems={pages!}
-
+                    onPageSelected={handlePageSelected}
                 />
             </div>
         </div>
