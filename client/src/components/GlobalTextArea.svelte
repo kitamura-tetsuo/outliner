@@ -14,7 +14,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
-let isComposing = false; // eslint-disable-line @typescript-eslint/no-unused-vars
+let isComposing = false;
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
 

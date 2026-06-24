@@ -1385,7 +1385,7 @@
         selection: { startItemId: string, startOffset: number, endOffset: number },
         targetItemId: string,
         position: string,
-        _dropEffect: string, // eslint-disable-line @typescript-eslint/no-unused-vars
+        _dropEffect: string,
     ) {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {

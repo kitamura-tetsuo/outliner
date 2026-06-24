@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";

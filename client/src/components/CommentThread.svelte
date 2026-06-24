@@ -32,7 +32,7 @@ interface Props {
     item?: ItemLike; // Outliner Item (for late-binding comments getter)
 }
 
-let props: Props = $props(); // eslint-disable-line svelte/no-unused-props
+let props: Props = $props();
 let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");

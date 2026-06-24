@@ -232,7 +232,7 @@ export class OutlinerViewModel {
     private recalculateOrderAndDepthItem(
         item: Item,
         depth: number = 0,
-        parentId: string | null = null, // eslint-disable-line @typescript-eslint/no-unused-vars
+        _parentId: string | null = null,
     ): void {
         if (!isItemLike(item)) return;
 
