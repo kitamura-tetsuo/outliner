@@ -69,6 +69,7 @@
             await initializeDemo();
             if (isDestroyed) return;
             resetDone = error === undefined;
+            setTimeout(() => { resetDone = false; }, 3000);
         } finally {
             isResetting = false;
         }
