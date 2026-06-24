@@ -59,7 +59,8 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
         // Verify that project page title is displayed
         // Verify that project name is displayed somewhere on the page (considering possibilities other than h1 elements)
-        const projectElement = page.locator(`text="${projectName}"`);
+        // Target the h1 specifically to avoid strict mode violations with the breadcrumb
+        const projectElement = page.locator(`h1:has-text("${projectName}")`);
         await expect(projectElement).toBeVisible({ timeout: 15000 });
     });
 
@@ -78,10 +79,10 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
 
     test("Separator characters in breadcrumb navigation are displayed correctly", async ({ page }) => {
         // Verify that separator characters are displayed correctly
-        const separators = page.locator('nav span:has-text("/")');
+        const separators = page.locator('nav li:has-text("/")');
         await expect(separators).toHaveCount(2); // Home / Project / Page
 
         // Verify that separator character style is correct
-        await expect(separators.first()).toHaveClass(/mx-2/);
+        await expect(separators.first()).toHaveClass(/text-gray-400/);
     });
 });

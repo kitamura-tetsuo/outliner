@@ -51,7 +51,8 @@ describe("Graph View Page", () => {
         const data = { project: "Test Project" };
         render(Page, { props: { data } });
 
-        expect(screen.getByText("← Return to Test Project")).toBeInTheDocument();
+        expect(screen.getByText("Test Project", { selector: "nav a" })).toBeInTheDocument();
+        expect(screen.getByText("Graph View", { selector: "nav span" })).toBeInTheDocument();
         expect(screen.getByText((content, element) => {
             return element?.tagName.toLowerCase() === "h1" && content.includes("Graph View");
         })).toBeInTheDocument();
