@@ -427,7 +427,8 @@ export class Item {
                     const map = w?.__ITEM_ID_MAP__;
                     const mappedId = map ? map[String(this.id)] : undefined;
                     if (mappedId) {
-                        const iter = (items as any)?.iterateUnordered;
+                        const iter = (items as unknown as { iterateUnordered?: () => IterableIterator<Item>; })
+                            ?.iterateUnordered;
                         if (typeof iter === "function") {
                             for (const cand of iter.call(items)) {
                                 if (cand && String(cand.id) === String(mappedId)) {
@@ -454,7 +455,8 @@ export class Item {
                     if (e instanceof Error && String(e.message) !== "__DONE__") {
                         // 2) Fallback: text match
                         const text = this.text;
-                        const iter = (items as any)?.iterateUnordered;
+                        const iter = (items as unknown as { iterateUnordered?: () => IterableIterator<Item>; })
+                            ?.iterateUnordered;
                         if (typeof iter === "function") {
                             for (const cand of iter.call(items)) {
                                 if (cand) {
