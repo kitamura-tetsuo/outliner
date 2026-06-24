@@ -1,7 +1,6 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import SvelteSEO from "svelte-seo";
-import { getEnv } from "$lib/env";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
 
@@ -46,8 +45,7 @@ if (browser) {
 
 // Removed unused derived state: currentTheme
 
-// Get API server URL
-const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
+
 
 /**
  * Function to rotate log files
@@ -62,7 +60,7 @@ async function rotateLogFiles() {
 
         // 1. Try with standard Fetch API first
         try {
-            const response = await fetch(`${API_URL}/api/rotate-logs`, {
+            const response = await fetch(`/api/rotate-logs`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -92,7 +90,7 @@ async function rotateLogFiles() {
             type: "application/json",
         });
         const success = navigator.sendBeacon(
-            `${API_URL}/api/rotate-logs`,
+            `/api/rotate-logs`,
             blob,
         );
 
@@ -107,7 +105,7 @@ async function rotateLogFiles() {
             // 3. Try closing request (image beacon) as a further retry
             try {
                 const img = new Image();
-                img.src = `${API_URL}/api/rotate-logs?t=${Date.now()}`;
+                img.src = `/api/rotate-logs?t=${Date.now()}`;
             }
             catch {
                 // Ignore error as it is the last attempt
