@@ -1,7 +1,6 @@
 <script lang="ts">
 import { browser } from "$app/environment";
 import SvelteSEO from "svelte-seo";
-import { getEnv } from "$lib/env";
 import { getLogger } from "$lib/logger";
 import { store as appStore } from "../stores/store.svelte";
 
@@ -46,8 +45,7 @@ if (browser) {
 
 // Removed unused derived state: currentTheme
 
-// Get API server URL
-const API_URL = getEnv("VITE_API_SERVER_URL", "http://localhost:7071");
+
 
 /**
  * Function to rotate log files
