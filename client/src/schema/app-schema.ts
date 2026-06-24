@@ -284,7 +284,9 @@ export class Item {
     get text(): string {
         const t = this.value.get("text");
         if (t === undefined || t === null) return "";
-        if (typeof (t as any).toString === "function") return (t as any).toString();
+        if (typeof (t as { toString?: () => string; }).toString === "function") {
+            return (t as { toString: () => string; }).toString();
+        }
         return String(t);
     }
 
