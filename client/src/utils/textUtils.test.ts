@@ -1,4 +1,3 @@
-// @ts-expect-error: jsdom does not have type definitions
 import { JSDOM } from "jsdom";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getClickPosition, pixelPositionToTextPosition } from "./textUtils";
