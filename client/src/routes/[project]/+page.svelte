@@ -76,14 +76,7 @@
         }
     }
 
-    // Process when a page is selected
-    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
-        const pageName = event.detail.pageName;
 
-        if (pageName) {
-            goto(resolvePath(`/${projectName}/${pageName}`));
-        }
-    }
 
 
     $effect(() => {
@@ -144,7 +137,7 @@
                         "anonymous"}
                     project={store.project!}
                     rootItems={pages!}
-                    onPageSelected={handlePageSelected}
+
                 />
             </div>
         </div>

@@ -75,13 +75,7 @@
         }
     }
 
-    // Navigate to the demo page view when a page is selected
-    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
-        const pageName = event.detail.pageName;
-        if (pageName) {
-            goto(resolvePath(`/demo/${pageName}`));
-        }
-    }
+
 
     onMount(() => {
         initializeDemo();
@@ -168,7 +162,7 @@
                 currentUser="anonymous"
                 project={store.project}
                 rootItems={pages}
-                onPageSelected={handlePageSelected}
+
             />
         </div>
     {:else}

@@ -13,14 +13,14 @@ interface Props {
     project: Project;
     rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
-    onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
+
 }
 
 let {
     project,
     rootItems,
     currentUser = "anonymous",
-    onPageSelected,
+
     projectName = project?.title || "demo"
 }: Props = $props();
 
@@ -67,22 +67,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 function selectPage(page: Item) {
-    // Fire event
-    if (onPageSelected) {
-        const event = new CustomEvent("pageSelected", {
-            detail: {
-                pageId: page.id,
-                pageName: page.text.toString(),
-            },
-        });
-        onPageSelected(event);
-    }
-
-    // Dispatch custom event
-    dispatch("pageSelected", {
-        pageId: page.id,
-        pageName: page.text.toString(),
-    });
+    // Left for tracking UI updates (e.g. tracking last selected) if needed in future
 }
 </script>
 

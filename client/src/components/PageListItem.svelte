@@ -13,7 +13,6 @@ let { page, isGridView, href, onPageClick }: Props = $props();
 
 function handleClick(e: MouseEvent) {
     if (onPageClick) {
-        e.preventDefault();
         onPageClick();
     }
 }
