@@ -38,20 +38,20 @@ function ensureLogDirectories() {
         if (!fs.existsSync(serverLogDir)) {
             fs.mkdirSync(serverLogDir, { recursive: true });
             // logger not initialized yet
-            console.log(`Created server log directory: ${serverLogDir}`);
+            process.stdout.write(`Created server log directory: ${serverLogDir}\n`);
         }
 
         // Client log directory
         if (!fs.existsSync(clientLogDir)) {
             fs.mkdirSync(clientLogDir, { recursive: true });
             // logger not initialized yet
-            console.log(`Created client log directory: ${clientLogDir}`);
+            process.stdout.write(`Created client log directory: ${clientLogDir}\n`);
         }
     } catch (error: any) {
         // logger not initialized yet
-        console.warn(`Failed to create log directories: ${error.message}`);
-        console.warn(`Server log directory: ${serverLogDir}`);
-        console.warn(`Client log directory: ${clientLogDir}`);
+        process.stderr.write(`Failed to create log directories: ${error.message}\n`);
+        process.stderr.write(`Server log directory: ${serverLogDir}\n`);
+        process.stderr.write(`Client log directory: ${clientLogDir}\n`);
         // Do not stop the application even if an error occurs
     }
 }
@@ -67,21 +67,21 @@ let telemetryLogStream: fs.WriteStream | null;
 try {
     serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`Failed to create server log stream: ${error.message}`);
+    process.stderr.write(`Failed to create server log stream: ${error.message}\n`);
     serverLogStream = null;
 }
 
 try {
     clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`Failed to create client log stream: ${error.message}`);
+    process.stderr.write(`Failed to create client log stream: ${error.message}\n`);
     clientLogStream = null;
 }
 
 try {
     telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
 } catch (error: any) {
-    console.warn(`Failed to create telemetry log stream: ${error.message}`);
+    process.stderr.write(`Failed to create telemetry log stream: ${error.message}\n`);
     telemetryLogStream = null;
 }
 
