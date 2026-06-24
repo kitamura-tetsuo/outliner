@@ -282,8 +282,10 @@ export class Item {
     }
 
     get text(): string {
-        const t = this.value.get("text") as Y.Text;
-        return t ? t.toString() : "";
+        const t = this.value.get("text");
+        if (t === undefined || t === null) return "";
+        if (typeof (t as any).toString === "function") return (t as any).toString();
+        return String(t);
     }
 
     set text(v: string) {
@@ -460,7 +462,7 @@ export class Item {
                         if (typeof iter === "function") {
                             for (const cand of iter.call(items)) {
                                 if (cand) {
-                                    const ct = cand.text.toString();
+                                    const ct = cand.text;
                                     if (ct === text) {
                                         try {
                                             cand.addAttachment(url);
@@ -474,7 +476,7 @@ export class Item {
                             for (let i = 0; i < len2; i++) {
                                 const cand = items.at(i);
                                 if (cand) {
-                                    const ct = cand.text.toString();
+                                    const ct = cand.text;
                                     if (ct === text) {
                                         try {
                                             cand.addAttachment(url);
