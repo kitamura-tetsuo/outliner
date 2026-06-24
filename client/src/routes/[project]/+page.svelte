@@ -1,7 +1,6 @@
 <script lang="ts">
 
-    import { resolvePath } from "../../utils/pathUtils";
-    import { page } from "$app/stores";
+        import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../../components/AuthComponent.svelte";
@@ -10,6 +9,7 @@
     import { getYjsClientByProjectTitle } from "../../services";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
+    import Breadcrumb from "../../components/Breadcrumb.svelte";
 
     const logger = getLogger("ProjectIndex");
 
@@ -104,13 +104,13 @@
 </svelte:head>
 
 <main class="container mx-auto px-4 py-4">
+    <div class="mb-4">
+        <Breadcrumb items={[
+            { label: "Home", href: "/" },
+            { label: projectName || "Project" }
+        ]} />
+    </div>
     <div class="mb-4 flex items-center">
-        <a
-            href={resolvePath("/")}
-            class="mr-4 text-blue-600 hover:text-blue-800 hover:underline"
-        >
-            ← Return to Home
-        </a>
         <h1 class="text-2xl font-bold">
             {#if projectName}
                 {projectName}

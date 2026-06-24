@@ -9,7 +9,7 @@
     const logger = getLogger("DemoListPage");
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-    import { resolvePath } from "../../utils/pathUtils";
+        import Breadcrumb from "../../components/Breadcrumb.svelte";
 
     let isLoading = $state(true);
     let isResetting = $state(false);
@@ -99,14 +99,10 @@
 
 <main class="container mx-auto px-4 py-4">
     <div class="mb-4">
-        <!-- Breadcrumb Navigation -->
-        <nav class="mb-2 flex items-center text-sm text-gray-600">
-            <a href={resolvePath("/")} class="text-blue-600 hover:text-blue-800 hover:underline">
-                Home
-            </a>
-            <span class="mx-2">/</span>
-            <span class="text-gray-900">Demo Project</span>
-        </nav>
+        <Breadcrumb items={[
+            { label: "Home", href: "/" },
+            { label: "Demo Project" }
+        ]} />
 
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">Public Demo Project</h1>

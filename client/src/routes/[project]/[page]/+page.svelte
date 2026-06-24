@@ -22,6 +22,7 @@
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
     import { store } from "../../../stores/store.svelte";
     import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
+    import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     // Get URL parameters (follow SvelteKit page store)
     // NOTE: Must reference the value of $page (not the store object).
@@ -497,28 +498,11 @@
 
 <main class="container mx-auto px-4 py-4">
     <div class="mb-4">
-        <!-- Breadcrumb Navigation -->
-        <nav class="mb-2 flex items-center text-sm text-gray-600">
-            <a
-                href={resolvePath("/")}
-                class="text-blue-600 hover:text-blue-800 hover:underline"
-            >
-                Home
-            </a>
-            {#if projectName}
-                <span class="mx-2">/</span>
-                <a
-                    href={resolvePath(`/${projectName}`)}
-                    class="text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                    {projectName}
-                </a>
-            {/if}
-            {#if pageName}
-                <span class="mx-2">/</span>
-                <span class="text-gray-900">{pageName}</span>
-            {/if}
-        </nav>
+        <Breadcrumb items={[
+            { label: "Home", href: "/" },
+            ...(projectName ? [{ label: projectName, href: `/${projectName}` }] : []),
+            ...(pageName ? [{ label: pageName }] : [])
+        ]} />
 
         <!-- Page Title and Search Button -->
         <div class="flex items-center justify-between">
