@@ -6,9 +6,17 @@ interface Props {
     href?: string;
     page: Item;
     isGridView: boolean;
-    }
+    onPageClick?: () => void;
+}
 
-let { page, isGridView, href }: Props = $props();
+let { page, isGridView, href, onPageClick }: Props = $props();
+
+function handleClick(e: MouseEvent) {
+    if (onPageClick) {
+        e.preventDefault();
+        onPageClick();
+    }
+}
 
 let preview = $state<{ lines: string[]; image: string | null }>({ lines: [], image: null });
 let pageTitle = $state("");
@@ -49,7 +57,7 @@ $effect(() => {
         <a
             href={href}
             class="flex h-full w-full cursor-pointer flex-col text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-
+            onclick={handleClick}
         >
             <div class="p-3 pb-2 w-full font-medium text-gray-900 border-b border-gray-100 bg-gray-50/50 truncate">
                 {pageTitle}
@@ -80,7 +88,7 @@ $effect(() => {
         <a
             href={href}
             class="flex w-full cursor-pointer items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-
+            onclick={handleClick}
         >
             <div class="flex items-center gap-3 overflow-hidden">
                 {#if preview.image}

@@ -136,7 +136,7 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each rootItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text.toString())}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text.toString())}`)} />
+            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text.toString())}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text.toString())}`)} onPageClick={() => selectPage(page)} />
         {/each}
 
         {#if rootItems.length === 0}
