@@ -427,14 +427,26 @@ export class Item {
                     const map = w?.__ITEM_ID_MAP__;
                     const mappedId = map ? map[String(this.id)] : undefined;
                     if (mappedId) {
-                        const len = items?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const cand = items.at(i);
-                            if (cand && String(cand.id) === String(mappedId)) {
-                                try {
-                                    cand.addAttachment(url);
-                                } catch {}
-                                throw new Error("__DONE__");
+                        const iter = (items as any)?.iterateUnordered;
+                        if (typeof iter === "function") {
+                            for (const cand of iter.call(items)) {
+                                if (cand && String(cand.id) === String(mappedId)) {
+                                    try {
+                                        cand.addAttachment(url);
+                                    } catch {}
+                                    throw new Error("__DONE__");
+                                }
+                            }
+                        } else {
+                            const len = items?.length ?? 0;
+                            for (let i = 0; i < len; i++) {
+                                const cand = items.at(i);
+                                if (cand && String(cand.id) === String(mappedId)) {
+                                    try {
+                                        cand.addAttachment(url);
+                                    } catch {}
+                                    throw new Error("__DONE__");
+                                }
                             }
                         }
                     }
@@ -442,16 +454,31 @@ export class Item {
                     if (e instanceof Error && String(e.message) !== "__DONE__") {
                         // 2) Fallback: text match
                         const text = this.text;
-                        const len2 = items?.length ?? 0;
-                        for (let i = 0; i < len2; i++) {
-                            const cand = items.at(i);
-                            if (cand) {
-                                const ct = cand.text.toString();
-                                if (ct === text) {
-                                    try {
-                                        cand.addAttachment(url);
-                                    } catch {}
-                                    break;
+                        const iter = (items as any)?.iterateUnordered;
+                        if (typeof iter === "function") {
+                            for (const cand of iter.call(items)) {
+                                if (cand) {
+                                    const ct = cand.text.toString();
+                                    if (ct === text) {
+                                        try {
+                                            cand.addAttachment(url);
+                                        } catch {}
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            const len2 = items?.length ?? 0;
+                            for (let i = 0; i < len2; i++) {
+                                const cand = items.at(i);
+                                if (cand) {
+                                    const ct = cand.text.toString();
+                                    if (ct === text) {
+                                        try {
+                                            cand.addAttachment(url);
+                                        } catch {}
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -748,11 +775,20 @@ export class Project {
      * Find a page by ID
      */
     findPage(pageId: string): Item | undefined {
-        const len = this.items.length;
-        for (let i = 0; i < len; i++) {
-            const item = this.items.at(i);
-            if (item && item.id === pageId) {
-                return item;
+        const items = this.items as Items;
+        if (typeof items.iterateUnordered === "function") {
+            for (const item of items.iterateUnordered()) {
+                if (item && item.id === pageId) {
+                    return item;
+                }
+            }
+        } else {
+            const len = items.length;
+            for (let i = 0; i < len; i++) {
+                const item = items.at(i);
+                if (item && item.id === pageId) {
+                    return item;
+                }
             }
         }
         return undefined;
