@@ -1954,7 +1954,8 @@ export function setSelectionPosition(start: number, end: number = start) {
             || "") ][1] as string
     }
 >
-    <div class="item-header">
+    <div class="item-main-row">
+        <div class="item-header">
         {#if !isPageTitle}
             {#if hasChildren}
                 <button
@@ -2115,6 +2116,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 </button>
             </div>
         {/if}
+        </div>
     </div>
 
     <!-- Comment Thread (visible only for active item; default to first non-title item when none selected) -->
@@ -2145,10 +2147,19 @@ export function setSelectionPosition(start: number, end: number = start) {
     margin-bottom: 10px;
 }
 
+.item-main-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+}
+
 .item-header {
     display: flex;
     align-items: center;
     min-height: 24px;
+    flex: 1;
+    min-width: 0;
 }
 
 .collapse-btn,
