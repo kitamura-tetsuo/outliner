@@ -1,6 +1,6 @@
-const fs = require('fs');
-let content = fs.readFileSync('client/src/lib/yjs/testHelpers.ts', 'utf8');
-const lines = content.split('\n');
+const fs = require("fs");
+let content = fs.readFileSync("client/src/lib/yjs/testHelpers.ts", "utf8");
+const lines = content.split("\n");
 
 // Specific lines that need to be reverted back to console.* because they run in the browser
 const linesToFix = [
@@ -22,10 +22,10 @@ const linesToFix = [
 for (const lineNum of linesToFix) {
     const idx = lineNum - 1;
     if (lines[idx]) {
-        lines[idx] = lines[idx].replace(/logger\.info/g, 'console.log');
-        lines[idx] = lines[idx].replace(/logger\.error/g, 'console.error');
-        lines[idx] = lines[idx].replace(/logger\.warn/g, 'console.warn');
+        lines[idx] = lines[idx].replace(/logger\.info/g, "console.log");
+        lines[idx] = lines[idx].replace(/logger\.error/g, "console.error");
+        lines[idx] = lines[idx].replace(/logger\.warn/g, "console.warn");
     }
 }
 
-fs.writeFileSync('client/src/lib/yjs/testHelpers.ts', lines.join('\n'));
+fs.writeFileSync("client/src/lib/yjs/testHelpers.ts", lines.join("\n"));
