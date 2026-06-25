@@ -690,7 +690,7 @@ export class Items implements Iterable<Item> {
      */
     *iterateUnordered(): IterableIterator<Item> {
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
-        let keys: string[] = [];
+        let keys: string[];
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
