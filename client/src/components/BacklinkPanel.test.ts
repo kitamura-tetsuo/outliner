@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/svelte";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from "@testing-library/svelte";
+import { describe, expect, it, vi } from "vitest";
 import BacklinkPanel from "./BacklinkPanel.svelte";
 
 // Mock dependencies
