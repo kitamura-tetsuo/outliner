@@ -651,8 +651,14 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
-        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-        return this.tree.sortChildrenByOrder(children, this.parentKey);
+        if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
+        try {
+            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+            return this.tree.sortChildrenByOrder(children, this.parentKey);
+        } catch (e) {
+            console.warn("[app-schema] Items.childrenKeys error:", e);
+            return [];
+        }
     }
 
     get length(): number {
@@ -683,8 +689,17 @@ export class Items implements Iterable<Item> {
      * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
      */
     *iterateUnordered(): IterableIterator<Item> {
-        const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
+        let keys: string[] = [];
+        try {
+            keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        } catch (e) {
+            console.warn("[app-schema] Items.iterateUnordered error fetching children:", e);
+            return;
+        }
         for (const key of keys) {
+            // Use hasNode check instead of try-catch around yielding the item
+            if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
     }
