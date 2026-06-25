@@ -1387,7 +1387,7 @@ function handlePaste(event: ClipboardEvent) {
     </button>
 
     <!-- Hidden textarea for clipboard -->
-    <textarea bind:this={clipboardRef} class="clipboard-textarea"></textarea>
+    <textarea bind:this={clipboardRef} class="clipboard-textarea" aria-hidden="true" tabindex="-1"></textarea>
     <!-- Suppress selection and cursor while AliasPicker is displayed to avoid loops -->
     {#if !aliasPickerStore.isVisible || typeof window === 'undefined' || (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver}
     <!-- Rendering selection range -->
