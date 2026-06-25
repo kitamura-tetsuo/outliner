@@ -1,0 +1,3 @@
+
+> outliner@0.0.1 lint
+> npx dprint fmt && stylelint "**/*.css" && eslint . --max-warnings=-1
