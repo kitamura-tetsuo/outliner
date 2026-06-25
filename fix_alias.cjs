@@ -1,8 +1,9 @@
-const fs = require('fs');
+const fs = require("fs");
 
 // 1. Remove from CommentThread.svelte
-let commentContent = fs.readFileSync('client/src/components/CommentThread.svelte', 'utf8');
-let blockToReplace = `// E2E stabilization: Poll input DOM value and auto-add (last resort when bind:value doesn't work depending on environment)
+let commentContent = fs.readFileSync("client/src/components/CommentThread.svelte", "utf8");
+let blockToReplace =
+    `// E2E stabilization: Poll input DOM value and auto-add (last resort when bind:value doesn't work depending on environment)
 onMount(() => {
     let fired = false;
     const iv = setInterval(() => {
@@ -21,12 +22,12 @@ onMount(() => {
     return () => { try { clearInterval(iv); } catch {} };
 });`;
 commentContent = commentContent.replace(blockToReplace, "");
-fs.writeFileSync('client/src/components/CommentThread.svelte', commentContent);
+fs.writeFileSync("client/src/components/CommentThread.svelte", commentContent);
 
 // 2. Remove e2e timer from OutlinerItem.svelte
-let itemContent = fs.readFileSync('client/src/components/OutlinerItem.svelte', 'utf8');
+let itemContent = fs.readFileSync("client/src/components/OutlinerItem.svelte", "utf8");
 
 itemContent = itemContent.replace(/let e2eTimer: ReturnType<typeof setInterval> \| undefined = undefined;\n\n/g, "");
 itemContent = itemContent.replace(/        try \{ if \(e2eTimer\) clearInterval\(e2eTimer\); \} catch \{\}\n/g, "");
 
-fs.writeFileSync('client/src/components/OutlinerItem.svelte', itemContent);
+fs.writeFileSync("client/src/components/OutlinerItem.svelte", itemContent);
