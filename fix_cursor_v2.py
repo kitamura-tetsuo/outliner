@@ -19,7 +19,7 @@ for line in lines:
             close_parens = content.count(')')
             open_braces = content.count('{')
             close_braces = content.count('}')
-            
+
             if open_parens > close_parens:
                 # Needs one or more closing parens
                 needed = open_parens - close_parens
@@ -29,7 +29,7 @@ for line in lines:
                 line = content + ('}' * needed) + ';\n'
             else:
                 line = content + ';\n'
-        
+
         # Special case for L863: }, 150//  // Increase timeout...
         if '}, 150//' in line:
             line = line.replace('}, 150//', '}, 150);')
