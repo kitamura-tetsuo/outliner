@@ -53,8 +53,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         try {
             if (item.items) {
                 let i = 0;
-                let iter: Iterable<Item>;
-                iter = item.items;
+                const iter: Iterable<Item> = item.items;
                 if (!iter || typeof iter[Symbol.iterator] !== "function") return;
                 for (const child of iter) {
                     if (i++ > 10) break;
@@ -71,8 +70,7 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
     try {
         if (pageItem.items) {
             let i = 0;
-            let iter: Iterable<Item>;
-            iter = pageItem.items;
+            const iter: Iterable<Item> = pageItem.items;
             if (!iter || typeof iter[Symbol.iterator] !== "function") return { lines, image };
             for (const child of iter) {
                 if (i++ > 20) break;
