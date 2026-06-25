@@ -54,14 +54,8 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
             if (item.items) {
                 let i = 0;
                 let iter: Iterable<Item>;
-                try {
-                    iter = "iterateUnordered" in item.items && typeof item.items.iterateUnordered === "function"
-                        ? item.items.iterateUnordered()
-                        : item.items;
-                } catch (e) {
-                    logger.warn("Failed to get iterator for item children", e);
-                    return;
-                }
+                iter = item.items;
+                if (!iter || typeof iter[Symbol.iterator] !== "function") return;
                 for (const child of iter) {
                     if (i++ > 10) break;
                     if (child) traverse(child, currentDepth + 1);
@@ -78,14 +72,8 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         if (pageItem.items) {
             let i = 0;
             let iter: Iterable<Item>;
-            try {
-                iter = "iterateUnordered" in pageItem.items && typeof pageItem.items.iterateUnordered === "function"
-                    ? pageItem.items.iterateUnordered()
-                    : pageItem.items;
-            } catch (e) {
-                logger.warn("Failed to get iterator for root item children", e);
-                return { lines, image };
-            }
+            iter = pageItem.items;
+            if (!iter || typeof iter[Symbol.iterator] !== "function") return { lines, image };
             for (const child of iter) {
                 if (i++ > 20) break;
                 if (child) traverse(child, 1);
