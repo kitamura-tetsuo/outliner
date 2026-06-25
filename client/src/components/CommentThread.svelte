@@ -181,24 +181,7 @@ onMount(() => {
     };
 });
 
-// E2E stabilization: Poll input DOM value and auto-add (last resort when bind:value doesn't work depending on environment)
-onMount(() => {
-    let fired = false;
-    const iv = setInterval(() => {
-        try {
-            if (fired) return;
-            const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-            const val = inputEl?.value ?? '';
-            if (val && (renderCommentsState?.length ?? 0) === 0) {
-                newText = val;
-                fired = true;
-                try { e2eLog({ tag: 'auto-poll-add' }); } catch {}
-                add();
-            }
-        } catch {}
-    }, 120);
-    return () => { try { clearInterval(iv); } catch {} };
-});
+
 
 
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions

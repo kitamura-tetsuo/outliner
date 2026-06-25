@@ -131,8 +131,6 @@ import SqlTableGrid from "./SqlTableGrid.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-let e2eTimer: ReturnType<typeof setInterval> | undefined = undefined;
-
 /**
  * Binary search to find the character offset corresponding to a relative X coordinate.
  * Uses the provided span element to measure widths via Range API to avoid layout thrashing.
@@ -1870,7 +1868,6 @@ onMount(() => {
             itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
             itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
-        try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
     };
 });
 
