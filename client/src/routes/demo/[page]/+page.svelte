@@ -31,7 +31,7 @@
             : items;
         for (const item of iter) {
             if (!item) continue;
-            const text = item.text.toString();
+            const text = item.text;
             if (String(text).toLowerCase() === String(name).toLowerCase()) {
                 return item as Item;
             }

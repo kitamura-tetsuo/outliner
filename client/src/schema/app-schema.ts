@@ -288,10 +288,11 @@ export class Item {
         if (t === undefined || t === null) return "";
 
         try {
-            if (typeof (t as { toString?: () => string; }).toString === "function") {
+            if (t && typeof (t as { toString?: () => string; }).toString === "function") {
                 return (t as { toString: () => string; }).toString();
             }
-        } catch {
+        } catch (e) {
+            console.warn("[app-schema] get text() caught error:", e);
             // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
             return "";
         }

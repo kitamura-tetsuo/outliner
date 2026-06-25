@@ -152,7 +152,7 @@ export class OutlinerViewModel {
             const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
 
             if (existingViewModel.lastChanged !== newLastChanged) {
-                existingViewModel.text = item.text.toString();
+                existingViewModel.text = item.text;
 
                 // Safely access votes array
                 let votesArray: string[] = [];
@@ -176,7 +176,7 @@ export class OutlinerViewModel {
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
-                text: item.text.toString(),
+                text: item.text,
                 votes: [...(((item as unknown as { votes?: string[]; }).votes || []) as string[])],
                 author: ((item as unknown as { author?: string; }).author || "") as string,
                 created: (item as unknown as { created?: number; }).created as number,
@@ -200,11 +200,11 @@ export class OutlinerViewModel {
         ) {
             const children = item.items;
             debugLog(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
             );
             this.ensureViewModelsItemsExist(children, item.id);
         } else {
-            debugLog(`OutlinerViewModel: No children for "${item.text.toString()}"`);
+            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
     /**
@@ -242,7 +242,7 @@ export class OutlinerViewModel {
         }
 
         debugLog(
-            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text.toString()}" (depth: ${depth})`,
+            `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text}" (depth: ${depth})`,
         );
 
         // Add to display order
@@ -264,7 +264,7 @@ export class OutlinerViewModel {
         const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
 
         debugLog(
-            `OutlinerViewModel: Item "${item.text.toString()}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
+            `OutlinerViewModel: Item "${item.text}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
                 hasChildren ? item.items.length : 0
             }`,
         );
@@ -272,7 +272,7 @@ export class OutlinerViewModel {
         if (hasChildren && !isCollapsed) {
             const children = item.items;
             debugLog(
-                `OutlinerViewModel: Processing ${children.length} children for "${item.text.toString()}"`,
+                `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
             );
             for (const child of children) {
                 this.recalculateOrderAndDepthItem(child, depth + 1, item.id);

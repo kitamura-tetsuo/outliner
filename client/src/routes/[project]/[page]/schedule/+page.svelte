@@ -391,7 +391,7 @@ onMount(async () => {
             for (let i = 0; i < len; i++) {
                 const p = items?.at(i);
                 if (!p) continue;
-                const title = p.text.toString();
+                const title = p.text;
                 if (title.toLowerCase() === pageTitle.toLowerCase()) {
                     found = p;
                     break;

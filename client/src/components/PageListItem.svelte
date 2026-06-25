@@ -27,7 +27,7 @@ let lastChanged = $state<number | undefined>();
 function updatePreview() {
     preview = page.preview || extractPagePreview(page);
     try {
-        pageTitle = page.text?.toString() || "Untitled Page";
+        pageTitle = page.text || "Untitled Page";
     } catch (e) {
         console.warn("[PageListItem] updatePreview text extraction error:", e);
         pageTitle = "Untitled Page";
