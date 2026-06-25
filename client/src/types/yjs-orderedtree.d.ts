@@ -16,5 +16,6 @@ declare module "yjs-orderedtree" {
         setNodeAfter(key: string, target: string): void;
         moveChildToParent(key: string, parentKey: string): void;
         recomputeParentsAndChildren(): void;
+        hasNode(key: string): boolean;
     }
 }
