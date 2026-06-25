@@ -2270,7 +2270,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        display: flex; /* Always visible */
+        display: none; /* Hidden by default on desktop */
         background: white;
         border-top: 1px solid #ddd;
         padding: 8px;
@@ -2278,6 +2278,12 @@
         justify-content: space-around;
         align-items: center;
         height: 50px;
+    }
+
+    @media (max-width: 768px) {
+        .mobile-action-toolbar {
+            display: flex; /* Visible on mobile */
+        }
     }
 
     .mobile-toolbar-btn {
