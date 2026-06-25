@@ -131,8 +131,6 @@ import SqlTableGrid from "./SqlTableGrid.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-let e2eTimer: ReturnType<typeof setInterval> | undefined = undefined;
-
 /**
  * Binary search to find the character offset corresponding to a relative X coordinate.
  * Uses the provided span element to measure widths via Range API to avoid layout thrashing.
@@ -420,77 +418,11 @@ onMount(() => {
 });
 // Reactively track aliasPickerStore changes using $derived
 // This replaces the polling approach with proper Svelte 5 reactivity
-let aliasLastConfirmedPulse = $derived.by(() => {
-    // Subscribe to aliasPickerStore changes
 
-    const ap = aliasPickerStore;
-    const li = ap?.lastConfirmedItemId;
-    const lt = ap?.lastConfirmedTargetId;
-    const la = ap?.lastConfirmedAt as number | null;
-
-    if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
-        return { itemId: li, targetId: lt, at: la };
-    }
-    return null;
-    });
-
-// Update DOM attributes when aliasLastConfirmedPulse changes
-$effect(() => {
-    if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse;
-        try {
-            // Set attribute on this item
-            (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
-
-            // Set attribute on all matching items efficiently
-            const root = document.querySelector(".outliner") || document.body;
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                acceptNode(node) {
-                    return (node as Element).getAttribute("data-item-id") === itemId
-                        ? NodeFilter.FILTER_ACCEPT
-                        : NodeFilter.FILTER_SKIP;
-                },
-            });
-            while (walker.nextNode()) {
-                (walker.currentNode as HTMLElement).setAttribute('data-alias-target-id', String(targetId));
-            }
-
-            // E2E support: set attribute on all items in test environment
-            const isTest = (typeof localStorage !== 'undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
-            if (isTest) {
-                const allWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                    acceptNode(node) {
-                        return (node as Element).hasAttribute("data-item-id")
-                            ? NodeFilter.FILTER_ACCEPT
-                            : NodeFilter.FILTER_SKIP;
-                    },
-                });
-                while (allWalker.nextNode()) {
-                    const el = allWalker.currentNode as HTMLElement;
-                    if (!el.classList.contains('page-title')) {
-                        el.setAttribute('data-alias-target-id', String(targetId));
-                    }
-                }
-
-                // Create mirror element for E2E utility world
-                let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
-                if (!mirror) {
-                    mirror = document.createElement('div');
-                    mirror.id = 'e2e-alias-mirror';
-                    mirror.style.display = 'none';
-                    document.body.prepend(mirror);
-                }
-                mirror.setAttribute('data-item-id', String(itemId));
-                mirror.setAttribute('data-alias-target-id', String(targetId));
-            }
-        } catch {}
-    }
-});
 
 const aliasTargetIdEffective = $derived.by(() => {
 
     void aliasPickerStore?.tick;
-    void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
 
@@ -504,10 +436,6 @@ const aliasTargetIdEffective = $derived.by(() => {
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
         if (lastItemId === model.id) return lastTargetId;
         if (isE2E && isEmpty) return lastTargetId;
-    }
-    // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
     }
     return undefined;
 });
@@ -1870,7 +1798,6 @@ onMount(() => {
             itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
             itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
-        try { if (e2eTimer) clearInterval(e2eTimer); } catch {}
     };
 });
 
@@ -1953,7 +1880,6 @@ export function setSelectionPosition(start: number, end: number = start) {
             || ((aliasPickerStore?.lastConfirmedItemId === model.id)
 
                 && aliasPickerStore?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1] as string
     }
 >
