@@ -33,7 +33,9 @@ test.describe("Verify cursor duplication issue", () => {
         await CursorValidator.validateCursorState(page, 1, "After 3rd click");
 
         // 2. Click the second item
-        await page.locator("div:nth-child(2) > .outliner-item > .item-header > .item-content-container > .item-content")
+        await page.locator(
+            "div:nth-child(2) > .outliner-item > .item-main-row > .item-header > .item-content-container > .item-content",
+        )
             .click();
         await TestHelpers.waitForCursorVisible(page);
         await CursorValidator.validateCursorState(page, 1, "After clicking 2nd item");
