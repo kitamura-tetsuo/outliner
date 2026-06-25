@@ -109,45 +109,8 @@ onMount(() => {
 });
 
 
-onMount(() => {
-    try {
-        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
-        if (!isPageTitle && index === 0 && (gs.openCommentItemId == null)) {
-            gs.openCommentItemId = model.id;
-            logger.debug(undefined, '[OutlinerItem] auto-open comment thread for id=' + model.id);
-        }
-    } catch {}
-});
-onMount(() => {
-    // If openCommentItemId does not exist in the current page due to Yjs connection switching, etc.
-        // Automatically reopen comment thread prioritizing index (E2E stabilization)
-    try {
-        const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number, currentPage?: { items?: unknown } };
-        // Optimization: Only perform the expensive existence check if this item is a candidate for auto-reopen
-        // This avoids O(N^2) complexity where every item iterates the full list on mount
-        const isCandidate = !isPageTitle && (index === 1 || gs.openCommentItemIndex === index);
 
-        if (isCandidate) {
-            const cp = gs?.currentPage;
-            const items = cp?.items as { iterateUnordered?: () => Iterable<{ id?: string }> } | Iterable<{ id?: string }> | undefined;
-            const targetId = gs?.openCommentItemId;
-            let exists = false;
-            if (items) {
-                // Use efficient iterator to avoid O(N^2) complexity with Items.at(i)
-                // Use iterateUnordered if available for O(N) instead of O(N log N)
-                const iter = 'iterateUnordered' in items && typeof items.iterateUnordered === 'function' ? items.iterateUnordered() : items as Iterable<{ id?: string }>;
-                for (const it of iter) {
-                    if (it?.id === targetId) { exists = true; break; }
-                }
-            }
-            if (!exists) {
-                gs.openCommentItemId = model.id;
-                gs.openCommentItemIndex = index;
-                try { logger.debug(undefined, '[OutlinerItem] auto-reopen comment thread by index, id=' + model.id + ' index=' + index); } catch {}
-            }
-        }
-    } catch {}
-});
+
 
 
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
@@ -276,13 +239,11 @@ let ensuredComments = $derived.by(() => item.comments);
 
 let openCommentItemId = $derived.by(() => generalStore.openCommentItemId);
 
-let openCommentItemIndex = $derived.by(() => generalStore.openCommentItemIndex);
+
 
 let isCommentsVisible = $derived(
     !isPageTitle && (
         (openCommentItemId === model.id)
-        || ((openCommentItemId == null) && (openCommentItemIndex === index))
-        || ((openCommentItemId == null) && (openCommentItemIndex == null) && index === 1)
     )
 );
 
@@ -1003,14 +964,12 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs = generalStore as unknown as { openCommentItemId?: string, openCommentItemIndex?: number };
+    const gs = generalStore as unknown as { openCommentItemId?: string };
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = undefined;
-        gs.openCommentItemIndex = undefined;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
     } else {
         gs.openCommentItemId = model.id;
-        gs.openCommentItemIndex = index;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
     }
 }
