@@ -76,7 +76,10 @@ export async function setupTestUser(): Promise<UserRecord> {
             return userRecord;
         }
     } catch (error) {
-        if (error && (error as any).code === "app/invalid-credential" && (error as any).message && (error as any).message.includes("invalid_grant")) {
+        if (
+            error && (error as any).code === "app/invalid-credential" && (error as any).message
+            && (error as any).message.includes("invalid_grant")
+        ) {
             logger.warn("Skipping test user setup: invalid credentials (expected in tests without real secrets)");
             return {} as UserRecord;
         }
