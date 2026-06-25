@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("PageListItem");
 import type { Item } from "../schema/app-schema";
 import { extractPagePreview } from "../lib/pagePreview";
 
@@ -29,7 +31,7 @@ function updatePreview() {
     try {
         pageTitle = page.text || "Untitled Page";
     } catch (e) {
-        console.warn("[PageListItem] updatePreview text extraction error:", e);
+        logger.warn({ err: e }, "[PageListItem] updatePreview text extraction error");
         pageTitle = "Untitled Page";
     }
     lastChanged = page.lastChanged;
