@@ -130,7 +130,7 @@
 
     {#if isLoading}
         <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
+            <div class="flex flex-col items-center justify-center space-y-4" aria-busy="true" aria-live="polite" role="status"><div class="loader" aria-hidden="true"></div><div class="text-gray-600 text-sm font-medium">Loading...</div></div>
         </div>
     {:else if store.pages.current}
         <div class="mt-6">
@@ -215,16 +215,16 @@
 </main>
 
 <style>
-    /* .loader {  Removed as unused */
-    /* .loader {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto;
-} */
+    .loader {
+
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+    }
 
     @keyframes spin {
         0% {
