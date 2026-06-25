@@ -45,9 +45,27 @@ onMount(() => {
     } catch {}
 });
 
+// Temporary fallback: poll lastConfirmed
+let aliasLastConfirmedPulse: { itemId: string; targetId: string; at: number } | null = $state(null);
+
+onMount(() => {
+    const iv = setInterval(() => {
+        try {
+            const ap = (typeof window !== "undefined") ? (window as Window & typeof globalThis & { aliasPickerStore?: { confirmById?: (id: string) => void, show?: (id: string) => void } }).aliasPickerStore : null;
+            const li = ap?.lastConfirmedItemId;
+            const lt = ap?.lastConfirmedTargetId;
+            const la = ap?.lastConfirmedAt as number | null;
+            if (li && lt && la && (Date.now() - la < 6000) && li === modelId) {
+                aliasLastConfirmedPulse = { itemId: li, targetId: lt, at: la };
+            }
+        } catch {}
+    }, 100);
+    onDestroy(() => { try { clearInterval(iv); } catch {} });
+});
 
 const aliasTargetIdEffective = $derived.by(() => {
     void aliasPickerStore?.tick;
+    void aliasLastConfirmedPulse;
     const base = aliasTargetId;
     if (base) return base;
 
@@ -57,6 +75,10 @@ const aliasTargetIdEffective = $derived.by(() => {
 
     if (lastTargetId && lastAt && Date.now() - lastAt < 6000 && lastItemId === modelId) {
         return lastTargetId;
+    }
+
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 6000) && aliasLastConfirmedPulse.itemId === modelId) {
+        return aliasLastConfirmedPulse.targetId;
     }
 
     return undefined;
@@ -77,6 +99,7 @@ const aliasTarget = $derived.by(() => {
 
 const aliasPath = $derived.by(() => {
     void aliasPickerStore?.tick;
+    void aliasLastConfirmedPulse;
     void aliasTargetIdEffective;
     
     try {

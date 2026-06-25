@@ -418,11 +418,24 @@ onMount(() => {
 });
 // Reactively track aliasPickerStore changes using $derived
 // This replaces the polling approach with proper Svelte 5 reactivity
+let aliasLastConfirmedPulse = $derived.by(() => {
+    // Subscribe to aliasPickerStore changes
 
+    const ap = aliasPickerStore;
+    const li = ap?.lastConfirmedItemId;
+    const lt = ap?.lastConfirmedTargetId;
+    const la = ap?.lastConfirmedAt as number | null;
+
+    if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
+        return { itemId: li, targetId: lt, at: la };
+    }
+    return null;
+    });
+
+// Update DOM attributes when aliasLastConfirmedPulse changes
 $effect(() => {
-    // Re-implemented DOM update logic using aliasTargetIdEffective
-    const targetId = aliasTargetIdEffective;
-    if (targetId && itemRef) {
+    if (aliasLastConfirmedPulse && itemRef) {
+        const { itemId, targetId } = aliasLastConfirmedPulse;
         try {
             // Set attribute on this item
             (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
@@ -431,7 +444,7 @@ $effect(() => {
             const root = document.querySelector(".outliner") || document.body;
             const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
                 acceptNode(node) {
-                    return (node as Element).getAttribute("data-item-id") === model.id
+                    return (node as Element).getAttribute("data-item-id") === itemId
                         ? NodeFilter.FILTER_ACCEPT
                         : NodeFilter.FILTER_SKIP;
                 },
@@ -465,7 +478,7 @@ $effect(() => {
                     mirror.style.display = 'none';
                     document.body.prepend(mirror);
                 }
-                mirror.setAttribute('data-item-id', String(model.id));
+                mirror.setAttribute('data-item-id', String(itemId));
                 mirror.setAttribute('data-alias-target-id', String(targetId));
             }
         } catch {}
@@ -475,6 +488,7 @@ $effect(() => {
 const aliasTargetIdEffective = $derived.by(() => {
 
     void aliasPickerStore?.tick;
+    void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
 
@@ -488,6 +502,10 @@ const aliasTargetIdEffective = $derived.by(() => {
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
         if (lastItemId === model.id) return lastTargetId;
         if (isE2E && isEmpty) return lastTargetId;
+    }
+    // Check pulse for recent confirmations
+    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
+        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
     }
     return undefined;
 });
@@ -1932,6 +1950,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             || ((aliasPickerStore?.lastConfirmedItemId === model.id)
 
                 && aliasPickerStore?.lastConfirmedTargetId)
+            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1] as string
     }
 >
