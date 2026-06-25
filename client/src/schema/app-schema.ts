@@ -284,8 +284,14 @@ export class Item {
     get text(): string {
         const t = this.value.get("text");
         if (t === undefined || t === null) return "";
-        if (typeof (t as { toString?: () => string; }).toString === "function") {
-            return (t as { toString: () => string; }).toString();
+
+        try {
+            if (typeof (t as { toString?: () => string; }).toString === "function") {
+                return (t as { toString: () => string; }).toString();
+            }
+        } catch {
+            // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
+            return "";
         }
         return String(t);
     }
