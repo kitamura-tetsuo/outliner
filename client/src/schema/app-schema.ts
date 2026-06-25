@@ -109,6 +109,7 @@ export class Comments {
     }
 
     toPlain(): Comment[] {
+        if (typeof this.yArray?.toArray !== "function") return [];
         return this.yArray.toArray().map((m) => ({
             id: m.get("id") as string,
             author: m.get("author") as string,
@@ -175,6 +176,7 @@ export class TableRows {
 
     /** Plain snapshot of every row keyed by column name. */
     toPlain(columns: string[]): Record<string, string>[] {
+        if (typeof this.yArray?.toArray !== "function") return [];
         return this.yArray.toArray().map((row) => {
             const obj: Record<string, string> = {};
             for (const col of columns) {
