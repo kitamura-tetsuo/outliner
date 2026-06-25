@@ -166,6 +166,7 @@ async function signOut() {
 
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="login-status-indicator"
     class:authenticated={isAuthenticated}
@@ -173,8 +174,8 @@ async function signOut() {
     class:loading={isLoading}
     data-testid="login-status-indicator"
     data-status={status}
-    role="button"
-    aria-haspopup="menu"
+    role={isAuthenticated ? "button" : "status"}
+    aria-haspopup={isAuthenticated ? "menu" : undefined}
     aria-expanded={isAuthenticated ? (isMenuOpen ? "true" : "false") : "false"}
     aria-controls={isAuthenticated ? menuId : undefined}
     aria-label={statusLabel}
@@ -281,6 +282,11 @@ async function signOut() {
     border-color: #10b981;
     background: #ecfdf5;
     color: #0f172a;
+    cursor: pointer;
+}
+
+.login-status-indicator.authenticated:hover {
+    background: #d1fae5;
 }
 
 .login-status-indicator.unauthenticated {
