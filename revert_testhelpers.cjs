@@ -1,8 +1,8 @@
-const fs = require('fs');
-let content = fs.readFileSync('client/src/lib/yjs/testHelpers.ts', 'utf8');
-content = content.replace(/logger\.info/g, 'console.log');
-content = content.replace(/logger\.error/g, 'console.error');
-content = content.replace(/logger\.warn/g, 'console.warn');
+const fs = require("fs");
+let content = fs.readFileSync("client/src/lib/yjs/testHelpers.ts", "utf8");
+content = content.replace(/logger\.info/g, "console.log");
+content = content.replace(/logger\.error/g, "console.error");
+content = content.replace(/logger\.warn/g, "console.warn");
 
 // Re-add logger import but we don't actually need it now if we revert all.
 // Let's completely revert testHelpers.ts to master state or just replace logger.info with console.log.
