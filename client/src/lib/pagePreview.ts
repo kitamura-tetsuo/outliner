@@ -53,7 +53,12 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         try {
             if (item.items) {
                 let i = 0;
-                const iter: Iterable<Item> = item.items;
+                const items = item.items;
+                const iter = "iterateUnordered" in items
+                        && typeof (items as { iterateUnordered?: () => IterableIterator<Item>; }).iterateUnordered
+                            === "function"
+                    ? (items as { iterateUnordered: () => IterableIterator<Item>; }).iterateUnordered()
+                    : (items as Iterable<Item>);
                 if (!iter || typeof iter[Symbol.iterator] !== "function") return;
                 for (const child of iter) {
                     if (i++ > 10) break;
@@ -70,7 +75,12 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
     try {
         if (pageItem.items) {
             let i = 0;
-            const iter: Iterable<Item> = pageItem.items;
+            const items = pageItem.items;
+            const iter = "iterateUnordered" in items
+                    && typeof (items as { iterateUnordered?: () => IterableIterator<Item>; }).iterateUnordered
+                        === "function"
+                ? (items as { iterateUnordered: () => IterableIterator<Item>; }).iterateUnordered()
+                : (items as Iterable<Item>);
             if (!iter || typeof iter[Symbol.iterator] !== "function") return { lines, image };
             for (const child of iter) {
                 if (i++ > 20) break;
