@@ -4,7 +4,8 @@ let content = readFileSync(file, "utf8");
 
 // When i=0, prevForChild should be \`node\`, EXCEPT if \`node\` is the very root we started the recursive search from (which usually represents the page and is not navigable).
 // Let's ensure the recursive function correctly identifies whether node is the start root.
-const newFindPrevious = `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
+const newFindPrevious =
+    `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
     if (node.id === targetId) {
         return prevItem;
     }

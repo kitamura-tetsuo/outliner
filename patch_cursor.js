@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from "fs";
 const file = "client/src/lib/cursor/CursorNavigationUtils.ts";
 let content = readFileSync(file, "utf8");
 
-const newFindPrevious = `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
+const newFindPrevious =
+    `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
     if (node.id === targetId) {
         return prevItem;
     }
@@ -85,6 +86,9 @@ function findNextAtParentLevel(path: Item[]): Item | undefined {
     return undefined;
 }`;
 
-content = content.replace(/\/\/ Helper function to find next item when no sibling exists at current level[\s\S]*?\n\}\n/m, newFindNextAtParentLevel + "\n");
+content = content.replace(
+    /\/\/ Helper function to find next item when no sibling exists at current level[\s\S]*?\n\}\n/m,
+    newFindNextAtParentLevel + "\n",
+);
 
 writeFileSync(file, content);

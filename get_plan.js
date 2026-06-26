@@ -1,1 +1,3 @@
-console.log("Both previous item and next item correctly skip returning things when there's none. \nNow I just need to reset the cursor script and the utils script, modify both again in a clean fashion, run the tests that I added into a standalone file, run the entire unit test suite, and submit.");
+console.log(
+    "Both previous item and next item correctly skip returning things when there's none. \nNow I just need to reset the cursor script and the utils script, modify both again in a clean fashion, run the tests that I added into a standalone file, run the entire unit test suite, and submit.",
+);

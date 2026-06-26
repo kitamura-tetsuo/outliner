@@ -145,7 +145,8 @@ describe("Cursor moveUp and moveDown on nested items", () => {
         cursor.offset = 0;
         cursor.moveUp();
 
-        console.log("Move up from root1. Old:", root1.id, "New:", cursor.itemId); expect(cursor.itemId).toBe(root1.id);
+        console.log("Move up from root1. Old:", root1.id, "New:", cursor.itemId);
+        expect(cursor.itemId).toBe(root1.id);
     });
 
     test("moveDown from root2 stays at root2 (last item)", () => {

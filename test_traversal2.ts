@@ -103,14 +103,14 @@ const root = {
                 {
                     id: "child1",
                     items: [
-                        { id: "grandchild1", items: [] }
-                    ]
+                        { id: "grandchild1", items: [] },
+                    ],
                 },
-                { id: "child2", items: [] }
-            ]
+                { id: "child2", items: [] },
+            ],
         },
-        { id: "root2", items: [] }
-    ]
+        { id: "root2", items: [] },
+    ],
 };
 
 console.log("\nTesting Next Item:");

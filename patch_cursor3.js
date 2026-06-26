@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from "fs";
 const file = "client/src/lib/cursor/CursorNavigationUtils.ts";
 let content = readFileSync(file, "utf8");
 
-const newFindPrevious = `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
+const newFindPrevious =
+    `function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item): Item | undefined {
     if (node.id === targetId) {
         return prevItem;
     }
