@@ -85,8 +85,7 @@ class UserDeletionService {
 
     async removeUserFromContainers(userId: string, containerIds: string[]): Promise<void> {
         // In this mock, we simulate the operation for each container
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        for (const _containerId of containerIds) {
+        for (let i = 0; i < containerIds.length; i++) {
             const containerDoc = await mockDocRef.get();
 
             if (containerDoc.exists) {

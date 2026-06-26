@@ -1163,8 +1163,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        // eslint-disable-next-line no-useless-assignment
-        let selectedText = "";
+        let selectedText: string;
         let isBoxSelectionCopy = false;
 
         if (boxSelection) {
@@ -2327,8 +2326,7 @@ export class KeyEventHandler {
         const boxSelection = selections.find(sel => sel.isBoxSelection);
 
         // Get text of selection range
-        // eslint-disable-next-line no-useless-assignment
-        let selectedText = "";
+        let selectedText: string;
         let isBoxSelectionCut = false;
 
         if (boxSelection) {
