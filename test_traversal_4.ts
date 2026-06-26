@@ -1,2 +1,0 @@
-// `prevItem` in `navigateToItem("up")` is being populated inside the `if (!prevItem)` block because `findPreviousItem(this.itemId)` returns `undefined` for `root1`.
-// The code then finds `parentCollection.parentKey` (which is the page ID, not "root" because "root" is the project level in this context, page is the parent of root1) and creates an Item for it, making it navigate up to the Page itself!
