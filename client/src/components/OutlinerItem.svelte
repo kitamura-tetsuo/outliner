@@ -1928,13 +1928,16 @@ export function setSelectionPosition(start: number, end: number = start) {
 // Fire event to move to another item
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
+
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
     style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
     onclick={handleClick}
+    onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") handleClick(e as unknown as MouseEvent); }}
+    role="treeitem"
+    aria-selected={isItemActive}
+    tabindex="-1"
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
@@ -2008,6 +2011,9 @@ export function setSelectionPosition(start: number, end: number = start) {
                 ondrop={handleDrop}
                 ondragend={handleDragEnd}
                 onclick={handleContentClick}
+                onkeydown={(e) => { if (e.key === "Enter" || e.key === " ") handleContentClick(e as unknown as MouseEvent); }}
+                role="button"
+                tabindex="-1"
             >
                 <!-- Text display (hidden when component is displayed) -->
                 <!-- Temporarily disable component type conditional branching -->
