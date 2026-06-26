@@ -56,8 +56,8 @@
 
     // Optional variable for pending imports - defined to avoid ESLint no-undef errors
     // This is used in conditional checks and may be set by external code
-    let pendingImport: unknown[] | undefined; // eslint-disable-line @typescript-eslint/no-unused-vars
-    let project: AppProject; // eslint-disable-line @typescript-eslint/no-unused-vars
+    let _pendingImport: unknown[] | undefined;
+    let _project: AppProject;
 
     // Monitor and update URL parameters and auth state
     // Key to avoid multiple executions under the same conditions and prevent Svelte update depth exceeded
