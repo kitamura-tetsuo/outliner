@@ -1747,10 +1747,7 @@ export class Cursor implements CursorEditingContext {
                 // ALSO skip if parentKey is the current page id.
                 const isCurrentPage = parentCollection && parentCollection.parentKey === generalStore.currentPage?.id;
 
-                if (
-                    parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root"
-                    && !isCurrentPage
-                ) {
+                if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root" && !isCurrentPage) {
                     prevItem = new (currentTarget!.constructor as unknown as {
                         new(...args: unknown[]): import("../schema/yjs-schema").Item;
                     })(
