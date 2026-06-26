@@ -14,23 +14,25 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, "..", ".env.test") });
 
 // Mock global jest object if undefined
-if (typeof (global as { jest?: unknown }).jest === "undefined") {
-    (global as { jest?: unknown }).jest = {
+if (typeof (global as { jest?: unknown; }).jest === "undefined") {
+    (global as { jest?: unknown; }).jest = {
         fn: () => {
             const stub = sinon.stub();
-            (stub as { mockImplementation?: (fn: (...args: unknown[]) => unknown) => unknown }).mockImplementation = (fn: (...args: unknown[]) => unknown) => {
+            (stub as { mockImplementation?: (fn: (...args: unknown[]) => unknown) => unknown; }).mockImplementation = (
+                fn: (...args: unknown[]) => unknown,
+            ) => {
                 stub.callsFake(fn);
                 return stub;
             };
-            (stub as { mockResolvedValue?: (val: unknown) => unknown }).mockResolvedValue = (val: unknown) => {
+            (stub as { mockResolvedValue?: (val: unknown) => unknown; }).mockResolvedValue = (val: unknown) => {
                 stub.resolves(val);
                 return stub;
             };
-            (stub as { mockRejectedValue?: (val: unknown) => unknown }).mockRejectedValue = (val: unknown) => {
+            (stub as { mockRejectedValue?: (val: unknown) => unknown; }).mockRejectedValue = (val: unknown) => {
                 stub.rejects(val);
                 return stub;
             };
-            (stub as { mockReturnValue?: (val: unknown) => unknown }).mockReturnValue = (val: unknown) => {
+            (stub as { mockReturnValue?: (val: unknown) => unknown; }).mockReturnValue = (val: unknown) => {
                 stub.returns(val);
                 return stub;
             };
