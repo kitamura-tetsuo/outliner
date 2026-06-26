@@ -1019,6 +1019,7 @@ export class Cursor implements CursorEditingContext {
 
     // Move cursor to the start of the line
     moveToLineStart() {
+        this.resetInitialColumn();
         const target = this.findTarget();
         if (!target) return;
 
@@ -1035,6 +1036,7 @@ export class Cursor implements CursorEditingContext {
 
     // Move cursor to the end of the line
     moveToLineEnd() {
+        this.resetInitialColumn();
         const target = this.findTarget();
         if (!target) return;
 
@@ -1213,6 +1215,7 @@ export class Cursor implements CursorEditingContext {
 
     // Move to document start
     moveToDocumentStart() {
+        this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
@@ -1228,6 +1231,7 @@ export class Cursor implements CursorEditingContext {
 
     // Move to document end
     moveToDocumentEnd() {
+        this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
