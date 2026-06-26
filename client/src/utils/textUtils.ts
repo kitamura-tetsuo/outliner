@@ -26,7 +26,7 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
                 try {
                     range.setStart(posInfo.offsetNode, posInfo.offset);
                     range.collapse(true);
-                } catch (e) {
+                } catch {
                     // Ignore DOMException if offset is out of bounds
                     range = null;
                 }
