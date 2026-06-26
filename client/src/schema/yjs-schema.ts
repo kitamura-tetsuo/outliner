@@ -216,6 +216,7 @@ export class Items {
 
     private childrenKeys(): string[] {
         try {
+            if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
         } catch (e) {
@@ -302,6 +303,7 @@ export class Items {
      * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
      */
     *iterateUnordered(): IterableIterator<Item> {
+        if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
         const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         for (const key of keys) {
             yield new Item(this.ydoc, this.tree, key);
