@@ -73,8 +73,7 @@
     }
 
     // Navigate to the demo page view when a page is selected
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function handlePageSelected(event: CustomEvent<{ pageId: string; pageName: string; }>) {
+    function handlePageSelected(_event: CustomEvent<{ pageId: string; pageName: string; }>) {
         // Navigation is now handled by the <a> tag in PageListItem
     }
 
