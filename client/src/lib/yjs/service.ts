@@ -10,6 +10,7 @@ interface YTreeWithMove extends YTree {
 }
 
 function childrenKeys(tree: YTree, parentKey: string): string[] {
+    if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return [];
     const children = tree.getNodeChildrenFromKey(parentKey);
     return tree.sortChildrenByOrder(children, parentKey);
 }

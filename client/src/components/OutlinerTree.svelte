@@ -353,8 +353,8 @@
         if (!parentKey) return;
 
 
+        if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return;
         const siblingKeys: string[] = tree.sortChildrenByOrder(
-
             tree.getNodeChildrenFromKey(parentKey),
             parentKey,
         );
