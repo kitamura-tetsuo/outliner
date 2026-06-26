@@ -23,8 +23,13 @@ export function getClickPosition(textEl: HTMLElement, event: MouseEvent, content
             const posInfo = doc.caretPositionFromPoint(x, y);
             if (posInfo) {
                 range = doc.createRange();
-                range.setStart(posInfo.offsetNode, posInfo.offset);
-                range.collapse(true);
+                try {
+                    range.setStart(posInfo.offsetNode, posInfo.offset);
+                    range.collapse(true);
+                } catch {
+                    // Ignore DOMException if offset is out of bounds
+                    range = null;
+                }
             }
         }
         if (range && range.startContainer.nodeType === Node.TEXT_NODE) {
