@@ -174,7 +174,7 @@
                         }
                     }
                     if (titles.length > 0) {
-                        logger.error(`loadProjectAndPage: findPage failed for "${pageName}". Found ${titles.length} items: ${titles.join(", ")}`);
+                        logger.error({ error: new Error("findPage failed") }, `loadProjectAndPage: findPage failed for "${pageName}". Found ${titles.length} items: ${titles.join(", ")}`);
                     }
                 }
                 return null;
