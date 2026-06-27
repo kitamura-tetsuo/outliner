@@ -10,17 +10,27 @@ export const metaDoc = new Y.Doc();
 
 // IndexedDB persistence for local-only storage
 // Use a separate database name from container Y.Docs to avoid conflicts
-const persistence = new IndexeddbPersistence("outliner-meta", metaDoc);
+// Only initialize IndexedDB in browser environments
+let persistence: IndexeddbPersistence | null = null;
+if (typeof window !== "undefined") {
+    persistence = new IndexeddbPersistence("outliner-meta", metaDoc);
+}
 
 // Reactive state for tracking metadata updates
 export const metaDocState = $state({ version: 0 });
 
 // Promise to track when metadata is loaded from IndexedDB
+// Promise to track when metadata is loaded from IndexedDB
 export const metaDocLoaded = new Promise<void>((resolve) => {
-    persistence.once("synced", () => {
-        metaDocState.version++;
+    if (persistence) {
+        persistence.once("synced", () => {
+            metaDocState.version++;
+            resolve();
+        });
+    } else {
+        // Resolve immediately in non-browser environments
         resolve();
-    });
+    }
 });
 
 // Y.Map structure for storing container metadata
@@ -105,7 +115,7 @@ if (typeof window !== "undefined") {
     logger.debug("[metaDoc] Initialized metadata Y.Doc with IndexedDB persistence");
 
     // Optional: Log when IndexedDB data is loaded
-    persistence.once("synced", () => {
+    persistence?.once("synced", () => {
         logger.debug("[metaDoc] IndexedDB data loaded");
     });
 }
