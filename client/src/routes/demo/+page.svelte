@@ -152,9 +152,18 @@
                 </div>
             </div>
         </div>
-    {:else if store.project && pages}
+    {:else if store.project && pages && pages.length > 0}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList
+                currentUser="anonymous"
+                project={store.project}
+                rootItems={pages}
+                onPageSelected={handlePageSelected}
+            />
+        </div>
+    {:else if store.project && pages && pages.length === 0}
+        <div class="mt-6" data-testid="demo-page-list">
+             <PageList
                 currentUser="anonymous"
                 project={store.project}
                 rootItems={pages}

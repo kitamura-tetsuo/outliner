@@ -571,11 +571,7 @@
         pageItem={store.currentPage}
         project={store.project}
     />
-    {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
-        </div>
-    {:else if error}
+    {#if error}
         <div class="rounded-md bg-red-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">

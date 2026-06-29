@@ -131,7 +131,20 @@
         <div class="flex justify-center py-8">
             <div class="flex flex-col items-center justify-center space-y-4" aria-busy="true" aria-live="polite" role="status"><div class="loader" aria-hidden="true"></div><div class="text-gray-600 text-sm font-medium">Loading...</div></div>
         </div>
-    {:else if store.pages.current}
+    {:else if store.pages.current && store.pages.current.length > 0}
+        <div class="mt-6">
+            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
+            <div class="rounded-lg bg-white p-4 shadow-md">
+                <PageList
+                    currentUser={userManager.getCurrentUser()?.id ||
+                        "anonymous"}
+                    project={store.project!}
+                    rootItems={pages!}
+                    onPageSelected={handlePageSelected}
+                />
+            </div>
+        </div>
+    {:else if store.pages.current && store.pages.current.length === 0}
         <div class="mt-6">
             <h2 class="mb-4 text-xl font-semibold">Page List</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
