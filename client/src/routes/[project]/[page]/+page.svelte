@@ -35,7 +35,7 @@
 
     // Page state
     let error: string | undefined = $state(undefined);
-    let isLoading = $state(true);
+    let _isLoading = $state(true);
     let isAuthenticated = $state(false);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
@@ -116,7 +116,7 @@
             `loadProjectAndPage: Starting for project="${projectName}", page="${pageName}"`,
         );
         __loadingInProgress = true;
-        isLoading = true;
+        _isLoading = true;
         error = undefined;
         pageNotFound = false;
 
@@ -242,7 +242,7 @@
                     ? err.message
                     : "An error occurred while loading the project and page.";
         } finally {
-            isLoading = false;
+            _isLoading = false;
             __loadingInProgress = false;
             if (typeof window !== "undefined") {
                 window.__PAGE_STATE__ = {
@@ -571,11 +571,7 @@
         pageItem={store.currentPage}
         project={store.project}
     />
-    {#if isLoading}
-        <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
-        </div>
-    {:else if error}
+    {#if error}
         <div class="rounded-md bg-red-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -638,23 +634,3 @@
     {/if}
 </main>
 
-<style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>
