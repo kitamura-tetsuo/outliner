@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 
 // Configuration to use __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 const __dirname = path.dirname(__filename);
 
 // -- Estimate whether it is a single spec run -------------------------

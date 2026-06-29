@@ -85,7 +85,7 @@ class UserDeletionService {
 
     async removeUserFromContainers(userId: string, containerIds: string[]): Promise<void> {
         // In this mock, we simulate the operation for each container
-        for (let i = 0; i < containerIds.length; i++) {
+        for (const _containerId of containerIds) {
             const containerDoc = await mockDocRef.get();
 
             if (containerDoc.exists) {

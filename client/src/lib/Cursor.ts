@@ -642,10 +642,18 @@ export class Cursor implements CursorEditingContext {
                     this.moveItemDown();
                     break;
                 case "Home":
-                    this.moveToDocumentStart();
+                    if (event.shiftKey) {
+                        this.extendSelectionToDocumentStart();
+                    } else {
+                        this.moveToDocumentStart();
+                    }
                     break;
                 case "End":
-                    this.moveToDocumentEnd();
+                    if (event.shiftKey) {
+                        this.extendSelectionToDocumentEnd();
+                    } else {
+                        this.moveToDocumentEnd();
+                    }
                     break;
                 case "PageUp":
                     this.pageUp();
@@ -1227,6 +1235,44 @@ export class Cursor implements CursorEditingContext {
         this.offset = 0;
         this.applyToStore();
         store.startCursorBlink();
+    }
+
+    // Extend selection to document start
+    extendSelectionToDocumentStart() {
+        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        this.moveToDocumentStart();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
+    }
+
+    // Extend selection to document end
+    extendSelectionToDocumentEnd() {
+        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
+
+        let startItemId, startOffset;
+
+        if (existingSelection) {
+            startItemId = existingSelection.startItemId;
+            startOffset = existingSelection.startOffset;
+        } else {
+            startItemId = this.itemId;
+            startOffset = this.offset;
+        }
+
+        this.moveToDocumentEnd();
+
+        this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
     // Move to document end

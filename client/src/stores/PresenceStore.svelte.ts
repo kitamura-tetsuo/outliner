@@ -19,7 +19,7 @@ export class PresenceStore {
     }
 
     removeUser(userId: string) {
-        const { [userId]: _, ...rest } = this.users; // eslint-disable-line @typescript-eslint/no-unused-vars
+        const { [userId]: _, ...rest } = this.users;
         this.users = rest;
         this.users = rest;
         try {

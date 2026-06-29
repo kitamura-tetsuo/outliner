@@ -73,7 +73,7 @@
     }
 
     // Navigate to the demo page view when a page is selected
-    function handlePageSelected() {
+    function handlePageSelected(_event: CustomEvent<{ pageId: string; pageName: string; }>) {
         // Navigation is now handled by the <a> tag in PageListItem
     }
 
@@ -152,9 +152,18 @@
                 </div>
             </div>
         </div>
-    {:else if store.project && pages}
+    {:else if store.project && pages && pages.length > 0}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList
+                currentUser="anonymous"
+                project={store.project}
+                rootItems={pages}
+                onPageSelected={handlePageSelected}
+            />
+        </div>
+    {:else if store.project && pages && pages.length === 0}
+        <div class="mt-6" data-testid="demo-page-list">
+             <PageList
                 currentUser="anonymous"
                 project={store.project}
                 rootItems={pages}
