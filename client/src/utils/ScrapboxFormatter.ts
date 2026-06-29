@@ -36,9 +36,9 @@ export class ScrapboxFormatter {
         "'": "&#039;",
         "\x00": "", // Strip null bytes for security
     };
-
-    // eslint-disable-next-line no-control-regex
+    /* eslint-disable no-control-regex */
     private static readonly RX_ESCAPE = /[&<>"'\x00]/g;
+    /* eslint-enable no-control-regex */
     // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
     private static readonly RX_SANITIZED_URL = /^\s*(javascript|vbscript|data):/i;
@@ -65,8 +65,9 @@ export class ScrapboxFormatter {
         let checkUrl = url;
         // Optimization: Fast path to avoid replace() allocation if no null bytes are present
         if (checkUrl.includes("\x00")) {
-            // eslint-disable-next-line no-control-regex
+            /* eslint-disable no-control-regex */
             checkUrl = checkUrl.replace(/\x00/g, "");
+            /* eslint-enable no-control-regex */
         }
 
         // Prevent javascript:, vbscript:, data:
@@ -170,8 +171,9 @@ export class ScrapboxFormatter {
         if (!text) return [];
 
         // Strip control characters that are used for internal processing
-        // eslint-disable-next-line no-control-regex
+        /* eslint-disable no-control-regex */
         text = text.replace(/\x01/g, "");
+        /* eslint-enable no-control-regex */
 
         // Formatting patterns
         const patterns = [
@@ -369,9 +371,7 @@ export class ScrapboxFormatter {
                         if (parts.length >= 2) {
                             const projectName = parts[0];
                             const pageName = parts.slice(1).join("/");
-
-                            // eslint-disable-next-line no-useless-assignment
-                            let existsClassTokens = "page-not-exists"; // default for safety
+                            let existsClassTokens;
                             try {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
@@ -509,8 +509,9 @@ export class ScrapboxFormatter {
         if (!text) return "";
 
         // Strip control characters that are used for internal processing
-        // eslint-disable-next-line no-control-regex
+        /* eslint-disable no-control-regex */
         text = text.replace(/\x01/g, "");
+        /* eslint-enable no-control-regex */
 
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
@@ -593,8 +594,7 @@ export class ScrapboxFormatter {
                         const pageName = parts.slice(1).join("/");
 
                         // Add class for page existence check
-                        // eslint-disable-next-line no-useless-assignment
-                        let existsClass = "page-not-exists"; // default for safety
+                        let existsClass;
                         try {
                             existsClass = this.checkPageExists(pageName, projectName)
                                 ? "page-exists"

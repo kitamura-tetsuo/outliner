@@ -248,8 +248,7 @@
                 } catch {}
 
                 // Get text - handle both Yjs getter and plain property
-                // eslint-disable-next-line no-useless-assignment
-                let pageName = "";
+                let pageName;
                 try {
                     pageName =
                         typeof firstPage.text === "function"
