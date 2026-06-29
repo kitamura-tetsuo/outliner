@@ -1068,6 +1068,7 @@ exports.acceptProjectShareLink = onRequest(
 
       const { projectId } = linkDoc.data();
 
+      let projectTitle = projectId;
       await db.runTransaction(async transaction => {
         const projectRef = projectUsersCollection.doc(projectId);
         const userRef = userProjectsCollection.doc(userId);
@@ -1078,6 +1079,7 @@ exports.acceptProjectShareLink = onRequest(
         if (!projectSnap.exists) { throw new Error("Project not found"); }
 
         const projectData = projectSnap.data();
+        projectTitle = projectData.title || projectId;
         const accessibleUserIds = projectData.accessibleUserIds || [];
 
         if (!accessibleUserIds.includes(userId)) {
@@ -1121,7 +1123,7 @@ exports.acceptProjectShareLink = onRequest(
         }
       });
 
-      return res.status(200).json({ projectId });
+      return res.status(200).json({ projectId, projectTitle });
     } catch (error) {
       Sentry.captureException(error);
       logger.error(`acceptProjectShareLink error: ${error.message}`, { error });

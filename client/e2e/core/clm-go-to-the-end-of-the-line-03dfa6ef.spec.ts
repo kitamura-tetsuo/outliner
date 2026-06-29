@@ -71,7 +71,7 @@ test.describe("CLM-0008: Move to the end of the line", () => {
         let initialX = 0;
         try {
             initialX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch (_) {
             // Continue processing even if the cursor element has not been rendered yet
             console.log("Initial cursor position not available, continuing test");
         }
@@ -100,7 +100,7 @@ test.describe("CLM-0008: Move to the end of the line", () => {
         let newX = 0;
         try {
             newX = await cursor.evaluate(el => el.getBoundingClientRect().left);
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch (_) {
             console.log("New cursor position not available, continuing test");
         }
 
@@ -122,7 +122,7 @@ test.describe("CLM-0008: Move to the end of the line", () => {
             if (cursorOffset) {
                 expect(cursorOffset).not.toBeNull();
             }
-        } catch (_) { // eslint-disable-line @typescript-eslint/no-unused-vars
+        } catch (_) {
             // Even if acquiring the DOM element fails, it is fine if the application state can be verified
             console.log("Cursor offset check failed, but continuing since app state was verified");
         }

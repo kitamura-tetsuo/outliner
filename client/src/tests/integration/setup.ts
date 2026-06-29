@@ -87,7 +87,7 @@ class MockHocuspocusProvider {
                     try {
                         action(peer);
                     } catch (e) {
-                        logger.error("Error broadcasting to peer:", e);
+                        logger.error({ error: e }, "Error broadcasting to peer:");
                     }
                 }
             });
@@ -181,7 +181,7 @@ class MockHocuspocusProvider {
                 try {
                     callback(...args);
                 } catch (e) {
-                    logger.error("Error in event listener:", e);
+                    logger.error({ error: e }, "Error in event listener:");
                 }
             });
         }
