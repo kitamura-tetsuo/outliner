@@ -143,7 +143,7 @@ test.describe("Project Sharing E2E", () => {
         // --- Verification ---
         // Should redirect to project page (checking partial URL because of encoding)
         await expect(pageB).toHaveURL(
-            new RegExp(`/${encodeURIComponent(projectName).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+            new RegExp(`/${encodeURIComponent(projectId).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
             { timeout: 15000 },
         );
 
@@ -167,7 +167,7 @@ test.describe("Project Sharing E2E", () => {
 
         // Explicitly navigate to the specific page URL to avoid being stuck on the project root/list
         // This ensures the outliner editor is actually loaded
-        const targetPageUrl = `/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`;
+        const targetPageUrl = `/${encodeURIComponent(projectId)}/${encodeURIComponent(pageName)}`;
         console.log(`[User B] Explicitly navigating to page: ${targetPageUrl}`);
         await pageB.goto(targetPageUrl);
         await TestHelpers.waitForAppReady(pageB);

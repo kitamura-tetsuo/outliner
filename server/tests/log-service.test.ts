@@ -14,31 +14,29 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, "..", ".env.test") });
 
 // Mock global jest object if undefined
-if (typeof (global as { jest?: unknown; }).jest === "undefined") {
-    (global as { jest?: unknown; }).jest = {
+if (typeof (global as any).jest === "undefined") {
+    (global as any).jest = {
         fn: () => {
             const stub = sinon.stub();
-            (stub as { mockImplementation?: (fn: (...args: unknown[]) => unknown) => unknown; }).mockImplementation = (
-                fn: (...args: unknown[]) => unknown,
-            ) => {
+            (stub as any).mockImplementation = (fn: any) => {
                 stub.callsFake(fn);
                 return stub;
             };
-            (stub as { mockResolvedValue?: (val: unknown) => unknown; }).mockResolvedValue = (val: unknown) => {
+            (stub as any).mockResolvedValue = (val: any) => {
                 stub.resolves(val);
                 return stub;
             };
-            (stub as { mockRejectedValue?: (val: unknown) => unknown; }).mockRejectedValue = (val: unknown) => {
+            (stub as any).mockRejectedValue = (val: any) => {
                 stub.rejects(val);
                 return stub;
             };
-            (stub as { mockReturnValue?: (val: unknown) => unknown; }).mockReturnValue = (val: unknown) => {
+            (stub as any).mockReturnValue = (val: any) => {
                 stub.returns(val);
                 return stub;
             };
             return stub;
         },
-        mock: (_moduleName: string, _factory: unknown) => {
+        mock: (moduleName: string, factory: any) => {
             console.warn("jest.mock is not fully supported in ESM mocha tests without loader hooks.");
         },
         clearAllMocks: () => sinon.restore(),

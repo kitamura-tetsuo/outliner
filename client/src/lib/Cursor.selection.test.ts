@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
-import type { SelectionRange as _SelectionRange } from "../stores/EditorOverlayStore.svelte";
+import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { Cursor } from "./Cursor";
 
 // Helper to manage mock selection state

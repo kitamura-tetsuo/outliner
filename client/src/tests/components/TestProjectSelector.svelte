@@ -51,7 +51,7 @@ const logger = getLogger("TestProjectSelector");
                 try {
                     await performTestLogin();
                 } catch (err) {
-                    logger.error({ error: err }, "Login failed:");
+                    logger.error("Login failed:", err);
                 }
             }}
             class="debug-button"
@@ -65,7 +65,7 @@ const logger = getLogger("TestProjectSelector");
                     createTestUserData();
                     logger.debug("Test data created successfully");
                 } catch (err) {
-                    logger.error({ error: err }, "Error creating test data:");
+                    logger.error("Error creating test data:", err);
                 }
             }}
             class="debug-button"

@@ -116,7 +116,7 @@ export async function snapshotComparisonExample(page: Page): Promise<void> {
     try {
         await CursorValidator.compareWithSnapshot(page, snapshot);
         throw new Error("Snapshot unexpectedly matched");
-    } catch (_error) {
+    } catch (_error /* eslint-disable-line @typescript-eslint/no-unused-vars */) {
         console.log("Confirmed that snapshot does not match");
     }
 }

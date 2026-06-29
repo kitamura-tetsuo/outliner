@@ -72,7 +72,7 @@ onDestroy(() => {
 
 // Dropdown menu state and handlers
 let isMenuOpen = $state(false);
-let indicatorEl: HTMLElement | null = $state(null);
+let indicatorEl: HTMLDivElement | null = null;
 let menuEl: HTMLDivElement | null = $state(null);
 let signOutBtn: HTMLButtonElement | null = $state(null);
 const menuId = "user-menu";
@@ -166,23 +166,23 @@ async function signOut() {
 
 </script>
 
-{#if isAuthenticated}
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="login-status-indicator"
-    role="button"
-    tabindex="0"
-    onkeydown={onKeyDownIndicator}
-    class:authenticated={true}
-    class:unauthenticated={false}
+    class:authenticated={isAuthenticated}
+    class:unauthenticated={!isAuthenticated && !isLoading}
     class:loading={isLoading}
     data-testid="login-status-indicator"
     data-status={status}
-    aria-haspopup="menu"
-    aria-expanded={isMenuOpen ? "true" : "false"}
-    aria-controls={menuId}
+    role={isAuthenticated ? "button" : "status"}
+    aria-haspopup={isAuthenticated ? "menu" : undefined}
+    aria-expanded={isAuthenticated ? (isMenuOpen ? "true" : "false") : "false"}
+    aria-controls={isAuthenticated ? menuId : undefined}
     aria-label={statusLabel}
     title={statusLabel}
+    tabindex={isAuthenticated ? 0 : -1}
     onclick={toggleMenu}
+    onkeydown={onKeyDownIndicator}
     bind:this={indicatorEl}
 >
     {#if isLoading}
@@ -193,7 +193,7 @@ async function signOut() {
             <span class="status-label">Checking…</span>
         </span>
         <span class="visually-hidden">Checking login status…</span>
-    {:else if currentUser}
+    {:else if isAuthenticated && currentUser}
         <span class="icon-badge">
             {#if isGoogleUser}
                 <span class="provider-icon" data-provider="google" aria-hidden="true">
@@ -223,8 +223,22 @@ async function signOut() {
                 <span class="status-detail">{detailText}</span>
             {/if}
         </span>
+    {:else}
+        <span class="icon-badge">
+            <span class="provider-icon logged-out" data-provider="guest" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 12c2.49 0 4.5-2.01 4.5-4.5S14.49 3 12 3 7.5 5.01 7.5 7.5 9.51 12 12 12Z" />
+                    <path d="M4 20.4c0-4.09 3.31-7.4 7.4-7.4h1.2c4.09 0 7.4 3.31 7.4 7.4" />
+                    <path d="m16 3 5 5" />
+                    <path d="m21 3-5 5" />
+                </svg>
+            </span>
+        </span>
+        <span class="status-text">
+            <span class="status-label">Not signed in</span>
+        </span>
     {/if}
-    {#if isMenuOpen}
+    {#if isMenuOpen && isAuthenticated}
         <div
             id={menuId}
             data-testid="user-menu"
@@ -247,44 +261,6 @@ async function signOut() {
         </div>
     {/if}
 </div>
-{:else}
-<div
-    class="login-status-indicator"
-    class:authenticated={false}
-    class:unauthenticated={!isLoading}
-    class:loading={isLoading}
-    data-testid="login-status-indicator"
-    data-status={status}
-    role="status"
-    aria-label={statusLabel}
-    title={statusLabel}
-    bind:this={indicatorEl}
->
-    {#if isLoading}
-        <span class="icon-badge">
-            <span class="spinner" aria-hidden="true"></span>
-        </span>
-        <span class="status-text">
-            <span class="status-label">Checking…</span>
-        </span>
-        <span class="visually-hidden">Checking login status…</span>
-    {:else}
-        <span class="icon-badge">
-            <span class="provider-icon logged-out" data-provider="guest" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 12c2.49 0 4.5-2.01 4.5-4.5S14.49 3 12 3 7.5 5.01 7.5 7.5 9.51 12 12 12Z" />
-                    <path d="M4 20.4c0-4.09 3.31-7.4 7.4-7.4h1.2c4.09 0 7.4 3.31 7.4 7.4" />
-                    <path d="m16 3 5 5" />
-                    <path d="m21 3-5 5" />
-                </svg>
-            </span>
-        </span>
-        <span class="status-text">
-            <span class="status-label">Not signed in</span>
-        </span>
-    {/if}
-</div>
-{/if}
 
 <style>
 .login-status-indicator {

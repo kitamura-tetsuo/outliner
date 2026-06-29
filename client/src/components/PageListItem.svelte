@@ -13,7 +13,8 @@ interface Props {
 
 let { page, isGridView, href, onPageClick }: Props = $props();
 
-function handleClick(_e: MouseEvent) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function handleClick(e: MouseEvent) {
     if (onPageClick) {
         // Let SvelteKit's standard router handle the navigation.
         // We just notify the parent component that a page was clicked.

@@ -188,7 +188,7 @@
                 </div>
             </div>
         </div>
-    {:else if store.currentPage}
+    {:else}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}

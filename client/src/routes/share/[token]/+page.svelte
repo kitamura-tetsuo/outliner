@@ -51,8 +51,7 @@
             status = "success";
             message = "Successfully joined! Redirecting to project...";
             setTimeout(() => {
-                const navPath = data.projectTitle ? `/${encodeURIComponent(data.projectTitle)}` : `/${data.projectId}`;
-                goto(resolvePath(navPath));
+                goto(resolvePath(`/${data.projectId}`));
             }, 1500);
         } catch (e: unknown) {
             status = "error";

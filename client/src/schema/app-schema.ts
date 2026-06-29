@@ -292,7 +292,7 @@ export class Item {
                 return (t as { toString: () => string; }).toString();
             }
         } catch (e) {
-            logger.warn({ err: e }, "[app-schema] get text() caught error");
+            logger.warn(`[app-schema] get text() caught error: ${e}`);
             // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
             return "";
         }
@@ -657,7 +657,7 @@ export class Items implements Iterable<Item> {
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
         } catch (e) {
-            logger.warn({ err: e }, "[app-schema] Items.childrenKeys error");
+            logger.warn(`[app-schema] Items.childrenKeys error: ${e}`);
             return [];
         }
     }
@@ -695,7 +695,7 @@ export class Items implements Iterable<Item> {
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
-            logger.warn({ err: e }, "[app-schema] Items.iterateUnordered error fetching children");
+            logger.warn(`[app-schema] Items.iterateUnordered error fetching children: ${e}`);
             return;
         }
         for (const key of keys) {

@@ -642,18 +642,10 @@ export class Cursor implements CursorEditingContext {
                     this.moveItemDown();
                     break;
                 case "Home":
-                    if (event.shiftKey) {
-                        this.extendSelectionToDocumentStart();
-                    } else {
-                        this.moveToDocumentStart();
-                    }
+                    this.moveToDocumentStart();
                     break;
                 case "End":
-                    if (event.shiftKey) {
-                        this.extendSelectionToDocumentEnd();
-                    } else {
-                        this.moveToDocumentEnd();
-                    }
+                    this.moveToDocumentEnd();
                     break;
                 case "PageUp":
                     this.pageUp();
@@ -1027,7 +1019,6 @@ export class Cursor implements CursorEditingContext {
 
     // Move cursor to the start of the line
     moveToLineStart() {
-        this.resetInitialColumn();
         const target = this.findTarget();
         if (!target) return;
 
@@ -1044,7 +1035,6 @@ export class Cursor implements CursorEditingContext {
 
     // Move cursor to the end of the line
     moveToLineEnd() {
-        this.resetInitialColumn();
         const target = this.findTarget();
         if (!target) return;
 
@@ -1223,7 +1213,6 @@ export class Cursor implements CursorEditingContext {
 
     // Move to document start
     moveToDocumentStart() {
-        this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
@@ -1237,47 +1226,8 @@ export class Cursor implements CursorEditingContext {
         store.startCursorBlink();
     }
 
-    // Extend selection to document start
-    extendSelectionToDocumentStart() {
-        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
-
-        this.moveToDocumentStart();
-
-        this.updateSelectionAfterMove(startItemId, startOffset);
-    }
-
-    // Extend selection to document end
-    extendSelectionToDocumentEnd() {
-        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
-
-        this.moveToDocumentEnd();
-
-        this.updateSelectionAfterMove(startItemId, startOffset);
-    }
-
     // Move to document end
     moveToDocumentEnd() {
-        this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;

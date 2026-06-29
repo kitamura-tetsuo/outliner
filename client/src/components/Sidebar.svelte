@@ -2,7 +2,6 @@
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolvePath } from "../utils/pathUtils";
-    import { goto } from "$app/navigation";
 
 
     import { page as pageStore } from "$app/stores";
@@ -112,39 +111,14 @@
 
         <!-- Pages section -->
         <div class="sidebar-section">
-            <div
+            <button
                 class="section-header"
-                role="button"
-                tabindex="0"
                 onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
-                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isPagesCollapsed = !isPagesCollapsed; } }}
                 aria-expanded={!isPagesCollapsed}
                 aria-controls="sidebar-pages-list"
                 aria-label="Toggle pages section"
             >
-                <div class="section-header-content">
-                    <h3 class="sidebar-section-title">Pages</h3>
-                    <button
-                        class="add-page-btn"
-                        onclick={(e) => {
-                            e.stopPropagation();
-                            if (store.project) {
-                                const newPage = store.project.addPage("Untitled", "tester");
-                                const pageHref = resolvePath(
-                                    `/${encodeURIComponent(store.project.title || "Untitled Project")}/${encodeURIComponent(newPage.text)}`
-                                );
-                                goto(pageHref);
-                            }
-                        }}
-                        aria-label="Add new page"
-                        title="Add new page"
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                    </button>
-                </div>
+                <h3 class="sidebar-section-title">Pages</h3>
                 <svg
                     class="chevron-icon"
                     class:rotated={isPagesCollapsed}
@@ -163,7 +137,7 @@
                         stroke-linejoin="round"
                     />
                 </svg>
-            </div>
+            </button>
 
             {#if !isPagesCollapsed}
                 <ul id="sidebar-pages-list" class="page-list">
@@ -633,40 +607,5 @@
     :global(html.dark) .page-item:hover .item-icon,
     :global(html.dark) .settings-link:hover .item-icon {
         color: #e5e7eb;
-    }
-
-    .section-header-content {
-        display: flex;
-        align-items: center;
-        flex: 1;
-        justify-content: space-between;
-    }
-
-    .add-page-btn {
-        background: none;
-        border: none;
-        padding: 4px;
-        cursor: pointer;
-        color: #6b7280;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 4px;
-        transition: all 0.2s;
-        margin-right: 8px; /* Give some space before chevron */
-    }
-
-    .add-page-btn:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        color: #2563eb;
-    }
-
-    :global(html.dark) .add-page-btn {
-        color: #9ca3af;
-    }
-
-    :global(html.dark) .add-page-btn:hover {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: #60a5fa;
     }
 </style>

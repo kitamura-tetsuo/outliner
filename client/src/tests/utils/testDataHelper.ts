@@ -73,7 +73,7 @@ export async function performTestLogin(): Promise<void> {
             throw new Error("UserManager not available");
         }
     } catch (err) {
-        logger.error({ error: err }, "Manual test login failed:");
+        logger.error("Manual test login failed:", err);
         throw err;
     }
 }
