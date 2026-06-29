@@ -455,15 +455,14 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
             logger.info("Test environment detected, saving project ID to mock store");
 
             // Create or update new container data
+            /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Sets and Timestamp values, not reactive state */
             const updatedData = firestoreStore.userProject
                 ? {
                     ...firestoreStore.userProject,
                     defaultProjectId: projectId,
                     accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
-                        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
                         ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
                         : [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
                     projectTitles: {
                         ...(firestoreStore.userProject.projectTitles || {}),
@@ -474,12 +473,11 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
                     userId: "test-user-id",
                     defaultProjectId: projectId,
                     accessibleProjectIds: [projectId],
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     createdAt: new Date(),
-                    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Timestamp value, not reactive state
                     updatedAt: new Date(),
                     projectTitles: { [projectId]: title || projectId },
                 };
+            /* eslint-enable svelte/prefer-svelte-reactivity */
 
             // Update store
             firestoreStore.setUserProject(updatedData);

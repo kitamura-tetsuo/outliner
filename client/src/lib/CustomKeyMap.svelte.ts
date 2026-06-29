@@ -6,8 +6,9 @@ export class CustomKeySvelteMap<T, V> {
     // Array to hold original keys
     private keys: T[] = [];
     // Mapping between serialized keys and original keys
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal bookkeeping map, not reactive state
+    /* eslint-disable svelte/prefer-svelte-reactivity -- Internal bookkeeping map, not reactive state */
     private keyMap = new Map<string, T>();
+    /* eslint-enable svelte/prefer-svelte-reactivity */
 
     // Helper function to convert key to string using JSON.stringify
     private serialize(key: T): string {

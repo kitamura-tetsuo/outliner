@@ -30,8 +30,9 @@ export function projectsFromUserProject(
             && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     // Deduplicate IDs for stabilization
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state
+    /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state */
     const uniqueIds = Array.from(new Set(data.accessibleProjectIds));
+    /* eslint-enable svelte/prefer-svelte-reactivity */
     return uniqueIds
         .map(id => {
             // Resolve project label with fallback chain:

@@ -61,8 +61,9 @@ export interface SelectionRange {
 export class EditorOverlayStore {
     cursors = $state<Record<string, CursorPosition>>({});
     // Map to hold Cursor instances
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal instance cache, not reactive state
+    /* eslint-disable svelte/prefer-svelte-reactivity -- Internal instance cache, not reactive state */
     cursorInstances = new Map<string, Cursor>();
+    /* eslint-enable svelte/prefer-svelte-reactivity */
     // History of added cursors
     cursorHistory = $state<string[]>([]);
     selections = $state<Record<string, SelectionRange>>({});
@@ -78,8 +79,9 @@ export class EditorOverlayStore {
     private presenceSyncScheduled = false;
 
     // Lightweight pub-sub for UI (to avoid polling in components)
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state
+    /* eslint-disable svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state */
     private listeners = new Set<() => void>();
+    /* eslint-enable svelte/prefer-svelte-reactivity */
 
     private timerId!: ReturnType<typeof setTimeout>;
 
@@ -1134,8 +1136,7 @@ export class EditorOverlayStore {
 
         // Process each selection range
         for (const sel of selections) {
-            // eslint-disable-next-line no-useless-assignment
-            let selectionText = "";
+            let selectionText;
 
             try {
                 if (sel.isBoxSelection && sel.boxSelectionRanges) {
@@ -1783,8 +1784,9 @@ export class EditorOverlayStore {
 
         // Use TreeWalker to traverse items in DOM order efficiently.
         const allItems: HTMLElement[] = [];
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state
+        /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state */
         const itemIdToIndex = new Map<string, number>();
+        /* eslint-enable svelte/prefer-svelte-reactivity */
 
         const root = document.querySelector(".outliner") || document.body;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {

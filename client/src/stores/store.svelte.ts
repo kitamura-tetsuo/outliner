@@ -16,8 +16,9 @@ export class GeneralStore {
     private readonly _currentPageSubscribers = new SvelteSet<() => void>();
 
     constructor() {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        /* eslint-disable @typescript-eslint/no-this-alias -- required for nested getter closure */
         const self = this;
+        /* eslint-enable @typescript-eslint/no-this-alias */
         this.pages = {
             get current(): Items | undefined {
                 return self._pagesData.items;
@@ -147,8 +148,9 @@ export class GeneralStore {
     private _rebuildPageNamesCache() {
         try {
             // Collect new names first
-            // eslint-disable-next-line svelte/prefer-svelte-reactivity
+            /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary local Set */
             const newNames = new Set<string>();
+            /* eslint-enable svelte/prefer-svelte-reactivity */
             const items = this._project?.items;
             if (items) {
                 // Items is iterable

@@ -273,8 +273,9 @@ class AliasPickerStore {
 
         return filteredModel;
     }
-    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
+    /* eslint-disable svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state */
     private traverse(node: Item, path: string[], out: Option[], visited = new Set<string>(), depth = 0) {
+        /* eslint-enable svelte/prefer-svelte-reactivity */
         // Input validation
         if (!node || !node.id) {
             logger.warn("AliasPickerStore traverse: Invalid node", node);
@@ -315,8 +316,9 @@ class AliasPickerStore {
     private findItemSafe(node: Item, id: string): Item | undefined {
         // Use non-recursive breadth-first search to avoid infinite loops
         const queue: Item[] = [node];
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state
+        /* eslint-disable svelte/prefer-svelte-reactivity -- visited is a local Set for cycle detection, not reactive state */
         const visited = new Set<string>();
+        /* eslint-enable svelte/prefer-svelte-reactivity */
         let iterations = 0;
         const maxIterations = 1000; // Upper limit for safety
 

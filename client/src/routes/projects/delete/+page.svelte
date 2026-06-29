@@ -1,12 +1,13 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { SvelteSet } from "svelte/reactivity";
     import * as yjsService from "../../../lib/yjsService.svelte";
     import {
         projectStore,
         type ProjectInfo,
     } from "../../../stores/projectStore.svelte";
 
-    let selectedProjects = $state(new Set<string>());
+    let selectedProjects = new SvelteSet<string>();
 
     let loading = $state(false);
     let error: string | undefined = $state(undefined);
@@ -77,9 +78,6 @@
                 window.location.reload();
             }, 1000);
         }
-
-        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- Reassignment to trigger Svelte reactivity, not creating new reactive state
-        selectedProjects = new Set(selectedProjects);
         loading = false;
     }
 </script>
@@ -124,9 +122,7 @@
                                         selectedProjects.delete(project.id);
                                     }
                                     // Reassign to trigger Svelte reactivity
-                                    selectedProjects = new Set(
-                                        selectedProjects,
-                                    );
+
                                 }}
                             />
                         </td>
