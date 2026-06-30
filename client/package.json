@@ -10,7 +10,7 @@
         "jsonwebtoken": "^9.0.2",
         "lib0": "^0.2.117",
         "pino": "^10.3.1",
-        "playwright-core": "1.61.0",
+        "playwright-core": "1.61.1",
         "rrule": "^2.8.1",
         "sql.js": "^1.14.1",
         "svelte-seo": "^2.0.0",
@@ -26,9 +26,7 @@
         "find-process": {
             "commander": "^12.1.0"
         },
-        "typescript": "$typescript",
-        "playwright-core": "1.61.0",
-        "playwright": "1.61.1"
+        "typescript": "$typescript"
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.75.1",
@@ -84,7 +82,7 @@
         "mdsvex": "^0.12.7",
         "monocart-coverage-reports": "^2.12.12",
         "patch-package": "^8.0.1",
-        "playwright": "^1.61.1",
+        "playwright": "1.61.1",
         "stylelint": "^17.12.0",
         "stylelint-config-standard": "^40.0.0",
         "svelte": "5.56.4",
