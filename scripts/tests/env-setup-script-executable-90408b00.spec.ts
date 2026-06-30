@@ -14,7 +14,7 @@ const repoRoot = path.resolve(__dirname, "../..");
 const setupScript = path.join(repoRoot, "scripts", "setup.sh");
 const filesReferencingSetup = [
     path.join(repoRoot, ".devcontainer", "devcontainer.json"),
-    path.join(repoRoot, ".github", "workflows", "test.yml"),
+    path.join(repoRoot, ".github", "workflows", "ci-test-e2e.yml"),
     path.join(repoRoot, "README.md"),
     path.join(repoRoot, "AGENTS.md"),
 ];

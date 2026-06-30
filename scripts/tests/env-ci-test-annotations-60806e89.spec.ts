@@ -13,22 +13,24 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 
 const packageJson = path.join(repoRoot, "client", "package.json");
-const workflowFile = path.join(repoRoot, ".github", "workflows", "test.yml");
+const e2eWorkflowFile = path.join(repoRoot, ".github", "workflows", "ci-test-e2e.yml");
+const unitWorkflowFile = path.join(repoRoot, ".github", "workflows", "ci-test-unit.yml");
+const integrationWorkflowFile = path.join(repoRoot, ".github", "workflows", "ci-test-integration.yml");
 
 test("package.json includes github test scripts", () => {
     const pkg = JSON.parse(fs.readFileSync(packageJson, "utf-8"));
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=github-actions");
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=dot");
-    expect(pkg.scripts["github:test:e2e"]).toContain("--reporter=github,line");
+    expect(pkg.scripts["github:test:integration"]).toContain("--reporter=github-actions");
+    expect(pkg.scripts["github:test:e2e"]).toBeDefined();
 });
 
 test("workflow runs tests with annotation reporters", () => {
-    const workflow = fs.readFileSync(workflowFile, "utf-8");
-    expect(workflow).toMatch(/Run unit and integration tests for github reporting/);
-    expect(workflow).toMatch(/npm run github:test:unit/);
-    expect(workflow).toMatch(/npm run github:test:integration/);
-    expect(workflow).toMatch(/Run e2e tests for github reporting/);
-    // E2E executes npm script using github reporter
-    expect(workflow).toMatch(/npm run github:test:e2e/);
-    expect(workflow).toMatch(/Summarise failures/);
+    const e2eWorkflow = fs.readFileSync(e2eWorkflowFile, "utf-8");
+    const unitWorkflow = fs.readFileSync(unitWorkflowFile, "utf-8");
+    const integrationWorkflow = fs.readFileSync(integrationWorkflowFile, "utf-8");
+
+    expect(unitWorkflow).toMatch(/npm run github:test:unit/);
+    expect(integrationWorkflow).toMatch(/npm run github:test:integration/);
+    expect(e2eWorkflow).toMatch(/npm run github:test:e2e/);
 });

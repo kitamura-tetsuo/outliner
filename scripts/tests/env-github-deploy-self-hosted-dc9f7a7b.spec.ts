@@ -13,10 +13,10 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 const workflowFile = path.join(repoRoot, ".github", "workflows", "deploy.yml");
 
-test("deploy workflow uses self-hosted runner and firebase deploy", () => {
+test("deploy workflow uses ubuntu-latest runner and firebase deploy", () => {
     expect(fs.existsSync(workflowFile)).toBe(true);
     const workflow = fs.readFileSync(workflowFile, "utf-8");
-    expect(workflow).toMatch(/runs-on:\s*self-hosted/);
+    expect(workflow).toMatch(/runs-on:\s*ubuntu-latest/);
     expect(workflow).toMatch(/actions\/checkout@v4/);
     expect(workflow).toMatch(/actions\/setup-node@v4/);
     expect(workflow).toMatch(/firebase deploy/);
