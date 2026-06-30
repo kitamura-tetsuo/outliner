@@ -10,7 +10,7 @@
         "jsonwebtoken": "^9.0.2",
         "lib0": "^0.2.117",
         "pino": "^10.3.1",
-        "playwright-core": "1.61.0",
+        "playwright-core": "1.61.1",
         "rrule": "^2.8.1",
         "sql.js": "^1.14.1",
         "svelte-seo": "^2.0.0",
@@ -26,9 +26,7 @@
         "find-process": {
             "commander": "^12.1.0"
         },
-        "typescript": "$typescript",
-        "playwright-core": "1.61.0",
-        "playwright": "1.61.1"
+        "typescript": "$typescript"
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.75.1",
@@ -46,7 +44,7 @@
         "@inlang/plugin-message-format": "^4.4.0",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@playwright/mcp": "^0.0.76",
-        "@playwright/test": "^1.61.0",
+        "@playwright/test": "^1.61.1",
         "@stryker-mutator/core": "^9.6.0",
         "@stryker-mutator/typescript-checker": "^9.6.0",
         "@stryker-mutator/vitest-runner": "^9.6.0",
