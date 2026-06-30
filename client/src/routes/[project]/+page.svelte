@@ -131,33 +131,9 @@
         <div class="flex justify-center py-8">
             <div class="flex flex-col items-center justify-center space-y-4" aria-busy="true" aria-live="polite" role="status"><div class="loader" aria-hidden="true"></div><div class="text-gray-600 text-sm font-medium">Loading...</div></div>
         </div>
-    {:else if store.pages.current && store.pages.current.length > 0}
-        <div class="mt-6">
-            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
-            <div class="rounded-lg bg-white p-4 shadow-md">
-                <PageList
-                    currentUser={userManager.getCurrentUser()?.id ||
-                        "anonymous"}
-                    project={store.project!}
-                    rootItems={pages!}
-                    onPageSelected={handlePageSelected}
-                />
-            </div>
-        </div>
-    {:else if store.pages.current && store.pages.current.length === 0}
-        <div class="mt-6">
-            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
-            <div class="rounded-lg bg-white p-4 shadow-md">
-                <PageList
-                    currentUser={userManager.getCurrentUser()?.id ||
-                        "anonymous"}
-                    project={store.project!}
-                    rootItems={pages!}
-                    onPageSelected={handlePageSelected}
-                />
-            </div>
-        </div>
-    {:else if error}
+    {/if}
+
+    {#if error}
         <div class="rounded-md bg-red-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -181,7 +157,33 @@
                 </div>
             </div>
         </div>
-    {:else if projectNotFound}
+    {:else if !isLoading && store.pages.current && store.pages.current.length > 0}
+        <div class="mt-6">
+            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
+            <div class="rounded-lg bg-white p-4 shadow-md">
+                <PageList
+                    currentUser={userManager.getCurrentUser()?.id ||
+                        "anonymous"}
+                    project={store.project!}
+                    rootItems={pages!}
+                    onPageSelected={handlePageSelected}
+                />
+            </div>
+        </div>
+    {:else if !isLoading && store.pages.current && store.pages.current.length === 0}
+        <div class="mt-6">
+            <h2 class="mb-4 text-xl font-semibold">Page List</h2>
+            <div class="rounded-lg bg-white p-4 shadow-md">
+                <PageList
+                    currentUser={userManager.getCurrentUser()?.id ||
+                        "anonymous"}
+                    project={store.project!}
+                    rootItems={pages!}
+                    onPageSelected={handlePageSelected}
+                />
+            </div>
+        </div>
+    {:else if !isLoading && projectNotFound}
         <div class="rounded-md bg-yellow-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -199,7 +201,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !isLoading && !isAuthenticated}
         <div class="rounded-md bg-blue-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -217,7 +219,7 @@
                 </div>
             </div>
         </div>
-    {:else}
+    {:else if !isLoading && !store.pages.current}
         <div class="rounded-md bg-gray-50 p-4">
             <p class="text-gray-700">
                 Could not load project data.

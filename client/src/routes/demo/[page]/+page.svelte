@@ -152,7 +152,9 @@
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
-    {:else if error}
+    {/if}
+
+    {#if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -174,7 +176,7 @@
                 </div>
             </div>
         </div>
-    {:else if pageNotFound}
+    {:else if !isLoading && !error && pageNotFound}
         <div class="rounded-md bg-yellow-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -188,7 +190,7 @@
                 </div>
             </div>
         </div>
-    {:else if store.currentPage}
+    {:else if !isLoading && !error && store.currentPage}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}
