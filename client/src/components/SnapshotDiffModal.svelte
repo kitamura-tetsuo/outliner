@@ -278,7 +278,7 @@ $effect(() => {
     </div>
 
     <div class="mt-4 flex justify-end space-x-2 flex-shrink-0">
-        <button
+        <button type="button"
             class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors text-sm font-medium"
             onclick={() => {
                 addSnapshot(project, page, currentContent, author);
@@ -287,7 +287,7 @@ $effect(() => {
         >
             Add Snapshot
         </button>
-        <button
+        <button type="button"
             class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             onclick={revert}
             disabled={!selectedId}

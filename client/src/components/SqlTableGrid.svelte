@@ -124,11 +124,11 @@ async function commitEdit(rowIndex: number, column: string, value: string) {
                 <p class="error" role="alert">{errorMessage}</p>
             {/if}
             <div class="definition-actions">
-                <button class="primary" onclick={createTable} aria-label="Create table from SQL">
+                <button type="button" class="primary" onclick={createTable} aria-label="Create table from SQL">
                     Create table
                 </button>
                 {#if columns.length > 0}
-                    <button onclick={() => (definitionMode = false)} aria-label="Cancel schema edit">
+                    <button type="button" onclick={() => (definitionMode = false)} aria-label="Cancel schema edit">
                         Cancel
                     </button>
                 {/if}
@@ -136,8 +136,8 @@ async function commitEdit(rowIndex: number, column: string, value: string) {
         </div>
     {:else}
         <div class="grid-toolbar">
-            <button onclick={addRow} aria-label="Add row">+ Row</button>
-            <button onclick={editSchema} aria-label="Edit table schema">Edit schema</button>
+            <button type="button" onclick={addRow} aria-label="Add row">+ Row</button>
+            <button type="button" onclick={editSchema} aria-label="Edit table schema">Edit schema</button>
         </div>
         <table class="grid">
             <thead>
@@ -194,7 +194,7 @@ async function commitEdit(rowIndex: number, column: string, value: string) {
                                 </td>
                             {/each}
                             <td class="actions-col">
-                                <button
+                                <button type="button"
                                     class="delete-row"
                                     onclick={() => deleteRow(rowIndex)}
                                     aria-label={`Delete row ${rowIndex + 1}`}

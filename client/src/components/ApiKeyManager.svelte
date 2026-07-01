@@ -82,7 +82,7 @@
             <div class="flex items-center">
                 <code class="bg-white px-3 py-2 rounded border border-yellow-300 flex-1 overflow-x-auto select-all">{newlyGeneratedKey}</code>
             </div>
-            <button
+            <button type="button"
                 class="mt-3 text-sm text-blue-600 hover:underline"
                 onclick={() => newlyGeneratedKey = null}
             >
@@ -99,7 +99,7 @@
             class="flex-1 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 bg-transparent text-gray-800 dark:text-gray-100"
             disabled={isGenerating}
         />
-        <button
+        <button type="button"
             onclick={handleCreateKey}
             disabled={isGenerating || !newKeyDescription.trim()}
             class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
@@ -132,7 +132,7 @@
                                 {key.lastUsedAt ? formatDate(key.lastUsedAt) : 'Never'}
                             </td>
                             <td class="py-3 px-2 text-right">
-                                <button
+                                <button type="button"
                                     class="text-red-600 hover:text-red-800 font-medium"
                                     onclick={() => handleRevoke(key.id)}
                                 >

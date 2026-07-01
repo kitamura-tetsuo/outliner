@@ -91,7 +91,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} aria-hidden="false">
     <div class="main-toolbar-content" aria-hidden="false">
         <div class="toolbar-left">
-            <button
+            <button type="button"
                 class="add-database-btn"
                 onclick={() => commandPaletteStore.insert("table")}
             >

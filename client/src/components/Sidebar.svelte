@@ -52,7 +52,7 @@
 
         <!-- Projects section -->
         <div class="sidebar-section">
-            <button
+            <button type="button"
                 class="section-header"
                 onclick={() => (isProjectsCollapsed = !isProjectsCollapsed)}
                 aria-expanded={!isProjectsCollapsed}
@@ -124,7 +124,7 @@
             >
                 <div class="section-header-content">
                     <h3 class="sidebar-section-title">Pages</h3>
-                    <button
+                    <button type="button"
                         class="add-page-btn"
                         onclick={(e) => {
                             e.stopPropagation();

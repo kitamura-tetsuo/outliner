@@ -114,7 +114,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
 </script>
 
 <div class="backlink-panel">
-    <button
+    <button type="button"
         onclick={togglePanel}
         class="backlink-toggle-button"
         class:active={isOpen}
@@ -128,7 +128,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
         <div class="backlink-content">
             <div class="backlink-header">
                 <h3>Backlinks</h3>
-                <button onclick={refreshBacklinks} class="refresh-button" title="Refresh">
+                <button type="button" onclick={refreshBacklinks} class="refresh-button" title="Refresh">
                     ↻
                 </button>
             </div>
