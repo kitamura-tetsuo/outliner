@@ -797,7 +797,7 @@ export class CursorEditor {
                     : NodeFilter.FILTER_SKIP;
             },
         });
-        const updates: { item: unknown, newText: string }[] = [];
+        const updates: { item: unknown; newText: string; }[] = [];
         walker.currentNode = firstEl;
 
         while (walker.currentNode) {
@@ -852,7 +852,7 @@ export class CursorEditor {
         }
 
         for (const update of updates) {
-            const appItem = (update.item as unknown as import("../../schema/app-schema").Item);
+            const appItem = update.item as unknown as import("../../schema/app-schema").Item;
             appItem.updateText(update.newText);
         }
 

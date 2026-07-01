@@ -149,7 +149,7 @@ export class CursorFormatting {
                     : NodeFilter.FILTER_SKIP;
             },
         });
-        const updates: { item: unknown, newText: string }[] = [];
+        const updates: { item: unknown; newText: string; }[] = [];
         walker.currentNode = firstEl;
 
         // Apply format to each item in the selection
@@ -161,8 +161,6 @@ export class CursorFormatting {
                 generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item,
                 itemId,
             );
-
-
 
             // Apply format according to item position
             if (item) {
