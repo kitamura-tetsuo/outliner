@@ -22,7 +22,7 @@ test("package.json includes github test scripts", () => {
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=github-actions");
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=dot");
     expect(pkg.scripts["github:test:integration"]).toContain("--reporter=github-actions");
-    expect(pkg.scripts["github:test:e2e"]).toBeDefined();
+    expect(pkg.scripts["github:test:e2e"]).toContain("--reporter=github,line");
 });
 
 test("workflow runs tests with annotation reporters", () => {
