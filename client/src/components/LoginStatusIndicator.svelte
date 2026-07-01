@@ -235,8 +235,7 @@ async function signOut() {
             tabindex="-1"
             style={`position: fixed; top: ${menuTop}px; left: ${menuLeft}px; z-index: 10002; background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.25rem; box-shadow: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);`}
         >
-            <button
-                type="button"
+            <button type="button"
                 role="menuitem"
                 data-testid="user-menu-signout"
                 class="menu-item"

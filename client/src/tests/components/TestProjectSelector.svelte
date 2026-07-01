@@ -42,11 +42,11 @@ const logger = getLogger("TestProjectSelector");
     </div>
 
     <div class="debug-buttons">
-        <button onclick={() => logDebugInfo()} class="debug-button">
+        <button type="button" onclick={() => logDebugInfo()} class="debug-button">
             Log Debug Info
         </button>
 
-        <button
+        <button type="button"
             onclick={async () => {
                 try {
                     await performTestLogin();
@@ -59,7 +59,7 @@ const logger = getLogger("TestProjectSelector");
             Manual Login
         </button>
 
-        <button
+        <button type="button"
             onclick={() => {
                 try {
                     createTestUserData();

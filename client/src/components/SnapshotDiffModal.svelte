@@ -165,8 +165,7 @@ $effect(() => {
                 {#each snapshots as s (s.id)}
                     {@const isSelected = selectedId === s.id}
                     <li>
-                        <button
-                            type="button"
+                        <button type="button"
                             aria-pressed={isSelected}
                             class="w-full text-left p-2 rounded text-sm transition-colors duration-200 {isSelected ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'hover:bg-gray-100'}"
                             onclick={() => showDiff(s.id)}
