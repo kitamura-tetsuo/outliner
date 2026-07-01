@@ -48,9 +48,15 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
     const children = collectChildren(node);
     for (let i = 0; i < children.length; i++) {
         const child = children[i];
-        // When target is the first child (i === 0), don't return the parent node.
-        // Instead return undefined to indicate there's no previous navigable item.
-        const prevForChild = i > 0 ? getDeepestDescendant(children[i - 1]) : undefined;
+
+        let prevForChild;
+        if (i > 0) {
+            prevForChild = getDeepestDescendant(children[i - 1]);
+        } else {
+            // Check if node is the currentPage (the top root node)
+            const isTopRoot = generalStore.currentPage && node.id === generalStore.currentPage.id;
+            prevForChild = isTopRoot ? undefined : node;
+        }
 
         if (child.id === targetId) {
             return prevForChild;
@@ -81,6 +87,12 @@ export function findNextItem(currentItemId: string): Item | undefined {
 }
 
 function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item | undefined {
+    // If the node itself is the target, its first child is the next item (if it has children)
+    if (node.id === targetId) {
+        const children = collectChildren(node);
+        if (children.length > 0) return children[0];
+    }
+
     const children = collectChildren(node);
     const currentPath = [...path, node];
 
@@ -88,13 +100,19 @@ function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item
         const child = children[i];
 
         if (child.id === targetId) {
-            // If this child is the target, return the next sibling if it exists
+            // First rule of next item: if it has children, the next item is its first child
+            const childChildren = collectChildren(child);
+            if (childChildren.length > 0) {
+                return childChildren[0];
+            }
+
+            // If it has no children, return the next sibling
             if (i < children.length - 1) {
                 return children[i + 1];
             }
             // If no next sibling at this level, traverse upward to find next item
             // Fixed: was passing currentPath instead of path
-            return findNextAtParentLevel(path);
+            return findNextAtParentLevel(currentPath);
         }
 
         const found = findNextItemRecursive(child, targetId, currentPath);
@@ -106,6 +124,7 @@ function findNextItemRecursive(node: Item, targetId: string, path: Item[]): Item
 
 // Helper function to find next item when no sibling exists at current level
 function findNextAtParentLevel(path: Item[]): Item | undefined {
+    // path contains ancestors up to the parent of the node we're looking from
     // Go back up the tree to find a parent with a next sibling
     for (let i = path.length - 1; i >= 0; i--) {
         const currentAncestor = path[i];

@@ -1804,6 +1804,7 @@ export class Cursor implements CursorEditingContext {
                     );
                 }
             }
+
             if (prevItem) {
                 newItemId = prevItem.id;
 
