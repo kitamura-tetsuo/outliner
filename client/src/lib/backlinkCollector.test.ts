@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Items } from "../schema/app-schema";
 import { collectBacklinks } from "./backlinkCollector";
 
 // Mock the store module
@@ -20,10 +21,8 @@ import { store } from "../stores/store.svelte";
 describe("backlinkCollector", () => {
     beforeEach(() => {
         // Reset store before each test
-        // @ts-expect-error - mocking store state
-        store.pages.current = [];
-        // @ts-expect-error - mocking store state
-        store.project.title = "TestProject";
+        (store.pages as unknown as { current: unknown[]; }).current = [];
+        (store.project as unknown as { title: string; }).title = "TestProject";
     });
 
     it("should return empty array if no pages", () => {
@@ -37,10 +36,9 @@ describe("backlinkCollector", () => {
                 id: "page1",
                 text: "Some text [TargetPage] here",
                 items: [],
-            },
+            } as unknown as import("../schema/app-schema").Item,
         ];
-        // @ts-expect-error - mocking store state
-        store.pages.current = mockPages;
+        (store.pages as unknown as { current: import("../schema/app-schema").Item[]; }).current = mockPages;
 
         const result = collectBacklinks("TargetPage");
         expect(result).toHaveLength(1);
@@ -57,12 +55,11 @@ describe("backlinkCollector", () => {
                     {
                         id: "item1",
                         text: "Link to [TargetPage]",
-                    },
-                ],
-            },
+                    } as unknown as import("../schema/app-schema").Item,
+                ] as unknown as Items,
+            } as unknown as import("../schema/app-schema").Item,
         ];
-        // @ts-expect-error - mocking store state
-        store.pages.current = mockPages;
+        (store.pages as unknown as { current: import("../schema/app-schema").Item[]; }).current = mockPages;
 
         const result = collectBacklinks("TargetPage");
         expect(result).toHaveLength(1);
@@ -79,12 +76,11 @@ describe("backlinkCollector", () => {
                     {
                         id: "item1",
                         text: "Link to [targetPage]",
-                    },
-                ],
-            },
+                    } as unknown as import("../schema/app-schema").Item,
+                ] as unknown as Items,
+            } as unknown as import("../schema/app-schema").Item,
         ];
-        // @ts-expect-error - mocking store state
-        store.pages.current = mockPages;
+        (store.pages as unknown as { current: import("../schema/app-schema").Item[]; }).current = mockPages;
 
         const result = collectBacklinks("TargetPage");
         expect(result).toHaveLength(1);
@@ -99,12 +95,11 @@ describe("backlinkCollector", () => {
                     {
                         id: "item1",
                         text: "Link to [TargetPage]",
-                    },
-                ],
-            },
+                    } as unknown as import("../schema/app-schema").Item,
+                ] as unknown as Items,
+            } as unknown as import("../schema/app-schema").Item,
         ];
-        // @ts-expect-error - mocking store state
-        store.pages.current = mockPages;
+        (store.pages as unknown as { current: import("../schema/app-schema").Item[]; }).current = mockPages;
 
         // Implementation of collectBacklinks skips the page if pageText matches targetName
         const result = collectBacklinks("TargetPage");

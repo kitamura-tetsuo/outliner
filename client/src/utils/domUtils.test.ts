@@ -30,8 +30,7 @@ describe("domUtils", () => {
 
         it("should use fallback when CSS is undefined", () => {
             // Mock CSS as undefined
-            // @ts-expect-error Mocking for test
-            global.CSS = undefined;
+            global.CSS = undefined as unknown as typeof CSS;
 
             const result = escapeId("test-id");
             expect(result).toBe("test-id");
@@ -48,8 +47,7 @@ describe("domUtils", () => {
         describe("fallback behavior", () => {
             beforeEach(() => {
                 // Mock CSS as undefined to trigger fallback
-                // @ts-expect-error Mocking for test
-                global.CSS = undefined;
+                global.CSS = undefined as unknown as typeof CSS;
             });
 
             it("should not escape normal characters", () => {
