@@ -81,7 +81,7 @@ test.describe("SLR-0010: Change selection format", () => {
 
         // Press Ctrl+B to change to bold
         await page.keyboard.press("Control+b");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
         // Verify text became bold (Scrapbox syntax: [[text]] or [* text])
         const textContent = await firstItem.locator(".item-text").textContent();
@@ -277,17 +277,16 @@ test.describe("SLR-0010: Change selection format", () => {
 
         // Press Ctrl+B to change to bold
         await page.keyboard.press("Control+b");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
 
-        // Note: Changing format for selection spanning multiple items is difficult to implement,
-        // so it is okay if format is not actually applied
-        // Check text of the first item
-        const firstItemText = await firstItem.locator(".item-text").textContent();
-        expect(firstItemText).toBeTruthy();
+        // Check HTML of the first item
+        const firstItemHtml = await firstItem.locator(".item-text").innerHTML();
+        expect(firstItemHtml).toContain("<strong>This is a test text for formatting</strong>");
 
-        // Check text of the second item
+        // Check HTML of the second item
         const secondItem = page.locator(".outliner-item").nth(2);
-        const secondItemText = await secondItem.locator(".item-text").textContent();
-        expect(secondItemText).toBeTruthy();
+        const secondItemHtml = await secondItem.locator(".item-text").innerHTML();
+        expect(secondItemHtml).toContain("<strong>This</strong>");
+        expect(secondItemHtml).toContain("is another line for multi-item selection");
     });
 });

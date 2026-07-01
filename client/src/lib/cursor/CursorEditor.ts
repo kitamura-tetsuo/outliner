@@ -797,6 +797,7 @@ export class CursorEditor {
                     : NodeFilter.FILTER_SKIP;
             },
         });
+        const updates: { item: unknown; newText: string; }[] = [];
         walker.currentNode = firstEl;
 
         while (walker.currentNode) {
@@ -808,12 +809,20 @@ export class CursorEditor {
             );
             if (!item) continue;
 
-            const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
+            if (item) {
+                const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
 
-            if (current === firstEl && current === lastEl) {
-                const start = isReversed ? endOffset : startOffset;
-                const end = isReversed ? startOffset : endOffset;
-                const selectedText = text.substring(start, end);
+                let start = 0;
+                let end = String(text).length;
+
+                if (current === firstEl) {
+                    start = isReversed ? endOffset : startOffset;
+                }
+                if (current === lastEl) {
+                    end = isReversed ? startOffset : endOffset;
+                }
+
+                const selectedText = String(text).substring(start, end);
 
                 let formattedText = "";
                 switch (formatType) {
@@ -834,14 +843,17 @@ export class CursorEditor {
                         break;
                 }
 
-                const newText = text.substring(0, start) + formattedText + text.substring(end);
-                (item as unknown as import("../../schema/app-schema").Item).updateText(newText);
-            } else {
-                // Detailed formatting for selection ranges spanning multiple items is not supported
+                const newText = String(text).substring(0, start) + formattedText + String(text).substring(end);
+                updates.push({ item, newText });
             }
 
             if (current === lastEl) break;
             if (!walker.nextNode()) break;
+        }
+
+        for (const update of updates) {
+            const appItem = update.item as unknown as import("../../schema/app-schema").Item;
+            appItem.updateText(update.newText);
         }
 
         cursor.itemId = isReversed ? startItemId : endItemId;

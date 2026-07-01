@@ -149,6 +149,7 @@ export class CursorFormatting {
                     : NodeFilter.FILTER_SKIP;
             },
         });
+        const updates: { item: unknown; newText: string; }[] = [];
         walker.currentNode = firstEl;
 
         // Apply format to each item in the selection
@@ -161,22 +162,22 @@ export class CursorFormatting {
                 itemId,
             );
 
-            if (!item) {
-                if (current === lastEl) break;
-                if (!walker.nextNode()) break;
-                continue;
-            }
-
-            const text = item.text || "";
-
             // Apply format according to item position
-            if (current === firstEl && current === lastEl) {
-                // Selection within a single item
-                const start = isReversed ? endOffset : startOffset;
-                const end = isReversed ? startOffset : endOffset;
+            if (item) {
+                const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
+
+                let start = 0;
+                let end = String(text).length;
+
+                if (current === firstEl) {
+                    start = isReversed ? endOffset : startOffset;
+                }
+                if (current === lastEl) {
+                    end = isReversed ? startOffset : endOffset;
+                }
+
                 const selectedText = String(text).substring(start, end);
 
-                // Create formatted text
                 let formattedText = "";
                 switch (formatType) {
                     case "bold":
@@ -197,15 +198,15 @@ export class CursorFormatting {
                 }
 
                 const newText = String(text).substring(0, start) + formattedText + String(text).substring(end);
-                item.updateText(newText);
-            } else {
-                // If selection spans multiple items, process each item individually.
-                // Currently only single item selection is supported.
-                // Add implementation here for multi-item selection support.
+                updates.push({ item, newText });
             }
 
             if (current === lastEl) break;
             if (!walker.nextNode()) break;
+        }
+
+        for (const update of updates) {
+            (update.item as unknown as import("../../schema/app-schema").Item).updateText(update.newText);
         }
 
         // Update cursor position (set to end of selection)
