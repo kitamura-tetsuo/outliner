@@ -18,7 +18,10 @@
     let isDestroyed = false;
 
     // Reactive page list (depends on store.pagesVersion)
-    let pages = $derived(store.pages?.current);
+    let pages = $derived.by(() => {
+        void store.pagesVersion;
+        return store.pages?.current;
+    });
 
     async function initializeDemo() {
         try {
@@ -130,7 +133,9 @@
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
-    {:else if error}
+    {/if}
+
+    {#if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -152,7 +157,7 @@
                 </div>
             </div>
         </div>
-    {:else if store.project && pages && pages.length > 0}
+    {:else if !isLoading && !error && store.project && pages && pages.length > 0}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList
                 currentUser="anonymous"
@@ -161,7 +166,7 @@
                 onPageSelected={handlePageSelected}
             />
         </div>
-    {:else if store.project && pages && pages.length === 0}
+    {:else if !isLoading && !error && store.project && pages && pages.length === 0}
         <div class="mt-6" data-testid="demo-page-list">
              <PageList
                 currentUser="anonymous"
@@ -170,7 +175,7 @@
                 onPageSelected={handlePageSelected}
             />
         </div>
-    {:else}
+    {:else if !isLoading && !error}
         <div class="rounded-md bg-gray-50 p-4">
             <p class="text-gray-700">
                 Could not load the demo project.

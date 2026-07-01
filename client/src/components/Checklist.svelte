@@ -71,7 +71,7 @@ function add(e?: Event) {
     </form>
     {#if list && list.items.length > 0}
         <div class="footer">
-            <button data-testid="reset-button" onclick={() => resetChecklist(list!.id)} class="reset-btn" aria-label="Reset checklist">Reset</button>
+            <button type="button" data-testid="reset-button" onclick={() => resetChecklist(list!.id)} class="reset-btn" aria-label="Reset checklist">Reset</button>
         </div>
     {/if}
 </div>

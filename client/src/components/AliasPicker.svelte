@@ -139,7 +139,7 @@ $effect(() => {
                     aria-selected={index === selectedIndex}
                     class:selected={index === selectedIndex}
                 >
-                    <button
+                    <button type="button"
                         tabindex="-1"
                         data-id={opt.id}
                         onclick={() => confirm(opt.id)}
