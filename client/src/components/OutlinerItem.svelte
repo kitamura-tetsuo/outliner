@@ -619,7 +619,18 @@ onMount(() => {
         const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
         if (t && typeof t.observe === "function") {
-            const h1 = () => { try { textString = t.toString?.() ?? ""; } catch {} };
+            const h1 = () => {
+                if (t && typeof t.toString === "function") {
+                    try {
+                        textString = t.toString() ?? "";
+                    } catch (e) {
+                        logger.warn({ err: e }, "[OutlinerItem] toString error");
+                        textString = "";
+                    }
+                } else {
+                    textString = "";
+                }
+            };
             t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch {} });
             // Initial reflection
             h1();
