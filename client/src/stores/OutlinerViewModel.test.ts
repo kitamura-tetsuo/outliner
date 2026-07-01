@@ -1,20 +1,26 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import * as Y from "yjs";
+import type { YTree } from "yjs-orderedtree";
 import { Comments, Item, Items } from "../schema/app-schema";
 import { OutlinerViewModel } from "./OutlinerViewModel";
 
 function createSimpleTree() {
-    const root = new Item({
-        id: "root",
-        text: "root",
-        author: "u",
-        votes: [],
-        created: 0,
-        lastChanged: 0,
-        // @ts-expect-error - Known upstream typing quirk
-        items: new Items([]),
-        // @ts-expect-error - Known upstream typing quirk
-        comments: new Comments([]),
-    });
+    const root = new Item(
+        {
+            id: "root",
+            text: "root",
+            author: "u",
+            votes: [],
+            created: 0,
+            lastChanged: 0,
+            items: new Items(
+                new Y.Doc(),
+                { getNodeValueFromKey: () => null, getNodes: () => [] } as unknown as YTree,
+                "",
+            ),
+            comments: new Comments(new Y.Array()),
+        } as unknown as import("../types/yjs-types").PlainItemData,
+    );
     const child1 = root.items.addNode("u");
     child1.id = "child1";
     child1.text = "child1";
