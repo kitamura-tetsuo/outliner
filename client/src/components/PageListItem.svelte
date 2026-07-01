@@ -61,7 +61,7 @@ $effect(() => {
 </script>
 
 {#if isGridView}
-    <li class="flex flex-col overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md h-full">
+    <li class="flex flex-col overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md h-64">
         <a
             href={href}
             class="flex h-full w-full cursor-pointer flex-col text-left text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
@@ -75,7 +75,7 @@ $effect(() => {
                 <img src={preview.image} alt="" class="h-32 w-full object-cover border-b border-gray-100" />
             {/if}
 
-            <div class="p-3 text-sm text-gray-600 flex-grow">
+            <div class="p-3 text-sm text-gray-600 flex-grow overflow-hidden">
                 {#each preview.lines as line, i (i)}
                     <p class="m-0 mb-1 line-clamp-1">{line}</p>
                 {/each}
