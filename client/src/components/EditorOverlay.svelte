@@ -194,10 +194,10 @@ function updateTextareaPosition() {
             const margin = 20;
             const windowHeight = window.innerHeight || document.documentElement.clientHeight;
 
-            if (viewportTop < stickyHeaderHeight) {
-                window.scrollBy({ top: viewportTop - stickyHeaderHeight - margin, behavior: "smooth" });
-            } else if (viewportBottom > windowHeight) {
-                window.scrollBy({ top: viewportBottom - windowHeight + margin, behavior: "smooth" });
+            if (viewportTop - window.scrollY < stickyHeaderHeight) {
+                window.scrollTo({ top: viewportTop - stickyHeaderHeight - margin, behavior: "smooth" });
+            } else if (viewportBottom - window.scrollY > windowHeight) {
+                window.scrollTo({ top: viewportBottom - windowHeight + margin, behavior: "smooth" });
             }
         }
     } catch (e) {
