@@ -1377,7 +1377,7 @@ function handlePaste(event: ClipboardEvent) {
 
 <div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible || localCursorVisible || (typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver)} data-test-env={(typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver) ? 'true' : 'false'}>
     <!-- Debug button -->
-    <button
+    <button type="button"
         class="debug-button"
         class:active={DEBUG_MODE}
         onclick={() => DEBUG_MODE = !DEBUG_MODE}

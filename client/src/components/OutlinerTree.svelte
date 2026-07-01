@@ -2050,8 +2050,8 @@
     >
         <div class="toolbar">
             <div class="actions">
-                <button onclick={handleAddItem}>Add Item</button>
-                <button onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
+                <button type="button" onclick={handleAddItem}>Add Item</button>
+                <button type="button" onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
                 <input
                     type="file"
                     accept="image/*"
@@ -2113,7 +2113,7 @@
                     <p class="empty-text">
                         No items yet
                     </p>
-                    <button class="empty-action-btn" onclick={handleAddItem}>
+                    <button type="button" class="empty-action-btn" onclick={handleAddItem}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
                             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -2130,7 +2130,7 @@
         </div>
 
         {#if showScrollTop}
-            <button
+            <button type="button"
                 class="scroll-top-btn"
                 onclick={scrollToTop}
                 aria-label="Scroll to top"
@@ -2154,7 +2154,7 @@
     aria-label="Mobile Action Toolbar"
     style="bottom: {mobileToolbarBottomOffset}px"
 >
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="Indent"
         title="Indent"
@@ -2170,7 +2170,7 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
     </button>
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="Outdent"
         title="Outdent"
@@ -2186,7 +2186,7 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
     </button>
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="Insert Above"
         title="Insert Above"
@@ -2202,7 +2202,7 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
     </button>
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="Insert Below"
         title="Insert Below"
@@ -2218,7 +2218,7 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
     </button>
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="New Child"
         title="New Child"
@@ -2234,7 +2234,7 @@
     >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
     </button>
-    <button
+    <button type="button"
         class="mobile-toolbar-btn"
         aria-label="Insert Sibling Below"
         title="Insert Sibling Below"

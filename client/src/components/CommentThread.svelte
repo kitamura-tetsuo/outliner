@@ -422,13 +422,13 @@ onMount(() => {
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
                 <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" />
-                <button onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
-                <button onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
+                <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
+                <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
             {:else}
                 <span class="author">{c.author}:</span>
                 <span class="text">{c.text}</span>
-                <button onclick={() => startEdit(c)} class="edit" aria-label="Edit comment" title="Edit">✎</button>
-                <button onclick={() => remove(c.id)} class="delete" aria-label="Delete comment" title="Delete">×</button>
+                <button type="button" onclick={() => startEdit(c)} class="edit" aria-label="Edit comment" title="Edit">✎</button>
+                <button type="button" onclick={() => remove(c.id)} class="delete" aria-label="Delete comment" title="Delete">×</button>
             {/if}
         </div>
     {/each}

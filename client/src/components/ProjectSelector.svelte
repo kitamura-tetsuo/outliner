@@ -267,7 +267,7 @@
         </div>
 
         <div class="actions">
-            <button
+            <button type="button"
                 onclick={reloadCurrentProject}
                 disabled={isLoading || !currentProjectId}
                 class="reload-button"

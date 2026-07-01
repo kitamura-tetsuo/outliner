@@ -55,7 +55,7 @@ function handleSqlChange(event: Event) {
         oninput={handleSqlChange}
         aria-label="SQL Query"
     ></textarea>
-    <button 
+    <button type="button"
         onclick={run} 
         class="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
         disabled={!isInitialized}

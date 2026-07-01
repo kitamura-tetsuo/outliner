@@ -417,7 +417,7 @@ const logger = getLogger("SearchPanel");
                     class="search-input"
                     data-testid="search-input"
                 />
-                <button
+                <button type="button"
                     onclick={handleSearch}
                     class="search-btn-action"
                     data-testid="search-button">Search</button
@@ -434,12 +434,12 @@ const logger = getLogger("SearchPanel");
                     class="replace-input"
                     data-testid="replace-input"
                 />
-                <button
+                <button type="button"
                     onclick={handleReplace}
                     class="replace-btn"
                     data-testid="replace-button">Replace</button
                 >
-                <button
+                <button type="button"
                     onclick={handleReplaceAll}
                     class="replace-all-btn"
                     data-testid="replace-all-button">Replace All</button
@@ -465,7 +465,7 @@ const logger = getLogger("SearchPanel");
                             class="result-item"
                             data-testid="search-result-item"
                         >
-                            <button
+                            <button type="button"
                                 class="result-button"
                                 data-testid="search-result-button"
                                 onclick={() => jumpTo(m)}
