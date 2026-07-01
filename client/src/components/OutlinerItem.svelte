@@ -2037,8 +2037,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     <span class="comment-count-visual" aria-hidden="true">{commentCountVisual}</span>
                 {/if}
                 {#if !isPageTitle}
-                    <button
-                        type="button"
+                    <button type="button"
                         class="comment-button"
                         data-testid="comment-button-{model.id}"
                         draggable="false"

@@ -133,7 +133,7 @@
                 {pageName}
             </h1>
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
-                <button
+                <button type="button"
                     onclick={toggleSearchPanel}
                     class="search-btn rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                     data-testid="search-toggle-button"
@@ -166,7 +166,7 @@
                         <p>{error}</p>
                     </div>
                     <div class="mt-4">
-                        <button
+                        <button type="button"
                             onclick={() => loadDemoPage(pageName)}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >

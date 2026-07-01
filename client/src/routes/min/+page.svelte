@@ -73,7 +73,7 @@ async function signIn() {
 
 <main>
     <h1>Firebase Google Login &amp; Token Verification</h1>
-    <button onclick={signIn}>Sign in with Google</button>
+    <button type="button" onclick={signIn}>Sign in with Google</button>
 
     {#if idToken}
         <section>

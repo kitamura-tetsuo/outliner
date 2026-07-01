@@ -132,7 +132,7 @@
                 {/each}
             </tbody>
         </table>
-        <button
+        <button type="button"
             onclick={deleteSelected}
             disabled={loading || selectedProjects.size === 0}
             class="bg-red-500 text-white px-4 py-2 rounded">Delete</button

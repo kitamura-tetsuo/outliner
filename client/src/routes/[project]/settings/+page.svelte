@@ -293,8 +293,8 @@
 
 <h2>Import / Export</h2>
 <div class="export-section">
-    <button onclick={exportOpml}>Export OPML</button>
-    <button onclick={exportMarkdown}>Export Markdown</button>
+    <button type="button" onclick={exportOpml}>Export OPML</button>
+    <button type="button" onclick={exportMarkdown}>Export Markdown</button>
     <textarea readonly bind:value={exportText} data-testid="export-output"
     ></textarea>
 </div>
@@ -304,5 +304,5 @@
         <option value="markdown">Markdown</option>
     </select>
     <textarea bind:value={importText} data-testid="import-input"></textarea>
-    <button onclick={doImport}>Import</button>
+    <button type="button" onclick={doImport}>Import</button>
 </div>

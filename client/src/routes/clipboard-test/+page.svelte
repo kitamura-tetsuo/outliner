@@ -290,8 +290,8 @@ onMount(() => {
                 placeholder="Enter text to copy here"
             ></textarea>
             <div>
-                <button onclick={handleClipboardCopy}>Copy</button>
-                <button onclick={handleClipboardPaste}>Paste</button>
+                <button type="button" onclick={handleClipboardCopy}>Copy</button>
+                <button type="button" onclick={handleClipboardPaste}>Paste</button>
             </div>
             <div
                 class="result"
@@ -310,8 +310,8 @@ onMount(() => {
                 placeholder="Enter text to copy here"
             ></textarea>
             <div>
-                <button onclick={handleExecCommandCopy}>Copy</button>
-                <button onclick={handleExecCommandPaste}>Paste</button>
+                <button type="button" onclick={handleExecCommandCopy}>Copy</button>
+                <button type="button" onclick={handleExecCommandPaste}>Paste</button>
             </div>
             <div
                 class="result"
@@ -324,7 +324,7 @@ onMount(() => {
 
         <div class="test-section">
             <h2>3. Clipboard Permission Test</h2>
-            <button onclick={checkPermissions}>Check Clipboard Permissions</button>
+            <button type="button" onclick={checkPermissions}>Check Clipboard Permissions</button>
             <div
                 class="result"
                 class:success={permissionResult.startsWith("✅")}
@@ -342,8 +342,8 @@ onMount(() => {
                 placeholder="Text from Playwright will appear here"
             ></textarea>
             <div>
-                <button onclick={handlePlaywrightCopy}>Copy</button>
-                <button onclick={handlePlaywrightPaste}>Paste</button>
+                <button type="button" onclick={handlePlaywrightCopy}>Copy</button>
+                <button type="button" onclick={handlePlaywrightPaste}>Paste</button>
             </div>
             <div
                 class="result"

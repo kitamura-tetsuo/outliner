@@ -21,7 +21,7 @@ function switchToLanguage(newLanguage: "en" | "ja") {
 
     <h2>Switch Language</h2>
     {#each locales as lang (lang)}
-        <button
+        <button type="button"
             onclick={() => switchToLanguage(lang)}
             disabled={lang === getLocale()}
         >
@@ -31,6 +31,6 @@ function switchToLanguage(newLanguage: "en" | "ja") {
 
     <h2>Temporary Page Messages</h2>
     <p>{m.temporary_page_notice()}</p>
-    <button>{m.temporary_page_create_button()}</button>
-    <button>{m.temporary_page_cancel_button()}</button>
+    <button type="button">{m.temporary_page_create_button()}</button>
+    <button type="button">{m.temporary_page_cancel_button()}</button>
 </div>

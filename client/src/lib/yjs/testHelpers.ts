@@ -212,8 +212,6 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
                 await new Promise(r => setTimeout(r, 100));
                 attempts++;
             }
-            // Note: this callback runs in the browser context via page.evaluate, so the
-            // Node-side `logger` is unavailable here; use console directly.
             console.info(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
             console.warn(`[${pv}] reconnect failed:`, e);
@@ -261,8 +259,6 @@ export async function createMinimalYjsConnection(
             (window as Window & typeof globalThis & Record<string, unknown>)[providerVar] = provider;
 
             if (enableLogging) {
-                // Note: this callback runs in the browser context via page.evaluate, so the
-                // Node-side `logger` is unavailable here; use console directly.
                 provider.on("status", (e: { status: string; }) => console.info(`[${providerVar}] status`, e.status));
                 provider.on(
                     "synced",
@@ -313,8 +309,6 @@ export async function setupUpdateTracking(
         ({ docVar, counterVar, counterV2Var }) => {
             const doc = (window as Window & typeof globalThis & Record<string, unknown>)[docVar];
             if (!doc) {
-                // Note: this callback runs in the browser context via page.evaluate, so the
-                // Node-side `logger` is unavailable here; use console directly.
                 console.warn(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
@@ -515,8 +509,6 @@ export async function prepareTwoFullBrowserPages(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
             const client = (yjsStore as unknown as { yjsClient?: { getProject?: () => unknown; }; })?.yjsClient;
-            // Note: this callback runs in the browser context via page.waitForFunction, so the
-            // Node-side `logger` is unavailable here; use console directly.
             if (!client) {
                 console.info("page1: yjsClient not found");
                 return false;
@@ -589,8 +581,6 @@ export async function prepareTwoFullBrowserPages(
         () => {
             const yjsStore = (window as Window & typeof globalThis & Record<string, unknown>).__YJS_STORE__;
             const client = (yjsStore as unknown as { yjsClient?: { getProject?: () => unknown; }; })?.yjsClient;
-            // Note: this callback runs in the browser context via page.waitForFunction, so the
-            // Node-side `logger` is unavailable here; use console directly.
             if (!client) {
                 console.info("page2: yjsClient not found");
                 return false;

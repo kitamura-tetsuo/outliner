@@ -108,7 +108,7 @@
 
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">Public Demo Project</h1>
-            <button
+            <button type="button"
                 onclick={resetDemo}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
@@ -147,7 +147,7 @@
                         <p>{error}</p>
                     </div>
                     <div class="mt-4">
-                        <button
+                        <button type="button"
                             onclick={initializeDemo}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >

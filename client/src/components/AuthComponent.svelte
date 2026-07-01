@@ -156,7 +156,7 @@ function toggleDevLogin() {
     {:else if error}
         <div class="error">
             <p>{error}</p>
-            <button onclick={() => (error = "")} class="try-again" aria-label="Retry login">Retry</button>
+            <button type="button" onclick={() => (error = "")} class="try-again" aria-label="Retry login">Retry</button>
         </div>
     {:else if currentUser}
         <div class="user-info">
@@ -171,11 +171,11 @@ function toggleDevLogin() {
                 <p class="user-name">{currentUser.name}</p>
                 <p class="user-email">{currentUser.email || ""}</p>
             </div>
-            <button onclick={handleLogout} class="logout-btn" aria-label="Log out of your account">Logout</button>
+            <button type="button" onclick={handleLogout} class="logout-btn" aria-label="Log out of your account">Logout</button>
         </div>
     {:else}
         <!-- Google Auth Button -->
-        <button
+        <button type="button"
             onclick={handleLogin}
             class="auth-button google-btn"
             disabled={isLoading || isLoggingIn}
@@ -210,7 +210,7 @@ function toggleDevLogin() {
 
         {#if isDevelopment}
             <!-- Development environment login toggle button -->
-            <button onclick={toggleDevLogin} class="dev-toggle" aria-label="Toggle developer login form">
+            <button type="button" onclick={toggleDevLogin} class="dev-toggle" aria-label="Toggle developer login form">
                 {showDevLogin ? "Hide Developer Login" : "Developer Login"}
             </button>
 
@@ -237,7 +237,7 @@ function toggleDevLogin() {
                             autocomplete="current-password"
                         />
                     </div>
-                    <button
+                    <button type="button"
                         onclick={handleDevLogin}
                         class="dev-login-btn"
                         disabled={isLoggingIn}

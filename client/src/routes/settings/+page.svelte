@@ -33,7 +33,7 @@
     <section class="mb-8">
         <h2 class="text-2xl font-semibold mb-4">Appearance</h2>
         <div class="flex items-center space-x-4">
-            <button
+            <button type="button"
                 class="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
                 onclick={() => userPreferencesStore.toggleTheme()}
             >

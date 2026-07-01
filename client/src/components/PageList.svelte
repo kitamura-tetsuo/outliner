@@ -100,16 +100,14 @@ function selectPage(page: Item) {
         <h2 class="m-0 text-lg font-medium text-gray-800">Pages</h2>
 
         <div class="flex items-center gap-1 rounded-md bg-gray-100 p-1">
-            <button
-                type="button"
+            <button type="button"
                 onclick={() => (isGridView = false)}
                 class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'text-gray-500 hover:text-gray-700' : 'bg-white text-blue-600 shadow-sm'}"
                 aria-label="List view"
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
             </button>
-            <button
-                type="button"
+            <button type="button"
                 onclick={() => (isGridView = true)}
                 class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
                 aria-label="Grid view"
@@ -129,8 +127,7 @@ function selectPage(page: Item) {
             onkeydown={handleKeyDown}
             class="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm transition-shadow focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
         />
-        <button
-            type="button"
+        <button type="button"
             onclick={handleCreatePage}
             aria-label="Create new page"
             class="flex items-center gap-1.5 rounded-md bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
@@ -156,8 +153,7 @@ function selectPage(page: Item) {
                 </svg>
                 <div class="text-center">
                     <p class="m-0 mb-2 text-sm">No pages found.</p>
-                    <button
-                        type="button"
+                    <button type="button"
                         onclick={() => inputEl?.focus()}
                         class="text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline focus:outline-none focus-visible:rounded focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                     >

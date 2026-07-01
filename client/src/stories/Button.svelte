@@ -17,8 +17,7 @@ interface Props {
 const { primary = false, backgroundColor, size = "medium", label, onClick }: Props = $props();
 </script>
 
-<button
-    type="button"
+<button type="button"
     class={["storybook-button", `storybook-button--${size}`].join(" ")}
     class:storybook-button--primary={primary}
     class:storybook-button--secondary={!primary}

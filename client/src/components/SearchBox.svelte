@@ -359,8 +359,7 @@ const logger = getLogger("SearchBox");
         }}
     />
     {#if query.length > 0}
-        <button
-            type="button"
+        <button type="button"
             class="clear-button"
             aria-label="Clear search"
             title="Clear search"
@@ -396,8 +395,7 @@ const logger = getLogger("SearchBox");
                     aria-selected={i === selected}
                     class:selected={i === selected}
                 >
-                    <button
-                        type="button"
+                    <button type="button"
                         onclick={() => handlePageClick(page)}
                         tabindex="-1"
                         >{page.text}</button
