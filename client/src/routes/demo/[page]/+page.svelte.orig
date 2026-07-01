@@ -104,19 +104,6 @@
         return () => unsub();
     });
 
-    // React to page list changes (e.g., demo reset recreating the page)
-    $effect(() => {
-        void store.pagesVersion;
-        if (!isLoading && !error && store.currentPage && store.project) {
-            const latestPage = findPage(pageName);
-            // If the page was recreated (new instance with the same name), update currentPage
-            if (latestPage && latestPage !== store.currentPage) {
-                logger.info(`Page instance changed for "${pageName}", updating currentPage`);
-                store.currentPage = latestPage;
-            }
-        }
-    });
-
     onDestroy(() => {
         isDestroyed = true;
         try {
