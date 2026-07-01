@@ -54,13 +54,8 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
             if (item.items) {
                 let i = 0;
                 const items = item.items;
-                const iter = "iterateUnordered" in items
-                        && typeof (items as { iterateUnordered?: () => IterableIterator<Item>; }).iterateUnordered
-                            === "function"
-                    ? (items as { iterateUnordered: () => IterableIterator<Item>; }).iterateUnordered()
-                    : (items as Iterable<Item>);
-                if (!iter || typeof iter[Symbol.iterator] !== "function") return;
-                for (const child of iter) {
+                if (!items || typeof items[Symbol.iterator] !== "function") return;
+                for (const child of items) {
                     if (i++ > 10) break;
                     if (child) traverse(child, currentDepth + 1);
                     if (lines.length >= maxLines && image) return;
@@ -76,13 +71,8 @@ export function extractPagePreview(pageItem: Item, maxLines: number = 3, maxDept
         if (pageItem.items) {
             let i = 0;
             const items = pageItem.items;
-            const iter = "iterateUnordered" in items
-                    && typeof (items as { iterateUnordered?: () => IterableIterator<Item>; }).iterateUnordered
-                        === "function"
-                ? (items as { iterateUnordered: () => IterableIterator<Item>; }).iterateUnordered()
-                : (items as Iterable<Item>);
-            if (!iter || typeof iter[Symbol.iterator] !== "function") return { lines, image };
-            for (const child of iter) {
+            if (!items || typeof items[Symbol.iterator] !== "function") return { lines, image };
+            for (const child of items) {
                 if (i++ > 20) break;
                 if (child) traverse(child, 1);
                 if (lines.length >= maxLines && image) break;
