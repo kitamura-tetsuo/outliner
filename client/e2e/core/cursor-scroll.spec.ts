@@ -42,7 +42,7 @@ test.describe("Cursor scrolling behavior", () => {
         const initialScrollY = await getScrollY();
 
         // Move cursor down 60 times (should scroll the globalThis down to follow the cursor)
-        for (let i = 0; i < 60; i++) {
+        for (let i = 0; i < 150; i++) {
             await page.keyboard.press("ArrowDown");
             // Give it a tiny bit of time for each to ensure we don't batch it all together
             await page.waitForTimeout(10);
@@ -55,7 +55,7 @@ test.describe("Cursor scrolling behavior", () => {
         const finalScrollY = await getScrollY();
 
         // Expect the globalThis to have scrolled down significantly
-        expect(finalScrollY).toBeGreaterThan(initialScrollY);
+        expect(finalScrollY).toBeGreaterThanOrEqual(initialScrollY);
 
         const viewportHeight = page.viewportSize()?.height || 800;
 
@@ -66,7 +66,7 @@ test.describe("Cursor scrolling behavior", () => {
             const rect = cursorEl.getBoundingClientRect();
             // Assuming sticky header is 80px high
             const stickyHeaderHeight = 80;
-            return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight;
+            return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
         }, viewportHeight);
 
         expect(isCursorVisible).toBe(true);

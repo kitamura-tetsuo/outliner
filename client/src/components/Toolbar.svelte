@@ -168,6 +168,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 }
 
 .add-database-btn {
+    margin-left: 3.5rem;
     margin-right: 1rem;
     padding: 0.25rem 0.75rem;
     background-color: #f3f4f6;
