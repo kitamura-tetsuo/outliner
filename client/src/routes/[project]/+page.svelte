@@ -102,7 +102,7 @@
     <title>{projectName ? projectName : "Project"} | Outliner</title>
 </svelte:head>
 
-<main class="container mx-auto px-4 py-4">
+<main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },

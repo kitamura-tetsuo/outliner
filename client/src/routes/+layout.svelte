@@ -492,22 +492,26 @@ onDestroy(async () => {
 /* Keep content clear of the fixed Toolbar (height ~4rem) */
 .main-content {
     padding-top: 5rem;
-    transition: margin-left 0.3s ease;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Add left margin when sidebar is open */
 .main-content.with-sidebar {
     margin-left: 250px;
+    width: calc(100% - 250px);
+    box-sizing: border-box;
 }
 
 /* Sidebar toggle button */
 .sidebar-toggle {
     position: fixed;
-    top: 6rem;
+    top: 0.75rem;
     left: 1rem;
-    z-index: 100;
-    width: 40px;
-    height: 40px;
+    z-index: 10001;
+    width: 2.5rem;
+    height: 2.5rem;
     background-color: #3b82f6;
     color: white;
     border: none;
