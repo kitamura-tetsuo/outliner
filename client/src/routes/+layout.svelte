@@ -431,7 +431,7 @@ onDestroy(async () => {
     <Toolbar />
 
     <!-- Sidebar toggle button -->
-    <button
+    <button type="button"
         class="sidebar-toggle"
         onclick={() => (isSidebarOpen = !isSidebarOpen)}
         aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}

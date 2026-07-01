@@ -200,7 +200,7 @@ onDestroy(() => {
     {:else if error}
         <div class="error">
             <p>Error: {error}</p>
-            <button onclick={() => location.reload()}>Reload</button>
+            <button type="button" onclick={() => location.reload()}>Reload</button>
         </div>
     {:else if isAuthenticated}
         <!-- Content for authenticated users -->
@@ -219,7 +219,7 @@ onDestroy(() => {
                     <span id="connection-state-text">Connection Status: {connectionStatus}</span>
                 </div>
 
-                <button onclick={initializeFluidClient} class="action-button">
+                <button type="button" onclick={initializeFluidClient} class="action-button">
                     Run connection test
                 </button>
 
@@ -231,7 +231,7 @@ onDestroy(() => {
 
             <div class="debug-card">
                 <h2>Server Health Check</h2>
-                <button onclick={checkHealth} class="action-button">
+                <button type="button" onclick={checkHealth} class="action-button">
                     Run health check (GET /health)
                 </button>
                 {#if healthError}

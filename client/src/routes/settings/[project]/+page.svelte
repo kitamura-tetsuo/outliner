@@ -200,7 +200,7 @@
                     </div>
                 {/if}
 
-                <button
+                <button type="button"
                     onclick={saveTitle}
                     disabled={isSaving || !newTitle.trim()}
                     class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
@@ -224,7 +224,7 @@
                     Generate a link to share this project with others. Anyone with the link can join and edit the project.
                 </p>
 
-                <button
+                <button type="button"
                     onclick={generateInvitationLink}
                     disabled={isGeneratingLink}
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center mb-4"
@@ -261,7 +261,7 @@
                                 class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none bg-gray-50 text-gray-600"
                                 onclick={(e) => (e.target as HTMLInputElement).select()}
                             />
-                            <button
+                            <button type="button"
                                 onclick={() => {
                                     navigator.clipboard.writeText(shareLink);
                                     alert("Copied to clipboard!");

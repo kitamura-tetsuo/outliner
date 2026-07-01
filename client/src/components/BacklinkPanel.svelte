@@ -151,8 +151,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
                     {#each backlinks as backlink (`${backlink.sourcePageId}-${backlink.context}`)}
                         <li class="backlink-item">
                             <div class="backlink-source">
-                                <button
-                                    type="button"
+                                <button type="button"
                                     onclick={() => navigateToPage(backlink.sourcePageId, backlink.sourcePageName)}
                                     class="source-page-link"
                                 >

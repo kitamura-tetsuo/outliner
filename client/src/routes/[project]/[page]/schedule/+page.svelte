@@ -610,9 +610,9 @@ function toLocalISOString(timestamp: number): string {
     <div class="mb-4">
         <label for="publish-time" class="mr-2">Publish Time:</label>
         <input id="publish-time" type="datetime-local" bind:value={publishTime} class="border p-1" />
-        <button onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
+        <button type="button" onclick={addSchedule} class="ml-2 px-2 py-1 bg-blue-600 text-white rounded">Add</button>
         <a href={resolvePath(`/${project}/${pageTitle}`)} class="ml-2 px-2 py-1 bg-gray-300 rounded inline-block" style="text-decoration:none; color:black">Back</a>
-        <button
+        <button type="button"
             onclick={downloadIcs}
             class="ml-2 px-2 py-1 bg-green-700 text-white rounded disabled:opacity-60"
             disabled={isDownloading}
@@ -637,13 +637,13 @@ function toLocalISOString(timestamp: number): string {
             <li class="mb-2" data-testid="schedule-item">
                 {#if editingId === sch.id}
                     <input type="datetime-local" bind:value={editingTime} class="border p-1" />
-                    <button onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
+                    <button type="button" onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
                 {:else}
                     {formatDate(sch.nextRunAt)}
-                    <button onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">
+                    <button type="button" onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">
                         Edit
                     </button>
-                    <button onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">
+                    <button type="button" onclick={() => cancel(sch.id)} class="ml-2 px-2 py-1 bg-red-500 text-white rounded">
                         Cancel
                     </button>
                 {/if}

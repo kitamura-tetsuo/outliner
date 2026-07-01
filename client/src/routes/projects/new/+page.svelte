@@ -150,7 +150,7 @@ onDestroy(() => {
                 </div>
             {/if}
 
-            <button
+            <button type="button"
                 onclick={createNewContainer}
                 disabled={isLoading}
                 class="

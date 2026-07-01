@@ -5,7 +5,7 @@
 </script>
 
 <div>
-  <button data-testid="inc" onclick={inc}>+</button>
+  <button type="button" data-testid="inc" onclick={inc}>+</button>
   <span data-testid="value">{count}</span>
-  <button data-testid="dec" onclick={dec}>-</button>
+  <button type="button" data-testid="dec" onclick={dec}>-</button>
 </div>

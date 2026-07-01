@@ -515,14 +515,14 @@
                 {/if}
             </h1>
             <div class="flex items-center space-x-2" data-testid="page-toolbar">
-                <button
+                <button type="button"
                     onclick={toggleSearchPanel}
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     data-testid="search-toggle-button"
                 >
                     Search
                 </button>
-                <button
+                <button type="button"
                     onclick={addItemFromTopToolbar}
                     class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
                 >
@@ -585,7 +585,7 @@
                         <p>{error}</p>
                     </div>
                     <div class="mt-4">
-                        <button
+                        <button type="button"
                             onclick={loadProjectAndPage}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
