@@ -165,8 +165,13 @@ export class DataValidationHelpers {
                 const store = (globalThis as any).generalStore || (globalThis as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 30000 });
-        } catch (e) {
-            console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", e?.message ?? e);
+        } catch (e: any) {
+            const errMsg = e?.message ?? String(e);
+            if (
+                !errMsg.includes("Test ended.") && !errMsg.includes("Target page, context or browser has been closed")
+            ) {
+                console.warn("[saveSnapshotsAndCompare] waitForFunction failed:", errMsg);
+            }
             return; // Skip snapshot if project is not available
         }
 
