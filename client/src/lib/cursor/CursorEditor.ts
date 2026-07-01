@@ -49,6 +49,24 @@ export class CursorEditor {
         }
 
         const currentText = node.text?.toString?.() ?? "";
+        const fullSelection = this.getSelection();
+        if (fullSelection && selectionSpansMultipleItems(fullSelection)) {
+            this.deleteMultiItemSelection(fullSelection);
+
+            const updatedNode = cursor.findTarget();
+            if (!updatedNode) return;
+            const updatedText = updatedNode.text?.toString?.() ?? "";
+            updatedNode.updateText(updatedText.slice(0, cursor.offset) + ch + updatedText.slice(cursor.offset));
+            cursor.offset += ch.length;
+            cursor.applyToStore();
+            store.triggerOnEdit();
+            const textarea = store.getTextareaRef();
+            if (textarea && !store.isComposing) {
+                textarea.value = updatedNode.text?.toString?.() ?? "";
+            }
+            return;
+        }
+
         const selection = this.getSingleItemSelection(cursor.itemId);
 
         if (selection && selection.startOffset !== selection.endOffset) {
@@ -657,38 +675,86 @@ export class CursorEditor {
         const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
         const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
 
-        const parent = (firstItem as unknown as import("../../schema/app-schema").Item).parent;
-        if (!parent || parent !== (lastItem as unknown as import("../../schema/app-schema").Item).parent) return;
+        const allItemIds: string[] = [];
+        const collectIds = (
+            node: { id?: string; items?: { length?: number; at?: (index: number) => unknown; }; },
+            ids: string[],
+        ) => {
+            if (node.id) ids.push(node.id);
+            if (node.items && typeof node.items.length === "number") {
+                const len = node.items.length;
+                for (let i = 0; i < len; i++) {
+                    const child = node.items.at?.(i);
+                    if (child) {
+                        collectIds(
+                            child as { id?: string; items?: { length?: number; at?: (index: number) => unknown; }; },
+                            ids,
+                        );
+                    }
+                }
+            }
+        };
+        collectIds(root, allItemIds);
 
-        const items = parent as unknown as Items;
-        const firstIndex = items.indexOf(firstItem);
-        const lastIndex = items.indexOf(lastItem);
-        if (firstIndex === -1 || lastIndex === -1) return;
+        let firstIdx = allItemIds.indexOf(firstItem.id);
+        let lastIdx = allItemIds.indexOf(lastItem.id);
+
+        if (firstIdx === -1 || lastIdx === -1) return;
+
+        let actFirstItem = firstItem;
+        let actLastItem = lastItem;
+        let actFirstOffset = firstOffset;
+        let actLastOffset = lastOffset;
+
+        if (firstIdx > lastIdx) {
+            actFirstItem = lastItem;
+            actLastItem = firstItem;
+            actFirstOffset = lastOffset;
+            actLastOffset = firstOffset;
+            const tempIdx = firstIdx;
+            firstIdx = lastIdx;
+            lastIdx = tempIdx;
+        }
 
         try {
-            const firstText = (firstItem as unknown as import("../../schema/app-schema").Item).text || "";
-            const newFirstText = firstText.substring(0, firstOffset);
-            const lastText = (lastItem as unknown as import("../../schema/app-schema").Item).text || "";
-            const newLastText = lastText.substring(lastOffset);
+            const firstText = (actFirstItem as unknown as import("../../schema/app-schema").Item).text?.toString()
+                || "";
+            const newFirstText = firstText.substring(0, actFirstOffset);
+            const lastText = (actLastItem as unknown as import("../../schema/app-schema").Item).text?.toString() || "";
+            const newLastText = lastText.substring(actLastOffset);
 
-            const itemsToRemove: string[] = [];
-            for (let i = firstIndex + 1; i <= lastIndex; i++) {
-                const item = items.at(i);
-                if (item) itemsToRemove.push(item.id);
+            const itemsToRemoveIds: string[] = [];
+            for (let i = firstIdx + 1; i <= lastIdx; i++) {
+                itemsToRemoveIds.push(allItemIds[i]);
             }
 
-            for (const itemId of itemsToRemove) {
+            for (const itemId of itemsToRemoveIds) {
                 store.clearCursorForItem(itemId);
             }
 
-            (firstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            (actFirstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
 
-            for (let i = lastIndex; i > firstIndex; i--) {
-                (items as unknown as unknown as import("../../schema/app-schema").Items).removeAt(i);
+            for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
+                const id = itemsToRemoveIds[i];
+                const item = searchItem(root as unknown as import("../../schema/yjs-schema").Item, id);
+                if (item) {
+                    const parent = (item as unknown as {
+                        parent?: {
+                            items?: { indexOf?: (item: unknown) => number; removeAt?: (index: number) => void; };
+                        };
+                    }).parent;
+                    if (parent && parent.items) {
+                        const items = parent.items;
+                        const idx = typeof items.indexOf === "function" ? items.indexOf(item) : -1;
+                        if (idx !== -1 && typeof items.removeAt === "function") {
+                            items.removeAt(idx);
+                        }
+                    }
+                }
             }
 
-            cursor.itemId = (firstItem as unknown as import("../../schema/app-schema").Item).id;
-            cursor.offset = firstOffset;
+            cursor.itemId = actFirstItem.id;
+            cursor.offset = actFirstOffset;
             cursor.applyToStore();
 
             cursor.clearSelection();
