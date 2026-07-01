@@ -138,14 +138,17 @@ describe("Cursor moveUp and moveDown on nested items", () => {
         expect(cursor.itemId).toBe(child2.id);
     });
 
-    test("moveUp from root1 stays at root1 (first item)", () => {
+    test("moveUp from root1 goes to the page (its parent title item)", () => {
+        // root1 is the first child of the page. Moving up from the first
+        // top-level item navigates to the page title item itself, which is a
+        // navigable/editable item in the outliner (see the CLM-6f0bdbc3 E2E test).
         const root1 = page.items.at(0)!;
 
         cursor.itemId = root1.id;
         cursor.offset = 0;
         cursor.moveUp();
 
-        expect(cursor.itemId).toBe(root1.id);
+        expect(cursor.itemId).toBe(page.id);
     });
 
     test("moveDown from root2 stays at root2 (last item)", () => {

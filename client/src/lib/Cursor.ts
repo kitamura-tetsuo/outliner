@@ -1744,13 +1744,7 @@ export class Cursor implements CursorEditingContext {
                 const currentTarget = this.findTarget();
                 const parentCollection = currentTarget?.parent;
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
-                // ALSO skip if parentKey is the current page id.
-                const isCurrentPage = parentCollection && parentCollection.parentKey === generalStore.currentPage?.id;
-
-                if (
-                    parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root"
-                    && !isCurrentPage
-                ) {
+                if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                     prevItem = new (currentTarget!.constructor as unknown as {
                         new(...args: unknown[]): import("../schema/yjs-schema").Item;
                     })(
