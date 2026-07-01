@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { SyncWorker } from "../services/syncWorker";
 import type { SqlJsDatabase } from "../services/syncWorker";
 
-let db: initSqlJs.Database & SqlJsDatabase;
+let db: import("sql.js").Database & SqlJsDatabase;
 
 const require = createRequire(import.meta.url);
 
@@ -13,9 +13,9 @@ beforeAll(async () => {
     const wasmPath = require.resolve("sql.js/dist/sql-wasm.wasm");
     const wasmBinary = fs.readFileSync(wasmPath);
     const SQL = await initSqlJs({ wasmBinary });
-    db = new SQL.Database() as unknown as initSqlJs.Database & SqlJsDatabase;
-    db.run("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
-    db.run("INSERT INTO tbl VALUES('a',1)");
+    db = new SQL.Database() as unknown as import("sql.js").Database & SqlJsDatabase;
+    db.exec("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER)");
+    db.exec("INSERT INTO tbl VALUES('a',1)");
 });
 
 describe("syncWorker", () => {
