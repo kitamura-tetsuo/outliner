@@ -189,12 +189,20 @@ function updateTextareaPosition() {
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
         textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
 
-        // Scroll the cursor into view if it moved
+        // Scroll the cursor into view if it moved. Unlike the textarea position
+        // above (anchored at composition start to keep the candidate window
+        // still), scrolling must always track the real, current cursor offset
+        // (end of composition). Otherwise, typing enough characters to wrap to
+        // a new line during composition leaves the newly typed text below the
+        // viewport since the anchor position never moves.
         if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
             lastScrolledCursorId = lastCursor.itemId;
             lastScrolledOffset = lastCursor.offset;
 
-            const viewportTop = treeContainerRect.top + pos.top;
+            const scrollPos = store.isComposing
+                ? (calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset) || pos)
+                : pos;
+            const viewportTop = treeContainerRect.top + scrollPos.top;
             const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
