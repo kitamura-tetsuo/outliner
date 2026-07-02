@@ -6,6 +6,19 @@ import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
 
+export function isForeignInput(target: EventTarget | null): boolean {
+    if (!target) return false;
+    const el = target as HTMLElement;
+    const tagName = el.tagName?.toUpperCase();
+    if (tagName === "INPUT" || tagName === "TEXTAREA" || el.isContentEditable || el.hasAttribute?.("contenteditable")) {
+        if (el.classList && el.classList.contains("global-textarea")) {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
 /**
  * Handler that distributes key and input events to each cursor instance
  */
@@ -136,6 +149,7 @@ export class KeyEventHandler {
         if ((event as KeyboardEvent).defaultPrevented) {
             if (!commandPaletteStore.isVisible) return;
         }
+        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
         // While Alias Picker is visible: forward Arrow/Enter/Escape to the picker
         try {
             if (aliasPickerStore.isVisible) {
@@ -901,6 +915,8 @@ export class KeyEventHandler {
      * Delegate Input events to each cursor
      */
     static handleInput(event: Event) {
+        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+
         const inputEvent = event as InputEvent;
 
         // Ignore input events while Alias Picker is visible
