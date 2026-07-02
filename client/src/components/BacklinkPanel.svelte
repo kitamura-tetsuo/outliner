@@ -1,10 +1,11 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import {
-    type Backlink,
+
     collectBacklinks,
 } from "$lib/backlinkCollector";
 import { getLogger } from "$lib/logger";
+import { store } from "../stores/store.svelte";
 import {
     onDestroy,
     onMount,
@@ -20,40 +21,31 @@ interface Props {
 let { pageName, projectName }: Props = $props();
 
 // Backlink information
-let backlinks = $state<Backlink[]>([]);
-let isLoading = $state(false);
-let isOpen = $state(false);
-let error = $state<string | null>(null);
+let hasLoaded = $derived.by(() => {
+    void store.pagesVersion;
+    return !!store.pages?.current;
+});
 
-// Load backlinks
-async function loadBacklinks() {
-    if (!pageName) return;
-
-    isLoading = true;
-    error = null;
+let backlinks = $derived.by(() => {
+    void store.pagesVersion;
+    if (!pageName || !hasLoaded) return [];
 
     try {
-        // Collect backlinks
-        backlinks = collectBacklinks(pageName);
-        logger.info(`Loaded ${backlinks.length} backlinks for page: ${pageName}`);
+        return collectBacklinks(pageName);
     }
     catch (err) {
         logger.error({ error: err }, "Failed to load backlinks");
-        error = "Failed to load backlinks";
-        backlinks = [];
+        return [];
     }
-    finally {
-        isLoading = false;
-    }
-}
+});
+
+let isOpen = $state(false);
+
+
 
 // Toggle panel visibility
 function togglePanel() {
     isOpen = !isOpen;
-
-    if (isOpen && backlinks.length === 0) {
-        loadBacklinks();
-    }
 }
 
 // Navigate to the linked page
@@ -67,10 +59,7 @@ function navigateToPage(_pageId: string, pageName: string) {
     }
 }
 
-// Refresh backlinks
-function refreshBacklinks() {
-    loadBacklinks();
-}
+
 
 // Handle component mount
 onMount(() => {
@@ -119,7 +108,7 @@ function highlightLinkInContext(context: string, pageName: string): string {
         class="backlink-toggle-button"
         class:active={isOpen}
     >
-        <span class="backlink-count">{backlinks.length}</span>
+        <span class="backlink-count">{hasLoaded ? backlinks.length : '-'}</span>
         <span class="backlink-label">Backlinks</span>
         <span class="toggle-icon">{isOpen ? "▼" : "▶"}</span>
     </button>
@@ -128,19 +117,13 @@ function highlightLinkInContext(context: string, pageName: string): string {
         <div class="backlink-content">
             <div class="backlink-header">
                 <h3>Backlinks</h3>
-                <button type="button" onclick={refreshBacklinks} class="refresh-button" title="Refresh">
-                    ↻
-                </button>
+
             </div>
 
-            {#if isLoading}
+            {#if !hasLoaded}
                 <div class="backlink-loading">
                     <div class="loader"></div>
                     <p>Loading...</p>
-                </div>
-            {:else if error}
-                <div class="backlink-error">
-                    <p>{error}</p>
                 </div>
             {:else if backlinks.length === 0}
                 <div class="backlink-empty">
@@ -243,22 +226,9 @@ function highlightLinkInContext(context: string, pageName: string): string {
     color: #333;
 }
 
-.refresh-button {
-    background: none;
-    border: none;
-    color: #0078d7;
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 8px;
-    border-radius: 4px;
-}
 
-.refresh-button:hover {
-    background-color: #f0f0f0;
-}
 
 .backlink-loading,
-.backlink-error,
 .backlink-empty {
     display: flex;
     flex-direction: column;
@@ -268,9 +238,6 @@ function highlightLinkInContext(context: string, pageName: string): string {
     color: #666;
 }
 
-.backlink-error {
-    color: #d32f2f;
-}
 
 .loader {
     border: 3px solid #f3f3f3;
