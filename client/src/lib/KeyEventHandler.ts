@@ -1,6 +1,7 @@
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
@@ -85,9 +86,19 @@ export class KeyEventHandler {
             });
         });
 
-        // Ctrl+Shift+Z undo last cursor
+        // Ctrl+Z history undo
+        add("z", true, false, false, () => {
+            generalStore.undoManager?.undo();
+        });
+
+        // Ctrl+Shift+Z history redo
         add("z", true, false, true, () => {
-            store.undoLastCursor();
+            generalStore.undoManager?.redo();
+        });
+
+        // Ctrl+Y history redo
+        add("y", true, false, false, () => {
+            generalStore.undoManager?.redo();
         });
 
         // Alt+PageUp/PageDown scroll
@@ -938,6 +949,18 @@ export class KeyEventHandler {
             ) {
                 logger.debug(`Skipping input event during composition`);
             }
+            return;
+        }
+
+        if (inputEvent.inputType === "historyUndo") {
+            generalStore.undoManager?.undo();
+            inputEvent.preventDefault?.();
+            return;
+        }
+
+        if (inputEvent.inputType === "historyRedo") {
+            generalStore.undoManager?.redo();
+            inputEvent.preventDefault?.();
             return;
         }
 
