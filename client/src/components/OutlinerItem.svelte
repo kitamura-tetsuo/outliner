@@ -516,7 +516,7 @@ const aliasTargetIdEffective = $derived.by(() => {
 
 // aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
 // Duplicate code related to attachments removed (moved to OutlinerItemAttachments.svelte)
-// Keep only addAttachmentToDomTargetOrModel function (used in drag and drop)
+
 
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
@@ -1645,7 +1645,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel((event as unknown) as DragEvent, url);
+                            addAttachmentToDomTargetOrModel(event as DragEvent, url);
                         } else {
                             // Dispatch event for top/bottom insertion
                             dispatch("drop", {
@@ -1694,7 +1694,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel((event as unknown) as DragEvent, localUrl);
+                        addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
 
                     } catch {}
                 }
