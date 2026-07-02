@@ -263,10 +263,7 @@
 
     onMount(() => {
         try {
-            // DIRECT DEBUG: This should appear if onMount is called
             logger.debug("[DEBUG] onMount called");
-            // Attempt initial load
-            scheduleLoadIfNeeded();
         } catch (e) {
             logger.error({ error: e }, "[DEBUG] onMount error:");
         }
