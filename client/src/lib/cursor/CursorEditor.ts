@@ -738,16 +738,11 @@ export class CursorEditor {
                 const id = itemsToRemoveIds[i];
                 const item = searchItem(root as unknown as import("../../schema/yjs-schema").Item, id);
                 if (item) {
-                    const parent = (item as unknown as {
-                        parent?: {
-                            items?: { indexOf?: (item: unknown) => number; removeAt?: (index: number) => void; };
-                        };
-                    }).parent;
-                    if (parent && parent.items) {
-                        const items = parent.items;
-                        const idx = typeof items.indexOf === "function" ? items.indexOf(item) : -1;
-                        if (idx !== -1 && typeof items.removeAt === "function") {
-                            items.removeAt(idx);
+                    const parent = (item as unknown as import("../../schema/app-schema").Item).parent;
+                    if (parent) {
+                        const idx = typeof parent.indexOf === "function" ? parent.indexOf(item as unknown as import("../../schema/app-schema").Item) : -1;
+                        if (idx !== -1 && typeof parent.removeAt === "function") {
+                            parent.removeAt(idx);
                         }
                     }
                 }
