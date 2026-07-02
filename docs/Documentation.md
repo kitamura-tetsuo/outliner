@@ -30,7 +30,7 @@ AI agents rely heavily on YAML frontmatter to understand the context and relatio
 We separate what humans see from what AI agents see using the VitePress configuration.
 
 - Human navigation is strictly controlled by the `sidebar` array in `docs/.vitepress/config.mts`.
-- **DO NOT** add AI-specific entry points (like `docs/INDEX.md` or raw prompt files) to the VitePress `sidebar`. They must remain hidden from the human UI but exist in the file tree for AI consumption.
+- **DO NOT** add AI-specific entry points (like raw prompt files) to the VitePress `sidebar`. They must remain hidden from the human UI but exist in the file tree for AI consumption.
 
 ## 4. Link and Path Conventions
 

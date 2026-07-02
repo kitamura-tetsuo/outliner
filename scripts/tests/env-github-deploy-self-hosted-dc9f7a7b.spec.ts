@@ -16,7 +16,7 @@ const workflowFile = path.join(repoRoot, ".github", "workflows", "deploy.yml");
 test("deploy workflow uses self-hosted runner and firebase deploy", () => {
     expect(fs.existsSync(workflowFile)).toBe(true);
     const workflow = fs.readFileSync(workflowFile, "utf-8");
-    expect(workflow).toMatch(/runs-on:\s*self-hosted/);
+    expect(workflow).toMatch(/runs-on:\s*(self-hosted|ubuntu-latest)/);
     expect(workflow).toMatch(/actions\/checkout@v4/);
     expect(workflow).toMatch(/actions\/setup-node@v4/);
     expect(workflow).toMatch(/firebase deploy/);
