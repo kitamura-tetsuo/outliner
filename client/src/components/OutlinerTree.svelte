@@ -2,6 +2,7 @@
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
+    import { SvelteMap } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
@@ -184,13 +185,13 @@
     // Compute aria-setsize/aria-posinset per item based on its siblings (same parentId),
     // so screen readers can announce tree position (e.g. "item 2 of 5").
     let ariaTreeMeta = $derived.by(() => {
-        const siblingsByParent = new Map<string | null, string[]>();
+        const siblingsByParent = new SvelteMap<string | null, string[]>();
         for (const d of displayItems) {
             const key = d.parentId;
             if (!siblingsByParent.has(key)) siblingsByParent.set(key, []);
             siblingsByParent.get(key)!.push(d.model.id);
         }
-        const meta = new Map<string, { setSize: number, posInSet: number }>();
+        const meta = new SvelteMap<string, { setSize: number, posInSet: number }>();
         for (const ids of siblingsByParent.values()) {
             ids.forEach((id, i) => meta.set(id, { setSize: ids.length, posInSet: i + 1 }));
         }
