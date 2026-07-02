@@ -35,9 +35,10 @@ test.describe("ITM-00cbb408: Move items by dragging", () => {
 
         const secondText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
 
-        // Execute drag operation using actual DragEvent/DataTransfer flow
+        // Execute drag operation using actual DragEvent/DataTransfer flow.
+        // The drag starts from the item's drag handle (left bullet/chevron).
         await page.evaluate(({ secondId, thirdId }) => {
-            const sourceContent = document.querySelector<HTMLElement>(`[data-item-id="${secondId}"] .item-content`)
+            const sourceContent = document.querySelector<HTMLElement>(`[data-item-id="${secondId}"] .drag-handle`)
                 ?? document.querySelector<HTMLElement>(`[data-item-id="${secondId}"]`);
             const targetContent = document.querySelector<HTMLElement>(`[data-item-id="${thirdId}"] .item-content`)
                 ?? document.querySelector<HTMLElement>(`[data-item-id="${thirdId}"]`);
@@ -122,5 +123,9 @@ test.describe("ITM-00cbb408: Move items by dragging", () => {
         expect(items[1]).toBe("Item 1");
         expect(items[2]).toBe("Item 3");
         expect(items[3]).toBe("Item 2");
+
+        // Drag visual effects must be cleared after the drag ends
+        await expect(page.locator(".item-content.dragging")).toHaveCount(0);
+        await expect(page.locator(".item-content.drop-target")).toHaveCount(0);
     });
 });
