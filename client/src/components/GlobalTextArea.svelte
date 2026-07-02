@@ -77,7 +77,7 @@ onMount(() => {
     }
 
     // Expose KeyEventHandler globally for testing
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
         window.__KEY_EVENT_HANDLER__ = KeyEventHandler;
         window.Items = Items;
         window.generalStore = generalStore;

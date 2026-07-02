@@ -43,6 +43,7 @@ let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
 function e2eLog(entry: E2ELogEntry) {
+    if (import.meta.env.MODE !== "test" && import.meta.env.VITE_IS_TEST !== "true") return;
     try {
         interface WindowWithE2E extends Window {
             E2E_LOGS?: E2ELogEntry[];

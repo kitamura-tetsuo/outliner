@@ -206,6 +206,7 @@ export class KeyEventHandler {
 
                         // Fallback if unable to confirm via click path:
                         // Set the first content line (= test's secondId) as target
+                        if (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true") {
                         try {
                             const w = window as Window & typeof globalThis & {
                                 generalStore?: unknown;
@@ -346,6 +347,7 @@ export class KeyEventHandler {
                                 } catch {}
                             }
                         } catch {}
+                        }
                     } catch {
                         aliasPickerStore.hide();
                     }
