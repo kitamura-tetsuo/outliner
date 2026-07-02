@@ -313,7 +313,10 @@ export class Items {
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
-            logger.warn({ parentKey: this.parentKey, error: e }, "[yjs-schema] Items.iterateUnordered error fetching children for parentKey");
+            logger.warn(
+                { parentKey: this.parentKey, error: e },
+                "[yjs-schema] Items.iterateUnordered error fetching children for parentKey",
+            );
             return;
         }
         for (const key of keys) {
