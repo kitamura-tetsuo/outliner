@@ -117,7 +117,10 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
                 || window.__E2E__ === true));
-    logger.info(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}, forceRefresh=${forceRefresh}`);
+    logger.info(
+        `[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth
+            .currentUser}, forceRefresh=${forceRefresh}`,
+    );
 
     const generateMockToken = () => {
         // Generate mock token for E2E tests (server accepts alg:none in test mode)

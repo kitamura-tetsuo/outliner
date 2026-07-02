@@ -87,7 +87,11 @@ vi.mock("../../../auth/UserManager", () => ({
     },
 }));
 
-import { connectProjectDoc, createMinimalProjectConnection, createProjectConnection } from "../../../lib/yjs/connection";
+import {
+    connectProjectDoc,
+    createMinimalProjectConnection,
+    createProjectConnection,
+} from "../../../lib/yjs/connection";
 import { clearRoomSyncStates, getRoomSyncState } from "../../../lib/yjs/roomSyncState";
 
 type MockProviderInstance = InstanceType<typeof MockHocuspocusProvider> & {
@@ -141,25 +145,27 @@ describe("yjs connection: shared provider setup", () => {
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(false);
     });
 
-    it.each([
-        ["createProjectConnection", async () => {
-            const promise = createProjectConnection("proj-fatal-1");
-            await flushMicrotasks();
-            const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
-            provider.markSynced();
-            await promise;
-            return provider;
-        }],
-        ["connectProjectDoc", async () => {
-            const doc = new Y.Doc();
-            await connectProjectDoc(doc, "proj-fatal-2");
-            return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
-        }],
-        ["createMinimalProjectConnection", async () => {
-            await createMinimalProjectConnection("proj-fatal-3");
-            return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
-        }],
-    ] as const)("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
+    it.each(
+        [
+            ["createProjectConnection", async () => {
+                const promise = createProjectConnection("proj-fatal-1");
+                await flushMicrotasks();
+                const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+                provider.markSynced();
+                await promise;
+                return provider;
+            }],
+            ["connectProjectDoc", async () => {
+                const doc = new Y.Doc();
+                await connectProjectDoc(doc, "proj-fatal-2");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+            ["createMinimalProjectConnection", async () => {
+                await createMinimalProjectConnection("proj-fatal-3");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+        ] as const,
+    )("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
         const provider = await setup();
         const disconnectSpy = vi.spyOn(provider, "disconnect");
 

@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearRoomSyncStates, getRoomSyncState, onRoomSyncStateChange, setRoomSyncState } from "../../../lib/yjs/roomSyncState";
+import {
+    clearRoomSyncStates,
+    getRoomSyncState,
+    onRoomSyncStateChange,
+    setRoomSyncState,
+} from "../../../lib/yjs/roomSyncState";
 
 describe("roomSyncState", () => {
     beforeEach(() => {
