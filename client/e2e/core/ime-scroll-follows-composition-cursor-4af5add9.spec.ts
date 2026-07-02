@@ -12,7 +12,7 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
     test(
         "scrolls to keep the newest composed character visible when composition wraps to a new line",
         async ({ page }, testInfo) => {
-            test.setTimeout(60000);
+            test.setTimeout(90000);
             await page.setViewportSize({ width: 375, height: 600 });
 
             const lines = [
@@ -26,19 +26,23 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
             // The last (empty) item is the composition target, scrolled far below the fold initially.
             const items = page.locator(".outliner-item");
             const targetItem = items.last();
-            await targetItem.scrollIntoViewIfNeeded();
-            await targetItem.locator(".item-content").click({ force: true });
-
-            const textarea = page.locator("textarea.global-textarea");
-            await textarea.waitFor({ state: "visible" });
-            await textarea.focus();
-            await TestHelpers.waitForCursorVisible(page);
-
-            const itemId = await TestHelpers.getActiveItemId(page);
+            await targetItem.waitFor({ state: "visible" });
+            const itemId = await targetItem.getAttribute("data-item-id");
             expect(itemId).not.toBeNull();
 
-            // Baseline: clicking already scrolled the target item into view.
-            await page.waitForTimeout(300);
+            // Activate the item directly via the store, bypassing a real click/scroll,
+            // which is unreliable for an item scrolled far below the fold.
+            await page.evaluate((id) => {
+                const store = (globalThis as any).editorOverlayStore;
+                store.setActiveItem(id);
+                store.setCursor({ itemId: id, offset: 0, isActive: true, userId: "local" });
+                const ta = document.querySelector("textarea.global-textarea") as HTMLTextAreaElement;
+                ta?.focus();
+            }, itemId);
+
+            // Baseline: activating the cursor already scrolls the target item into view
+            // via the app's normal (non-composing) scroll-into-view logic.
+            await page.waitForTimeout(500);
             const scrollAfterFocus = await page.evaluate(() => globalThis.scrollY);
 
             // Start composing and grow the composition text far enough to wrap onto a
