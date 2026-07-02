@@ -31,5 +31,4 @@ test.describe("CLM-0105: Dictionary-based key handler", () => {
         const after = await CursorValidator.getCursorData(page);
         expect(after.cursorInstances.length).toBe(before.cursorInstances.length + 1);
     });
-
 });
