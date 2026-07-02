@@ -29,6 +29,7 @@ export class GeneralStore {
     openCommentItemId: string | null = $state(null);
     // Fallback: Also keep the index in case the ID changes, such as when switching connections
     private _project: Project | undefined;
+    public undoManager: Y.UndoManager | undefined;
     textareaRef: HTMLTextAreaElement | null = null;
 
     private _subscribeCurrentPage = createSubscriber((update) => {
@@ -217,11 +218,20 @@ export class GeneralStore {
         // Guard against setting null/undefined - just clear state without observers
         if (!v) {
             this._project = undefined;
+            if (this.undoManager) {
+                this.undoManager.destroy();
+                this.undoManager = undefined;
+            }
             this._pageNamesCache.clear();
             return;
         }
 
         this._project = v;
+
+        if (this.undoManager) {
+            this.undoManager.destroy();
+        }
+        this.undoManager = new Y.UndoManager(v.ydoc.getMap("orderedTree"), { trackedOrigins: new Set([null]) });
 
         // Build initial cache
         this._rebuildPageNamesCache();
