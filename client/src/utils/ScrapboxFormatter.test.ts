@@ -299,7 +299,9 @@ describe("ScrapboxFormatter", () => {
 
                 const input2 = "Formats can be combined, like [[bold with [/ italic]]] inside.";
                 const result2 = ScrapboxFormatter.formatToHtml(input2);
-                expect(result2).toContain("Formats can be combined, like <strong>bold with <em>italic</em></strong> inside.");
+                expect(result2).toContain(
+                    "Formats can be combined, like <strong>bold with <em>italic</em></strong> inside.",
+                );
                 expect(result2).not.toContain('class="internal-link');
             });
         });
