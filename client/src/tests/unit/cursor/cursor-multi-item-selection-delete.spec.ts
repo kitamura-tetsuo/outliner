@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Regression test for https://github.com/kitamura-tetsuo/outliner/issues/3357
 //
@@ -88,6 +88,14 @@ function addChild(parentItem: FakeItem, child: FakeItem) {
 
 describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     let root: FakeItem, item1: FakeItem, item2: FakeItem, item3: FakeItem, item4: FakeItem;
+    let editor: CursorEditor | undefined;
+
+    afterEach(() => {
+        // deleteMultiItemSelection schedules a cursor-visibility recovery timer;
+        // cancel it so it doesn't fire after this test's jsdom environment is torn down.
+        editor?.destroy();
+        editor = undefined;
+    });
 
     beforeEach(() => {
         root = new FakeItem("root", "Title");
@@ -112,7 +120,7 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             applyToStore: vi.fn(),
             findTarget: () => item2 as unknown as Item,
         };
-        const editor = new CursorEditor(cursorCtx);
+        editor = new CursorEditor(cursorCtx);
 
         editor.deleteMultiItemSelection({
             startItemId: item2.id,
@@ -139,7 +147,7 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             applyToStore: vi.fn(),
             findTarget: () => item2 as unknown as Item,
         };
-        const editor = new CursorEditor(cursorCtx);
+        editor = new CursorEditor(cursorCtx);
 
         editor.deleteMultiItemSelection({
             startItemId: item2.id,

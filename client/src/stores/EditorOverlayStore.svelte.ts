@@ -411,6 +411,7 @@ export class EditorOverlayStore {
     removeCursor(cursorId: string) {
         const removed = this.cursors[cursorId];
         // Delete instance from Map
+        this.cursorInstances.get(cursorId)?.destroy();
         this.cursorInstances.delete(cursorId);
         // Remove from reactive state as well
         const newCursors = { ...this.cursors };
@@ -779,6 +780,7 @@ export class EditorOverlayStore {
             if (cursorIdsToRemove.length > 0) {
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.get(id)?.destroy();
                     this.cursorInstances.delete(id);
                 });
 
@@ -806,6 +808,7 @@ export class EditorOverlayStore {
             if (cursorIdsToRemove.length > 0) {
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.get(id)?.destroy();
                     this.cursorInstances.delete(id);
                 });
             }
@@ -994,6 +997,7 @@ export class EditorOverlayStore {
         if (cursorIdsToRemove.length > 0) {
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.get(id)?.destroy();
                 this.cursorInstances.delete(id);
             });
 
@@ -1105,6 +1109,7 @@ export class EditorOverlayStore {
         if (cursorIdsToRemove.length > 0) {
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.get(id)?.destroy();
                 this.cursorInstances.delete(id);
             });
 
