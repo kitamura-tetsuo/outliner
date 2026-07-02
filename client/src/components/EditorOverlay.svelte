@@ -166,7 +166,15 @@ function updateTextareaPosition() {
             return;
         }
 
-        const pos = calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset);
+        // During IME composition the cursor sits at the end of the in-progress
+        // composition text, while the OS anchors the candidate window to the
+        // caret inside the textarea (also at the end of the composed text).
+        // Anchor the textarea at the composition start so the candidate window
+        // does not drift right as characters are typed.
+        const anchorOffset = store.isComposing
+            ? Math.max(0, lastCursor.offset - store.compositionLength)
+            : lastCursor.offset;
+        const pos = calculateCursorPixelPosition(lastCursor.itemId, anchorOffset);
         if (!pos) {
             debouncedUpdatePositionMap();
             return;
