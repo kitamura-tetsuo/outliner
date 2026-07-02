@@ -1982,6 +1982,10 @@ export function setSelectionPosition(start: number, end: number = start) {
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
     class="outliner-item"
+    role="treeitem"
+    aria-level={depth}
+    aria-expanded={hasChildren ? !isCollapsed : undefined}
+    aria-selected={isItemActive}
     class:page-title={isPageTitle}
     style={"margin-left: " + (depth <= 1 ? 0 : (depth - 1) * 20) + "px"}
     onclick={handleClick}
@@ -2041,6 +2045,9 @@ export function setSelectionPosition(start: number, end: number = start) {
             {:else}
                 <span
                     class="bullet drag-handle"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Drag handle"
                     draggable={!isReadOnly}
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}

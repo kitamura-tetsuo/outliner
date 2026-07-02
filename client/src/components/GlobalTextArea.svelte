@@ -439,8 +439,15 @@ function handleBlur(event: FocusEvent) {
     left: 0;
     width: 1px;
     height: 1px;
-    opacity: 0;
-    pointer-events: none;
+    opacity: 1;
+    color: transparent;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    outline: none;
+    overflow: hidden;
+    resize: none;
 }
 :global(.ime-input) {
     z-index: 10;

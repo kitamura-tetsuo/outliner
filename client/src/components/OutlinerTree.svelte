@@ -2081,7 +2081,7 @@
 
         <div
             class="tree-container"
-            role="region"
+            role="tree"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
             ondrop={handleTreeDrop}
