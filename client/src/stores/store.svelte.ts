@@ -231,7 +231,9 @@ export class GeneralStore {
         if (this.undoManager) {
             this.undoManager.destroy();
         }
+        /* eslint-disable svelte/prefer-svelte-reactivity -- Y.UndoManager internally uses standard Set which is required by its API */
         this.undoManager = new Y.UndoManager(v.ydoc.getMap("orderedTree"), { trackedOrigins: new Set([null]) });
+        /* eslint-enable svelte/prefer-svelte-reactivity */
 
         // Build initial cache
         this._rebuildPageNamesCache();
