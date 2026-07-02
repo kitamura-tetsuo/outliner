@@ -2108,6 +2108,7 @@
         <div
             class="tree-container"
             role="tree"
+            tabindex="0"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
             ondrop={handleTreeDrop}
