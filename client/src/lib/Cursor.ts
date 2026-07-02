@@ -65,6 +65,14 @@ export class Cursor implements CursorEditingContext {
         this.editor = new CursorEditor(this);
     }
 
+    // Cancels any pending async work owned by this cursor's editor (e.g. the
+    // cursor-visibility recovery retry scheduled by deleteMultiItemSelection).
+    // Must be called whenever a Cursor instance is removed so leaked timers
+    // don't fire after the cursor/DOM they reference is gone.
+    destroy(): void {
+        this.editor.destroy();
+    }
+
     // Recursive search for Item on SharedTree
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
