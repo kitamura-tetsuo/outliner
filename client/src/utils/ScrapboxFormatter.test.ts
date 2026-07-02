@@ -105,6 +105,12 @@ describe("ScrapboxFormatter", () => {
 
     describe("formatToHtml", () => {
         describe("internal links", () => {
+            it("should not contain newline characters in the generated link HTML to prevent pre-wrap layout breakage", () => {
+                const input = "[test-page] and [/project/page]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+                expect(result).not.toContain("\n");
+            });
+
             it("should generate correct HTML for internal links", () => {
                 const input = "[test-page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
