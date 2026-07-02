@@ -209,18 +209,34 @@ interface ProviderSetup {
     dispose: () => void;
 }
 
+interface SetupProviderOptions {
+    /** Set the local awareness "user" field from the current user. */
+    setAwarenessUser?: boolean;
+    /** Bind awareness changes to the presence store. */
+    bindPresence?: boolean;
+    /** Re-send the auth token / reconnect when the Firebase auth state changes. */
+    attachTokenRefreshHook?: boolean;
+}
+
 /**
  * Single source of truth for setting up a Hocuspocus connection for a room: persistence,
  * token acquisition/refresh, provider construction, and event wiring. Every entry point in
  * this file (createProjectConnection, connectProjectDoc, createMinimalProjectConnection)
  * delegates here so their behavior can't drift, in particular around fatal auth close codes.
+ *
+ * Presence binding and the token-refresh hook are opt-in (rather than always on) because
+ * createMinimalProjectConnection is deliberately a bare, low-level connection used by tests;
+ * pulling in the full presence/auth-refresh machinery there raced with the connection's own
+ * initial handshake and made those tests time out.
  */
 async function setupProviderForRoom(
     projectId: string,
     room: string,
     doc: Y.Doc,
     label: string,
+    options: SetupProviderOptions = {},
 ): Promise<ProviderSetup> {
+    const { setAwarenessUser = false, bindPresence = false, attachTokenRefreshHook = false } = options;
     const isDemo = projectId === "demo";
     let forceTokenRefresh = false;
 
@@ -286,7 +302,7 @@ async function setupProviderForRoom(
     const awareness = provider.awareness;
     attachConnDebug(room, provider, awareness, doc);
 
-    const current = userManager.getCurrentUser();
+    const current = setAwarenessUser ? userManager.getCurrentUser() : null;
     if (current && awareness) {
         awareness.setLocalStateField("user", {
             userId: current.id,
@@ -295,8 +311,10 @@ async function setupProviderForRoom(
         });
     }
 
-    const unbindPresence = awareness ? yjsService.bindProjectPresence(awareness) : undefined;
-    const unsubTokenRefresh = isDemo ? undefined : attachTokenRefresh(provider as TokenRefreshableProvider);
+    const unbindPresence = bindPresence && awareness ? yjsService.bindProjectPresence(awareness) : undefined;
+    const unsubTokenRefresh = attachTokenRefreshHook && !isDemo
+        ? attachTokenRefresh(provider as TokenRefreshableProvider)
+        : undefined;
 
     const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
         return new Promise((resolve, reject) => {
@@ -373,6 +391,7 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         room,
         doc,
         "createProjectConnection",
+        { setAwarenessUser: true, bindPresence: true, attachTokenRefreshHook: true },
     );
 
     // Wait for initial project sync to complete (or time out) before connecting pages.
@@ -397,7 +416,10 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     const room = projectRoomPath(projectId);
     await attachIndexedDbPersistence(room, doc);
 
-    const { provider, awareness } = await setupProviderForRoom(projectId, room, doc, "connectProjectDoc");
+    const { provider, awareness } = await setupProviderForRoom(projectId, room, doc, "connectProjectDoc", {
+        setAwarenessUser: true,
+        attachTokenRefreshHook: true,
+    });
     return { provider, awareness };
 }
 
