@@ -32,7 +32,7 @@ describe("Demo seed content", () => {
     it("creates one top-level page per template entry, in template order", () => {
         const pageTitles = childTexts(project.items);
         expect(pageTitles).to.deep.equal(demoPages.map(p => p.title));
-        expect(pageTitles.length).to.be.greaterThanOrEqual(8);
+        expect(pageTitles.length).to.be.greaterThanOrEqual(7);
     });
 
     it("seeds the landing page with internal links to every feature page", () => {
@@ -62,17 +62,6 @@ describe("Demo seed content", () => {
 
         const child = findChildByText(parent!.items, "Child item");
         expect(childTexts(child!.items)).to.deep.equal(["Grandchild item"]);
-    });
-
-    it("seeds checkbox items on the tasks page", () => {
-        const tasks = findChildByText(project.items, "Checkboxes and Tasks");
-        expect(tasks).to.not.equal(undefined);
-
-        const list = findChildByText(tasks!.items, "Shopping list:");
-        expect(list).to.not.equal(undefined);
-
-        const entries = childTexts(list!.items);
-        expect(entries).to.deep.equal(["[x] Milk", "[x] Bread", "[ ] Eggs", "[ ] Coffee"]);
     });
 
     it("seeds formatting examples covering bold, italic, strike-through and code", () => {

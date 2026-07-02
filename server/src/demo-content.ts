@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 6;
+export const DEMO_TEMPLATE_VERSION = 7;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -76,7 +76,6 @@ export const demoPages: DemoPageTemplate[] = [
             "Feature tour:",
             "  [Formatting]: bold, italic, strike-through, code, and links.",
             "  [Outliner Basics]: items, indentation, and keyboard navigation.",
-            "  [Checkboxes and Tasks]: interactive checklists with completion status.",
             "  [Internal Links]: linking between pages, backlinks, and the graph view.",
             "  [Search and Commands]: full-text search and the inline command palette.",
             "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
@@ -120,20 +119,6 @@ export const demoPages: DemoPageTemplate[] = [
         ],
     },
     {
-        title: "Checkboxes and Tasks",
-        lines: [
-            "Type [ ] at the start of an item to turn it into a checkbox.",
-            "Click a checkbox to toggle it. Parent items reflect the completion status of their children.",
-            "Shopping list:",
-            "  [x] Milk",
-            "  [x] Bread",
-            "  [ ] Eggs",
-            "  [ ] Coffee",
-            "Your turn:",
-            "  [ ] Try checking this box",
-        ],
-    },
-    {
         title: "Internal Links",
         lines: [
             "Link to another page by writing its name in brackets, like [Formatting].",
@@ -141,7 +126,7 @@ export const demoPages: DemoPageTemplate[] = [
             "You can also link to a page in another project with [/project/page] syntax.",
             "Backlinks: pages that link to the current page are listed in the backlink panel at the bottom.",
             "The graph view visualizes how the pages of a project are connected.",
-            "More links to explore: [Outliner Basics], [Checkboxes and Tasks], [Collaboration]",
+            "More links to explore: [Outliner Basics], [Collaboration]",
         ],
     },
     {
