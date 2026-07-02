@@ -1,0 +1,19 @@
+id: FTR-41ab5daf
+title: Accessible outline tree semantics
+title-ja: アクセシブルなアウトライン・ツリーのセマンティクス
+description: 'The outliner tree exposes standard ARIA tree semantics so screen readers and other assistive technology can understand the outline''s structure. The tree container has role="tree"; each non-title item has role="treeitem" with aria-level (nesting depth), aria-expanded (for items with children), aria-selected (reflecting the currently active/editing item), and aria-setsize/aria-posinset (position among siblings). A keyboard/accessibility help section documents non-pointer alternatives to drag-and-drop reordering (Tab/Shift+Tab to indent/outdent, Alt+ArrowUp/ArrowDown to move an item and its subtree among siblings).
+
+  '
+category: accessibility
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerTree.svelte
+tests:
+- client/e2e/core/a11y-outline-tree-semantics-41ab5daf.spec.ts
+acceptance:
+- A visible "Keyboard & accessibility help" details/summary section documents Tab/Shift+Tab indent-outdent and Alt+ArrowUp/ArrowDown move-item shortcuts as alternatives to drag-and-drop reordering
+- An item with children has aria-expanded reflecting its collapsed/expanded state, updated when the collapse chevron is toggled
+- Each non-title outline item has role="treeitem" and an aria-level matching its nesting depth
+- The active (editing) item has aria-selected="true"; others have aria-selected="false"
+- The outline's ".tree-container" element has role="tree"

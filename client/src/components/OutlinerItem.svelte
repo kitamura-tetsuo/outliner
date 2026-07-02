@@ -198,6 +198,8 @@ interface Props {
     hasChildren?: boolean;
     isPageTitle?: boolean;
     index: number;
+    ariaSetSize?: number;
+    ariaPosInSet?: number;
 }
 
 let {
@@ -209,6 +211,8 @@ let {
     hasChildren = false,
     isPageTitle = false,
     index,
+    ariaSetSize,
+    ariaPosInSet,
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
@@ -1988,6 +1992,13 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
+
+    role={isPageTitle ? undefined : "treeitem"}
+    aria-level={isPageTitle ? undefined : depth}
+    aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
+    aria-selected={isPageTitle ? undefined : isItemActive}
+    aria-setsize={isPageTitle ? undefined : ariaSetSize}
+    aria-posinset={isPageTitle ? undefined : ariaPosInSet}
 
     bind:this={itemRef}
     data-item-id={model.id}
