@@ -202,7 +202,14 @@ function updateTextareaPosition() {
             const scrollPos = store.isComposing
                 ? (calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset) || pos)
                 : pos;
-            const viewportTop = treeContainerRect.top + scrollPos.top;
+            // treeContainerRect.top and scrollPos.top are both viewport-relative, so their
+            // sum is viewport-relative too. Add window.scrollY to convert to an absolute
+            // document position, matching the textarea positioning above (line 190) — the
+            // comparisons below subtract window.scrollY back out, and window.scrollTo()
+            // expects an absolute target, so without this the calculation silently
+            // under-counts by exactly the current scroll offset and never triggers once
+            // the page has already scrolled any meaningful distance.
+            const viewportTop = treeContainerRect.top + scrollPos.top + window.scrollY;
             const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
