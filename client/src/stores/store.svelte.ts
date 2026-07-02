@@ -321,6 +321,15 @@ export class GeneralStore {
 
 export const store = $state(new GeneralStore());
 
+// Y.Docs backing provisional (pre-connection) projects, so yjsStore can tell when a
+// project being replaced was never actually bound to the server and warn if it held
+// edits that are about to be discarded, instead of swapping silently.
+const provisionalDocs = new WeakSet<Y.Doc>();
+
+export function isProvisionalProject(project: Project | undefined): boolean {
+    return !!project?.ydoc && provisionalDocs.has(project.ydoc);
+}
+
 // Make it globally accessible (to be accessed from ScrapboxFormatter.ts)
 if (typeof window !== "undefined") {
     (window as unknown as { appStore: GeneralStore; }).appStore = store;
@@ -332,7 +341,9 @@ if (typeof window !== "undefined") {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
             const title = decodeURIComponent(parts[0] || "Untitled Project");
-            (store as { project: Project; }).project = Project.createInstance(title);
+            const provisional = Project.createInstance(title);
+            provisionalDocs.add(provisional.ydoc);
+            (store as { project: Project; }).project = provisional;
             logger.debug("INIT: Provisional Project set in store.svelte.ts", { title });
         }
     } catch {
