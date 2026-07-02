@@ -11,8 +11,13 @@ interface YTreeWithMove extends YTree {
 
 function childrenKeys(tree: YTree, parentKey: string): string[] {
     if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return [];
-    const children = tree.getNodeChildrenFromKey(parentKey);
-    return tree.sortChildrenByOrder(children, parentKey);
+    try {
+        const children = tree.getNodeChildrenFromKey(parentKey);
+        return tree.sortChildrenByOrder(children, parentKey);
+    } catch (e) {
+        console.warn("[service] childrenKeys error fetching children for parentKey:", parentKey, e);
+        return [];
+    }
 }
 
 function resolveOverlayStore(): typeof editorOverlayStore | undefined {
