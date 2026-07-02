@@ -77,6 +77,21 @@ describe("yjsService", () => {
             const expectedId = stableIdFromTitle("TestProject");
             expect((reloadedClient as unknown as MockClient).doc.guid.startsWith(expectedId)).toBe(true);
         });
+
+        it("does not seed the placeholder project title with a raw UUID when falling back to UUID-as-ID resolution", async () => {
+            // Regression test: navigating with a project name that is actually a
+            // container UUID (e.g. `/4a934322-05de-4c97-932c-bc87fb43e18c`, which can
+            // happen for projects whose Yjs metadata never had a friendly title set)
+            // must not produce a Project whose .title is the UUID itself. Otherwise
+            // page-list/sidebar links built from project.title would render UUIDs
+            // instead of human-readable names.
+            const uuid = "4a934322-05de-4c97-932c-bc87fb43e18c";
+            const client = await getClientByProjectTitle(uuid);
+
+            expect(client).toBeDefined();
+            type MockClient = { project: { title: string; }; };
+            expect((client as unknown as MockClient).project.title).not.toBe(uuid);
+        });
     });
 
     describe("deleteProject", () => {
