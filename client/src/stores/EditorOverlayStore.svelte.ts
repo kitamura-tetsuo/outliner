@@ -72,6 +72,10 @@ export class EditorOverlayStore {
     animationPaused = $state<boolean>(false);
     // IME composition state
     isComposing = $state<boolean>(false);
+    // Character length of the in-progress IME composition text.
+    // The cursor sits at the end of the composition, so subtracting this
+    // length yields the composition start offset (candidate window anchor).
+    compositionLength = 0;
     // Holds the textarea element of GlobalTextArea
     textareaRef: HTMLTextAreaElement | null = null;
     // onEdit callback
@@ -407,6 +411,7 @@ export class EditorOverlayStore {
     removeCursor(cursorId: string) {
         const removed = this.cursors[cursorId];
         // Delete instance from Map
+        this.cursorInstances.get(cursorId)?.destroy();
         this.cursorInstances.delete(cursorId);
         // Remove from reactive state as well
         const newCursors = { ...this.cursors };
@@ -678,7 +683,14 @@ export class EditorOverlayStore {
 
     setIsComposing(value: boolean) {
         this.isComposing = value;
+        if (!value) {
+            this.compositionLength = 0;
+        }
         this.notifyChange();
+    }
+
+    setCompositionLength(length: number) {
+        this.compositionLength = length;
     }
 
     getIsComposing(): boolean {
@@ -768,6 +780,7 @@ export class EditorOverlayStore {
             if (cursorIdsToRemove.length > 0) {
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.get(id)?.destroy();
                     this.cursorInstances.delete(id);
                 });
 
@@ -795,6 +808,7 @@ export class EditorOverlayStore {
             if (cursorIdsToRemove.length > 0) {
                 // Delete instance from Map
                 cursorIdsToRemove.forEach(id => {
+                    this.cursorInstances.get(id)?.destroy();
                     this.cursorInstances.delete(id);
                 });
             }
@@ -983,6 +997,7 @@ export class EditorOverlayStore {
         if (cursorIdsToRemove.length > 0) {
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.get(id)?.destroy();
                 this.cursorInstances.delete(id);
             });
 
@@ -1094,6 +1109,7 @@ export class EditorOverlayStore {
         if (cursorIdsToRemove.length > 0) {
             // Delete instance from Map
             cursorIdsToRemove.forEach(id => {
+                this.cursorInstances.get(id)?.destroy();
                 this.cursorInstances.delete(id);
             });
 

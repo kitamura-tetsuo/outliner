@@ -29,6 +29,9 @@
         const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
             ? items.iterateUnordered()
             : items;
+
+        if (!iter || typeof iter[Symbol.iterator] !== "function") return undefined;
+
         for (const item of iter) {
             if (!item) continue;
             const text = item.text;
@@ -110,7 +113,7 @@
         if (!isLoading && !error && store.currentPage && store.project) {
             const latestPage = findPage(pageName);
             // If the page was recreated (new instance with the same name), update currentPage
-            if (latestPage && latestPage !== store.currentPage) {
+            if (latestPage && latestPage.key !== store.currentPage.key) {
                 logger.info(`Page instance changed for "${pageName}", updating currentPage`);
                 store.currentPage = latestPage;
             }
@@ -160,14 +163,12 @@
         </p>
     </div>
 
-    {#if isLoading}
+    {#if isLoading && !store.currentPage}
         <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
-    {/if}
-
-    {#if error}
+    {:else if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -189,7 +190,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !error && pageNotFound}
+    {:else if pageNotFound}
         <div class="rounded-md bg-yellow-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -203,7 +204,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !error && store.currentPage}
+    {:else if store.currentPage}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}
@@ -222,6 +223,7 @@
         isVisible={isSearchPanelVisible}
         pageItem={store.currentPage}
         project={store.project}
+        onclose={() => { if (isSearchPanelVisible) toggleSearchPanel(); }}
     />
 </main>
 

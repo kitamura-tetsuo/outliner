@@ -363,7 +363,10 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
         const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
 
         if (userId) {
-            const project = Project.createInstance(projectId);
+            // Do not seed the placeholder title with the raw UUID: YjsClient.connect()
+            // persists a non-empty title into the real document's metadata when none
+            // is set yet, which would permanently bake the UUID in as the project title.
+            const project = Project.createInstance("");
             const client = await YjsClient.connect(projectId, project);
             registry.set(keyFor(userId, projectId), [client, project]);
             return client;

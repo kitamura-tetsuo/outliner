@@ -8,3 +8,4 @@ tests:
 - client/e2e/core/ime-candidate-window-repositions-after-composition-end-1e01279f.spec.ts
 acceptance:
 - Hidden textarea position does not update between compositionstart and compositionend
+- Hidden textarea stays anchored at the composition start offset, so the OS candidate window does not drift rightwards as characters are typed

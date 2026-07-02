@@ -223,6 +223,10 @@ let lastCursorPosition = $state(0);
 // Drag related state
 let isDragging = $state(false);
 let dragStartPosition = $state(0);
+// True while this item is the source of a native item-move drag (started from the drag handle)
+let isDragSource = $state(false);
+// True while a text-selection drag that started on this item is in progress
+let selectionDragStartedHere = false;
 
 let isDropTarget = $state(false);
 let dropTargetPosition = $state<"top" | "middle" | "bottom" | null>(null);
@@ -917,7 +921,12 @@ function updateSelectionAndCursor() {
             userId: "local",
         });
 
-        // Set selection range
+        // Replace previous local drag selections instead of accumulating them,
+        // but keep box selections (Alt+Shift) created by this gesture intact
+        const remainingEntries = Object.entries(editorOverlayStore.selections).filter(
+            ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
+        );
+        editorOverlayStore.selections = Object.fromEntries(remainingEntries);
         editorOverlayStore.setSelection({
             startItemId: model.id,
             endItemId: model.id,
@@ -1152,11 +1161,19 @@ function handleMouseDown(event: MouseEvent) {
         return;
     }
 
-    // Normal mousedown: prepare for drag start
+    // Normal mousedown: prepare for text-selection drag start
     const clickPosition = getClickPosition(event, textString);
     dragStartPosition = clickPosition;
     dragStartClientX = event.clientX;
     dragStartClientY = event.clientY;
+    selectionDragStartedHere = true;
+
+    // Notify the tree so cross-item selection can track the start point
+    dispatch("drag-start", {
+        itemId: model.id,
+        offset: clickPosition,
+        selection: null,
+    });
 
     // Start edit mode
     if (!hasCursorBasedOnState()) {
@@ -1173,21 +1190,32 @@ function handleMouseMove(event: MouseEvent) {
     // Ignore if left button is not pressed
     if (event.buttons !== 1) return;
 
-    // Ignore if not editing
-    if (!hasCursorBasedOnState()) return;
+    // Rectangular selection (box selection) if Alt+Shift+Drag.
+    // Handled by the item that has the cursor, independent of where the drag started.
+    if (event.altKey && event.shiftKey) {
+        if (!hasCursorBasedOnState()) return;
+        isDragging = true;
+        handleBoxSelection(event, getClickPosition(event, textString));
+        return;
+    }
+
+    // Text-selection drag that started on another item (or left this item once):
+    // report the position to the tree so it can extend the selection across items
+    // (text-editor-like behavior). The tree ignores this unless a drag is active.
+    if (!selectionDragStartedHere || !hasCursorBasedOnState()) {
+        const crossPosition = getClickPosition(event, textString);
+        dispatch("drag", {
+            itemId: model.id,
+            offset: crossPosition,
+        });
+        return;
+    }
 
     // Set dragging flag
     isDragging = true;
 
     // Get current mouse position
     const currentPosition = getClickPosition(event, textString);
-
-    // Rectangular selection (box selection) if Alt+Shift+Drag
-    if (event.altKey && event.shiftKey) {
-        // Box selection processing
-        handleBoxSelection(event, currentPosition);
-        return;
-    }
 
     // Update normal selection range
     if (hiddenTextareaRef) {
@@ -1202,7 +1230,9 @@ function handleMouseMove(event: MouseEvent) {
             isReversed ? "backward" : "forward",
         );
 
-        // Reflect selection range to store
+        // Reflect selection range to store (replace the previous drag selection
+        // instead of accumulating one selection per mousemove)
+        editorOverlayStore.clearSelectionForUser("local");
         editorOverlayStore.setSelection({
             startItemId: model.id,
             startOffset: start,
@@ -1427,6 +1457,8 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
  * Mouseup handling: End drag
  */
 function handleMouseUp() {
+    selectionDragStartedHere = false;
+
     // Ignore if not dragging
     if (!isDragging) return;
 
@@ -1451,41 +1483,25 @@ function handleMouseUp() {
  * @param event Drag event
  */
 function handleDragStart(event: DragEvent) {
-    // Drag selection range if exists
-    const selection = Object.values(editorOverlayStore.selections).find(s =>
-        s.userId === "local" && (s.startItemId === model.id || s.endItemId === model.id)
-    );
-
-    if (selection) {
-        // Get text of selection range
-        const selectedText = editorOverlayStore.getSelectedText("local");
-
-        // Set drag data
-        if (event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", selectedText);
-            event.dataTransfer.setData("application/x-outliner-selection", JSON.stringify(selection));
-            event.dataTransfer.effectAllowed = "move";
-        }
-
-        // Set dragging flag
-        isDragging = true;
+    // Item move is only initiated from the drag handle (left bullet/chevron),
+    // so it always drags the entire item.
+    if (event.dataTransfer) {
+        event.dataTransfer.setData("text/plain", textString);
+        event.dataTransfer.setData("application/x-outliner-item", model.id);
+        event.dataTransfer.effectAllowed = "move";
+        // Use the whole item row as the drag image for clearer feedback
+        try {
+            if (itemRef) event.dataTransfer.setDragImage(itemRef, 0, 0);
+        } catch {}
     }
-    else {
-        // Drag text of single item
-        if (event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", textString);
-            event.dataTransfer.setData("application/x-outliner-item", model.id);
-            event.dataTransfer.effectAllowed = "move";
-        }
 
-        // Set dragging flag
-        isDragging = true;
-    }
+    // Set drag source flag (drives the visual "dragging" state)
+    isDragSource = true;
 
     // Fire drag start event
     dispatch("drag-start", {
         itemId: model.id,
-        selection: selection || null,
+        selection: null,
     });
 }
 
@@ -1904,17 +1920,40 @@ onMount(() => {
  * Drag end handling
  */
 function handleDragEnd() {
-    // Clear dragging flag
+    // Clear dragging flags
     isDragging = false;
+    isDragSource = false;
 
-
-
+    // Clear any leftover drop indicator on this item
+    isDropTarget = false;
+    dropTargetPosition = null;
 
     // Fire drag end event
     dispatch("drag-end", {
         itemId: model.id,
     });
 }
+
+// Global cleanup: drag effects must never outlive the drag/mouse gesture.
+// dragend fires on the source only, so other items clear their indicators here;
+// mouseup may happen outside this item, so the selection-drag flags are cleared globally.
+onMount(() => {
+    const clearDragIndicators = () => {
+        isDragSource = false;
+        isDropTarget = false;
+        dropTargetPosition = null;
+    };
+    const endSelectionDrag = () => {
+        selectionDragStartedHere = false;
+        isDragging = false;
+    };
+    window.addEventListener("dragend", clearDragIndicators);
+    window.addEventListener("mouseup", endSelectionDrag);
+    return () => {
+        window.removeEventListener("dragend", clearDragIndicators);
+        window.removeEventListener("mouseup", endSelectionDrag);
+    };
+});
 
 // Internal link click event handler removed
 // Handle internal links using SvelteKit routing
@@ -1970,11 +2009,15 @@ export function setSelectionPosition(start: number, end: number = start) {
         {#if !isPageTitle}
             {#if hasChildren}
                 <button type="button"
-                    class="collapse-btn"
+                    class="collapse-btn drag-handle"
                     onclick={toggleCollapse}
                     title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
                     aria-expanded={!isCollapsed}
+                    draggable={!isReadOnly}
+                    ondragstart={handleDragStart}
+                    ondragend={handleDragEnd}
+                    onmousedown={(e) => { e.stopPropagation(); }}
                 >
                     <svg
                         class="chevron-icon"
@@ -1996,7 +2039,13 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </svg>
                 </button>
             {:else}
-                <span class="bullet">•</span>
+                <span
+                    class="bullet drag-handle"
+                    draggable={!isReadOnly}
+                    ondragstart={handleDragStart}
+                    ondragend={handleDragEnd}
+                    onmousedown={(e) => { e.stopPropagation(); }}
+                >•</span>
             {/if}
         {/if}
 
@@ -2006,18 +2055,15 @@ export function setSelectionPosition(start: number, end: number = start) {
                 bind:this={displayRef}
                 class="item-content"
                 class:page-title-content={isPageTitle}
-                class:dragging={isDragging}
+                class:dragging={isDragSource}
                 class:drop-target={isDropTarget}
                 class:drop-target-top={isDropTarget && dropTargetPosition === "top"}
                 class:drop-target-bottom={isDropTarget && dropTargetPosition === "bottom"}
                 class:drop-target-middle={isDropTarget && dropTargetPosition === "middle"}
-                draggable={!isReadOnly}
-                ondragstart={handleDragStart}
                 ondragover={handleDragOver}
                 ondragenter={handleDragEnter}
                 ondragleave={handleDragLeave}
                 ondrop={handleDrop}
-                ondragend={handleDragEnd}
                 onclick={handleContentClick}
             >
                 <!-- Text display (hidden when component is displayed) -->
@@ -2084,18 +2130,28 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </div>
                 {/if}
 
-                <!-- Component display (text is hidden) -->
-                {#if (componentType ?? compTypeValue) === "table"}
-                    <InlineJoinTable />
-                {:else if (componentType ?? compTypeValue) === "sqltable"}
-                    <SqlTableGrid item={model.original} />
-                {:else if (componentType ?? compTypeValue) === "chart"}
-                    <ChartQueryEditor item={model.original} />
-                    <ChartPanel item={model.original} />
-                {/if}
-                <!-- Alias display -->
+            </div>
+
+            <!-- Alias display -->
+            <div class="component-wrapper">
                 <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
             </div>
+
+            <!-- Component display -->
+            {#if (componentType ?? compTypeValue) === "table"}
+                <div class="component-wrapper">
+                    <InlineJoinTable />
+                </div>
+            {:else if (componentType ?? compTypeValue) === "sqltable"}
+                <div class="component-wrapper">
+                    <SqlTableGrid item={model.original} />
+                </div>
+            {:else if (componentType ?? compTypeValue) === "chart"}
+                <div class="component-wrapper">
+                    <ChartQueryEditor item={model.original} />
+                    <ChartPanel item={model.original} />
+                </div>
+            {/if}
         </div>
 
         {#if !isPageTitle}
@@ -2194,6 +2250,14 @@ export function setSelectionPosition(start: number, end: number = start) {
     justify-content: center;
 }
 
+.drag-handle {
+    cursor: grab;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 .chevron-icon {
     transition: transform 0.2s ease;
     transform: rotate(0deg); /* Expanded state (down) */
@@ -2209,6 +2273,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     min-width: 0;
     display: flex;
     flex-direction: column;
+}
+
+.component-wrapper {
+    margin-top: 4px;
+    width: 100%;
 }
 
 .item-content {

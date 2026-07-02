@@ -100,6 +100,7 @@ vi.mock("$app/stores", async () => {
             url: {
                 pathname: "/Test%20Project/Test%20Page%201",
             },
+            params: {},
         }),
     };
 });
@@ -312,6 +313,35 @@ describe("Sidebar", () => {
             expect(pageItem).toBeInTheDocument();
             // Assuming resolve returns the path directly in test env (standard SvelteKit mock behavior or actual implementation)
             expect(pageItem).toHaveAttribute("href", "/Test%20Project/Test%20Page%201");
+        });
+
+        it("uses the routed project name, not a UUID-corrupted store.project.title, for page hrefs", async () => {
+            // Regression test: for projects whose Yjs metadata.title was never set
+            // (e.g. created via a CLI/script), store.project.title can end up holding
+            // the raw container UUID. Sidebar must still build page links from the
+            // project name in the current route, not the corrupted title.
+            const appStores = await import("$app/stores");
+            const { readable } = await import("svelte/store");
+            const originalPage = appStores.page;
+            const originalProject = store.project;
+            vi.mocked(appStores).page = readable({
+                url: { pathname: "/tetsuo/Test%20Page%201" },
+                params: { project: "tetsuo" },
+            }) as unknown as typeof appStores.page;
+
+            store.project = {
+                title: "4a934322-05de-4c97-932c-bc87fb43e18c",
+            } as unknown as Project;
+
+            try {
+                render(Sidebar, { isOpen: true });
+
+                const pageItem = screen.getByText("Test Page 1").closest("a");
+                expect(pageItem).toHaveAttribute("href", "/tetsuo/Test%20Page%201");
+            } finally {
+                vi.mocked(appStores).page = originalPage;
+                if (originalProject) store.project = originalProject;
+            }
         });
 
         it("should have correct href for settings link", () => {

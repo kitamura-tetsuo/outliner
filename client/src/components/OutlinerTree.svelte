@@ -354,10 +354,16 @@
 
 
         if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return;
-        const siblingKeys: string[] = tree.sortChildrenByOrder(
-            tree.getNodeChildrenFromKey(parentKey),
-            parentKey,
-        );
+        let siblingKeys: string[];
+        try {
+            siblingKeys = tree.sortChildrenByOrder(
+                tree.getNodeChildrenFromKey(parentKey),
+                parentKey,
+            );
+        } catch (e) {
+            logger.warn({ parentKey, error: e }, "[OutlinerTree] error fetching children for parentKey:");
+            return;
+        }
 
         const siblingOrder = [...siblingKeys];
         const currentIndex = siblingOrder.indexOf(key);
@@ -1214,16 +1220,23 @@
         dragCurrentItemId = null;
     }
 
+    // The mouse button may be released outside the tree (or the window);
+    // reset the drag-selection state globally so it never remains active.
+    onMount(() => {
+        window.addEventListener("mouseup", handleTreeMouseUp);
+        return () => window.removeEventListener("mouseup", handleTreeMouseUp);
+    });
+
     // Item drag start event handler
     function handleItemDragStart(event: CustomEvent) {
         const { itemId, offset } = event.detail;
 
-        // Save drag start info
+        // Save drag start info (native item drags dispatch drag-start without an offset)
         isDragging = true;
         dragStartItemId = itemId;
-        dragStartOffset = offset;
+        dragStartOffset = offset ?? 0;
         dragCurrentItemId = itemId;
-        dragCurrentOffset = offset;
+        dragCurrentOffset = offset ?? 0;
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Drag start: itemId=${itemId}, offset=${offset}`);
@@ -1275,7 +1288,9 @@
         const endItemId = isReversed ? dragStartItemId : dragCurrentItemId;
         const endOffset = isReversed ? dragStartOffset : dragCurrentOffset;
 
-        // Set selection range
+        // Set selection range (replace the previous drag selection instead of
+        // accumulating one selection per mousemove)
+        editorOverlayStore.clearSelectionForUser("local");
         editorOverlayStore.setSelection({
             startItemId,
             startOffset,

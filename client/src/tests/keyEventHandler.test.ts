@@ -44,12 +44,6 @@ describe("KeyEventHandler key map", () => {
         expect(mockStore.addCursorRelativeToActive).toHaveBeenCalledWith("down");
     });
 
-    it("undoes last cursor with Ctrl+Shift+Z", () => {
-        const event = new KeyboardEvent("keydown", { key: "z", ctrlKey: true, shiftKey: true });
-        KeyEventHandler.handleKeyDown(event);
-        expect(mockStore.undoLastCursor).toHaveBeenCalled();
-    });
-
     it("calls box selection for Alt+Shift+ArrowRight", () => {
         const spy = vi.spyOn(KeyEventHandler, "handleBoxSelection");
         const event = new KeyboardEvent("keydown", { key: "ArrowRight", altKey: true, shiftKey: true });

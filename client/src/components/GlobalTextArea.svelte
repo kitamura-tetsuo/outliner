@@ -6,7 +6,7 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { KeyEventHandler } from "../lib/KeyEventHandler";
+import { isForeignInput, KeyEventHandler } from "../lib/KeyEventHandler";
 import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
@@ -77,7 +77,7 @@ onMount(() => {
     }
 
     // Expose KeyEventHandler globally for testing
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
         window.__KEY_EVENT_HANDLER__ = KeyEventHandler;
         window.Items = Items;
         window.generalStore = generalStore;
@@ -86,6 +86,7 @@ onMount(() => {
     // Always forward keys to the picker when the alias picker is visible (independent of focus)
     try {
         const forward = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (!aliasPickerStore.isVisible) return;
             const k = ev.key;
             if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
@@ -107,6 +108,7 @@ onMount(() => {
     // Fallback: Always show palette on slash press (suppressed by KeyEventHandler immediately after internal links)
     try {
         const slashListener = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (ev.key !== "/") return;
             // Do nothing if already visible
             if (window.commandPaletteStore?.isVisible) return;
@@ -122,6 +124,7 @@ onMount(() => {
     // Always record recent key inputs (to detect sequences like /ch)
     try {
         const recordKeys = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
             const k = ev.key;
             if (typeof k === "string" && k.length === 1) {
@@ -135,74 +138,11 @@ onMount(() => {
         window.addEventListener("keydown", recordKeys, { capture: true });
         window.__KEYSTREAM_FWD__ = recordKeys;
     } catch {}
-    // Fallback: Reflect input even if the textarea is not focused
-    try {
-        const typingFallback = (ev: KeyboardEvent) => {
-            try { logger.debug("typingFallback fired:", ev.key, "active=", !!store.getActiveItem()); } catch {}
-            // Ignore during IME composition or with modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection, and Alt+Arrow is allowed for block move)
-            const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
-                (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");
-            const isBlockMoveKey = ev.altKey && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey &&
-                (ev.key === "ArrowUp" || ev.key === "ArrowDown");
-            if (ev.isComposing || (!(isBoxSelectionKey || isBlockMoveKey) && (ev.ctrlKey || ev.metaKey || ev.altKey))) return;
-            // Leave to existing forwarders while alias picker/command palette is visible
-            if (aliasPickerStore.isVisible || window.commandPaletteStore?.isVisible) return;
-
-            const activeId = store.getActiveItem();
-            const ta = textareaRef;
-            // If textarea is already focused, leave it to the normal process
-            if (document.activeElement === ta) return;
-            if (!activeId) return;
-
-            // Single character input
-            const k = ev.key;
-            if (k.length === 1) {
-                const cursors = store.getCursorInstances();
-                try { logger.debug("typingFallback chars:", k, "cursors=", cursors.length); } catch {}
-                if (cursors.length > 0 && ta) {
-                    ev.preventDefault();
-
-                    // Also reflect as actual input in the textarea and fire InputEvent (maintaining normal flow)
-                    const prev = ta.value ?? "";
-                    const selStart = typeof ta.selectionStart === "number" ? ta.selectionStart : prev.length;
-                    const selEnd = typeof ta.selectionEnd === "number" ? ta.selectionEnd : selStart;
-                    ta.value = prev.slice(0, selStart) + k + prev.slice(selEnd);
-                    // Advance caret by one character
-                    try { ta.selectionStart = ta.selectionEnd = selStart + 1; } catch {}
-                    const ie = new InputEvent("input", { data: k, inputType: "insertText", bubbles: true, cancelable: true, composed: true });
-                    ta.dispatchEvent(ie);
-                    store.startCursorBlink();
-                }
-                return;
-            }
-
-            // Simple fallback for Enter / Backspace / Delete
-            const cursors = store.getCursorInstances();
-            if (cursors.length === 0) return;
-            if (k === "Enter") {
-                ev.preventDefault();
-                cursors.forEach(c => c.insertLineBreak());
-                return;
-            }
-            if (k === "Backspace") {
-                ev.preventDefault();
-                cursors.forEach(c => c.deleteBackward());
-                return;
-            }
-            if (k === "Delete") {
-                ev.preventDefault();
-                cursors.forEach(c => c.deleteForward());
-                return;
-            }
-        };
-        window.addEventListener("keydown", typingFallback, { capture: true });
-        window.__TYPING_FWD__ = typingFallback;
-    } catch {}
-
 
     // Fallback: Directly forward character input/movement/confirmation from global keydown while palette is visible
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             const cps = window.commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
             const k = ev.key;
@@ -264,6 +204,7 @@ onMount(() => {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
             // Respect if already handled elsewhere
             if (ev.defaultPrevented) return;
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             // Ignore IME/modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection, and Alt+Arrow is allowed for block move)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");

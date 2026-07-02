@@ -307,6 +307,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // Enter replacement string and replace all
         await page.getByTestId("replace-input").fill("UPDATED");
+        page.once("dialog", dialog => dialog.accept());
         try {
             await page.getByTestId("replace-all-button").click({ timeout: 2000 });
         } catch (e) {

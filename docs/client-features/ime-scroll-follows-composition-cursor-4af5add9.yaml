@@ -1,0 +1,10 @@
+id: IME-0005
+title: Auto-scroll follows the real cursor position during IME composition
+title-ja: IME変換中もスクロールが実際のカーソル位置に追従する
+category: input-method
+status: implemented
+tests:
+- client/e2e/core/ime-scroll-follows-composition-cursor-4af5add9.spec.ts
+acceptance:
+- If typing during composition wraps the item onto a new line below the viewport, the page auto-scrolls so the newest composed character stays visible instead of remaining hidden below the fold
+- While composing, the hidden textarea stays anchored at the composition start offset (so the candidate window does not drift), but auto-scroll-into-view keeps tracking the real, current cursor offset (composition end)

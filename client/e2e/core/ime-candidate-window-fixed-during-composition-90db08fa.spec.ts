@@ -38,6 +38,7 @@ test.describe("IME-0004: IME candidate globalThis remains fixed during compositi
         await page.waitForTimeout(50);
         const posAfterUpdate = await textarea.evaluate(el => ({ left: el.style.left, top: el.style.top }));
         expect(posAfterUpdate.top).toEqual(initialPos.top);
+        expect(posAfterUpdate.left).toEqual(initialPos.left);
 
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;
@@ -46,6 +47,7 @@ test.describe("IME-0004: IME candidate globalThis remains fixed during compositi
         await page.waitForTimeout(50);
         const posAfterSecond = await textarea.evaluate(el => ({ left: el.style.left, top: el.style.top }));
         expect(posAfterSecond.top).toEqual(initialPos.top);
+        expect(posAfterSecond.left).toEqual(initialPos.left);
 
         await page.evaluate(() => {
             const el = document.querySelector("textarea.global-textarea")!;

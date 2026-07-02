@@ -105,6 +105,12 @@ describe("ScrapboxFormatter", () => {
 
     describe("formatToHtml", () => {
         describe("internal links", () => {
+            it("should not contain newline characters in the generated link HTML to prevent pre-wrap layout breakage", () => {
+                const input = "[test-page] and [/project/page]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+                expect(result).not.toContain("\n");
+            });
+
             it("should generate correct HTML for internal links", () => {
                 const input = "[test-page]";
                 const result = ScrapboxFormatter.formatToHtml(input);
@@ -289,6 +295,20 @@ describe("ScrapboxFormatter", () => {
                 expect(result).toContain("</strong>");
                 // Verify that it is not recognized as an internal link
                 expect(result).not.toContain('class="internal-link');
+            });
+
+            it("should correctly format verbatim demo strings", () => {
+                const input1 = "You can make text [/ italic] using a slash bracket.";
+                const result1 = ScrapboxFormatter.formatToHtml(input1);
+                expect(result1).toContain("You can make text <em>italic</em> using a slash bracket.");
+                expect(result1).not.toContain('class="internal-link');
+
+                const input2 = "Formats can be combined, like [[bold with [/ italic]]] inside.";
+                const result2 = ScrapboxFormatter.formatToHtml(input2);
+                expect(result2).toContain(
+                    "Formats can be combined, like <strong>bold with <em>italic</em></strong> inside.",
+                );
+                expect(result2).not.toContain('class="internal-link');
             });
         });
     });

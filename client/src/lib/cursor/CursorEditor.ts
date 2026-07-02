@@ -32,6 +32,18 @@ export interface CursorEditingContext {
 export class CursorEditor {
     constructor(private readonly cursor: CursorEditingContext) {}
 
+    // Pending "cursor visibility recovery" retry scheduled by deleteMultiItemSelection.
+    // Tracked so it can be cancelled on destroy() instead of firing after the owning
+    // Cursor/CursorEditor (and its DOM) has already gone away.
+    private cursorVisibilityRecoveryTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    destroy(): void {
+        if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
+            clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
+            this.cursorVisibilityRecoveryTimeoutId = undefined;
+        }
+    }
+
     private getSelection(): SelectionRange | undefined {
         return getSelectionForUser(this.cursor.userId);
     }
@@ -738,9 +750,13 @@ export class CursorEditor {
                 const id = itemsToRemoveIds[i];
                 const item = searchItem(root as unknown as import("../../schema/yjs-schema").Item, id);
                 if (item) {
-                    const parent = (item as unknown as import("../../schema/app-schema").Item).parent;
+                    // `item.parent` is already the children collection (Items) that
+                    // contains this item, not a node with a nested `.items` property.
+                    const parent = (item as unknown as {
+                        parent?: { indexOf?: (item: unknown) => number; removeAt?: (index: number) => void; };
+                    }).parent;
                     if (parent) {
-                        const idx = typeof parent.indexOf === "function" ? parent.indexOf(item as unknown as import("../../schema/app-schema").Item) : -1;
+                        const idx = typeof parent.indexOf === "function" ? parent.indexOf(item) : -1;
                         if (idx !== -1 && typeof parent.removeAt === "function") {
                             parent.removeAt(idx);
                         }
@@ -757,7 +773,11 @@ export class CursorEditor {
             store.startCursorBlink();
 
             if (typeof window !== "undefined") {
-                setTimeout(() => {
+                if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
+                    clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
+                }
+                this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {
+                    this.cursorVisibilityRecoveryTimeoutId = undefined;
                     const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
                     if (!cursorVisible) {
                         cursor.applyToStore();

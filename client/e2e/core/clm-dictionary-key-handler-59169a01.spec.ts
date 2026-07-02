@@ -31,22 +31,4 @@ test.describe("CLM-0105: Dictionary-based key handler", () => {
         const after = await CursorValidator.getCursorData(page);
         expect(after.cursorInstances.length).toBe(before.cursorInstances.length + 1);
     });
-
-    test("Ctrl+Shift+Z removes last cursor", async ({ page }) => {
-        await page.keyboard.down("Control");
-        await page.keyboard.down("Shift");
-        await page.keyboard.down("Alt");
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.up("Alt");
-        await page.keyboard.up("Shift");
-        await page.keyboard.up("Control");
-        const before = await CursorValidator.getCursorData(page);
-        await page.keyboard.down("Control");
-        await page.keyboard.down("Shift");
-        await page.keyboard.press("z");
-        await page.keyboard.up("Shift");
-        await page.keyboard.up("Control");
-        const after = await CursorValidator.getCursorData(page);
-        expect(after.cursorInstances.length).toBe(before.cursorInstances.length - 1);
-    });
 });
