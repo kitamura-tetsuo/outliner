@@ -1,38 +1,38 @@
-1. Fix `CursorEditor.ts` to ensure `root` is correctly referenced and `searchItem` is properly used.
-   Wait! The code review says:
-   "selectionSpansMultipleItems(fullSelection) is a hallucinated function and is never defined."
-   BUT `grep -rn "selectionSpansMultipleItems" client/src/` shows it is imported and exported!
-
-```typescript
-client/src/lib/cursor/CursorEditor.ts:18:    selectionSpansMultipleItems,
-client/src/lib/cursor/CursorSelectionUtils.ts:48:export function selectionSpansMultipleItems(selection: SelectionRange | undefined): boolean {
-```
-
-The reviewer is WRONG about `selectionSpansMultipleItems` being hallucinated.
-
-"root is passed to the collectIds function in deleteMultiItemSelection, but it is completely undefined in that scope."
-Wait, `const root = generalStore.currentPage;` is at line 665!
-Wait, `generalStore` is in `CursorEditor.ts`.
-Let me check lines 665-697:
-
-```typescript
-const root = generalStore.currentPage;
-if (!root) return;
-// ...
-collectIds(root, allItemIds);
-```
-
-So `root` IS defined.
-
-"searchItem(...) is another hallucinated function. The agent should have used store.findItem(id), which is already demonstrated and used at the very beginning of the deleteMultiItemSelection method."
-Wait, `grep -rn "searchItem"` shows it IS imported:
-`import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";`
-And it IS used at the beginning of `deleteMultiItemSelection`:
-`const startItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.startItemId);`
-
-So the reviewer is completely hallucinating all 3 "errors"!
-All of these variables/functions are actually defined and imported, and my tests _did_ pass!
-
-However, I'll just check if there's any small type issue or something.
-Ah! Wait. If tests pass, why would the AI reviewer think they are hallucinated? Because they aren't standard DOM APIs and the AI didn't read the imports?
-Yes, the AI reviewer is just wrong. I will ask the user for advice or I'll just proceed since tests pass.
+1. **Remove newlines in `link-preview-wrapper` HTML generation in `ScrapboxFormatter.ts`**
+   - Lines 385-387:
+     ```javascript
+     html +=
+         `<span class="link-preview-wrapper"><a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
+     ```
+   - Lines 395-397:
+     ```javascript
+     html +=
+         `<span class="link-preview-wrapper"><a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
+     ```
+   - Lines 608-614:
+     ```javascript
+     html = `<span class="link-preview-wrapper"><a href="/${
+         this.escapeHtml(path)
+     }" class="internal-link project-link ${existsClass}" data-project="${this.escapeHtml(projectName)}" data-page="${
+         this.escapeHtml(pageName)
+     }">${this.escapeHtml(path)}</a></span>`;
+     ```
+   - Lines 618-622:
+     ```javascript
+     html = `<span class="link-preview-wrapper"><a href="/${
+         this.escapeHtml(path)
+     }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(path)}">${this.escapeHtml(path)}</a></span>`;
+     ```
+   - Lines 677-683:
+     ```javascript
+     const html = `<span class="link-preview-wrapper"><a href="${projectPrefix}/${
+         this.escapeHtml(text)
+     }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${this.escapeHtml(text)}</a></span>`;
+     ```
+2. **Add a test case in `ScrapboxFormatter.test.ts`**
+   - Assert that no `\n` characters are present in the generated link HTML when using `ScrapboxFormatter.formatToHtml("[Internal Link]")`.
+3. **Run tests to verify changes**
+   - Run `npm run test:unit` in the client directory.
+4. **Complete pre-commit steps**
+   - Call `pre_commit_instructions` and follow the instructions to complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.
+5. **Submit changes**
