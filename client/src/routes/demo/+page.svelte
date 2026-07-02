@@ -128,14 +128,12 @@
         {/if}
     </div>
 
-    {#if isLoading}
+    {#if isLoading && !store.project}
         <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
         </div>
-    {/if}
-
-    {#if error}
+    {:else if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
