@@ -32,6 +32,7 @@ import {
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
+import { isForeignInput } from "../lib/KeyEventHandler";
 const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
@@ -1000,6 +1001,12 @@ function handleContentClick(e: MouseEvent) {
     const el = e.target as HTMLElement | null;
     if (!el) return;
 
+    // Clicks on foreign inputs (e.g. the comment thread's own input/textarea) must not
+    // trigger item editing or steal focus back to the global textarea.
+    if (isForeignInput(e.target)) {
+        return;
+    }
+
     // Prevent component selector clicks from triggering item editing (focusing textarea)
     // which would immediately close the select dropdown
     if (el.closest('.component-selector') || el.closest('select')) {
@@ -1020,6 +1027,12 @@ function handleContentClick(e: MouseEvent) {
  * @param event Mouse event
  */
 function handleClick(event: MouseEvent) {
+    // Clicks on foreign inputs (e.g. the comment thread's "Add comment" input) must not
+    // steal focus back to the global textarea or move the editor cursor.
+    if (isForeignInput(event.target)) {
+        return;
+    }
+
     // Anchor click: navigate to link without entering edit mode
     if ((event.target as HTMLElement).closest("a")) {
         return;
@@ -1094,6 +1107,12 @@ function handleClick(event: MouseEvent) {
 function handleMouseDown(event: MouseEvent) {
     // Ignore right click
     if (event.button !== 0) return;
+
+    // Clicks on foreign inputs (e.g. the comment thread's own input/textarea) must not
+    // start a text-selection drag or steal focus back to the global textarea.
+    if (isForeignInput(event.target)) {
+        return;
+    }
 
     // Anchor click should not trigger editing or dragging
     if ((event.target as HTMLElement).closest("a")) {
