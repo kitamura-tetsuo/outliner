@@ -3,6 +3,9 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { getLogger } from "../lib/logger";
+
+const logger = getLogger("yjs-schema");
 
 export type Comment = {
     id: string;
@@ -310,11 +313,7 @@ export class Items {
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
-            console.warn(
-                "[yjs-schema] Items.iterateUnordered error fetching children for parentKey:",
-                this.parentKey,
-                e,
-            );
+            logger.warn({ parentKey: this.parentKey, error: e }, "[yjs-schema] Items.iterateUnordered error fetching children for parentKey");
             return;
         }
         for (const key of keys) {
