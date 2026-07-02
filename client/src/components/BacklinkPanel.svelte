@@ -1,7 +1,7 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import {
-    type Backlink,
+
     collectBacklinks,
 } from "$lib/backlinkCollector";
 import { getLogger } from "$lib/logger";
