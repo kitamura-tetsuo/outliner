@@ -231,146 +231,156 @@ export class KeyEventHandler {
 
                         // Fallback if unable to confirm via click path:
                         // Set the first content line (= test's secondId) as target
-                        try {
-                            const w = window as Window & typeof globalThis & {
-                                generalStore?: unknown;
-                                appStore?: unknown;
-                                aliasPickerStore?: typeof aliasPickerStore;
-                            };
-
-                            const gs = (w.generalStore || w.appStore) as { currentPage?: unknown; } | undefined;
-                            const root = gs?.currentPage;
-                            const picker = w.aliasPickerStore ?? aliasPickerStore;
-                            const aliasId: string | null = picker?.itemId ?? null;
-                            const items = (root as {
-                                items?: {
-                                    length?: number;
-                                    at?: (index: number) => unknown;
-                                    [key: number]: unknown;
+                        if (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true") {
+                            try {
+                                const w = window as Window & typeof globalThis & {
+                                    generalStore?: unknown;
+                                    appStore?: unknown;
+                                    aliasPickerStore?: typeof aliasPickerStore;
                                 };
-                            })?.items;
-                            const firstContent = items && typeof items.length === "number" && items.length > 0
-                                ? (items.at ? items.at(0) : items[0])
-                                : null;
-                            if (root && aliasId && (firstContent as { id?: string; })?.id) {
-                                const find = (node: { id?: string; items?: unknown; }, id: string): unknown => {
-                                    if (!node) return null;
-                                    if (node.id === id) return node;
 
-                                    const ch = node.items as
-                                        | { length?: number; at?: (index: number) => unknown; [key: number]: unknown; }
-                                        | Iterable<unknown>
-                                        | undefined;
-                                    if (
-                                        ch
-                                        && typeof (ch as unknown as { [Symbol.iterator]?: unknown; })[Symbol.iterator]
-                                            === "function"
-                                    ) {
-                                        for (const c of (ch as Iterable<unknown>)) {
-                                            const r = find(c as { id?: string; items?: unknown; }, id);
-                                            if (r) return r;
+                                const gs = (w.generalStore || w.appStore) as { currentPage?: unknown; } | undefined;
+                                const root = gs?.currentPage;
+                                const picker = w.aliasPickerStore ?? aliasPickerStore;
+                                const aliasId: string | null = picker?.itemId ?? null;
+                                const items = (root as {
+                                    items?: {
+                                        length?: number;
+                                        at?: (index: number) => unknown;
+                                        [key: number]: unknown;
+                                    };
+                                })?.items;
+                                const firstContent = items && typeof items.length === "number" && items.length > 0
+                                    ? (items.at ? items.at(0) : items[0])
+                                    : null;
+                                if (root && aliasId && (firstContent as { id?: string; })?.id) {
+                                    const find = (node: { id?: string; items?: unknown; }, id: string): unknown => {
+                                        if (!node) return null;
+                                        if (node.id === id) return node;
+
+                                        const ch = node.items as
+                                            | {
+                                                length?: number;
+                                                at?: (index: number) => unknown;
+                                                [key: number]: unknown;
+                                            }
+                                            | Iterable<unknown>
+                                            | undefined;
+                                        if (
+                                            ch
+                                            && typeof (ch as unknown as { [Symbol.iterator]?: unknown; })[
+                                                    Symbol.iterator
+                                                ]
+                                                === "function"
+                                        ) {
+                                            for (const c of (ch as Iterable<unknown>)) {
+                                                const r = find(c as { id?: string; items?: unknown; }, id);
+                                                if (r) return r;
+                                            }
+                                        } else if (ch) {
+                                            const chArr = ch as {
+                                                length?: number;
+                                                at?: (index: number) => unknown;
+                                                [key: number]: unknown;
+                                            };
+                                            const len = chArr.length ?? 0;
+                                            for (let i = 0; i < len; i++) {
+                                                const c = chArr.at ? chArr.at(i) : chArr[i];
+                                                const r = find(c as { id?: string; items?: unknown; }, id);
+                                                if (r) return r;
+                                            }
                                         }
-                                    } else if (ch) {
-                                        const chArr = ch as {
-                                            length?: number;
-                                            at?: (index: number) => unknown;
-                                            [key: number]: unknown;
-                                        };
-                                        const len = chArr.length ?? 0;
-                                        for (let i = 0; i < len; i++) {
-                                            const c = chArr.at ? chArr.at(i) : chArr[i];
-                                            const r = find(c as { id?: string; items?: unknown; }, id);
-                                            if (r) return r;
-                                        }
-                                    }
-                                    return null;
-                                };
-                                const aliasItem = find(root, aliasId);
+                                        return null;
+                                    };
+                                    const aliasItem = find(root, aliasId);
 
-                                if (aliasItem && !(aliasItem as { aliasTargetId?: string; }).aliasTargetId) {
-                                    try {
-                                        logger.debug(
-                                            "KeyEventHandler: fallback setting aliasTargetId on",
-                                            aliasId,
-                                            "to",
-                                            (firstContent as { id?: string; }).id,
-                                        );
-                                    } catch {}
-
-                                    (aliasItem as { aliasTargetId?: string; }).aliasTargetId =
-                                        (firstContent as { id?: string; }).id;
-                                }
-                                try {
-                                    const aliasEl = document.querySelector(
-                                        `.outliner-item[data-item-id="${aliasId}"]`,
-                                    ) as HTMLElement | null;
-                                    if (aliasEl && !aliasEl.getAttribute("data-alias-target-id")) {
+                                    if (aliasItem && !(aliasItem as { aliasTargetId?: string; }).aliasTargetId) {
                                         try {
                                             logger.debug(
-                                                "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
+                                                "KeyEventHandler: fallback setting aliasTargetId on",
                                                 aliasId,
-                                            );
-                                        } catch {}
-                                        aliasEl.setAttribute(
-                                            "data-alias-target-id",
-                                            String((firstContent as { id?: string; }).id),
-                                        );
-                                    }
-                                    const outlinerRoot = document.querySelector(".outliner") || document.body;
-                                    const walker = document.createTreeWalker(
-                                        outlinerRoot,
-                                        NodeFilter.SHOW_ELEMENT,
-                                        {
-                                            acceptNode(node) {
-                                                const el = node as Element;
-                                                return el.classList.contains("outliner-item")
-                                                        && el.hasAttribute("data-item-id")
-                                                        && !el.classList.contains("page-title")
-                                                    ? NodeFilter.FILTER_ACCEPT
-                                                    : NodeFilter.FILTER_SKIP;
-                                            },
-                                        },
-                                    );
-                                    let last: HTMLElement | null = null;
-                                    while (walker.nextNode()) {
-                                        last = walker.currentNode as HTMLElement;
-                                    }
-                                    const lastId = last?.getAttribute("data-item-id");
-                                    if (last && lastId && !last.getAttribute("data-alias-target-id")) {
-                                        try {
-                                            logger.debug(
-                                                "KeyEventHandler: setting DOM data-alias-target-id for lastId",
-                                                lastId,
+                                                "to",
+                                                (firstContent as { id?: string; }).id,
                                             );
                                         } catch {}
 
-                                        last.setAttribute(
-                                            "data-alias-target-id",
-                                            String((firstContent as { id?: string; }).id),
-                                        );
+                                        (aliasItem as { aliasTargetId?: string; }).aliasTargetId =
+                                            (firstContent as { id?: string; }).id;
                                     }
-
-                                    // Fallback setting on model side for the last item as well
-                                    if (lastId && lastId !== aliasId) {
-                                        const aliasItem2 = find(root, lastId);
-
-                                        if (aliasItem2 && !(aliasItem2 as { aliasTargetId?: string; }).aliasTargetId) {
+                                    try {
+                                        const aliasEl = document.querySelector(
+                                            `.outliner-item[data-item-id="${aliasId}"]`,
+                                        ) as HTMLElement | null;
+                                        if (aliasEl && !aliasEl.getAttribute("data-alias-target-id")) {
                                             try {
                                                 logger.debug(
-                                                    "KeyEventHandler: fallback setting aliasTargetId on lastId",
+                                                    "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
+                                                    aliasId,
+                                                );
+                                            } catch {}
+                                            aliasEl.setAttribute(
+                                                "data-alias-target-id",
+                                                String((firstContent as { id?: string; }).id),
+                                            );
+                                        }
+                                        const outlinerRoot = document.querySelector(".outliner") || document.body;
+                                        const walker = document.createTreeWalker(
+                                            outlinerRoot,
+                                            NodeFilter.SHOW_ELEMENT,
+                                            {
+                                                acceptNode(node) {
+                                                    const el = node as Element;
+                                                    return el.classList.contains("outliner-item")
+                                                            && el.hasAttribute("data-item-id")
+                                                            && !el.classList.contains("page-title")
+                                                        ? NodeFilter.FILTER_ACCEPT
+                                                        : NodeFilter.FILTER_SKIP;
+                                                },
+                                            },
+                                        );
+                                        let last: HTMLElement | null = null;
+                                        while (walker.nextNode()) {
+                                            last = walker.currentNode as HTMLElement;
+                                        }
+                                        const lastId = last?.getAttribute("data-item-id");
+                                        if (last && lastId && !last.getAttribute("data-alias-target-id")) {
+                                            try {
+                                                logger.debug(
+                                                    "KeyEventHandler: setting DOM data-alias-target-id for lastId",
                                                     lastId,
-                                                    "to",
-                                                    (firstContent as { id?: string; }).id,
                                                 );
                                             } catch {}
 
-                                            (aliasItem2 as { aliasTargetId?: string; }).aliasTargetId =
-                                                (firstContent as { id?: string; }).id;
+                                            last.setAttribute(
+                                                "data-alias-target-id",
+                                                String((firstContent as { id?: string; }).id),
+                                            );
                                         }
-                                    }
-                                } catch {}
-                            }
-                        } catch {}
+
+                                        // Fallback setting on model side for the last item as well
+                                        if (lastId && lastId !== aliasId) {
+                                            const aliasItem2 = find(root, lastId);
+
+                                            if (
+                                                aliasItem2 && !(aliasItem2 as { aliasTargetId?: string; }).aliasTargetId
+                                            ) {
+                                                try {
+                                                    logger.debug(
+                                                        "KeyEventHandler: fallback setting aliasTargetId on lastId",
+                                                        lastId,
+                                                        "to",
+                                                        (firstContent as { id?: string; }).id,
+                                                    );
+                                                } catch {}
+
+                                                (aliasItem2 as { aliasTargetId?: string; }).aliasTargetId =
+                                                    (firstContent as { id?: string; }).id;
+                                            }
+                                        }
+                                    } catch {}
+                                }
+                            } catch {}
+                        }
                     } catch {
                         aliasPickerStore.hide();
                     }

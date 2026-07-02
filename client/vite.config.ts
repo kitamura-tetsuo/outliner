@@ -84,6 +84,10 @@ export default defineConfig(async ({ mode }) => {
             strictPort: true,
             host: process.env.VITE_HOST || "localhost",
         },
+        esbuild: {
+            // Strip debug console messages in production builds
+            pure: mode === "production" ? ["console.debug", "logger.debug"] : [],
+        },
         build: {
             sourcemap: true,
             // Minimally relax the warning threshold to accommodate manual chunk splitting
