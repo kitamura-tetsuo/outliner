@@ -34,6 +34,14 @@
         return result;
     });
 
+    // Prefer the project name from the current route (the human-readable name the
+    // user navigated with) over store.project.title, which may be stale or, for
+    // projects whose Yjs metadata never had a title set, corrupted with a raw
+    // container UUID.
+    let currentProjectName = $derived(
+        $pageStore.params.project || store.project?.title || "Untitled Project",
+    );
+
     function formatDate(ts: number | undefined): string {
         if (!ts) return "";
         const date = new Date(ts);
@@ -131,7 +139,7 @@
                             if (store.project) {
                                 const newPage = store.project.addPage("Untitled", "tester");
                                 const pageHref = resolvePath(
-                                    `/${encodeURIComponent(store.project.title || "Untitled Project")}/${encodeURIComponent(newPage.text)}`
+                                    `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
                                 );
                                 goto(pageHref);
                             }
@@ -172,7 +180,7 @@
                     {:else}
                         {#each pages as page (page.id)}
                             {@const pageHref = resolvePath(
-                                `/${encodeURIComponent(store.project?.title || "Untitled Project")}/${encodeURIComponent(page.text)}`,
+                                `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text)}`,
                             )}
                             <li>
                                 <a

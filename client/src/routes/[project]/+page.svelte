@@ -165,6 +165,7 @@
                     currentUser={userManager.getCurrentUser()?.id ||
                         "anonymous"}
                     project={store.project!}
+                    projectName={projectName}
                     rootItems={pages!}
                     onPageSelected={handlePageSelected}
                 />
@@ -178,6 +179,7 @@
                     currentUser={userManager.getCurrentUser()?.id ||
                         "anonymous"}
                     project={store.project!}
+                    projectName={projectName}
                     rootItems={pages!}
                     onPageSelected={handlePageSelected}
                 />

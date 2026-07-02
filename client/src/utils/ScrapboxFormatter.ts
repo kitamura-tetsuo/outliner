@@ -945,6 +945,14 @@ export class ScrapboxFormatter {
      */
     private static getProjectPrefix(): string {
         if (typeof window !== "undefined") {
+            // Prefer the project name segment already present in the current URL:
+            // it is the name the user actually navigated with. store.project.title
+            // can be stale, or for projects whose Yjs metadata never had a title
+            // set, corrupted with a raw container UUID.
+            const pathProjectName = window.location?.pathname?.split("/")[1];
+            if (pathProjectName) {
+                return "/" + pathProjectName;
+            }
             const store = (window as Window & typeof globalThis & {
                 appStore?: {
                     project?: import("../schema/app-schema").Project;
