@@ -7,7 +7,7 @@ runs:
     - name: Install Java 21
       shell: bash
       run: |
-        sudo apt-get update
+        sudo apt-get update -o Acquire::Retries=3 || true
         sudo apt-get install -y openjdk-21-jre-headless
 
     - name: Restore dependencies from cache

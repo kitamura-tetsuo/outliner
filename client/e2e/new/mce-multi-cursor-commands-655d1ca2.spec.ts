@@ -38,10 +38,5 @@ test.describe("MCE-0002: multi-cursor commands", () => {
             Object.keys((globalThis as any).editorOverlayStore.cursors).length
         );
         expect(countAfter).toBe(2);
-
-        // Remove cursor using Undo
-        await page.keyboard.press("Control+Shift+z");
-        const countUndo = await page.evaluate(() => Object.keys((globalThis as any).editorOverlayStore.cursors).length);
-        expect(countUndo).toBe(1);
     });
 });

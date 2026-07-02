@@ -382,9 +382,8 @@ export class ScrapboxFormatter {
 
                             const escapedProjectName = this.escapeHtml(projectName);
                             const escapedPageName = this.escapeHtml(pageName);
-                            html += `<span class="link-preview-wrapper">
-                                <a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a>
-                            </span>`;
+                            html +=
+                                `<span class="link-preview-wrapper"><a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
                         } else {
                             html +=
                                 `<a href="/${escapedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
@@ -392,9 +391,8 @@ export class ScrapboxFormatter {
                     } else {
                         const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
                         const projectPrefix = this.getProjectPrefix();
-                        html += `<span class="link-preview-wrapper">
-                            <a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a>
-                        </span>`;
+                        html +=
+                            `<span class="link-preview-wrapper"><a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
                     }
                     break;
                 }
@@ -447,6 +445,7 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
     private static readonly RX_HTML_CODE = /`(.*?)`/g;
     private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
+    private static readonly RX_HTML_BARE_URL = /(?<!\[)(https?:\/\/[^\s\]]+)/g;
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
 
     /**
@@ -605,21 +604,19 @@ export class ScrapboxFormatter {
                         }
 
                         // Use LinkPreview component
-                        html = `<span class="link-preview-wrapper">
-                        <a href="/${
+                        html = `<span class="link-preview-wrapper"><a href="/${
                             this.escapeHtml(path)
                         }" class="internal-link project-link ${existsClass}" data-project="${
                             this.escapeHtml(projectName)
-                        }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a>
-                    </span>`;
+                        }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a></span>`;
                     } else {
                         // Case of single page name (project internal link)
                         const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
-                        html = `<span class="link-preview-wrapper">
-                        <a href="/${this.escapeHtml(path)}" class="internal-link ${existsClass}" data-page="${
+                        html = `<span class="link-preview-wrapper"><a href="/${
                             this.escapeHtml(path)
-                        }">${this.escapeHtml(path)}</a>
-                    </span>`;
+                        }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(path)}">${
+                            this.escapeHtml(path)
+                        }</a></span>`;
                     }
                     return createPlaceholder(html);
                 });
@@ -660,6 +657,22 @@ export class ScrapboxFormatter {
                 });
             }
 
+            // Bare URL (not in brackets)
+            if (input.includes("http")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_BARE_URL, (match, url) => {
+                    const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                    const escapedUrl = this.escapeHtml(safeUrl);
+
+                    if (ScrapboxFormatter.isImageUrl(safeUrl)) {
+                        const html = `<img src="${escapedUrl}" alt="${escapedUrl}" class="scrapbox-image" />`;
+                        return createPlaceholder(html);
+                    }
+
+                    const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
+                    return createPlaceholder(html);
+                });
+            }
+
             // Project internal links processed above
 
             // Normal internal links - must be processed after external links
@@ -674,13 +687,11 @@ export class ScrapboxFormatter {
                     const projectPrefix = this.getProjectPrefix();
 
                     // Use LinkPreview component
-                    const html = `<span class="link-preview-wrapper">
-                    <a href="${projectPrefix}/${
+                    const html = `<span class="link-preview-wrapper"><a href="${projectPrefix}/${
                         this.escapeHtml(text)
                     }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
                         this.escapeHtml(text)
-                    }</a>
-                </span>`;
+                    }</a></span>`;
                     return createPlaceholder(html);
                 });
             }
@@ -913,6 +924,7 @@ export class ScrapboxFormatter {
             /`(.*?)`/.source, // Code
             /<u>(.*?)<\/u>/.source, // Underline
             /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
+            /(?<!\[)https?:\/\/[^\s\]]+/.source, // Bare URL
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
             /^>\s(.*?)$/m.source, // Quote
         ].join("|"),
@@ -932,7 +944,8 @@ export class ScrapboxFormatter {
         const mightHaveFormat = text.includes("[")
             || text.includes("`")
             || text.includes("<")
-            || text.includes(">");
+            || text.includes(">")
+            || text.includes("http");
 
         if (!mightHaveFormat) return false;
 

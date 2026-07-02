@@ -6,7 +6,7 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { KeyEventHandler } from "../lib/KeyEventHandler";
+import { isForeignInput, KeyEventHandler } from "../lib/KeyEventHandler";
 import { Items } from "../schema/app-schema";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
@@ -77,7 +77,7 @@ onMount(() => {
     }
 
     // Expose KeyEventHandler globally for testing
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true")) {
         window.__KEY_EVENT_HANDLER__ = KeyEventHandler;
         window.Items = Items;
         window.generalStore = generalStore;
@@ -86,6 +86,7 @@ onMount(() => {
     // Always forward keys to the picker when the alias picker is visible (independent of focus)
     try {
         const forward = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (!aliasPickerStore.isVisible) return;
             const k = ev.key;
             if (k !== "ArrowDown" && k !== "ArrowUp" && k !== "Enter" && k !== "Escape") return;
@@ -107,6 +108,7 @@ onMount(() => {
     // Fallback: Always show palette on slash press (suppressed by KeyEventHandler immediately after internal links)
     try {
         const slashListener = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (ev.key !== "/") return;
             // Do nothing if already visible
             if (window.commandPaletteStore?.isVisible) return;
@@ -122,6 +124,7 @@ onMount(() => {
     // Always record recent key inputs (to detect sequences like /ch)
     try {
         const recordKeys = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
             const k = ev.key;
             if (typeof k === "string" && k.length === 1) {
@@ -139,6 +142,7 @@ onMount(() => {
     // Fallback: Directly forward character input/movement/confirmation from global keydown while palette is visible
     try {
         const paletteTypeForwarder = (ev: KeyboardEvent) => {
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             const cps = window.commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
             const k = ev.key;
@@ -200,6 +204,7 @@ onMount(() => {
         const globalKeyForwarder = (ev: KeyboardEvent) => {
             // Respect if already handled elsewhere
             if (ev.defaultPrevented) return;
+            if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             // Ignore IME/modifier keys (except Alt+Shift+Arrow is allowed for rectangular selection, and Alt+Arrow is allowed for block move)
             const isBoxSelectionKey = ev.altKey && ev.shiftKey &&
                 (ev.key === "ArrowUp" || ev.key === "ArrowDown" || ev.key === "ArrowLeft" || ev.key === "ArrowRight");

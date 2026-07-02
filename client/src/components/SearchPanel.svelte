@@ -21,12 +21,14 @@ const logger = getLogger("SearchPanel");
         isVisible?: boolean;
         pageItem?: Item | null;
         project?: Project | null;
+        onclose?: () => void;
     }
 
     let {
         isVisible = false,
         pageItem = null,
         project = null,
+        onclose,
     }: Props = $props();
     let isTestEnv = $state(false);
     let e2eForceShow = $state(false);
@@ -324,6 +326,7 @@ const logger = getLogger("SearchPanel");
     }
 
     function handleReplaceAll() {
+        if (!confirm("Are you sure you want to replace all occurrences? This action cannot be undone.")) return;
         const options: SearchOptions = {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
@@ -392,6 +395,8 @@ const logger = getLogger("SearchPanel");
         }
     });
 </script>
+
+<svelte:window onkeydown={(e) => { if (isVisible && e.key === 'Escape') onclose?.(); }} />
 
 {#if isVisible || isTestEnv}
     <div
@@ -501,7 +506,7 @@ const logger = getLogger("SearchPanel");
         position: fixed;
         top: 20px;
         right: 20px;
-        width: 400px;
+        width: 500px;
         background: white;
         border: 1px solid #ddd;
         border-radius: 8px;
@@ -551,6 +556,7 @@ const logger = getLogger("SearchPanel");
     .search-input,
     .replace-input {
         flex: 1;
+        min-width: 0;
         padding: 8px 12px;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -575,6 +581,8 @@ const logger = getLogger("SearchPanel");
         font-size: 14px;
         cursor: pointer;
         transition: background-color 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .search-btn-action:hover,

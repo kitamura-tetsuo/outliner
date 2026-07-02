@@ -4,6 +4,9 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { getLogger } from "../logger";
+
+const logger = getLogger("yjs-service");
 
 interface YTreeWithMove extends YTree {
     moveChildToParent(childKey: string, parentKey: string): void;
@@ -11,8 +14,13 @@ interface YTreeWithMove extends YTree {
 
 function childrenKeys(tree: YTree, parentKey: string): string[] {
     if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return [];
-    const children = tree.getNodeChildrenFromKey(parentKey);
-    return tree.sortChildrenByOrder(children, parentKey);
+    try {
+        const children = tree.getNodeChildrenFromKey(parentKey);
+        return tree.sortChildrenByOrder(children, parentKey);
+    } catch (e) {
+        logger.warn({ parentKey, error: e }, "[service] childrenKeys error fetching children for parentKey");
+        return [];
+    }
 }
 
 function resolveOverlayStore(): typeof editorOverlayStore | undefined {

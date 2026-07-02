@@ -3,6 +3,9 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { getLogger } from "../lib/logger";
+
+const logger = getLogger("yjs-schema");
 
 export type Comment = {
     id: string;
@@ -219,12 +222,14 @@ export class Items {
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
-        } catch (e) {
+        } catch (_e) {
             // Handle missing root node gracefully during initial sync/loading
             if (this.parentKey === "root") {
                 return [];
             }
-            throw e;
+            // Catch missing nodes due to race conditions
+            // Silent warning: parent node was deleted
+            return [];
         }
     }
 
@@ -304,8 +309,18 @@ export class Items {
      */
     *iterateUnordered(): IterableIterator<Item> {
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
-        const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        let keys: string[];
+        try {
+            keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        } catch (e) {
+            logger.warn(
+                { parentKey: this.parentKey, error: e },
+                "[yjs-schema] Items.iterateUnordered error fetching children for parentKey",
+            );
+            return;
+        }
         for (const key of keys) {
+            if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
     }

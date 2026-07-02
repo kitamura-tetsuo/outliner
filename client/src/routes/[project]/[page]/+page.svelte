@@ -567,6 +567,7 @@
         isVisible={isSearchPanelVisible}
         pageItem={store.currentPage}
         project={store.project}
+        onclose={() => { if (isSearchPanelVisible) toggleSearchPanel(); }}
     />
     {#if error}
         <div class="rounded-md bg-red-50 p-4">

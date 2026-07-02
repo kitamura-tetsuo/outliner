@@ -224,7 +224,7 @@ onMount(async () => {
         }
         // Test-only: normalize drop events so Playwright's dispatchEvent("drop", {dataTransfer}) becomes a real DragEvent
         try {
-            if (typeof window !== 'undefined') {
+            if (typeof window !== 'undefined' && isE2eCleanup) {
                 const origDispatchEventTarget = EventTarget.prototype.dispatchEvent;
                 const origDispatchElement = Element.prototype.dispatchEvent;
                 // Avoid double-patching

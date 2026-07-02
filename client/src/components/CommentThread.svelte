@@ -5,6 +5,7 @@ import type { Comment } from "../schema/app-schema";
 import type { ItemLike } from "../types/yjs-types";
 import { getLogger } from "../lib/logger";
 import { createEventDispatcher, onMount } from "svelte";
+import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 const logger = getLogger("CommentThread");
 const dispatch = createEventDispatcher();
 
@@ -43,6 +44,7 @@ let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
 function e2eLog(entry: E2ELogEntry) {
+    if (import.meta.env.MODE !== "test" && import.meta.env.VITE_IS_TEST !== "true") return;
     try {
         interface WindowWithE2E extends Window {
             E2E_LOGS?: E2ELogEntry[];
@@ -421,7 +423,7 @@ onMount(() => {
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
-                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" />
+                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
                 <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
                 <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
             {:else}
@@ -433,7 +435,7 @@ onMount(() => {
         </div>
     {/each}
     <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} />
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>

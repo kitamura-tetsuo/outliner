@@ -13,8 +13,7 @@ import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefres
 
 // Minimal guarded debug logging for initial sync progress (disabled in production by default)
 function isConnDebugEnabled(): boolean {
-    // ALWAYS return true for now to debug Android issues
-    return true;
+    return import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true";
 }
 
 function attachConnDebug(label: string, provider: HocuspocusProvider, awareness: Awareness | null, doc: Y.Doc) {
