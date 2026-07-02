@@ -69,6 +69,28 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
             const itemTextLocator = page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text");
             await expect(itemTextLocator).toContainText(composed, { timeout: 10000 });
 
+            // Diagnostics: dump the state driving the scroll decision so a CI failure is
+            // actionable without another blind round-trip.
+            const diagnostics = await page.evaluate((id) => {
+                const store = (globalThis as any).editorOverlayStore;
+                const lastCursor = store?.getLastActiveCursor?.();
+                const cursorEl = document.querySelector(".cursor.active");
+                const itemEl = document.querySelector(`.outliner-item[data-item-id="${id}"] .item-text`);
+                return {
+                    scrollY: globalThis.scrollY,
+                    innerHeight: globalThis.innerHeight,
+                    docScrollHeight: document.documentElement.scrollHeight,
+                    treeContainerScrollTop: document.querySelector(".tree-container")?.scrollTop,
+                    isComposing: store?.isComposing,
+                    compositionLength: store?.compositionLength,
+                    lastCursor,
+                    cursorRect: cursorEl?.getBoundingClientRect(),
+                    itemTextRect: itemEl?.getBoundingClientRect(),
+                    itemTextLength: itemEl?.textContent?.length,
+                };
+            }, itemId);
+            console.log("IME-0005 diagnostics:", JSON.stringify(diagnostics));
+
             // The active cursor must (eventually) end up inside the visible viewport, not
             // hidden below the fold. Poll instead of a single fixed wait, since the
             // scroll-into-view decision runs on a debounced store subscription and may
