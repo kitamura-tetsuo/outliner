@@ -36,7 +36,10 @@ vi.mock("../../../stores/store.svelte", () => {
     };
 });
 
+import type { CursorEditingContext } from "../../../lib/cursor/CursorEditor";
 import { CursorEditor } from "../../../lib/cursor/CursorEditor";
+import type { Item } from "../../../schema/yjs-schema";
+import type { SelectionRange } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 
 class FakeItems {
@@ -100,16 +103,16 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     });
 
     it("removes every item within the selection, not only the first", () => {
-        const cursorCtx = {
+        const cursorCtx: CursorEditingContext = {
             itemId: item2.id,
             offset: 0,
             userId: "local",
             isActive: true,
             clearSelection: vi.fn(),
             applyToStore: vi.fn(),
-            findTarget: () => item2 as unknown as any,
+            findTarget: () => item2 as unknown as Item,
         };
-        const editor = new CursorEditor(cursorCtx as any);
+        const editor = new CursorEditor(cursorCtx);
 
         editor.deleteMultiItemSelection({
             startItemId: item2.id,
@@ -118,7 +121,7 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             endOffset: item4._text.length,
             userId: "local",
             isReversed: false,
-        } as any);
+        } as SelectionRange);
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("");
@@ -127,16 +130,16 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     });
 
     it("merges partial text from the first and last item and removes items in between", () => {
-        const cursorCtx = {
+        const cursorCtx: CursorEditingContext = {
             itemId: item2.id,
             offset: 3,
             userId: "local",
             isActive: true,
             clearSelection: vi.fn(),
             applyToStore: vi.fn(),
-            findTarget: () => item2 as unknown as any,
+            findTarget: () => item2 as unknown as Item,
         };
-        const editor = new CursorEditor(cursorCtx as any);
+        const editor = new CursorEditor(cursorCtx);
 
         editor.deleteMultiItemSelection({
             startItemId: item2.id,
@@ -145,7 +148,7 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             endOffset: 6, // after "Fourth"
             userId: "local",
             isReversed: false,
-        } as any);
+        } as SelectionRange);
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("Sec item text");
