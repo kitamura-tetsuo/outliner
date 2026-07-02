@@ -69,44 +69,39 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
             const itemTextLocator = page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text");
             await expect(itemTextLocator).toContainText(composed, { timeout: 10000 });
 
-            // Diagnostics: dump the state driving the scroll decision so a CI failure is
-            // actionable without another blind round-trip.
-            const diagnostics = await page.evaluate((id) => {
-                const store = (globalThis as any).editorOverlayStore;
-                const lastCursor = store?.getLastActiveCursor?.();
-                const cursorEl = document.querySelector(".cursor.active");
-                const itemEl = document.querySelector(`.outliner-item[data-item-id="${id}"] .item-text`);
-                return {
-                    scrollY: globalThis.scrollY,
-                    innerHeight: globalThis.innerHeight,
-                    docScrollHeight: document.documentElement.scrollHeight,
-                    treeContainerScrollTop: document.querySelector(".tree-container")?.scrollTop,
-                    isComposing: store?.isComposing,
-                    compositionLength: store?.compositionLength,
-                    lastCursor,
-                    cursorRect: cursorEl?.getBoundingClientRect(),
-                    itemTextRect: itemEl?.getBoundingClientRect(),
-                    itemTextLength: itemEl?.textContent?.length,
-                };
-            }, itemId);
-            console.log("IME-0005 diagnostics:", JSON.stringify(diagnostics));
-
             // The active cursor must (eventually) end up inside the visible viewport, not
             // hidden below the fold. Poll instead of a single fixed wait, since the
             // scroll-into-view decision runs on a debounced store subscription and may
             // need one more tick to catch up with the latest composed text.
+            //
+            // The polled value is a diagnostic snapshot (not just a boolean) so that if
+            // this ever fails in CI, the assertion's "Received" dump shows exactly what
+            // the scroll decision saw (scrollY, isComposing, cursor rect, etc.) instead of
+            // requiring another blind round-trip — console.log from the test process is
+            // not captured in this repo's CI job logs, only browser-console output is.
             const viewportHeight = page.viewportSize()?.height || 600;
             await expect.poll(
                 () =>
                     page.evaluate((vpHeight) => {
+                        const store = (globalThis as any).editorOverlayStore;
+                        const lastCursor = store?.getLastActiveCursor?.();
                         const cursorEl = document.querySelector(".cursor.active");
-                        if (!cursorEl) return false;
-                        const rect = cursorEl.getBoundingClientRect();
+                        const rect = cursorEl?.getBoundingClientRect();
                         const stickyHeaderHeight = 80;
-                        return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
+                        const visible = !!rect && rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
+                        return {
+                            visible,
+                            scrollY: globalThis.scrollY,
+                            isComposing: store?.isComposing,
+                            compositionLength: store?.compositionLength,
+                            lastCursorOffset: lastCursor?.offset,
+                            hasCursorEl: !!cursorEl,
+                            cursorTop: rect?.top,
+                            cursorBottom: rect?.bottom,
+                        };
                     }, viewportHeight),
                 { timeout: 10000, message: "active cursor should scroll into view while composing" },
-            ).toBe(true);
+            ).toMatchObject({ visible: true });
 
             const scrollAfterWrap = await page.evaluate(() => globalThis.scrollY);
             expect(scrollAfterWrap).toBeGreaterThan(scrollAfterFocus);
