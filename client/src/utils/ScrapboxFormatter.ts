@@ -447,6 +447,7 @@ export class ScrapboxFormatter {
     private static readonly RX_HTML_STRIKETHROUGH = /\[-(.*?)\]/g;
     private static readonly RX_HTML_CODE = /`(.*?)`/g;
     private static readonly RX_HTML_EXT_LINK = /\[(https?:\/\/[^\s\]]+)(?:\s+([^\]]*))?\]/g;
+    private static readonly RX_HTML_BARE_URL = /(?<!\[)(https?:\/\/[^\s\]]+)/g;
     private static readonly RX_HTML_INT_LINK = /\[([^[\]]+?)\]/g;
 
     /**
@@ -656,6 +657,22 @@ export class ScrapboxFormatter {
 
                     const text = trimmedLabel ? processFormat(trimmedLabel) : escapedUrl;
                     const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                    return createPlaceholder(html);
+                });
+            }
+
+            // Bare URL (not in brackets)
+            if (input.includes("http")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_BARE_URL, (match, url) => {
+                    const safeUrl = ScrapboxFormatter.sanitizeUrl(url);
+                    const escapedUrl = this.escapeHtml(safeUrl);
+
+                    if (ScrapboxFormatter.isImageUrl(safeUrl)) {
+                        const html = `<img src="${escapedUrl}" alt="${escapedUrl}" class="scrapbox-image" />`;
+                        return createPlaceholder(html);
+                    }
+
+                    const html = `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer">${escapedUrl}</a>`;
                     return createPlaceholder(html);
                 });
             }
@@ -913,6 +930,7 @@ export class ScrapboxFormatter {
             /`(.*?)`/.source, // Code
             /<u>(.*?)<\/u>/.source, // Underline
             /\[(https?:\/\/[^\s\]]+)(?:\s+[^\]]+)?\]/.source, // External link
+            /(?<!\[)https?:\/\/[^\s\]]+/.source, // Bare URL
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
             /^>\s(.*?)$/m.source, // Quote
         ].join("|"),
@@ -932,7 +950,8 @@ export class ScrapboxFormatter {
         const mightHaveFormat = text.includes("[")
             || text.includes("`")
             || text.includes("<")
-            || text.includes(">");
+            || text.includes(">")
+            || text.includes("http");
 
         if (!mightHaveFormat) return false;
 
