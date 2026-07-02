@@ -738,16 +738,15 @@ export class CursorEditor {
                 const id = itemsToRemoveIds[i];
                 const item = searchItem(root as unknown as import("../../schema/yjs-schema").Item, id);
                 if (item) {
+                    // `item.parent` is already the children collection (Items) that
+                    // contains this item, not a node with a nested `.items` property.
                     const parent = (item as unknown as {
-                        parent?: {
-                            items?: { indexOf?: (item: unknown) => number; removeAt?: (index: number) => void; };
-                        };
+                        parent?: { indexOf?: (item: unknown) => number; removeAt?: (index: number) => void; };
                     }).parent;
-                    if (parent && parent.items) {
-                        const items = parent.items;
-                        const idx = typeof items.indexOf === "function" ? items.indexOf(item) : -1;
-                        if (idx !== -1 && typeof items.removeAt === "function") {
-                            items.removeAt(idx);
+                    if (parent) {
+                        const idx = typeof parent.indexOf === "function" ? parent.indexOf(item) : -1;
+                        if (idx !== -1 && typeof parent.removeAt === "function") {
+                            parent.removeAt(idx);
                         }
                     }
                 }
