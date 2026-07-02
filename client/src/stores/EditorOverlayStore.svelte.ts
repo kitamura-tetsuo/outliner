@@ -72,6 +72,10 @@ export class EditorOverlayStore {
     animationPaused = $state<boolean>(false);
     // IME composition state
     isComposing = $state<boolean>(false);
+    // Character length of the in-progress IME composition text.
+    // The cursor sits at the end of the composition, so subtracting this
+    // length yields the composition start offset (candidate window anchor).
+    compositionLength = 0;
     // Holds the textarea element of GlobalTextArea
     textareaRef: HTMLTextAreaElement | null = null;
     // onEdit callback
@@ -678,7 +682,14 @@ export class EditorOverlayStore {
 
     setIsComposing(value: boolean) {
         this.isComposing = value;
+        if (!value) {
+            this.compositionLength = 0;
+        }
         this.notifyChange();
+    }
+
+    setCompositionLength(length: number) {
+        this.compositionLength = length;
     }
 
     getIsComposing(): boolean {

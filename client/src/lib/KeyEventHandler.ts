@@ -1096,6 +1096,7 @@ export class KeyEventHandler {
      */
     static handleCompositionStart(_event: CompositionEvent) {
         KeyEventHandler.lastCompositionLength = 0;
+        store.setCompositionLength(0);
     }
     /**
      * Process IME compositionupdate event and display intermediate input characters
@@ -1116,6 +1117,7 @@ export class KeyEventHandler {
             cursorInstances.forEach(cursor => cursor.insertText(data));
         }
         KeyEventHandler.lastCompositionLength = data.length;
+        store.setCompositionLength(data.length);
     }
 
     /**
@@ -1137,6 +1139,7 @@ export class KeyEventHandler {
             cursorInstances.forEach(cursor => cursor.insertText(data));
         }
         KeyEventHandler.lastCompositionLength = 0;
+        store.setCompositionLength(0);
     }
 
     /**

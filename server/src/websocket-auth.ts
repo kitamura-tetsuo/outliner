@@ -106,7 +106,7 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         if (e.message && e.message.includes("alg:none tokens are not allowed")) {
             throw e;
         }
-        logger.warn("[Auth] Test mode: failed to parse alg:none token", e);
+        logger.warn({ error: e }, "[Auth] Test mode: failed to parse alg:none token");
     }
 
     try {
