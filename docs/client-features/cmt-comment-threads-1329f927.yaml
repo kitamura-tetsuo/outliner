@@ -4,6 +4,7 @@ title-ja: アイテムごとのコメントスレッド
 category: collaboration
 status: implemented
 acceptance:
+- Clicking the comment input focuses it (not the hidden global textarea) so typed text goes into the comment, even while an item's editor cursor is active
 - Comment count appears next to the item
 - Comments synchronize in real-time between clients
 - Users can edit and delete their comments
@@ -14,6 +15,7 @@ components:
 - client/src/schema/app-schema.ts
 - client/src/stores/OutlinerViewModel.ts
 tests:
+- client/e2e/new/cmt-comment-input-focus-4a01c3ee.spec.ts
 - client/e2e/new/cmt-comment-thread-basic.spec.ts
 - client/src/stores/OutlinerViewModel.test.ts
 - client/src/tests/integration/cmt-derived-renders-9ab3c1d2.integration.spec.ts
