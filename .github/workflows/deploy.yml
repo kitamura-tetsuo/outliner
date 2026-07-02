@@ -118,4 +118,17 @@ jobs:
 
       - name: Deploy to Firebase
         if: github.actor != 'dependabot[bot]'
-        run: firebase deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force
+        run: |
+          set +e
+          DEPLOY_OUTPUT=$(firebase deploy --only hosting,functions,firestore:rules,storage --project outliner-d57b0 --non-interactive --force 2>&1)
+          DEPLOY_EXIT_CODE=$?
+          echo "$DEPLOY_OUTPUT"
+          if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+            if echo "$DEPLOY_OUTPUT" | grep -q "is the current active version"; then
+              # Firebase Hosting sometimes activates a version as part of finalizing it,
+              # making the subsequent release call fail even though the deploy succeeded.
+              echo "::warning::Firebase reported the hosting version as already active; treating as a successful deploy."
+              exit 0
+            fi
+            exit $DEPLOY_EXIT_CODE
+          fi
