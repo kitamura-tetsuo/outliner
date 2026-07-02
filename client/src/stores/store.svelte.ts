@@ -162,12 +162,14 @@ export class GeneralStore {
                 if (iter && typeof iter[Symbol.iterator] === "function") {
                     for (const page of iter) {
                         try {
-                            const text = page.text;
+                            // page.text may be a Y.Text object rather than a plain string in
+                            // production; normalize with String() before comparing.
+                            const text = String(page.text ?? "");
                             if (text) {
                                 newNames.add(text.toLowerCase());
                             }
-                        } catch {
-                            // Ignore individual item errors during cache rebuild
+                        } catch (err) {
+                            logger.warn("Failed to read page text while rebuilding page names cache", err);
                         }
                     }
                 }
@@ -190,8 +192,9 @@ export class GeneralStore {
                     }
                 }
             });
-        } catch {
+        } catch (err) {
             // Fallback: clear cache to avoid stale state if rebuild fails totally
+            logger.warn("Failed to rebuild page names cache", err);
             this._pageNamesCache.clear();
         }
     }
