@@ -155,14 +155,19 @@ export class GeneralStore {
             if (items) {
                 // Items is iterable
                 // Use iterateUnordered for better performance (O(N) vs O(N log N)) since we just need the set of names
-                for (const page of items.iterateUnordered()) {
-                    try {
-                        const text = page.text;
-                        if (text) {
-                            newNames.add(text.toLowerCase());
+                const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
+                    ? items.iterateUnordered()
+                    : items;
+                if (iter && typeof iter[Symbol.iterator] === "function") {
+                    for (const page of iter) {
+                        try {
+                            const text = page.text;
+                            if (text) {
+                                newNames.add(text.toLowerCase());
+                            }
+                        } catch {
+                            // Ignore individual item errors during cache rebuild
                         }
-                    } catch {
-                        // Ignore individual item errors during cache rebuild
                     }
                 }
             }
