@@ -99,7 +99,7 @@ Mocks are generally forbidden. Limited exceptions:
 - The cloud environment is prone to timeouts. Keep each Playwright spec short and split larger flows across multiple files. Document any timeouts; tests will be rerun elsewhere.
 - Use `TestHelpers.seedProjectAndNavigate(page)` in `test.beforeEach` and Playwright's `expect(locator).toBeVisible()` assertions.
 - **Test Data Creation**: For display/rendering tests, create test data using `TestHelpers.seedProjectAndNavigate(page, test.info(), lines)` where `lines` is an array of strings representing item text. This ensures proper Yjs synchronization and avoids keyboard input issues with special characters like `[/` that may trigger command palettes or shortcuts.
-  - Example: `await TestHelpers.seedProjectAndNavigate(page, test.info(), ["This is a combination of [[bold and [/italic]]]"]);`
+  - Example: `await TestHelpers.seedProjectAndNavigate(page, test.info(), ["This is a combination of [[bold and [/ italic]]]"]);`
   - Do NOT manually type text with `page.keyboard.type()` for display tests, as it may conflict with keyboard shortcuts.
 - Create projects and pages programmatically via `fluidClient` rather than via the UI.
 - Simulate user input with `page.keyboard.type()` and manage cursors with `editorStore.setCursor()` and `cursor.insertText()` followed by a 500 ms wait and `waitForCursorVisible()`.
@@ -199,7 +199,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Maintain cursor X position when moving between items with arrow keys.
 - Use the Range API to navigate visual lines. Items never contain newline characters.
 - Selection range (SLR) logic is separate from cursor movement (CLM). Box selection is being implemented.
-- Formatting uses Scrapbox syntax: **bold** `[[text]]`, _italic_ `[/text]`, strike-through `[-text]`, and code `text`.
+- Formatting uses Scrapbox syntax: **bold** `[[text]]`, _italic_ `[/ text]`, strike-through `[-text]`, and code `text`.
 - Active items show plain text with control characters visible. Internal links (`[page]` or `[/project/page]`) should navigate via SvelteKit routing and only create a new page in SharedTree once the user edits it.
 
 ## 6. Project & Firebase Configuration

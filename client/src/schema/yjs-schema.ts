@@ -219,12 +219,14 @@ export class Items {
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
-        } catch (e) {
+        } catch (_e) {
             // Handle missing root node gracefully during initial sync/loading
             if (this.parentKey === "root") {
                 return [];
             }
-            throw e;
+            // Catch missing nodes due to race conditions
+            // Silent warning: parent node was deleted
+            return [];
         }
     }
 
@@ -304,8 +306,19 @@ export class Items {
      */
     *iterateUnordered(): IterableIterator<Item> {
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
-        const keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        let keys: string[];
+        try {
+            keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        } catch (e) {
+            console.warn(
+                "[yjs-schema] Items.iterateUnordered error fetching children for parentKey:",
+                this.parentKey,
+                e,
+            );
+            return;
+        }
         for (const key of keys) {
+            if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
     }

@@ -354,10 +354,16 @@
 
 
         if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return;
-        const siblingKeys: string[] = tree.sortChildrenByOrder(
-            tree.getNodeChildrenFromKey(parentKey),
-            parentKey,
-        );
+        let siblingKeys: string[];
+        try {
+            siblingKeys = tree.sortChildrenByOrder(
+                tree.getNodeChildrenFromKey(parentKey),
+                parentKey,
+            );
+        } catch (e) {
+            console.warn("[OutlinerTree] error fetching children for parentKey:", parentKey, e);
+            return;
+        }
 
         const siblingOrder = [...siblingKeys];
         const currentIndex = siblingOrder.indexOf(key);
