@@ -181,6 +181,22 @@
         return viewModel.getVisibleItems();
     });
 
+    // Compute aria-setsize/aria-posinset per item based on its siblings (same parentId),
+    // so screen readers can announce tree position (e.g. "item 2 of 5").
+    let ariaTreeMeta = $derived.by(() => {
+        const siblingsByParent = new Map<string | null, string[]>();
+        for (const d of displayItems) {
+            const key = d.parentId;
+            if (!siblingsByParent.has(key)) siblingsByParent.set(key, []);
+            siblingsByParent.get(key)!.push(d.model.id);
+        }
+        const meta = new Map<string, { setSize: number, posInSet: number }>();
+        for (const ids of siblingsByParent.values()) {
+            ids.forEach((id, i) => meta.set(id, { setSize: ids.length, posInSet: i + 1 }));
+        }
+        return meta;
+    });
+
     onMount(() => {
         currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
         unsubscribeUser = userManager.addEventListener((result) => {
@@ -2077,11 +2093,20 @@
                 />
                 <a href={resolvePath(`/${projectName}/${pageName}/diff`)} class="button-style">History / Diff</a>
             </div>
+            <details class="a11y-help">
+                <summary>Keyboard &amp; accessibility help</summary>
+                <ul>
+                    <li><strong>Tab</strong> / <strong>Shift+Tab</strong>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
+                    <li><strong>Alt+↑</strong> / <strong>Alt+↓</strong>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
+                    <li><strong>↑</strong> / <strong>↓</strong>: move the cursor between items</li>
+                    <li><strong>Enter</strong>: add a new item below the current one</li>
+                </ul>
+            </details>
         </div>
 
         <div
             class="tree-container"
-            role="region"
+            role="tree"
             aria-label="Outliner Tree"
             bind:this={treeContainer}
             ondrop={handleTreeDrop}
@@ -2101,6 +2126,8 @@
                         isCollapsed={viewModel.isCollapsed(display.model.id)}
                         hasChildren={viewModel.hasChildren(display.model.id)}
                         isPageTitle={index === 0}
+                        ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
+                        ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
                         {index}
                         on:toggle-collapse={handleToggleCollapse}
                         on:indent={handleIndent}
@@ -2363,6 +2390,22 @@
 
     .actions button:hover, .actions a.button-style:hover {
         background: #e8e8e8;
+    }
+
+    .a11y-help {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #444;
+    }
+
+    .a11y-help summary {
+        cursor: pointer;
+        color: #2563eb;
+    }
+
+    .a11y-help ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
     }
 
     .tree-container {
