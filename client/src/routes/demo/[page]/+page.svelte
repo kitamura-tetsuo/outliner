@@ -110,7 +110,7 @@
         if (!isLoading && !error && store.currentPage && store.project) {
             const latestPage = findPage(pageName);
             // If the page was recreated (new instance with the same name), update currentPage
-            if (latestPage && latestPage !== store.currentPage) {
+            if (latestPage && latestPage.key !== store.currentPage.key) {
                 logger.info(`Page instance changed for "${pageName}", updating currentPage`);
                 store.currentPage = latestPage;
             }
