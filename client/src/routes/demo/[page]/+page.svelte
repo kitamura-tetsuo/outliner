@@ -223,6 +223,7 @@
         isVisible={isSearchPanelVisible}
         pageItem={store.currentPage}
         project={store.project}
+        onclose={() => { if (isSearchPanelVisible) toggleSearchPanel(); }}
     />
 </main>
 
