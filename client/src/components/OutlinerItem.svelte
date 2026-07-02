@@ -2130,18 +2130,28 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </div>
                 {/if}
 
-                <!-- Component display (text is hidden) -->
-                {#if (componentType ?? compTypeValue) === "table"}
-                    <InlineJoinTable />
-                {:else if (componentType ?? compTypeValue) === "sqltable"}
-                    <SqlTableGrid item={model.original} />
-                {:else if (componentType ?? compTypeValue) === "chart"}
-                    <ChartQueryEditor item={model.original} />
-                    <ChartPanel item={model.original} />
-                {/if}
-                <!-- Alias display -->
+            </div>
+
+            <!-- Alias display -->
+            <div class="component-wrapper">
                 <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
             </div>
+
+            <!-- Component display -->
+            {#if (componentType ?? compTypeValue) === "table"}
+                <div class="component-wrapper">
+                    <InlineJoinTable />
+                </div>
+            {:else if (componentType ?? compTypeValue) === "sqltable"}
+                <div class="component-wrapper">
+                    <SqlTableGrid item={model.original} />
+                </div>
+            {:else if (componentType ?? compTypeValue) === "chart"}
+                <div class="component-wrapper">
+                    <ChartQueryEditor item={model.original} />
+                    <ChartPanel item={model.original} />
+                </div>
+            {/if}
         </div>
 
         {#if !isPageTitle}
@@ -2263,6 +2273,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     min-width: 0;
     display: flex;
     flex-direction: column;
+}
+
+.component-wrapper {
+    margin-top: 4px;
+    width: 100%;
 }
 
 .item-content {
