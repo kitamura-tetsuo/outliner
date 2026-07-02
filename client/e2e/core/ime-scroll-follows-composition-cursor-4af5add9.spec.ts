@@ -45,49 +45,54 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
             await page.waitForTimeout(500);
             const scrollAfterFocus = await page.evaluate(() => globalThis.scrollY);
 
-            // Start composing and grow the composition text far enough to wrap onto a
-            // new line, which pushes the real cursor position below the viewport while
-            // the composition start (used to anchor the hidden textarea) stays put.
+            // Start composing and grow the composition text incrementally (as a real IME
+            // does, one clause at a time) far enough to wrap onto a new line, which pushes
+            // the real cursor position below the viewport while the composition start
+            // (used to anchor the hidden textarea) stays put.
             await page.evaluate(() => {
                 const el = document.querySelector("textarea.global-textarea")!;
                 el.dispatchEvent(new CompositionEvent("compositionstart", { data: "" }));
-                el.dispatchEvent(new CompositionEvent("compositionupdate", { data: "あ" }));
             });
-            await page.waitForTimeout(100);
 
-            const longComposition = "あいうえお".repeat(15);
-            await page.evaluate((data) => {
-                const el = document.querySelector("textarea.global-textarea")!;
-                el.dispatchEvent(new CompositionEvent("compositionupdate", { data }));
-            }, longComposition);
+            const syllable = "あいうえお";
+            let composed = "";
+            for (let i = 0; i < 15; i++) {
+                composed += syllable;
+                await page.evaluate((data) => {
+                    const el = document.querySelector("textarea.global-textarea")!;
+                    el.dispatchEvent(new CompositionEvent("compositionupdate", { data }));
+                }, composed);
+                await page.waitForTimeout(80);
+            }
 
-            // Wait for the smooth scroll animation to settle.
-            await page.waitForTimeout(1000);
+            // The composed text should reflect the full composition once rendering settles.
+            const itemTextLocator = page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text");
+            await expect(itemTextLocator).toContainText(composed, { timeout: 10000 });
+
+            // The active cursor must (eventually) end up inside the visible viewport, not
+            // hidden below the fold. Poll instead of a single fixed wait, since the
+            // scroll-into-view decision runs on a debounced store subscription and may
+            // need one more tick to catch up with the latest composed text.
+            const viewportHeight = page.viewportSize()?.height || 600;
+            await expect.poll(
+                () =>
+                    page.evaluate((vpHeight) => {
+                        const cursorEl = document.querySelector(".cursor.active");
+                        if (!cursorEl) return false;
+                        const rect = cursorEl.getBoundingClientRect();
+                        const stickyHeaderHeight = 80;
+                        return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
+                    }, viewportHeight),
+                { timeout: 10000, message: "active cursor should scroll into view while composing" },
+            ).toBe(true);
 
             const scrollAfterWrap = await page.evaluate(() => globalThis.scrollY);
             expect(scrollAfterWrap).toBeGreaterThan(scrollAfterFocus);
 
-            // The active cursor must remain inside the visible viewport, not hidden below the fold.
-            const viewportHeight = page.viewportSize()?.height || 600;
-            const isCursorVisible = await page.evaluate((vpHeight) => {
-                const cursorEl = document.querySelector(".cursor.active");
-                if (!cursorEl) return false;
-                const rect = cursorEl.getBoundingClientRect();
-                const stickyHeaderHeight = 80;
-                return rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
-            }, viewportHeight);
-            expect(isCursorVisible).toBe(true);
-
-            // The composed text should reflect the full composition, and the item content
-            // should be visible with its last character rendered on screen.
-            const interimText = await page.locator(`.outliner-item[data-item-id="${itemId}"]`).locator(".item-text")
-                .textContent();
-            expect(interimText).toContain(longComposition);
-
             await page.evaluate((data) => {
                 const el = document.querySelector("textarea.global-textarea")!;
                 el.dispatchEvent(new CompositionEvent("compositionend", { data }));
-            }, longComposition);
+            }, composed);
         },
     );
 });
