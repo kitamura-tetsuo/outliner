@@ -189,12 +189,27 @@ function updateTextareaPosition() {
         textareaRef.style.setProperty('left', `${treeContainerRect.left + pos.left + window.scrollX}px`, 'important');
         textareaRef.style.setProperty('top', `${treeContainerRect.top + pos.top + window.scrollY}px`, 'important');
 
-        // Scroll the cursor into view if it moved
+        // Scroll the cursor into view if it moved. Unlike the textarea position
+        // above (anchored at composition start to keep the candidate window
+        // still), scrolling must always track the real, current cursor offset
+        // (end of composition). Otherwise, typing enough characters to wrap to
+        // a new line during composition leaves the newly typed text below the
+        // viewport since the anchor position never moves.
         if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
             lastScrolledCursorId = lastCursor.itemId;
             lastScrolledOffset = lastCursor.offset;
 
-            const viewportTop = treeContainerRect.top + pos.top;
+            const scrollPos = store.isComposing
+                ? (calculateCursorPixelPosition(lastCursor.itemId, lastCursor.offset) || pos)
+                : pos;
+            // treeContainerRect.top and scrollPos.top are both viewport-relative, so their
+            // sum is viewport-relative too. Add window.scrollY to convert to an absolute
+            // document position, matching the textarea positioning above (line 190) — the
+            // comparisons below subtract window.scrollY back out, and window.scrollTo()
+            // expects an absolute target, so without this the calculation silently
+            // under-counts by exactly the current scroll offset and never triggers once
+            // the page has already scrolled any meaningful distance.
+            const viewportTop = treeContainerRect.top + scrollPos.top + window.scrollY;
             const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
