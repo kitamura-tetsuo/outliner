@@ -361,7 +361,7 @@
                 parentKey,
             );
         } catch (e) {
-            console.warn("[OutlinerTree] error fetching children for parentKey:", parentKey, e);
+            logger.warn({ parentKey, error: e }, "[OutlinerTree] error fetching children for parentKey:");
             return;
         }
 
