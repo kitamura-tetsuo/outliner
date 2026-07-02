@@ -1,0 +1,13 @@
+id: LNK-1299efcf
+title: Existing page links are not marked page-not-exists
+description: Internal links pointing at a page that already exists in the project must not receive the page-not-exists CSS class, so that non-existent links remain visually distinguishable
+category: navigation
+status: implemented
+acceptance:
+- An internal link to a page that already exists in the project does not have the page-not-exists class
+- An internal link to a page that does not exist in the project has the page-not-exists class
+tests:
+- client/e2e/core/lnk-existing-page-link-class-1299efcf.spec.ts
+testcases:
+- Internal link to an existing page renders without the page-not-exists class
+title-ja: 既存ページへの内部リンクに page-not-exists クラスが付かない
