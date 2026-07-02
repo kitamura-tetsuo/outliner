@@ -70,38 +70,48 @@ test.describe("IME-0005: Auto-scroll follows composition cursor", () => {
             await expect(itemTextLocator).toContainText(composed, { timeout: 10000 });
 
             // The active cursor must (eventually) end up inside the visible viewport, not
-            // hidden below the fold. Poll instead of a single fixed wait, since the
-            // scroll-into-view decision runs on a debounced store subscription and may
-            // need one more tick to catch up with the latest composed text.
-            //
-            // The polled value is a diagnostic snapshot (not just a boolean) so that if
-            // this ever fails in CI, the assertion's "Received" dump shows exactly what
-            // the scroll decision saw (scrollY, isComposing, cursor rect, etc.) instead of
-            // requiring another blind round-trip — console.log from the test process is
-            // not captured in this repo's CI job logs, only browser-console output is.
+            // hidden below the fold. Poll manually (instead of a single fixed wait or
+            // expect.poll) so that on failure we can throw an Error whose message embeds
+            // the full diagnostic snapshot (scrollY, isComposing, cursor rect, etc.) —
+            // toMatchObject's diff only prints the mismatched key, and console.log from
+            // the test process is not captured in this repo's CI job logs (only
+            // browser-console output is), so neither surfaces enough to diagnose a
+            // failure without another round-trip.
             const viewportHeight = page.viewportSize()?.height || 600;
-            await expect.poll(
-                () =>
-                    page.evaluate((vpHeight) => {
-                        const store = (globalThis as any).editorOverlayStore;
-                        const lastCursor = store?.getLastActiveCursor?.();
-                        const cursorEl = document.querySelector(".cursor.active");
-                        const rect = cursorEl?.getBoundingClientRect();
-                        const stickyHeaderHeight = 80;
-                        const visible = !!rect && rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
-                        return {
-                            visible,
-                            scrollY: globalThis.scrollY,
-                            isComposing: store?.isComposing,
-                            compositionLength: store?.compositionLength,
-                            lastCursorOffset: lastCursor?.offset,
-                            hasCursorEl: !!cursorEl,
-                            cursorTop: rect?.top,
-                            cursorBottom: rect?.bottom,
-                        };
-                    }, viewportHeight),
-                { timeout: 10000, message: "active cursor should scroll into view while composing" },
-            ).toMatchObject({ visible: true });
+            const readDiagnostics = () =>
+                page.evaluate((vpHeight) => {
+                    const store = (globalThis as any).editorOverlayStore;
+                    const lastCursor = store?.getLastActiveCursor?.();
+                    const cursorEl = document.querySelector(".cursor.active");
+                    const rect = cursorEl?.getBoundingClientRect();
+                    const stickyHeaderHeight = 80;
+                    const visible = !!rect && rect.top >= stickyHeaderHeight && rect.bottom <= vpHeight + 160;
+                    return {
+                        visible,
+                        scrollY: globalThis.scrollY,
+                        innerHeight: globalThis.innerHeight,
+                        isComposing: store?.isComposing,
+                        compositionLength: store?.compositionLength,
+                        lastCursorOffset: lastCursor?.offset,
+                        hasCursorEl: !!cursorEl,
+                        cursorTop: rect?.top,
+                        cursorBottom: rect?.bottom,
+                    };
+                }, viewportHeight);
+
+            const deadline = Date.now() + 10000;
+            let diagnostics = await readDiagnostics();
+            while (!diagnostics.visible && Date.now() < deadline) {
+                await page.waitForTimeout(250);
+                diagnostics = await readDiagnostics();
+            }
+            if (!diagnostics.visible) {
+                throw new Error(
+                    `active cursor did not scroll into view while composing. Diagnostics: ${
+                        JSON.stringify(diagnostics)
+                    }`,
+                );
+            }
 
             const scrollAfterWrap = await page.evaluate(() => globalThis.scrollY);
             expect(scrollAfterWrap).toBeGreaterThan(scrollAfterFocus);
