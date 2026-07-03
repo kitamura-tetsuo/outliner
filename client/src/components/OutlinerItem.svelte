@@ -50,7 +50,7 @@ try {
 
 import { uploadAttachment } from "../services/attachmentService";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
-
+import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 onMount(() => {
     try {
@@ -1000,6 +1000,41 @@ function toggleComments() {
 function handleContentClick(e: MouseEvent) {
     const el = e.target as HTMLElement | null;
     if (!el) return;
+
+    // Handle inline checkbox clicks
+    if (el.classList.contains("inline-checkbox") && el.tagName.toLowerCase() === "input") {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const isChecked = (el as HTMLInputElement).checked;
+        const textStr = String(textString);
+
+        // The regex ensures it starts with [ ] or [x]
+        const newText = isChecked ? "[x] " + textStr.substring(4) : "[ ] " + textStr.substring(4);
+
+        if (model?.original) {
+            model.original.updateText(newText);
+
+            // Handle parent updates
+            const parentKey = (model.original as any).tree?.getNodeParentFromKey?.((model.original as any).key);
+            if (parentKey && parentKey !== "root") {
+                setTimeout(() => {
+                    try {
+                        const ydoc = (model.original as any).ydoc;
+                        const tree = (model.original as any).tree;
+                        if (ydoc && tree) {
+                            // Require app-schema dynamically to avoid circular dep issues in store or import Item from app-schema
+                            import("../schema/app-schema").then(({ Item }) => {
+                                const parentItem = new Item(ydoc, tree, parentKey);
+                                updateParentCheckboxStatus(parentItem);
+                            });
+                        }
+                    } catch(e) {}
+                }, 0);
+            }
+        }
+        return;
+    }
 
     // Clicks on foreign inputs (e.g. the comment thread's own input/textarea) must not
     // trigger item editing or steal focus back to the global textarea.
