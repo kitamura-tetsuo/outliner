@@ -32,11 +32,6 @@ import { uploadAttachment } from "../services/attachmentService";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 
-onMount(() => {
-    try {
-        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + compTypeValue + " id=" + model?.id);
-    } catch {}
-});
 
 
 
