@@ -1,3 +1,4 @@
+import { iterateItems } from "./itemTraversal";
 export interface GraphData {
     nodes: Array<{ id: string; name: string; }>;
     links: Array<{ source: string; target: string; }>;
@@ -14,21 +15,10 @@ function containsLink(text: string, target: string, project: string): boolean {
 function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
-        if (p && typeof (p as Iterable<unknown>)[Symbol.iterator] === "function") {
-            return Array.from(p as Iterable<unknown>);
-        }
-        const len = (p as { length?: number; })?.length;
-        if (typeof len === "number" && len >= 0) {
-            const r: unknown[] = [];
-            for (let i = 0; i < len; i++) {
-                const item = p as { at?: (idx: number) => unknown; [key: number]: unknown; };
-                r.push(item.at ? item.at(i) : item[i]);
-            }
-            return r;
-        }
+        return Array.from(iterateItems(p));
     } catch {}
 
-    return [] as unknown[];
+    return [];
 }
 
 function getText(v: unknown): string {

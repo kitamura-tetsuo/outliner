@@ -8,6 +8,7 @@
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
+import { iterateItems } from "../../../utils/itemTraversal";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
         import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -26,13 +27,7 @@
         const items = store.project?.items;
         if (!items) return undefined;
         // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
-        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-            ? items.iterateUnordered()
-            : items;
-
-        if (!iter || typeof iter[Symbol.iterator] !== "function") return undefined;
-
-        for (const item of iter) {
+        for (const item of iterateItems(items)) {
             if (!item) continue;
             const text = item.text;
             if (String(text).toLowerCase() === String(name).toLowerCase()) {

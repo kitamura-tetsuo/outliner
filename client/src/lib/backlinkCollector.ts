@@ -4,8 +4,9 @@
  * This module provides functionality to collect backlinks (links from other pages) to a page.
  */
 
-import type { Item } from "../schema/yjs-schema";
+import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
+import { iterateItems } from "../utils/itemTraversal";
 import { getLogger } from "./logger";
 
 const logger = getLogger("BacklinkCollector");
@@ -64,15 +65,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             return backlinks;
         }
 
-        // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check or default iterator
-        // (Items iterator triggers a full sort of children keys in app-schema.ts)
-        // Use type assertion to access iterateUnordered if available
-        const pagesAny = pages as Iterable<Item> & { iterateUnordered?: () => Iterator<Item>; };
-        const pagesIterator = (typeof pagesAny.iterateUnordered === "function")
-            ? { [Symbol.iterator]: () => pagesAny.iterateUnordered!() }
-            : pages;
-
-        for (const page of pagesIterator) {
+        for (const page of iterateItems(pages)) {
             const pageItem = page as Item;
 
             const pText = pageItem.text;
@@ -100,16 +93,9 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
 
             // Check child items
-            const items = pageItem.items as Iterable<Item> & { iterateUnordered?: () => Iterator<Item>; };
-            // Optimization: Iterate directly to avoid O(N log N) sorting caused by items.length check
-            // (Items.length getter triggers a full sort of children keys in app-schema.ts)
-            // Also prefer iterateUnordered to avoid sorting completely
+            const items = pageItem.items;
             if (items) {
-                const iterator = (typeof items.iterateUnordered === "function")
-                    ? { [Symbol.iterator]: () => items.iterateUnordered!() }
-                    : items;
-
-                for (const item of iterator) {
+                for (const item of iterateItems(items)) {
                     const text = item.text;
                     // Optimization: skip empty text to avoid expensive toString() (Y.Text deserialization)
                     if (!text || text.length === 0) continue;
