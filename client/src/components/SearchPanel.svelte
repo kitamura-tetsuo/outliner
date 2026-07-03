@@ -15,6 +15,7 @@ const logger = getLogger("SearchPanel");
         type SearchOptions,
     } from "../lib/search";
     import { type PageItemMatch } from "../lib/search/projectSearch";
+    import { iterateItems } from "../utils/itemTraversal";
     import type { Item, Project } from "../schema/app-schema";
 
     interface Props {
@@ -86,15 +87,7 @@ const logger = getLogger("SearchPanel");
             const items = project?.items;
             const arr: Item[] = [];
             if (items) {
-                if (typeof items[Symbol.iterator] === "function") {
-                    for (const p of items as unknown as Iterable<Item>) arr.push(p);
-                } else if (items && typeof (items as unknown as { length: number }).length === "number") {
-                    const len = (items as unknown as { length: number }).length;
-                    for (let i = 0; i < len; i++) {
-                        const v = (items as unknown as { at?: (i: number) => Item })?.at ? (items as unknown as { at: (i: number) => Item }).at(i) : (items as unknown as Item[])[i];
-                        if (typeof v !== "undefined") arr.push(v);
-                    }
-                }
+                for (const p of iterateItems(items)) arr.push(p);
             }
             if (arr.length) return arr;
         } catch {}
@@ -104,15 +97,7 @@ const logger = getLogger("SearchPanel");
             const pages = gs?.pages?.current;
             const arr: Item[] = [];
             if (pages) {
-                if (typeof pages[Symbol.iterator] === "function") {
-                    for (const p of pages as unknown as Iterable<Item>) arr.push(p);
-                } else if (pages && typeof (pages as unknown as { length: number }).length === "number") {
-                    const len = (pages as unknown as { length: number }).length;
-                    for (let i = 0; i < len; i++) {
-                        const v = (pages as unknown as { at?: (i: number) => Item })?.at ? (pages as unknown as { at: (i: number) => Item }).at(i) : (pages as unknown as Item[])[i];
-                        if (typeof v !== "undefined") arr.push(v);
-                    }
-                }
+                for (const p of iterateItems(pages)) arr.push(p);
             }
             return arr;
         } catch {
@@ -156,62 +141,31 @@ const logger = getLogger("SearchPanel");
                         matches: titleMatches,
                     });
 
-                // Explicitly scan child items (Supports both ArrayLike/Iterable)
+                // Explicitly scan child items
                 const children = p.items;
                 if (children) {
-                    // Prioritize Iterable (Supports both Yjs/Fluid)
                     try {
-                        if (typeof children[Symbol.iterator] === "function") {
-                            for (const child of children as unknown as Iterable<Item>) {
-                                if (!child) continue;
-                                const text = ((
-                                    child
-                                ).text?.toString?.() ??
-                                    String(
-                                        (child).text ?? "",
-                                    )) as string;
-                                const m = findMatches(
-                                    text,
-                                    searchQuery,
-                                    options,
-                                );
-                                if (m.length)
-                                    collected.push({
-                                        item: child,
-                                        page: p,
-                                        matches: m,
-                                    });
-                            }
-                        } else {
-                            let len = 0;
-                            try {
-                                len = (children as unknown as { length?: number })?.length ?? 0;
-                            } catch {}
-                            for (let i = 0; i < len; i++) {
-                                const child = (children as unknown as { at?: (i: number) => Item })?.at ? (children as unknown as { at: (i: number) => Item }).at(i) : (children as unknown as Item[])[i];
-                                if (!child) continue;
-                                const text = ((
-                                    child
-                                ).text?.toString?.() ??
-                                    String(
-                                        (child).text ?? "",
-                                    )) as string;
-                                const m = findMatches(
-                                    text,
-                                    searchQuery,
-                                    options,
-                                );
-                                if (m.length)
-                                    collected.push({
-                                        item: child,
-                                        page: p,
-                                        matches: m,
-                                    });
-                            }
+                        for (const child of iterateItems(children)) {
+                            if (!child) continue;
+                            const text = ((
+                                child
+                            ).text?.toString?.() ??
+                                String(
+                                    (child).text ?? "",
+                                )) as string;
+                            const m = findMatches(
+                                text,
+                                searchQuery,
+                                options,
+                            );
+                            if (m.length)
+                                collected.push({
+                                    item: child,
+                                    page: p,
+                                    matches: m,
+                                });
                         }
-                    } catch {
-                        // Safely skip on scan failure
-                    }
+                    } catch {}
                 }
             }
             matches = collected;

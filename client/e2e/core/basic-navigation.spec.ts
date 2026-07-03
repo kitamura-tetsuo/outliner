@@ -24,7 +24,7 @@ test.describe("Basic Navigation Debug", () => {
             // Verify that the page has loaded
             await expect(page).toHaveURL(/.*(localhost|127\.0\.0\.1):7090.*/);
         } catch (error) {
-            console.error("Debug: Navigation failed:", error);
+            console.warn("Debug: Navigation failed:", error);
             console.log("Debug: Current page URL:", page.url());
             throw error;
         }
@@ -43,7 +43,7 @@ test.describe("Basic Navigation Debug", () => {
             const title = await page.title();
             console.log("Debug: Page title:", title);
         } catch (error) {
-            console.error("Debug: Direct server access failed:", error);
+            console.warn("Debug: Direct server access failed:", error);
             throw error;
         }
     });

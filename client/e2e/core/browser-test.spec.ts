@@ -36,7 +36,7 @@ test.describe("Browser Basic Test", () => {
             const title = await page.title();
             console.log("Debug: External page title:", title);
         } catch (error) {
-            console.error("Debug: External navigation failed:", error);
+            console.warn("Debug: External navigation failed:", error);
             throw error;
         }
     });

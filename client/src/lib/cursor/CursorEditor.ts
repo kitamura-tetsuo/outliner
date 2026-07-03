@@ -238,7 +238,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as unknown as unknown as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
@@ -326,7 +326,7 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as unknown as unknown as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent

@@ -8,13 +8,14 @@
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
+import { iterateItems } from "../../../utils/itemTraversal";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
         import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     const logger = getLogger("DemoPageView");
 
-    let pageName: string = $derived.by(() => $page.params.page ?? "");
+    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -26,16 +27,19 @@
         const items = store.project?.items;
         if (!items) return undefined;
         // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
-        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-            ? items.iterateUnordered()
-            : items;
-
-        if (!iter || typeof iter[Symbol.iterator] !== "function") return undefined;
-
-        for (const item of iter) {
+        for (const item of iterateItems(items)) {
             if (!item) continue;
-            const text = item.text;
-            if (String(text).toLowerCase() === String(name).toLowerCase()) {
+            let textString;
+            try {
+                if (typeof item.text?.toString === "function") {
+                    textString = item.text.toString();
+                } else {
+                    textString = String(item.text ?? "");
+                }
+            } catch (_e) {
+                textString = "";
+            }
+            if (textString.toLowerCase() === String(name).toLowerCase() || textString === name || textString === decodeURIComponent(name) || textString.toLowerCase() === decodeURIComponent(name).toLowerCase()) {
                 return item as Item;
             }
         }
@@ -95,12 +99,23 @@
         isSearchPanelVisible = !isSearchPanelVisible;
     }
 
+    function createDemoPage() {
+        if (!store.project || !pageName) return;
+        const created = store.project.addPage(pageName, "anonymous");
+        if (created) {
+            store.currentPage = created;
+            pageNotFound = false;
+        }
+    }
+
     onMount(() => {
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
         const unsub = page.subscribe(($p) => {
-            const name = $p.params?.page ?? "";
-            if (!name || name === lastLoaded) return;
+            let name = $p.params?.page ?? "";
+            if (!name) return;
+            name = decodeURIComponent(name);
+            if (name === lastLoaded) return;
             lastLoaded = name;
             loadDemoPage(name);
         });
@@ -200,6 +215,14 @@
                     <h3 class="text-sm font-medium text-yellow-800">Page not found</h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>The page "{pageName}" does not exist in the demo project.</p>
+                    </div>
+                    <div class="mt-4">
+                        <button type="button"
+                            onclick={createDemoPage}
+                            class="rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                        >
+                            Create Page
+                        </button>
                     </div>
                 </div>
             </div>

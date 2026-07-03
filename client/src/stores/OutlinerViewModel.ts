@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
+import { iterateItems } from "../utils/itemTraversal";
 
 const logger = getLogger();
 // Suppress verbose logs in E2E/Test environments
@@ -134,12 +135,7 @@ export class OutlinerViewModel {
     ): void {
         if (!items) return;
 
-        // Use iterateUnordered if available to avoid O(N log N) sorting
-        // Order doesn't matter here as we're just populating the map
-        const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-            ? items.iterateUnordered()
-            : items;
-        for (const child of iter) {
+        for (const child of iterateItems(items)) {
             this.ensureViewModelsItemExist(child, parentId);
         }
     }
@@ -246,7 +242,7 @@ export class OutlinerViewModel {
             this.visibleOrder = [];
         }
 
-        for (const child of items) {
+        for (const child of iterateItems(items)) {
             this.recalculateOrderAndDepthItem(child, depth, parentId);
         }
     }

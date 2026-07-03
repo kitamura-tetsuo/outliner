@@ -15,11 +15,13 @@
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
     import type { Project as AppProject } from "../../../schema/app-schema";
+    import { iterateItems } from "../../../utils/itemTraversal";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
+    import { pageViewStore } from "../../../stores/PageViewStore.svelte";
     import { store } from "../../../stores/store.svelte";
     import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -27,8 +29,8 @@
     // Get URL parameters (follow SvelteKit page store)
     // NOTE: Must reference the value of $page (not the store object).
     // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
-    let projectName: string = $derived.by(() => $page.params.project ?? "");
-    let pageName: string = $derived.by(() => $page.params.page ?? "");
+    let projectName: string = $derived.by(() => decodeURIComponent($page.params.project ?? ""));
+    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
 
     // Debug log
     // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings
@@ -162,12 +164,19 @@
                 const items = project?.items;
                 if (items) {
                     const titles: string[] = [];
-                    const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-                        ? items.iterateUnordered()
-                        : (items as unknown as Iterable<{ text?: { toString?: () => string } }>);
-                    for (const p of iter) {
+                    for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
                         if (!p) continue;
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        let textString;
+                        try {
+                            if (typeof p.text?.toString === "function") {
+                                textString = p.text.toString();
+                            } else {
+                                textString = String(p.text ?? "");
+                            }
+                        } catch (_e) {
+                            textString = "";
+                        }
+                        const t = textString;
                         titles.push(t);
                         if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;
@@ -324,6 +333,20 @@
 
     // Return to Project Page
 
+    function createPage() {
+        if (!store.project || !pageName) return;
+        try {
+            const currentUserId = userManager.getCurrentUser()?.id || "anonymous";
+            const created = store.project.addPage(pageName, currentUserId);
+            if (created) {
+                store.currentPage = created;
+                pageNotFound = false;
+            }
+        } catch (e) {
+            logger.warn("createPage failed", e);
+        }
+    }
+
     // Auxiliary button to add items from top of screen (for E2E stabilization)
     function addItemFromTopToolbar() {
         try {
@@ -472,6 +495,7 @@
 
         if (pageName) {
             searchHistoryStore.add(pageName);
+            pageViewStore.increment(pageName);
         }
     });
 
@@ -609,6 +633,16 @@
                             The specified page "{pageName}" does not exist in project "{projectName}".
                         </p>
                     </div>
+                    {#if isAuthenticated}
+                        <div class="mt-4">
+                            <button type="button"
+                                onclick={createPage}
+                                class="rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                            >
+                                Create Page
+                            </button>
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>

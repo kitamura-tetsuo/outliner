@@ -523,6 +523,16 @@ export class ScrapboxFormatter {
         text = text.replace(/\x01/g, "");
         /* eslint-enable no-control-regex */
 
+        let leadingCheckboxHtml = "";
+        const checkboxMatch = text.match(/^\[([ x])\]\s/);
+        if (checkboxMatch) {
+            const isChecked = checkboxMatch[1] === "x";
+            leadingCheckboxHtml = `<input type="checkbox" class="inline-checkbox" ${
+                isChecked ? 'checked="checked"' : ""
+            } /> `;
+            text = text.substring(checkboxMatch[0].length);
+        }
+
         // Temporarily replace underline tags with placeholders
         const underlinePlaceholders: string[] = [];
         let tempText = text;
@@ -781,6 +791,10 @@ export class ScrapboxFormatter {
         const lines = tempText.split(/\r?\n/);
         let result = processLines(lines);
 
+        if (leadingCheckboxHtml) {
+            result = leadingCheckboxHtml + result;
+        }
+
         // Restore placeholders to actual underline tags
         underlinePlaceholders.forEach((content, index) => {
             const placeholder = `__UNDERLINE_${index}__`;
@@ -882,6 +896,12 @@ export class ScrapboxFormatter {
             '<span class="control-char">$1</span><blockquote>$2</blockquote>',
         );
 
+        // Checkboxes - display only control characters when cursor is present
+        html = html.replace(
+            /^(\[[ x]\]\s)(.*)$/,
+            '<span class="control-char">$1</span>$2',
+        );
+
         return html;
     }
 
@@ -970,6 +990,7 @@ export class ScrapboxFormatter {
             /(?<!\[)https?:\/\/[^\s\]]+/.source, // Bare URL
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
             /^>\s(.*?)$/m.source, // Quote
+            /^\[[ x]\]\s/.source, // Checkbox
         ].join("|"),
         "m",
     );
