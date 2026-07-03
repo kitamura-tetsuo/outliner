@@ -8,6 +8,9 @@ import {
 } from "../schema/app-schema";
 import PageListItem from "./PageListItem.svelte";
 import { resolvePath } from "../utils/pathUtils";
+import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
+import { pageViewStore } from "../stores/PageViewStore.svelte";
+import { getBacklinkCount } from "../lib/backlinkCollector";
 
 interface Props {
     projectName?: string;
@@ -32,13 +35,18 @@ const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === tru
 let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
 let inputEl: HTMLInputElement | undefined = $state();
 let isGridView = $state(true); // Default to grid view
+let sortBy = $state("modified");
 let initialized = $state(false);
 
 $effect(() => {
     if (!initialized) {
-        const saved = localStorage.getItem('outliner_page_list_view');
-        if (saved !== null) {
-            isGridView = saved === 'grid';
+        const savedView = localStorage.getItem('outliner_page_list_view');
+        if (savedView !== null) {
+            isGridView = savedView === 'grid';
+        }
+        const savedSort = localStorage.getItem('outliner_page_list_sort');
+        if (savedSort !== null) {
+            sortBy = savedSort;
         }
         initialized = true;
     }
@@ -47,7 +55,35 @@ $effect(() => {
 $effect(() => {
     if (initialized) {
         localStorage.setItem('outliner_page_list_view', isGridView ? 'grid' : 'list');
+        localStorage.setItem('outliner_page_list_sort', sortBy);
     }
+});
+
+let sortedItems = $derived.by(() => {
+    const items = Array.from(rootItems);
+    items.sort((a, b) => {
+        switch (sortBy) {
+            case "created":
+                return b.created - a.created;
+            case "visited": {
+                const aIdx = searchHistoryStore.history.indexOf(a.text);
+                const bIdx = searchHistoryStore.history.indexOf(b.text);
+                const aOrder = aIdx !== -1 ? aIdx : Infinity;
+                const bOrder = bIdx !== -1 ? bIdx : Infinity;
+                return aOrder - bOrder;
+            }
+            case "linked":
+                return getBacklinkCount(b.text) - getBacklinkCount(a.text);
+            case "viewed":
+                return pageViewStore.get(b.text) - pageViewStore.get(a.text);
+            case "title":
+                return a.text.localeCompare(b.text);
+            case "modified":
+            default:
+                return b.lastChanged - a.lastChanged;
+        }
+    });
+    return items;
 });
 
 function handleCreatePage() {
@@ -99,7 +135,24 @@ function selectPage(page: Item) {
     <div class="mb-4 flex items-center justify-between">
         <h2 class="m-0 text-lg font-medium text-gray-800">Pages</h2>
 
-        <div class="flex items-center gap-1 rounded-md bg-gray-100 p-1">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center">
+                <label for="sort-order" class="sr-only">Sort order</label>
+                <select
+                    id="sort-order"
+                    bind:value={sortBy}
+                    class="block w-full rounded-md border-gray-300 py-1 pl-3 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                >
+                    <option value="modified">Modified</option>
+                    <option value="created">Created</option>
+                    <option value="visited">Last visited</option>
+                    <option value="linked">Most linked</option>
+                    <option value="viewed">Most viewed</option>
+                    <option value="title">Title</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-1 rounded-md bg-gray-100 p-1">
             <button type="button"
                 onclick={() => (isGridView = false)}
                 class="rounded px-2 py-1 text-sm font-medium transition-colors {isGridView ? 'text-gray-500 hover:text-gray-700' : 'bg-white text-blue-600 shadow-sm'}"
@@ -114,6 +167,7 @@ function selectPage(page: Item) {
             >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             </button>
+            </div>
         </div>
     </div>
 
@@ -141,11 +195,11 @@ function selectPage(page: Item) {
     </div>
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
-        {#each rootItems as page (page.id)}
+        {#each sortedItems as page (page.id)}
             <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text)}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text)}`)} onPageClick={() => selectPage(page)} />
         {/each}
 
-        {#if rootItems.length === 0}
+        {#if sortedItems.length === 0}
             <li class="col-span-full flex flex-col items-center gap-3 rounded-md bg-gray-50 px-4 py-8 text-center text-gray-500 border border-gray-200">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400" aria-hidden="true">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
