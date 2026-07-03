@@ -21,6 +21,7 @@
 
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
+    import { pageViewStore } from "../../../stores/PageViewStore.svelte";
     import { store } from "../../../stores/store.svelte";
     import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -470,6 +471,7 @@
 
         if (pageName) {
             searchHistoryStore.add(pageName);
+            pageViewStore.increment(pageName);
         }
     });
 
