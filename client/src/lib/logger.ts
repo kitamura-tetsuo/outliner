@@ -436,6 +436,12 @@ function setupGlobalErrorHandlers(): void {
 // Safely stringify console.error/warn arguments to suppress [unserializable] spam in Playwright
 function setupConsoleSanitizer(): void {
     if (typeof window === "undefined") return;
+
+    // Only sanitize in E2E test environment to preserve DevTools object inspection in dev/prod
+    const isTestEnv = localStorage.getItem("VITE_IS_TEST") === "true"
+        || localStorage.getItem("VITE_E2E_TEST") === "true";
+    if (!isTestEnv) return;
+
     const safe = (arg: unknown): string => {
         try {
             if (typeof arg === "string") return arg;
