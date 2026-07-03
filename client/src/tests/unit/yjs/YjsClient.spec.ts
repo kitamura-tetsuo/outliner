@@ -94,4 +94,130 @@ describe("YjsClient", () => {
         expect(info.provider!.name).toBe("mock-provider");
         expect(info.provider!.connected).toBe(true);
     });
+
+    it("should return the project and tree correctly", () => {
+        expect(client.getProject()).toBe(project);
+        expect(client.getTree()).toBe(project.items);
+    });
+
+    it("should have wsProvider correctly set", () => {
+        expect(client.wsProvider).toBe(provider);
+    });
+
+    it("should return correct connectionState properties", () => {
+        expect(client.isContainerConnected).toBe(true);
+        expect(client.connectionState).toBe("Connected");
+        expect(client.getConnectionStateString()).toBe("Connected");
+
+        // Mock a disconnected state
+        const disconnectedProvider = { ...provider, isSynced: false, status: "disconnected", websocketProvider: { status: "disconnected" } } as any;
+        const disconnectedClient = new YjsClient({
+            clientId,
+            projectId,
+            project: project,
+            doc,
+            provider: disconnectedProvider,
+            awareness: null,
+        });
+
+        expect(disconnectedClient.isContainerConnected).toBe(false);
+        expect(disconnectedClient.connectionState).toBe("Disconnected");
+        expect(disconnectedClient.getConnectionStateString()).toBe("Disconnected");
+    });
+
+    it("should return awareness if set", () => {
+        const mockAwareness = {
+            getStates: () => new Map(),
+            getLocalState: () => ({}),
+        } as any;
+
+        const clientWithAwareness = new YjsClient({
+            clientId,
+            projectId,
+            project: project,
+            doc,
+            provider,
+            awareness: mockAwareness,
+        });
+
+        expect(clientWithAwareness.getAwareness()).toBe(mockAwareness);
+        expect(client.getAwareness()).toBeNull();
+    });
+
+    it("should trigger onAccessDenied on 4003 error", () => {
+        const onAccessDeniedMock = vi.fn();
+        client.onAccessDenied = onAccessDeniedMock;
+
+        // Find the on("close") handler registered in the constructor
+        const closeHandler = vi.mocked(provider.on).mock.calls.find(call => call[0] === "close")?.[1];
+
+        expect(closeHandler).toBeDefined();
+        if (closeHandler) {
+            closeHandler({ code: 4003, reason: "Access Denied" });
+            expect(onAccessDeniedMock).toHaveBeenCalledTimes(1);
+
+            // Should not trigger on other codes
+            closeHandler({ code: 1000, reason: "Normal Closure" });
+            expect(onAccessDeniedMock).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it("should extract tree data correctly", () => {
+        const mockItem1 = {
+            id: "1",
+            text: "Item 1",
+            author: "user1",
+            votes: ["user2"],
+            created: 1000,
+            lastChanged: 2000,
+            items: { length: 0 }
+        };
+        const mockItem2 = {
+            id: "2",
+            text: "Item 2",
+            author: "user3",
+            votes: [],
+            created: 3000,
+            lastChanged: 4000,
+            items: {
+                length: 1,
+                at: (i: number) => mockItem1
+            }
+        };
+
+        const mockItems = {
+            length: 1,
+            at: (i: number) => mockItem2
+        };
+
+        const clientWithItems = new YjsClient({
+            clientId,
+            projectId,
+            project: { ...project, items: mockItems } as any,
+            doc,
+            provider,
+            awareness: null,
+        });
+
+        const data = clientWithItems.getAllData();
+        expect(data.length).toBe(1);
+        expect(data[0].id).toBe("2");
+        expect(data[0].text).toBe("Item 2");
+        expect(data[0].votes).toEqual([]);
+        expect(data[0].items).toBeDefined();
+        expect((data[0].items as any[])[0].id).toBe("1");
+        expect((data[0].items as any[])[0].text).toBe("Item 1");
+        expect((data[0].items as any[])[0].votes).toEqual(["user2"]);
+
+        // getTreeAsJson
+        expect(clientWithItems.getTreeAsJson("0.id")).toBe("2");
+        expect(clientWithItems.getTreeAsJson("0.items.0.id")).toBe("1");
+        expect(clientWithItems.getTreeAsJson("invalid.path")).toBeNull();
+    });
+
+    it("should safely dispose resources", () => {
+        // Just executing to ensure no throws
+        client.dispose();
+        expect(provider.destroy).toHaveBeenCalled();
+    });
 });
