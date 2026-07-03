@@ -33,6 +33,12 @@ import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 
+onMount(() => {
+    try {
+        logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + compTypeValue + " id=" + model?.id);
+    } catch {}
+});
+
 
 
 

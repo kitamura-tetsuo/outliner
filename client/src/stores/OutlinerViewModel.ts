@@ -68,7 +68,7 @@ export class OutlinerViewModel {
      * Update view model from data model
      * @param pageItem Root item collection
      */
-    updateFromModel(pageItem: Item): void {
+    updateFromModel(pageItem: Item, changedItemIds?: Set<string>, structureChanged: boolean = true): void {
         // Check if already processing during update
         if (this._isUpdating) return;
 
@@ -87,6 +87,19 @@ export class OutlinerViewModel {
                 "OutlinerViewModel: pageItem.items length:",
                 (pageItem.items as unknown as { length?: number; })?.length || 0,
             );
+
+            if (!structureChanged && changedItemIds && changedItemIds.size > 0 && this.visibleOrder.length > 0) {
+                // FAST PATH: Update only specific items without re-walking or re-calculating order
+                for (const itemId of changedItemIds) {
+                    const existingViewModel = this.viewModels.get(itemId);
+                    if (existingViewModel && existingViewModel.original) {
+                        this.ensureSingleViewModelsItemExist(existingViewModel.original);
+                    } else if (itemId === pageItem.id) {
+                        this.ensureSingleViewModelsItemExist(pageItem);
+                    }
+                }
+                return; // Skip structure recalculation
+            }
 
             // Update or add existing view models
             this.ensureViewModelsItemExist(pageItem);
@@ -127,14 +140,14 @@ export class OutlinerViewModel {
         }
     }
 
-    private ensureViewModelsItemExist(
+    private ensureSingleViewModelsItemExist(
         item: Item,
         parentId: string | null = null,
     ): void {
         if (!isItemLike(item)) return;
 
         debugLog(
-            `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
+            `OutlinerViewModel: ensureSingleViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
         );
 
         // Update existing view model or create new
@@ -184,8 +197,19 @@ export class OutlinerViewModel {
             );
         }
 
-        // Set parent
-        this.parentMap.set(item.id, parentId);
+        if (parentId !== null) {
+            // Set parent
+            this.parentMap.set(item.id, parentId);
+        }
+    }
+
+    private ensureViewModelsItemExist(
+        item: Item,
+        parentId: string | null = null,
+    ): void {
+        if (!isItemLike(item)) return;
+
+        this.ensureSingleViewModelsItemExist(item, parentId);
 
         // Process child items too
         if (
