@@ -701,7 +701,9 @@ export class ScrapboxFormatter {
                             const pageName = parts.slice(1).join("/");
                             let existsClass;
                             try {
-                                existsClass = this.checkPageExists(pageName, projectName) ? "page-exists" : "page-not-exists";
+                                existsClass = this.checkPageExists(pageName, projectName)
+                                    ? "page-exists"
+                                    : "page-not-exists";
                             } catch {
                                 existsClass = "page-not-exists";
                             }
