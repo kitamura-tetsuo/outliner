@@ -99,6 +99,15 @@ import { iterateItems } from "../../../utils/itemTraversal";
         isSearchPanelVisible = !isSearchPanelVisible;
     }
 
+    function createDemoPage() {
+        if (!store.project || !pageName) return;
+        const created = store.project.addPage(pageName, "anonymous");
+        if (created) {
+            store.currentPage = created;
+            pageNotFound = false;
+        }
+    }
+
     onMount(() => {
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
@@ -206,6 +215,14 @@ import { iterateItems } from "../../../utils/itemTraversal";
                     <h3 class="text-sm font-medium text-yellow-800">Page not found</h3>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>The page "{pageName}" does not exist in the demo project.</p>
+                    </div>
+                    <div class="mt-4">
+                        <button type="button"
+                            onclick={createDemoPage}
+                            class="rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                        >
+                            Create Page
+                        </button>
                     </div>
                 </div>
             </div>
