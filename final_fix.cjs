@@ -1,6 +1,6 @@
-const fs = require('fs');
+const fs = require("fs");
 
-let content = fs.readFileSync('client/src/components/OutlinerTree.svelte', 'utf-8');
+let content = fs.readFileSync("client/src/components/OutlinerTree.svelte", "utf-8");
 
 const matchBlock = `                    let structureChanged = false;
                     const changedKeys = new SvelteSet<string>();
@@ -68,7 +68,8 @@ if (!content.includes(matchBlock)) {
     content = content.replace(matchBlock, newBlock);
 
     // Add the missing batched updates state back
-    const stateMatch = `    let __lastUpdateInfo = $state({ tick: 0, changedKeys: new SvelteSet<string>(), structureChanged: true });`;
+    const stateMatch =
+        `    let __lastUpdateInfo = $state({ tick: 0, changedKeys: new SvelteSet<string>(), structureChanged: true });`;
     const newState = `    let __batchedUpdates = {
         changedKeys: new SvelteSet<string>(),
         structureChanged: false
@@ -79,6 +80,6 @@ if (!content.includes(matchBlock)) {
 
     content = content.replace(stateMatch, newState);
 
-    fs.writeFileSync('client/src/components/OutlinerTree.svelte', content);
+    fs.writeFileSync("client/src/components/OutlinerTree.svelte", content);
     console.log("Restored queueMicrotask with correct _parentHistory logic");
 }
