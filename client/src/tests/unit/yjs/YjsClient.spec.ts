@@ -115,7 +115,7 @@ describe("YjsClient", () => {
             isSynced: false,
             status: "disconnected",
             websocketProvider: { status: "disconnected" },
-        } as any;
+        } as unknown as import("@hocuspocus/provider").HocuspocusProvider;
         const disconnectedClient = new YjsClient({
             clientId,
             projectId,
@@ -134,7 +134,7 @@ describe("YjsClient", () => {
         const mockAwareness = {
             getStates: () => new Map(),
             getLocalState: () => ({}),
-        } as any;
+        } as unknown as import("y-protocols/awareness").Awareness;
 
         const clientWithAwareness = new YjsClient({
             clientId,
@@ -186,19 +186,19 @@ describe("YjsClient", () => {
             lastChanged: 4000,
             items: {
                 length: 1,
-                at: (i: number) => mockItem1,
+                at: (_i: number) => mockItem1,
             },
         };
 
         const mockItems = {
             length: 1,
-            at: (i: number) => mockItem2,
+            at: (_i: number) => mockItem2,
         };
 
         const clientWithItems = new YjsClient({
             clientId,
             projectId,
-            project: { ...project, items: mockItems } as any,
+            project: { ...project, items: mockItems } as unknown as Project,
             doc,
             provider,
             awareness: null,
@@ -210,9 +210,9 @@ describe("YjsClient", () => {
         expect(data[0].text).toBe("Item 2");
         expect(data[0].votes).toEqual([]);
         expect(data[0].items).toBeDefined();
-        expect((data[0].items as any[])[0].id).toBe("1");
-        expect((data[0].items as any[])[0].text).toBe("Item 1");
-        expect((data[0].items as any[])[0].votes).toEqual(["user2"]);
+        expect((data[0].items as Record<string, unknown>[])[0].id).toBe("1");
+        expect((data[0].items as Record<string, unknown>[])[0].text).toBe("Item 1");
+        expect((data[0].items as Record<string, unknown>[])[0].votes).toEqual(["user2"]);
 
         // getTreeAsJson
         expect(clientWithItems.getTreeAsJson("0.id")).toBe("2");
