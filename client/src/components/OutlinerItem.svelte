@@ -1668,7 +1668,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         const url = await uploadAttachment(containerId, model.id, file);
                         
                         if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event as DragEvent, url);
+                            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url);
                         } else {
                             // Dispatch event for top/bottom insertion
                             dispatch("drop", {
@@ -1717,7 +1717,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
+                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
 
                     } catch {}
                 }
@@ -1733,7 +1733,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event as DragEvent, localUrl);
+            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
         } catch {}
         dropTargetPosition = null;
         return;
