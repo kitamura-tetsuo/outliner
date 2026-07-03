@@ -363,9 +363,6 @@
     function toggleSearchPanel() {
         const before = isSearchPanelVisible;
         isSearchPanelVisible = !isSearchPanelVisible;
-        if (typeof window !== "undefined") {
-            window.__SEARCH_PANEL_VISIBLE__ = isSearchPanelVisible;
-        }
         logger.debug(
             `toggleSearchPanel called: ${JSON.stringify({
                 before,
@@ -454,7 +451,6 @@
                     await new Promise((r) => setTimeout(r, 25));
                     tries++;
                 }
-                window.__SEARCH_PANEL_VISIBLE__ = true;
                 logger.debug(
                     `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
                         {
