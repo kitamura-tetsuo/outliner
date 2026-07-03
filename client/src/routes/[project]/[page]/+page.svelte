@@ -28,8 +28,8 @@
     // Get URL parameters (follow SvelteKit page store)
     // NOTE: Must reference the value of $page (not the store object).
     // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
-    let projectName: string = $derived.by(() => $page.params.project ?? "");
-    let pageName: string = $derived.by(() => $page.params.page ?? "");
+    let projectName: string = $derived.by(() => decodeURIComponent($page.params.project ?? ""));
+    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
 
     // Debug log
     // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings
@@ -165,7 +165,17 @@
                     const titles: string[] = [];
                     for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
                         if (!p) continue;
-                        const t = p?.text?.toString?.() ?? String(p?.text ?? "");
+                        let textString = "";
+                        try {
+                            if (typeof p.text?.toString === "function") {
+                                textString = p.text.toString();
+                            } else {
+                                textString = String(p.text ?? "");
+                            }
+                        } catch (e) {
+                            textString = "";
+                        }
+                        const t = textString;
                         titles.push(t);
                         if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;

@@ -15,7 +15,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
 
     const logger = getLogger("DemoPageView");
 
-    let pageName: string = $derived.by(() => $page.params.page ?? "");
+    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -29,8 +29,17 @@ import { iterateItems } from "../../../utils/itemTraversal";
         // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
         for (const item of iterateItems(items)) {
             if (!item) continue;
-            const text = item.text;
-            if (String(text).toLowerCase() === String(name).toLowerCase()) {
+            let textString = "";
+            try {
+                if (typeof item.text?.toString === "function") {
+                    textString = item.text.toString();
+                } else {
+                    textString = String(item.text ?? "");
+                }
+            } catch (e) {
+                textString = "";
+            }
+            if (textString.toLowerCase() === String(name).toLowerCase() || textString === name || textString === decodeURIComponent(name) || textString.toLowerCase() === decodeURIComponent(name).toLowerCase()) {
                 return item as Item;
             }
         }
@@ -94,8 +103,10 @@ import { iterateItems } from "../../../utils/itemTraversal";
         // Follow route parameter changes (e.g. internal links between demo pages)
         let lastLoaded: string | undefined;
         const unsub = page.subscribe(($p) => {
-            const name = $p.params?.page ?? "";
-            if (!name || name === lastLoaded) return;
+            let name = $p.params?.page ?? "";
+            if (!name) return;
+            name = decodeURIComponent(name);
+            if (name === lastLoaded) return;
             lastLoaded = name;
             loadDemoPage(name);
         });
