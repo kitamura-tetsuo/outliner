@@ -272,7 +272,7 @@ async function setupProviderForRoom(
         const reason = event.reason;
         logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
 
-        if (code === 4001) {
+        if (code === 4001 || code === 4003) {
             logger.info(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
             forceTokenRefresh = true;
             void userManager.refreshToken();
