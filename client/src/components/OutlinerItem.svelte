@@ -32,10 +32,6 @@ import { uploadAttachment } from "../services/attachmentService";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 
-onMount(() => {
-    try {
-    } catch {}
-});
 
 
 
@@ -547,7 +543,7 @@ function handleComponentTypeChange(newType: string) {
 
 // Synchronization by Yjs fine-grained observe
 let textString = $state<string>("");
-
+let compTypeValue = $state<string | undefined>(undefined);
 
 onMount(() => {
     let unsubs: Array<() => void> = [];
@@ -577,7 +573,7 @@ onMount(() => {
             const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
                 try {
                     if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        componentType = m.get?.("componentType") as string | undefined;
+                        compTypeValue = m.get?.("componentType") as string | undefined;
                     }
                 } catch {}
             };
@@ -585,7 +581,7 @@ onMount(() => {
             h2();
         } else {
             // Fallback: direct acquisition
-            try { componentType = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
+            try { compTypeValue = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -2077,7 +2073,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 {#if !isPageTitle}
                     <div class="component-selector">
                         <select
-                            value={componentType || "none"}
+                            value={(componentType ?? compTypeValue) || "none"}
                             onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
                             aria-label="Item component type"
                         >
@@ -2097,15 +2093,15 @@ export function setSelectionPosition(start: number, end: number = start) {
             </div>
 
             <!-- Component display -->
-            {#if componentType === "table"}
+            {#if (componentType ?? compTypeValue) === "table"}
                 <div class="component-wrapper">
                     <InlineJoinTable />
                 </div>
-            {:else if componentType === "sqltable"}
+            {:else if (componentType ?? compTypeValue) === "sqltable"}
                 <div class="component-wrapper">
                     <SqlTableGrid item={model.original} />
                 </div>
-            {:else if componentType === "chart"}
+            {:else if (componentType ?? compTypeValue) === "chart"}
                 <div class="component-wrapper">
                     <ChartQueryEditor item={model.original} />
                     <ChartPanel item={model.original} />
