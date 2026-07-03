@@ -12,28 +12,29 @@ export function iterateItems(items: unknown): Iterable<Item> {
     if (!items) return [];
 
     // Prioritize iterateUnordered for O(N) traversal
-    const iterateUnordered = (items as any).iterateUnordered;
+    const itemsRecord = items as Record<string, unknown>;
+    const iterateUnordered = itemsRecord.iterateUnordered;
     if (typeof iterateUnordered === "function") {
         return {
-            [Symbol.iterator]: () => iterateUnordered.call(items),
+            [Symbol.iterator]: () => iterateUnordered.call(items) as Iterator<Item>,
         };
     }
 
     // Support standard Iterables (e.g. native arrays, generators)
-    if (typeof (items as any)[Symbol.iterator] === "function") {
+    if (typeof itemsRecord[Symbol.iterator] === "function") {
         return items as Iterable<Item>;
     }
 
     // Support array-like objects with length and at() or index access
-    const len = (items as any).length;
+    const len = itemsRecord.length;
     if (typeof len === "number" && len >= 0) {
         const arr: Item[] = [];
         for (let i = 0; i < len; i++) {
-            const v = typeof (items as any).at === "function"
-                ? (items as any).at(i)
-                : (items as any)[i];
+            const v = typeof itemsRecord.at === "function"
+                ? itemsRecord.at(i)
+                : (items as Record<number, unknown>)[i];
             if (v !== undefined) {
-                arr.push(v);
+                arr.push(v as Item);
             }
         }
         return arr;
