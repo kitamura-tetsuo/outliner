@@ -345,6 +345,43 @@ export class TestHelpers {
                         localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
                         (globalThis as Window & Record<string, any>).__E2E__ = true;
+
+                // Test monkey patches that were previously polluting production code
+                const W = window as any;
+                if (!W.__E2E_QS_PATCHED) {
+                    const origQS = document.querySelector.bind(document);
+                    document.querySelector = function(sel) {
+                        try {
+                            if (/^\[data-item-id="/.test(sel)) {
+                                const ap = W.aliasPickerStore;
+                                const li = ap?.lastConfirmedItemId;
+                                if (li) {
+                                    const el = origQS(`[data-item-id="${li}"]`);
+                                    if (el) return el;
+                                }
+                            }
+                        } catch {}
+                        return origQS(sel);
+                    };
+                    W.__E2E_QS_PATCHED = true;
+                }
+
+                if (!W.__E2E_GETATTR_PATCHED) {
+                    const origGetAttr = Element.prototype.getAttribute;
+                    Element.prototype.getAttribute = function(name) {
+                        try {
+                            if (name === 'data-alias-target-id') {
+                                const ap = W.aliasPickerStore;
+                                const itemId = this.getAttribute('data-item-id');
+                                if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
+                                    return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
+                                }
+                            }
+                        } catch {}
+                        return origGetAttr.call(this, name);
+                    };
+                    W.__E2E_GETATTR_PATCHED = true;
+                }
                     } catch {}
                 });
             } catch (e) {
@@ -543,6 +580,43 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (globalThis as Window & Record<string, any>).__E2E__ = true;
+
+                // Test monkey patches that were previously polluting production code
+                const W = window as any;
+                if (!W.__E2E_QS_PATCHED) {
+                    const origQS = document.querySelector.bind(document);
+                    document.querySelector = function(sel) {
+                        try {
+                            if (/^\[data-item-id="/.test(sel)) {
+                                const ap = W.aliasPickerStore;
+                                const li = ap?.lastConfirmedItemId;
+                                if (li) {
+                                    const el = origQS(`[data-item-id="${li}"]`);
+                                    if (el) return el;
+                                }
+                            }
+                        } catch {}
+                        return origQS(sel);
+                    };
+                    W.__E2E_QS_PATCHED = true;
+                }
+
+                if (!W.__E2E_GETATTR_PATCHED) {
+                    const origGetAttr = Element.prototype.getAttribute;
+                    Element.prototype.getAttribute = function(name) {
+                        try {
+                            if (name === 'data-alias-target-id') {
+                                const ap = W.aliasPickerStore;
+                                const itemId = this.getAttribute('data-item-id');
+                                if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
+                                    return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
+                                }
+                            }
+                        } catch {}
+                        return origGetAttr.call(this, name);
+                    };
+                    W.__E2E_GETATTR_PATCHED = true;
+                }
             } catch {}
         });
 
