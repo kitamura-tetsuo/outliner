@@ -122,7 +122,7 @@ describe("yjs connection: shared provider setup", () => {
         expect(typeof provider.configuration.token).toBe("function");
     });
 
-    it("uses the cached ID token by default and only forces a refresh after a 4001 close", async () => {
+    it("uses the cached ID token by default and only forces a refresh after a 4001 or 4003 close", async () => {
         const promise = createProjectConnection("proj-token-test");
         await flushMicrotasks();
         const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
@@ -136,6 +136,12 @@ describe("yjs connection: shared provider setup", () => {
 
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         expect(refreshTokenSpy).toHaveBeenCalled();
+
+        await tokenFn();
+        expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
+
+        provider.emit("close", { code: 4003, reason: "Forbidden" } satisfies CloseEvent);
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(2);
 
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);

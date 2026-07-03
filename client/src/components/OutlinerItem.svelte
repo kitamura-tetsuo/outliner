@@ -2,26 +2,6 @@
     // Drag start position (shared by all items)
     let dragStartClientX = 0;
     let dragStartClientY = 0;
-
-    // Measurement span singleton (lazy initialized)
-    let _measurementSpan: HTMLSpanElement | null = null;
-    function getMeasurementSpan(): HTMLSpanElement {
-        if (typeof document === 'undefined') return null as unknown as HTMLSpanElement;
-        if (!_measurementSpan) {
-            _measurementSpan = document.createElement("span");
-            _measurementSpan.id = "outliner-measurement-span";
-            _measurementSpan.style.whiteSpace = "pre";
-            _measurementSpan.style.visibility = "hidden";
-            _measurementSpan.style.position = "absolute";
-            _measurementSpan.style.top = "-9999px";
-            _measurementSpan.style.left = "-9999px";
-            // Ensure it is attached
-            document.body.appendChild(_measurementSpan);
-        } else if (!_measurementSpan.isConnected) {
-            document.body.appendChild(_measurementSpan);
-        }
-        return _measurementSpan;
-    }
 </script>
 
 <script lang="ts">
@@ -57,57 +37,6 @@ onMount(() => {
         logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + compTypeValue + " id=" + model?.id);
     } catch {}
 });
-onMount(() => {
-    try {
-        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W = window as Window & typeof globalThis & { __E2E_QS_PATCHED?: boolean; aliasPickerStore?: unknown };
-            if (isTest && !W.__E2E_QS_PATCHED) {
-                const origQS = document.querySelector.bind(document);
-                document.querySelector = ((sel: string) => {
-                    try {
-                        if (/^\[data-item-id="/.test(sel)) {
-
-                            const ap = window.aliasPickerStore;
-                            const li = ap?.lastConfirmedItemId;
-                            if (li) {
-                                const el = origQS(`[data-item-id="${li}"]`);
-                                if (el) return el;
-                            }
-                        }
-                    } catch {}
-                    return origQS(sel);
-                }) as typeof document.querySelector;
-                W.__E2E_QS_PATCHED = true;
-            }
-        }
-    } catch {}
-});
-onMount(() => {
-    try {
-        if (typeof window !== 'undefined') {
-            const isTest = window.localStorage?.getItem?.('VITE_IS_TEST') === 'true';
-            const W = window as Window & typeof globalThis & { __E2E_GETATTR_PATCHED?: boolean };
-            if (isTest && !W.__E2E_GETATTR_PATCHED) {
-                const origGetAttr = Element.prototype.getAttribute;
-                Element.prototype.getAttribute = function(this: HTMLElement, name: string): string | null {
-                    try {
-                        if (name === 'data-alias-target-id') {
-
-                            const ap = window.aliasPickerStore;
-                            const itemId = (this as HTMLElement).getAttribute('data-item-id');
-                            if (ap?.lastConfirmedItemId && String(itemId) === String(ap.lastConfirmedItemId)) {
-                                return ap?.lastConfirmedTargetId != null ? String(ap.lastConfirmedTargetId) : '';
-                            }
-                        }
-                    } catch {}
-                    return origGetAttr.call(this, name) as string | null;
-                } as unknown as (qualifiedName: string) => string | null;
-                W.__E2E_GETATTR_PATCHED = true;
-            }
-        }
-    } catch {}
-});
 
 
 
@@ -120,6 +49,7 @@ import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
+import { getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";

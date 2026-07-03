@@ -31,7 +31,6 @@ const logger = getLogger("SearchPanel");
         onclose,
     }: Props = $props();
     let isTestEnv = $state(false);
-    let e2eForceShow = $state(false);
 
     onMount(() => {
         try {
@@ -39,15 +38,6 @@ const logger = getLogger("SearchPanel");
                 typeof window !== "undefined" &&
                 localStorage.getItem("VITE_IS_TEST") === "true";
         } catch {}
-        if (isTestEnv && typeof window !== "undefined") {
-            const update = () => {
-                const flag = window.__SEARCH_PANEL_VISIBLE__ === true;
-                if (flag !== e2eForceShow) e2eForceShow = flag;
-            };
-            update();
-            const id = setInterval(update, 50);
-            onDestroy(() => clearInterval(id));
-        }
     });
 
     let matches: Array<PageItemMatch<Item>> = $state([]);
@@ -398,11 +388,9 @@ const logger = getLogger("SearchPanel");
 
 <svelte:window onkeydown={(e) => { if (isVisible && e.key === 'Escape') onclose?.(); }} />
 
-{#if isVisible || isTestEnv}
+{#if isVisible}
     <div
-        class="search-panel {!isVisible && isTestEnv && !e2eForceShow
-            ? 'e2e-hidden'
-            : ''}"
+        class="search-panel"
         data-testid="search-panel"
         role="region"
         aria-label="Search and Replace"
@@ -512,12 +500,6 @@ const logger = getLogger("SearchPanel");
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         z-index: 1000;
-    }
-
-    /* E2E only: Invisible when always mounted (maintains size and clickable) */
-    .e2e-hidden {
-        opacity: 0;
-        pointer-events: none;
     }
 
     .search-panel-header {
