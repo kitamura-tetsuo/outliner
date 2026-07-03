@@ -1400,14 +1400,16 @@ function handlePaste(event: ClipboardEvent) {
 
 <div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible || localCursorVisible || (typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver)} data-test-env={(typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver) ? 'true' : 'false'}>
     <!-- Debug button -->
-    <button type="button"
-        class="debug-button"
-        class:active={DEBUG_MODE}
-        onclick={() => DEBUG_MODE = !DEBUG_MODE}
-        title="Toggle debug mode"
-    >
-        D
-    </button>
+    {#if import.meta.env.DEV}
+        <button type="button"
+            class="debug-button"
+            class:active={DEBUG_MODE}
+            onclick={() => DEBUG_MODE = !DEBUG_MODE}
+            title="Toggle debug mode"
+        >
+            D
+        </button>
+    {/if}
 
     <!-- Hidden textarea for clipboard -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea" aria-hidden="true" tabindex="-1"></textarea>
