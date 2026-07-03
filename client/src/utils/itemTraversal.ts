@@ -21,7 +21,7 @@ export function iterateItems(items: unknown): Iterable<Item> {
     }
 
     // Support standard Iterables (e.g. native arrays, generators)
-    if (typeof itemsRecord[Symbol.iterator] === "function") {
+    if (typeof (items as any)[Symbol.iterator] === "function") {
         return items as Iterable<Item>;
     }
 
