@@ -25,3 +25,20 @@ Offline editing will not be implemented. The Fluid Framework used for collaborat
 ### EXT-NON Plugin Architecture
 
 Outliner does not provide a plugin system or extension API. Loading or executing user-defined plugins is outside the project's scope.
+
+## Formatting
+
+### CHK-NON Inline `[ ]`/`[x]` Checkbox Syntax for Outline Items
+
+Typing `[ ]` or `[x]` at the start of an outline item does not turn it into an
+interactive, clickable checkbox control, and parent items do not aggregate the
+completion status of such children. `[ ]`/`[x]` are only ever rendered as
+plain literal text (see `client/src/utils/ScrapboxFormatter.ts`, which
+explicitly excludes them from internal-link parsing but does not render a
+checkbox control for them). The public demo previously advertised this as a
+feature on a "Checkboxes and Tasks" page; that page has been removed from
+`server/src/demo-content.ts` since the behavior it demonstrated does not
+exist (see issue #3421). Task/checklist functionality is available instead
+through the standalone `Checklist.svelte` widget (`CHK-0001`,
+`docs/client-features/chk-universal-checklist-7290ab91.yaml`), which is
+unrelated to inline outline-item text syntax.
