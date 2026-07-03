@@ -333,6 +333,20 @@
 
     // Return to Project Page
 
+    function createPage() {
+        if (!store.project || !pageName) return;
+        try {
+            const currentUserId = userManager.getCurrentUser()?.id || "anonymous";
+            const created = store.project.addPage(pageName, currentUserId);
+            if (created) {
+                store.currentPage = created;
+                pageNotFound = false;
+            }
+        } catch (e) {
+            logger.warn("createPage failed", e);
+        }
+    }
+
     // Auxiliary button to add items from top of screen (for E2E stabilization)
     function addItemFromTopToolbar() {
         try {
@@ -619,6 +633,16 @@
                             The specified page "{pageName}" does not exist in project "{projectName}".
                         </p>
                     </div>
+                    {#if isAuthenticated}
+                        <div class="mt-4">
+                            <button type="button"
+                                onclick={createPage}
+                                class="rounded-md bg-blue-100 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2"
+                            >
+                                Create Page
+                            </button>
+                        </div>
+                    {/if}
                 </div>
             </div>
         </div>
