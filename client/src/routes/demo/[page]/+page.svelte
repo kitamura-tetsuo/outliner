@@ -29,14 +29,14 @@ import { iterateItems } from "../../../utils/itemTraversal";
         // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
         for (const item of iterateItems(items)) {
             if (!item) continue;
-            let textString = "";
+            let textString;
             try {
                 if (typeof item.text?.toString === "function") {
                     textString = item.text.toString();
                 } else {
                     textString = String(item.text ?? "");
                 }
-            } catch (e) {
+            } catch (_e) {
                 textString = "";
             }
             if (textString.toLowerCase() === String(name).toLowerCase() || textString === name || textString === decodeURIComponent(name) || textString.toLowerCase() === decodeURIComponent(name).toLowerCase()) {

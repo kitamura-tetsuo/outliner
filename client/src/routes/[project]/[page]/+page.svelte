@@ -165,14 +165,14 @@
                     const titles: string[] = [];
                     for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
                         if (!p) continue;
-                        let textString = "";
+                        let textString;
                         try {
                             if (typeof p.text?.toString === "function") {
                                 textString = p.text.toString();
                             } else {
                                 textString = String(p.text ?? "");
                             }
-                        } catch (e) {
+                        } catch (_e) {
                             textString = "";
                         }
                         const t = textString;
