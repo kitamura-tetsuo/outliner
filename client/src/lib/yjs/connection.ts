@@ -8,6 +8,7 @@ import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
 import { projectRoomPath } from "./roomPath";
+import { setRoomSyncState } from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
@@ -109,14 +110,17 @@ function isAuthRequired(): boolean {
     }
 }
 
-async function getFreshIdToken(): Promise<string> {
-    // Wait for auth and fetch a fresh ID token
+async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
+    // Wait for auth and fetch an ID token, using Firebase's cache unless a refresh is requested
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
                 || window.__E2E__ === true));
-    logger.info(`[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth.currentUser}`);
+    logger.info(
+        `[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth
+            .currentUser}, forceRefresh=${forceRefresh}`,
+    );
 
     const generateMockToken = () => {
         // Generate mock token for E2E tests (server accepts alg:none in test mode)
@@ -155,9 +159,10 @@ async function getFreshIdToken(): Promise<string> {
     }
 
     try {
-        logger.info("[getFreshIdToken] Fetching ID token from Firebase Auth...");
-        // Force refresh to ensure we don't start with a stale/expired token from cache
-        const token = await auth.currentUser.getIdToken(true);
+        logger.info(`[getFreshIdToken] Fetching ID token from Firebase Auth (forceRefresh=${forceRefresh})...`);
+        // Only force a refresh when explicitly requested (e.g. after an auth failure). Using the
+        // SDK's cache otherwise avoids an unnecessary network round-trip on every (re)connect.
+        const token = await auth.currentUser.getIdToken(forceRefresh);
         logger.info(`[getFreshIdToken] Token fetched successfully (len=${token?.length ?? 0})`);
         if (!token) throw new Error("Token is empty");
         return token;
@@ -172,77 +177,113 @@ async function getFreshIdToken(): Promise<string> {
 }
 
 /**
- * Constructs the WebSocket URL including room path and auth token.
- * The server requires the room name in the URL path for authentication validation.
+ * Constructs the WebSocket URL including only the room path.
+ * The auth token is never included here: the server authenticates via the Hocuspocus
+ * Auth message (see `token` in HocuspocusProviderConfiguration below), not the URL, so
+ * putting it in the query string would only risk leaking it into proxy/access logs.
  */
-function constructWsUrl(wsBase: string, room: string, token: string): string {
+function constructWsUrl(wsBase: string, room: string): string {
     // Ensure no double slashes when joining base and room
     const baseUrl = wsBase.replace(/\/$/, "");
     const roomPath = room.startsWith("/") ? room.slice(1) : room;
-    const url = `${baseUrl}/${roomPath}`;
-    return token ? `${url}?token=${token}` : url;
+    return `${baseUrl}/${roomPath}`;
 }
 
-export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
-    logger.info(`[createProjectConnection] Starting for projectId=${projectId}`);
-    const doc = new Y.Doc({ guid: projectId });
-    const wsBase = getWsBase();
-    const room = projectRoomPath(projectId);
-    logger.info(`[createProjectConnection] wsBase=${wsBase}, room=${room}`);
+// Fatal close codes mean the server will never accept this connection: retrying is pointless
+// and, left unchecked, HocuspocusProvider's built-in backoff will retry forever.
+const FATAL_CLOSE_CODES = new Set([4001, 4003, 4006, 4008]);
 
-    // Attach IndexedDB persistence and wait for initial sync
-    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
-        try {
-            const persistence = createPersistence(room, doc);
-            await waitForSync(persistence);
-        } catch { /* no-op in Node */ }
-    }
-
-    // Ensure token is available for initial connection URL (required by server upgrade handler)
-    let initialToken = "";
+async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<void> {
+    if (typeof indexedDB === "undefined" || !isIndexedDBEnabled()) return;
     try {
-        if (projectId !== "demo") {
-            initialToken = await getFreshIdToken();
-        } else {
-            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
-        }
-    } catch {}
+        const persistence = createPersistence(room, doc);
+        await waitForSync(persistence);
+    } catch { /* no-op in Node */ }
+}
 
-    // Send a dummy `token` to satisfy HocuspocusServer's unconditional wait for a `MessageType.Auth` message.
-    // Since our backend completely handles authentication during the HTTP WebSocket Upgrade via the URL `?token=` parameter,
-    // the server suppresses the `onAuthenticate` hook, but still expects the client to trigger the Auth flow!
+interface ProviderSetup {
+    provider: HocuspocusProvider;
+    awareness: Awareness | null;
+    /** Waits for the room's initial sync, rejecting on fatal close codes and resolving `{ synced: false }` on timeout. */
+    waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
+    dispose: () => void;
+}
+
+interface SetupProviderOptions {
+    /** Set the local awareness "user" field from the current user. */
+    setAwarenessUser?: boolean;
+    /** Bind awareness changes to the presence store. */
+    bindPresence?: boolean;
+    /** Re-send the auth token / reconnect when the Firebase auth state changes. */
+    attachTokenRefreshHook?: boolean;
+}
+
+/**
+ * Single source of truth for setting up a Hocuspocus connection for a room: persistence,
+ * token acquisition/refresh, provider construction, and event wiring. Every entry point in
+ * this file (createProjectConnection, connectProjectDoc, createMinimalProjectConnection)
+ * delegates here so their behavior can't drift, in particular around fatal auth close codes.
+ *
+ * Presence binding and the token-refresh hook are opt-in (rather than always on) because
+ * createMinimalProjectConnection is deliberately a bare, low-level connection used by tests;
+ * pulling in the full presence/auth-refresh machinery there raced with the connection's own
+ * initial handshake and made those tests time out.
+ */
+async function setupProviderForRoom(
+    projectId: string,
+    room: string,
+    doc: Y.Doc,
+    label: string,
+    options: SetupProviderOptions = {},
+): Promise<ProviderSetup> {
+    const { setAwarenessUser = false, bindPresence = false, attachTokenRefreshHook = false } = options;
+    const isDemo = projectId === "demo";
+    let forceTokenRefresh = false;
+
+    // HocuspocusProvider calls this function itself on every (re)connect attempt and whenever
+    // sendToken() runs, so the token is always fresh without us having to patch a cached URL.
+    const tokenProvider = async (): Promise<string> => {
+        if (isDemo) return "1"; // dummy token: demo rooms are unauthenticated but still need a truthy value
+        try {
+            const token = await getFreshIdToken(forceTokenRefresh);
+            forceTokenRefresh = false;
+            return token || "1";
+        } catch (e) {
+            logger.error({ error: e }, `[${label}] getFreshIdToken failed`);
+            return "1";
+        }
+    };
+
+    const wsBase = getWsBase();
     const provider = new HocuspocusProvider({
-        url: constructWsUrl(wsBase, room, initialToken),
+        url: constructWsUrl(wsBase, room),
         name: room,
         document: doc,
-        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
+        token: tokenProvider,
     });
-    logger.info(
-        `[createProjectConnection] Provider created for ${room}, wsBase=${wsBase}`,
-    );
+    logger.info(`[${label}] Provider created for ${room}, wsBase=${wsBase}`);
+
     provider.on("status", (event: { status: string; }) => {
         logger.info(`[yjs-conn] ${room} status: ${event.status}`);
-        if (event.status === "connected") {
-            const config = provider.configuration as {
-                token: string | (() => string | Promise<string>);
-                url?: string;
-            };
-            const hasWsHandshakeToken = config.url?.includes("token=");
-            logger.info(`[yjs-conn] status:connected current-url-has-token=${hasWsHandshakeToken}`);
-        }
     });
+
     provider.on("close", (event: { code?: number; reason?: string; }) => {
         const code = event.code;
         const reason = event.reason;
         logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
 
-        // Handle Auth errors (4001: Unauthorized)
         if (code === 4001) {
-            logger.info(`[yjs-conn] Auth error ${code} detected for ${room}, triggering token refresh...`);
-            // Force token refresh
-            void userManager.refreshToken().then(() => {
-                logger.info(`[yjs-conn] Token refresh triggered for ${room}`);
-            });
+            logger.info(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
+            forceTokenRefresh = true;
+            void userManager.refreshToken();
+        }
+
+        if (code && FATAL_CLOSE_CODES.has(code)) {
+            logger.error(`[yjs-conn] Fatal close ${code} for ${room}: stopping reconnect attempts`);
+            setRoomSyncState(room, "denied");
+            try {
+                provider.disconnect();
+            } catch {}
         }
     });
 
@@ -258,61 +299,10 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         logger.info(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
     });
 
-    // Wait for initial project sync to complete before connecting pages
-    // We attach the listener BEFORE any potential async gap to avoid missing it
-    await new Promise<void>((resolve, reject) => {
-        if (provider.isSynced) {
-            logger.info(`[createProjectConnection] Room ${room} already synced`);
-            const treeSize = doc.getMap("orderedTree").size;
-            logger.info(`[createProjectConnection] Initial tree.size=${treeSize}`);
-            resolve();
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            logger.warn(
-                `[createProjectConnection] Timeout (30s) waiting for project initial sync, proceeding anyway for room: ${room}`,
-            );
-            const treeSize = doc.getMap("orderedTree").size;
-            logger.info(`[createProjectConnection] Timeout tree.size=${treeSize}`);
-            resolve();
-        }, 30000);
-
-        const syncHandler = (data?: { state?: boolean; }) => {
-            logger.info(`[createProjectConnection] syncHandler: room=${room}, state=${data?.state}`);
-            if (!data || data.state !== false) {
-                clearTimeout(timer);
-                provider.off("synced", syncHandler);
-                provider.off("close", closeHandler);
-                const treeSize = doc.getMap("orderedTree").size;
-                logger.info(`[createProjectConnection] Sync complete for ${room}. tree.size=${treeSize}`);
-                resolve();
-            }
-        };
-
-        const closeHandler = (event: { code?: number; reason?: string; }) => {
-            const code = event.code;
-            logger.info(`[createProjectConnection] closeHandler: room=${room}, code=${code}, reason=${event.reason}`);
-            if (code && [4003, 4006, 4008, 4001].includes(code)) {
-                clearTimeout(timer);
-                provider.off("synced", syncHandler);
-                provider.off("close", closeHandler);
-                logger.error(
-                    `[createProjectConnection] Fatal close event ${code} received during initial sync for ${room}: ${event.reason}`,
-                );
-                reject(new Error(`Access Denied: ${code}`));
-            }
-        };
-
-        provider.on("synced", syncHandler);
-        provider.on("close", closeHandler);
-    });
-
-    // Awareness (presence)
     const awareness = provider.awareness;
-    // Debug hook (guarded)
     attachConnDebug(room, provider, awareness, doc);
-    const current = userManager.getCurrentUser();
+
+    const current = setAwarenessUser ? userManager.getCurrentUser() : null;
     if (current && awareness) {
         awareness.setLocalStateField("user", {
             userId: current.id,
@@ -320,24 +310,97 @@ export async function createProjectConnection(projectId: string): Promise<Projec
             color: undefined,
         });
     }
-    const unbind = yjsService.bindProjectPresence(awareness as Awareness);
 
-    // Refresh auth param on token refresh
-    let unsub: (() => void) | undefined;
-    if (projectId !== "demo") {
-        unsub = attachTokenRefresh(provider as TokenRefreshableProvider);
-    }
+    const unbindPresence = bindPresence && awareness ? yjsService.bindProjectPresence(awareness) : undefined;
+    const unsubTokenRefresh = attachTokenRefreshHook && !isDemo
+        ? attachTokenRefresh(provider as TokenRefreshableProvider)
+        : undefined;
+
+    const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
+        return new Promise((resolve, reject) => {
+            if (provider.isSynced) {
+                logger.info(`[${label}] Room ${room} already synced`);
+                setRoomSyncState(room, "synced");
+                resolve({ synced: true });
+                return;
+            }
+
+            setRoomSyncState(room, "pending");
+
+            const cleanup = () => {
+                clearTimeout(timer);
+                provider.off("synced", syncHandler);
+                provider.off("close", closeHandler);
+            };
+
+            const timer = setTimeout(() => {
+                logger.warn(
+                    `[${label}] Timeout (${timeoutMs}ms) waiting for initial sync, proceeding anyway for room: ${room}`,
+                );
+                setRoomSyncState(room, "timed-out");
+                cleanup();
+                resolve({ synced: false });
+            }, timeoutMs);
+
+            const syncHandler = (data?: { state?: boolean; }) => {
+                if (!data || data.state !== false) {
+                    logger.info(`[${label}] Sync complete for ${room}`);
+                    setRoomSyncState(room, "synced");
+                    cleanup();
+                    resolve({ synced: true });
+                }
+            };
+
+            const closeHandler = (event: { code?: number; reason?: string; }) => {
+                const code = event.code;
+                if (code && FATAL_CLOSE_CODES.has(code)) {
+                    cleanup();
+                    reject(new Error(`Access Denied: ${code}`));
+                }
+            };
+
+            provider.on("synced", syncHandler);
+            provider.on("close", closeHandler);
+        });
+    };
 
     const dispose = () => {
         try {
-            unbind();
+            unbindPresence?.();
         } catch {}
         try {
-            if (unsub) unsub();
+            unsubTokenRefresh?.();
         } catch {}
         try {
             provider.destroy();
         } catch {}
+    };
+
+    return { provider, awareness, waitForInitialSync, dispose };
+}
+
+export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
+    logger.info(`[createProjectConnection] Starting for projectId=${projectId}`);
+    const doc = new Y.Doc({ guid: projectId });
+    const room = projectRoomPath(projectId);
+
+    await attachIndexedDbPersistence(room, doc);
+
+    const { provider, awareness, waitForInitialSync, dispose: disposeProvider } = await setupProviderForRoom(
+        projectId,
+        room,
+        doc,
+        "createProjectConnection",
+        { setAwarenessUser: true, bindPresence: true, attachTokenRefreshHook: true },
+    );
+
+    // Wait for initial project sync to complete (or time out) before connecting pages.
+    // A timeout no longer means "pretend everything is fine": setRoomSyncState marks the
+    // room as "timed-out" so callers (see yjsStore) can surface a not-yet-synced state to the UI.
+    await waitForInitialSync();
+
+    const dispose = () => {
+        disposeProvider();
         try {
             doc.destroy();
         } catch {}
@@ -350,59 +413,13 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
     provider: HocuspocusProvider;
     awareness: Awareness | null;
 }> {
-    const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
-    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
-        try {
-            const persistence = createPersistence(room, doc);
-            await waitForSync(persistence);
-        } catch { /* no-op in Node */ }
-    }
+    await attachIndexedDbPersistence(room, doc);
 
-    // Ensure token is available for initial connection URL (required by server upgrade handler)
-    let initialToken = "";
-    try {
-        if (projectId !== "demo") {
-            initialToken = await getFreshIdToken();
-        } else {
-            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
-        }
-    } catch (e) {
-        logger.error({ error: e }, "[connectProjectDoc] getFreshIdToken FAILED");
-    }
-
-    const provider = new HocuspocusProvider({
-        url: constructWsUrl(wsBase, room, initialToken),
-        name: room,
-        document: doc,
-        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
+    const { provider, awareness } = await setupProviderForRoom(projectId, room, doc, "connectProjectDoc", {
+        setAwarenessUser: true,
+        attachTokenRefreshHook: true,
     });
-    const awareness = provider.awareness;
-
-    provider.on(
-        "status",
-        (event: { status: string; }) => logger.info(`[connectProjectDoc] ${room} status: ${event.status}`),
-    );
-    provider.on("close", (event: { code?: number; reason?: string; }) => {
-        logger.warn(
-            `[connectProjectDoc] ${room} connection-close code=${event.code} reason=${event.reason || "None"}`,
-        );
-    });
-
-    // Debug hook (guarded)
-    attachConnDebug(room, provider, awareness, doc);
-    const current = userManager.getCurrentUser();
-    if (current && awareness) {
-        awareness.setLocalStateField("user", {
-            userId: current.id,
-            name: current.name,
-            color: undefined,
-        });
-    }
-    // Refresh auth param on token refresh
-    if (projectId !== "demo") {
-        attachTokenRefresh(provider as TokenRefreshableProvider);
-    }
     return { provider, awareness };
 }
 
@@ -412,42 +429,19 @@ export async function createMinimalProjectConnection(projectId: string): Promise
     dispose: () => void;
 }> {
     const doc = new Y.Doc({ guid: projectId });
-    const wsBase = getWsBase();
     const room = projectRoomPath(projectId);
 
-    // Attach IndexedDB persistence and wait for initial sync
-    if (typeof indexedDB !== "undefined" && isIndexedDBEnabled()) {
-        try {
-            const persistence = createPersistence(room, doc);
-            await waitForSync(persistence);
-        } catch { /* no-op in Node */ }
-    }
+    await attachIndexedDbPersistence(room, doc);
 
-    // Ensure token is available for initial connection URL (required by server upgrade handler)
-    let initialToken = "";
-    try {
-        if (projectId !== "demo") {
-            initialToken = await getFreshIdToken();
-        } else {
-            initialToken = "1"; // Send dummy token in URL to satisfy strict routing on older servers
-        }
-    } catch {}
+    const { provider, dispose: disposeProvider } = await setupProviderForRoom(
+        projectId,
+        room,
+        doc,
+        "createMinimalProjectConnection",
+    );
 
-    // Send a dummy `token` for the same reason as in createProjectConnection
-    const provider = new HocuspocusProvider({
-        url: constructWsUrl(wsBase, room, initialToken),
-        name: room,
-        document: doc,
-        token: initialToken || "1", // HocuspocusProvider requires a truthy token to send the Auth message, even for unauthenticated rooms like demo.
-    });
-    // HocuspocusProvider connects automatically, no need to call connect()
-
-    // Debug hook (guarded)
-    attachConnDebug(room, provider, provider.awareness, doc);
     const dispose = () => {
-        try {
-            provider.destroy();
-        } catch {}
+        disposeProvider();
         try {
             doc.destroy();
         } catch {}

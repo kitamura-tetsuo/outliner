@@ -1,10 +1,16 @@
+import { getLogger } from "../lib/logger";
+import { projectRoomPath } from "../lib/yjs/roomPath";
+import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
 import type { YjsClient } from "../yjs/YjsClient";
-import { store as globalStore } from "./store.svelte";
+import { isProvisionalProject, store as globalStore } from "./store.svelte";
+
+const logger = getLogger("yjsStore");
 
 class YjsStore {
     private _client: YjsClient | undefined;
     // Record the Y.Doc GUID of the most recently set Project to prevent resetting with the same document
     private _lastProjectGuid: string | null = null;
+    private _unsubSyncState: (() => void) | undefined;
 
     get yjsClient(): YjsClient | undefined {
         return this._client;
@@ -22,6 +28,21 @@ class YjsStore {
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
+
+        try {
+            this._unsubSyncState?.();
+        } catch {}
+        this._unsubSyncState = undefined;
+        if (v?.containerId) {
+            const room = projectRoomPath(v.containerId);
+            this.notYetSynced = getRoomSyncState(room) !== "synced";
+            this._unsubSyncState = onRoomSyncStateChange(room, (state) => {
+                this.notYetSynced = state !== "synced";
+            });
+        } else {
+            this.notYetSynced = false;
+        }
+
         if (v) {
             const connectedProject = v.getProject();
             const newGuid: string | undefined = (connectedProject as unknown as { ydoc?: { guid?: string; }; })?.ydoc
@@ -45,7 +66,24 @@ class YjsStore {
                 return;
             }
 
-            globalStore.project = connectedProject as unknown as import("../schema/app-schema").Project;
+            // The provisional project created at startup (store.svelte.ts) is about to be replaced
+            // by the real synced one. Anything typed into it lives in a different Y.Doc and is
+            // discarded here, so at minimum make that loss visible instead of silent.
+            const previousProject = globalStore.project;
+            const connectedProjectAsAppSchema = connectedProject as unknown as import("../schema/app-schema").Project;
+            if (
+                previousProject && previousProject !== connectedProjectAsAppSchema
+                && isProvisionalProject(previousProject)
+            ) {
+                const discardedPageCount = previousProject.items?.length ?? 0;
+                if (discardedPageCount > 0) {
+                    logger.warn(
+                        `[yjsStore] Replacing provisional project with ${discardedPageCount} page(s) with the connected project (guid=${newGuid}). Edits made before the server connection was established are not preserved.`,
+                    );
+                }
+            }
+
+            globalStore.project = connectedProjectAsAppSchema;
             this._lastProjectGuid = newGuid ?? null;
 
             // Attach listeners to update isConnected state reactively
@@ -158,6 +196,9 @@ class YjsStore {
 
     // Connection state is a plain data property for Svelte 5 reactivity
     isConnected: boolean = false;
+    // True until the current room's initial sync completes, so the UI can indicate that
+    // edits may still be applied to a stale/local-only copy of the document.
+    notYetSynced: boolean = false;
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "Disconnected";
     }
@@ -172,6 +213,11 @@ class YjsStore {
         this._client = undefined;
         this._lastProjectGuid = null;
         this.isConnected = false;
+        this.notYetSynced = false;
+        try {
+            this._unsubSyncState?.();
+        } catch {}
+        this._unsubSyncState = undefined;
     }
 
     getIsConnected() {
