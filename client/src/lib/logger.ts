@@ -192,6 +192,22 @@ const consoleStyles = {
  * Set enableConsole to true if you want to output to console at the same time
  */
 
+/**
+ * Verbose levels (trace/debug) are only echoed to the browser console when
+ * window.DEBUG_MODE is enabled. This centralizes the gating that used to be
+ * repeated (and easy to forget) at every individual call site.
+ */
+export function isVerboseConsoleSuppressed(
+    level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
+): boolean {
+    const isVerboseLevel = level === "trace" || level === "debug";
+    // Cast rather than rely on the ambient Window.DEBUG_MODE augmentation, since this file is
+    // also type-checked under tsconfigs (e.g. client/e2e) that don't include that declaration.
+    const debugModeEnabled = typeof window !== "undefined"
+        && Boolean((window as unknown as { DEBUG_MODE?: string | boolean; }).DEBUG_MODE);
+    return isVerboseLevel && !debugModeEnabled;
+}
+
 // Patched logger interface to prevent strict type checks on first argument
 export interface EnhancedLogger extends pino.Logger {
     trace(...args: unknown[]): void;
@@ -220,6 +236,10 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                         ((target as unknown as Record<string, (...args: unknown[]) => void>)[prop as string] as (
                             ...args: unknown[]
                         ) => void)(...args);
+
+                        if (isVerboseConsoleSuppressed(prop as "trace" | "debug")) {
+                            return;
+                        }
 
                         // Output to console as well (at the same level)
                         const consoleMethod = prop === "trace" || prop === "debug"
@@ -309,6 +329,8 @@ export function log(
     level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
     ...args: unknown[]
 ): void {
+    const skipConsole = isVerboseConsoleSuppressed(level);
+
     // 1. Normal console output (source map information is attached, but direct and simple)
     const consoleMethod = level === "trace" || level === "debug"
         ? "log"
@@ -331,7 +353,9 @@ export function log(
 
     // Output directly to console
     // If componentName is the same as the file name and duplicated, do not include file name information
-    if (componentName === file.replace(/\.[jt]s$/, "")) {
+    if (skipConsole) {
+        // Skip console output but still forward to the server-side logger below.
+    } else if (componentName === file.replace(/\.[jt]s$/, "")) {
         (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
             `%c[${componentName}]%c [${level.toUpperCase()}]:`,
             `color: #6699cc; font-weight: bold`,
