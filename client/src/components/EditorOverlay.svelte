@@ -6,7 +6,7 @@ import { SvelteSet } from "svelte/reactivity";
 import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
-import { escapeId } from '../utils/domUtils';
+import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 
@@ -57,25 +57,57 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 let lastScrolledCursorId = '';
 let lastScrolledOffset = -1;
 
-// Alternative text measurement method for test environment (jsdom)
+// Alternative text measurement method for test environment (jsdom) or environments where Canvas initialization fails
 function measureTextWidthFallback(itemId: string, text: string): number {
     const itemInfo = positionMap[itemId];
     if (!itemInfo) return 0;
 
     const { fontProperties } = itemInfo;
-    // Calculate estimated text width based on font properties
-    // Use standard character widths (space, alphanumeric, Japanese, etc.)
+
+    // First, attempt to measure accurately via DOM (especially for stripped environments without canvas but with DOM)
+    if (typeof document !== 'undefined') {
+        const span = getMeasurementSpan();
+        if (span) {
+            span.style.fontFamily = fontProperties.fontFamily || '';
+            span.style.fontSize = fontProperties.fontSize || '';
+            span.style.fontWeight = fontProperties.fontWeight || '';
+            span.style.letterSpacing = fontProperties.letterSpacing || '';
+            span.textContent = text;
+            const spanWidth = span.getBoundingClientRect().width;
+            if (spanWidth > 0) {
+                return spanWidth;
+            }
+        }
+    }
+
+    // Fallback: Calculate estimated text width based on font properties (e.g. in pure JSDOM tests where rects are 0)
+    let wideCharRegex: RegExp;
+    try {
+        // Attempt to use modern Unicode property escapes to capture emojis and full-width chars
+        wideCharRegex = new RegExp(
+            '[\\u1100-\\u115F\\u2329\\u232A\\u2E80-\\u303E\\u3040-\\u33FF\\u3400-\\u4DBF\\u4E00-\\u9FFF\\uA960-\\uA97F\\uAC00-\\uD7A3\\uF900-\\uFAFF\\uFE10-\\uFE19\\uFE30-\\uFE6F\\uFF00-\\uFF60\\uFFE0-\\uFFE6]|\\p{Emoji_Presentation}|\\p{Extended_Pictographic}',
+            'u'
+        );
+    } catch (e) {
+        // Fallback for older JS engines
+        wideCharRegex = /[\u1100-\u115F\u2329\u232A\u2E80-\u303E\u3040-\u33FF\u3400-\u4DBF\u4E00-\u9FFF\uA960-\uA97F\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/;
+    }
+
+    // Safely segment text to handle complex graphemes (like multi-byte emojis)
+    const segments = typeof Intl !== 'undefined' && Intl.Segmenter
+        ? Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)).map(s => s.segment)
+        : Array.from(text);
+
     let width = 0;
-    for (const char of text) {
-        if (char.match(/[a-zA-Z0-9.,;:[\](){}]/)) {
-            // Half-width characters are about half the font size
-            width += parseFloat(fontProperties.fontSize) * 0.5;
-        } else if (char.match(/[一-龯]/)) {
-            // Kanji is close to the font size
-            width += parseFloat(fontProperties.fontSize) * 0.9;
+    const fontSize = parseFloat(fontProperties.fontSize) || 16;
+
+    for (const char of segments) {
+        if (wideCharRegex.test(char)) {
+            // Wide characters (Kanji, Hangul, Emojis, etc.) are close to the font size
+            width += fontSize * 0.9;
         } else {
-            // Other characters are also treated as half-width
-            width += parseFloat(fontProperties.fontSize) * 0.5;
+            // Half-width characters
+            width += fontSize * 0.5;
         }
     }
     return width;
