@@ -355,15 +355,16 @@
         if (lastText.trim().length === 0) return;
 
         const parent = last.model.original.parent;
-        if (parent) {
-            const idx = parent.indexOf(last.model.original);
-            parent.addNode(currentUser, idx + 1);
-        } else if (pageItem.items) {
+        const collection = parent ?? (pageItem.items as import("../schema/app-schema").Items | undefined);
+        if (!collection) return;
 
-            const idx = (pageItem.items as import("../schema/app-schema").Items).indexOf(last.model.original);
+        const idx = collection.indexOf(last.model.original);
+        // Guard against stale `displayItems` snapshots: re-check the live Yjs collection
+        // directly so a sibling already added (e.g. by a previous, not-yet-reflected edit
+        // event) isn't duplicated.
+        if (idx === -1 || collection.length > idx + 1) return;
 
-            (pageItem.items as import("../schema/app-schema").Items).addNode(currentUser, idx + 1);
-        }
+        collection.addNode(currentUser, idx + 1);
     }
 
     function handleToggleCollapse(event: CustomEvent) {
