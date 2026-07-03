@@ -77,7 +77,7 @@ test.describe("Authentication Test", () => {
 
                 return await authPromise;
             } catch (error) {
-                console.error("Authentication error:", error);
+                console.warn("Authentication error:", error);
                 return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
         });
