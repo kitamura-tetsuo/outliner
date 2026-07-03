@@ -12,7 +12,7 @@ export function iterateItems(items: unknown): Iterable<Item> {
     if (!items) return [];
 
     // Prioritize iterateUnordered for O(N) traversal
-    const itemsRecord = items as Record<string, unknown>;
+    const itemsRecord = items as Record<string | symbol, unknown>;
     const iterateUnordered = itemsRecord.iterateUnordered;
     if (typeof iterateUnordered === "function") {
         return {
