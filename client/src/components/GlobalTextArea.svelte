@@ -47,7 +47,7 @@ onMount(() => {
     store.setTextareaRef(textareaRef);
     // Keep a reference in generalStore as well (used as a fallback for the command palette)
     try { generalStore.textareaRef = textareaRef; } catch {}
-    logger.debug("GlobalTextArea: Textarea reference set in store");
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Textarea reference set in store");
 
     // Expose KeyEventHandler globally (for testing)
     if (typeof window !== "undefined") {
@@ -57,19 +57,19 @@ onMount(() => {
     // Set initial focus
     if (textareaRef) {
         textareaRef.focus();
-        logger.debug("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
+        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
         // Additional attempts to ensure focus
         requestAnimationFrame(() => {
             if (textareaRef) {
                 textareaRef.focus();
-                logger.debug("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
+                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
 
                 setTimeout(() => {
                     if (textareaRef) {
                         textareaRef.focus();
                         const isFocused = document.activeElement === textareaRef;
-                        logger.debug("GlobalTextArea: Final focus set, focused:", isFocused);
+                        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Final focus set, focused:", isFocused);
                     }
                 }, 10);
             }
@@ -95,7 +95,7 @@ onMount(() => {
             // Do not re-forward events that already occurred within the alias picker
             const t = ev.target as Node | null;
             if (t && picker.contains(t)) return;
-            try { logger.debug("GlobalTextArea: forward key to alias-picker:", k); } catch {}
+            try { if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: forward key to alias-picker:", k); } catch {}
             const forwarded = new KeyboardEvent("keydown", { key: k, bubbles: true, cancelable: true });
             picker.dispatchEvent(forwarded);
             ev.preventDefault();
@@ -112,6 +112,29 @@ onMount(() => {
             if (ev.key !== "/") return;
             // Do nothing if already visible
             if (window.commandPaletteStore?.isVisible) return;
+
+            // Context verification: prevent opening immediately after [ or inside internal links
+            try {
+                const cursors = store.getCursorInstances();
+                if (cursors.length > 0) {
+                    const cursor = cursors[0];
+                    const node = cursor.findTarget();
+                    const text = String(node?.text || "");
+                    const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                    if (prevChar === "[") {
+                        return; // DO NOT show palette if immediately after [
+                    }
+
+                    const beforeCursor = text.slice(0, cursor.offset);
+                    const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                    const lastCloseBracket = beforeCursor.lastIndexOf("]");
+                    if (lastOpenBracket > lastCloseBracket) {
+                        return; // Inside internal link
+                    }
+                }
+            } catch {}
+
             try {
                 const pos = commandPaletteStore.getCursorScreenPosition();
                 commandPaletteStore.show(pos || { top: 0, left: 0 });
@@ -173,7 +196,7 @@ onMount(() => {
                     } catch {}
 
                     if (isAliasOnly || looksAlias || textSaysAlias) {
-                        try { logger.debug("GlobalTextArea: palette Enter forcing alias insert (q=", q, ", textSaysAlias=", textSaysAlias, ")"); } catch {}
+                        try { if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: palette Enter forcing alias insert (q=", q, ", textSaysAlias=", textSaysAlias, ")"); } catch {}
                         cps.insert("alias");
                         cps.hide();
                         ev.preventDefault();
@@ -181,7 +204,7 @@ onMount(() => {
                     }
                     // Otherwise, normal confirmation
                     if (sel) {
-                        try { logger.debug("GlobalTextArea: palette Enter confirming sel=", sel?.type); } catch {}
+                        try { if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: palette Enter confirming sel=", sel?.type); } catch {}
                         cps.confirm();
                         ev.preventDefault();
                         return;
@@ -273,10 +296,10 @@ function handleCompositionStart(event: CompositionEvent) {
 
 // Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
-    logger.debug("GlobalTextArea.handleKeyDown called with key:", event.key);
-    logger.debug("GlobalTextArea.handleKeyDown: event.target:", (event.target as Element | null)?.tagName);
-    logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef?.tagName);
-    logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown called with key:", event.key);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: event.target:", (event.target as Element | null)?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
 
 
     KeyEventHandler.handleKeyDown(event);
@@ -290,7 +313,7 @@ function handleKeyDown(event: KeyboardEvent) {
         if (isTest && isPrintable && !isModifier && !aliasPickerStore.isVisible && !isTextareaFocused && !event.defaultPrevented) {
             const cursors = store.getCursorInstances();
             if (cursors.length > 0) {
-                logger.debug("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
+                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
                 cursors.forEach(c => c.insertText(event.key));
                 store.startCursorBlink();
             }
@@ -300,10 +323,10 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
-    logger.debug("GlobalTextArea.handleInput called with event.type:", event.type);
-    logger.debug("GlobalTextArea.handleInput: event.target:", (event.target as Element | null)?.tagName);
-    logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef?.tagName);
-    logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput called with event.type:", event.type);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: event.target:", (event.target as Element | null)?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
 
 
     KeyEventHandler.handleInput(event);
@@ -397,7 +420,7 @@ function handleBlur(event: FocusEvent) {
 
                 // Debug information
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(
+                    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(
                         `GlobalTextArea: focus restored after blur. Active element is textarea: ${
                             document.activeElement === textareaRef
                         }`,
