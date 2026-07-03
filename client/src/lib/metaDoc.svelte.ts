@@ -138,8 +138,8 @@ export function removePendingRegistration(projectId: string): void {
  * Get all pending project registrations
  * @returns Array of pending registrations
  */
-export function getPendingRegistrations(): { projectId: string; title: string }[] {
-    const pending: { projectId: string; title: string }[] = [];
+export function getPendingRegistrations(): { projectId: string; title: string; }[] {
+    const pending: { projectId: string; title: string; }[] = [];
     pendingRegistrationsMap.forEach((title, projectId) => {
         pending.push({ projectId, title: title as string });
     });

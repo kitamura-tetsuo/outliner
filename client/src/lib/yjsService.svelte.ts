@@ -12,12 +12,12 @@ const logger = getLogger("yjsService");
 
 import {
     getContainerTitleFromMetaDoc,
+    getPendingRegistrations,
     getProjectIdByTitle,
     metaDocLoaded,
-    setContainerTitleInMetaDoc,
     queueProjectRegistration,
     removePendingRegistration,
-    getPendingRegistrations,
+    setContainerTitleInMetaDoc,
 } from "./metaDoc.svelte";
 
 // Local memory cache for immediate title resolution (critical for post-creation redirect)
