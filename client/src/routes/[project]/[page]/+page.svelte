@@ -15,6 +15,7 @@
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
     import type { Project as AppProject } from "../../../schema/app-schema";
+    import { iterateItems } from "../../../utils/itemTraversal";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
@@ -162,10 +163,7 @@
                 const items = project?.items;
                 if (items) {
                     const titles: string[] = [];
-                    const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-                        ? items.iterateUnordered()
-                        : (items as unknown as Iterable<{ text?: { toString?: () => string } }>);
-                    for (const p of iter) {
+                    for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
                         if (!p) continue;
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
                         titles.push(t);

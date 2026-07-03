@@ -1,4 +1,5 @@
 import { getLogger } from "../lib/logger";
+import { iterateItems } from "../utils/itemTraversal";
 const logger = getLogger("store");
 import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
@@ -154,23 +155,17 @@ export class GeneralStore {
             /* eslint-enable svelte/prefer-svelte-reactivity */
             const items = this._project?.items;
             if (items) {
-                // Items is iterable
-                // Use iterateUnordered for better performance (O(N) vs O(N log N)) since we just need the set of names
-                const iter = "iterateUnordered" in items && typeof items.iterateUnordered === "function"
-                    ? items.iterateUnordered()
-                    : items;
-                if (iter && typeof iter[Symbol.iterator] === "function") {
-                    for (const page of iter) {
-                        try {
-                            // page.text may be a Y.Text object rather than a plain string in
-                            // production; normalize with String() before comparing.
-                            const text = String(page.text ?? "");
-                            if (text) {
-                                newNames.add(text.toLowerCase());
-                            }
-                        } catch (err) {
-                            logger.warn("Failed to read page text while rebuilding page names cache", err);
+                // Use iterateItems for better performance (O(N) vs O(N log N)) since we just need the set of names
+                for (const page of iterateItems(items)) {
+                    try {
+                        // page.text may be a Y.Text object rather than a plain string in
+                        // production; normalize with String() before comparing.
+                        const text = String(page.text ?? "");
+                        if (text) {
+                            newNames.add(text.toLowerCase());
                         }
+                    } catch (err) {
+                        logger.warn("Failed to read page text while rebuilding page names cache", err);
                     }
                 }
             }
