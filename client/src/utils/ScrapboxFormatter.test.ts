@@ -134,6 +134,33 @@ describe("ScrapboxFormatter", () => {
                 expect(result).toContain('data-page="test-page-name"');
             });
 
+            it("should generate correct HTML with URI-encoding for links with special characters", () => {
+                // Internal link with spaces and special characters
+                const input1 = "[Page Name #1?&%]";
+                const result1 = ScrapboxFormatter.formatToHtml(input1);
+
+                // The href should be URI-encoded
+                expect(result1).toMatch(
+                    /<a href="\/Untitled%20Project\/Page%20Name%20%231%3F%26%25"/,
+                );
+                // But the data attributes and inner text should only be HTML-escaped
+                expect(result1).toContain('data-page="Page Name #1?&amp;%"');
+                expect(result1).toContain(">Page Name #1?&amp;%</a>");
+
+                // Project link with spaces and special characters
+                const input2 = "[/My Project/Page Name #2?]";
+                const result2 = ScrapboxFormatter.formatToHtml(input2);
+
+                // The href should be URI-encoded per path segment
+                expect(result2).toMatch(
+                    /<a href="\/My%20Project\/Page%20Name%20%232%3F"/,
+                );
+                // Data attributes and inner text should only be HTML-escaped
+                expect(result2).toContain('data-project="My Project"');
+                expect(result2).toContain('data-page="Page Name #2?"');
+                expect(result2).toContain(">/My Project/Page Name #2?</a>");
+            });
+
             it("should generate correct HTML for project internal links", () => {
                 const input = "[/project-name/page-name]";
                 const result = ScrapboxFormatter.formatToHtml(input);
