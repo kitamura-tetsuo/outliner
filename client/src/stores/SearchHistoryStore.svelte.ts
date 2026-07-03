@@ -19,7 +19,7 @@ function persist(values: string[]) {
 }
 
 class SearchHistoryStore {
-    private _history: string[] = loadInitial();
+    private _history: string[] = $state(loadInitial());
 
     get history(): string[] {
         return this._history;
