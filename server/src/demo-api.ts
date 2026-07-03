@@ -52,7 +52,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                 const now = Date.now();
 
-                const metadata = doc.getMap("metadata") as Y.Map<any>;
+                const metadata = doc.getMap("metadata") as Y.Map<unknown>;
                 const lastReset = metadata.get("lastReset") as number | undefined;
                 const templateVersion = metadata.get("templateVersion") as number | undefined;
 
@@ -82,7 +82,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         }
                     }
 
-                    await directConnection.transact((document: any) => {
+                    await directConnection.transact((document: unknown) => {
                         const ydoc = document as unknown as Y.Doc;
 
                         // Clear items map of any orphaned nodes completely
