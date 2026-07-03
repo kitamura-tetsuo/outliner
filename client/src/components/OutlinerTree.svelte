@@ -2,7 +2,7 @@
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
-    import { SvelteMap } from "svelte/reactivity";
+    import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
@@ -124,7 +124,13 @@
     // Track the last update timestamp to prevent rapid successive updates
 
     // Minimum granularity observe for Yjs: Observe the underlying Y.Map("orderedTree") of the tree
-    let __lastUpdateInfo = $state({ tick: 0, changedKeys: new Set<string>(), structureChanged: true });
+    let __batchedUpdates = {
+        changedKeys: new SvelteSet<string>(),
+        structureChanged: false
+    };
+    let __updateQueued = false;
+
+    let __lastUpdateInfo = $state({ tick: 0, changedKeys: new SvelteSet<string>(), structureChanged: true });
 
     onMount(() => {
         try {
@@ -147,29 +153,41 @@
                         }
                     } catch {}
 
-                    let structureChanged = false;
-                    const changedKeys = new Set<string>();
+                    let shouldQueue = false;
 
                     events.forEach(e => {
                         if (e.target === ymap) {
-                            structureChanged = true;
+                            __batchedUpdates.structureChanged = true;
+                            shouldQueue = true;
                         } else if (e.path.length > 0) {
                             const nodeKey = String(e.path[0]);
                             if (e.path.length >= 2 && e.path[1] === "_parentHistory") {
-                                structureChanged = true;
+                                __batchedUpdates.structureChanged = true;
+                                shouldQueue = true;
                             } else {
-                                changedKeys.add(nodeKey);
+                                __batchedUpdates.changedKeys.add(nodeKey);
+                                shouldQueue = true;
                             }
                         } else {
-                            structureChanged = true;
+                            __batchedUpdates.structureChanged = true;
+                            shouldQueue = true;
                         }
                     });
 
-                    __lastUpdateInfo = {
-                        tick: Date.now(),
-                        changedKeys,
-                        structureChanged
-                    };
+                    if (shouldQueue && !__updateQueued) {
+                        __updateQueued = true;
+                        queueMicrotask(() => {
+                            __lastUpdateInfo = {
+                                tick: Date.now(),
+                                changedKeys: new SvelteSet(__batchedUpdates.changedKeys),
+                                structureChanged: __batchedUpdates.structureChanged
+                            };
+
+                            __batchedUpdates.changedKeys.clear();
+                            __batchedUpdates.structureChanged = false;
+                            __updateQueued = false;
+                        });
+                    }
                 };
                 ymap.observeDeep(handler as unknown as (events: import('yjs').YEvent<any>[], transaction: import('yjs').Transaction) => void);
                 return () => {
@@ -190,7 +208,7 @@
                 const timer = setInterval(() => {
                     __lastUpdateInfo = {
                         tick: Date.now(),
-                        changedKeys: new Set(),
+                        changedKeys: new SvelteSet(),
                         structureChanged: true
                     };
                 }, 200);
@@ -259,7 +277,7 @@
             // Add item to end
             pageItem.items.addNode(currentUser);
             // Trigger a re-render
-            __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
         }
     }
 
@@ -1815,7 +1833,7 @@
             }
 
             // Ensure derived display list re-renders after order-only updates (Y.Tree order changes don't emit observeDeep events reliably)
-            __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
 
             editorOverlayStore.setCursor({
                 itemId: sourceItemId,
@@ -1884,7 +1902,7 @@
         }
         
         // Refresh display items
-        __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
+        __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
     }
 
     function handleExternalTextDrop(
@@ -2081,7 +2099,7 @@
                         logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
                     }
                 }
-                __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
+                __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
             }
         } else {
             const text = dt.getData("text/plain");
@@ -2092,7 +2110,7 @@
                 if (newItem && text) {
                     newItem.updateText(text);
                 }
-                __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
+                __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
             }
         }
     }
