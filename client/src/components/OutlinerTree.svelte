@@ -124,12 +124,19 @@
     // Track the last update timestamp to prevent rapid successive updates
 
     // Minimum granularity observe for Yjs: Observe the underlying Y.Map("orderedTree") of the tree
-    let __displayItemsTick = $state(0);
+    let __batchedUpdates = {
+        changedKeys: new Set<string>(),
+        structureChanged: false
+    };
+    let __updateQueued = false;
+
+    let __lastUpdateInfo = $state({ tick: 0, changedKeys: new Set<string>(), structureChanged: true });
+
     onMount(() => {
         try {
             const ymap = pageItem?.ydoc?.getMap?.("orderedTree");
             if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
-                const handler = (events: unknown[]) => {
+                const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[]) => {
                     try {
                         if (
                             typeof window !== "undefined" &&
@@ -139,20 +146,53 @@
                             events.forEach((e) => {
                                 logger.debug(
                                     " [Yjs Event]",
-
-                                    (e as import("yjs").YEvent<import("yjs").AbstractType<unknown>>).path,
-
+                                    e.path,
                                     (e as unknown as { keysChanged: Set<string> }).keysChanged,
                                 );
                             });
                         }
                     } catch {}
-                    __displayItemsTick = Date.now();
+
+                    let shouldQueue = false;
+
+                    events.forEach(e => {
+                        if (e.target === ymap) {
+                            __batchedUpdates.structureChanged = true;
+                            shouldQueue = true;
+                        } else if (e.path.length > 0) {
+                            const nodeKey = String(e.path[0]);
+                            if (e.path.length >= 2 && e.path[1] === "_parentHistory") {
+                                __batchedUpdates.structureChanged = true;
+                                shouldQueue = true;
+                            } else {
+                                __batchedUpdates.changedKeys.add(nodeKey);
+                                shouldQueue = true;
+                            }
+                        } else {
+                            __batchedUpdates.structureChanged = true;
+                            shouldQueue = true;
+                        }
+                    });
+
+                    if (shouldQueue && !__updateQueued) {
+                        __updateQueued = true;
+                        queueMicrotask(() => {
+                            __lastUpdateInfo = {
+                                tick: Date.now(),
+                                changedKeys: new Set(__batchedUpdates.changedKeys),
+                                structureChanged: __batchedUpdates.structureChanged
+                            };
+
+                            __batchedUpdates.changedKeys.clear();
+                            __batchedUpdates.structureChanged = false;
+                            __updateQueued = false;
+                        });
+                    }
                 };
-                ymap.observeDeep(handler);
+                ymap.observeDeep(handler as any);
                 return () => {
                     try {
-                        ymap.unobserveDeep(handler);
+                        ymap.unobserveDeep(handler as any);
                     } catch {}
                 };
             }
@@ -166,7 +206,11 @@
         try {
             if (typeof window !== "undefined" && window.__E2E__) {
                 const timer = setInterval(() => {
-                    __displayItemsTick = Date.now();
+                    __lastUpdateInfo = {
+                        tick: Date.now(),
+                        changedKeys: new Set(),
+                        structureChanged: true
+                    };
                 }, 200);
                 return () => clearInterval(timer);
             }
@@ -174,10 +218,10 @@
     });
 
     let displayItems = $derived.by<DisplayItem[]>(() => {
-        // Dependency: Recalculate whenever __displayItemsTick updates
-        void __displayItemsTick;
+        // Dependency: Recalculate whenever __lastUpdateInfo updates
+        const info = __lastUpdateInfo;
         // Update view model from latest model
-        viewModel.updateFromModel(pageItem);
+        viewModel.updateFromModel(pageItem, info.changedKeys, info.structureChanged);
         // Return flat display array
         return viewModel.getVisibleItems();
     });
@@ -233,7 +277,7 @@
             // Add item to end
             pageItem.items.addNode(currentUser);
             // Trigger a re-render
-            __displayItemsTick = Date.now();
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
         }
     }
 
@@ -1789,7 +1833,7 @@
             }
 
             // Ensure derived display list re-renders after order-only updates (Y.Tree order changes don't emit observeDeep events reliably)
-            __displayItemsTick = Date.now();
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
 
             editorOverlayStore.setCursor({
                 itemId: sourceItemId,
@@ -1858,7 +1902,7 @@
         }
         
         // Refresh display items
-        __displayItemsTick = Date.now();
+        __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
     }
 
     function handleExternalTextDrop(
@@ -2055,7 +2099,7 @@
                         logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
                     }
                 }
-                __displayItemsTick = Date.now();
+                __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
             }
         } else {
             const text = dt.getData("text/plain");
@@ -2066,7 +2110,7 @@
                 if (newItem && text) {
                     newItem.updateText(text);
                 }
-                __displayItemsTick = Date.now();
+                __lastUpdateInfo = { tick: Date.now(), changedKeys: new Set(), structureChanged: true };
             }
         }
     }
