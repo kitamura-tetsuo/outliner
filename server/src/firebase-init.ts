@@ -46,12 +46,13 @@ try {
 
 // Development auth helper
 const isDevelopment = process.env.NODE_ENV !== "production";
-let devAuthHelper: any;
+let devAuthHelper: { setupTestUser: () => Promise<any> } | undefined;
 if (isDevelopment) {
     try {
         devAuthHelper = await import("./scripts/setup-dev-auth.js");
         logger.info("Development auth helper loaded");
-    } catch (error: any) {
+    } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
         logger.warn(`Development auth helper not available: ${error.message}`);
     }
 }
@@ -164,9 +165,11 @@ async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, max
                 );
             }
             return;
-        } catch (error: any) {
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            const errorCode = (e as { code?: string })?.code; // some specific code check
             retryCount++;
-            if (error.code === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
+            if (errorCode === "ECONNREFUSED" || error.message.includes("ECONNREFUSED")) {
                 logger.warn(`Firebase emulator not ready yet (attempt ${retryCount}/${maxRetries}): ${error.message}`);
                 if (retryCount < maxRetries) {
                     logger.info(`Waiting ${delay}ms before next retry...`);
@@ -221,7 +224,8 @@ async function clearFirestoreEmulatorData() {
             logger.warn(`Firestore data clearing response: ${response.status} ${response.statusText}`);
             return false;
         }
-    } catch (error: any) {
+    } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
         logger.error(
             { error: new Error(`An error occurred while clearing Firestore emulator data: ${error.message}`) },
             `An error occurred while clearing Firestore emulator data: ${error.message}`,
@@ -277,7 +281,8 @@ export async function initializeFirebase() {
                 await deleteApp(getApp());
                 logger.info("Previous Firebase Admin SDK instance deleted");
             }
-        } catch (deleteError: any) {
+        } catch (e: unknown) {
+            const deleteError = e instanceof Error ? e : new Error(String(e));
             logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
         }
         const emulatorVariables = {
@@ -306,7 +311,8 @@ export async function initializeFirebase() {
             try {
                 await waitForFirebaseEmulator();
                 logger.info("Firebase emulator connection established successfully");
-            } catch (error: any) {
+            } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
                 logger.error({
                     error: new Error(`Firebase emulator connection failed after retries: ${error.message}`),
                 }, `Firebase emulator connection failed after retries: ${error.message}`);
@@ -327,7 +333,8 @@ export async function initializeFirebase() {
                         if (cleared) {
                             logger.info("Cleared development Firestore emulator data");
                         }
-                    } catch (error: any) {
+                    } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
                         logger.error(
                             { error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) },
                             `Failed to clear Firestore emulator data: ${error.message}`,
@@ -336,11 +343,13 @@ export async function initializeFirebase() {
                         logger.info("Firestore data clearing failed, but continuing process");
                     }
                 }
-            } catch (error: any) {
+            } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
                 logger.warn(`Failed to setup test user: ${error.message}`);
             }
         }
-    } catch (error: any) {
+    } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
         logger.error(
             { error: new Error(`Firebase initialization error: ${error.message}`) },
             `Firebase initialization error: ${error.message}`,

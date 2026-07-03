@@ -9,7 +9,8 @@ import { verifyIdTokenCached } from "./websocket-auth.js";
 
 // Use 'any' type for Hocuspocus to avoid ESM import issues
 // The actual type is @hocuspocus/server.Hocuspocus
-type HocuspocusInstance = any;
+import { Hocuspocus } from "@hocuspocus/server";
+type HocuspocusInstance = Hocuspocus;
 
 export interface PageSeedData {
     name: string;
@@ -151,7 +152,7 @@ export function createSeedRouter(
 
                 // Use transact for proper change handling
                 // Pages are stored directly within the single project document's YTree.
-                await directConnection.transact((document: any) => {
+                await directConnection.transact((document: unknown) => {
                     const ydoc = document as unknown as Y.Doc;
 
                     // Set project title directly in metadata
@@ -197,7 +198,8 @@ export function createSeedRouter(
                 // With @hocuspocus/server 4.2.0, disconnect() takes { unloadImmediately: false }
                 // but since the typings are 'any', we can just await it.
                 await directConnection.disconnect();
-            } catch (transactError: any) {
+            } catch (e: unknown) {
+                const transactError = e instanceof Error ? e : new Error(String(e));
                 // If transaction fails, disconnect the connection
                 await directConnection.disconnect();
                 throw transactError;
