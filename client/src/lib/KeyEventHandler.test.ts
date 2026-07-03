@@ -133,7 +133,7 @@ describe("KeyEventHandler.handleKeyDown - CommandPalette italic ambiguity", () =
     it("hides command palette when space is entered immediately after /", async () => {
         const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
         commandPaletteStore.isVisible = true;
-        (commandPaletteStore as unknown as { query: string }).query = "";
+        (commandPaletteStore as unknown as { query: string; }).query = "";
 
         const event = {
             key: " ",
@@ -157,7 +157,7 @@ describe("KeyEventHandler.handleInput - CommandPalette italic ambiguity", () => 
     it("hides command palette when space is entered immediately after /", async () => {
         const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
         commandPaletteStore.isVisible = true;
-        (commandPaletteStore as unknown as { query: string }).query = "";
+        (commandPaletteStore as unknown as { query: string; }).query = "";
 
         const event = {
             data: " ",
