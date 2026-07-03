@@ -26,6 +26,15 @@ interface FormatToken {
  */
 export class ScrapboxFormatter {
     /**
+     * Encodes URL path segments, preserving '/'
+     * @param s String to encode
+     * @returns Encoded string
+     */
+    private static encodeUrlPathSegment(s: string): string {
+        return s.split("/").map(encodeURIComponent).join("/");
+    }
+
+    /**
      * Map of characters to their HTML entity equivalents
      */
     private static readonly ESCAPE_MAP: Record<string, string> = {
@@ -366,6 +375,7 @@ export class ScrapboxFormatter {
                     if (isProjectLink) {
                         const normalizedRaw = rawContent.startsWith("/") ? rawContent.slice(1) : rawContent;
                         const escapedNormalized = this.escapeHtml(normalizedRaw);
+                        const encodedNormalized = this.encodeUrlPathSegment(normalizedRaw);
                         const parts = normalizedRaw.split("/").filter(p => p);
 
                         if (parts.length >= 2) {
@@ -383,16 +393,17 @@ export class ScrapboxFormatter {
                             const escapedProjectName = this.escapeHtml(projectName);
                             const escapedPageName = this.escapeHtml(pageName);
                             html +=
-                                `<span class="link-preview-wrapper"><a href="/${escapedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
+                                `<span class="link-preview-wrapper"><a href="/${encodedNormalized}" class="internal-link project-link ${existsClassTokens}" data-project="${escapedProjectName}" data-page="${escapedPageName}">${escapedNormalized}</a></span>`;
                         } else {
                             html +=
-                                `<a href="/${escapedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
+                                `<a href="/${encodedNormalized}" class="internal-link project-link">${escapedNormalized}</a>`;
                         }
                     } else {
                         const existsClass = this.checkPageExists(rawContent) ? "page-exists" : "page-not-exists";
                         const projectPrefix = this.getProjectPrefix();
+                        const encodedContent = this.encodeUrlPathSegment(rawContent);
                         html +=
-                            `<span class="link-preview-wrapper"><a href="${projectPrefix}/${content}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
+                            `<span class="link-preview-wrapper"><a href="${projectPrefix}/${encodedContent}" class="internal-link ${existsClass}" data-page="${content}">${content}</a></span>`;
                     }
                     break;
                 }
@@ -605,7 +616,7 @@ export class ScrapboxFormatter {
 
                         // Use LinkPreview component
                         html = `<span class="link-preview-wrapper"><a href="/${
-                            this.escapeHtml(path)
+                            this.encodeUrlPathSegment(path)
                         }" class="internal-link project-link ${existsClass}" data-project="${
                             this.escapeHtml(projectName)
                         }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(path)}</a></span>`;
@@ -613,7 +624,7 @@ export class ScrapboxFormatter {
                         // Case of single page name (project internal link)
                         const existsClass = this.checkPageExists(path) ? "page-exists" : "page-not-exists";
                         html = `<span class="link-preview-wrapper"><a href="/${
-                            this.escapeHtml(path)
+                            this.encodeUrlPathSegment(path)
                         }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(path)}">${
                             this.escapeHtml(path)
                         }</a></span>`;
@@ -681,6 +692,38 @@ export class ScrapboxFormatter {
                 input = input.replace(ScrapboxFormatter.RX_HTML_INT_LINK, (match, text) => {
                     // Ignore checkboxes
                     if (text === " " || text === "x") return match;
+
+                    // Fallback for project links with spaces that RX_HTML_PROJECT_LINK missed
+                    if (text.startsWith("/")) {
+                        const parts = text.split("/").filter((p: string) => p);
+                        if (parts.length >= 2) {
+                            const projectName = parts[0];
+                            const pageName = parts.slice(1).join("/");
+                            let existsClass;
+                            try {
+                                existsClass = this.checkPageExists(pageName, projectName)
+                                    ? "page-exists"
+                                    : "page-not-exists";
+                            } catch {
+                                existsClass = "page-not-exists";
+                            }
+                            const html = `<span class="link-preview-wrapper"><a href="/${
+                                this.encodeUrlPathSegment(text.slice(1)) // Remove leading slash for encoding because encodeUrlPathSegment preserves slashes but we prepend a slash anyway in the template
+                            }" class="internal-link project-link ${existsClass}" data-project="${
+                                this.escapeHtml(projectName)
+                            }" data-page="${this.escapeHtml(pageName)}">${this.escapeHtml(text)}</a></span>`;
+                            return createPlaceholder(html);
+                        } else {
+                            const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
+                            const html = `<span class="link-preview-wrapper"><a href="/${
+                                this.encodeUrlPathSegment(text.slice(1))
+                            }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
+                                this.escapeHtml(text)
+                            }</a></span>`;
+                            return createPlaceholder(html);
+                        }
+                    }
+
                     // Add class for page existence check
                     const existsClass = this.checkPageExists(text) ? "page-exists" : "page-not-exists";
 
@@ -688,7 +731,7 @@ export class ScrapboxFormatter {
 
                     // Use LinkPreview component
                     const html = `<span class="link-preview-wrapper"><a href="${projectPrefix}/${
-                        this.escapeHtml(text)
+                        this.encodeUrlPathSegment(text)
                     }" class="internal-link ${existsClass}" data-page="${this.escapeHtml(text)}">${
                         this.escapeHtml(text)
                     }</a></span>`;

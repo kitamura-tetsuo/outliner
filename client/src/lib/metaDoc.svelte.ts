@@ -35,9 +35,14 @@ export const metaDocLoaded = new Promise<void>((resolve) => {
 
 // Y.Map structure for storing container metadata
 export const containersMap = metaDoc.getMap("containers");
+export const pendingRegistrationsMap = metaDoc.getMap("pendingRegistrations");
 
 // Track changes to container metadata
 containersMap.observe(() => {
+    metaDocState.version++;
+});
+
+pendingRegistrationsMap.observe(() => {
     metaDocState.version++;
 });
 
@@ -108,6 +113,37 @@ export function getProjectIdByTitle(title: string): string | undefined {
         }
     }
     return undefined;
+}
+
+/**
+ * Queue a project registration to be sent to the server later
+ * @param projectId - The project ID to queue
+ * @param title - The project title
+ */
+export function queueProjectRegistration(projectId: string, title: string): void {
+    pendingRegistrationsMap.set(projectId, title);
+}
+
+/**
+ * Remove a pending project registration from the queue
+ * @param projectId - The project ID to remove
+ */
+export function removePendingRegistration(projectId: string): void {
+    if (pendingRegistrationsMap.has(projectId)) {
+        pendingRegistrationsMap.delete(projectId);
+    }
+}
+
+/**
+ * Get all pending project registrations
+ * @returns Array of pending registrations
+ */
+export function getPendingRegistrations(): { projectId: string; title: string; }[] {
+    const pending: { projectId: string; title: string; }[] = [];
+    pendingRegistrationsMap.forEach((title, projectId) => {
+        pending.push({ projectId, title: title as string });
+    });
+    return pending;
 }
 
 // Log initialization status

@@ -147,7 +147,7 @@
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    (e as unknown as { keysChanged: Set<string> }).keysChanged,
+                                    (e as unknown as { keysChanged: unknown }).keysChanged,
                                 );
                             });
                         }
@@ -189,10 +189,10 @@
                         });
                     }
                 };
-                ymap.observeDeep(handler as unknown as (events: import('yjs').YEvent<any>[], transaction: import('yjs').Transaction) => void);
+                ymap.observeDeep(handler as unknown as (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], transaction: import('yjs').Transaction) => void);
                 return () => {
                     try {
-                        ymap.unobserveDeep(handler as unknown as (events: import('yjs').YEvent<any>[], transaction: import('yjs').Transaction) => void);
+                        ymap.unobserveDeep(handler as unknown as (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], transaction: import('yjs').Transaction) => void);
                     } catch {}
                 };
             }

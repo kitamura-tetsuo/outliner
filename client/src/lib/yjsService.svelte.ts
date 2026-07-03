@@ -12,8 +12,11 @@ const logger = getLogger("yjsService");
 
 import {
     getContainerTitleFromMetaDoc,
+    getPendingRegistrations,
     getProjectIdByTitle,
     metaDocLoaded,
+    queueProjectRegistration,
+    removePendingRegistration,
     setContainerTitleInMetaDoc,
 } from "./metaDoc.svelte";
 
@@ -192,11 +195,12 @@ export async function createNewProject(projectName: string, existingProjectId?: 
         }
 
         if (!registrationSuccess) {
-            logger.error(
-                `[yjsService] Failed to register project after ${maxRetries} attempts. WebSocket connection may fail.`,
+            logger.warn(
+                `[yjsService] Failed to register project after ${maxRetries} attempts. Queuing for later registration.`,
             );
-            // Throw error to notify user instead of silently failing
-            throw new Error("Failed to register project. Please check your network connection.");
+            // Instead of throwing an error, we allow offline creation
+            // and queue the project ID to be registered with Firestore later
+            queueProjectRegistration(projectId, projectName);
         }
     }
 
@@ -544,6 +548,46 @@ export async function getUserContainers(): Promise<{
 }> {
     // Yjs-only mode does not manage server-side containers.
     return { containers: [], defaultContainerId: null };
+}
+
+/**
+ * Process pending project registrations that failed during offline creation.
+ */
+export async function processPendingRegistrations(): Promise<void> {
+    const pending = getPendingRegistrations();
+    if (pending.length === 0) return;
+
+    logger.info(`[yjsService] Processing ${pending.length} pending registrations`);
+    for (const { projectId, title } of pending) {
+        try {
+            const saved = await saveProjectIdToServer(projectId, title);
+            if (saved) {
+                logger.info(`[yjsService] Successfully registered pending project ${projectId}`);
+                removePendingRegistration(projectId);
+            } else {
+                logger.warn(`[yjsService] Still failed to register pending project ${projectId}`);
+            }
+        } catch (e) {
+            logger.error({ error: e as Error }, `[yjsService] Error processing pending registration for ${projectId}`);
+        }
+    }
+}
+
+if (typeof window !== "undefined") {
+    // Process on startup (wait a bit for auth to initialize)
+    setTimeout(() => {
+        void processPendingRegistrations();
+    }, 5000);
+
+    // Process on network recovery
+    window.addEventListener("online", () => {
+        void processPendingRegistrations();
+    });
+
+    // Try periodically just in case (every 5 minutes)
+    setInterval(() => {
+        void processPendingRegistrations();
+    }, 5 * 60 * 1000);
 }
 
 // Testing hooks
