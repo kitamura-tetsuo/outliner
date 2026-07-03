@@ -533,7 +533,14 @@ export class KeyEventHandler {
         }
 
         if (commandPaletteStore.isVisible) {
-            if (event.key === "ArrowDown") {
+            if (event.key === " ") {
+                if (commandPaletteStore.query === "") {
+                    // Hide palette if space is entered immediately after / (e.g. [/ ] for italics)
+                    commandPaletteStore.hide();
+                    // DO NOT call preventDefault here. We want the browser to naturally insert the space.
+                    return;
+                }
+            } else if (event.key === "ArrowDown") {
                 commandPaletteStore.move(1);
                 event.preventDefault();
                 return;
@@ -1081,8 +1088,14 @@ export class KeyEventHandler {
             // Hide command palette if [ is entered (start of internal link)
             commandPaletteStore.hide();
         } else if (commandPaletteStore.isVisible) {
-            // Use dedicated input processing if CommandPalette is visible
-            if (inputEvent.data) {
+            if (inputEvent.data === " " && commandPaletteStore.query === "") {
+                // Hide command palette if space is entered immediately after / (e.g. [/ ] for italics)
+                commandPaletteStore.hide();
+                // We MUST let the space go through to Svelte via natural event propagation, but Playwright's `type`
+                // sometimes races with the focus loss when the palette is removed. We use standard execution paths.
+                return;
+            } else if (inputEvent.data && inputEvent.data.length > 0) {
+                // Use dedicated input processing if CommandPalette is visible
                 commandPaletteStore.handleCommandInput(inputEvent.data);
                 // Skip normal input processing
                 inputEvent.preventDefault?.();

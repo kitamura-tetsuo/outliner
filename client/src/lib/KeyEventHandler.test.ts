@@ -128,3 +128,49 @@ describe("KeyEventHandler.handlePaste", () => {
         window.removeEventListener("clipboard-read-error", listener);
     });
 });
+
+describe("KeyEventHandler.handleKeyDown - CommandPalette italic ambiguity", () => {
+    it("hides command palette when space is entered immediately after /", async () => {
+        const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
+        commandPaletteStore.isVisible = true;
+        (commandPaletteStore as unknown as { query: string; }).query = "";
+
+        const event = {
+            key: " ",
+            ctrlKey: false,
+            metaKey: false,
+            shiftKey: false,
+            altKey: false,
+            preventDefault: vi.fn(),
+            target: { nodeName: "TEXTAREA" },
+        } as unknown as KeyboardEvent;
+        Object.defineProperty(document, "activeElement", { value: event.target, configurable: true });
+
+        KeyEventHandler.handleKeyDown(event);
+
+        expect(commandPaletteStore.hide).toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+});
+
+describe("KeyEventHandler.handleInput - CommandPalette italic ambiguity", () => {
+    it("hides command palette when space is entered immediately after /", async () => {
+        const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
+        commandPaletteStore.isVisible = true;
+        (commandPaletteStore as unknown as { query: string; }).query = "";
+
+        const event = {
+            data: " ",
+            inputType: "insertText",
+            isComposing: false,
+            preventDefault: vi.fn(),
+            target: { nodeName: "TEXTAREA" },
+        } as unknown as InputEvent;
+        Object.defineProperty(document, "activeElement", { value: event.target, configurable: true });
+
+        KeyEventHandler.handleInput(event);
+
+        expect(commandPaletteStore.hide).toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+});
