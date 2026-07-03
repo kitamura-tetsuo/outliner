@@ -32,10 +32,12 @@ class CommandPaletteStore {
         const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
         const q = (fallback || "").toLowerCase();
         try {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(
-                '[Palette.visible] q="' + q + '" list=',
-                this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
-            );
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug(
+                    '[Palette.visible] q="' + q + '" list=',
+                    this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
+                );
+            }
         } catch {}
         // Special filtering for chart commands
         if (q === "ch") {
@@ -58,7 +60,9 @@ class CommandPaletteStore {
                 if (lastSlash >= 0) {
                     const seg = stream.slice(lastSlash + 1);
                     if (seg && seg.length <= 8) {
-                        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Using stream:", seg);
+                        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                            logger.debug("[deriveQueryFromDoc] Using stream:", seg);
+                        }
                         return seg; // Noise suppression
                     }
                 }
@@ -72,7 +76,9 @@ class CommandPaletteStore {
                 const lastSlash = before.lastIndexOf("/");
                 if (lastSlash >= 0) {
                     const result = before.slice(lastSlash + 1);
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Using textarea:", result);
+                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                        logger.debug("[deriveQueryFromDoc] Using textarea:", result);
+                    }
                     return result;
                 }
             }
@@ -88,7 +94,9 @@ class CommandPaletteStore {
                     if (lastSlash >= 0) {
                         const seg = ks.slice(lastSlash + 1);
                         if (seg && seg.length <= 8) {
-                            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Using keystream:", seg);
+                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                logger.debug("[deriveQueryFromDoc] Using keystream:", seg);
+                            }
                             return seg;
                         }
                     }
@@ -98,13 +106,17 @@ class CommandPaletteStore {
             // 4) Fallback from model side (node text)
             const cursors = editorOverlayStore.getCursorInstances();
             if (cursors.length === 0) {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] No cursors found");
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug("[deriveQueryFromDoc] No cursors found");
+                }
                 return "";
             }
             const cursor = cursors[0];
             const node = cursor.findTarget();
             if (!node) {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] No node found");
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug("[deriveQueryFromDoc] No node found");
+                }
                 return "";
             }
             const text = (node as unknown as { text?: unknown; }).text ?? "";
@@ -115,7 +127,9 @@ class CommandPaletteStore {
             );
             const src = typeof text === "string" ? text : (text?.toString?.() ?? "");
             const result = src.slice(s, e);
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Using node text:", result);
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug("[deriveQueryFromDoc] Using node text:", result);
+            }
             return result;
         } catch (error) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Error:", error);
@@ -130,14 +144,21 @@ class CommandPaletteStore {
         // Special filtering for chart commands
         if (q === "ch") {
             const result = this.commands.filter(c => c.type === "chart");
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(
-                '[CommandPaletteStore.filtered] Special filtering for "ch", result:',
-                result.map(c => c.label),
-            );
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug(
+                    '[CommandPaletteStore.filtered] Special filtering for "ch", result:',
+                    result.map(c => c.label),
+                );
+            }
             return result;
         }
         const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.filtered] Normal filtering, result:", result.map(c => c.label));
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+            logger.debug(
+                "[CommandPaletteStore.filtered] Normal filtering, result:",
+                result.map(c => c.label),
+            );
+        }
         return result;
     }
 
@@ -177,7 +198,9 @@ class CommandPaletteStore {
         this.selectedIndex = 0;
     }
     backspaceLight() {
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore] backspaceLight, current query:", this.query);
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+            logger.debug("[CommandPaletteStore] backspaceLight, current query:", this.query);
+        }
         if (!this.query) return;
         this.query = this.query.slice(0, -1);
         this.selectedIndex = 0;
@@ -218,12 +241,14 @@ class CommandPaletteStore {
         this.query = newCommandText;
         this.selectedIndex = 0;
         try {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(
-                "CommandPaletteStore.handleCommandInput: query=",
-                this.query,
-                "filtered=",
-                this.filtered.map(c => c.label),
-            );
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug(
+                    "CommandPaletteStore.handleCommandInput: query=",
+                    this.query,
+                    "filtered=",
+                    this.filtered.map(c => c.label),
+                );
+            }
         } catch {}
 
         // Apply cursor
@@ -304,16 +329,20 @@ class CommandPaletteStore {
         const list = this.visible;
         const cmd = list[this.selectedIndex];
         try {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(
-                "[CommandPaletteStore.confirm] selectedIndex=",
-                this.selectedIndex,
-                "visible=",
-                list.map(c => c.label),
-            );
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug(
+                    "[CommandPaletteStore.confirm] selectedIndex=",
+                    this.selectedIndex,
+                    "visible=",
+                    list.map(c => c.label),
+                );
+            }
         } catch {}
         if (cmd) {
             try {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.confirm] confirming type=", cmd.type);
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug("[CommandPaletteStore.confirm] confirming type=", cmd.type);
+                }
             } catch {}
             this.insert(cmd.type);
         } else {
@@ -421,7 +450,9 @@ class CommandPaletteStore {
                 n.aliasTargetId = undefined;
             }
             try {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
+                }
             } catch {}
             if (n.id) aliasPickerStore.show(n.id);
         } else {
@@ -453,7 +484,9 @@ class CommandPaletteStore {
         }, 0);
 
         // Output component type to log for debugging
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+            logger.debug("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
+        }
     }
 }
 
