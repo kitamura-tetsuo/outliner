@@ -110,7 +110,12 @@ describe("YjsClient", () => {
         expect(client.getConnectionStateString()).toBe("Connected");
 
         // Mock a disconnected state
-        const disconnectedProvider = { ...provider, isSynced: false, status: "disconnected", websocketProvider: { status: "disconnected" } } as any;
+        const disconnectedProvider = {
+            ...provider,
+            isSynced: false,
+            status: "disconnected",
+            websocketProvider: { status: "disconnected" },
+        } as any;
         const disconnectedClient = new YjsClient({
             clientId,
             projectId,
@@ -170,7 +175,7 @@ describe("YjsClient", () => {
             votes: ["user2"],
             created: 1000,
             lastChanged: 2000,
-            items: { length: 0 }
+            items: { length: 0 },
         };
         const mockItem2 = {
             id: "2",
@@ -181,13 +186,13 @@ describe("YjsClient", () => {
             lastChanged: 4000,
             items: {
                 length: 1,
-                at: (i: number) => mockItem1
-            }
+                at: (i: number) => mockItem1,
+            },
         };
 
         const mockItems = {
             length: 1,
-            at: (i: number) => mockItem2
+            at: (i: number) => mockItem2,
         };
 
         const clientWithItems = new YjsClient({
