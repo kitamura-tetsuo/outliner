@@ -124,12 +124,6 @@
     // Track the last update timestamp to prevent rapid successive updates
 
     // Minimum granularity observe for Yjs: Observe the underlying Y.Map("orderedTree") of the tree
-    let __batchedUpdates = {
-        changedKeys: new Set<string>(),
-        structureChanged: false
-    };
-    let __updateQueued = false;
-
     let __lastUpdateInfo = $state({ tick: 0, changedKeys: new Set<string>(), structureChanged: true });
 
     onMount(() => {
@@ -153,46 +147,34 @@
                         }
                     } catch {}
 
-                    let shouldQueue = false;
+                    let structureChanged = false;
+                    const changedKeys = new Set<string>();
 
                     events.forEach(e => {
                         if (e.target === ymap) {
-                            __batchedUpdates.structureChanged = true;
-                            shouldQueue = true;
+                            structureChanged = true;
                         } else if (e.path.length > 0) {
                             const nodeKey = String(e.path[0]);
                             if (e.path.length >= 2 && e.path[1] === "_parentHistory") {
-                                __batchedUpdates.structureChanged = true;
-                                shouldQueue = true;
+                                structureChanged = true;
                             } else {
-                                __batchedUpdates.changedKeys.add(nodeKey);
-                                shouldQueue = true;
+                                changedKeys.add(nodeKey);
                             }
                         } else {
-                            __batchedUpdates.structureChanged = true;
-                            shouldQueue = true;
+                            structureChanged = true;
                         }
                     });
 
-                    if (shouldQueue && !__updateQueued) {
-                        __updateQueued = true;
-                        queueMicrotask(() => {
-                            __lastUpdateInfo = {
-                                tick: Date.now(),
-                                changedKeys: new Set(__batchedUpdates.changedKeys),
-                                structureChanged: __batchedUpdates.structureChanged
-                            };
-
-                            __batchedUpdates.changedKeys.clear();
-                            __batchedUpdates.structureChanged = false;
-                            __updateQueued = false;
-                        });
-                    }
+                    __lastUpdateInfo = {
+                        tick: Date.now(),
+                        changedKeys,
+                        structureChanged
+                    };
                 };
-                ymap.observeDeep(handler as any);
+                ymap.observeDeep(handler as unknown as (events: import('yjs').YEvent<any>[], transaction: import('yjs').Transaction) => void);
                 return () => {
                     try {
-                        ymap.unobserveDeep(handler as any);
+                        ymap.unobserveDeep(handler as unknown as (events: import('yjs').YEvent<any>[], transaction: import('yjs').Transaction) => void);
                     } catch {}
                 };
             }
