@@ -9,7 +9,7 @@ export function escapeId(id: string): string {
 // Measurement span singleton (lazy initialized)
 let _measurementSpan: HTMLSpanElement | null = null;
 export function getMeasurementSpan(): HTMLSpanElement {
-    if (typeof document === 'undefined') return null as unknown as HTMLSpanElement;
+    if (typeof document === "undefined") return null as unknown as HTMLSpanElement;
     if (!_measurementSpan) {
         _measurementSpan = document.createElement("span");
         _measurementSpan.id = "outliner-measurement-span";
