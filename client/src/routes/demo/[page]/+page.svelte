@@ -84,7 +84,7 @@
 
             store.currentPage = targetPage;
         } catch (err) {
-            logger.error(err, "Failed to load demo page");
+            logger.error({ error: err }, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
             isLoading = false;
