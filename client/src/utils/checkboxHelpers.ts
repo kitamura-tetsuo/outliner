@@ -12,8 +12,10 @@ export function updateParentCheckboxStatus(parentItem: Item) {
     const children = parentItem.items;
 
     // Explicitly iterate over children array
-    const iter = 'iterateUnordered' in children && typeof children.iterateUnordered === 'function' ? children.iterateUnordered() : children;
-    if (iter && typeof iter[Symbol.iterator] === 'function') {
+    const iter = "iterateUnordered" in children && typeof children.iterateUnordered === "function"
+        ? children.iterateUnordered()
+        : children;
+    if (iter && typeof iter[Symbol.iterator] === "function") {
         for (const child of iter) {
             const childText = String(child.text);
             if (childText.startsWith("[ ] ")) {

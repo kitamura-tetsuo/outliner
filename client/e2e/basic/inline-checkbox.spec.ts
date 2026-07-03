@@ -9,8 +9,8 @@ test.describe("Inline Checkboxes", () => {
         const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, ["[ ] Parent"]);
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, ["[ ] Parent"]);
 
-        const items = page.locator('.outliner-item[data-item-id]');
-        await items.first().locator('.item-content').click();
+        const items = page.locator(".outliner-item[data-item-id]");
+        await items.first().locator(".item-content").click();
         await page.waitForTimeout(500);
 
         await TestHelpers.waitForCursorVisible(page);
@@ -35,26 +35,28 @@ test.describe("Inline Checkboxes", () => {
         await page.keyboard.press("ArrowUp");
         await page.waitForTimeout(500);
 
-        await page.locator('.global-textarea').blur();
+        await page.locator(".global-textarea").blur();
         await page.waitForTimeout(500);
 
         const checkboxes = page.locator('input[type="checkbox"].inline-checkbox');
         await expect(checkboxes).toHaveCount(3, { timeout: 5000 });
 
         // Let's print out what HTML Svelte renders for Bread
-        const breadHTML = await items.nth(2).locator('.item-text').innerHTML();
+        const breadHTML = await items.nth(2).locator(".item-text").innerHTML();
         console.log("BREAD HTML:", breadHTML);
 
         // Click Bread if it's missing checked attr (for robustness)
         if (!breadHTML.includes("checked")) {
-             console.log("Bread is missing checked attr, clicking...");
-             await checkboxes.nth(2).evaluate((node) => node.click());
-             await page.waitForTimeout(500);
+            console.log("Bread is missing checked attr, clicking...");
+            await checkboxes.nth(2).evaluate((node) => node.click());
+            await page.waitForTimeout(500);
         }
 
         const parentChecked = await checkboxes.nth(0).evaluate((node: HTMLInputElement) => node.checked);
         const milkChecked = await checkboxes.nth(1).evaluate((node: HTMLInputElement) => node.checked);
-        const breadChecked = await checkboxes.nth(2).evaluate((node: HTMLInputElement) => node.checked || node.hasAttribute("checked"));
+        const breadChecked = await checkboxes.nth(2).evaluate((node: HTMLInputElement) =>
+            node.checked || node.hasAttribute("checked")
+        );
 
         expect(parentChecked).toBe(false);
         expect(milkChecked).toBe(false);
