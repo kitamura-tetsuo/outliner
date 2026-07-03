@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { iterateItems } from "./itemTraversal";
+import { describe, expect, it, vi } from "vitest";
 import type { Item } from "../schema/app-schema";
+import { iterateItems } from "./itemTraversal";
 
 describe("iterateItems", () => {
     it("returns empty array for null/undefined", () => {
@@ -10,11 +10,13 @@ describe("iterateItems", () => {
 
     it("uses iterateUnordered if available", () => {
         const mockItem = { id: "1" } as Item;
-        const mockIterator = function* () { yield mockItem; };
+        const mockIterator = function*() {
+            yield mockItem;
+        };
         const mockIterateUnordered = vi.fn().mockImplementation(mockIterator);
 
         const items = {
-            iterateUnordered: mockIterateUnordered
+            iterateUnordered: mockIterateUnordered,
         };
 
         const result = Array.from(iterateItems(items));
@@ -36,7 +38,7 @@ describe("iterateItems", () => {
         const mockItem2 = { id: "2" } as Item;
         const items = {
             length: 2,
-            at: (i: number) => i === 0 ? mockItem1 : mockItem2
+            at: (i: number) => i === 0 ? mockItem1 : mockItem2,
         };
 
         const result = Array.from(iterateItems(items));
@@ -47,7 +49,7 @@ describe("iterateItems", () => {
         const mockItem = { id: "1" } as Item;
         const items = {
             length: 1,
-            0: mockItem
+            0: mockItem,
         };
 
         const result = Array.from(iterateItems(items));

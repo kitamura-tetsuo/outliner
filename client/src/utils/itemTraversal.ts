@@ -15,7 +15,7 @@ export function iterateItems(items: unknown): Iterable<Item> {
     const iterateUnordered = (items as any).iterateUnordered;
     if (typeof iterateUnordered === "function") {
         return {
-            [Symbol.iterator]: () => iterateUnordered.call(items)
+            [Symbol.iterator]: () => iterateUnordered.call(items),
         };
     }
 
