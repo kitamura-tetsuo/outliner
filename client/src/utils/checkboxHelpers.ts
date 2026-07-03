@@ -38,10 +38,10 @@ export function updateParentCheckboxStatus(parentItem: Item) {
 
         // Recursively update grandparent
         const grandparentItems = parentItem.parent;
-        if (grandparentItems && (grandparentItems as any).parentKey && (grandparentItems as any).parentKey !== "root") {
-            const grandparentId = (grandparentItems as any).parentKey;
-            const ydoc = (parentItem as any).ydoc;
-            const tree = (parentItem as any).tree;
+        if (grandparentItems && grandparentItems.parentKey && grandparentItems.parentKey !== "root") {
+            const grandparentId = grandparentItems.parentKey;
+            const ydoc = grandparentItems.ydoc;
+            const tree = grandparentItems.tree;
 
             if (ydoc && tree && grandparentId) {
                 try {

@@ -1016,11 +1016,14 @@ function handleContentClick(e: MouseEvent) {
             model.original.updateText(newText);
 
             // Handle parent updates
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const parentKey = (model.original as any).tree?.getNodeParentFromKey?.((model.original as any).key);
             if (parentKey && parentKey !== "root") {
                 setTimeout(() => {
                     try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const ydoc = (model.original as any).ydoc;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         const tree = (model.original as any).tree;
                         if (ydoc && tree) {
                             // Require app-schema dynamically to avoid circular dep issues in store or import Item from app-schema
@@ -1029,7 +1032,9 @@ function handleContentClick(e: MouseEvent) {
                                 updateParentCheckboxStatus(parentItem);
                             });
                         }
-                    } catch(e) {}
+                    } catch {
+                        // ignore errors
+                    }
                 }, 0);
             }
         }
