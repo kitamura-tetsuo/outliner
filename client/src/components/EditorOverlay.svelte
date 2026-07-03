@@ -1403,7 +1403,7 @@ function handlePaste(event: ClipboardEvent) {
     <button type="button"
         class="debug-button"
         class:active={DEBUG_MODE}
-        onclick={() => DEBUG_MODE = !DEBUG_MODE}
+        onclick={() => { DEBUG_MODE = !DEBUG_MODE; if (typeof window !== "undefined") window.DEBUG_MODE = DEBUG_MODE; }}
         title="Toggle debug mode"
     >
         D

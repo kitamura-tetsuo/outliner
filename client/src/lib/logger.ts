@@ -216,6 +216,14 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
             get(target, prop) {
                 if (typeof prop === "string" && ["trace", "debug", "info", "warn", "error", "fatal"].includes(prop)) {
                     return function(...args: unknown[]) {
+                        // In production, require window.DEBUG_MODE to output debug logs
+                        if (prop === "debug") {
+                            const isDebugModeEnabled = typeof window !== "undefined" && (window as any).DEBUG_MODE;
+                            if (!isDebugModeEnabled) {
+                                return;
+                            }
+                        }
+
                         // Call original logger method
                         ((target as unknown as Record<string, (...args: unknown[]) => void>)[prop as string] as (
                             ...args: unknown[]

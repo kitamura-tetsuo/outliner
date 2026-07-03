@@ -2,13 +2,6 @@ import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 
 const logger = getLogger();
-// Suppress verbose logs in E2E/Test environments
-const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-    || import.meta.env.MODE === "test"
-    || import.meta.env.VITE_IS_TEST === "true";
-const debugLog = (...args: unknown[]) => {
-    if (!__IS_E2E__) logger.debug(...args);
-};
 
 const isItemLike = (obj: unknown): boolean => {
     try {
@@ -72,17 +65,17 @@ export class OutlinerViewModel {
         if (this._isUpdating) return;
 
         if (!pageItem) {
-            debugLog("OutlinerViewModel: updateFromModel called with null pageItem");
+            logger.debug("OutlinerViewModel: updateFromModel called with null pageItem");
             return;
         }
 
         try {
             this._isUpdating = true;
 
-            debugLog(
+            logger.debug(
                 `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
             );
-            debugLog(
+            logger.debug(
                 "OutlinerViewModel: pageItem.items length:",
                 (pageItem.items as unknown as { length?: number; })?.length || 0,
             );
@@ -90,7 +83,7 @@ export class OutlinerViewModel {
             // Update or add existing view models
             this.ensureViewModelsItemExist(pageItem);
 
-            debugLog(
+            logger.debug(
                 "OutlinerViewModel: viewModels count after ensure:",
                 this.viewModels.size,
             );
@@ -98,12 +91,12 @@ export class OutlinerViewModel {
             // Recalculate display order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
 
-            debugLog(
+            logger.debug(
                 "OutlinerViewModel: visibleOrder length after recalculate:",
                 this.visibleOrder.length,
             );
             if (this.visibleOrder.length === 0) {
-                debugLog("OutlinerViewModel: visibleOrder is EMPTY!");
+                logger.debug("OutlinerViewModel: visibleOrder is EMPTY!");
             }
         } catch (err) {
             logger.error({ error: err }, "OutlinerViewModel: Error in updateFromModel");
@@ -137,7 +130,7 @@ export class OutlinerViewModel {
     ): void {
         if (!isItemLike(item)) return;
 
-        debugLog(
+        logger.debug(
             `OutlinerViewModel: ensureViewModelsItemExist for item "${item.text}" (id: ${item.id})`,
         );
 
@@ -167,7 +160,7 @@ export class OutlinerViewModel {
                 // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
                 const comments = item.comments;
                 existingViewModel.commentCount = comments?.length ?? 0;
-                debugLog(
+                logger.debug(
                     `OutlinerViewModel: Updated existing view model for "${existingViewModel.text}"`,
                 );
             }
@@ -183,7 +176,7 @@ export class OutlinerViewModel {
                 lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
                 commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
             });
-            debugLog(
+            logger.debug(
                 `OutlinerViewModel: Created new view model for "${item.text}"`,
             );
         }
@@ -199,12 +192,12 @@ export class OutlinerViewModel {
                 && typeof (it as { at?: unknown; }).at === "function"))((item as unknown as { items?: unknown; }).items)
         ) {
             const children = item.items;
-            debugLog(
+            logger.debug(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
             );
             this.ensureViewModelsItemsExist(children, item.id);
         } else {
-            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
+            logger.debug(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
     /**
@@ -241,7 +234,7 @@ export class OutlinerViewModel {
             this.visibleOrder = [];
         }
 
-        debugLog(
+        logger.debug(
             `OutlinerViewModel: recalculateOrderAndDepthItem for "${item.text}" (depth: ${depth})`,
         );
 
@@ -263,7 +256,7 @@ export class OutlinerViewModel {
         };
         const hasChildren = !!(ch && typeof ch.length === "number" && typeof ch.at === "function" && ch.length > 0);
 
-        debugLog(
+        logger.debug(
             `OutlinerViewModel: Item "${item.text}" - hasChildren: ${hasChildren}, isCollapsed: ${isCollapsed}, childrenCount: ${
                 hasChildren ? item.items.length : 0
             }`,
@@ -271,18 +264,18 @@ export class OutlinerViewModel {
 
         if (hasChildren && !isCollapsed) {
             const children = item.items;
-            debugLog(
+            logger.debug(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
             );
             for (const child of children) {
                 this.recalculateOrderAndDepthItem(child, depth + 1, item.id);
             }
         } else if (hasChildren && isCollapsed) {
-            debugLog(
+            logger.debug(
                 `OutlinerViewModel: Skipping children for "${item.text}" because it's collapsed`,
             );
         } else if (!hasChildren) {
-            debugLog(`OutlinerViewModel: No children for "${item.text}"`);
+            logger.debug(`OutlinerViewModel: No children for "${item.text}"`);
         }
     }
 
