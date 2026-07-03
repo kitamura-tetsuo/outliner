@@ -3,7 +3,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
     const items = node.items as unknown as Iterable<Item> | undefined;
-    if (!items || typeof ((items as unknown) as Record<symbol, unknown>)[Symbol.iterator] !== "function") {
+    if (!items || typeof (items as unknown as Record<string | symbol, unknown>)[Symbol.iterator] !== "function") {
         return [];
     }
 
