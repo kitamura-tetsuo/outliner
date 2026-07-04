@@ -147,11 +147,11 @@ export class UserManager {
 
         // Connect to Firebase Auth Emulator
         if (useEmulator) {
-            logger.info({}, "Connecting to Auth emulator");
+            logger.debug({}, "Connecting to Auth emulator");
             try {
                 const connected = this.connectToFirebaseEmulator();
                 if (connected) {
-                    logger.info({}, "Successfully connected to Auth emulator");
+                    logger.debug({}, "Successfully connected to Auth emulator");
                     // Automatically login with test user in test environment
                     this._setupMockUser(useEmulator);
                 } else {
@@ -173,7 +173,7 @@ export class UserManager {
                             throw error;
                         }
                     } else {
-                        logger.info({}, "Running in SSR environment, will retry connection on client side");
+                        logger.debug({}, "Running in SSR environment, will retry connection on client side");
                     }
                 }
             } catch (err) {
@@ -191,7 +191,7 @@ export class UserManager {
                         throw err;
                     }
                 } else {
-                    logger.info({}, "Running in SSR environment, will retry connection on client side");
+                    logger.debug({}, "Running in SSR environment, will retry connection on client side");
                 }
             }
         }
@@ -208,9 +208,9 @@ export class UserManager {
                 10,
             );
 
-            logger.info(`Connecting to Firebase Auth emulator at ${host}:${port}`);
+            logger.debug(`Connecting to Firebase Auth emulator at ${host}:${port}`);
             connectAuthEmulator(this.auth, `http://${host}:${port}`, { disableWarnings: true });
-            logger.info(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
+            logger.debug(`Successfully connected to Firebase Auth emulator at ${host}:${port}`);
             return true;
         } catch (err) {
             logger.error({ error: err as Error }, "Error connecting to Firebase Auth emulator");
@@ -231,25 +231,25 @@ export class UserManager {
 
         // Use Firebase email/password auth for E2E tests
         if (isTestEnv && !isProduction && useEmulator) {
-            logger.info(
+            logger.debug(
                 {},
                 "[UserManager] E2E test environment detected, using Firebase auth emulator with test account",
             );
-            logger.info({}, "[UserManager] Attempting E2E test login with test@example.com");
+            logger.debug({}, "[UserManager] Attempting E2E test login with test@example.com");
 
             // Login with test user
             try {
                 await signInWithEmailAndPassword(this.auth, "test@example.com", "password");
-                logger.info({}, "[UserManager] Test user login successful");
+                logger.debug({}, "[UserManager] Test user login successful");
             } catch (error) {
                 logger.error({ error: error as Error }, "[UserManager] Test user login failed");
 
                 // Attempt to create user if not exists
                 try {
                     // Attempt to create a mock test user for local environment
-                    logger.info({}, "[UserManager] Attempting to create test user");
+                    logger.debug({}, "[UserManager] Attempting to create test user");
                     await createUserWithEmailAndPassword(this.auth, "test@example.com", "password");
-                    logger.info({}, "[UserManager] Test user created and logged in successfully");
+                    logger.debug({}, "[UserManager] Test user created and logged in successfully");
                 } catch (createError) {
                     logger.error({ error: createError as Error }, "[UserManager] Failed to create test user");
                 }
@@ -280,7 +280,7 @@ export class UserManager {
                 providerIds: providerIds.length > 0 ? providerIds : undefined,
             };
 
-            logger.info({
+            logger.debug({
                 userId: user.id,
                 listenerCount: this.listeners.length,
             }, "Notifying listeners of successful authentication");
@@ -337,7 +337,7 @@ export class UserManager {
     // Update initAuthListenerAsync
     private async initAuthListenerAsync(): Promise<void> {
         if (this.isMockMode) {
-            logger.info({}, "[UserManager] Mock Mode: Simulating user sign-in");
+            logger.debug({}, "[UserManager] Mock Mode: Simulating user sign-in");
             // Simulate async delay
             setTimeout(() => {
                 const mockUser: IUser = {
@@ -365,10 +365,10 @@ export class UserManager {
                 }, "onIdTokenChanged triggered");
 
                 if (firebaseUser) {
-                    logger.info({ userId: firebaseUser.uid }, "User signed in/token refreshed via onIdTokenChanged");
+                    logger.debug({ userId: firebaseUser.uid }, "User signed in/token refreshed via onIdTokenChanged");
                     await this.handleUserSignedIn(firebaseUser);
                 } else {
-                    logger.info({}, "User signed out via onIdTokenChanged");
+                    logger.debug({}, "User signed out via onIdTokenChanged");
                     this.handleUserSignedOut();
                 }
             });
@@ -398,13 +398,13 @@ export class UserManager {
     // Login with email and password (for development)
     public async loginWithEmailPassword(email: string, password: string): Promise<void> {
         if (this.isMockMode) {
-            logger.info({}, "[UserManager] Mock Mode: Simulating email/password login");
+            logger.debug({}, "[UserManager] Mock Mode: Simulating email/password login");
             const user: IUser = { id: "test-user", name: "Test User", email };
             this.notifyListeners({ user });
             return;
         }
         try {
-            logger.info(`[UserManager] Attempting email/password login for: ${email}`);
+            logger.debug(`[UserManager] Attempting email/password login for: ${email}`);
             logger.debug(
                 { state: this.auth.currentUser ? "authenticated" : "not authenticated" },
                 "[UserManager] Current auth state",
@@ -416,7 +416,7 @@ export class UserManager {
                     // Try standard Firebase authentication first
                     logger.debug({}, "[UserManager] Calling signInWithEmailAndPassword");
                     const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-                    logger.info({
+                    logger.debug({
                         userId: userCredential.user.uid,
                     }, "[UserManager] Email/password login successful via Firebase Auth");
                     return;
@@ -427,9 +427,9 @@ export class UserManager {
                     // Attempt to create user if not exists
                     if (errorObj.code === "auth/user-not-found") {
                         try {
-                            logger.info({}, "[UserManager] User not found, attempting to create user");
+                            logger.debug({}, "[UserManager] User not found, attempting to create user");
                             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-                            logger.info({
+                            logger.debug({
                                 userId: userCredential.user.uid,
                             }, "[UserManager] New user created and logged in successfully");
                             return;
