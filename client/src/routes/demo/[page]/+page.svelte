@@ -186,6 +186,8 @@ import { iterateItems } from "../../../utils/itemTraversal";
                     onclick={toggleSearchPanel}
                     class="search-btn rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
                     data-testid="search-toggle-button"
+                    aria-label="Toggle Search Panel"
+                    aria-expanded={isSearchPanelVisible}
                 >
                     Search
                 </button>
