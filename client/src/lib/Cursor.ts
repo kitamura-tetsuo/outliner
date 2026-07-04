@@ -1,4 +1,6 @@
 import type { Item, Items } from "../schema/app-schema";
+import type { Item as YjsItem, Project as YjsProject } from "../schema/yjs-schema";
+
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
@@ -77,7 +79,7 @@ export class Cursor implements CursorEditingContext {
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchItem(root as unknown as import("../schema/yjs-schema").Item, this.itemId) as
+            const found = searchItem(root as unknown as YjsItem, this.itemId) as
                 | Item
                 | undefined;
             if (found) return found;
@@ -95,7 +97,7 @@ export class Cursor implements CursorEditingContext {
                     const p = pages.at(i);
                     if (!p) continue;
 
-                    const f = searchItem(p as unknown as import("../schema/yjs-schema").Item, this.itemId) as
+                    const f = searchItem(p as unknown as YjsItem, this.itemId) as
                         | Item
                         | undefined;
                     if (f) return f;
@@ -109,11 +111,11 @@ export class Cursor implements CursorEditingContext {
     }
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
-    findTarget(): import("../schema/yjs-schema").Item | undefined {
-        return this._findTarget() as unknown as import("../schema/yjs-schema").Item | undefined;
+    findTarget(): YjsItem | undefined {
+        return this._findTarget() as unknown as YjsItem | undefined;
     }
 
-    private getTargetText(target: Item | undefined): string {
+    private getTargetText(target: { text?: unknown; } | undefined): string {
         const raw = target?.text;
         if (typeof raw === "string") return raw;
         if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
@@ -229,7 +231,7 @@ export class Cursor implements CursorEditingContext {
 
         const target = this.findTarget();
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
 
         // If at or beyond the end of the current item, find next item directly in DOM
         if (text.length > 0 && this.offset >= text.length) {
@@ -310,7 +312,7 @@ export class Cursor implements CursorEditingContext {
         if (!visualLineInfo) {
             // Fallback: Logical line processing (based on newline characters)
 
-            const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+            const text = this.getTargetText(target);
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex > 0) {
                 const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
@@ -376,13 +378,12 @@ export class Cursor implements CursorEditingContext {
             const currentTarget = this.findTarget();
             const parentCollection = currentTarget?.parent;
             // Get the parent Item by creating it from parentKey
-            let parentItemInstance: import("../schema/app-schema").Item | import("../schema/yjs-schema").Item | null =
-                null;
+            let parentItemInstance: import("../schema/app-schema").Item | YjsItem | null = null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
 
                 parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(...args: unknown[]): import("../schema/yjs-schema").Item;
+                    new(...args: unknown[]): YjsItem;
                 })(
                     currentTarget!.ydoc,
                     currentTarget!.tree,
@@ -450,7 +451,7 @@ export class Cursor implements CursorEditingContext {
         if (!visualLineInfo) {
             // Fallback: Logical line processing (based on newline characters)
 
-            const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+            const text = this.getTargetText(target);
             const lines = text.split("\n");
             const currentLineIndex = getCurrentLineIndex(text, this.offset);
             if (currentLineIndex < lines.length - 1) {
@@ -526,7 +527,7 @@ export class Cursor implements CursorEditingContext {
             } else {
                 // If there is no next item, move to the end of the same item
 
-                const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+                const text = this.getTargetText(target);
                 if (this.offset < text.length) {
                     this.offset = text.length;
                     this.applyToStore();
@@ -1038,7 +1039,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // Move to the start of the current line
@@ -1055,7 +1056,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
 
         // Move to the end of the current line
@@ -1071,7 +1072,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
@@ -1105,7 +1106,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
@@ -1149,7 +1150,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
 
         // If text is empty, just return without changing anything
         if (text.length === 0) {
@@ -1174,7 +1175,7 @@ export class Cursor implements CursorEditingContext {
 
         // Check if text exists and is not null/undefined before using it
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         if (text.length === 0) {
             return;
         }
@@ -1197,7 +1198,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const pos = this.offset;
         const before = text[pos - 1];
         const current = text[pos];
@@ -1329,42 +1330,42 @@ export class Cursor implements CursorEditingContext {
     moveItemUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemUp(project as unknown as YjsProject, this.itemId);
         }
     }
 
     moveItemDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveItemDown(project as unknown as YjsProject, this.itemId);
         }
     }
 
     moveSubtreeUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeUp(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeUp(project as unknown as YjsProject, this.itemId);
         }
     }
 
     moveSubtreeDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeDown(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.moveSubtreeDown(project as unknown as YjsProject, this.itemId);
         }
     }
 
     indent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.indentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.indentItem(project as unknown as YjsProject, this.itemId);
         }
     }
 
     outdent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.outdentItem(project as unknown as import("../schema/yjs-schema").Project, this.itemId);
+            yjsService.outdentItem(project as unknown as YjsProject, this.itemId);
         }
     }
 
@@ -1377,7 +1378,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
 
         // Set selection
         store.setSelection({
@@ -1405,7 +1406,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const selection = this.getSelection();
 
         const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
@@ -1444,7 +1445,7 @@ export class Cursor implements CursorEditingContext {
         const target = this.findTarget();
         if (!target) return;
 
-        const text = this.getTargetText(target as unknown as import("../schema/app-schema").Item);
+        const text = this.getTargetText(target);
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const startOffset = getLineStartOffset(text, currentLineIndex);
         const endOffset = getLineEndOffset(text, currentLineIndex);
@@ -1514,7 +1515,7 @@ export class Cursor implements CursorEditingContext {
         // Get text of current item
         const currentTarget = this.findTarget();
 
-        const currentText = this.getTargetText(currentTarget as unknown as import("../schema/app-schema").Item);
+        const currentText = this.getTargetText(currentTarget);
         const currentColumn = getCurrentColumn(currentText, this.offset);
 
         // Debug information
@@ -1555,12 +1556,12 @@ export class Cursor implements CursorEditingContext {
                         const prevItemId = prevEl.getAttribute("data-item-id");
                         if (prevItemId && prevItemId !== this.itemId) {
                             prevItem = searchItem(
-                                generalStore.currentPage as unknown as import("../schema/yjs-schema").Item,
+                                generalStore.currentPage as unknown as YjsItem,
                                 prevItemId,
                             );
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
-                                ? this.getTargetText(prevItem as unknown as import("../schema/app-schema").Item).length
+                                ? this.getTargetText(prevItem).length
                                 : undefined;
                             const domTextLength = prevEl.querySelector(".item-text")?.textContent?.length
                                 ?? prevEl.textContent?.length
@@ -1603,14 +1604,14 @@ export class Cursor implements CursorEditingContext {
             // Check if we're at the end of the current item
             const target = this.findTarget();
 
-            const text = target ? this.getTargetText(target as unknown as import("../schema/app-schema").Item) : "";
+            const text = target ? this.getTargetText(target) : "";
             const atEndOfCurrentItem = this.offset >= text.length;
 
             let nextItem = findNextItem(this.itemId);
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as import("../schema/yjs-schema").Item;
+                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as YjsItem;
             }
 
             // If we're at the end of the current item and still don't have a next item,
@@ -1637,7 +1638,7 @@ export class Cursor implements CursorEditingContext {
                             const root = generalStore.currentPage as import("../schema/app-schema").Item;
                             if (root) {
                                 nextItem = searchItem(
-                                    root as unknown as import("../schema/yjs-schema").Item,
+                                    root as unknown as YjsItem,
                                     nextItemId,
                                 );
                             }
@@ -1710,7 +1711,7 @@ export class Cursor implements CursorEditingContext {
                         if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
                             const nextItemId = allItemIds[currentIndex + 1];
                             const nextItemFromTree = searchItem(
-                                root as unknown as import("../schema/yjs-schema").Item,
+                                root as unknown as YjsItem,
                                 nextItemId,
                             );
                             if (nextItemFromTree) {
@@ -1782,7 +1783,7 @@ export class Cursor implements CursorEditingContext {
                 // If we're not at the end of an item, just stay in the same item at end position
                 const target = this.findTarget();
                 if (target) {
-                    newOffset = this.getTargetText(target as unknown as import("../schema/app-schema").Item).length;
+                    newOffset = this.getTargetText(target).length;
 
                     // Debug information
                     if (
@@ -1803,7 +1804,7 @@ export class Cursor implements CursorEditingContext {
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                     prevItem = new (currentTarget!.constructor as unknown as {
-                        new(...args: unknown[]): import("../schema/yjs-schema").Item;
+                        new(...args: unknown[]): YjsItem;
                     })(
                         currentTarget!.ydoc,
                         currentTarget!.tree,
@@ -1815,7 +1816,7 @@ export class Cursor implements CursorEditingContext {
             if (prevItem) {
                 newItemId = prevItem.id;
 
-                const prevText = this.getTargetText(prevItem as unknown as import("../schema/app-schema").Item);
+                const prevText = this.getTargetText(prevItem);
                 const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
                 let lastLineIndex: number | undefined;
                 let lastLineStart: number | undefined;
@@ -1870,13 +1871,13 @@ export class Cursor implements CursorEditingContext {
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as import("../schema/yjs-schema").Item;
+                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as YjsItem;
             }
 
             if (nextItem) {
                 newItemId = nextItem.id;
 
-                const nextText = this.getTargetText(nextItem as unknown as import("../schema/app-schema").Item);
+                const nextText = this.getTargetText(nextItem);
                 // const nextLines = nextText.split("\n");  // Not used
                 const firstLineIndex = 0;
                 const firstLineStart = getLineStartOffset(nextText, firstLineIndex);
@@ -1896,7 +1897,7 @@ export class Cursor implements CursorEditingContext {
                 // move to the end of the next item's first line
                 const currentTarget = this.findTarget();
 
-                const currentText = this.getTargetText(currentTarget as unknown as import("../schema/app-schema").Item);
+                const currentText = this.getTargetText(currentTarget);
                 if (this.offset === currentText.length) {
                     newOffset = firstLineEnd;
                 }
@@ -1919,7 +1920,7 @@ export class Cursor implements CursorEditingContext {
                 // If there is no next item, move to the end of the same item
                 const target = this.findTarget();
                 if (target) {
-                    newOffset = this.getTargetText(target as unknown as import("../schema/app-schema").Item).length;
+                    newOffset = this.getTargetText(target).length;
 
                     // Debug information
                     if (
@@ -2172,7 +2173,7 @@ export class Cursor implements CursorEditingContext {
      */
     private findNextItemViaDOM(
         currentItemId: string,
-    ): import("../schema/app-schema").Item | import("../schema/yjs-schema").Item | undefined {
+    ): import("../schema/app-schema").Item | YjsItem | undefined {
         if (typeof document === "undefined") return undefined;
 
         // Find the current element in the DOM
@@ -2199,7 +2200,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItemId) {
                 const root = generalStore.currentPage as import("../schema/app-schema").Item;
                 if (root) {
-                    const found = searchItem(root as unknown as import("../schema/yjs-schema").Item, nextItemId);
+                    const found = searchItem(root as unknown as YjsItem, nextItemId);
                     if (found) return found;
                 }
             }
