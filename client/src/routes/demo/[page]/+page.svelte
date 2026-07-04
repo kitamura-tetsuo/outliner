@@ -126,7 +126,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
     // React to page list changes (e.g., demo reset recreating the page)
     $effect(() => {
         void store.pagesVersion;
-        if (!isLoading && !error && store.project) {
+        if (!isLoading && !error && store.currentPage && store.project) {
             const latestPage = findPage(pageName);
             // If the page was recreated (new instance with the same name), update currentPage
             if (latestPage && latestPage.key !== store.currentPage?.key) {

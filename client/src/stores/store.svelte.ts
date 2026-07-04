@@ -198,6 +198,48 @@ export class GeneralStore {
      * Checks if a page with the given name exists in the current project.
      * Uses a cached Set for O(1) performance.
      */
+    public hasPageName(title: string): boolean {
+        // Normalizes title to lowercase for comparison, ensuring O(1) case-insensitive lookup
+        return this._pageNamesCache.has(String(title).toLowerCase());
+    }
+
+    /**
+     * Finds all items in the current project that refer to the given targetId as their aliasTargetId.
+     */
+    public findReferringAliases(targetId: string): { item: Item; pageTitle: string; }[] {
+        const result: { item: Item; pageTitle: string; }[] = [];
+        if (!targetId || !this._project?.items) return result;
+
+        try {
+            for (const page of iterateItems(this._project.items)) {
+                if (!page) continue;
+                const pageTitle = String(page.text || "");
+                this._traverseForAliases(page, targetId, pageTitle, result);
+            }
+        } catch (e) {
+            logger.error("Error finding referring aliases", e);
+        }
+        return result;
+    }
+
+    private _traverseForAliases(
+        node: Item,
+        targetId: string,
+        pageTitle: string,
+        result: { item: Item; pageTitle: string; }[],
+    ) {
+        if (node.aliasTargetId === targetId) {
+            result.push({ item: node, pageTitle });
+        }
+        const children = node.items;
+        if (children) {
+            for (const child of iterateItems(children)) {
+                if (!child) continue;
+                this._traverseForAliases(child, targetId, pageTitle, result);
+            }
+        }
+    }
+
     public pageExists(name: string): boolean {
         try {
             // Rely on SvelteSet fine-grained reactivity instead of global pagesVersion
