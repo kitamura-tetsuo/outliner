@@ -17,7 +17,6 @@
     const logger = getLogger("OutlinerTree");
 
     interface Props {
-        isEmbedded?: boolean;
         pageItem: Item; // Item to display as page
         projectName?: string;
         pageName?: string;
@@ -30,7 +29,6 @@
         projectName = "",
         pageName = "",
         isReadOnly = false,
-        isEmbedded = false,
         onEdit,
     }: Props = $props();
 
@@ -245,9 +243,18 @@
     });
 
     onMount(() => {
-        currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
+        const getAnonymousId = () => {
+            if (typeof sessionStorage === "undefined") return "anonymous";
+            let anonId = sessionStorage.getItem("outliner_anon_id");
+            if (!anonId) {
+                anonId = "anon-" + Math.random().toString(36).substring(2, 9);
+                sessionStorage.setItem("outliner_anon_id", anonId);
+            }
+            return anonId;
+        };
+        currentUser = userManager.getCurrentUser()?.id ?? getAnonymousId();
         unsubscribeUser = userManager.addEventListener((result) => {
-            currentUser = result?.user.id ?? "anonymous";
+            currentUser = result?.user.id ?? getAnonymousId();
         });
         editorOverlayStore.setOnEditCallback(handleEdit);
         if (typeof window !== "undefined") {
@@ -2127,7 +2134,6 @@
         onmouseup={handleTreeMouseUp}
         role="application"
     >
-        {#if !isEmbedded}
         <div class="toolbar">
             <div class="actions">
                 <button type="button" onclick={handleAddItem}>Add Item</button>
@@ -2152,7 +2158,6 @@
                 </ul>
             </details>
         </div>
-        {/if}
 
         <div
             class="tree-container"
@@ -2176,7 +2181,7 @@
                         {isReadOnly}
                         isCollapsed={viewModel.isCollapsed(display.model.id)}
                         hasChildren={viewModel.hasChildren(display.model.id)}
-                        isPageTitle={index === 0 && !isEmbedded}
+                        isPageTitle={index === 0}
                         ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
                         ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
                         {index}
@@ -2406,7 +2411,7 @@
         display: flex;
         flex-direction: column;
         position: relative;
-        min-height: var(--tree-min-height, calc(100vh - 140px));
+        min-height: calc(100vh - 140px);
     }
 
     .toolbar {

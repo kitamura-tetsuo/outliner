@@ -572,6 +572,15 @@ export class ScrapboxFormatter {
                 return this.escapeHtml(input);
             }
 
+            // Code (do not recursively process inside code)
+            // Processed before bold/italic to ensure code spans are captured verbatim
+            if (input.includes("`")) {
+                input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
+                    const html = `<code>${this.escapeHtml(content)}</code>`;
+                    return createPlaceholder(html);
+                });
+            }
+
             // Bold - process first, then recursively process content
             // This ensures nested formatting within bold is processed correctly
             const boldMatches = ScrapboxFormatter.matchBalancedBold(input);
@@ -655,14 +664,6 @@ export class ScrapboxFormatter {
             if (input.includes("[-")) {
                 input = input.replace(ScrapboxFormatter.RX_HTML_STRIKETHROUGH, (match, content) => {
                     const html = `<s>${processFormat(content)}</s>`;
-                    return createPlaceholder(html);
-                });
-            }
-
-            // Code (do not recursively process inside code)
-            if (input.includes("`")) {
-                input = input.replace(ScrapboxFormatter.RX_HTML_CODE, (match, content) => {
-                    const html = `<code>${this.escapeHtml(content)}</code>`;
                     return createPlaceholder(html);
                 });
             }
@@ -761,10 +762,14 @@ export class ScrapboxFormatter {
             input = this.escapeHtml(input);
 
             // Restore placeholders to HTML tags
-            // Optimization: Replace all placeholders in a single pass O(N) instead of O(N*M)
-            input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
-                return globalPlaceholders.get(match) || match;
-            });
+            // Process recursively to correctly restore nested placeholders
+            let previousInput = "";
+            while (input !== previousInput && input.includes("\x01HTML_")) {
+                previousInput = input;
+                input = input.replace(ScrapboxFormatter.RX_PLACEHOLDER, (match) => {
+                    return globalPlaceholders.get(match) || match;
+                });
+            }
 
             return input;
         };

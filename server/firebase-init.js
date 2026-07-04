@@ -1,1 +1,1 @@
-dist/firebase-init.js
+dist / firebase - init.js;
