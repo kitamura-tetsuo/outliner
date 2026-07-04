@@ -168,6 +168,13 @@ onMount(() => {
             if (isForeignInput(ev.target) || isForeignInput(document.activeElement)) return;
             const cps = window.commandPaletteStore ?? commandPaletteStore;
             if (!cps?.isVisible) return;
+
+            // Defensive invariant: only intercept keys if the palette is actually visible in the DOM
+            const paletteEl = document.querySelector('.slash-command-palette') as HTMLElement;
+            if (!paletteEl || paletteEl.dataset.isVisible !== "true" || paletteEl.style.display === "none") {
+                return;
+            }
+
             const k = ev.key;
             if (!ev.ctrlKey && !ev.metaKey && !ev.altKey && k.length === 1 && k !== "/") {
                 // Immediate UI update with light input (model is not changed)

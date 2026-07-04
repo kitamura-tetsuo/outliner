@@ -11,10 +11,10 @@ interface Position {
 }
 
 class CommandPaletteStore {
-    isVisible = false;
-    position: Position = { top: 0, left: 0 };
-    query = "";
-    selectedIndex = 0;
+    isVisible = $state(false);
+    position: Position = $state({ top: 0, left: 0 });
+    query = $state("");
+    selectedIndex = $state(0);
 
     // Cursor state dedicated to CommandPalette
     private commandCursorItemId: string | null = null;
