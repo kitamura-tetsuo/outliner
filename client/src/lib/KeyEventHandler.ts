@@ -186,26 +186,13 @@ export class KeyEventHandler {
                 try {
                     const ta: HTMLTextAreaElement | null | undefined = window.generalStore?.textareaRef;
                     if (ta && typeof ta.value === "string") {
-                        const before = ta.value.slice(
-                            0,
-                            typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length,
-                        );
+                        const before = ta.value.slice(0, typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length);
                         textSaysAlias = /\/(?:al|ali|alia|alias)$/i.test(before);
                     }
                 } catch {}
 
                 if (isAliasOnly || looksAlias || textSaysAlias) {
-                    try {
-                        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                            logger.debug(
-                                "KeyEventHandler: palette Enter forcing alias insert (q=",
-                                q,
-                                ", textSaysAlias=",
-                                textSaysAlias,
-                                ")",
-                            );
-                        }
-                    } catch {}
+                    try { if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("KeyEventHandler: palette Enter forcing alias insert (q=", q, ", textSaysAlias=", textSaysAlias, ")"); } catch {}
                     commandPaletteStore.insert("alias");
                     commandPaletteStore.hide();
                     event.preventDefault();
@@ -266,6 +253,7 @@ export class KeyEventHandler {
                 } catch {}
             }
         }
+
 
         const cursorInstances = store.getCursorInstances();
 
@@ -869,6 +857,7 @@ export class KeyEventHandler {
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Current active element: ${document.activeElement?.tagName}`);
         }
+
 
         // Ignore input during IME composition to avoid duplicate processing
         if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {

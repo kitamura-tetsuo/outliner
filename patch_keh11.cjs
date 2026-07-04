@@ -1,31 +1,27 @@
-const fs = require("fs");
-const file = "client/src/lib/KeyEventHandler.ts";
-let code = fs.readFileSync(file, "utf8");
+const fs = require('fs');
+const file = 'client/src/lib/KeyEventHandler.ts';
+let code = fs.readFileSync(file, 'utf8');
 
 // 1. Remove Alias Picker forward block
-const m1 = code.match(
-    /        \/\/ While Alias Picker is visible: forward Arrow\/Enter\/Escape to the picker\n        try \{\n            if \(aliasPickerStore\.isVisible\) \{[\s\S]*?            \}\n        \} catch \{\}\n/,
-);
+const m1 = code.match(/        \/\/ While Alias Picker is visible: forward Arrow\/Enter\/Escape to the picker\n        try \{\n            if \(aliasPickerStore\.isVisible\) \{[\s\S]*?            \}\n        \} catch \{\}\n/);
 if (m1) {
-    code = code.replace(m1[0], "");
+    code = code.replace(m1[0], '');
 }
 
 // 2. Delete DOM query click and test fallback branch in KeyEventHandler.handleKeyDown (Enter key)
 const match1 = code.match(/\/\/ Use the 2nd item in the list[\s\S]*?\} catch \{\}\n                        \}\n/);
 if (match1) {
-    code = code.replace(match1[0], "");
+    code = code.replace(match1[0], '');
 }
 
 // 3. Delete gs.__lastInputStream logic in handleInput
-const match2 = code.match(
-    /        \/\/ Buffer the latest input stream \(for fallback detection of palette\)[\s\S]*?        \} catch \{\}\n/,
-);
+const match2 = code.match(/        \/\/ Buffer the latest input stream \(for fallback detection of palette\)[\s\S]*?        \} catch \{\}\n/);
 if (match2) {
-    code = code.replace(match2[0], "");
+    code = code.replace(match2[0], '');
 }
 
 // 4. Add Command Palette logic and Slash command logic at the top of handleKeyDown
-const m2 = code.indexOf("        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;");
+const m2 = code.indexOf('        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;');
 if (m2 !== -1) {
     const insertStr = `
         const k = (event as KeyboardEvent).key;
@@ -125,21 +121,15 @@ if (m2 !== -1) {
     code = code.substring(0, m2 + 91) + insertStr + code.substring(m2 + 91);
 }
 
+
 // Fix duplicated code problem
-const m4 = code.match(
-    /                                    \} catch \{\}\n                                \}\n                            \} catch \{\}\n                        \}\n/,
-);
+const m4 = code.match(/                                    \} catch \{\}\n                                \}\n                            \} catch \{\}\n                        \}\n/);
 if (m4) {
-    code = code.replace(
-        m4[0],
-        "                                    } catch {}\n                                }\n                            } catch {}\n                        }\n",
-    );
+    code = code.replace(m4[0], '                                    } catch {}\n                                }\n                            } catch {}\n                        }\n');
 }
 
-const s1 = code.indexOf("                        // Use the 2nd item in the list");
-const e1 = code.indexOf(
-    "                    } catch {\n                        aliasPickerStore.hide();\n                    }",
-);
+const s1 = code.indexOf('                        // Use the 2nd item in the list');
+const e1 = code.indexOf('                    } catch {\n                        aliasPickerStore.hide();\n                    }');
 
 if (s1 !== -1 && e1 !== -1) {
     code = code.substring(0, s1) + code.substring(e1);

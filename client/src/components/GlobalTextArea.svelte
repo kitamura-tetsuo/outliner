@@ -6,12 +6,10 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { isForeignInput, KeyEventHandler } from "../lib/KeyEventHandler";
-import { Items } from "../schema/app-schema";
+import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
-import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 
