@@ -1,0 +1,28 @@
+<<<<<<< SEARCH
+    // Comments: wrap in a dedicated class
+    get comments() {
+=======
+    get votes(): Y.Array<string> {
+        let arr = this.value.get("votes") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("votes", arr);
+        }
+        return arr;
+    }
+
+    toggleVote(user: string) {
+        const arr = this.votes;
+        const existing = arr.toArray();
+        const idx = existing.indexOf(user);
+        if (idx >= 0) {
+            arr.delete(idx, 1);
+        } else {
+            arr.push([user]);
+        }
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Comments: wrap in a dedicated class
+    get comments() {
+>>>>>>> REPLACE

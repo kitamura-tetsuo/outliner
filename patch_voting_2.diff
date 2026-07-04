@@ -1,0 +1,40 @@
+<<<<<<< SEARCH
+        // Create an item
+        // The first item is the page title, we need to create a new one by pressing Enter
+        await page.locator('.outliner-item').first().click();
+        await page.keyboard.press('Enter');
+
+        // Wait for the new item to be created
+        await page.waitForSelector(".outliner-item:nth-child(2)", { state: "visible" });
+        await page.keyboard.type("Test item for voting");
+
+        // The first item is the page title, the second is our item
+        const itemActionBtn = page.locator(".outliner-item").nth(1).locator(".vote-btn");
+
+        // Ensure actions are visible by hovering
+        await page.locator(".outliner-item").nth(1).hover();
+=======
+        // Create an item
+        // Hover the page title to show actions
+        await page.locator('.outliner-item').first().hover();
+
+        // Click the 'Add new item' button
+        const addBtn = page.locator('.outliner-item').first().locator('button[title="Add new item"]');
+        if (await addBtn.isVisible()) {
+            await addBtn.click();
+        } else {
+            // Fallback: click and press Enter
+            await page.locator('.outliner-item').first().click();
+            await page.keyboard.press('Enter');
+        }
+
+        // Wait for the new item to be created
+        await page.waitForSelector(".outliner-item:nth-of-type(2)", { state: "visible" });
+        await page.keyboard.type("Test item for voting");
+
+        // The first item is the page title, the second is our item
+        const itemActionBtn = page.locator(".outliner-item:nth-of-type(2) .vote-btn");
+
+        // Ensure actions are visible by hovering
+        await page.locator(".outliner-item").nth(1).hover();
+>>>>>>> REPLACE

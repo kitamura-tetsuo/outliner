@@ -243,9 +243,18 @@
     });
 
     onMount(() => {
-        currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
+        const getAnonymousId = () => {
+            if (typeof sessionStorage === "undefined") return "anonymous";
+            let anonId = sessionStorage.getItem("outliner_anon_id");
+            if (!anonId) {
+                anonId = "anon-" + Math.random().toString(36).substring(2, 9);
+                sessionStorage.setItem("outliner_anon_id", anonId);
+            }
+            return anonId;
+        };
+        currentUser = userManager.getCurrentUser()?.id ?? getAnonymousId();
         unsubscribeUser = userManager.addEventListener((result) => {
-            currentUser = result?.user.id ?? "anonymous";
+            currentUser = result?.user.id ?? getAnonymousId();
         });
         editorOverlayStore.setOnEditCallback(handleEdit);
         if (typeof window !== "undefined") {

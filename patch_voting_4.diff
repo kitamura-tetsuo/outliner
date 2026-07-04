@@ -1,0 +1,18 @@
+<<<<<<< SEARCH
+        // The first item is the page title, the second is our item
+        const itemActionBtn = page.locator(".outliner-item:nth-of-type(2) .vote-btn");
+
+        // Ensure actions are visible by hovering
+        await page.locator(".outliner-item").nth(1).hover();
+
+        await expect(itemActionBtn).toBeVisible();
+=======
+        // Ensure actions are visible by hovering over the second item
+        const secondItem = page.locator(".outliner-item").nth(1);
+        await secondItem.hover();
+
+        // Wait for it to become visible
+        const itemActionBtn = secondItem.locator(".vote-btn");
+
+        await expect(itemActionBtn).toBeVisible();
+>>>>>>> REPLACE

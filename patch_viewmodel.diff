@@ -1,0 +1,35 @@
+<<<<<<< SEARCH
+        } else {
+            // Create new view model
+            this.viewModels.set(item.id, {
+                id: item.id,
+                original: item,
+                text: item.text,
+                votes: [...(((item as unknown as { votes?: string[]; }).votes || []) as string[])],
+                author: ((item as unknown as { author?: string; }).author || "") as string,
+                created: (item as unknown as { created?: number; }).created as number,
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
+                commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
+            });
+            debugLog(
+=======
+        } else {
+            // Create new view model
+            let initialVotes: string[] = [];
+            if (item.votes && typeof item.votes.toArray === "function") {
+                initialVotes = item.votes.toArray();
+            } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
+                initialVotes = (item as unknown as { votes: string[]; }).votes;
+            }
+            this.viewModels.set(item.id, {
+                id: item.id,
+                original: item,
+                text: item.text,
+                votes: [...initialVotes],
+                author: ((item as unknown as { author?: string; }).author || "") as string,
+                created: (item as unknown as { created?: number; }).created as number,
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
+                commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
+            });
+            debugLog(
+>>>>>>> REPLACE

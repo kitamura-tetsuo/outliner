@@ -1,0 +1,16 @@
+<<<<<<< SEARCH
+            const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
+            const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
+=======
+            let lastChangedProp: unknown;
+            try {
+                if ('value' in item && typeof (item as any).value?.get === 'function') {
+                    lastChangedProp = (item as any).value.get('lastChanged');
+                } else if ("lastChanged" in item) {
+                    lastChangedProp = item.lastChanged;
+                }
+            } catch {
+                lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
+            }
+            const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
+>>>>>>> REPLACE
