@@ -182,7 +182,7 @@
                         let decodedPageName = pageName;
                         try {
                             decodedPageName = decodeURIComponent(pageName);
-                        } catch (e) {
+                        } catch (_e) {
                             // ignore URI malformed error
                         }
 

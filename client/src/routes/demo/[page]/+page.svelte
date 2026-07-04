@@ -42,7 +42,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
             let decodedName = name;
             try {
                 decodedName = decodeURIComponent(name);
-            } catch (e) {
+            } catch (_e) {
                 // ignore URI malformed error
             }
 
