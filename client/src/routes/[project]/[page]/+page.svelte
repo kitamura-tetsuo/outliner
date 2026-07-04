@@ -178,7 +178,15 @@
                         }
                         const t = textString;
                         titles.push(t);
-                        if (String(t).toLowerCase() === String(pageName).toLowerCase()) {
+
+                        let decodedPageName = pageName;
+                        try {
+                            decodedPageName = decodeURIComponent(pageName);
+                        } catch (e) {
+                            // ignore URI malformed error
+                        }
+
+                        if (String(t).trim().toLowerCase() === String(pageName).trim().toLowerCase() || String(t).trim().toLowerCase() === String(decodedPageName).trim().toLowerCase()) {
                             return p as unknown as import("../../../schema/app-schema").Item;
                         }
                     }
