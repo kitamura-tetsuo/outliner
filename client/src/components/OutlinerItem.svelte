@@ -2155,9 +2155,6 @@ export function setSelectionPosition(start: number, end: number = start) {
             {/if}
         </div>
 
-        {#if model.votes.length > 0}
-            <span class="vote-count">{model.votes.length}</span>
-        {/if}
         {#if !isPageTitle}
             <div class="item-actions">
                 <button type="button" onclick={addNewItem} title="Add new item" aria-label="Add new item">
@@ -2416,10 +2413,6 @@ export function setSelectionPosition(start: number, end: number = start) {
 :global(.item-text.formatted a) {
     color: #0078d7;
     text-decoration: none;
-}
-
-:global(.item-text.formatted a.page-not-exists) {
-    color: #d97706;
 }
 
 :global(.item-text.formatted a:hover) {

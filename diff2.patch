@@ -1,0 +1,29 @@
+<<<<<<< SEARCH
+    {:else}
+        <OutlinerBase
+            pageItem={store.currentPage}
+            projectName={DEMO_PROJECT_NAME}
+            pageName={pageName}
+            isReadOnly={false}
+            isTemporary={false}
+            onEdit={undefined}
+        />
+
+        <!-- Backlink Panel -->
+        <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+    {/if}
+=======
+    {:else if store.currentPage}
+        <OutlinerBase
+            pageItem={store.currentPage}
+            projectName={DEMO_PROJECT_NAME}
+            pageName={pageName}
+            isReadOnly={false}
+            isTemporary={false}
+            onEdit={undefined}
+        />
+
+        <!-- Backlink Panel -->
+        <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+    {/if}
+>>>>>>> REPLACE

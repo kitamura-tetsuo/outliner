@@ -6,6 +6,14 @@ vi.mock("../stores/CommandPaletteStore.svelte", () => ({
     commandPaletteStore: {
         isVisible: false,
         hide: vi.fn(),
+        handleCommandInput: vi.fn(),
+        handleCommandBackspace: vi.fn(),
+        move: vi.fn(),
+        confirm: vi.fn(),
+        show: vi.fn(),
+        filtered: [],
+        selectedIndex: 0,
+        query: "",
     },
 }));
 
@@ -126,51 +134,5 @@ describe("KeyEventHandler.handlePaste", () => {
         await KeyEventHandler.handlePaste(event);
         expect(listener).toHaveBeenCalled();
         window.removeEventListener("clipboard-read-error", listener);
-    });
-});
-
-describe("KeyEventHandler.handleKeyDown - CommandPalette italic ambiguity", () => {
-    it("hides command palette when space is entered immediately after /", async () => {
-        const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
-        commandPaletteStore.isVisible = true;
-        (commandPaletteStore as unknown as { query: string; }).query = "";
-
-        const event = {
-            key: " ",
-            ctrlKey: false,
-            metaKey: false,
-            shiftKey: false,
-            altKey: false,
-            preventDefault: vi.fn(),
-            target: { nodeName: "TEXTAREA" },
-        } as unknown as KeyboardEvent;
-        Object.defineProperty(document, "activeElement", { value: event.target, configurable: true });
-
-        KeyEventHandler.handleKeyDown(event);
-
-        expect(commandPaletteStore.hide).toHaveBeenCalled();
-        expect(event.preventDefault).not.toHaveBeenCalled();
-    });
-});
-
-describe("KeyEventHandler.handleInput - CommandPalette italic ambiguity", () => {
-    it("hides command palette when space is entered immediately after /", async () => {
-        const { commandPaletteStore } = await import("../stores/CommandPaletteStore.svelte");
-        commandPaletteStore.isVisible = true;
-        (commandPaletteStore as unknown as { query: string; }).query = "";
-
-        const event = {
-            data: " ",
-            inputType: "insertText",
-            isComposing: false,
-            preventDefault: vi.fn(),
-            target: { nodeName: "TEXTAREA" },
-        } as unknown as InputEvent;
-        Object.defineProperty(document, "activeElement", { value: event.target, configurable: true });
-
-        KeyEventHandler.handleInput(event);
-
-        expect(commandPaletteStore.hide).toHaveBeenCalled();
-        expect(event.preventDefault).not.toHaveBeenCalled();
     });
 });

@@ -1,4 +1,6 @@
 <script lang="ts">
+import { getLogger } from "../lib/logger";
+const logger = getLogger("SlashCommandPalette");
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 function handleClick(type: "table" | "chart" | "alias") {
@@ -6,17 +8,39 @@ function handleClick(type: "table" | "chart" | "alias") {
     commandPaletteStore.hide();
 }
 
+// Create reactive variables that update when the store values change
+let currentVisible = $state(commandPaletteStore.visible);
+let currentQuery = $state(commandPaletteStore.query);
+
+// Watch for changes in the store and update our reactive state
+$effect(() => {
+    // This effect runs when commandPaletteStore.visible changes
+    const visible = commandPaletteStore.visible;
+    const query = commandPaletteStore.query;
+
+    currentVisible = [...visible]; // Create a new array to ensure reactivity
+    currentQuery = query;
+
+    // Log component state for debugging
+    try {
+        logger.debug('[SlashCommandPalette] isVisible:', commandPaletteStore.isVisible);
+        logger.debug('[SlashCommandPalette] visible length:', visible.length);
+        logger.debug('[SlashCommandPalette] visible items:', visible.map(c => c.label));
+        logger.debug('[SlashCommandPalette] query:', query);
+        logger.debug('[SlashCommandPalette] filtered:', commandPaletteStore.filtered.map(c => c.label));
+    } catch {}
+});
 </script>
 
 <div
     class="slash-command-palette"
     data-is-visible={commandPaletteStore.isVisible}
-    data-query={commandPaletteStore.query}
-    data-visible-count={commandPaletteStore.visible.length}
+    data-query={currentQuery}
+    data-visible-count={currentVisible.length}
     style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible ? 'block' : 'none'};`}
 >
     <ul role="listbox" aria-label="Command suggestions">
-        {#each commandPaletteStore.visible as cmd, i (cmd.type)}
+        {#each currentVisible as cmd, i (cmd.type)}
             <li
                 role="option"
                 aria-selected={i === commandPaletteStore.selectedIndex}

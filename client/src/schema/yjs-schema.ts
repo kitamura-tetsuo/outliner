@@ -174,28 +174,6 @@ export class Item {
         }
     }
 
-    get votes(): Y.Array<string> {
-        let arr = this.value.get("votes") as Y.Array<string> | undefined;
-        if (!arr) {
-            arr = new Y.Array<string>();
-            this.value.set("votes", arr);
-        }
-        return arr;
-    }
-
-    toggleVote(user: string) {
-        const arr = this.votes;
-        const existing = arr.toArray();
-        const idx = existing.indexOf(user);
-        if (idx >= 0) {
-            arr.delete(idx, 1);
-        } else {
-            arr.push([user]);
-        }
-        const current = this.value.get("lastChanged") as number || 0;
-        this.value.set("lastChanged", Math.max(Date.now(), current + 1));
-    }
-
     // Comments: wrap in a dedicated class
     get comments() {
         // server implements Comments class wrapper, here we can simplify or assume mapped

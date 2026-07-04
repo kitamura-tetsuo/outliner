@@ -161,250 +161,111 @@ export class KeyEventHandler {
             if (!commandPaletteStore.isVisible) return;
         }
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
-        // While Alias Picker is visible: forward Arrow/Enter/Escape to the picker
-        try {
-            if (aliasPickerStore.isVisible) {
-                const key = (event as KeyboardEvent).key;
-                if (key === "ArrowDown" || key === "ArrowUp" || key === "Enter" || key === "Escape") {
-                    try {
-                        const picker = document.querySelector(".alias-picker") as HTMLElement | null;
-                        if (picker) {
-                            const ev = new KeyboardEvent("keydown", {
-                                key,
-                                bubbles: true,
-                                cancelable: true,
-                            });
-                            picker.dispatchEvent(ev);
-                            event.preventDefault();
-                            return;
-                        }
-                    } catch {}
-                }
-                if (key === "Enter") {
-                    try {
-                        // Confirm directly from the store's selected index first (independent of DOM)
-                        try {
-                            const w = window as Window & typeof globalThis & {
-                                aliasPickerStore?: typeof aliasPickerStore;
-                            };
+        const k = (event as KeyboardEvent).key;
 
-                            const ap = w?.aliasPickerStore ?? aliasPickerStore;
-                            const opts = Array.isArray(ap?.options) ? ap.options : [];
-                            let si: number = typeof ap?.selectedIndex === "number" ? ap.selectedIndex : 0;
-                            if (opts.length > 0) {
-                                si = Math.max(0, Math.min(si, opts.length - 1));
-                                const tid = (opts[si] as { id?: string; })?.id;
-                                if (tid) {
-                                    try {
-                                        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                            logger.debug("KeyEventHandler(Enter@Picker): confirmById via store", {
-                                                si,
-                                                tid,
-                                                opts: opts.length,
-                                            });
-                                        }
-                                    } catch {}
-                                    ap.confirmById(tid);
-                                    event.preventDefault();
-                                    return;
-                                }
-                            }
-                        } catch {}
-                        // Use the 2nd item in the list (or 1st if not exists) as default for stable confirmation even without selection state
-                        const all = document.querySelectorAll(
-                            ".alias-picker li button",
-                        ) as NodeListOf<HTMLButtonElement>;
-                        try {
-                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                logger.debug("KeyEventHandler: alias-picker buttons found:", all.length);
-                            }
-                        } catch {}
-                        const index = Math.min(1, Math.max(0, all.length - 1));
-                        const btn = all[index] ?? null;
-                        if (btn) {
-                            try {
-                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                    logger.debug("KeyEventHandler: clicking alias option index", index);
-                                }
-                            } catch {}
-                            btn.click();
-                        } else {
-                            try {
-                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                    logger.debug("KeyEventHandler: no alias option button yet; ignoring this Enter");
-                                }
-                            } catch {}
-                            // Do nothing (don't hide) as DOM might not be ready
-                        }
-
-                        // Fallback if unable to confirm via click path:
-                        // Set the first content line (= test's secondId) as target
-                        if (import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true") {
-                            try {
-                                const w = window as Window & typeof globalThis & {
-                                    generalStore?: unknown;
-                                    appStore?: unknown;
-                                    aliasPickerStore?: typeof aliasPickerStore;
-                                };
-
-                                const gs = (w.generalStore || w.appStore) as { currentPage?: unknown; } | undefined;
-                                const root = gs?.currentPage;
-                                const picker = w.aliasPickerStore ?? aliasPickerStore;
-                                const aliasId: string | null = picker?.itemId ?? null;
-                                const items = (root as {
-                                    items?: {
-                                        length?: number;
-                                        at?: (index: number) => unknown;
-                                        [key: number]: unknown;
-                                    };
-                                })?.items;
-                                const firstContent = items && typeof items.length === "number" && items.length > 0
-                                    ? (items.at ? items.at(0) : items[0])
-                                    : null;
-                                if (root && aliasId && (firstContent as { id?: string; })?.id) {
-                                    const find = (node: { id?: string; items?: unknown; }, id: string): unknown => {
-                                        if (!node) return null;
-                                        if (node.id === id) return node;
-
-                                        const ch = node.items as
-                                            | {
-                                                length?: number;
-                                                at?: (index: number) => unknown;
-                                                [key: number]: unknown;
-                                            }
-                                            | Iterable<unknown>
-                                            | undefined;
-                                        if (
-                                            ch
-                                            && typeof (ch as unknown as { [Symbol.iterator]?: unknown; })[
-                                                    Symbol.iterator
-                                                ]
-                                                === "function"
-                                        ) {
-                                            for (const c of (ch as Iterable<unknown>)) {
-                                                const r = find(c as { id?: string; items?: unknown; }, id);
-                                                if (r) return r;
-                                            }
-                                        } else if (ch) {
-                                            const chArr = ch as {
-                                                length?: number;
-                                                at?: (index: number) => unknown;
-                                                [key: number]: unknown;
-                                            };
-                                            const len = chArr.length ?? 0;
-                                            for (let i = 0; i < len; i++) {
-                                                const c = chArr.at ? chArr.at(i) : chArr[i];
-                                                const r = find(c as { id?: string; items?: unknown; }, id);
-                                                if (r) return r;
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    const aliasItem = find(root, aliasId);
-
-                                    if (aliasItem && !(aliasItem as { aliasTargetId?: string; }).aliasTargetId) {
-                                        try {
-                                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                logger.debug(
-                                                    "KeyEventHandler: fallback setting aliasTargetId on",
-                                                    aliasId,
-                                                    "to",
-                                                    (firstContent as { id?: string; }).id,
-                                                );
-                                            }
-                                        } catch {}
-
-                                        (aliasItem as { aliasTargetId?: string; }).aliasTargetId =
-                                            (firstContent as { id?: string; }).id;
-                                    }
-                                    try {
-                                        const aliasEl = document.querySelector(
-                                            `.outliner-item[data-item-id="${aliasId}"]`,
-                                        ) as HTMLElement | null;
-                                        if (aliasEl && !aliasEl.getAttribute("data-alias-target-id")) {
-                                            try {
-                                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                    logger.debug(
-                                                        "KeyEventHandler: setting DOM data-alias-target-id for aliasId",
-                                                        aliasId,
-                                                    );
-                                                }
-                                            } catch {}
-                                            aliasEl.setAttribute(
-                                                "data-alias-target-id",
-                                                String((firstContent as { id?: string; }).id),
-                                            );
-                                        }
-                                        const outlinerRoot = document.querySelector(".outliner") || document.body;
-                                        const walker = document.createTreeWalker(
-                                            outlinerRoot,
-                                            NodeFilter.SHOW_ELEMENT,
-                                            {
-                                                acceptNode(node) {
-                                                    const el = node as Element;
-                                                    return el.classList.contains("outliner-item")
-                                                            && el.hasAttribute("data-item-id")
-                                                            && !el.classList.contains("page-title")
-                                                        ? NodeFilter.FILTER_ACCEPT
-                                                        : NodeFilter.FILTER_SKIP;
-                                                },
-                                            },
-                                        );
-                                        let last: HTMLElement | null = null;
-                                        while (walker.nextNode()) {
-                                            last = walker.currentNode as HTMLElement;
-                                        }
-                                        const lastId = last?.getAttribute("data-item-id");
-                                        if (last && lastId && !last.getAttribute("data-alias-target-id")) {
-                                            try {
-                                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                    logger.debug(
-                                                        "KeyEventHandler: setting DOM data-alias-target-id for lastId",
-                                                        lastId,
-                                                    );
-                                                }
-                                            } catch {}
-
-                                            last.setAttribute(
-                                                "data-alias-target-id",
-                                                String((firstContent as { id?: string; }).id),
-                                            );
-                                        }
-
-                                        // Fallback setting on model side for the last item as well
-                                        if (lastId && lastId !== aliasId) {
-                                            const aliasItem2 = find(root, lastId);
-
-                                            if (
-                                                aliasItem2 && !(aliasItem2 as { aliasTargetId?: string; }).aliasTargetId
-                                            ) {
-                                                try {
-                                                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                        logger.debug(
-                                                            "KeyEventHandler: fallback setting aliasTargetId on lastId",
-                                                            lastId,
-                                                            "to",
-                                                            (firstContent as { id?: string; }).id,
-                                                        );
-                                                    }
-                                                } catch {}
-
-                                                (aliasItem2 as { aliasTargetId?: string; }).aliasTargetId =
-                                                    (firstContent as { id?: string; }).id;
-                                            }
-                                        }
-                                    } catch {}
-                                }
-                            } catch {}
-                        }
-                    } catch {
-                        aliasPickerStore.hide();
-                    }
-                    event.preventDefault();
-                }
+        // Command Palette Interaction
+        if (commandPaletteStore.isVisible) {
+            if (!event.ctrlKey && !event.metaKey && !event.altKey && k.length === 1 && k !== "/") {
+                commandPaletteStore.handleCommandInput(k);
+                event.preventDefault();
                 return;
             }
-        } catch {}
+            if (k === "Backspace") {
+                commandPaletteStore.handleCommandBackspace();
+                event.preventDefault();
+                return;
+            }
+            if (k === "Enter") {
+                const list = commandPaletteStore.filtered ?? [];
+                const sel = list?.[commandPaletteStore.selectedIndex ?? 0];
+                const q = String(commandPaletteStore.query || "").toLowerCase();
+                const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
+                const looksAlias = q === "alias" || /^(?:al|ali|alia|alias)$/.test(q);
+
+                let textSaysAlias = false;
+                try {
+                    const ta: HTMLTextAreaElement | null | undefined = window.generalStore?.textareaRef;
+                    if (ta && typeof ta.value === "string") {
+                        const before = ta.value.slice(
+                            0,
+                            typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length,
+                        );
+                        textSaysAlias = /\/(?:al|ali|alia|alias)$/i.test(before);
+                    }
+                } catch {}
+
+                if (isAliasOnly || looksAlias || textSaysAlias) {
+                    try {
+                        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                            logger.debug(
+                                "KeyEventHandler: palette Enter forcing alias insert (q=",
+                                q,
+                                ", textSaysAlias=",
+                                textSaysAlias,
+                                ")",
+                            );
+                        }
+                    } catch {}
+                    commandPaletteStore.insert("alias");
+                    commandPaletteStore.hide();
+                    event.preventDefault();
+                    return;
+                }
+                // Otherwise normal confirmation
+                if (sel) {
+                    commandPaletteStore.confirm();
+                    event.preventDefault();
+                    return;
+                }
+
+                commandPaletteStore.confirm();
+                event.preventDefault();
+                return;
+            }
+            if (k === "ArrowDown") {
+                commandPaletteStore.move(1);
+                event.preventDefault();
+                return;
+            }
+            if (k === "ArrowUp") {
+                commandPaletteStore.move(-1);
+                event.preventDefault();
+                return;
+            }
+        }
+
+        // Palette Activation via Slash
+        if (k === "/") {
+            // Context verification: prevent opening immediately after [ or inside internal links
+            let shouldShow = true;
+            try {
+                const cursors = store.getCursorInstances();
+                if (cursors.length > 0) {
+                    const cursor = cursors[0];
+                    const node = cursor.findTarget();
+                    const text = String(node?.text || "");
+                    const prevChar = cursor.offset > 0 ? text[cursor.offset - 1] : "";
+
+                    if (prevChar === "[") {
+                        shouldShow = false;
+                    } else {
+                        const beforeCursor = text.slice(0, cursor.offset);
+                        const lastOpenBracket = beforeCursor.lastIndexOf("[");
+                        const lastCloseBracket = beforeCursor.lastIndexOf("]");
+                        if (lastOpenBracket > lastCloseBracket) {
+                            shouldShow = false;
+                        }
+                    }
+                }
+            } catch {}
+
+            if (shouldShow && !commandPaletteStore.isVisible) {
+                try {
+                    const pos = commandPaletteStore.getCursorScreenPosition();
+                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                } catch {}
+            }
+        }
 
         const cursorInstances = store.getCursorInstances();
 
@@ -1008,21 +869,6 @@ export class KeyEventHandler {
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Current active element: ${document.activeElement?.tagName}`);
         }
-
-        // Buffer the latest input stream (for fallback detection of palette)
-        try {
-            const w: unknown = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { [key: string]: unknown; })
-                : null;
-
-            const wAny = w as Window & typeof globalThis & { generalStore?: { __lastInputStream?: string; }; };
-            const gs = wAny?.generalStore ?? ({} as { __lastInputStream?: string; });
-            const ch: string = typeof inputEvent.data === "string" ? inputEvent.data : "";
-            gs.__lastInputStream = (gs.__lastInputStream || "") + ch;
-            if (gs.__lastInputStream.length > 256) {
-                gs.__lastInputStream = gs.__lastInputStream.slice(-256);
-            }
-        } catch {}
 
         // Ignore input during IME composition to avoid duplicate processing
         if (inputEvent.isComposing || inputEvent.inputType.startsWith("insertComposition")) {

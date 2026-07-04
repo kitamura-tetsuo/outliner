@@ -1,0 +1,20 @@
+diff --git a/client/src/lib/metaDoc.svelte.ts b/client/src/lib/metaDoc.svelte.ts
+index 2e927ed7..8601f28a 100644
+--- a/client/src/lib/metaDoc.svelte.ts
++++ b/client/src/lib/metaDoc.svelte.ts
+@@ -44,3 +44,15 @@ if (typeof window !== "undefined") {
+         console.log("[metaDoc] IndexedDB data loaded");
+     });
+ }
++    // Expose metaDoc functions to window for E2E testing
++    const isTestEnv =
++        import.meta.env.MODE === "test" ||
++        process.env.NODE_ENV === "test" ||
++        import.meta.env.VITE_IS_TEST === "true" ||
++        window.location.hostname === "localhost";
++    if (isTestEnv) {
++        (window as any).__META_DOC_MODULE__ = {
++            setContainerTitleInMetaDoc,
++            getContainerTitleFromMetaDoc,
++        };
++    }

@@ -121,35 +121,3 @@ server/.env.production
 .pnpm-store
 
 docs/.vitepress/dist/
-
-# Root-level debug debris
-/*.patch
-/*.diff
-/eslint_*.json
-/server_eslint_results.json
-/demo_*.png
-/error.png
-/observe_*.mjs
-/fix_*.py
-/fix_*.cjs
-/fix_*.js
-/get-*.cjs
-/get_*.cjs
-/print_*.cjs
-/test_*.mjs
-/test-*.cjs
-/test_*.js
-/test-*.js
-/test_*.txt
-/test_results.txt
-/debug-*.ts
-/debug_*.ts
-/debug-*.js
-/sed_*.cjs
-/sed_*.js
-/update*.js
-/update*.py
-/update*.cjs
-/revert_*.js
-/revert_*.cjs
-/check_*.cjs

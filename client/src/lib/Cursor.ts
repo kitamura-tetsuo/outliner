@@ -717,9 +717,6 @@ export class Cursor implements CursorEditingContext {
                 case "Enter":
                     this.insertLineBreak();
                     break;
-                case "Tab":
-                    this.outdent();
-                    break;
                 default:
                     return false;
             }
@@ -826,7 +823,11 @@ export class Cursor implements CursorEditingContext {
                     this.clearSelection();
                     break;
                 case "Tab":
-                    this.indent();
+                    if (event.shiftKey) {
+                        this.outdent();
+                    } else {
+                        this.indent();
+                    }
                     break;
                 default:
                     return false;
