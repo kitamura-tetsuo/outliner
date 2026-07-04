@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
@@ -10,19 +10,18 @@ test.describe("SlashCommandPalette Visibility", () => {
     });
 
     test("should correctly display the palette and process input after typing /", async ({ page }) => {
-
         // Wait for items to be loaded
         await TestHelpers.waitForOutlinerItems(page);
 
         // Find the first outliner item (usually empty on new page)
-        const firstItem = page.locator('.outliner-item').first();
+        const firstItem = page.locator(".outliner-item").first();
         await expect(firstItem).toBeVisible();
 
         // Click to focus the item (using TestHelpers clicking method for more stability)
         await firstItem.click({ position: { x: 5, y: 5 } });
 
         // Ensure cursor is active in the item
-        await page.waitForSelector('.cursor', { state: 'visible' });
+        await page.waitForSelector(".cursor", { state: "visible" });
 
         // Type / to open command palette
         await page.keyboard.type("/");
