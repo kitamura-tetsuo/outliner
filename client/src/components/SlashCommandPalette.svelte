@@ -1,6 +1,4 @@
 <script lang="ts">
-import { getLogger } from "../lib/logger";
-const logger = getLogger("SlashCommandPalette");
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 function handleClick(type: "table" | "chart" | "alias") {
