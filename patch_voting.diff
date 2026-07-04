@@ -1,0 +1,25 @@
+<<<<<<< SEARCH
+        // Create an item
+        await page.keyboard.type("Test item for voting");
+
+        // The first item is the page title, the second is our item
+        const itemActionBtn = page.locator(".outliner-item").nth(1).locator(".vote-btn");
+
+        // Ensure actions are visible by hovering
+        await page.locator(".outliner-item").nth(1).hover();
+=======
+        // Create an item
+        // The first item is the page title, we need to create a new one by pressing Enter
+        await page.locator('.outliner-item').first().click();
+        await page.keyboard.press('Enter');
+
+        // Wait for the new item to be created
+        await page.waitForSelector(".outliner-item:nth-child(2)", { state: "visible" });
+        await page.keyboard.type("Test item for voting");
+
+        // The first item is the page title, the second is our item
+        const itemActionBtn = page.locator(".outliner-item").nth(1).locator(".vote-btn");
+
+        // Ensure actions are visible by hovering
+        await page.locator(".outliner-item").nth(1).hover();
+>>>>>>> REPLACE

@@ -1,0 +1,26 @@
+<<<<<<< SEARCH
+        // Click the 'Add new item' button
+        const addBtn = page.locator('.outliner-item').first().locator('button[title="Add new item"]');
+        if (await addBtn.isVisible()) {
+            await addBtn.click();
+        } else {
+            // Fallback: click and press Enter
+            await page.locator('.outliner-item').first().click();
+            await page.keyboard.press('Enter');
+        }
+
+        // Wait for the new item to be created
+        await page.waitForSelector(".outliner-item:nth-of-type(2)", { state: "visible" });
+        await page.keyboard.type("Test item for voting");
+=======
+        // Fallback: click and press Enter
+        await page.locator('.outliner-item').first().click();
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(500); // Give it a bit to create item
+
+        // Find all outliner items and verify there are at least 2
+        await expect(page.locator('.outliner-item')).toHaveCount(2);
+
+        // Wait for the new item to be created
+        await page.keyboard.type("Test item for voting");
+>>>>>>> REPLACE

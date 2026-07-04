@@ -2155,6 +2155,9 @@ export function setSelectionPosition(start: number, end: number = start) {
             {/if}
         </div>
 
+        {#if model.votes.length > 0}
+            <span class="vote-count">{model.votes.length}</span>
+        {/if}
         {#if !isPageTitle}
             <div class="item-actions">
                 <button type="button" onclick={addNewItem} title="Add new item" aria-label="Add new item">

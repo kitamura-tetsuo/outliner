@@ -1,0 +1,12 @@
+<<<<<<< SEARCH
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Comments: wrap in a dedicated class
+=======
+        const current = this.value.get("lastChanged") as number || 0;
+        this.value.set("lastChanged", Math.max(Date.now(), current + 1));
+    }
+
+    // Comments: wrap in a dedicated class
+>>>>>>> REPLACE
