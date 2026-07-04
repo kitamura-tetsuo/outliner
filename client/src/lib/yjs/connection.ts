@@ -312,7 +312,8 @@ async function setupProviderForRoom(
             });
         } else {
             awareness.setLocalStateField("user", {
-                userId: "anon-" + awareness.clientID,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                userId: "anon-" + (awareness as any).clientID,
                 name: "Guest",
                 color: undefined,
             });
