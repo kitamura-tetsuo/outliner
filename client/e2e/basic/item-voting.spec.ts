@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("Item Voting", () => {
     test("should render vote count and allow toggling votes", async ({ page }, testInfo) => {
