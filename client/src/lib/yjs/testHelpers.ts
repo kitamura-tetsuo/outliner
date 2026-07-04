@@ -213,7 +213,7 @@ export async function reconnectProvider(page: Page, providerVar: string = "__PRO
             // Node-side `logger` is unavailable here; use console directly.
             console.info(`[${pv}] reconnected, isSynced=${provider.isSynced}`);
         } catch (e) {
-            console.info(`[${pv}] reconnect failed:`, e);
+            console.warn(`[${pv}] reconnect failed:`, e);
         }
     }, { pv: providerVar });
 }
@@ -312,7 +312,7 @@ export async function setupUpdateTracking(
             if (!doc) {
                 // Note: this callback runs in the browser context via page.evaluate, so the
                 // Node-side `logger` is unavailable here; use console directly.
-                console.info(`setupUpdateTracking: ${docVar} not found`);
+                console.warn(`setupUpdateTracking: ${docVar} not found`);
                 return;
             }
 
