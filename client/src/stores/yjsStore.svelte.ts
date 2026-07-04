@@ -24,7 +24,7 @@ class YjsStore {
         }
         // Disable comment thread selection when switching documents and leave it to the default behavior
         try {
-            (globalStore as unknown as { openCommentItemId: string | null; }).openCommentItemId = null;
+            Object.assign(globalStore, { openCommentItemId: null });
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
@@ -45,10 +45,8 @@ class YjsStore {
 
         if (v) {
             const connectedProject = v.getProject();
-            const newGuid: string | undefined = (connectedProject as unknown as { ydoc?: { guid?: string; }; })?.ydoc
-                ?.guid;
-            const existingGuid: string | undefined = (globalStore.project as unknown as { ydoc?: { guid?: string; }; })
-                ?.ydoc?.guid;
+            const newGuid: string | undefined = (connectedProject as unknown as { ydoc?: { guid?: string } })?.ydoc?.guid;
+            const existingGuid: string | undefined = (globalStore.project as unknown as { ydoc?: { guid?: string } })?.ydoc?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
             // However, if store.project is a provisional/empty project, we want to update

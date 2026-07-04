@@ -192,7 +192,7 @@ export async function startServer(
                 connection.close(4005, "MESSAGE_TOO_LARGE");
             }
         },
-    } as unknown as Partial<import("@hocuspocus/server").Configuration>;
+    } as Partial<import("@hocuspocus/server").Configuration>;
 
     const extensions = [
         new Logger({}),
@@ -422,7 +422,7 @@ export async function startServer(
                 const protocol = request.headers["x-forwarded-proto"] || "http";
                 const host = request.headers.host || "localhost";
                 const webRequest = new Request(new URL(request.url || "/", `${protocol}://${host}`).toString(), {
-                    headers: request.headers as unknown as Record<string, string>,
+                    headers: request.headers as Record<string, string>,
                     method: request.method,
                 });
 
@@ -473,8 +473,8 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
-            (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
+        if (typeof (hocuspocus as unknown as { destroy?: () => void }).destroy === "function") {
+            (hocuspocus as unknown as { destroy?: () => void }).destroy?.();
         } else {
             hocuspocus.closeConnections();
         }

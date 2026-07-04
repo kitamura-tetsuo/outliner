@@ -372,8 +372,8 @@ export function isProvisionalProject(project: Project | undefined): boolean {
 
 // Make it globally accessible (to be accessed from ScrapboxFormatter.ts)
 if (typeof window !== "undefined") {
-    (window as unknown as { appStore: GeneralStore; }).appStore = store;
-    (window as unknown as { generalStore: GeneralStore; }).generalStore = store; // For compatibility with TestHelpers
+    Object.assign(window, { appStore: store });
+    Object.assign(window, { generalStore: store }); // For compatibility with TestHelpers
 
     // Prepare a provisional project immediately after startup (yjsStore will replace it when the actual connection arrives)
     // This ensures tests and direct navigation work even before Yjs connection is established
