@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import { Item, Project } from "./yjs-schema";

@@ -159,8 +159,8 @@ export class OutlinerViewModel {
             // Use safe type checking instead of explicit any casts
             let lastChangedProp: unknown;
             try {
-                if ('value' in item && typeof (item as any).value?.get === 'function') {
-                    lastChangedProp = (item as any).value.get('lastChanged');
+                if ("value" in item && typeof (item as any).value?.get === "function") {
+                    lastChangedProp = (item as any).value.get("lastChanged");
                 } else if ("lastChanged" in item) {
                     lastChangedProp = item.lastChanged;
                 }
@@ -207,8 +207,8 @@ export class OutlinerViewModel {
                 lastChanged: (() => {
                     let lc: unknown;
                     try {
-                        if ('value' in item && typeof (item as any).value?.get === 'function') {
-                            lc = (item as any).value.get('lastChanged');
+                        if ("value" in item && typeof (item as any).value?.get === "function") {
+                            lc = (item as any).value.get("lastChanged");
                         } else if ("lastChanged" in item) {
                             lc = (item as unknown as { lastChanged?: number; }).lastChanged;
                         }

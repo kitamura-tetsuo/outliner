@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Item Voting", () => {
@@ -8,7 +8,7 @@ test.describe("Item Voting", () => {
 
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
             projectName,
-            pageName
+            pageName,
         });
 
         // Wait for page to initialize and outliner tree to appear
@@ -16,15 +16,15 @@ test.describe("Item Voting", () => {
 
         // Create an item
         // Hover the page title to show actions
-        await page.locator('.outliner-item').first().hover();
+        await page.locator(".outliner-item").first().hover();
 
         // Fallback: click and press Enter
-        await page.locator('.outliner-item').first().click();
-        await page.keyboard.press('Enter');
+        await page.locator(".outliner-item").first().click();
+        await page.keyboard.press("Enter");
         await page.waitForTimeout(500); // Give it a bit to create item
 
         // Find all outliner items and verify there are at least 2
-        await expect(page.locator('.outliner-item')).toHaveCount(2);
+        await expect(page.locator(".outliner-item")).toHaveCount(2);
 
         // Wait for the new item to be created
         await page.keyboard.type("Test item for voting");
