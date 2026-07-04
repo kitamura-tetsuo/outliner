@@ -152,7 +152,8 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 </script>
 
 {#if aliasTargetIdEffective}
-    <div class="alias-path" data-alias-owner-id={modelId}>
+    <span class="alias-path" data-alias-owner-id={modelId}>
+        <ArrowUpRight size={14} class="alias-icon" />
         {#if aliasPath.length > 0}
             {#each aliasPath as p, i (p.id)}
                 <button type="button" onclick={() => { /* dispatch navigate-to-item */ }}>
@@ -164,8 +165,8 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
                 {findItem(generalStore.currentPage as unknown as Item, aliasTargetIdEffective)?.text || "Loading..."}
             </button>
         {/if}
-    </div>
-    <div class="alias-subtree">
+    </span>
+    <div class="alias-subtree" style="width: 100%;">
         {#if !isCollapsed}
             {#if aliasTarget}
                 <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} />
@@ -180,9 +181,22 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
 
 <style>
 .alias-path {
-    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
     font-size: 0.8rem;
     color: #555;
+    background-color: #f5f5f5;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+:global(body.dark-mode) .alias-path {
+    color: #aaa;
+    background-color: #333;
+}
+.alias-icon {
+    color: #888;
 }
 .alias-path button {
     color: #06c;

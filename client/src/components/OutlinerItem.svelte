@@ -56,6 +56,8 @@ import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import CommentThread from "./CommentThread.svelte";
 import InlineJoinTable from "./InlineJoinTable.svelte";
+import { goto } from "$app/navigation";
+import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
@@ -176,6 +178,35 @@ let ensuredComments = $derived.by(() => item.comments);
 // Comment thread open/close state (explicitly subscribe with Svelte 5 $derived)
 
 let openCommentItemId = $derived.by(() => generalStore.openCommentItemId);
+
+let referringAliases = $state<{ item: Item, pageTitle: string }[]>([]);
+let isAliasDropdownOpen = $state(false);
+
+onMount(() => {
+    // Only check if it's not a page title, or adjust as needed
+    const updateAliases = () => {
+        try {
+            referringAliases = generalStore.findReferringAliases(model.id);
+        } catch {}
+    };
+    updateAliases();
+    const iv = setInterval(updateAliases, 5000);
+    return () => clearInterval(iv);
+});
+
+function toggleAliasDropdown(e: Event) {
+    e.stopPropagation();
+    isAliasDropdownOpen = !isAliasDropdownOpen;
+}
+
+function handleAliasNavigation(pageTitle: string, targetId: string, e: Event) {
+    e.stopPropagation();
+    isAliasDropdownOpen = false;
+    const projectTitle = generalStore.project?.title;
+    if (projectTitle && pageTitle) {
+        goto(resolvePath(`/${encodeURIComponent(projectTitle)}/${encodeURIComponent(pageTitle)}`));
+    }
+}
 
 
 
@@ -2111,6 +2142,40 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </button>
                 {/if}
 
+                {#if referringAliases.length > 0}
+                    <div class="referring-aliases-container">
+                        <button type="button"
+                            class="referring-aliases-button"
+                            title="View referring aliases"
+                            onclick={toggleAliasDropdown}
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="referring-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            <span class="referring-count">{referringAliases.length}</span>
+                        </button>
+                        
+                        {#if isAliasDropdownOpen}
+                            <!-- svelte-ignore a11y_click_events_have_key_events -->
+                            <!-- svelte-ignore a11y_no_static_element_interactions -->
+                            <div class="dropdown-overlay" onclick={() => isAliasDropdownOpen = false}></div>
+                            <div class="referring-aliases-dropdown">
+                                <div class="dropdown-header">Referenced by</div>
+                                <ul class="dropdown-list">
+                                    {#each referringAliases as ref}
+                                        <li>
+                                            <button type="button" onclick={(e) => handleAliasNavigation(ref.pageTitle, ref.item.id, e)}>
+                                                <div class="ref-page">{ref.pageTitle}</div>
+                                                <div class="ref-text">{String(ref.item.text || '(empty)')}</div>
+                                            </button>
+                                        </li>
+                                    {/each}
+                                </ul>
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
+
+                <!-- Alias display (inline) -->
+                <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
 
                 <!-- Attachment display -->
                 <OutlinerItemAttachments modelId={model.id} item={item} />
@@ -2131,11 +2196,6 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </div>
                 {/if}
 
-            </div>
-
-            <!-- Alias display -->
-            <div class="component-wrapper">
-                <OutlinerItemAlias modelId={model.id} item={item} isReadOnly={isReadOnly} isCollapsed={isCollapsed} />
             </div>
 
             <!-- Component display -->
@@ -2291,6 +2351,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     min-height: 20px;
     display: flex;
     align-items: center;
+    flex-wrap: wrap; /* Allow subtree to drop to next line */
     word-break: break-word;
     width: 100%;
     /* Ensure scrolling brings item below the fixed Toolbar */
@@ -2511,4 +2572,126 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 
 
+/* Referring Aliases UI */
+.referring-aliases-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+}
+.referring-aliases-button {
+    background: #f0f4f8;
+    border: 1px solid #d1d9e0;
+    border-radius: 12px;
+    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    color: #444;
+    font-size: 0.75rem;
+    line-height: 1;
+    transition: all 0.2s;
+}
+:global(body.dark-mode) .referring-aliases-button {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #cbd5e0;
+}
+.referring-aliases-button:hover {
+    background: #e2e8f0;
+}
+:global(body.dark-mode) .referring-aliases-button:hover {
+    background: #4a5568;
+}
+.referring-count {
+    font-weight: bold;
+}
+.dropdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99;
+}
+.referring-aliases-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    width: max-content;
+    max-width: 300px;
+    overflow: hidden;
+}
+:global(body.dark-mode) .referring-aliases-dropdown {
+    background: #2d3748;
+    border-color: #4a5568;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.dropdown-header {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #666;
+    background: #f7fafc;
+    border-bottom: 1px solid #edf2f7;
+}
+:global(body.dark-mode) .dropdown-header {
+    background: #1a202c;
+    color: #a0aec0;
+    border-bottom-color: #4a5568;
+}
+.dropdown-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.dropdown-list li {
+    border-bottom: 1px solid #eee;
+}
+:global(body.dark-mode) .dropdown-list li {
+    border-bottom-color: #4a5568;
+}
+.dropdown-list li:last-child {
+    border-bottom: none;
+}
+.dropdown-list button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.dropdown-list button:hover {
+    background: #f0f4f8;
+}
+:global(body.dark-mode) .dropdown-list button:hover {
+    background: #4a5568;
+}
+.ref-page {
+    font-size: 0.7rem;
+    color: #718096;
+    margin-bottom: 2px;
+}
+.ref-text {
+    font-size: 0.85rem;
+    color: #2d3748;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+:global(body.dark-mode) .ref-text {
+    color: #e2e8f0;
+}
 </style>
