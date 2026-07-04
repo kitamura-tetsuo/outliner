@@ -50,6 +50,11 @@ test.describe("LNK-0003: Internal link navigation feature", () => {
         const linkClass = await linkElement.getAttribute("class");
         expect(linkClass).toContain("page-not-exists");
 
+        // Verify that the link has a distinct color from existing links
+        const linkColor = await linkElement.evaluate((el) => window.getComputedStyle(el).color);
+        expect(linkColor).not.toBe("rgb(0, 120, 215)");
+        expect(linkColor).toBe("rgb(217, 119, 6)"); // #d97706 converted to rgb
+
         console.log("Non-existent page link test completed successfully");
 
         await linkElement.click();

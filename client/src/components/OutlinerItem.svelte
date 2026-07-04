@@ -2415,6 +2415,10 @@ export function setSelectionPosition(start: number, end: number = start) {
     text-decoration: none;
 }
 
+:global(.item-text.formatted a.page-not-exists) {
+    color: #d97706;
+}
+
 :global(.item-text.formatted a:hover) {
     text-decoration: underline;
 }
