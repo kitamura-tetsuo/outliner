@@ -29,8 +29,7 @@ class CommandPaletteStore {
 
     // Visible list is calculated by getter
     get visible() {
-        const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
-        const q = (fallback || "").toLowerCase();
+        const q = (this.query || "").toLowerCase();
         try {
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
@@ -46,100 +45,9 @@ class CommandPaletteStore {
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
 
-    private deriveQueryFromDoc(): string {
-        try {
-            const w = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { generalStore?: { __lastInputStream?: string; }; })
-                : null;
-            const gs = w?.generalStore ?? null;
-
-            // 1) Infer from recent input stream
-            const stream: string = typeof gs?.__lastInputStream === "string" ? gs.__lastInputStream : "";
-            if (stream) {
-                const lastSlash = stream.lastIndexOf("/");
-                if (lastSlash >= 0) {
-                    const seg = stream.slice(lastSlash + 1);
-                    if (seg && seg.length <= 8) {
-                        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                            logger.debug("[deriveQueryFromDoc] Using stream:", seg);
-                        }
-                        return seg; // Noise suppression
-                    }
-                }
-            }
-
-            // 2) Obtain directly from text area content
-            const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef ?? null;
-            if (ta && typeof ta.value === "string") {
-                const caret = typeof ta.selectionStart === "number" ? ta.selectionStart : ta.value.length;
-                const before = ta.value.slice(0, caret);
-                const lastSlash = before.lastIndexOf("/");
-                if (lastSlash >= 0) {
-                    const result = before.slice(lastSlash + 1);
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        logger.debug("[deriveQueryFromDoc] Using textarea:", result);
-                    }
-                    return result;
-                }
-            }
-
-            // 3) Fallback from window keystream
-            try {
-                const wAny = typeof window !== "undefined"
-                    ? window
-                    : null;
-                const ks: string = typeof wAny?.__KEYSTREAM__ === "string" ? wAny.__KEYSTREAM__ : "";
-                if (ks) {
-                    const lastSlash = ks.lastIndexOf("/");
-                    if (lastSlash >= 0) {
-                        const seg = ks.slice(lastSlash + 1);
-                        if (seg && seg.length <= 8) {
-                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                logger.debug("[deriveQueryFromDoc] Using keystream:", seg);
-                            }
-                            return seg;
-                        }
-                    }
-                }
-            } catch {}
-
-            // 4) Fallback from model side (node text)
-            const cursors = editorOverlayStore.getCursorInstances();
-            if (cursors.length === 0) {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug("[deriveQueryFromDoc] No cursors found");
-                }
-                return "";
-            }
-            const cursor = cursors[0];
-            const node = cursor.findTarget();
-            if (!node) {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug("[deriveQueryFromDoc] No node found");
-                }
-                return "";
-            }
-            const text = (node as unknown as { text?: unknown; }).text ?? "";
-            const s = Math.max(0, this.commandStartOffset + 1);
-            const e = Math.max(
-                s,
-                Math.min(cursor.offset ?? s, typeof text === "string" ? text.length : (text?.toString?.().length ?? s)),
-            );
-            const src = typeof text === "string" ? text : (text?.toString?.() ?? "");
-            const result = src.slice(s, e);
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug("[deriveQueryFromDoc] Using node text:", result);
-            }
-            return result;
-        } catch (error) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[deriveQueryFromDoc] Error:", error);
-            return "";
-        }
-    }
 
     get filtered() {
-        const fallback = this.isVisible && !this.query ? this.deriveQueryFromDoc() : this.query;
-        const q = (fallback || "").toLowerCase();
+        const q = (this.query || "").toLowerCase();
         if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.filtered] q:", q);
         // Special filtering for chart commands
         if (q === "ch") {
