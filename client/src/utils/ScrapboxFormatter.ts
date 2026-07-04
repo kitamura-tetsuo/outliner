@@ -476,7 +476,15 @@ export class ScrapboxFormatter {
                 let bracketDepth = 1;
 
                 while (j < text.length && bracketDepth > 0) {
-                    if (text[j] === "[" && j + 1 < text.length && text[j + 1] !== "[" && text[j + 1] !== "/") {
+                    if (j < text.length - 1 && text[j] === "[" && text[j + 1] === "[") {
+                        // Start of nested bold
+                        bracketDepth += 2;
+                        j += 2;
+                    } else if (j < text.length - 1 && text[j] === "]" && text[j + 1] === "]") {
+                        // End of nested bold
+                        bracketDepth -= 2;
+                        j += 2;
+                    } else if (text[j] === "[" && (j + 1 >= text.length || text[j + 1] !== "[")) {
                         // Single [ (internal link, etc.)
                         bracketDepth++;
                         j++;
@@ -492,7 +500,7 @@ export class ScrapboxFormatter {
                             i = j + 1;
                             break;
                         } else {
-                            j += 2;
+                            j++;
                         }
                     } else {
                         j++;
@@ -813,7 +821,7 @@ export class ScrapboxFormatter {
     private static readonly RX_CTRL_CODE = /(`)(.*?)(`)/g;
     private static readonly RX_CTRL_STRIKE = /(\[)(-)(.*?)(\])/g;
     private static readonly RX_CTRL_UNDERLINE = /(&lt;u&gt;)(.*?)(&lt;\/u&gt;)/g;
-    private static readonly RX_CTRL_ITALIC = /(\[)(\/)(\s+)([^\]]*)(\])/g;
+    private static readonly RX_CTRL_ITALIC = /(\[)(\/)(\s+)(.*?)(\])/g;
     private static readonly RX_CTRL_PROJECT_LINK = /(\[\/)([^\s\]]+)(\])/g;
     private static readonly RX_CTRL_EXT_LINK = /(\[)(https?:\/\/[^\s\]]+)(?:\s+([^\]]+))?(\])/g;
     private static readonly RX_CTRL_INT_LINK = /(\[)([^[\]/-][^[\]]*?)(\])/g;
@@ -866,10 +874,21 @@ export class ScrapboxFormatter {
         );
 
         // Italic - space required: [/ text]
-        html = html.replace(
-            ScrapboxFormatter.RX_CTRL_ITALIC,
-            '<span class="control-char">$1</span><span class="control-char">$2</span>$3<em>$4</em><span class="control-char">$5</span>',
-        );
+        const italicMatches = this.matchBalancedItalic(html);
+        if (italicMatches.length > 0) {
+            let result = "";
+            let lastIndex = 0;
+            for (const match of italicMatches) {
+                result += html.substring(lastIndex, match.start);
+                const replacement = '<span class="control-char">[</span><span class="control-char">/</span> '
+                    + `<em>${match.content}</em>`
+                    + '<span class="control-char">]</span>';
+                result += replacement;
+                lastIndex = match.end;
+            }
+            result += html.substring(lastIndex);
+            html = result;
+        }
 
         // Project internal link - no space: [/project/page] or [/page]
         html = html.replace(
