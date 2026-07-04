@@ -26,6 +26,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-guards:
+    name: PR Guards
+    uses: ./.github/workflows/ci-pr-guards.yml
+    secrets: inherit
+
   format:
     name: Format Check and Auto-Fix
     uses: ./.github/workflows/ci-format.yml
