@@ -497,6 +497,12 @@ onDestroy(async () => {
     box-sizing: border-box;
 }
 
+@media (max-width: 640px) {
+    .main-content {
+        padding-top: 10rem; /* Accommodate expanded toolbar on mobile */
+    }
+}
+
 /* Add left margin when sidebar is open */
 .main-content.with-sidebar {
     margin-left: 250px;
