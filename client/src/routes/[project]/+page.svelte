@@ -14,7 +14,13 @@
     const logger = getLogger("ProjectIndex");
 
     // Get URL parameters (reactively)
-    let projectName = $derived(decodeURIComponent($page.params.project || ""));
+    let projectName = $derived.by(() => {
+        try {
+            return decodeURIComponent($page.params.project || "");
+        } catch (_e) {
+            return $page.params.project || "";
+        }
+    });
 
     // Reactive page list (depends on store.pagesVersion)
     let pages = $derived.by(() => {

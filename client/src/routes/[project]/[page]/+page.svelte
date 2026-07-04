@@ -29,8 +29,20 @@
     // Get URL parameters (follow SvelteKit page store)
     // NOTE: Must reference the value of $page (not the store object).
     // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
-    let projectName: string = $derived.by(() => decodeURIComponent($page.params.project ?? ""));
-    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
+    let projectName: string = $derived.by(() => {
+        try {
+            return decodeURIComponent($page.params.project ?? "");
+        } catch (_e) {
+            return $page.params.project ?? "";
+        }
+    });
+    let pageName: string = $derived.by(() => {
+        try {
+            return decodeURIComponent($page.params.page ?? "");
+        } catch (_e) {
+            return $page.params.page ?? "";
+        }
+    });
 
     // Debug log
     // logger at init; avoid referencing derived vars outside reactive contexts to silence warnings

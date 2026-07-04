@@ -380,7 +380,10 @@ if (typeof window !== "undefined") {
     try {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
-            const title = decodeURIComponent(parts[0] || "Untitled Project");
+            let title = parts[0] || "Untitled Project";
+            try {
+                title = decodeURIComponent(title);
+            } catch {}
             const provisional = Project.createInstance(title);
             provisionalDocs.add(provisional.ydoc);
             (store as { project: Project; }).project = provisional;
