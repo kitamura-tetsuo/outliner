@@ -8,9 +8,13 @@ const logger = getLogger("LayoutTS");
 
 export const load: LayoutLoad = async ({ params, url }) => {
     let projectName = params.project ?? "";
-    try { projectName = decodeURIComponent(projectName); } catch {}
+    try {
+        projectName = decodeURIComponent(projectName);
+    } catch {}
     let pageName = params.page ?? "";
-    try { pageName = decodeURIComponent(pageName); } catch {}
+    try {
+        pageName = decodeURIComponent(pageName);
+    } catch {}
 
     // Validate required parameters
     if (!projectName || !pageName) {
