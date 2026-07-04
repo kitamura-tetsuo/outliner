@@ -47,6 +47,7 @@ onMount(() => {
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import { calculateGlobalOffset } from "../utils/domCursorUtils";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
+import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
@@ -2160,7 +2161,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                             <div class="referring-aliases-dropdown">
                                 <div class="dropdown-header">Referenced by</div>
                                 <ul class="dropdown-list">
-                                    {#each referringAliases as ref}
+                                    {#each referringAliases as ref (ref.item.id)}
                                         <li>
                                             <button type="button" onclick={(e) => handleAliasNavigation(ref.pageTitle, ref.item.id, e)}>
                                                 <div class="ref-page">{ref.pageTitle}</div>
