@@ -168,7 +168,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     <div class="alias-subtree">
         {#if !isCollapsed}
             {#if aliasTarget}
-                <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} isEmbedded={true} />
+                <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} />
             {:else}
                 <div class="alias-subtree-placeholder" style="min-height: 8px;">&nbsp;</div>
             {/if}
@@ -197,9 +197,5 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     margin-left: 24px;
     min-height: 8px;
 }
-
-    :global(.alias-subtree .outliner) {
-        --tree-min-height: auto;
-    }
 </style>
 

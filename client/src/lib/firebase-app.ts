@@ -82,7 +82,7 @@ export function getFirebaseApp(): FirebaseApp {
     if (existingApps.length > 0) {
         const app = getApp();
         globalRef[globalKey] = app;
-        logger.debug("Firebase app: Using existing SDK instance");
+        logger.info("Firebase app: Using existing SDK instance");
         return app;
     }
 
@@ -91,7 +91,7 @@ export function getFirebaseApp(): FirebaseApp {
         const firebaseConfig = getFirebaseConfig();
         const app = initializeApp(firebaseConfig);
         globalRef[globalKey] = app;
-        logger.debug("Firebase app: Initialized new instance");
+        logger.info("Firebase app: Initialized new instance");
         return app;
     } catch (error: unknown) {
         const err = error instanceof Error ? error : new Error(String(error));
@@ -104,12 +104,12 @@ export function getFirebaseApp(): FirebaseApp {
             || error && typeof error === "object" && "message" in error
                 && (error as { message?: string; }).message?.includes("already exists")
         ) {
-            logger.debug("Firebase app: Duplicate app error, attempting recovery");
+            logger.info("Firebase app: Duplicate app error, attempting recovery");
             const existingApps = getApps();
             if (existingApps.length > 0) {
                 const app = getApp();
                 globalRef[globalKey] = app;
-                logger.debug("Firebase app: Successfully recovered from duplicate error");
+                logger.info("Firebase app: Successfully recovered from duplicate error");
                 return app;
             }
         }

@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
 
 permissions:
   contents: write
@@ -14,7 +22,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -30,27 +38,25 @@ jobs:
     secrets: inherit
 
   unit-test:
-    needs: format
+    needs: [format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-unit.yml
     secrets: inherit
 
   integration-test:
-    needs: format
+    needs: [format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-integration.yml
     secrets: inherit
 
   e2e-test:
-    needs: format
+    needs: [format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-e2e.yml
     secrets: inherit
 
   eslint-client:
     name: Lint Code with ESLint
-    needs: format
-    if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-eslint.yml
     secrets: inherit
 
