@@ -1,15 +1,17 @@
-const fs = require('fs');
-const file = 'client/src/lib/KeyEventHandler.ts';
-let code = fs.readFileSync(file, 'utf8');
+const fs = require("fs");
+const file = "client/src/lib/KeyEventHandler.ts";
+let code = fs.readFileSync(file, "utf8");
 
 // 1. Remove Alias Picker forward block
-const m1 = code.match(/        \/\/ While Alias Picker is visible: forward Arrow\/Enter\/Escape to the picker\n        try \{\n            if \(aliasPickerStore\.isVisible\) \{[\s\S]*?            \}\n        \} catch \{\}\n/);
+const m1 = code.match(
+    /        \/\/ While Alias Picker is visible: forward Arrow\/Enter\/Escape to the picker\n        try \{\n            if \(aliasPickerStore\.isVisible\) \{[\s\S]*?            \}\n        \} catch \{\}\n/,
+);
 if (m1) {
-    code = code.replace(m1[0], '');
+    code = code.replace(m1[0], "");
 }
 
 // 2. Add Command Palette logic and Slash command logic at the top of handleKeyDown
-const m2 = code.indexOf('        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;');
+const m2 = code.indexOf("        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;");
 if (m2 !== -1) {
     const insertStr = `
         const k = (event as KeyboardEvent).key;
