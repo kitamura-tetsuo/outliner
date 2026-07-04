@@ -105,6 +105,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
         if (created) {
             store.currentPage = created;
             pageNotFound = false;
+            loadDemoPage(pageName);
         }
     }
 

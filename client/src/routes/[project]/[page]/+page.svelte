@@ -292,6 +292,34 @@
                     if (++tries > 50) clearInterval(iv);
                 }
             }, 100);
+
+    // React to page list changes to ensure we stay on the same instance
+    $effect(() => {
+        void store.pagesVersion;
+        if (!__loadingInProgress && !error && store.currentPage && store.project) {
+            const findPageEffect = () => {
+                const items = store.project?.items;
+                if (!items) return null;
+                for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
+                    if (!p) continue;
+                    let textString = "";
+                    try {
+                        textString = typeof p.text?.toString === "function" ? p.text.toString() : String(p.text ?? "");
+                    } catch (_e) {}
+                    if (String(textString).toLowerCase() === String(pageName).toLowerCase()) {
+                        return p as unknown as import("../../../schema/app-schema").Item;
+                    }
+                }
+                return null;
+            };
+            const latestPage = findPageEffect();
+            if (latestPage && latestPage.key !== store.currentPage.key) {
+                logger.info(`Page instance changed for "${pageName}", updating currentPage`);
+                store.currentPage = latestPage;
+            }
+        }
+    });
+
             onDestroy(() => {
                 try {
                     clearInterval(iv);
@@ -341,6 +369,7 @@
             if (created) {
                 store.currentPage = created;
                 pageNotFound = false;
+                scheduleLoadIfNeeded({ project: projectName, page: pageName });
             }
         } catch (e) {
             logger.warn("createPage failed", e);
