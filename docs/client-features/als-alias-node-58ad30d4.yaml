@@ -4,11 +4,14 @@ title-ja: 既存アイテムを参照するエイリアスノード
 category: outline
 status: implemented
 acceptance:
-- Alias displays the path to the referenced item
+- Alias displays as a normal item, followed by an alias icon and the path to the referenced item
 - Can create an alias node
 - Can edit the referenced subtree when expanding the alias
 - Can operate the alias picker with keyboard and confirm
 - Changes are reflected in the original item
+- Clicking the alias icon navigates to the page of the referenced item
+- Clicking the referenced item icon shows a dropdown of referring aliases and navigates to the selected one
+- The referenced item displays an icon indicating it is being referenced
 components:
 - client/src/components/AliasPicker.svelte
 - client/src/components/OutlinerItem.svelte
