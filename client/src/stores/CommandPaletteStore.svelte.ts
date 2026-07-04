@@ -11,10 +11,10 @@ interface Position {
 }
 
 class CommandPaletteStore {
-    isVisible = $state(false);
-    position: Position = $state({ top: 0, left: 0 });
-    query = $state("");
-    selectedIndex = $state(0);
+    isVisible = false;
+    position: Position = { top: 0, left: 0 };
+    query = "";
+    selectedIndex = 0;
 
     // Cursor state dedicated to CommandPalette
     private commandCursorItemId: string | null = null;
@@ -44,6 +44,7 @@ class CommandPaletteStore {
         }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
+
 
     get filtered() {
         const q = (this.query || "").toLowerCase();

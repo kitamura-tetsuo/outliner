@@ -2,8 +2,10 @@
     "type": "module",
     "devDependencies": {
         "patch-package": "^8.0.1",
-        "playwright": "^1.61.1",
         "pm2": "^7.0.3",
         "vitepress": "^1.6.4"
+    },
+    "dependencies": {
+        "playwright": "^1.61.1"
     }
 }

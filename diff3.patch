@@ -1,0 +1,21 @@
+<<<<<<< SEARCH
+    <!-- Search Panel -->
+    <SearchPanel
+        isVisible={isSearchPanelVisible}
+        pageItem={store.currentPage}
+        project={store.project}
+    />
+    {#if isLoading}
+        <div class="flex justify-center py-8">
+            <div class="loader">Loading...</div>
+        </div>
+    {:else if error}
+=======
+    <!-- Search Panel -->
+    <SearchPanel
+        isVisible={isSearchPanelVisible}
+        pageItem={store.currentPage}
+        project={store.project}
+    />
+    {#if error}
+>>>>>>> REPLACE

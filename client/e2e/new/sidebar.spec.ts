@@ -121,8 +121,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Verify collapsed
         await expect(pagesHeader).toHaveAttribute("aria-expanded", "false");
-        await expect(page.locator(".sidebar-section").filter({ has: pagesHeader }).locator(".chevron-icon"))
-            .toHaveClass(/rotated/);
+        await expect(pagesHeader.locator(".chevron-icon")).toHaveClass(/rotated/);
 
         // Click to expand again
         await pagesHeader.click();
@@ -130,8 +129,7 @@ test.describe("Sidebar Navigation", () => {
 
         // Verify expanded
         await expect(pagesHeader).toHaveAttribute("aria-expanded", "true");
-        await expect(page.locator(".sidebar-section").filter({ has: pagesHeader }).locator(".chevron-icon")).not
-            .toHaveClass(/rotated/);
+        await expect(pagesHeader.locator(".chevron-icon")).not.toHaveClass(/rotated/);
     });
 
     test("should navigate to Settings page when Settings link is clicked", async ({ page }) => {

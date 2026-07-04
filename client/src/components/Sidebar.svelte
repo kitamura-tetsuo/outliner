@@ -120,17 +120,18 @@
 
         <!-- Pages section -->
         <div class="sidebar-section">
-            <div class="section-header">
+            <div
+                class="section-header"
+                role="button"
+                tabindex="0"
+                onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
+                onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); isPagesCollapsed = !isPagesCollapsed; } }}
+                aria-expanded={!isPagesCollapsed}
+                aria-controls="sidebar-pages-list"
+                aria-label="Toggle pages section"
+            >
                 <div class="section-header-content">
-                    <button type="button"
-                        class="pages-toggle-btn"
-                        onclick={() => (isPagesCollapsed = !isPagesCollapsed)}
-                        aria-expanded={!isPagesCollapsed}
-                        aria-controls="sidebar-pages-list"
-                        aria-label="Toggle pages section"
-                    >
-                        <h3 class="sidebar-section-title">Pages</h3>
-                    </button>
+                    <h3 class="sidebar-section-title">Pages</h3>
                     <button type="button"
                         class="add-page-btn"
                         onclick={(e) => {
@@ -675,18 +676,5 @@
     :global(html.dark) .add-page-btn:hover {
         background-color: rgba(255, 255, 255, 0.1);
         color: #60a5fa;
-    }
-
-    .pages-toggle-btn {
-        background: none;
-        border: none;
-        padding: 0;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        flex: 1;
-        cursor: pointer;
-        text-align: left;
-        color: inherit;
     }
 </style>

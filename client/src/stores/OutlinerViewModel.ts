@@ -157,19 +157,7 @@ export class OutlinerViewModel {
             // Performance optimization: Recalculate only if lastChanged has modified
             // Y.Text.toString() is a high-cost operation, so avoid unnecessary calls
             // Use safe type checking instead of explicit any casts
-            let lastChangedProp: unknown;
-            try {
-                const itemWithValue = item as unknown as { value?: { get: (key: string) => unknown; }; };
-                if ("value" in item && typeof itemWithValue.value?.get === "function") {
-                    lastChangedProp = itemWithValue.value.get("lastChanged");
-                } else if ("lastChanged" in item) {
-                    lastChangedProp = (item as unknown as { lastChanged?: number; }).lastChanged;
-                }
-            } catch {
-                lastChangedProp = "lastChanged" in item
-                    ? (item as unknown as { lastChanged?: number; }).lastChanged
-                    : undefined;
-            }
+            const lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
             const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
 
             if (existingViewModel.lastChanged !== newLastChanged) {
@@ -194,33 +182,14 @@ export class OutlinerViewModel {
             }
         } else {
             // Create new view model
-            let initialVotes: string[] = [];
-            if (item.votes && typeof item.votes.toArray === "function") {
-                initialVotes = item.votes.toArray();
-            } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
-                initialVotes = (item as unknown as { votes: string[]; }).votes;
-            }
             this.viewModels.set(item.id, {
                 id: item.id,
                 original: item,
                 text: item.text,
-                votes: [...initialVotes],
+                votes: [...(((item as unknown as { votes?: string[]; }).votes || []) as string[])],
                 author: ((item as unknown as { author?: string; }).author || "") as string,
                 created: (item as unknown as { created?: number; }).created as number,
-                lastChanged: (() => {
-                    let lc: unknown;
-                    try {
-                        const itemWithValue = item as unknown as { value?: { get: (key: string) => unknown; }; };
-                        if ("value" in item && typeof itemWithValue.value?.get === "function") {
-                            lc = itemWithValue.value.get("lastChanged");
-                        } else if ("lastChanged" in item) {
-                            lc = (item as unknown as { lastChanged?: number; }).lastChanged;
-                        }
-                    } catch {
-                        lc = (item as unknown as { lastChanged?: number; }).lastChanged;
-                    }
-                    return typeof lc === "number" ? lc : 0;
-                })(),
+                lastChanged: (item as unknown as { lastChanged?: number; }).lastChanged as number,
                 commentCount: (item as unknown as { comments?: { length?: number; }; }).comments?.length ?? 0,
             });
             debugLog(

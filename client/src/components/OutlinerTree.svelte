@@ -243,18 +243,9 @@
     });
 
     onMount(() => {
-        const getAnonymousId = () => {
-            if (typeof sessionStorage === "undefined") return "anonymous";
-            let anonId = sessionStorage.getItem("outliner_anon_id");
-            if (!anonId) {
-                anonId = "anon-" + Math.random().toString(36).substring(2, 9);
-                sessionStorage.setItem("outliner_anon_id", anonId);
-            }
-            return anonId;
-        };
-        currentUser = userManager.getCurrentUser()?.id ?? getAnonymousId();
+        currentUser = userManager.getCurrentUser()?.id ?? "anonymous";
         unsubscribeUser = userManager.addEventListener((result) => {
-            currentUser = result?.user.id ?? getAnonymousId();
+            currentUser = result?.user.id ?? "anonymous";
         });
         editorOverlayStore.setOnEditCallback(handleEdit);
         if (typeof window !== "undefined") {
