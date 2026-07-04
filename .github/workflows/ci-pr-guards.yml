@@ -1,0 +1,20 @@
+name: PR Guards
+
+on:
+  workflow_call:
+
+jobs:
+  pr-guards:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Guard the PR head itself (what a squash merge will land), not the
+          # synthetic merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Run PR guards
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: bash scripts/ci/pr-guards.sh
