@@ -253,7 +253,7 @@ const shouldReuseExisting = typeof existingCandidate === "object"
     && existingCandidate !== null
     && (existingCandidate as { __isRealFirestoreStore?: boolean; }).__isRealFirestoreStore === true;
 export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
-(firestoreStore as unknown as { __isRealFirestoreStore: boolean; }).__isRealFirestoreStore = true;
+Object.assign(firestoreStore, { __isRealFirestoreStore: true });
 
 // Expose globally in test environment to allow control from E2E
 if (typeof window !== "undefined") {

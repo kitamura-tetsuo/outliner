@@ -318,7 +318,7 @@ export class ScrapboxFormatter {
                 content: match.content,
                 start: match.start,
                 end: match.end,
-                url: (match as unknown as { url: string; }).url,
+                url: "url" in match ? String((match as Record<string, unknown>).url) : "",
                 isProjectLink: match.isProjectLink,
             });
 

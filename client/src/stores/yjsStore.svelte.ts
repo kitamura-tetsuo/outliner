@@ -24,7 +24,7 @@ class YjsStore {
         }
         // Disable comment thread selection when switching documents and leave it to the default behavior
         try {
-            (globalStore as unknown as { openCommentItemId: string | null; }).openCommentItemId = null;
+            Object.assign(globalStore, { openCommentItemId: null });
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);

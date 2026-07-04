@@ -5,6 +5,21 @@
 </script>
 
 <script lang="ts">
+
+interface HasDebug { debug: (...args: unknown[]) => void; }
+interface HasComments { comments?: unknown[]; setComments?: (arr: unknown[]) => void; }
+interface HasObserve { observe?: (cb: () => void) => void; unobserve?: (cb: () => void) => void; }
+interface HasTreeKey { tree?: { getNodeValueFromKey?: (k: string) => unknown }; key: string; }
+interface HasAttachments { attachments: string[][]; }
+interface HasComponentType { componentType?: string; }
+interface HasOpenComment { openCommentItemId?: string; }
+interface HasDataTransfer { dataTransfer: DataTransfer; }
+interface E2EWindow {
+    __E2E_FORCE_HANDLE_DROP__?: (el: Element) => void;
+    __E2E_ADD_ATTACHMENT__?: (el: Element, text?: string) => void;
+}
+interface HasUpdateText { updateText?: (t: string) => void; }
+
 import {
     createEventDispatcher,
     onMount,
@@ -20,7 +35,7 @@ const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEB
 const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
-    const loggerWithDebug = logger as unknown as { debug: (...args: unknown[]) => void };
+    const loggerWithDebug = logger as unknown as HasDebug;
     const __origDebug = loggerWithDebug?.debug?.bind?.(logger);
     loggerWithDebug.debug = (...args: unknown[]) => {
         if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
@@ -235,7 +250,7 @@ function normalizeCommentCount(arr: unknown ): number {
  */
 function ensureCommentsArray(): unknown[] {
     try {
-        const it = item as unknown as { comments?: unknown[], setComments?: (arr: unknown[]) => void } | null;
+        const it = item as unknown as HasComments | null;
         if (!it) return null as unknown as unknown[];
         let arr: unknown[] | undefined = it.comments;
         if (!arr) {
@@ -296,7 +311,7 @@ function applyCommentCount(arrOrCount: unknown) {
 function attachCommentObserver(): (() => void) | null {
     try {
         const arr: unknown[] = ensureCommentsArray();
-        const obsArr = arr as unknown as { observe?: (cb: () => void) => void, unobserve?: (cb: () => void) => void };
+        const obsArr = arr as unknown as HasObserve;
         if (obsArr && typeof obsArr.observe === "function") {
             const observer = () => applyCommentCount(arr);
             obsArr.observe(observer);
@@ -369,7 +384,7 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
+        const anyItem = item as unknown as HasTreeKey;
         const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as { observe?: (cb: (e: unknown) => void) => void, unobserve?: (cb: (e: unknown) => void) => void, get?: (key: string) => string | undefined } | undefined;
         if (ymap && typeof ymap.observe === 'function') {
             const obs = (e?: unknown ) => {
@@ -499,7 +514,7 @@ const aliasTargetIdEffective = $derived.by(() => {
                 model.original.addAttachment(url);
             } catch {
                 // Fallback for cases where addAttachment is not available
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
+                try { (model.original as unknown as HasAttachments).attachments.push([url]); } catch {}
             }
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
@@ -512,7 +527,7 @@ const aliasTargetIdEffective = $derived.by(() => {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            try { cand.addAttachment(url); } catch { try { (cand as unknown as { attachments: string[][] }).attachments.push([url]); } catch {} }
+                            try { cand.addAttachment(url); } catch { try { (cand as unknown as HasAttachments).attachments.push([url]); } catch {} }
                             try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
                             break;
                         }
@@ -524,7 +539,7 @@ const aliasTargetIdEffective = $derived.by(() => {
             try {
                 model.original.addAttachment(url);
             } catch {
-                try { (model.original as unknown as { attachments: string[][] }).attachments.push([url]); } catch {}
+                try { (model.original as unknown as HasAttachments).attachments.push([url]); } catch {}
             }
         }
 
@@ -571,7 +586,7 @@ function handleComponentTypeChange(newType: string) {
     const value = newType === "none" ? undefined : newType;
     // Use setter preferentially if app-schema
     if (item && typeof item === "object" && "componentType" in item) {
-        try { (item as unknown as { componentType: string | undefined }).componentType = value; } catch {}
+        try { (item as unknown as HasComponentType).componentType = value; } catch {}
     }
     // yjs-schema / fallback
     setMapField(item, "componentType", value);
@@ -586,7 +601,7 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (k: string) => unknown }, key: string };
+        const anyItem = item as unknown as HasTreeKey;
         const tree = anyItem?.tree; const key = anyItem?.key;
         const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
         const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
@@ -619,7 +634,7 @@ onMount(() => {
             h2();
         } else {
             // Fallback: direct acquisition
-            try { compTypeValue = (anyItem as unknown as { componentType?: string }).componentType; } catch {}
+            try { compTypeValue = (anyItem as unknown as HasComponentType).componentType; } catch {}
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -950,7 +965,7 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs = generalStore as unknown as { openCommentItemId?: string };
+    const gs = generalStore as unknown as HasOpenComment;
     if (gs.openCommentItemId === model.id) {
         gs.openCommentItemId = undefined;
         try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
@@ -1627,7 +1642,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = (event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null;
+    const dt = (event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null;
 
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
@@ -1683,7 +1698,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} }
+                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as HasAttachments).attachments?.push?.([localUrl]); } catch {} }
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             } else {
@@ -1702,7 +1717,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as { attachments: string[][] }).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as HasAttachments).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
@@ -1741,9 +1756,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = ((event as unknown as { dataTransfer: DataTransfer }).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
+        const plainText = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
+        const selectionData = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
+        const itemId = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
 
         // Fire drop event
         dispatch("drop", {
@@ -1853,12 +1868,12 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+            if (!(anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__) {
+                (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
 
-                const prev = (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: (el: Element) => void }).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as unknown as { __E2E_FORCE_HANDLE_DROP__: unknown, __E2E_ADD_ATTACHMENT__: unknown }).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                const prev = (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__;
+                (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev?.(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1872,12 +1887,12 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+            if (!(anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__) {
+                (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
 
-                const prevAdd = (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: (el: Element, text?: string) => void }).__E2E_ADD_ATTACHMENT__;
-                (anyWin as unknown as { __E2E_ADD_ATTACHMENT__: unknown }).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                const prevAdd = (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__;
+                (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd?.(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
@@ -2104,8 +2119,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as { updateText?: (t: string) => void })?.updateText?.(t); } catch {} }}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as HasUpdateText)?.updateText?.(t); } catch {} }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as HasUpdateText)?.updateText?.(t); } catch {} }}
                 >
                     <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
