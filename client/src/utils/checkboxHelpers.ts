@@ -1,4 +1,7 @@
 import type { Item } from "../schema/app-schema";
+import { getLogger } from "../lib/logger";
+
+const logger = getLogger("checkboxHelpers");
 
 export function updateParentCheckboxStatus(parentItem: Item) {
     if (!parentItem) return;
@@ -52,7 +55,7 @@ export function updateParentCheckboxStatus(parentItem: Item) {
                         updateParentCheckboxStatus(grandparent);
                     });
                 } catch (e) {
-                    console.error("Failed to update grandparent checkbox status:", e);
+                    logger.error({ error: e instanceof Error ? e : new Error(String(e)) }, "Failed to update grandparent checkbox status");
                 }
             }
         }
