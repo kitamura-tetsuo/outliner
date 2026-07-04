@@ -8,6 +8,7 @@ const logger = getLogger("SearchBox");
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
     import { onMount } from "svelte";
     import { store } from "../stores/store.svelte";
+    import { iterateItems } from "../utils/itemTraversal";
 
     // Type alias for backward compatibility
     type Item = ItemLike;
@@ -106,7 +107,7 @@ const logger = getLogger("SearchBox");
 
                     // Try iterator first
                     if (typeof items[Symbol.iterator] === "function") {
-                        for (const p of items) {
+                        for (const p of iterateItems(items)) {
                             if (p) arr.push(p);
                         }
                         if (arr.length) {

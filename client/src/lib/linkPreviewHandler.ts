@@ -1,3 +1,4 @@
+import { iterateItems } from "../utils/itemTraversal";
 /**
  * Module for handling link preview functionality
  *
@@ -48,7 +49,7 @@ export function pageExists(pageName: string, projectName?: string): boolean {
     if (!store.pages?.current) return false;
 
     // Search for a page with a matching name
-    for (const page of store.pages.current) {
+    for (const page of iterateItems(store.pages.current)) {
         if (String(page.text).toLowerCase() === pageName.toLowerCase()) {
             return true;
         }
@@ -66,7 +67,7 @@ function findPageByName(name: string): Item | null {
     if (!store.pages?.current) return null;
 
     // Search for a page with a matching name
-    for (const page of store.pages.current) {
+    for (const page of iterateItems(store.pages.current)) {
         if (String(page.text).toLowerCase() === name.toLowerCase()) {
             return page;
         }
