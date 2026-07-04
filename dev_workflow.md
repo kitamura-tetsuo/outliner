@@ -62,3 +62,11 @@ If you encounter issues with pre-commit hooks:
 4. If hooks are failing, you can temporarily skip them with `git commit --no-verify`, but fix the underlying issue as soon as possible
 
 Following these practices will ensure code consistency and prevent formatting-related issues during the development process.
+
+## Repository Guidelines
+
+To maintain a clean repository and prevent shipping unnecessary artifacts, please adhere to the following rules:
+
+- **Do not commit debug scripts** (e.g., `debug_*.sh`, `debug_*.ts`, `local/run-debug.sh`) to the main branch. Keep them in your local untracked files if needed.
+- **Do not commit local patch files** (`*.patch`, `*.diff`) or backup files (`*.bak`, `*.orig`).
+- **Do not commit screenshots or exported images** into the root directory or non-asset directories. Ensure any large binary assets are kept appropriately under `docs/` or `screenshots/` and only committed when strictly necessary for documentation.
