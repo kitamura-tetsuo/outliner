@@ -8,14 +8,14 @@ test("Search panel input focuses automatically when opened", async ({ page }, te
     await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
     // Open Search Panel
-    await page.getByTestId('search-toggle-button').click();
-    await expect(page.getByTestId('search-panel')).toBeVisible();
+    await page.getByTestId("search-toggle-button").click();
+    await expect(page.getByTestId("search-panel")).toBeVisible();
 
     // Assert input is focused
-    const searchInput = page.getByTestId('search-input');
+    const searchInput = page.getByTestId("search-input");
     await expect(searchInput).toBeFocused();
 
     // Try typing
-    await page.keyboard.type('grandchild');
-    await expect(searchInput).toHaveValue('grandchild');
+    await page.keyboard.type("grandchild");
+    await expect(searchInput).toHaveValue("grandchild");
 });
