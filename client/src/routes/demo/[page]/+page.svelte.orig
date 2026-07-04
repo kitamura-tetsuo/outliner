@@ -126,7 +126,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
     // React to page list changes (e.g., demo reset recreating the page)
     $effect(() => {
         void store.pagesVersion;
-        if (!isLoading && !error && store.project) {
+        if (!isLoading && !error && store.currentPage && store.project) {
             const latestPage = findPage(pageName);
             // If the page was recreated (new instance with the same name), update currentPage
             if (latestPage && latestPage.key !== store.currentPage?.key) {
@@ -180,7 +180,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
         </p>
     </div>
 
-    {#if isLoading && !pageNotFound && !store.currentPage}
+    {#if isLoading && !store.currentPage}
         <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
@@ -229,7 +229,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
                 </div>
             </div>
         </div>
-    {:else if !error && store.currentPage}
+    {:else if store.currentPage}
         <OutlinerBase
             pageItem={store.currentPage}
             projectName={DEMO_PROJECT_NAME}
