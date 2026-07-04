@@ -45,7 +45,6 @@ class CommandPaletteStore {
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
 
-
     get filtered() {
         const q = (this.query || "").toLowerCase();
         if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.filtered] q:", q);

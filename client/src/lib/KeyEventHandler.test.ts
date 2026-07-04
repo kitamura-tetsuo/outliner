@@ -136,5 +136,3 @@ describe("KeyEventHandler.handlePaste", () => {
         window.removeEventListener("clipboard-read-error", listener);
     });
 });
-
-
