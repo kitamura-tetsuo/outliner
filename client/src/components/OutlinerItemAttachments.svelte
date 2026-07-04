@@ -78,7 +78,11 @@ function getAttachmentLabel(url: string): string {
         const pathname = urlObj.pathname;
         const filename = pathname.split('/').pop();
         if (filename) {
-            return `View attachment: ${decodeURIComponent(filename)}`;
+            try {
+                return `View attachment: ${decodeURIComponent(filename)}`;
+            } catch {
+                return `View attachment: ${filename}`;
+            }
         }
     } catch {}
     return "View attachment";

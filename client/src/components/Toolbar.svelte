@@ -70,7 +70,14 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	                }
 	                if (!project) {
 	                    const pathParts = window.location.pathname.split("/").filter(Boolean);
-	                    const projectTitle = pathParts[0] ? decodeURIComponent(pathParts[0]) : "";
+	                    let projectTitle = "";
+	                    if (pathParts[0]) {
+	                        try {
+	                            projectTitle = decodeURIComponent(pathParts[0]);
+	                        } catch {
+	                            projectTitle = pathParts[0];
+	                        }
+	                    }
 	                    const service = globals.__FLUID_SERVICE__;
 	                    if (service && projectTitle) {
 	                        const getClient = service.getClientByProjectTitle ?? service.getFluidClientByProjectTitle;

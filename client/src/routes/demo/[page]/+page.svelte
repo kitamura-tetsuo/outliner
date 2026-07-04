@@ -15,7 +15,13 @@ import { iterateItems } from "../../../utils/itemTraversal";
 
     const logger = getLogger("DemoPageView");
 
-    let pageName: string = $derived.by(() => decodeURIComponent($page.params.page ?? ""));
+    let pageName: string = $derived.by(() => {
+        try {
+            return decodeURIComponent($page.params.page ?? "");
+        } catch (_e) {
+            return $page.params.page ?? "";
+        }
+    });
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -122,7 +128,11 @@ import { iterateItems } from "../../../utils/itemTraversal";
         const unsub = page.subscribe(($p) => {
             let name = $p.params?.page ?? "";
             if (!name) return;
-            name = decodeURIComponent(name);
+            try {
+                name = decodeURIComponent(name);
+            } catch (_e) {
+                // ignore URI malformed error
+            }
             if (name === lastLoaded) return;
             lastLoaded = name;
             loadDemoPage(name);

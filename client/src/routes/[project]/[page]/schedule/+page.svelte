@@ -68,8 +68,8 @@ onMount(async () => {
     });
 
     const params = $page.params as { project: string; page: string; };
-    project = decodeURIComponent(params.project || "");
-    pageTitle = decodeURIComponent(params.page || "");
+    try { project = decodeURIComponent(params.project || ""); } catch { project = params.project || ""; }
+    try { pageTitle = decodeURIComponent(params.page || ""); } catch { pageTitle = params.page || ""; }
 
     // E2E stability: Check if project data is already loaded
     // IMPORTANT: Also check if the loaded project has the correct title (handles store reset during navigation)

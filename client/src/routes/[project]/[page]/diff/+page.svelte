@@ -15,8 +15,8 @@ onMount(() => {
     try {
         const params = $page.params as { project: string; page: string; };
         if (params) {
-            project = decodeURIComponent(params.project || "");
-            pageTitle = decodeURIComponent(params.page || "");
+            try { project = decodeURIComponent(params.project || ""); } catch { project = params.project || ""; }
+            try { pageTitle = decodeURIComponent(params.page || ""); } catch { pageTitle = params.page || ""; }
             content = getCurrentContent(project, pageTitle);
             logger.debug("Diff page initialized:", { project, pageTitle, content });
         }

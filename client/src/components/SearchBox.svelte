@@ -271,9 +271,15 @@ const logger = getLogger("SearchBox");
                     const pathParts = window.location.pathname
                         .split("/")
                         .filter(Boolean);
-                    projTitle = pathParts[0]
-                        ? decodeURIComponent(pathParts[0])
-                        : "";
+                    if (pathParts[0]) {
+                        try {
+                            projTitle = decodeURIComponent(pathParts[0]);
+                        } catch {
+                            projTitle = pathParts[0];
+                        }
+                    } else {
+                        projTitle = "";
+                    }
                 }
             }
             // Encode path segments to ensure correct routing for titles with spaces/special characters
