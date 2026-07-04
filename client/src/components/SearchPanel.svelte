@@ -48,6 +48,13 @@ const logger = getLogger("SearchPanel");
     let isRegexMode = $state(false);
     let isCaseSensitive = $state(false);
     let matchCount = $state(0);
+    let inputEl: HTMLInputElement | undefined = $state();
+
+    $effect(() => {
+        if (isVisible && inputEl) {
+            inputEl.focus();
+        }
+    });
 
     function highlight(
         results: Array<ItemMatch<Item>>,
@@ -359,6 +366,7 @@ const logger = getLogger("SearchPanel");
                 <input
                     id="search-input"
                     type="text"
+                    bind:this={inputEl}
                     bind:value={searchQuery}
                     placeholder="Enter search term"
                     class="search-input"

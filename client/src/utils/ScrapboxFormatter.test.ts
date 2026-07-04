@@ -104,6 +104,21 @@ describe("ScrapboxFormatter", () => {
     });
 
     describe("formatToHtml", () => {
+        describe("code span edge cases", () => {
+            it("should not format internal syntax inside a code span", () => {
+                const input = "Another edge: `code with [[brackets]]` end";
+                const result = ScrapboxFormatter.formatToHtml(input);
+                expect(result).toBe("Another edge: <code>code with [[brackets]]</code> end");
+            });
+
+            it("should correctly handle nested placeholders in a complex scenario", () => {
+                // E.g. Bold containing code, where code is parsed first.
+                const input = "[[bold `code`]]";
+                const result = ScrapboxFormatter.formatToHtml(input);
+                expect(result).toBe("<strong>bold <code>code</code></strong>");
+            });
+        });
+
         describe("internal links", () => {
             it("should not contain newline characters in the generated link HTML to prevent pre-wrap layout breakage", () => {
                 const input = "[test-page] and [/project/page]";

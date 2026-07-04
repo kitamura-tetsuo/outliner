@@ -302,13 +302,22 @@ async function setupProviderForRoom(
     const awareness = provider.awareness;
     attachConnDebug(room, provider, awareness, doc);
 
-    const current = setAwarenessUser ? userManager.getCurrentUser() : null;
-    if (current && awareness) {
-        awareness.setLocalStateField("user", {
-            userId: current.id,
-            name: current.name,
-            color: undefined,
-        });
+    if (setAwarenessUser && awareness) {
+        const current = userManager.getCurrentUser();
+        if (current) {
+            awareness.setLocalStateField("user", {
+                userId: current.id,
+                name: current.name,
+                color: undefined,
+            });
+        } else {
+            awareness.setLocalStateField("user", {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                userId: "anon-" + (awareness as any).clientID,
+                name: "Guest",
+                color: undefined,
+            });
+        }
     }
 
     const unbindPresence = bindPresence && awareness ? yjsService.bindProjectPresence(awareness) : undefined;
