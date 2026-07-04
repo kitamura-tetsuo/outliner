@@ -114,9 +114,10 @@ if (typeof window !== "undefined") {
 }
 
 // Hook into firestoreStore updates to keep projects mirrored without polling
-const originalSetUserProject = (firestoreStore as unknown as { setUserProject?: (v: UserProject | null) => void }).setUserProject?.bind(firestoreStore);
+const originalSetUserProject = (firestoreStore as unknown as { setUserProject?: (v: UserProject | null) => void; })
+    .setUserProject?.bind(firestoreStore);
 if (typeof originalSetUserProject === "function") {
-    (firestoreStore as unknown as { setUserProject: (v: UserProject | null) => void }).setUserProject = (
+    (firestoreStore as unknown as { setUserProject: (v: UserProject | null) => void; }).setUserProject = (
         value: UserProject | null,
     ) => {
         originalSetUserProject(value);

@@ -473,8 +473,8 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
-        if (typeof (hocuspocus as unknown as { destroy?: () => void }).destroy === "function") {
-            (hocuspocus as unknown as { destroy?: () => void }).destroy?.();
+        if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
+            (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
         } else {
             hocuspocus.closeConnections();
         }
