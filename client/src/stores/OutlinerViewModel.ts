@@ -159,13 +159,16 @@ export class OutlinerViewModel {
             // Use safe type checking instead of explicit any casts
             let lastChangedProp: unknown;
             try {
-                if ("value" in item && typeof (item as any).value?.get === "function") {
-                    lastChangedProp = (item as any).value.get("lastChanged");
+                const itemWithValue = item as unknown as { value?: { get: (key: string) => unknown; }; };
+                if ("value" in item && typeof itemWithValue.value?.get === "function") {
+                    lastChangedProp = itemWithValue.value.get("lastChanged");
                 } else if ("lastChanged" in item) {
-                    lastChangedProp = item.lastChanged;
+                    lastChangedProp = (item as unknown as { lastChanged?: number; }).lastChanged;
                 }
             } catch {
-                lastChangedProp = "lastChanged" in item ? item.lastChanged : undefined;
+                lastChangedProp = "lastChanged" in item
+                    ? (item as unknown as { lastChanged?: number; }).lastChanged
+                    : undefined;
             }
             const newLastChanged = typeof lastChangedProp === "number" ? lastChangedProp : 0;
 
@@ -207,8 +210,9 @@ export class OutlinerViewModel {
                 lastChanged: (() => {
                     let lc: unknown;
                     try {
-                        if ("value" in item && typeof (item as any).value?.get === "function") {
-                            lc = (item as any).value.get("lastChanged");
+                        const itemWithValue = item as unknown as { value?: { get: (key: string) => unknown; }; };
+                        if ("value" in item && typeof itemWithValue.value?.get === "function") {
+                            lc = itemWithValue.value.get("lastChanged");
                         } else if ("lastChanged" in item) {
                             lc = (item as unknown as { lastChanged?: number; }).lastChanged;
                         }

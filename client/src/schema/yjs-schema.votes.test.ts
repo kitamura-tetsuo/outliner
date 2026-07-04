@@ -27,20 +27,12 @@ describe("yjs-schema Item Votes", () => {
     it("should toggle vote and update lastChanged", () => {
         const initialLastChanged = item["value"].get("lastChanged");
 
-        // Wait a bit to ensure lastChanged will be different
-        const start = Date.now();
-        while (Date.now() - start < 2) {}
-
         // Add vote
         item.toggleVote("user1");
         expect(item.votes.toArray()).toEqual(["user1"]);
         expect(item["value"].get("lastChanged")).toBeGreaterThan(initialLastChanged as number);
 
         const midLastChanged = item["value"].get("lastChanged");
-
-        // Wait a bit to ensure lastChanged will be different
-        const start2 = Date.now();
-        while (Date.now() - start2 < 2) {}
 
         // Remove vote
         item.toggleVote("user1");
