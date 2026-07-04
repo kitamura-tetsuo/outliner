@@ -232,7 +232,7 @@ export class Item {
     }
 }
 
-export class Items {
+export class Items implements Iterable<Item> {
     constructor(
         public readonly ydoc: Y.Doc,
         public readonly tree: YTree,
