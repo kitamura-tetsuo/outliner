@@ -312,7 +312,7 @@ async function setupProviderForRoom(
             });
         } else {
             awareness.setLocalStateField("user", {
-                userId: "anon-" + awareness.clientID,
+                userId: "anon-" + (awareness as Awareness & { clientID: number }).clientID,
                 name: "Guest",
                 color: undefined,
             });
