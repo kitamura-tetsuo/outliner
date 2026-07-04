@@ -317,9 +317,7 @@ export class CursorSelection {
         if (!target) return;
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`extendSelectionDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
-        }
+        logger.debug(`extendSelectionDown called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`);
 
         // Get current selection
         const existingSelection = Object.values(store.selections).find(s =>
@@ -346,11 +344,9 @@ export class CursorSelection {
                 isReversed = false;
 
                 // Debug info
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(
-                        `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
+                logger.debug(
+                    `Extending forward selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                );
 
                 // Reverse direction if selection disappears
                 if (startItemId === endItemId && startOffset === endOffset) {
@@ -365,11 +361,9 @@ export class CursorSelection {
                     isReversed = false;
 
                     // Debug info
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        logger.debug(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
+                    logger.debug(
+                        `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
             } else {
                 // If reversed selection, move start position
@@ -386,11 +380,9 @@ export class CursorSelection {
                 isReversed = true;
 
                 // Debug info
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(
-                        `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
+                logger.debug(
+                    `Extending reversed selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                );
 
                 // Reverse direction if selection disappears
                 if (startItemId === endItemId && startOffset === endOffset) {
@@ -405,11 +397,9 @@ export class CursorSelection {
                     isReversed = false;
 
                     // Debug info
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        logger.debug(
-                            `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                        );
-                    }
+                    logger.debug(
+                        `Selection disappeared, reversed: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                    );
                 }
             }
         } else {
@@ -432,11 +422,9 @@ export class CursorSelection {
                 isReversed = false;
 
                 // Debug info
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(
-                        `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
+                logger.debug(
+                    `New selection within same item: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                );
             } else {
                 // If moved to another item
                 endItemId = this.cursor.itemId;
@@ -444,11 +432,9 @@ export class CursorSelection {
                 isReversed = false;
 
                 // Debug info
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(
-                        `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
-                    );
-                }
+                logger.debug(
+                    `New selection across items: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}`,
+                );
             }
         }
 
@@ -497,9 +483,7 @@ export class CursorSelection {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
-                }
+                logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
 
                 // Reset selection if not visible
                 if (selectionElements.length === 0) {
@@ -567,11 +551,9 @@ export class CursorSelection {
         if (!target) return;
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `extendSelectionToLineStart called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
-            );
-        }
+        logger.debug(
+            `extendSelectionToLineStart called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
+        );
 
         // Get current selection
         const existingSelection = Object.values(store.selections).find(s =>
@@ -587,17 +569,13 @@ export class CursorSelection {
         const lineStartOffset = getLineStartOffset(text.toString(), currentLineIndex);
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
-            );
-        }
+        logger.debug(
+            `Current line index: ${currentLineIndex}, lineStartOffset: ${lineStartOffset}, text: "${text}"`,
+        );
 
         // Do nothing if current cursor position is already at start of line
         if (this.cursor.offset === lineStartOffset && !existingSelection) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(`Already at line start, no selection created`);
-            }
+            logger.debug(`Already at line start, no selection created`);
             return;
         }
 
@@ -643,11 +621,9 @@ export class CursorSelection {
         }
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
+        logger.debug(
+            `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+        );
 
         // Set selection
         store.setSelection({
@@ -675,11 +651,9 @@ export class CursorSelection {
         if (!target) return;
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `extendSelectionToLineEnd called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
-            );
-        }
+        logger.debug(
+            `extendSelectionToLineEnd called for itemId=${this.cursor.itemId}, offset=${this.cursor.offset}`,
+        );
 
         // Get current selection
         const existingSelection = Object.values(store.selections).find(s =>
@@ -695,15 +669,11 @@ export class CursorSelection {
         const lineEndOffset = getLineEndOffset(text.toString(), currentLineIndex);
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
-        }
+        logger.debug(`Current line index: ${currentLineIndex}, lineEndOffset: ${lineEndOffset}, text: "${text}"`);
 
         // Do nothing if current cursor position is already at end of line
         if (this.cursor.offset === lineEndOffset && !existingSelection) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(`Already at line end, no selection created`);
-            }
+            logger.debug(`Already at line end, no selection created`);
             return;
         }
 
@@ -740,11 +710,9 @@ export class CursorSelection {
         }
 
         // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
-            );
-        }
+        logger.debug(
+            `Setting selection: startItemId=${startItemId}, startOffset=${startOffset}, endItemId=${endItemId}, endOffset=${endOffset}, isReversed=${isReversed}`,
+        );
 
         // Set selection
         const selectionId = store.setSelection({
@@ -773,9 +741,7 @@ export class CursorSelection {
         if (typeof window !== "undefined") {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
-                }
+                logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
 
                 // Reset selection if not visible
                 if (selectionElements.length === 0) {
@@ -797,9 +763,7 @@ export class CursorSelection {
             setTimeout(() => {
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
                 if (selectionElements.length === 0) {
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        logger.debug(`Selection still not visible after 100ms, forcing update again`);
-                    }
+                    logger.debug(`Selection still not visible after 100ms, forcing update again`);
 
                     // Reset selection
                     store.setSelection({
