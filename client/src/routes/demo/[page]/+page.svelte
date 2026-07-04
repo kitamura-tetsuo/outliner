@@ -39,7 +39,14 @@ import { iterateItems } from "../../../utils/itemTraversal";
             } catch (_e) {
                 textString = "";
             }
-            if (textString.toLowerCase() === String(name).toLowerCase() || textString === name || textString === decodeURIComponent(name) || textString.toLowerCase() === decodeURIComponent(name).toLowerCase()) {
+            let decodedName = name;
+            try {
+                decodedName = decodeURIComponent(name);
+            } catch (_e) {
+                // ignore URI malformed error
+            }
+
+            if (textString.trim().toLowerCase() === String(name).trim().toLowerCase() || textString.trim().toLowerCase() === String(decodedName).trim().toLowerCase()) {
                 return item as Item;
             }
         }
@@ -70,10 +77,10 @@ import { iterateItems } from "../../../utils/itemTraversal";
                 store.project = client.getProject() as unknown as import("../../../schema/app-schema").Project;
             }
 
-            // Wait for sync until the page is found (5 seconds max)
+            // Wait for sync until the page is found (15 seconds max)
             let targetPage = findPage(name);
             let retries = 0;
-            while (!targetPage && retries < 50) {
+            while (!targetPage && retries < 150) {
                 await new Promise(r => setTimeout(r, 100));
                 if (isDestroyed) return;
                 targetPage = findPage(name);
