@@ -384,7 +384,9 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     // Check if the title is actually a test ID format (e.g. "pa4cc30c")
     // This handles the case where we navigate to /projectId directly in tests
     if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
-        logger.debug(`[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
+        logger.debug(
+            `[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`,
+        );
         const projectId = projectTitle;
         const userId = userManager.getCurrentUser()?.id || "test-user-id";
 
