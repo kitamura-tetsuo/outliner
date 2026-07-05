@@ -12,13 +12,22 @@ interface HasObserve { observe?: (cb: () => void) => void; unobserve?: (cb: () =
 interface HasTreeKey { tree?: { getNodeValueFromKey?: (k: string) => unknown }; key: string; }
 interface HasAttachments { attachments: string[][]; }
 interface HasComponentType { componentType?: string; }
-interface HasOpenComment { openCommentItemId?: string; }
+interface HasOpenComment { openCommentItemId?: string | null; }
 interface HasDataTransfer { dataTransfer: DataTransfer; }
 interface E2EWindow {
     __E2E_FORCE_HANDLE_DROP__?: (el: Element) => void;
     __E2E_ADD_ATTACHMENT__?: (el: Element, text?: string) => void;
 }
 interface HasUpdateText { updateText?: (t: string) => void; }
+
+function hasDebug(obj: unknown): obj is HasDebug { return !!obj && typeof (obj as HasDebug).debug === 'function'; }
+function hasComments(obj: unknown): obj is HasComments { return !!obj && typeof obj === 'object' && 'comments' in obj; }
+function hasObserve(obj: unknown): obj is HasObserve { return !!obj && typeof (obj as HasObserve).observe === 'function'; }
+function hasTreeKey(obj: unknown): obj is HasTreeKey { return !!obj && typeof (obj as HasTreeKey).key === 'string'; }
+function hasAttachments(obj: unknown): obj is HasAttachments { return !!obj && typeof obj === 'object' && 'attachments' in obj; }
+function hasComponentType(obj: unknown): obj is HasComponentType { return !!obj && typeof obj === 'object' && 'componentType' in obj; }
+function hasOpenComment(obj: unknown): obj is HasOpenComment { return !!obj && typeof obj === 'object' && 'openCommentItemId' in obj; }
+function hasDataTransfer(obj: unknown): obj is HasDataTransfer { return !!obj && typeof obj === 'object' && 'dataTransfer' in obj; }
 
 import {
     createEventDispatcher,
@@ -35,11 +44,12 @@ const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEB
 const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
-    const loggerWithDebug = logger as unknown as HasDebug;
-    const __origDebug = loggerWithDebug?.debug?.bind?.(logger);
-    loggerWithDebug.debug = (...args: unknown[]) => {
-        if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
-    };
+    if (hasDebug(logger)) {
+        const __origDebug = logger.debug?.bind?.(logger);
+        logger.debug = (...args: unknown[]) => {
+            if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
+        };
+    }
 } catch {}
 
 
@@ -250,19 +260,18 @@ function normalizeCommentCount(arr: unknown ): number {
  */
 function ensureCommentsArray(): unknown[] {
     try {
-        const it = item as unknown as HasComments | null;
-        if (!it) return null as unknown as unknown[];
-        let arr: unknown[] | undefined = it.comments;
+        if (!hasComments(item)) return [];
+        let arr: unknown[] | undefined = item.comments;
         if (!arr) {
             // Initialize if comments property does not exist
-            if (typeof it.setComments === "function") {
-                it.setComments([]);
-                arr = it.comments;
+            if (typeof item.setComments === "function") {
+                item.setComments([]);
+                arr = item.comments;
             }
         }
-        return (arr as unknown[]) ?? (null as unknown as unknown[]);
+        return arr ?? [];
     } catch {
-        return null as unknown as unknown[];
+        return [];
     }
 }
 
@@ -311,11 +320,10 @@ function applyCommentCount(arrOrCount: unknown) {
 function attachCommentObserver(): (() => void) | null {
     try {
         const arr: unknown[] = ensureCommentsArray();
-        const obsArr = arr as unknown as HasObserve;
-        if (obsArr && typeof obsArr.observe === "function") {
+        if (hasObserve(arr)) {
             const observer = () => applyCommentCount(arr);
-            obsArr.observe(observer);
-            return () => obsArr?.unobserve?.(observer);
+            arr.observe!(observer);
+            return () => arr.unobserve?.(observer);
         }
     } catch {}
     return null;
@@ -384,22 +392,23 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        const anyItem = item as unknown as HasTreeKey;
-        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem.key) as { observe?: (cb: (e: unknown) => void) => void, unobserve?: (cb: (e: unknown) => void) => void, get?: (key: string) => string | undefined } | undefined;
-        if (ymap && typeof ymap.observe === 'function') {
-            const obs = (e?: unknown ) => {
-                try {
-                    const event = e as { keysChanged?: { has?: (key: string) => boolean } } | undefined;
-                    if (!event || (event.keysChanged && event.keysChanged.has && event.keysChanged.has('aliasTargetId'))) {
-                        aliasTargetId = ymap.get?.('aliasTargetId');
-                    }
-                } catch {}
-            };
-            ymap.observe(obs);
-            // Initial reflection
-            obs();
-            return () => { try { ymap?.unobserve?.(obs); } catch {} };
+        if (hasTreeKey(item)) {
+            const ymap = item.tree?.getNodeValueFromKey?.(item.key) as { observe?: (cb: (e: unknown) => void) => void, unobserve?: (cb: (e: unknown) => void) => void, get?: (key: string) => string | undefined } | undefined;
+            if (ymap && typeof ymap.observe === 'function') {
+                const obs = (e?: unknown ) => {
+                    try {
+                        const event = e as { keysChanged?: { has?: (key: string) => boolean } } | undefined;
+                        if (!event || (event.keysChanged && event.keysChanged.has && event.keysChanged.has('aliasTargetId'))) {
+                            aliasTargetId = ymap.get?.('aliasTargetId');
+                        }
+                    } catch {}
+                };
+                ymap.observe(obs);
+                // Initial reflection
+                obs();
+                return () => { try { ymap?.unobserve?.(obs); } catch {} };
 
+            }
         }
     } catch {}
 });
@@ -514,7 +523,7 @@ const aliasTargetIdEffective = $derived.by(() => {
                 model.original.addAttachment(url);
             } catch {
                 // Fallback for cases where addAttachment is not available
-                try { (model.original as unknown as HasAttachments).attachments.push([url]); } catch {}
+                try { if (hasAttachments(model.original)) { model.original.attachments.push([url]); } } catch {}
             }
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
@@ -527,7 +536,7 @@ const aliasTargetIdEffective = $derived.by(() => {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            try { cand.addAttachment(url); } catch { try { (cand as unknown as HasAttachments).attachments.push([url]); } catch {} }
+                            try { cand.addAttachment(url); } catch { try { if (hasAttachments(cand)) { cand.attachments.push([url]); } } catch {} }
                             try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
                             break;
                         }
@@ -539,7 +548,7 @@ const aliasTargetIdEffective = $derived.by(() => {
             try {
                 model.original.addAttachment(url);
             } catch {
-                try { (model.original as unknown as HasAttachments).attachments.push([url]); } catch {}
+                try { if (hasAttachments(model.original)) { model.original.attachments.push([url]); } } catch {}
             }
         }
 
@@ -586,7 +595,7 @@ function handleComponentTypeChange(newType: string) {
     const value = newType === "none" ? undefined : newType;
     // Use setter preferentially if app-schema
     if (item && typeof item === "object" && "componentType" in item) {
-        try { (item as unknown as HasComponentType).componentType = value; } catch {}
+        try { if (hasComponentType(item)) { item.componentType = value; } } catch {}
     }
     // yjs-schema / fallback
     setMapField(item, "componentType", value);
@@ -601,11 +610,11 @@ let compTypeValue = $state<string | undefined>(undefined);
 onMount(() => {
     let unsubs: Array<() => void> = [];
     try {
-        const anyItem = item as unknown as HasTreeKey;
-        const tree = anyItem?.tree; const key = anyItem?.key;
-        const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
-        const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
-        if (t && typeof t.observe === "function") {
+        if (hasTreeKey(item)) {
+            const tree = item.tree; const key = item.key;
+            const m = tree?.getNodeValueFromKey?.(key) as { observe?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, unobserve?: (f: (e: { keysChanged?: { has: (k: string) => boolean } }) => void) => void, get?: (k: string) => unknown } | undefined;
+            const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
+            if (t && typeof t.observe === "function") {
             const h1 = () => {
                 if (t && typeof t.toString === "function") {
                     try {
@@ -622,19 +631,20 @@ onMount(() => {
             // Initial reflection
             h1();
         }
-        if (m && typeof m.observe === "function") {
-            const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
-                try {
-                    if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
-                        compTypeValue = m.get?.("componentType") as string | undefined;
-                    }
-                } catch {}
-            };
-            m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch {} });
-            h2();
-        } else {
-            // Fallback: direct acquisition
-            try { compTypeValue = (anyItem as unknown as HasComponentType).componentType; } catch {}
+            if (m && typeof m.observe === "function") {
+                const h2 = (e?: { keysChanged?: { has: (k: string) => boolean } }) => {
+                    try {
+                        if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
+                            compTypeValue = m.get?.("componentType") as string | undefined;
+                        }
+                    } catch {}
+                };
+                m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch {} });
+                h2();
+            } else {
+                // Fallback: direct acquisition
+                try { if (hasComponentType(item)) { compTypeValue = item.componentType; } } catch {}
+            }
         }
     } catch {}
     return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
@@ -965,13 +975,14 @@ function toggleVote() {
 }
 
 function toggleComments() {
-    const gs = generalStore as unknown as HasOpenComment;
-    if (gs.openCommentItemId === model.id) {
-        gs.openCommentItemId = undefined;
-        try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
-    } else {
-        gs.openCommentItemId = model.id;
-        try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
+    if (hasOpenComment(generalStore)) {
+        if (generalStore.openCommentItemId === model.id) {
+            generalStore.openCommentItemId = null;
+            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
+        } else {
+            generalStore.openCommentItemId = model.id;
+            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
+        }
     }
 }
 
@@ -1642,7 +1653,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
-    const dt = (event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null;
+    const dt = hasDataTransfer(event) ? event.dataTransfer : null;
 
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
@@ -1698,7 +1709,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { (model.original as unknown as HasAttachments).attachments?.push?.([localUrl]); } catch {} }
+                                try { model.original.addAttachment(localUrl); } catch { try { if (hasAttachments(model.original)) { model.original.attachments?.push?.([localUrl]); } } catch {} }
                                 // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
                                 try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
                             } else {
@@ -1717,7 +1728,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { (cand as unknown as HasAttachments).attachments?.push?.([localUrl]); } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { if (hasAttachments(cand)) { cand.attachments?.push?.([localUrl]); } } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
                                     }
                                 }
                             } catch {}
@@ -1756,9 +1767,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("text/plain") ?? "";
-        const selectionData = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = ((event as unknown as HasDataTransfer).dataTransfer as DataTransfer | null)?.getData?.("application/x-outliner-item") ?? "";
+        const plainText = dt?.getData?.("text/plain") ?? "";
+        const selectionData = dt?.getData?.("application/x-outliner-selection") ?? "";
+        const itemId = dt?.getData?.("application/x-outliner-item") ?? "";
 
         // Fire drop event
         dispatch("drop", {
@@ -1811,35 +1822,41 @@ onMount(() => {
             dropTargetPosition = null;
         };
 
+        const dropHandler = (e: Event) => handleDrop(e as DragEvent);
+        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
+
         if (displayRef) {
             displayForward = maybeForward;
-            displayRef.addEventListener('synthetic-drop', displayForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('synthetic-drop', displayForward as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
-            itemRef.addEventListener('synthetic-drop', itemForward as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            itemRef.addEventListener('synthetic-drop', itemForward as EventListener, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
         }
     } catch {}
     return () => {
+        const dropHandler = (e: Event) => handleDrop(e as DragEvent);
+        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
+
         try {
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: false } as EventListenerOptions);
             if (itemForward) {
                 itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
@@ -1868,12 +1885,12 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+            if (!(anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__) {
+                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
             } else {
 
-                const prev = (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as unknown as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev?.(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                const prev = (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__;
+                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev?.(el); } catch {} ; try { selfInvoker(el); } catch {} };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1887,12 +1904,12 @@ onMount(() => {
                     }
                 } catch {}
             };
-            if (!(anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+            if (!(anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__) {
+                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
             } else {
 
-                const prevAdd = (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__;
-                (anyWin as unknown as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd?.(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                const prevAdd = (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__;
+                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd?.(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
             }
         }
 
@@ -1910,13 +1927,15 @@ onMount(() => {
 
 
 onMount(() => {
+    const dropHandler = (e: Event) => handleDrop(e as DragEvent);
+    const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
     try {
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        displayRef?.addEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-        itemRef?.addEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('drop', dropHandler, { capture: false } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('dragover', dragOverHandler, { capture: true } as AddEventListenerOptions);
+        displayRef?.addEventListener?.('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
+        itemRef?.addEventListener?.('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+        itemRef?.addEventListener?.('drop', dropHandler, { capture: false } as AddEventListenerOptions);
     } catch {}
 
     // E2E file drop support removed - use proper Playwright file drop API instead
@@ -1926,12 +1945,12 @@ onMount(() => {
 
     return () => {
         try {
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: false } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
@@ -2119,8 +2138,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as HasUpdateText)?.updateText?.(t); } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; (model?.original as unknown as HasUpdateText)?.updateText?.(t); } catch {} }}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch {} }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch {} }}
                 >
                     <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
