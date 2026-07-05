@@ -620,11 +620,13 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
+        if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return [];
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
         try {
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
         } catch (e) {
+            if (e instanceof Error && e.message.includes("does not exist")) return [];
             logger.warn({ err: e }, "[app-schema] Items.childrenKeys error");
             return [];
         }
@@ -658,16 +660,20 @@ export class Items implements Iterable<Item> {
      * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
      */
     *iterateUnordered(): IterableIterator<Item> {
+        if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return;
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
         let keys: string[];
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
-            logger.warn({ err: e }, "[app-schema] Items.iterateUnordered error fetching children");
+            if (!(e instanceof Error && e.message.includes("does not exist"))) {
+                logger.warn({ err: e }, "[app-schema] Items.iterateUnordered error fetching children");
+            }
             return;
         }
         for (const key of keys) {
             // Use hasNode check instead of try-catch around yielding the item
+            if (this.tree.computedMap && !this.tree.computedMap.has(key)) continue;
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
