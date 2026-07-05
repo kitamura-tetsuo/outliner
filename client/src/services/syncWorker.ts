@@ -49,13 +49,20 @@ export class SyncWorker {
                 if (tableMap instanceof Y.Map) {
                     const rowEntries = Array.from(tableMap.entries());
                     if (rowEntries.length > 0) {
-                        const firstRow = rowEntries[0][1];
-                        if (firstRow instanceof Y.Map) {
-                            const cols = Array.from(firstRow.keys());
-                            const defs = cols.map(c => c === "id" ? "id TEXT PRIMARY KEY" : `${c}`).join(", ");
+                        const allCols = new Set<string>();
+                        for (const [, rowMap] of rowEntries) {
+                            if (rowMap instanceof Y.Map) {
+                                for (const col of rowMap.keys()) {
+                                    allCols.add(col);
+                                }
+                            }
+                        }
+                        const colsArray = Array.from(allCols);
+                        if (colsArray.length > 0) {
+                            const defs = colsArray.map(c => c === "id" ? "id TEXT PRIMARY KEY" : `${c}`).join(", ");
                             try {
                                 this.db.exec(`CREATE TABLE IF NOT EXISTS ${tableName} (${defs})`);
-                            } catch (e) {
+                            } catch {
                                 // Table might already exist
                             }
                         }
@@ -63,11 +70,11 @@ export class SyncWorker {
 
                     try {
                         this.db.exec(`DELETE FROM ${tableName}`);
-                    } catch (e) {
+                    } catch {
                         // Table might not exist
                     }
 
-                    for (const [rowId, rowMap] of rowEntries) {
+                    for (const [, rowMap] of rowEntries) {
                         if (rowMap instanceof Y.Map) {
                             const entries = Array.from(rowMap.entries());
                             const cols = entries.map(e => e[0]).join(", ");
@@ -109,11 +116,11 @@ export class SyncWorker {
                     tableMap = new Y.Map();
                     this.yDatabase.set(op.table, tableMap);
                 }
-                let rowMap = tableMap.get(op.pk) as Y.Map<unknown> | undefined;
+                let rowMap = tableMap.get(String(op.pk)) as Y.Map<unknown> | undefined;
                 if (!rowMap) {
                     rowMap = new Y.Map();
-                    rowMap.set("id", op.pk);
-                    tableMap.set(op.pk, rowMap);
+                    rowMap.set("id", String(op.pk));
+                    tableMap.set(String(op.pk), rowMap);
                 }
                 rowMap.set(op.column, op.value);
             } finally {
