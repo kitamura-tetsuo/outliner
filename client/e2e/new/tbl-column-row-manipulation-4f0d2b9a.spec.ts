@@ -19,7 +19,10 @@ test.describe("TBL-4f0d2b9a: Table column and row manipulation", () => {
         await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
         await page.evaluate(async () => {
             await window.initDb?.();
-            if (!window.rawExec) throw new Error("window.rawExec not defined"); window.rawExec("CREATE TABLE t(id TEXT PRIMARY KEY, a INTEGER, b INTEGER); INSERT INTO t VALUES('1',1,2); INSERT INTO t VALUES('2',3,4);");
+            if (!window.rawExec) throw new Error("window.rawExec not defined");
+            window.rawExec(
+                "CREATE TABLE t(id TEXT PRIMARY KEY, a INTEGER, b INTEGER); INSERT INTO t VALUES('1',1,2); INSERT INTO t VALUES('2',3,4);",
+            );
         });
 
         const sql = "SELECT id, a, b FROM t;";
