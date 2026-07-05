@@ -537,22 +537,26 @@ export class Items implements Iterable<Item> {
 export class Project {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
-    constructor(ydoc: Y.Doc, tree: YTree) {
+    public readonly yDatabase: Y.Map<unknown>;
+    constructor(ydoc: Y.Doc, tree: YTree, yDatabase?: Y.Map<unknown>) {
         this.ydoc = ydoc;
         this.tree = tree;
+        this.yDatabase = yDatabase || ydoc.getMap("database");
     }
 
     static createInstance(title: string): Project {
         const doc = new Y.Doc();
         const ymap = doc.getMap("orderedTree");
+        const yDatabase = doc.getMap("database");
         const tree = new YTree(ymap);
         const meta = doc.getMap("metadata");
         meta.set("title", title);
-        return new Project(doc, tree);
+        return new Project(doc, tree, yDatabase);
     }
 
     static fromDoc(doc: Y.Doc): Project {
         const ymap = doc.getMap("orderedTree");
+        const yDatabase = doc.getMap("database");
 
         const tree = new YTree(ymap);
 
@@ -607,7 +611,7 @@ export class Project {
             }
         };
 
-        return new Project(doc, tree);
+        return new Project(doc, tree, yDatabase);
     }
 
     get title(): string {
