@@ -16,6 +16,7 @@
     import { getLogger } from "../../../lib/logger";
     import type { Project as AppProject } from "../../../schema/app-schema";
     import { iterateItems } from "../../../utils/itemTraversal";
+    import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
@@ -173,40 +174,24 @@
 
             // Helper to find page by name
             const findPage = () => {
-                const items = project?.items;
-                if (items) {
+                if (!project?.items) return null;
+                const found = sharedFindPageByName(project.items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName);
+
+                if (!found) {
                     const titles: string[] = [];
-                    for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
+                    for (const p of iterateItems(project.items) as Iterable<{ text?: { toString?: () => string } }>) {
                         if (!p) continue;
-                        let textString;
                         try {
-                            if (typeof p.text?.toString === "function") {
-                                textString = p.text.toString();
-                            } else {
-                                textString = String(p.text ?? "");
-                            }
+                            titles.push(typeof p.text?.toString === "function" ? p.text.toString() : String(p.text ?? ""));
                         } catch (_e) {
-                            textString = "";
-                        }
-                        const t = textString;
-                        titles.push(t);
-
-                        let decodedPageName = pageName;
-                        try {
-                            decodedPageName = decodeURIComponent(pageName);
-                        } catch (_e) {
-                            // ignore URI malformed error
-                        }
-
-                        if (String(t).trim().toLowerCase() === String(pageName).trim().toLowerCase() || String(t).trim().toLowerCase() === String(decodedPageName).trim().toLowerCase()) {
-                            return p as unknown as import("../../../schema/app-schema").Item;
+                            titles.push("");
                         }
                     }
                     if (titles.length > 0) {
                         logger.error({ error: new Error("findPage failed") }, `loadProjectAndPage: findPage failed for "${pageName}". Found ${titles.length} items: ${titles.join(", ")}`);
                     }
                 }
-                return null;
+                return found as import("../../../schema/app-schema").Item | null;
             };
 
             targetPage = findPage();
@@ -320,17 +305,7 @@
             const findPageEffect = () => {
                 const items = store.project?.items;
                 if (!items) return null;
-                for (const p of iterateItems(items) as Iterable<{ text?: { toString?: () => string } }>) {
-                    if (!p) continue;
-                    let textString = "";
-                    try {
-                        textString = typeof p.text?.toString === "function" ? p.text.toString() : String(p.text ?? "");
-                    } catch (_e) {}
-                    if (String(textString).toLowerCase() === String(pageName).toLowerCase()) {
-                        return p as unknown as import("../../../schema/app-schema").Item;
-                    }
-                }
-                return null;
+                return sharedFindPageByName(items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName) as import("../../../schema/app-schema").Item | null;
             };
             const latestPage = findPageEffect();
             if (latestPage && latestPage.key !== store.currentPage.key) {

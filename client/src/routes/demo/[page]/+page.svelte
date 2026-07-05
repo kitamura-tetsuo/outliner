@@ -8,7 +8,7 @@
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
-import { iterateItems } from "../../../utils/itemTraversal";
+import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
         import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -30,33 +30,8 @@ import { iterateItems } from "../../../utils/itemTraversal";
     let isDestroyed = false;
 
     function findPage(name: string): Item | undefined {
-        const items = store.project?.items;
-        if (!items) return undefined;
-        // Use iterator for better performance ($O(N)$ vs $O(N^2 \log N)$)
-        for (const item of iterateItems(items)) {
-            if (!item) continue;
-            let textString;
-            try {
-                if (typeof item.text?.toString === "function") {
-                    textString = item.text.toString();
-                } else {
-                    textString = String(item.text ?? "");
-                }
-            } catch (_e) {
-                textString = "";
-            }
-            let decodedName = name;
-            try {
-                decodedName = decodeURIComponent(name);
-            } catch (_e) {
-                // ignore URI malformed error
-            }
-
-            if (textString.trim().toLowerCase() === String(name).trim().toLowerCase() || textString.trim().toLowerCase() === String(decodedName).trim().toLowerCase()) {
-                return item as Item;
-            }
-        }
-        return undefined;
+        if (!store.project?.items) return undefined;
+        return sharedFindPageByName(store.project.items, name) || undefined;
     }
 
     async function loadDemoPage(name: string) {
