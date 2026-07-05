@@ -2,6 +2,7 @@
 import { onMount, tick } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { parseCreateTable } from "../services/tableSchema";
+import TableDefinitionEditor from "./TableDefinitionEditor.svelte";
 
 interface Props {
     item: Item;
@@ -60,11 +61,11 @@ onMount(() => {
     };
 });
 
-async function createTable() {
+async function createTable(sql: string) {
     errorMessage = "";
     try {
-        const parsed = await parseCreateTable(draftSql);
-        item.defineTable(draftSql, parsed.columns.map(c => c.name));
+        const parsed = await parseCreateTable(sql);
+        item.defineTable(sql, parsed.columns.map(c => c.name));
         definitionMode = false;
         syncFromItem();
     } catch (error) {
@@ -106,38 +107,128 @@ async function commitEdit(rowIndex: number, column: string, value: string) {
     ) as HTMLElement | null;
     cell?.focus();
 }
+
+function downloadCSV() {
+    if (columns.length === 0) return;
+
+    // Create CSV content
+    const header = columns.join(",");
+    const csvRows = rows.map(row => {
+        return columns.map(col => {
+            const val = row[col] ?? "";
+            // Escape quotes and wrap in quotes if contains comma or newline
+            if (val.includes(",") || val.includes("\"") || val.includes("\n")) {
+                return `"${val.replace(/"/g, "\"\"")}"`;
+            }
+            return val;
+        }).join(",");
+    });
+
+    const csvContent = [header, ...csvRows].join("\n");
+
+    // Trigger download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    const match = schema.match(/CREATE TABLE\s+([a-zA-Z0-9_]+)/i);
+    const tableName = match ? match[1] : "export";
+    link.setAttribute("download", `${tableName}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function importCSV() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".csv";
+    input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target?.result as string;
+            if (!text) return;
+
+            try {
+                // Simple CSV parser
+                const lines = [];
+                let currentLine = [];
+                let currentField = "";
+                let inQuotes = false;
+
+                for (let i = 0; i < text.length; i++) {
+                    const char = text[i];
+
+                    if (char === "\"" && text[i + 1] === "\"") {
+                        currentField += "\"";
+                        i++; // skip next quote
+                    } else if (char === "\"") {
+                        inQuotes = !inQuotes;
+                    } else if (char === "," && !inQuotes) {
+                        currentLine.push(currentField);
+                        currentField = "";
+                    } else if (char === "\n" && !inQuotes) {
+                        currentLine.push(currentField);
+                        lines.push(currentLine);
+                        currentLine = [];
+                        currentField = "";
+                    } else if (char === "\r" && !inQuotes) {
+                        // ignore carriage return
+                    } else {
+                        currentField += char;
+                    }
+                }
+
+                if (currentField !== "" || currentLine.length > 0) {
+                    currentLine.push(currentField);
+                    lines.push(currentLine);
+                }
+
+                if (lines.length > 0) {
+                    // Start from line 1 to skip header (assuming header matches our columns)
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i];
+                        if (line.length === 1 && line[0] === "") continue; // skip empty lines
+
+                        const rowData: Record<string, string> = {};
+                        columns.forEach((col, idx) => {
+                            if (idx < line.length) {
+                                rowData[col] = line[idx];
+                            }
+                        });
+                        item.tableRows.addRow(rowData);
+                    }
+                    syncFromItem();
+                }
+            } catch (err) {
+                errorMessage = "Failed to parse CSV";
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
 </script>
 
 <div class="sql-table-grid" data-testid="sql-table-grid">
     {#if definitionMode}
-        <div class="definition">
-            <label class="definition-label" for="sql-table-ddl">Define table with SQL</label>
-            <textarea
-                id="sql-table-ddl"
-                bind:value={draftSql}
-                rows="6"
-                class="ddl-input"
-                placeholder="CREATE TABLE ..."
-                aria-label="CREATE TABLE statement"
-            ></textarea>
-            {#if errorMessage}
-                <p class="error" role="alert">{errorMessage}</p>
-            {/if}
-            <div class="definition-actions">
-                <button type="button" class="primary" onclick={createTable} aria-label="Create table from SQL">
-                    Create table
-                </button>
-                {#if columns.length > 0}
-                    <button type="button" onclick={() => (definitionMode = false)} aria-label="Cancel schema edit">
-                        Cancel
-                    </button>
-                {/if}
-            </div>
-        </div>
+        <TableDefinitionEditor
+            bind:draftSql
+            errorMessage={errorMessage}
+            columnsLength={columns.length}
+            onsave={createTable}
+            oncancel={() => (definitionMode = false)}
+        />
     {:else}
         <div class="grid-toolbar">
             <button type="button" onclick={addRow} aria-label="Add row">+ Row</button>
             <button type="button" onclick={editSchema} aria-label="Edit table schema">Edit schema</button>
+            <button type="button" onclick={downloadCSV} aria-label="Export to CSV">Export CSV</button>
+            <button type="button" onclick={importCSV} aria-label="Import from CSV">Import CSV</button>
         </div>
         <table class="grid">
             <thead>
@@ -219,40 +310,10 @@ async function commitEdit(rowIndex: number, column: string, value: string) {
     overflow-x: auto;
 }
 
-.definition-label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 4px;
-}
-
-.ddl-input {
-    width: 100%;
-    font-family: var(--mono-font, monospace);
-    padding: 6px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
-}
-
-.definition-actions,
 .grid-toolbar {
     display: flex;
     gap: 8px;
     margin: 8px 0;
-}
-
-.error {
-    color: #c00;
-    margin: 6px 0;
-}
-
-button.primary {
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 4px 12px;
-    cursor: pointer;
 }
 
 .grid {
@@ -315,5 +376,18 @@ button.primary {
     cursor: pointer;
     font-size: 16px;
     line-height: 1;
+}
+
+button {
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+    cursor: pointer;
+}
+button:hover {
+    background-color: #e5e7eb;
 }
 </style>

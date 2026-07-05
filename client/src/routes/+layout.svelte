@@ -18,6 +18,7 @@ import "../utils/ScrapboxFormatter";
 import Toolbar from "../components/Toolbar.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
+import DatabaseSidebar from "../components/DatabaseSidebar.svelte";
 // Defer services import; it depends on UserManager
 // Removed unused import: userPreferencesStore
 
@@ -31,6 +32,7 @@ let isAuthenticated = $state(false);
 
 // Sidebar state management - starts closed by default
 let isSidebarOpen = $state(false);
+let isDatabaseSidebarOpen = $state(false);
 
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser) {
@@ -428,7 +430,7 @@ onDestroy(async () => {
     <a href="#main-content" class="skip-link text-[41px] text-[42px] text-3xl">Skip to content</a>
 
     <!-- Global main toolbar with SearchBox (SEA-0001) -->
-    <Toolbar />
+    <Toolbar onToggleDatabaseSidebar={() => isDatabaseSidebarOpen = !isDatabaseSidebarOpen} />
 
     <!-- Sidebar toggle button -->
     <button type="button"
@@ -482,8 +484,11 @@ onDestroy(async () => {
     <!-- Sidebar component -->
     <Sidebar bind:isOpen={isSidebarOpen} />
 
+    <!-- Database Sidebar component -->
+    <DatabaseSidebar bind:isOpen={isDatabaseSidebarOpen} />
+
     <!-- Ensure content is not hidden behind fixed toolbar and accounts for sidebar -->
-    <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} tabindex="-1" style="outline: none;">
+    <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} class:with-database-sidebar={isDatabaseSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
 </div>
@@ -494,6 +499,18 @@ onDestroy(async () => {
     padding-top: 5rem;
     transition: margin-left 0.3s ease, width 0.3s ease;
     width: 100%;
+    box-sizing: border-box;
+}
+
+/* Add right margin when database sidebar is open */
+.main-content.with-database-sidebar {
+    margin-right: 250px;
+    width: calc(100% - 250px);
+    box-sizing: border-box;
+}
+
+.main-content.with-sidebar.with-database-sidebar {
+    width: calc(100% - 500px);
     box-sizing: border-box;
 }
 
