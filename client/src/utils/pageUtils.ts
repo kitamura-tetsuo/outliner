@@ -1,6 +1,6 @@
-import { safeDecodeURIComponent } from "./urlUtils";
 import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
+import { safeDecodeURIComponent } from "./urlUtils";
 
 export function findPageByName(items: Iterable<Item> | undefined | null, name: string): Item | null {
     if (!items) return null;
