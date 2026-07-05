@@ -1,4 +1,5 @@
 import { iterateItems } from "../utils/itemTraversal";
+import { findPageByName as sharedFindPageByName } from "../utils/pageUtils";
 /**
  * Module for handling link preview functionality
  *
@@ -65,15 +66,7 @@ export function pageExists(pageName: string, projectName?: string): boolean {
  */
 function findPageByName(name: string): Item | null {
     if (!store.pages?.current) return null;
-
-    // Search for a page with a matching name
-    for (const page of iterateItems(store.pages.current)) {
-        if (String(page.text).toLowerCase() === name.toLowerCase()) {
-            return page;
-        }
-    }
-
-    return null;
+    return sharedFindPageByName(store.pages.current, name);
 }
 
 /**

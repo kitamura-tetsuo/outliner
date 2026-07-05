@@ -10,7 +10,7 @@ interface HasDebug { debug: (...args: unknown[]) => void; }
 interface HasComments { comments?: unknown[]; setComments?: (arr: unknown[]) => void; }
 interface HasObserve { observe?: (cb: () => void) => void; unobserve?: (cb: () => void) => void; }
 interface HasTreeKey { tree?: { getNodeValueFromKey?: (k: string) => unknown }; key: string; }
-interface HasAttachments { attachments: string[][]; }
+interface HasAttachments { attachments: string[][] | { push: (arr: string[]) => void }; }
 interface HasComponentType { componentType?: string; }
 interface HasOpenComment { openCommentItemId?: string | null; }
 interface HasDataTransfer { dataTransfer: DataTransfer; }
@@ -508,7 +508,34 @@ const aliasTargetIdEffective = $derived.by(() => {
 // aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
 // Duplicate code related to attachments removed (moved to OutlinerItemAttachments.svelte)
 
+interface AttachmentTarget {
+    id?: string;
+    addAttachment?: (url: string) => void;
+    attachments?: string[][] | { push: (arr: string[]) => void };
+}
 
+function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
+    try {
+        if (cand.addAttachment) {
+            cand.addAttachment(url);
+        } else {
+            throw new Error('Method addAttachment not found');
+        }
+    } catch {
+        try {
+            if (hasAttachments(cand)) {
+                cand.attachments?.push?.([url]);
+            }
+        } catch {}
+    }
+    if (isTest && typeof window !== "undefined") {
+        try {
+            window.dispatchEvent(new CustomEvent('item-attachments-changed', {
+                detail: { id: String(cand.id) }
+            }));
+        } catch {}
+    }
+}
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
     function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
@@ -518,12 +545,7 @@ const aliasTargetIdEffective = $derived.by(() => {
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            try {
-                model.original.addAttachment(url);
-            } catch {
-                // Fallback for cases where addAttachment is not available
-                try { if (hasAttachments(model.original)) { model.original.attachments.push([url]); } } catch {}
-            }
+            addAttachmentSafely(model.original, url, IS_TEST);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -535,30 +557,25 @@ const aliasTargetIdEffective = $derived.by(() => {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            try { cand.addAttachment(url); } catch { try { if (hasAttachments(cand)) { cand.attachments.push([url]); } } catch {} }
-                            try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {}
+                            addAttachmentSafely(cand, url, IS_TEST);
                             break;
                         }
                     }
                 }
             } catch {}
+
+            // Always trigger change event for test environment stabilization with the targetId
+            if (IS_TEST && typeof window !== "undefined") {
+                try {
+                    window.dispatchEvent(new CustomEvent('item-attachments-changed', {
+                        detail: { id: String(targetId) }
+                    }));
+                } catch {}
+            }
         } else {
             // No target found in DOM, default to current model
-            try {
-                model.original.addAttachment(url);
-            } catch {
-                try { if (hasAttachments(model.original)) { model.original.attachments.push([url]); } } catch {}
-            }
+            addAttachmentSafely(model.original, url, IS_TEST);
         }
-
-        // Always trigger change event for test environment stabilization
-        try {
-            if (IS_TEST) {
-                window.dispatchEvent(new CustomEvent('item-attachments-changed', {
-                    detail: { id: String(targetId || model.id) }
-                }));
-            }
-        } catch {}
     }
 
 
@@ -1708,9 +1725,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                try { model.original.addAttachment(localUrl); } catch { try { if (hasAttachments(model.original)) { model.original.attachments?.push?.([localUrl]); } } catch {} }
-                                // Immediate update of self-mirror in test environment - attachmentsMirror is handled in OutlinerItemAttachments component
-                                try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
+                                addAttachmentSafely(model.original, localUrl, IS_TEST);
                             } else {
                                 dispatch("drop", {
                                     targetItemId: model.id,
@@ -1727,7 +1742,10 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) { try { cand?.addAttachment?.(localUrl); } catch { try { if (hasAttachments(cand)) { cand.attachments?.push?.([localUrl]); } } catch {} } try { if (IS_TEST) window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: mappedId } })); } catch {} break; }
+                                        if (cand && String(cand?.id) === String(mappedId)) {
+                                            addAttachmentSafely(cand, localUrl, IS_TEST);
+                                            break;
+                                        }
                                     }
                                 }
                             } catch {}

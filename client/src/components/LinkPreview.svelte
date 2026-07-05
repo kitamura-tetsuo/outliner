@@ -3,6 +3,7 @@ import { onDestroy, onMount } from "svelte";
 import { getLogger } from "$lib/logger";
 import { store } from "../stores/store.svelte";
 import type { Item } from "../schema/app-schema";
+import { findPageByName as sharedFindPageByName } from "../utils/pageUtils";
 
 const logger = getLogger("LinkPreview");
 
@@ -122,16 +123,8 @@ async function loadPreviewContent() {
 
 // Find page by name
 function findPageByName(name: string): Item | null {
-    if (!store.pages) return null;
-
-    // Search for page with matching name
-    for (const page of store.pages!.current!) {
-        if (String(page.text).toLowerCase() === name.toLowerCase()) {
-            return page;
-        }
-    }
-
-    return null;
+    if (!store.pages?.current) return null;
+    return sharedFindPageByName(store.pages.current, name);
 }
 
 // Check if page exists
