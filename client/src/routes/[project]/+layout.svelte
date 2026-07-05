@@ -13,7 +13,7 @@ import { store } from "../../stores/store.svelte";
 // This layout applies to both /[project] and /[project]/[page]
 let { data, children } = $props();
 
-import { Project as AppProject } from "../../schema/app-schema";
+import type { Project as AppProject } from "../../schema/app-schema";
 import type { Project as YjsProject } from "../../schema/yjs-schema";
 type Project = AppProject | YjsProject;
 import type { YjsClient } from "../../yjs/YjsClient";
@@ -48,7 +48,7 @@ async function loadProject(projectNameFromParam?: string) {
             yjsStore.yjsClient = client as YjsClient;
             project = client.getProject();
             // expose project to the global store so pages become available immediately
-            store.project = AppProject.fromDoc(project.ydoc);
+            store.project = project as unknown as AppProject;
         } else {
             // Only redirect if user is authenticated (to avoid redirecting during initial load)
             // If user is not authenticated, the onMount listener will retry once auth settles.
