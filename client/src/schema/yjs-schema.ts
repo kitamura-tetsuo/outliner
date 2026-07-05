@@ -19,8 +19,8 @@ export type CommentValueType = string | number;
 
 // Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
-    public readonly yArray: Y.Array<Y.Map<CommentValueType>>;
-    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, public readonly itemId?: string) {
+    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
+    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, private readonly itemId: string) {
         this.yArray = yArray;
     }
 
@@ -70,7 +70,7 @@ export class Item {
         public readonly key: string,
     ) {}
 
-    public get value(): Y.Map<any> {
+    private get value(): Y.Map<unknown> {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
         } catch {
@@ -92,7 +92,7 @@ export class Item {
         return this.value.get("id") as string;
     }
 
-    get text(): any {
+    get text(): Y.Text {
         return this.value.get("text") as Y.Text;
     }
 
@@ -232,14 +232,14 @@ export class Item {
     }
 }
 
-export class Items implements Iterable<Item> {
+export class Items {
     constructor(
         public readonly ydoc: Y.Doc,
         public readonly tree: YTree,
         public readonly parentKey: string,
     ) {}
 
-    public childrenKeys(): string[] {
+    private childrenKeys(): string[] {
         try {
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);

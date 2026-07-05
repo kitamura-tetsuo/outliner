@@ -130,7 +130,7 @@
                 );
                 projectForExport = snapshotToProject(snapshot);
                 try {
-                    store.project = projectForExport as any;
+                    store.project = projectForExport;
                 } catch {}
             }
         }
@@ -155,7 +155,7 @@
                         : snapshotToMarkdown(snapshot);
                 if (!projectForExport) {
                     try {
-                        store.project = snapshotToProject(snapshot) as any;
+                        store.project = snapshotToProject(snapshot);
                     } catch {}
                 }
             }
