@@ -151,7 +151,7 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const aliasesInSelect = Object.keys(tableMap);
     const additions = aliasesInSelect
         .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
-        .map(a => `${a}.id AS ${a}_pk`);
+        .map(a => `${a}.id AS ${a}_uuid`);
     if (additions.length === 0) {
         return { sql, aliases: aliasesInSelect, tableMap };
     }
@@ -166,7 +166,22 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     return { sql: modified, aliases, tableMap };
 }
 
+
+export function isSelectOnly(sql: string) {
+    let cleaned = sql
+        .replace(/'(''|[^'])*'/g, "")
+        .replace(/"(""|[^"])*"/g, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/--.*$/gm, "");
+
+    if (!/^\s*(SELECT|WITH)\b/i.test(cleaned)) return false;
+    if (/\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|PRAGMA|REPLACE|TRUNCATE|GRANT|REVOKE|ATTACH|DETACH)\b/i.test(cleaned)) return false;
+
+    return true;
+}
+
 export function runQuery(sql: string) {
+    if (!isSelectOnly(sql)) throw new Error("Only SELECT queries are allowed");
     if (!db) throw new Error("DB not initialized");
     const { sql: extended, tableMap } = extendQuery(sql);
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
@@ -196,12 +211,12 @@ export function runQuery(sql: string) {
 
     const pkAliases: Record<string, string> = {};
     res.columns.forEach(col => {
-        const m = col.match(/^(\w+)_pk$/);
+        const m = col.match(/^(\w+)_uuid$/);
         if (m) pkAliases[m[1]] = col;
     });
     const columnsMeta: ColumnMeta[] = [];
     res.columns.forEach(col => {
-        if (/^(\w+)_pk$/.test(col)) return;
+        if (/^(\w+)_uuid$/.test(col)) return;
         const aliasMatch = col.match(/^(\w+)_(.+)$/);
         let table: string | undefined;
         let column = col;
