@@ -16,11 +16,15 @@ test.describe("TBL-4f0d2b9a: Table column and row manipulation", () => {
     async function setupTable(page: any) {
         await page.goto("/table");
 
-        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => typeof (window as any).rawExec !== "undefined", { timeout: 10000 });
         await page.evaluate(async () => {
-            await window.initDb?.();
-            if (!window.rawExec) throw new Error("window.rawExec not defined");
-            window.rawExec(
+            // eslint-disable-next-line no-restricted-globals
+            await (window as any).initDb?.();
+            // eslint-disable-next-line no-restricted-globals
+            if (!(window as any).rawExec) throw new Error("window.rawExec not defined");
+            // eslint-disable-next-line no-restricted-globals
+            ((window as any).rawExec)(
                 "CREATE TABLE t(id TEXT PRIMARY KEY, a INTEGER, b INTEGER); INSERT INTO t VALUES('1',1,2); INSERT INTO t VALUES('2',3,4);",
             );
         });

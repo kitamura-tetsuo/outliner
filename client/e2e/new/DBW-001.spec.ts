@@ -18,11 +18,17 @@ test.describe("DBW-001: Client-Side SQL Database", () => {
         await page.waitForSelector("textarea");
 
         // Setup DB state without using UI to bypass SELECT restriction
-        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        // eslint-disable-next-line no-restricted-globals
+        await page.waitForFunction(() => typeof (window as any).rawExec !== "undefined", { timeout: 10000 });
         await page.evaluate(async () => {
-            await window.initDb?.();
-            if (!window.rawExec) throw new Error("window.rawExec not defined");
-            window.rawExec("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER); INSERT INTO tbl VALUES('1',1);");
+            // eslint-disable-next-line no-restricted-globals
+            await (window as any).initDb?.();
+            // eslint-disable-next-line no-restricted-globals
+            if (!(window as any).rawExec) throw new Error("window.rawExec not defined");
+            // eslint-disable-next-line no-restricted-globals
+            ((window as any).rawExec)(
+                "CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER); INSERT INTO tbl VALUES('1',1);",
+            );
         });
 
         const sql = "SELECT val AS tbl_val FROM tbl;";
