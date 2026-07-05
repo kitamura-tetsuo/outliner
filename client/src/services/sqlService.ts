@@ -243,3 +243,22 @@ export function applyEdit(info: EditInfo, value: unknown) {
         runQuery(currentSelect);
     }
 }
+
+export function syncYDatabase(ydb: import("yjs").Map<unknown>) {
+    if (worker) {
+        worker.connect(ydb);
+
+        // Remove previous listeners to prevent accumulation
+        worker.off?.("remote_change");
+
+        worker.on("remote_change", () => {
+            if (currentSelect) {
+                try {
+                    runQuery(currentSelect);
+                } catch {
+                    // Ignore transient query errors during sync
+                }
+            }
+        });
+    }
+}
