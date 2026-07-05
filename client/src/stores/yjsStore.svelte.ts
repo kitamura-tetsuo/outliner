@@ -1,5 +1,6 @@
 import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
+import { setWorkerYDatabase } from "../services/sqlService";
 
 class YjsStore {
     private _client: YjsClient | undefined;
@@ -47,6 +48,14 @@ class YjsStore {
 
             globalStore.project = connectedProject as unknown as import("../schema/app-schema").Project;
             this._lastProjectGuid = newGuid ?? null;
+
+            try {
+                if (connectedProject.yDatabase) {
+                    setWorkerYDatabase(connectedProject.yDatabase as import("yjs").Map<unknown>);
+                }
+            } catch (e) {
+                console.error("Failed to set yDatabase", e);
+            }
 
             // Attach listeners to update isConnected state reactively
             if (v.wsProvider) {

@@ -20,6 +20,14 @@ let SQL: SqlJsStatic | null = null;
 let db: Database | null = null;
 let currentSelect = "";
 let worker: SyncWorker | null = null;
+let currentYDatabase: import("yjs").Map<unknown> | null = null;
+
+export function setWorkerYDatabase(yDatabase: import("yjs").Map<unknown> | null) {
+    currentYDatabase = yDatabase;
+    if (worker && yDatabase) {
+        worker.setYDatabase(yDatabase);
+    }
+}
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 
@@ -94,6 +102,9 @@ export async function initDb() {
 
     db = new SQL.Database();
     worker = new SyncWorker(db as unknown as SqlJsDatabase);
+    if (currentYDatabase) {
+        worker.setYDatabase(currentYDatabase);
+    }
 }
 
 function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {

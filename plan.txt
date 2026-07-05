@@ -1,0 +1,259 @@
+1. Update `client/src/schema/app-schema.ts` to pass `yDatabase` to `Project`:
+```typescript
+<<<<<<< SEARCH
+export class Project {
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    constructor(ydoc: Y.Doc, tree: YTree) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+    }
+
+    static createInstance(title: string): Project {
+        const doc = new Y.Doc();
+        const ymap = doc.getMap("orderedTree");
+        const tree = new YTree(ymap);
+        const meta = doc.getMap("metadata");
+        meta.set("title", title);
+        return new Project(doc, tree);
+    }
+
+    static fromDoc(doc: Y.Doc): Project {
+        const ymap = doc.getMap("orderedTree");
+
+        const tree = new YTree(ymap);
+=======
+export class Project {
+    public readonly ydoc: Y.Doc;
+    public readonly tree: YTree;
+    public readonly yDatabase: Y.Map<unknown>;
+    constructor(ydoc: Y.Doc, tree: YTree, yDatabase?: Y.Map<unknown>) {
+        this.ydoc = ydoc;
+        this.tree = tree;
+        this.yDatabase = yDatabase || ydoc.getMap("database");
+    }
+
+    static createInstance(title: string): Project {
+        const doc = new Y.Doc();
+        const ymap = doc.getMap("orderedTree");
+        const yDatabase = doc.getMap("database");
+        const tree = new YTree(ymap);
+        const meta = doc.getMap("metadata");
+        meta.set("title", title);
+        return new Project(doc, tree, yDatabase);
+    }
+
+    static fromDoc(doc: Y.Doc): Project {
+        const ymap = doc.getMap("orderedTree");
+        const yDatabase = doc.getMap("database");
+
+        const tree = new YTree(ymap);
+>>>>>>> REPLACE
+```
+And return `new Project(doc, tree, yDatabase);` instead of `new Project(doc, tree);` for `fromDoc`.
+
+2. Update `client/src/services/sqlService.ts`:
+Add `setWorkerYDatabase`:
+```typescript
+<<<<<<< SEARCH
+let currentSelect = "";
+let worker: SyncWorker | null = null;
+=======
+let currentSelect = "";
+let worker: SyncWorker | null = null;
+let currentYDatabase: import("yjs").Map<unknown> | null = null;
+
+export function setWorkerYDatabase(yDatabase: import("yjs").Map<unknown> | null) {
+    currentYDatabase = yDatabase;
+    if (worker && yDatabase) {
+        worker.setYDatabase(yDatabase);
+    }
+}
+>>>>>>> REPLACE
+```
+Also inside `initDb()`:
+```typescript
+<<<<<<< SEARCH
+    db = new SQL.Database();
+    worker = new SyncWorker(db as unknown as SqlJsDatabase);
+}
+=======
+    db = new SQL.Database();
+    worker = new SyncWorker(db as unknown as SqlJsDatabase);
+    if (currentYDatabase) {
+        worker.setYDatabase(currentYDatabase);
+    }
+}
+>>>>>>> REPLACE
+```
+
+3. Update `client/src/stores/yjsStore.svelte.ts` to call `setWorkerYDatabase`:
+```typescript
+<<<<<<< SEARCH
+import { store as globalStore } from "./store.svelte";
+=======
+import { store as globalStore } from "./store.svelte";
+import { setWorkerYDatabase } from "../services/sqlService";
+>>>>>>> REPLACE
+```
+```typescript
+<<<<<<< SEARCH
+            globalStore.project = connectedProject as unknown as import("../schema/app-schema").Project;
+            this._lastProjectGuid = newGuid ?? null;
+
+            // Attach listeners to update isConnected state reactively
+=======
+            globalStore.project = connectedProject as unknown as import("../schema/app-schema").Project;
+            this._lastProjectGuid = newGuid ?? null;
+
+            try {
+                if (connectedProject.yDatabase) {
+                    setWorkerYDatabase(connectedProject.yDatabase as import("yjs").Map<unknown>);
+                }
+            } catch (e) {
+                console.error("Failed to set yDatabase", e);
+            }
+
+            // Attach listeners to update isConnected state reactively
+>>>>>>> REPLACE
+```
+
+4. Update `client/src/services/syncWorker.ts`:
+```typescript
+<<<<<<< SEARCH
+import * as Y from "yjs"; // Actually I need to check if Y is imported. If not, import it.
+=======
+import * as Y from "yjs";
+>>>>>>> REPLACE
+```
+(Wait, we'll replace the file contents safely).
+```typescript
+<<<<<<< SEARCH
+export class SyncWorker {
+    private listeners: Map<string, EventListener[]> = new Map();
+
+    // 'sql.js' does not ship proper TypeScript types. We use an interface to provide type safety.
+    constructor(private db: SqlJsDatabase) {}
+
+    applyOp(op: Op) {
+        const stmt = this.db.prepare(`UPDATE ${op.table} SET ${op.column}=? WHERE id=?`);
+        stmt.run([op.value, op.pk]);
+        stmt.free();
+        this.emit("applied", op);
+    }
+=======
+export class SyncWorker {
+    private listeners: Map<string, EventListener[]> = new Map();
+    private yDatabase?: Y.Map<unknown>;
+    private isRemoteUpdate = false;
+
+    // 'sql.js' does not ship proper TypeScript types. We use an interface to provide type safety.
+    constructor(private db: SqlJsDatabase) {}
+
+    setYDatabase(yDatabase: Y.Map<unknown>) {
+        this.yDatabase = yDatabase;
+        this.syncFromYjs();
+        this.yDatabase.observeDeep(() => {
+            if (!this.isRemoteUpdate) {
+                this.syncFromYjs();
+            }
+        });
+    }
+
+    private syncFromYjs() {
+        if (!this.yDatabase || !(this.db as any).exec) return;
+        this.isRemoteUpdate = true;
+        try {
+            for (const [tableName, tableMap] of this.yDatabase.entries()) {
+                if (tableMap instanceof Y.Map) {
+                    const rowEntries = Array.from(tableMap.entries());
+                    if (rowEntries.length > 0) {
+                        const firstRow = rowEntries[0][1];
+                        if (firstRow instanceof Y.Map) {
+                            const cols = Array.from(firstRow.keys());
+                            const defs = cols.map(c => c === 'id' ? 'id TEXT PRIMARY KEY' : `${c}`).join(', ');
+                            try {
+                                (this.db as any).exec(`CREATE TABLE IF NOT EXISTS ${tableName} (${defs})`);
+                            } catch (e) {
+                                // Table might already exist
+                            }
+                        }
+                    }
+
+                    try {
+                        (this.db as any).exec(`DELETE FROM ${tableName}`);
+                    } catch (e) {
+                        // Table might not exist
+                    }
+
+                    for (const [rowId, rowMap] of rowEntries) {
+                        if (rowMap instanceof Y.Map) {
+                            const entries = Array.from(rowMap.entries());
+                            const cols = entries.map(e => e[0]).join(', ');
+                            const placeholders = entries.map(() => '?').join(', ');
+                            const vals = entries.map(e => e[1]);
+                            try {
+                                const stmt = this.db.prepare(`INSERT INTO ${tableName} (${cols}) VALUES (${placeholders})`);
+                                stmt.run(vals);
+                                stmt.free();
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        }
+                    }
+                }
+            }
+        } finally {
+            this.isRemoteUpdate = false;
+        }
+    }
+
+    applyOp(op: Op) {
+        try {
+            const stmt = this.db.prepare(`UPDATE ${op.table} SET ${op.column}=? WHERE id=?`);
+            stmt.run([op.value, op.pk]);
+            stmt.free();
+        } catch (e) {
+            console.error(e);
+        }
+        this.emit("applied", op);
+
+        if (this.yDatabase) {
+            this.isRemoteUpdate = true;
+            try {
+                let tableMap = this.yDatabase.get(op.table) as Y.Map<unknown> | undefined;
+                if (!tableMap) {
+                    tableMap = new Y.Map();
+                    this.yDatabase.set(op.table, tableMap);
+                }
+                let rowMap = tableMap.get(op.pk) as Y.Map<unknown> | undefined;
+                if (!rowMap) {
+                    rowMap = new Y.Map();
+                    rowMap.set("id", op.pk);
+                    tableMap.set(op.pk, rowMap);
+                }
+                rowMap.set(op.column, op.value);
+            } finally {
+                this.isRemoteUpdate = false;
+            }
+        }
+    }
+>>>>>>> REPLACE
+```
+In `client/src/services/syncWorker.ts`, make sure to import `* as Y from "yjs"` at the top!
+I will need to verify if it imports `Y`. The current `syncWorker.ts` does not.
+```typescript
+<<<<<<< SEARCH
+// sql.js lacks type definitions in this project context. Use proper generic types.
+
+export interface Op {
+=======
+// sql.js lacks type definitions in this project context. Use proper generic types.
+import * as Y from "yjs";
+
+export interface Op {
+>>>>>>> REPLACE
+```
+
+5. Complete pre commit steps to ensure proper testing, verification, review, and reflection are done.
+6. Submit the change.
