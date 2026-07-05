@@ -81,7 +81,7 @@ $effect(() => {
                 {/each}
                 {#if preview.lines.length === 0 && !preview.image}
                     <div class="flex items-center justify-center h-full min-h-[3rem] rounded border border-dashed border-gray-200 bg-gray-50/50">
-                        <span class="text-xs text-gray-400 font-medium">Empty page - Click to start writing</span>
+                        <span class="text-xs text-gray-500 font-medium">Empty page - Click to start writing</span>
                     </div>
                 {/if}
             </div>
@@ -114,7 +114,7 @@ $effect(() => {
                         {#if preview.lines.length > 0}
                             {preview.lines[0]}
                         {:else}
-                            <span class="italic text-gray-400">Empty page - Click to start writing</span>
+                            <span class="italic text-gray-500">Empty page - Click to start writing</span>
                         {/if}
                     </span>
                 </div>
