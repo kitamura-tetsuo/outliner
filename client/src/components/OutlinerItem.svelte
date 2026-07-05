@@ -508,9 +508,19 @@ const aliasTargetIdEffective = $derived.by(() => {
 // aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
 // Duplicate code related to attachments removed (moved to OutlinerItemAttachments.svelte)
 
-function addAttachmentSafely(cand: any, url: string, isTest: boolean = false) {
+interface AttachmentTarget {
+    id?: string;
+    addAttachment?: (url: string) => void;
+    attachments?: string[][];
+}
+
+function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
     try {
-        cand.addAttachment(url);
+        if (cand.addAttachment) {
+            cand.addAttachment(url);
+        } else {
+            throw new Error('Method addAttachment not found');
+        }
     } catch {
         try {
             if (hasAttachments(cand)) {
