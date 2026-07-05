@@ -1,6 +1,7 @@
 <script lang="ts">
 
         import { page } from "$app/stores";
+import { Project as AppProject } from "../../schema/app-schema";
     import { onDestroy, onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../../components/AuthComponent.svelte";
@@ -68,11 +69,11 @@
             }
 
             // Update store
-            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
+            yjsStore.yjsClient = client;
             const project = client.getProject?.();
             if (project) {
-                store.project = project as unknown as NonNullable<typeof store.project>;
-                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${(project as unknown as { ydoc?: { guid?: string } }).ydoc?.guid}`);
+                store.project = AppProject.fromDoc(project.ydoc);
+                logger.info(`loadProject: Project loaded: "${project.title}", GUID: ${project.ydoc.guid}`);
             }
         } catch (err) {
             logger.error({ error: err }, "Failed to load project:");

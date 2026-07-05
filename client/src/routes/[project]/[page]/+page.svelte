@@ -14,7 +14,7 @@
         setupLinkPreviewHandlers,
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
-    import type { Project as AppProject } from "../../../schema/app-schema";
+    import { Project as AppProject } from "../../../schema/app-schema";
     import { iterateItems } from "../../../utils/itemTraversal";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { getYjsClientByProjectTitle } from "../../../services";
@@ -157,13 +157,13 @@
             }
 
             // 2. Update store
-            yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
+            yjsStore.yjsClient = client;
             const project = client.getProject?.();
 
             if (!project) {
                 throw new Error("Project data not found in client");
             }
-            store.project = project as unknown as AppProject;
+            store.project = AppProject.fromDoc(project.ydoc);
             logger.info(
                 `loadProjectAndPage: Project loaded: "${project.title}"`,
             );
@@ -175,7 +175,7 @@
             // Helper to find page by name
             const findPage = () => {
                 if (!project?.items) return null;
-                const found = sharedFindPageByName(project.items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName);
+                const found = sharedFindPageByName(store.project?.items, pageName);
 
                 if (!found) {
                     const titles: string[] = [];
@@ -305,7 +305,7 @@
             const findPageEffect = () => {
                 const items = store.project?.items;
                 if (!items) return null;
-                return sharedFindPageByName(items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName) as import("../../../schema/app-schema").Item | null;
+                return sharedFindPageByName(items, pageName) as import("../../../schema/app-schema").Item | null;
             };
             const latestPage = findPageEffect();
             if (latestPage && latestPage.key !== store.currentPage.key) {

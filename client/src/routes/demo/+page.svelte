@@ -1,6 +1,7 @@
 <script lang="ts">
 
     import { onDestroy, onMount } from "svelte";
+import { Project as AppProject } from "../../schema/app-schema";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
     import { getLogger } from "../../lib/logger";
@@ -42,9 +43,8 @@
                 throw new Error("Failed to connect to the demo project.");
             }
 
-            yjsStore.yjsClient = client as unknown as import("../../yjs/YjsClient").YjsClient;
-            const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
-            store.project = project;
+            yjsStore.yjsClient = client;
+            store.project = AppProject.fromDoc(client.getProject().ydoc);
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";

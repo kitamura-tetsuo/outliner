@@ -7,6 +7,7 @@
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle } from "../../../services";
+    import { Project as AppProject } from "../../../schema/app-schema";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { store } from "../../../stores/store.svelte";
@@ -54,8 +55,8 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 if (!client) {
                     throw new Error("Failed to connect to the demo project.");
                 }
-                yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
-                store.project = client.getProject() as unknown as import("../../../schema/app-schema").Project;
+                yjsStore.yjsClient = client;
+                store.project = AppProject.fromDoc(client.getProject().ydoc);
             }
 
             // Wait for sync until the page is found (15 seconds max)
