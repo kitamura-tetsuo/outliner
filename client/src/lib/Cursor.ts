@@ -1293,7 +1293,7 @@ export class Cursor implements CursorEditingContext {
         if (!root) return;
 
         // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root as any);
+        const deepest = getDeepestDescendant(root as unknown as Parameters<typeof getDeepestDescendant>[0]);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         this.applyToStore();
