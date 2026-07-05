@@ -95,7 +95,9 @@ export class SyncWorker {
                     if (fields.length === 0) continue;
 
                     const placeholders = fields.map(() => "?").join(", ");
-                    const stmt = this.db.prepare(`INSERT INTO "${tableName}" (${fields.map(f => `"${f}"`).join(", ")}) VALUES (${placeholders})`);
+                    const stmt = this.db.prepare(
+                        `INSERT INTO "${tableName}" (${fields.map(f => `"${f}"`).join(", ")}) VALUES (${placeholders})`,
+                    );
                     stmt.run(fields.map(f => {
                         const val = obj[f];
                         if (val !== null && typeof val === "object") {
@@ -129,7 +131,7 @@ export class SyncWorker {
                 const doUpdate = () => {
                     if (rowMap instanceof Y.Map) {
                         rowMap.set(op.column, op.value);
-                    } else if (typeof rowMap === 'object' && rowMap !== null) {
+                    } else if (typeof rowMap === "object" && rowMap !== null) {
                         tableMap.set(rowId, { ...rowMap, [op.column]: op.value });
                     }
                 };

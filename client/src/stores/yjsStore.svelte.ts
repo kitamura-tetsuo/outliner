@@ -1,9 +1,9 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
 import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
+import { initDb, syncYDatabase } from "../services/sqlService";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
-import { initDb, syncYDatabase } from "../services/sqlService";
 
 const logger = getLogger("yjsStore");
 
