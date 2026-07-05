@@ -27,7 +27,7 @@ export class SyncWorker {
     private listeners: Map<string, EventListener[]> = new Map();
     private ydb: Y.Map<unknown> | null = null;
     private isConstructing = false;
-    private observeHandler: ((events: Y.YEvent<any>[], tr: Y.Transaction) => void) | null = null;
+    private observeHandler: ((events: Y.YEvent<Y.AbstractType<unknown>>[], tr: Y.Transaction) => void) | null = null;
 
     // 'sql.js' does not ship proper TypeScript types. We use an interface to provide type safety.
     constructor(private db: SqlJsDatabase) {}
