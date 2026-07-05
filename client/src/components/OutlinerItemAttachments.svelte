@@ -1,7 +1,14 @@
 <script lang="ts">
+
+
 import { onMount, onDestroy } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
+
+
+interface HasObservableAttachments { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } }
+interface HasUnobserve { unobserve?: (cb: () => void) => void }
+interface HasToArrayAttachments { attachments?: { toArray?: () => unknown[] } }
 
 const logger = getLogger("OutlinerItemAttachments");
 
@@ -20,7 +27,7 @@ let attachmentsMirror = $state<string[]>([]);
 // Subscribe to attachments via Yjs observe
 onMount(() => {
     try {
-        const yArr = (item as unknown as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
+        const yArr = (item as unknown as HasObservableAttachments)?.attachments;
         const read = () => {
             try {
                 const arr = (yArr?.toArray?.() ?? []);
@@ -32,10 +39,10 @@ onMount(() => {
             read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
-            onDestroy(() => { try { (yArr as unknown as { unobserve?: (cb: () => void) => void })?.unobserve?.(yHandler); } catch {} });
+            onDestroy(() => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch {} });
         } else {
             // Fallback: Reflect once even if observe is unavailable
-            attachmentsMirror = (((item as unknown as { attachments?: { toArray?: () => unknown[] } })?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
+            attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
         }
     } catch {}
 });
@@ -47,7 +54,7 @@ onMount(() => {
             const eid = String((_e && (_e as CustomEvent).detail && (_e as CustomEvent).detail.id) ?? "");
             logger.debug({ eid, id: modelId }, '[OutlinerItemAttachments][TEST] item-attachments-changed received');
             if (eid && String(modelId) !== eid) return;
-            const yArr = (item as unknown as { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } })?.attachments;
+            const yArr = (item as unknown as HasObservableAttachments)?.attachments;
             const arr = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
