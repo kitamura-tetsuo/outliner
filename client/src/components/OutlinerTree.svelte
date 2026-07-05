@@ -1,10 +1,5 @@
 <script lang="ts">
 
-interface HasKeysChanged { keysChanged: unknown }
-interface HasTree { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string }
-interface HasIsReversed { isReversed?: boolean }
-interface HasAttachments { attachments: [string][] }
-interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
 
 
 
@@ -145,7 +140,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
         try {
             const ymap = pageItem?.ydoc?.getMap?.("orderedTree");
             if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
-                const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[]) => {
+                const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], _transaction: import('yjs').Transaction) => {
                     try {
                         if (
                             typeof window !== "undefined" &&
@@ -156,7 +151,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    (e as unknown as HasKeysChanged).keysChanged,
+                                    (e as import('yjs').YEvent<unknown> & { keysChanged: Set<string> }).keysChanged,
                                 );
                             });
                         }
@@ -198,10 +193,10 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                         });
                     }
                 };
-                ymap.observeDeep(handler as unknown as (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], transaction: import('yjs').Transaction) => void);
+                ymap.observeDeep(handler);
                 return () => {
                     try {
-                        ymap.unobserveDeep(handler as unknown as (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], transaction: import('yjs').Transaction) => void);
+                        ymap.unobserveDeep(handler);
                     } catch {}
                 };
             }
@@ -400,7 +395,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
         if (!itemViewModel) return;
 
 
-        const item = itemViewModel.original as unknown as HasTree;
+        const item = itemViewModel.original as import("../schema/app-schema").Item;
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -512,7 +507,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
         if (!itemViewModel) return;
 
 
-        const item = itemViewModel.original as unknown as HasTree;
+        const item = itemViewModel.original as import("../schema/app-schema").Item;
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -990,7 +985,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
 
-                newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
+                newItem = items.at(newIndex) as import("../schema/app-schema").Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -1029,7 +1024,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
 
         // Consider selection direction
 
-        const isReversed = (selection as unknown as HasIsReversed).isReversed || false;
+        const isReversed = (selection as typeof selection & { isReversed?: boolean }).isReversed || false;
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -1080,7 +1075,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
             let newItem = items.addNode(currentUser, newIndex);
             if (!newItem) {
 
-                newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
+                newItem = items.at(newIndex) as import("../schema/app-schema").Item;
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
@@ -1200,7 +1195,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                 let newItem = items.addNode(currentUser, newIndex);
                 if (!newItem) {
 
-                    newItem = (items.at ? items.at(newIndex) : (items as unknown as import("../schema/app-schema").Item[])[newIndex]) as import("../schema/app-schema").Item;
+                    newItem = items.at(newIndex) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     if (i === lines.length - 1) {
@@ -1670,7 +1665,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
 
-                    newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
+                    newItem = items.at(targetIndex + i) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     newItem.updateText(lines[i]);
@@ -1893,7 +1888,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                 targetItem.addAttachment(url);
             } catch {
 
-                try { (targetItem as unknown as HasAttachments).attachments.push([url]); } catch {}
+                try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
             }
         } else {
             // Create new item at top or bottom relative to targetItem
@@ -1915,7 +1910,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                     newItem.addAttachment(url);
                 } catch {
 
-                    try { (newItem as unknown as HasAttachments).attachments.push([url]); } catch {}
+                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                 }
             }
         }
@@ -1970,7 +1965,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                 let newItem = items.addNode(currentUser, targetIndex + i);
                 if (!newItem) {
 
-                    newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
+                    newItem = items.at(targetIndex + i) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
                     newItem.text = lines[i];
@@ -1984,7 +1979,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
 
-                const newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
+                const newItem = items.at(targetIndex + i) as import("../schema/app-schema").Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -2001,7 +1996,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
             for (let i = 1; i < lines.length; i++) {
                 items.addNode(currentUser, targetIndex + i);
 
-                const newItem = (items.at ? items.at(targetIndex + i) : (items as unknown as import("../schema/app-schema").Item[])[targetIndex + i]) as import("../schema/app-schema").Item;
+                const newItem = items.at(targetIndex + i) as import("../schema/app-schema").Item;
                 if (newItem) {
                     newItem.text = lines[i];
                 }
@@ -2096,7 +2091,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                                     newItem.addAttachment(url);
                                 } catch {
 
-                                    try { (newItem as unknown as HasAttachments).attachments.push([url]); } catch {}
+                                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
@@ -2105,7 +2100,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
                                     newItem.addAttachment(localUrl);
                                 } catch {
 
-                                    try { (newItem as unknown as HasAttachments).attachments.push([localUrl]); } catch {}
+                                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([localUrl]); } catch {}
                                 }
                                 try {
                                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
@@ -2351,7 +2346,7 @@ interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
 
-            const activeCursor = (editorOverlayStore as unknown as HasGetCursorForItem).getCursorForItem?.(activeItemId);
+            const activeCursor = (editorOverlayStore as typeof editorOverlayStore & { getCursorForItem?: (id: string) => unknown }).getCursorForItem?.(activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {
