@@ -16,11 +16,15 @@ test.describe("DBW-001: Client-Side SQL Database", () => {
     test("run basic SQL query", async ({ page }) => {
         await page.goto("/sql");
         await page.waitForSelector("textarea");
-        const sql = [
-            "CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER);",
-            "INSERT INTO tbl VALUES('1',1);",
-            "SELECT val AS tbl_val FROM tbl;",
-        ].join(" ");
+
+        // Setup DB state without using UI to bypass SELECT restriction
+        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        await page.evaluate(async () => {
+            await window.initDb?.();
+            if (!window.rawExec) throw new Error("window.rawExec not defined"); window.rawExec("CREATE TABLE tbl(id TEXT PRIMARY KEY, val INTEGER); INSERT INTO tbl VALUES('1',1);");
+        });
+
+        const sql = "SELECT val AS tbl_val FROM tbl;";
         await page.fill("textarea", sql);
         await page.click("text=Run");
         await expect(page.locator(".editable-query-grid")).toContainText("tbl_val");

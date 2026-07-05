@@ -15,12 +15,14 @@ test.describe("TBL-4f0d2b9a: Table column and row manipulation", () => {
 
     async function setupTable(page: any) {
         await page.goto("/table");
-        const sql = [
-            "CREATE TABLE t(id TEXT PRIMARY KEY, a INTEGER, b INTEGER);",
-            "INSERT INTO t VALUES('1',1,2);",
-            "INSERT INTO t VALUES('2',3,4);",
-            "SELECT id, a, b FROM t;",
-        ].join(" ");
+
+        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        await page.evaluate(async () => {
+            await window.initDb?.();
+            if (!window.rawExec) throw new Error("window.rawExec not defined"); window.rawExec("CREATE TABLE t(id TEXT PRIMARY KEY, a INTEGER, b INTEGER); INSERT INTO t VALUES('1',1,2); INSERT INTO t VALUES('2',3,4);");
+        });
+
+        const sql = "SELECT id, a, b FROM t;";
         await page.fill("textarea", sql);
         await page.click("text=Run");
         await page.waitForSelector(".editable-query-grid");

@@ -29,11 +29,15 @@ export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
 declare global {
     interface Window {
         queryStore?: typeof queryStore;
+        rawExec?: typeof rawExec;
+        initDb?: typeof initDb;
     }
 }
 
 if (typeof window !== "undefined") {
     window.queryStore = queryStore;
+    window.rawExec = rawExec;
+    window.initDb = initDb;
 }
 
 // Ensure the sql.js engine (SQL static) is initialized and return it.

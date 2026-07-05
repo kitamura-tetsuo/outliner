@@ -47,13 +47,14 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
 
         await page.goto("/table");
         await page.waitForSelector("textarea");
-        const sql = [
-            "CREATE TABLE t1(id TEXT PRIMARY KEY, a INTEGER);",
-            "CREATE TABLE t2(id TEXT PRIMARY KEY, b INTEGER);",
-            "INSERT INTO t1 VALUES('1',1);",
-            "INSERT INTO t2 VALUES('1',2);",
-            "SELECT t1.a AS t1_a, t2.b AS t2_b FROM t1 JOIN t2 ON t1.id=t2.id;",
-        ].join(" ");
+
+        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        await page.evaluate(async () => {
+            await window.initDb?.();
+            if (!window.rawExec) throw new Error("window.rawExec not defined"); window.rawExec("CREATE TABLE t1(id TEXT PRIMARY KEY, a INTEGER); CREATE TABLE t2(id TEXT PRIMARY KEY, b INTEGER); INSERT INTO t1 VALUES('1',1); INSERT INTO t2 VALUES('1',2);");
+        });
+
+        const sql = "SELECT t1.a AS t1_a, t2.b AS t2_b FROM t1 JOIN t2 ON t1.id=t2.id;";
         await page.fill("textarea", sql);
         await page.click("text=Run");
         await page.waitForSelector(".editable-query-grid");
@@ -75,11 +76,14 @@ test.describe("TBL-0001: Editable JOIN Table", () => {
         page.on("pageerror", error => console.log("PAGE ERROR:", error.message));
 
         await page.goto("/table");
-        const sql = [
-            "CREATE TABLE test_table(id TEXT PRIMARY KEY, value INTEGER);",
-            "INSERT INTO test_table VALUES('1', 1);",
-            "SELECT t.value AS t_value FROM test_table t;",
-        ].join(" ");
+
+        await page.waitForFunction(() => typeof window.rawExec !== "undefined", { timeout: 10000 });
+        await page.evaluate(async () => {
+            await window.initDb?.();
+            if (!window.rawExec) throw new Error("window.rawExec not defined"); window.rawExec("CREATE TABLE test_table(id TEXT PRIMARY KEY, value INTEGER); INSERT INTO test_table VALUES('1', 1);");
+        });
+
+        const sql = "SELECT t.value AS t_value FROM test_table t;";
         await page.fill("textarea", sql);
         await page.click("text=Run");
         await page.waitForSelector(".editable-query-grid");
