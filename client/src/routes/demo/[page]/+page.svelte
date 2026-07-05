@@ -54,8 +54,8 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 if (!client) {
                     throw new Error("Failed to connect to the demo project.");
                 }
-                yjsStore.yjsClient = client as unknown as import("../../../yjs/YjsClient").YjsClient;
-                store.project = client.getProject() as unknown as import("../../../schema/app-schema").Project;
+                Object.assign(yjsStore, { yjsClient: client });
+                Object.assign(store, { project: client.getProject() });
             }
 
             // Wait for sync until the page is found (15 seconds max)
