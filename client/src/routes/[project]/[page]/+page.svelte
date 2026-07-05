@@ -1,4 +1,5 @@
 <script lang="ts">
+import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { resolvePath } from "../../../utils/pathUtils";
     // Use SvelteKit page store from $app/stores (not $app/state)
     import { page } from "$app/stores";
@@ -31,18 +32,10 @@
     // NOTE: Must reference the value of $page (not the store object).
     // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
     let projectName: string = $derived.by(() => {
-        try {
-            return decodeURIComponent($page.params.project ?? "");
-        } catch (_e) {
-            return $page.params.project ?? "";
-        }
+        return safeDecodeURIComponent($page.params.project ?? "");
     });
     let pageName: string = $derived.by(() => {
-        try {
-            return decodeURIComponent($page.params.page ?? "");
-        } catch (_e) {
-            return $page.params.page ?? "";
-        }
+        return safeDecodeURIComponent($page.params.page ?? "");
     });
 
     // Debug log
