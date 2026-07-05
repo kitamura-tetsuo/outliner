@@ -10,7 +10,7 @@ interface HasDebug { debug: (...args: unknown[]) => void; }
 interface HasComments { comments?: unknown[]; setComments?: (arr: unknown[]) => void; }
 interface HasObserve { observe?: (cb: () => void) => void; unobserve?: (cb: () => void) => void; }
 interface HasTreeKey { tree?: { getNodeValueFromKey?: (k: string) => unknown }; key: string; }
-interface HasAttachments { attachments: string[][]; }
+interface HasAttachments { attachments: string[][] | { push: (arr: string[]) => void }; }
 interface HasComponentType { componentType?: string; }
 interface HasOpenComment { openCommentItemId?: string | null; }
 interface HasDataTransfer { dataTransfer: DataTransfer; }
@@ -511,7 +511,7 @@ const aliasTargetIdEffective = $derived.by(() => {
 interface AttachmentTarget {
     id?: string;
     addAttachment?: (url: string) => void;
-    attachments?: string[][];
+    attachments?: string[][] | { push: (arr: string[]) => void };
 }
 
 function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
