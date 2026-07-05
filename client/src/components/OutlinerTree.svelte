@@ -140,7 +140,7 @@
         try {
             const ymap = pageItem?.ydoc?.getMap?.("orderedTree");
             if (ymap && typeof (ymap as { observeDeep?: unknown }).observeDeep === "function") {
-                const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], transaction: import('yjs').Transaction) => {
+                const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], _transaction: import('yjs').Transaction) => {
                     try {
                         if (
                             typeof window !== "undefined" &&
@@ -151,7 +151,7 @@
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    (e as import('yjs').YEvent<any> & { keysChanged: Set<string> }).keysChanged,
+                                    (e as import('yjs').YEvent<unknown> & { keysChanged: Set<string> }).keysChanged,
                                 );
                             });
                         }
