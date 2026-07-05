@@ -18,6 +18,10 @@ const logger = getLogger("SearchPanel");
     import { iterateItems } from "../utils/itemTraversal";
     import type { Item, Project } from "../schema/app-schema";
 
+    interface HasText {
+        text?: string | { toString(): string };
+    }
+
     interface Props {
         isVisible?: boolean;
         pageItem?: Item | null;
@@ -428,18 +432,18 @@ const logger = getLogger("SearchPanel");
                                 <span
                                     class="result-page"
                                     data-testid="search-result-page"
-                                    >{(m.page as unknown as { text?: string }).text?.toString?.() ??
+                                    >{(m.page as unknown as HasText).text?.toString?.() ??
                                         String(
-                                            (m.page as unknown as { text?: string }).text ?? "",
+                                            (m.page as unknown as HasText).text ?? "",
                                         )}</span
                                 >
                                 -
                                 <span
                                     class="result-snippet"
                                     data-testid="search-result-snippet"
-                                    >{(m.item as unknown as { text?: string }).text?.toString?.() ??
+                                    >{(m.item as unknown as HasText).text?.toString?.() ??
                                         String(
-                                            (m.item as unknown as { text?: string }).text ?? "",
+                                            (m.item as unknown as HasText).text ?? "",
                                         )}</span
                                 >
                             </button>
