@@ -7,6 +7,7 @@ import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
 import {
     findNextItem,
+    getDeepestDescendant,
     findPreviousItem,
     getCurrentColumn,
     getCurrentLineIndex,
@@ -1235,10 +1236,12 @@ export class Cursor implements CursorEditingContext {
         const root = generalStore.currentPage;
         if (!root) return;
         let item: Item = root;
+        // The root itself is usually the page title; we want to go to the first item.
         if (item.items && (item.items as Items).length > 0) {
             const firstChild = (item.items as Items).at(0);
             if (firstChild) item = firstChild;
         }
+
         this.itemId = item.id;
         this.offset = 0;
         this.applyToStore();
@@ -1288,15 +1291,11 @@ export class Cursor implements CursorEditingContext {
         this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
-        while (item.items && (item.items as Items).length > 0) {
-            const items = item.items as Items;
-            const lastChild = items.at(items.length - 1);
-            if (!lastChild) break;
-            item = lastChild;
-        }
-        this.itemId = item.id;
-        this.offset = (item.text || "").length;
+
+        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
+        const deepest = getDeepestDescendant(root as any);
+        this.itemId = deepest.id;
+        this.offset = (deepest.text || "").length;
         this.applyToStore();
         store.startCursorBlink();
     }

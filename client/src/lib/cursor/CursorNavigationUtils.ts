@@ -14,7 +14,7 @@ function collectChildren(node: Item): Item[] {
     return children;
 }
 
-function getDeepestDescendant(node: Item): Item {
+export function getDeepestDescendant(node: Item): Item {
     const children = collectChildren(node);
     if (children.length === 0) {
         return node;
