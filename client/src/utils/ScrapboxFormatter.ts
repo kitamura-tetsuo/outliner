@@ -1099,7 +1099,14 @@ export class ScrapboxFormatter {
                     pages?: { current?: import("../schema/app-schema").Item[]; };
                     pageExists?: (name: string) => boolean;
                 };
-            }).appStore;
+            }).appStore
+                || (window as Window & typeof globalThis & {
+                    generalStore?: {
+                        project?: import("../schema/app-schema").Project;
+                        pages?: { current?: import("../schema/app-schema").Item[]; };
+                        pageExists?: (name: string) => boolean;
+                    };
+                }).generalStore;
             if (!store || !store.pages) return false;
 
             // Get current project
