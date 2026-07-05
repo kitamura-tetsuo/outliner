@@ -49,9 +49,13 @@ export type Comment = {
 
 // Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
-    private yArray: Y.Array<Y.Map<CommentValueType>>;
+    public yArray: Y.Array<Y.Map<CommentValueType>>;
     private _ensureInitialized?: () => Y.Array<Y.Map<CommentValueType>>;
-    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, ensureInitialized?: () => Y.Array<Y.Map<CommentValueType>>) {
+    constructor(
+        yArray: Y.Array<Y.Map<CommentValueType>>,
+        ensureInitialized?: () => Y.Array<Y.Map<CommentValueType>>,
+        public readonly itemId?: string,
+    ) {
         this.yArray = yArray;
         this._ensureInitialized = ensureInitialized;
     }
@@ -130,7 +134,7 @@ export class Comments {
 // Each row is a Y.Map keyed by column name so that concurrent edits to
 // different cells merge cleanly (cell-level CRDT granularity).
 export class TableRows {
-    private yArray: Y.Array<Y.Map<RowValueType>>;
+    public yArray: Y.Array<Y.Map<RowValueType>>;
     private _ensureInitialized?: () => Y.Array<Y.Map<RowValueType>>;
     constructor(yArray: Y.Array<Y.Map<RowValueType>>, ensureInitialized?: () => Y.Array<Y.Map<RowValueType>>) {
         this.yArray = yArray;
@@ -247,7 +251,7 @@ export class Item {
         this.key = key;
     }
 
-    private get value(): Y.Map<ItemValueType> {
+    public get value(): Y.Map<any> {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
         } catch {
@@ -284,7 +288,7 @@ export class Item {
         return (this.value.get("lastChanged") as number) ?? 0;
     }
 
-    get text(): string {
+    get text(): any {
         const t = this.value.get("text");
         if (t === undefined || t === null) return "";
 
@@ -619,7 +623,7 @@ export class Items implements Iterable<Item> {
         this.parentKey = parentKey;
     }
 
-    private childrenKeys(): string[] {
+    public childrenKeys(): string[] {
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
         try {
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
