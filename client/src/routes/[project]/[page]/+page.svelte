@@ -326,7 +326,7 @@
                     try {
                         textString = typeof p.text?.toString === "function" ? p.text.toString() : String(p.text ?? "");
                     } catch (_e) {}
-                    if (String(textString).toLowerCase() === String(pageName).toLowerCase()) {
+                    if (String(textString).trim().toLowerCase() === String(pageName).trim().toLowerCase()) {
                         return p as unknown as import("../../../schema/app-schema").Item;
                     }
                 }
