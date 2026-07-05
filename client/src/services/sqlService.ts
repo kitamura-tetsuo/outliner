@@ -1,6 +1,7 @@
 import initSqlJs, { type Database } from "sql.js";
 import sqlWasmUrl from "sql.js/dist/sql-wasm.wasm?url";
 import { writable } from "svelte/store";
+import { v4 as uuidv4 } from "uuid";
 import type { EditInfo } from "./editMapper";
 import { type Op, type SqlJsDatabase, SyncWorker } from "./syncWorker";
 
@@ -108,11 +109,13 @@ export async function initDb() {
     worker = new SyncWorker(db as unknown as SqlJsDatabase);
 }
 
-function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: Record<string, string>; } {
+function extendQuery(
+    sql: string,
+): { sql: string; aliases: string[]; tableMap: Record<string, string>; pkAliasMap: Record<string, string>; } {
     // Process only the last SELECT statement
     const lastSelectIndex = sql.toUpperCase().lastIndexOf("SELECT");
     if (lastSelectIndex === -1) {
-        return { sql, aliases: [], tableMap: {} };
+        return { sql, aliases: [], tableMap: {}, pkAliasMap: {} };
     }
 
     const selectPart = sql.slice(lastSelectIndex);
@@ -139,22 +142,27 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
         tableMap[alias] = table;
     }
     if (Object.keys(tableMap).length === 0) {
-        return { sql, aliases: [], tableMap };
+        return { sql, aliases: [], tableMap: {}, pkAliasMap: {} };
     }
 
     const selectMatch = selectPart.match(/select\s+([\s\S]+?)\s+from/i);
     if (!selectMatch) {
         const aliases = Object.keys(tableMap);
-        return { sql, aliases, tableMap };
+        return { sql, aliases, tableMap, pkAliasMap: {} };
     }
 
     const selectClause = selectMatch[1];
     const aliasesInSelect = Object.keys(tableMap);
+    const pkAliasMap: Record<string, string> = {};
     const additions = aliasesInSelect
         .filter(a => !new RegExp(`${a}.id`, "i").test(selectClause))
-        .map(a => `${a}.id AS ${a}_pk`);
+        .map(a => {
+            const pkAlias = `pk_${uuidv4().replace(/-/g, "")}`;
+            pkAliasMap[a] = pkAlias;
+            return `"${a}".id AS ${pkAlias}`;
+        });
     if (additions.length === 0) {
-        return { sql, aliases: aliasesInSelect, tableMap };
+        return { sql, aliases: aliasesInSelect, tableMap, pkAliasMap };
     }
 
     // Extract aliases from the tableMap keys
@@ -164,12 +172,23 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     const modifiedSelectPart = selectPart.replace(selectMatch[0], `SELECT ${newSelect} FROM`);
     const modified = beforeSelect + modifiedSelectPart;
 
-    return { sql: modified, aliases, tableMap };
+    return { sql: modified, aliases, tableMap, pkAliasMap };
 }
 
 export function runQuery(sql: string) {
     if (!db) throw new Error("DB not initialized");
-    const { sql: extended, tableMap } = extendQuery(sql);
+
+    const strippedSql = sql
+        .replace(/--.*$/gm, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/'(?:[^'\\]|\\.)*'/g, "")
+        .replace(/"(?:[^"\\]|\\.)*"/g, "");
+
+    if (/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(strippedSql) || /\bREPLACE\s+INTO\b/i.test(strippedSql)) {
+        throw new Error("Only SELECT queries are allowed");
+    }
+
+    const { sql: extended, tableMap, pkAliasMap } = extendQuery(sql);
     const idx = extended.toUpperCase().lastIndexOf("SELECT");
     currentSelect = idx >= 0 ? extended.slice(idx) : extended;
     const results = db.exec(extended);
@@ -196,13 +215,15 @@ export function runQuery(sql: string) {
     }
 
     const pkAliases: Record<string, string> = {};
-    res.columns.forEach(col => {
-        const m = col.match(/^(\w+)_pk$/);
-        if (m) pkAliases[m[1]] = col;
-    });
+    for (const [alias, uuid] of Object.entries(pkAliasMap)) {
+        pkAliases[alias] = uuid;
+    }
+
     const columnsMeta: ColumnMeta[] = [];
-    res.columns.forEach(col => {
-        if (/^(\w+)_pk$/.test(col)) return;
+    res.columns.forEach((col: string) => {
+        const isPkAlias = Object.values(pkAliasMap).includes(col);
+        if (isPkAlias) return;
+
         const aliasMatch = col.match(/^(\w+)_(.+)$/);
         let table: string | undefined;
         let column = col;
