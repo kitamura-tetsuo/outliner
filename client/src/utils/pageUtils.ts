@@ -5,7 +5,7 @@ import { safeDecodeURIComponent } from "./urlUtils";
 export function findPageByName(items: Iterable<Item> | undefined | null, name: string): Item | null {
     if (!items) return null;
 
-    let decodedName = safeDecodeURIComponent(name);
+    const decodedName = safeDecodeURIComponent(name);
 
     const targetNameRaw = String(name).trim().toLowerCase();
     const targetNameDecoded = String(decodedName).trim().toLowerCase();
