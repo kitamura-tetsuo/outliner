@@ -1247,7 +1247,7 @@ export class Cursor implements CursorEditingContext {
 
     // Extend selection to document start
     extendSelectionToDocumentStart() {
-        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
@@ -1266,7 +1266,7 @@ export class Cursor implements CursorEditingContext {
 
     // Extend selection to document end
     extendSelectionToDocumentEnd() {
-        const existingSelection = this.getSelectionForCurrentItem() || this.getSelection();
+        const existingSelection = this.getSelection();
 
         let startItemId, startOffset;
 
