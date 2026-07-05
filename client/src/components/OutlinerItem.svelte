@@ -18,7 +18,6 @@ interface E2EWindow {
     __E2E_FORCE_HANDLE_DROP__?: (el: Element) => void;
     __E2E_ADD_ATTACHMENT__?: (el: Element, text?: string) => void;
 }
-interface HasUpdateText { updateText?: (t: string) => void; }
 
 function hasDebug(obj: unknown): obj is HasDebug { return !!obj && typeof (obj as HasDebug).debug === 'function'; }
 function hasComments(obj: unknown): obj is HasComments { return !!obj && typeof obj === 'object' && 'comments' in obj; }
@@ -1822,41 +1821,35 @@ onMount(() => {
             dropTargetPosition = null;
         };
 
-        const dropHandler = (e: Event) => handleDrop(e as DragEvent);
-        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
-
         if (displayRef) {
             displayForward = maybeForward;
             displayRef.addEventListener('synthetic-drop', displayForward as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', dragOverHandler, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
             itemRef.addEventListener('synthetic-drop', itemForward as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
         }
     } catch {}
     return () => {
-        const dropHandler = (e: Event) => handleDrop(e as DragEvent);
-        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
-
         try {
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
+            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
             if (itemForward) {
                 itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
+            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
         } catch {}
     };
 });
