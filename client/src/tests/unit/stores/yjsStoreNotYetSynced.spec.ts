@@ -53,6 +53,6 @@ describe("yjsStore.notYetSynced", () => {
         const client = makeFakeYjsClient(PROJECT_ID);
         yjsStore.yjsClient = client;
 
-        expect(store.project).toBe(client.getProject());
+        expect(store.project?.ydoc).toBe(client.getProject().ydoc);
     });
 });

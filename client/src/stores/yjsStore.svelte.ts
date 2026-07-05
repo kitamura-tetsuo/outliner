@@ -1,6 +1,7 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
 import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
+import { Project as AppProject } from "../schema/app-schema";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
 
@@ -45,20 +46,20 @@ class YjsStore {
 
         if (v) {
             const connectedProject = v.getProject();
-            const newGuid: string | undefined = (connectedProject as unknown as { ydoc?: { guid?: string; }; })?.ydoc
-                ?.guid;
-            const existingGuid: string | undefined = (globalStore.project as unknown as { ydoc?: { guid?: string; }; })
-                ?.ydoc?.guid;
+            const connectedProjectAsAppSchema = AppProject.fromDoc(connectedProject.ydoc);
+
+            const newGuid: string | undefined = connectedProject.ydoc.guid;
+            const existingGuid: string | undefined = globalStore.project?.ydoc?.guid;
 
             // If the currently connected project refers to the same Y.Doc (GUID), skip
             // However, if store.project is a provisional/empty project, we want to update
             // to ensure we have the real connected project with seeded data
             if (
                 (existingGuid && newGuid && existingGuid === newGuid)
-                && globalStore.project === (connectedProject as unknown as import("../schema/app-schema").Project)
+                && globalStore.project === connectedProjectAsAppSchema
             ) {
                 // Still update to ensure reactivity is triggered
-                globalStore.project = connectedProject as unknown as import("../schema/app-schema").Project;
+                globalStore.project = connectedProjectAsAppSchema;
                 return;
             }
             // Furthermore, compare with the GUID set immediately before by self to improve idempotency
@@ -70,7 +71,6 @@ class YjsStore {
             // by the real synced one. Anything typed into it lives in a different Y.Doc and is
             // discarded here, so at minimum make that loss visible instead of silent.
             const previousProject = globalStore.project;
-            const connectedProjectAsAppSchema = connectedProject as unknown as import("../schema/app-schema").Project;
             if (
                 previousProject && previousProject !== connectedProjectAsAppSchema
                 && isProvisionalProject(previousProject)

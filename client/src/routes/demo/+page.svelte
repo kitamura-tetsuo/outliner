@@ -9,7 +9,8 @@
     const logger = getLogger("DemoListPage");
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
-        import Breadcrumb from "../../components/Breadcrumb.svelte";
+    import Breadcrumb from "../../components/Breadcrumb.svelte";
+    import { Project as AppProject } from "../../schema/app-schema";
 
     let isLoading = $state(true);
     let isResetting = $state(false);
@@ -42,9 +43,8 @@
                 throw new Error("Failed to connect to the demo project.");
             }
 
-            yjsStore.yjsClient = client as unknown as import("../../yjs/YjsClient").YjsClient;
-            const project = client.getProject() as unknown as import("../../schema/app-schema").Project;
-            store.project = project;
+            yjsStore.yjsClient = client as import("../../yjs/YjsClient").YjsClient;
+            store.project = AppProject.fromDoc(client.getProject().ydoc);
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
