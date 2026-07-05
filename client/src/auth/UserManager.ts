@@ -101,7 +101,7 @@ export class UserManager {
 
         // Set globally for access in test environment
         if (typeof window !== "undefined") {
-            (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = this;
+            Object.assign(window, { __USER_MANAGER__: this });
         }
 
         // Initialize auth listener asynchronously
@@ -544,6 +544,6 @@ export const userManager = new UserManager();
 
 if (process.env.NODE_ENV === "test") {
     if (typeof window !== "undefined") {
-        (window as unknown as { __USER_MANAGER__: UserManager; }).__USER_MANAGER__ = userManager;
+        Object.assign(window, { __USER_MANAGER__: userManager });
     }
 }
