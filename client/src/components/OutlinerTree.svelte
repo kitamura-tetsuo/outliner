@@ -1,4 +1,13 @@
 <script lang="ts">
+
+interface HasKeysChanged { keysChanged: unknown }
+interface HasTree { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string }
+interface HasIsReversed { isReversed?: boolean }
+interface HasAttachments { attachments: [string][] }
+interface HasGetCursorForItem { getCursorForItem?: (id: string) => unknown }
+
+
+
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
@@ -147,7 +156,7 @@
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    (e as unknown as { keysChanged: unknown }).keysChanged,
+                                    (e as unknown as HasKeysChanged).keysChanged,
                                 );
                             });
                         }
@@ -391,7 +400,7 @@
         if (!itemViewModel) return;
 
 
-        const item = itemViewModel.original as unknown as { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string };
+        const item = itemViewModel.original as unknown as HasTree;
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -503,7 +512,7 @@
         if (!itemViewModel) return;
 
 
-        const item = itemViewModel.original as unknown as { tree?: import("yjs-orderedtree").YTree; ydoc?: import("yjs").Doc; key?: string };
+        const item = itemViewModel.original as unknown as HasTree;
         const tree = item?.tree;
         const doc = item?.ydoc;
         const key = item?.key;
@@ -1020,7 +1029,7 @@
 
         // Consider selection direction
 
-        const isReversed = (selection as unknown as { isReversed?: boolean }).isReversed || false;
+        const isReversed = (selection as unknown as HasIsReversed).isReversed || false;
         const actualStartIndex = Math.min(startIndex, endIndex);
         const actualEndIndex = Math.max(startIndex, endIndex);
 
@@ -1884,7 +1893,7 @@
                 targetItem.addAttachment(url);
             } catch {
 
-                try { (targetItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
+                try { (targetItem as unknown as HasAttachments).attachments.push([url]); } catch {}
             }
         } else {
             // Create new item at top or bottom relative to targetItem
@@ -1906,7 +1915,7 @@
                     newItem.addAttachment(url);
                 } catch {
 
-                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
+                    try { (newItem as unknown as HasAttachments).attachments.push([url]); } catch {}
                 }
             }
         }
@@ -2087,7 +2096,7 @@
                                     newItem.addAttachment(url);
                                 } catch {
 
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
+                                    try { (newItem as unknown as HasAttachments).attachments.push([url]); } catch {}
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
@@ -2096,7 +2105,7 @@
                                     newItem.addAttachment(localUrl);
                                 } catch {
 
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
+                                    try { (newItem as unknown as HasAttachments).attachments.push([localUrl]); } catch {}
                                 }
                                 try {
                                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
@@ -2342,7 +2351,7 @@
             editorOverlayStore.setActiveItem(activeItemId);
             // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
 
-            const activeCursor = (editorOverlayStore as unknown as { getCursorForItem?: (id: string) => unknown }).getCursorForItem?.(activeItemId);
+            const activeCursor = (editorOverlayStore as unknown as HasGetCursorForItem).getCursorForItem?.(activeItemId);
             if (activeCursor) {
                 // GlobalTextArea will handle key events, let's just dispatch to document
                 const event = new KeyboardEvent('keydown', {
