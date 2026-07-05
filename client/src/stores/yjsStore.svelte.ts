@@ -3,6 +3,7 @@ import { projectRoomPath } from "../lib/yjs/roomPath";
 import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
+import { initDb, syncYDatabase } from "../services/sqlService";
 
 const logger = getLogger("yjsStore");
 
@@ -85,6 +86,18 @@ class YjsStore {
 
             globalStore.project = connectedProjectAsAppSchema;
             this._lastProjectGuid = newGuid ?? null;
+
+            // Sync database mappings
+            try {
+                const ydb = connectedProject.ydoc.getMap("yDatabase");
+                if (ydb) {
+                    initDb().then(() => syncYDatabase(ydb)).catch(e => {
+                        logger.error(e instanceof Error ? e : new Error(String(e)), "Failed to init yDatabase");
+                    });
+                }
+            } catch (e) {
+                logger.error(e instanceof Error ? e : new Error(String(e)), "Failed to sync yDatabase");
+            }
 
             // Attach listeners to update isConnected state reactively
             if (v.wsProvider) {
