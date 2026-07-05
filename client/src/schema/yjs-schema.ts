@@ -241,6 +241,7 @@ export class Items {
 
     private childrenKeys(): string[] {
         try {
+            if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return [];
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
@@ -330,18 +331,22 @@ export class Items {
      * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
      */
     *iterateUnordered(): IterableIterator<Item> {
+        if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return;
         if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
         let keys: string[];
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
-            logger.warn(
-                { parentKey: this.parentKey, error: e },
-                "[yjs-schema] Items.iterateUnordered error fetching children for parentKey",
-            );
+            if (!(e instanceof Error && e.message.includes("does not exist"))) {
+                logger.warn(
+                    { parentKey: this.parentKey, error: e },
+                    "[yjs-schema] Items.iterateUnordered error fetching children for parentKey",
+                );
+            }
             return;
         }
         for (const key of keys) {
+            if (this.tree.computedMap && !this.tree.computedMap.has(key)) continue;
             if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
