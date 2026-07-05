@@ -101,7 +101,7 @@ import { iterateItems } from "../../../utils/itemTraversal";
 
             store.currentPage = targetPage;
         } catch (err) {
-            logger.error({ error: err }, "Failed to load demo page");
+            logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
             isLoading = false;
