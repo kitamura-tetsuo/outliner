@@ -59,10 +59,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 store.project = AppProject.fromDoc(client.getProject().ydoc);
             }
 
-            // Wait for sync until the page is found (15 seconds max)
+            // Wait for sync until the page is found (15 seconds max for tests, 0.5s otherwise)
             let targetPage = findPage(name);
             let retries = 0;
-            while (!targetPage && retries < 150) {
+            const maxRetries = import.meta.env.MODE === 'test' ? 150 : 5;
+            while (!targetPage && retries < maxRetries) {
                 await new Promise(r => setTimeout(r, 100));
                 if (isDestroyed) return;
                 targetPage = findPage(name);

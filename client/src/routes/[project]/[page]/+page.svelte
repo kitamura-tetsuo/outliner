@@ -188,7 +188,7 @@
                         }
                     }
                     if (titles.length > 0) {
-                        logger.error({ error: new Error("findPage failed") }, `loadProjectAndPage: findPage failed for "${pageName}". Found ${titles.length} items: ${titles.join(", ")}`);
+                        logger.info(`loadProjectAndPage: findPage did not find "${pageName}". Found ${titles.length} items: ${titles.slice(0, 5).join(", ")}${titles.length > 5 ? '...' : ''}`);
                     }
                 }
                 return found as import("../../../schema/app-schema").Item | null;
@@ -201,8 +201,8 @@
                 logger.info(
                     `loadProjectAndPage: Page "${pageName}" not found initially. Retrying...`,
                 );
-                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync
-                const maxRetries = 150;
+                // Wait up to 15 seconds (150 * 100ms) for Yjs to sync in tests, or 0.5s otherwise
+                const maxRetries = import.meta.env.MODE === 'test' ? 150 : 5;
                 for (let i = 0; i < maxRetries; i++) {
                     await new Promise((r) => setTimeout(r, 100));
                     targetPage = findPage();
@@ -244,10 +244,7 @@
             } else {
                 // If creation failed, etc.
                 pageNotFound = true;
-                logger.error(
-                    { error: new Error(`Failed to find or create page "${pageName}"`) },
-                    "loadProjectAndPage: Failed to find or create page",
-                );
+                logger.info(`loadProjectAndPage: Page "${pageName}" not found or failed to create`);
             }
         } catch (err) {
             logger.error({ error: err }, "Failed to load project and page:");
