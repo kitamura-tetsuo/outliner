@@ -166,7 +166,6 @@ function extendQuery(sql: string): { sql: string; aliases: string[]; tableMap: R
     return { sql: modified, aliases, tableMap };
 }
 
-
 export function isSelectOnly(sql: string) {
     let cleaned = sql
         .replace(/'(''|[^'])*'/g, "")
@@ -175,7 +174,9 @@ export function isSelectOnly(sql: string) {
         .replace(/--.*$/gm, "");
 
     if (!/^\s*(SELECT|WITH)\b/i.test(cleaned)) return false;
-    if (/\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|PRAGMA|REPLACE|TRUNCATE|GRANT|REVOKE|ATTACH|DETACH)\b/i.test(cleaned)) return false;
+    if (
+        /\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|PRAGMA|REPLACE|TRUNCATE|GRANT|REVOKE|ATTACH|DETACH)\b/i.test(cleaned)
+    ) return false;
 
     return true;
 }
