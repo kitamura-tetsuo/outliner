@@ -1,4 +1,5 @@
 import { iterateItems } from "./itemTraversal";
+import { findPageByName } from "./pageUtils";
 /**
  * Interface representing a format token
  */
@@ -1126,14 +1127,7 @@ export class ScrapboxFormatter {
 
             // Fallback: Search for page with matching name (O(N))
             if (store.pages?.current) {
-                const targetName = pageName.toLowerCase();
-                for (const page of iterateItems(store.pages.current)) {
-                    // Ensure page.text is a string before calling toLowerCase
-                    const pageText = String(page?.text ?? "");
-                    if (pageText.toLowerCase() === targetName) {
-                        return true;
-                    }
-                }
+                return findPageByName(store.pages.current, pageName) !== null;
             }
 
             return false;
