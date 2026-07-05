@@ -1,4 +1,5 @@
 <script lang="ts">
+import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
@@ -17,11 +18,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     const logger = getLogger("DemoPageView");
 
     let pageName: string = $derived.by(() => {
-        try {
-            return decodeURIComponent($page.params.page ?? "");
-        } catch (_e) {
-            return $page.params.page ?? "";
-        }
+        return safeDecodeURIComponent($page.params.page ?? "");
     });
 
     let isLoading = $state(true);
@@ -105,11 +102,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         const unsub = page.subscribe(($p) => {
             let name = $p.params?.page ?? "";
             if (!name) return;
-            try {
-                name = decodeURIComponent(name);
-            } catch (_e) {
-                // ignore URI malformed error
-            }
+            name = safeDecodeURIComponent(name);
             if (name === lastLoaded) return;
             lastLoaded = name;
             loadDemoPage(name);

@@ -1,4 +1,5 @@
 <script lang="ts">
+import { safeDecodeURIComponent } from "../utils/urlUtils";
 
 
 import { onMount, onDestroy } from "svelte";
@@ -85,11 +86,7 @@ function getAttachmentLabel(url: string): string {
         const pathname = urlObj.pathname;
         const filename = pathname.split('/').pop();
         if (filename) {
-            try {
-                return `View attachment: ${decodeURIComponent(filename)}`;
-            } catch {
-                return `View attachment: ${filename}`;
-            }
+            return `View attachment: ${safeDecodeURIComponent(filename)}`;
         }
     } catch {}
     return "View attachment";

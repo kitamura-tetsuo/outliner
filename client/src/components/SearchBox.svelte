@@ -1,4 +1,5 @@
 <script lang="ts">
+import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
@@ -272,11 +273,7 @@ const logger = getLogger("SearchBox");
                         .split("/")
                         .filter(Boolean);
                     if (pathParts[0]) {
-                        try {
-                            projTitle = decodeURIComponent(pathParts[0]);
-                        } catch {
-                            projTitle = pathParts[0];
-                        }
+                        projTitle = safeDecodeURIComponent(pathParts[0]);
                     } else {
                         projTitle = "";
                     }

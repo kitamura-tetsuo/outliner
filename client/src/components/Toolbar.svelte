@@ -1,4 +1,5 @@
 <script lang="ts">
+import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
@@ -72,11 +73,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	                    const pathParts = window.location.pathname.split("/").filter(Boolean);
 	                    let projectTitle = "";
 	                    if (pathParts[0]) {
-	                        try {
-	                            projectTitle = decodeURIComponent(pathParts[0]);
-	                        } catch {
-	                            projectTitle = pathParts[0];
-	                        }
+	                        projectTitle = safeDecodeURIComponent(pathParts[0]);
 	                    }
 	                    const service = globals.__FLUID_SERVICE__;
 	                    if (service && projectTitle) {

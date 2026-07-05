@@ -1,15 +1,11 @@
 import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
+import { safeDecodeURIComponent } from "./urlUtils";
 
 export function findPageByName(items: Iterable<Item> | undefined | null, name: string): Item | null {
     if (!items) return null;
 
-    let decodedName = name;
-    try {
-        decodedName = decodeURIComponent(name);
-    } catch (_e) {
-        // ignore URI malformed error
-    }
+    const decodedName = safeDecodeURIComponent(name);
 
     const targetNameRaw = String(name).trim().toLowerCase();
     const targetNameDecoded = String(decodedName).trim().toLowerCase();

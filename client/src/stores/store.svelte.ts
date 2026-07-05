@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { iterateItems } from "../utils/itemTraversal";
+import { safeDecodeURIComponent } from "../utils/urlUtils";
 const logger = getLogger("store");
 import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
@@ -381,9 +382,7 @@ if (typeof window !== "undefined") {
         if (!store.project) {
             const parts = window.location.pathname.split("/").filter(Boolean);
             let title = parts[0] || "Untitled Project";
-            try {
-                title = decodeURIComponent(title);
-            } catch {}
+            title = safeDecodeURIComponent(title);
             const provisional = Project.createInstance(title);
             provisionalDocs.add(provisional.ydoc);
             (store as { project: Project; }).project = provisional;
