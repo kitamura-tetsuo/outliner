@@ -8,7 +8,6 @@
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
-import { iterateItems } from "../../../utils/itemTraversal";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";

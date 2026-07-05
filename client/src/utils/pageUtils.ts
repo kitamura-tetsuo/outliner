@@ -1,7 +1,7 @@
-import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
+import type { Item } from "../schema/app-schema";
 
-export function findPageByName(items: any | undefined | null, name: string): Item | null {
+export function findPageByName(items: Iterable<Item> | undefined | null, name: string): Item | null {
     if (!items) return null;
 
     let decodedName = name;
@@ -16,7 +16,7 @@ export function findPageByName(items: any | undefined | null, name: string): Ite
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;
-        let textString = "";
+        let textString: string;
         try {
             if (typeof p.text?.toString === "function") {
                 textString = p.text.toString();

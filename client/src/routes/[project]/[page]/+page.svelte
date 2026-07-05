@@ -175,7 +175,7 @@
             // Helper to find page by name
             const findPage = () => {
                 if (!project?.items) return null;
-                const found = sharedFindPageByName(project.items, pageName);
+                const found = sharedFindPageByName(project.items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName);
 
                 if (!found) {
                     const titles: string[] = [];
@@ -305,7 +305,7 @@
             const findPageEffect = () => {
                 const items = store.project?.items;
                 if (!items) return null;
-                return sharedFindPageByName(items, pageName) as import("../../../schema/app-schema").Item | null;
+                return sharedFindPageByName(items as unknown as Iterable<import("../../../schema/app-schema").Item>, pageName) as import("../../../schema/app-schema").Item | null;
             };
             const latestPage = findPageEffect();
             if (latestPage && latestPage.key !== store.currentPage.key) {
