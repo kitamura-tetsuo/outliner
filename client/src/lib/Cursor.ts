@@ -7,10 +7,10 @@ import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
 import {
     findNextItem,
-    getDeepestDescendant,
     findPreviousItem,
     getCurrentColumn,
     getCurrentLineIndex,
+    getDeepestDescendant,
     getLineEndOffset,
     getLineStartOffset,
     getSelectionForUser,
