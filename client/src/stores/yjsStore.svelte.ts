@@ -1,6 +1,6 @@
+import { setWorkerYDatabase } from "../services/sqlService";
 import type { YjsClient } from "../yjs/YjsClient";
 import { store as globalStore } from "./store.svelte";
-import { setWorkerYDatabase } from "../services/sqlService";
 
 class YjsStore {
     private _client: YjsClient | undefined;

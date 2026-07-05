@@ -74,7 +74,9 @@ export class SyncWorker {
                             const placeholders = entries.map(() => "?").join(", ");
                             const vals = entries.map(e => e[1]);
                             try {
-                                const stmt = this.db.prepare(`INSERT INTO ${tableName} (${cols}) VALUES (${placeholders})`);
+                                const stmt = this.db.prepare(
+                                    `INSERT INTO ${tableName} (${cols}) VALUES (${placeholders})`,
+                                );
                                 stmt.run(vals);
                                 stmt.free();
                             } catch (e) {
