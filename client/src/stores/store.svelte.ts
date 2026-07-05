@@ -58,7 +58,7 @@ export class GeneralStore {
                     for (const p of items) {
                         if (!p) continue;
                         const t = p?.text?.toString?.() ?? String(p?.text ?? "");
-                        if (String(t).toLowerCase() === String(title).toLowerCase()) {
+                        if (String(t).trim().toLowerCase() === String(title).trim().toLowerCase()) {
                             next = p;
                             break;
                         }
@@ -162,7 +162,7 @@ export class GeneralStore {
                         // production; normalize with String() before comparing.
                         const text = String(page.text ?? "");
                         if (text) {
-                            newNames.add(text.toLowerCase());
+                            newNames.add(text.trim().toLowerCase());
                         }
                     } catch (err) {
                         logger.warn("Failed to read page text while rebuilding page names cache", err);
@@ -200,7 +200,7 @@ export class GeneralStore {
      */
     public hasPageName(title: string): boolean {
         // Normalizes title to lowercase for comparison, ensuring O(1) case-insensitive lookup
-        return this._pageNamesCache.has(String(title).toLowerCase());
+        return this._pageNamesCache.has(String(title).trim().toLowerCase());
     }
 
     /**
@@ -244,7 +244,7 @@ export class GeneralStore {
         try {
             // Rely on SvelteSet fine-grained reactivity instead of global pagesVersion
             if (!name) return false;
-            return this._pageNamesCache.has(name.toLowerCase());
+            return this._pageNamesCache.has(name.trim().toLowerCase());
         } catch {
             return false;
         }
