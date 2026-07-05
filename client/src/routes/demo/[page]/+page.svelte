@@ -9,6 +9,7 @@
     import { getYjsClientByProjectTitle } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
+    import { Project as AppProject } from "../../../schema/app-schema";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
         import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -54,8 +55,8 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 if (!client) {
                     throw new Error("Failed to connect to the demo project.");
                 }
-                Object.assign(yjsStore, { yjsClient: client });
-                Object.assign(store, { project: client.getProject() });
+                yjsStore.yjsClient = client;
+                store.project = AppProject.fromDoc(client.getProject().ydoc);
             }
 
             // Wait for sync until the page is found (15 seconds max)
