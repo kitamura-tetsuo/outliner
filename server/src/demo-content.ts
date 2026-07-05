@@ -61,7 +61,8 @@ const DEMO_ATTACHMENT_IMAGE =
 
 // A self-contained SQL query that builds its own data and selects it, so the
 // chart component renders a deterministic bar chart with no external source.
-const DEMO_CHART_QUERY = "CREATE TABLE sales(id TEXT PRIMARY KEY, month TEXT, revenue INTEGER);"
+const DEMO_CHART_QUERY =
+    "DROP TABLE IF EXISTS sales; CREATE TABLE sales(id TEXT PRIMARY KEY, month TEXT, revenue INTEGER);"
     + ' INSERT INTO sales VALUES("1","Jan",120),("2","Feb",180),("3","Mar",150),("4","Apr",210);'
     + " SELECT month AS sales_month, revenue AS sales_revenue FROM sales";
 
