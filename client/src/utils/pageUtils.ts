@@ -1,5 +1,5 @@
-import { iterateItems } from "./itemTraversal";
 import type { Item } from "../schema/app-schema";
+import { iterateItems } from "./itemTraversal";
 
 export function findPageByName(items: any | undefined | null, name: string): Item | null {
     if (!items) return null;
