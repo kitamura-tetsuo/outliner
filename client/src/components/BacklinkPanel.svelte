@@ -5,6 +5,7 @@ import {
     collectBacklinks,
 } from "$lib/backlinkCollector";
 import { getLogger } from "$lib/logger";
+import { yjsStore } from "../stores/yjsStore.svelte";
 import { store } from "../stores/store.svelte";
 import {
     onDestroy,
@@ -26,9 +27,18 @@ let hasLoaded = $derived.by(() => {
     return !!store.pages?.current;
 });
 
+let debouncedPagesVersion = $state(0);
+$effect(() => {
+    const v = store.pagesVersion;
+    const handler = setTimeout(() => {
+        debouncedPagesVersion = v;
+    }, 500);
+    return () => clearTimeout(handler);
+});
+
 let backlinks = $derived.by(() => {
-    void store.pagesVersion;
-    if (!pageName || !hasLoaded) return [];
+    void debouncedPagesVersion;
+    if (!pageName || !hasLoaded || yjsStore.notYetSynced) return [];
 
     try {
         return collectBacklinks(pageName);
