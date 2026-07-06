@@ -40,10 +40,25 @@ export async function startServer(
     overrides: ServerOverrides = {},
 ) {
     // SECURITY CRITICAL: Prevent accidental authentication bypass in production
-    if (process.env.ALLOW_TEST_ACCESS === "true" && process.env.NODE_ENV === "production") {
-        throw new Error(
-            "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled in PRODUCTION! Authentication bypass is active. Server refusing to start.",
-        );
+    if (process.env.ALLOW_TEST_ACCESS === "true") {
+        if (process.env.NODE_ENV === "production") {
+            throw new Error(
+                "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled in PRODUCTION! Authentication bypass is active. Server refusing to start.",
+            );
+        }
+
+        const allowedOrigins = config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean);
+        if (allowedOrigins.length > 0) {
+            const hasNonLocalhostOrigin = allowedOrigins.some(origin => {
+                return !origin.includes("localhost") && !origin.includes("127.0.0.1");
+            });
+
+            if (hasNonLocalhostOrigin) {
+                throw new Error(
+                    "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled with a non-localhost CORS ORIGIN_ALLOWLIST. Authentication bypass is active. Server refusing to start.",
+                );
+            }
+        }
     }
 
     const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
