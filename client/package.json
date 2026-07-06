@@ -50,7 +50,7 @@
         "@stryker-mutator/vitest-runner": "^9.6.0",
         "@sveltejs/adapter-auto": "^7.0.1",
         "@sveltejs/adapter-static": "^3.0.8",
-        "@sveltejs/kit": "^2.68.0",
+        "@sveltejs/kit": "^2.69.1",
         "@sveltejs/vite-plugin-svelte": "^7.1.2",
         "@tailwindcss/cli": "^4.3.2",
         "@tailwindcss/forms": "^0.5.10",
@@ -93,7 +93,7 @@
         "ts-prune": "^0.10.3",
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.62.1",
-        "vite": "^8.1.0",
+        "vite": "^8.1.3",
         "vitest": "^4.1.1",
         "ws": "^8.21.0"
     },
