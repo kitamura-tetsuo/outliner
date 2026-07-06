@@ -188,11 +188,10 @@ export function getBacklinkCount(pageName: string): number {
     return collectBacklinks(pageName).length;
 }
 
-
-export type HighlightSegment = { text: string; type: 'normal' | 'highlight' };
+export type HighlightSegment = { text: string; type: "normal" | "highlight"; };
 
 export function getHighlightSegments(context: string, pageName: string): HighlightSegment[] {
-    if (!context || !pageName) return [{ text: context, type: 'normal' }];
+    if (!context || !pageName) return [{ text: context, type: "normal" }];
 
     const safePageName = escapeRegExp(pageName);
     const pattern = new RegExp(`\\[(${safePageName})\\]|\\[\\/[^/]+\\/(${safePageName})\\]`, "gi");
@@ -203,22 +202,22 @@ export function getHighlightSegments(context: string, pageName: string): Highlig
 
     while ((match = pattern.exec(context)) !== null) {
         if (match.index > lastIndex) {
-            segments.push({ text: context.substring(lastIndex, match.index), type: 'normal' });
+            segments.push({ text: context.substring(lastIndex, match.index), type: "normal" });
         }
 
         if (match[1] !== undefined) {
-            segments.push({ text: `[${match[1]}]`, type: 'highlight' });
+            segments.push({ text: `[${match[1]}]`, type: "highlight" });
         } else if (match[2] !== undefined) {
             // Need to reconstruct the whole tag because the match only captured the pageName
             // match[0] is the entire match, e.g., [/project/PageName]
-            segments.push({ text: match[0], type: 'highlight' });
+            segments.push({ text: match[0], type: "highlight" });
         }
 
         lastIndex = pattern.lastIndex;
     }
 
     if (lastIndex < context.length) {
-        segments.push({ text: context.substring(lastIndex), type: 'normal' });
+        segments.push({ text: context.substring(lastIndex), type: "normal" });
     }
 
     return segments;

@@ -107,7 +107,6 @@ describe("backlinkCollector", () => {
     });
 });
 
-
 describe("getHighlightSegments", () => {
     it("should correctly handle empty context or pageName", () => {
         expect(getHighlightSegments("", "Target")).toEqual([{ text: "", type: "normal" }]);
@@ -119,7 +118,7 @@ describe("getHighlightSegments", () => {
         expect(segments).toEqual([
             { text: "Check ", type: "normal" },
             { text: "[Target]", type: "highlight" },
-            { text: " here", type: "normal" }
+            { text: " here", type: "normal" },
         ]);
     });
 
@@ -128,7 +127,7 @@ describe("getHighlightSegments", () => {
         expect(segments).toEqual([
             { text: "Look at ", type: "normal" },
             { text: "[/project/Target]", type: "highlight" },
-            { text: " page", type: "normal" }
+            { text: " page", type: "normal" },
         ]);
     });
 
@@ -137,7 +136,7 @@ describe("getHighlightSegments", () => {
         expect(segments).toEqual([
             { text: "Look at ", type: "normal" },
             { text: "[(Target)+.]", type: "highlight" },
-            { text: " page", type: "normal" }
+            { text: " page", type: "normal" },
         ]);
     });
 
@@ -145,7 +144,7 @@ describe("getHighlightSegments", () => {
         const segments = getHighlightSegments("XSS <script>alert(1)</script> [Target]", "Target");
         expect(segments).toEqual([
             { text: "XSS <script>alert(1)</script> ", type: "normal" },
-            { text: "[Target]", type: "highlight" }
+            { text: "[Target]", type: "highlight" },
         ]);
     });
 });
