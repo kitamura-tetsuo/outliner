@@ -15,7 +15,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         setupLinkPreviewHandlers,
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
-    import type { Project as AppProject } from "../../../schema/app-schema";
+    import { Project as AppProject } from "../../../schema/app-schema";
     import { iterateItems } from "../../../utils/itemTraversal";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { getYjsClientByProjectTitle } from "../../../services";
@@ -156,7 +156,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             if (!project) {
                 throw new Error("Project data not found in client");
             }
-            store.project = project as unknown as AppProject;
+            store.project = AppProject.fromDoc(project.ydoc);
             logger.info(
                 `loadProjectAndPage: Project loaded: "${project.title}"`,
             );
