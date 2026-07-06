@@ -118,7 +118,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
         }
 
-        logger.info(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
+        logger.debug(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
         return backlinks;
     } catch (error) {
         logger.error({ error }, `Error collecting backlinks for page ${targetPageName}`);
