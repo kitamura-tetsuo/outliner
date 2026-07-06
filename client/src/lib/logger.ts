@@ -138,7 +138,9 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
         // Type assertion to match pino's LogFn signature
         (enhancedLogger as unknown as Record<string, (...args: unknown[]) => void>)[level] = (...args: unknown[]) => {
             // Get location information when log is called only if the log is not suppressed
-            const skipLog = isVerboseConsoleSuppressed(level as "trace" | "debug" | "info" | "warn" | "error" | "fatal");
+            const skipLog = isVerboseConsoleSuppressed(
+                level as "trace" | "debug" | "info" | "warn" | "error" | "fatal",
+            );
 
             // Argument processing: Add location information only if we are actually going to log it somewhere
             if (!skipLog) {
