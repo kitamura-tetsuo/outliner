@@ -56,15 +56,19 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 store.project = AppProject.fromDoc(client.getProject().ydoc);
             }
 
-            // Wait for sync until the page is found (15 seconds max for tests, 0.5s otherwise)
+            // Wait for sync until the page is found or until synchronization completes
             let targetPage = findPage(name);
             let retries = 0;
-            const maxRetries = import.meta.env.MODE === 'test' ? 150 : 5;
+            const maxRetries = import.meta.env.MODE === 'test' ? 150 : 300; // Hard limit for safety
             while (!targetPage && retries < maxRetries) {
                 await new Promise(r => setTimeout(r, 100));
                 if (isDestroyed) return;
                 targetPage = findPage(name);
                 retries++;
+                // Break once synchronized and page is still not found.
+                if (!targetPage && !yjsStore.notYetSynced) {
+                    break;
+                }
             }
 
             if (!targetPage) {
@@ -88,6 +92,17 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
     function createDemoPage() {
         if (!store.project || !pageName) return;
+
+        if (store.pageExists(pageName)) {
+            const existingPage = findPage(pageName);
+            if (existingPage) {
+                store.currentPage = existingPage;
+                pageNotFound = false;
+                loadDemoPage(pageName);
+                return;
+            }
+        }
+
         const created = store.project.addPage(pageName, "anonymous");
         if (created) {
             store.currentPage = created;
