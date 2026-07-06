@@ -143,7 +143,7 @@ export class Item {
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as any).__E2E__)
+            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
         ) {
             throw new Error("Invalid attachment URL");
         }

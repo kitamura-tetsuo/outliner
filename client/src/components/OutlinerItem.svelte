@@ -522,7 +522,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
         } else {
             throw new Error('Method addAttachment not found');
         }
-    } catch (e) {
+    } catch {
         if (isTest || (typeof window !== 'undefined' && window.__E2E__)) {
             try {
                 if (hasAttachments(cand)) {
