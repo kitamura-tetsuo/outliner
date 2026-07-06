@@ -678,9 +678,13 @@ export class CursorEditor {
         if (!root) return;
 
         const startItem = searchItem(
-                                    root as any as import("../../schema/yjs-schema").Item, selection.startItemId);
+            root as any as import("../../schema/yjs-schema").Item,
+            selection.startItemId,
+        );
         const endItem = searchItem(
-                                    root as any as import("../../schema/yjs-schema").Item, selection.endItemId);
+            root as any as import("../../schema/yjs-schema").Item,
+            selection.endItemId,
+        );
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -751,7 +755,9 @@ export class CursorEditor {
             for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
                 const id = itemsToRemoveIds[i];
                 const item = searchItem(
-                                    root as any as import("../../schema/yjs-schema").Item, id);
+                    root as any as import("../../schema/yjs-schema").Item,
+                    id,
+                );
                 if (item) {
                     // `item.parent` is already the children collection (Items) that
                     // contains this item, not a node with a nested `.items` property.
@@ -888,7 +894,7 @@ export class CursorEditor {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
             const item = searchItem(
-                                generalStore.currentPage as any as import("../../schema/yjs-schema").Item,
+                generalStore.currentPage as any as import("../../schema/yjs-schema").Item,
                 itemId,
             );
             if (!item) continue;

@@ -88,9 +88,8 @@ export class Cursor implements CursorEditingContext {
 
         // Fallback: search across all pages in the current project
         try {
-            const proj: { items?: { length: number; at: (i: number) => Item; }; } | undefined =
-                (generalStore as any)
-                    .project;
+            const proj: { items?: { length: number; at: (i: number) => Item; }; } | undefined = (generalStore as any)
+                .project;
             const pages = proj?.items;
             if (pages && typeof pages.length === "number") {
                 const len = pages.length;
