@@ -61,6 +61,12 @@ $effect(() => {
 
 let sortedItems = $derived.by(() => {
     const items = Array.from(rootItems);
+
+    let backlinkCounts: Map<string, number> | undefined;
+    if (sortBy === "linked") {
+        backlinkCounts = new Map(items.map(i => [i.text, getBacklinkCount(i.text)]));
+    }
+
     items.sort((a, b) => {
         switch (sortBy) {
             case "created":
@@ -73,7 +79,7 @@ let sortedItems = $derived.by(() => {
                 return aOrder - bOrder;
             }
             case "linked":
-                return getBacklinkCount(b.text) - getBacklinkCount(a.text);
+                return (backlinkCounts?.get(b.text) ?? 0) - (backlinkCounts?.get(a.text) ?? 0);
             case "viewed":
                 return pageViewStore.get(b.text) - pageViewStore.get(a.text);
             case "title":
