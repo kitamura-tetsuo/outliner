@@ -204,7 +204,7 @@ function importCSV() {
                     }
                     syncFromItem();
                 }
-            } catch (err) {
+            } catch (_err) {
                 errorMessage = "Failed to parse CSV";
             }
         };

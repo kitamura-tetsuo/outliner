@@ -1,8 +1,7 @@
 <script lang="ts">
-    import { projectStore } from "../stores/projectStore.svelte";
-    import { store } from "../stores/store.svelte";
+        import { store } from "../stores/store.svelte";
     import { iterateItems } from "../utils/itemTraversal";
-    import type { Project, Item } from "../schema/app-schema";
+    import type { Item } from "../schema/app-schema";
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { page as pageStore } from "$app/stores";
@@ -83,7 +82,7 @@
                 {#if tables.length === 0}
                     <li class="sidebar-placeholder">No tables found</li>
                 {:else}
-                    {#each tables as table}
+                    {#each tables as table (table.tableName + table.pageName)}
                         <li>
                             <button type="button" class="table-item" onclick={() => navigateToTable(table.pageName)}>
                                 <span class="table-name">{table.tableName}</span>
