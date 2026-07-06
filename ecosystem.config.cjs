@@ -24,6 +24,8 @@ module.exports = {
                 // when PORT is not already set in the environment
                 ...process.env,
                 NODE_ENV: "test",
+                ALLOW_TEST_ACCESS: "true",
+                ORIGIN_ALLOWLIST: "http://localhost:7090,http://127.0.0.1:7090",
                 PORT: 7093,
             },
             log_file: "./logs/yjs-server.log",
@@ -39,6 +41,8 @@ module.exports = {
             env: {
                 ...process.env,
                 NODE_ENV: "test",
+                ALLOW_TEST_ACCESS: "true",
+                ORIGIN_ALLOWLIST: "http://localhost:7090,http://127.0.0.1:7090",
                 PORT: 7091,
             },
             log_file: "./logs/log-service.log",

@@ -30,6 +30,7 @@ describe("Hocuspocus demo room anonymous access", () => {
 
         process.env.DISABLE_PERSISTENCE = "true";
 
+        process.env.ALLOW_TEST_ACCESS = "false";
         const config = loadConfig({ PORT: "0", LOG_LEVEL: "silent" });
         const res = await startServer(config, undefined, {
             checkContainerAccess: checkAccessStub,
