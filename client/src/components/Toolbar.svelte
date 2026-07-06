@@ -10,10 +10,11 @@ import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 interface Props {
+    onToggleDatabaseSidebar?: () => void;
     project?: Project | null;
 }
 
-let { project = null }: Props = $props();
+let { project = null, onToggleDatabaseSidebar }: Props = $props();
 let toolbarEl: HTMLDivElement | null = null;
 
 // Fallback to global store.project when prop is not provided
@@ -106,6 +107,11 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
             </div>
         </div>
         <div class="toolbar-right">
+            {#if onToggleDatabaseSidebar}
+                <button type="button" class="databases-btn" onclick={onToggleDatabaseSidebar} aria-label="Toggle Databases Sidebar">
+                    Databases
+                </button>
+            {/if}
             <LoginStatusIndicator />
         </div>
     </div>
@@ -187,6 +193,23 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 
 .add-database-btn:hover {
     background-color: #e5e7eb;
+}
+
+.databases-btn {
+    margin-right: 1rem;
+    padding: 0.25rem 0.75rem;
+    background-color: transparent;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.databases-btn:hover {
+    background-color: #f3f4f6;
 }
 
 .toolbar-right {
