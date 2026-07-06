@@ -2,7 +2,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 
@@ -13,6 +13,7 @@ const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface DemoResetState {
     isEmpty: boolean;
+    missingTemplatePages: boolean;
     lastReset: number | undefined;
     templateVersion: number | undefined;
     now: number;
@@ -24,6 +25,7 @@ export interface DemoResetState {
 export function shouldResetDemo(state: DemoResetState): boolean {
     return state.force
         || state.isEmpty
+        || state.missingTemplatePages
         || !state.lastReset
         || (state.now - state.lastReset > RESET_INTERVAL_MS)
         || state.templateVersion !== DEMO_TEMPLATE_VERSION;
@@ -60,10 +62,26 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 const keys = Array.from(orderedTree.keys());
                 const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
 
-                const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force });
+                let missingTemplatePages = false;
+
+                if (!isEmpty) {
+                    const existingTexts = new Set<string>();
+                    for (const key of orderedTree.keys()) {
+                        if (key === "root") continue;
+                        const node = orderedTree.get(key) as Y.Map<any>;
+                        const value = node?.get("value") as Y.Map<any> | undefined;
+                        const textNode = value?.get("text") as Y.Text | undefined;
+                        if (textNode) {
+                            existingTexts.add(textNode.toString());
+                        }
+                    }
+                    missingTemplatePages = demoPages.some(page => !existingTexts.has(page.title));
+                }
+
+                const shouldReset = shouldResetDemo({ isEmpty, missingTemplatePages, lastReset, templateVersion, now, force });
 
                 if (shouldReset) {
-                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
+                    logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force, missingTemplatePages });
 
                     // Initialize YTree wrapper on the live doc FIRST, so we can use safe deletion API
                     new YTree(doc.getMap("orderedTree"));
