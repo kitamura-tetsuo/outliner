@@ -522,12 +522,14 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
         } else {
             throw new Error('Method addAttachment not found');
         }
-    } catch {
-        try {
-            if (hasAttachments(cand)) {
-                cand.attachments?.push?.([url]);
-            }
-        } catch {}
+    } catch (e) {
+        if (isTest || (typeof window !== 'undefined' && window.__E2E__)) {
+            try {
+                if (hasAttachments(cand)) {
+                    cand.attachments?.push?.([url]);
+                }
+            } catch {}
+        }
     }
     if (isTest && typeof window !== "undefined") {
         try {
@@ -1725,34 +1727,36 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
                     } catch (e) {
                         // Fallback with local preview even if upload fails (E2E stabilization)
-                        try {
-                            const localUrl = URL.createObjectURL(file);
-                            if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                addAttachmentSafely(model.original, localUrl, IS_TEST);
-                            } else {
-                                dispatch("drop", {
-                                    targetItemId: model.id,
-                                    position: dropTargetPosition,
-                                    attachmentUrl: localUrl
-                                });
-                            }
-                            // Auxiliary reflection to Doc after connection (via ID map)
+                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
                             try {
-                                const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
-                                const map = w?.__ITEM_ID_MAP__;
-                                const mappedId = map ? map[String(model.id)] : undefined;
-                                const curPage = w?.generalStore?.currentPage;
-                                if (mappedId && curPage?.items) {
-                                    for (let i = 0; i < (curPage.items.length || 0); i++) {
-                                        const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                        if (cand && String(cand?.id) === String(mappedId)) {
-                                            addAttachmentSafely(cand, localUrl, IS_TEST);
-                                            break;
+                                const localUrl = URL.createObjectURL(file);
+                                if (!dropTargetPosition || dropTargetPosition === "middle") {
+                                    addAttachmentSafely(model.original, localUrl, IS_TEST);
+                                } else {
+                                    dispatch("drop", {
+                                        targetItemId: model.id,
+                                        position: dropTargetPosition,
+                                        attachmentUrl: localUrl
+                                    });
+                                }
+                                // Auxiliary reflection to Doc after connection (via ID map)
+                                try {
+                                    const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
+                                    const map = w?.__ITEM_ID_MAP__;
+                                    const mappedId = map ? map[String(model.id)] : undefined;
+                                    const curPage = w?.generalStore?.currentPage;
+                                    if (mappedId && curPage?.items) {
+                                        for (let i = 0; i < (curPage.items.length || 0); i++) {
+                                            const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
+                                            if (cand && String(cand?.id) === String(mappedId)) {
+                                                addAttachmentSafely(cand, localUrl, IS_TEST);
+                                                break;
+                                            }
                                         }
                                     }
-                                }
+                                } catch {}
                             } catch {}
-                        } catch {}
+                        }
                         logger.error({ error: e as Error }, "attachment upload failed");
                     }
                 }

@@ -428,6 +428,9 @@ export class Item {
     }
 
     addAttachment(url: string) {
+        if ((url.startsWith("blob:") || url.startsWith("data:")) && !(typeof window !== 'undefined' && (window as any).__E2E__)) {
+            throw new Error("Invalid attachment URL");
+        }
         // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
         try {
             const w = (typeof window !== "undefined") ? window : null;

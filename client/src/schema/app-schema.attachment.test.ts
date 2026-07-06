@@ -1,0 +1,50 @@
+import { describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
+import { Item } from "./app-schema";
+
+describe("Item Attachment URL Validation", () => {
+    it("should allow https URLs", () => {
+        const doc = new Y.Doc();
+        const map = doc.getMap();
+        const item = new Item(map as any);
+        expect(() => {
+            item.addAttachment("https://example.com/image.png");
+        }).not.toThrow();
+        expect(item.attachments.length).toBe(1);
+    });
+
+    it("should reject blob: URLs in non-E2E mode", () => {
+        const doc = new Y.Doc();
+        const map = doc.getMap();
+        const item = new Item(map as any);
+        expect(() => {
+            item.addAttachment("blob:http://localhost/uuid-1234");
+        }).toThrow("Invalid attachment URL");
+    });
+
+    it("should reject data: URLs in non-E2E mode", () => {
+        const doc = new Y.Doc();
+        const map = doc.getMap();
+        const item = new Item(map as any);
+        expect(() => {
+            item.addAttachment("data:image/png;base64,iVBORw0KGgo");
+        }).toThrow("Invalid attachment URL");
+    });
+
+    it("should allow blob: URLs in E2E mode", () => {
+        const doc = new Y.Doc();
+        const map = doc.getMap();
+        const item = new Item(map as any);
+
+        // Mock E2E mode
+        globalThis.window = { __E2E__: true } as any;
+
+        expect(() => {
+            item.addAttachment("blob:http://localhost/uuid-1234");
+        }).not.toThrow();
+        expect(item.attachments.length).toBe(1);
+
+        // Cleanup
+        delete (globalThis as any).window;
+    });
+});
