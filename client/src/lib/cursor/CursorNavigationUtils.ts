@@ -2,8 +2,8 @@ import type { Item } from "../../schema/yjs-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
-    const items = node.items as any as Iterable<Item> | undefined;
-    if (!items || typeof (items as any)[Symbol.iterator] !== "function") {
+    const items = node.items as unknown as Iterable<Item> | undefined;
+    if (!items || typeof (items as unknown as Record<string | symbol, unknown>)[Symbol.iterator] !== "function") {
         return [];
     }
 
@@ -34,7 +34,7 @@ export function isPageItem(item: Item): boolean {
  * Find the previous item in the tree relative to the provided ID.
  */
 export function findPreviousItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage as any as Item | undefined;
+    const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
     return findPreviousItemRecursive(root, currentItemId);
@@ -73,7 +73,7 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
  * Find the next item in the tree relative to the provided ID.
  */
 export function findNextItem(currentItemId: string): Item | undefined {
-    const root = generalStore.currentPage as any as Item | undefined;
+    const root = generalStore.currentPage as unknown as Item | undefined;
     if (!root) return undefined;
 
     // Special case: if the root itself is the target, return the first child

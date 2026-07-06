@@ -207,7 +207,7 @@ export class CursorEditor {
         const target = cursor.findTarget();
         if (!target) return;
 
-        const text: string = (target.text as any)?.toString?.() ?? "";
+        const text: string = (target.text as unknown as { toString?: () => string; })?.toString?.() ?? "";
         const beforeText = text.slice(0, cursor.offset);
         const afterText = text.slice(cursor.offset);
         const pageTitle = isPageItem(target);
@@ -238,11 +238,11 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as any).items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; }).items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -251,7 +251,7 @@ export class CursorEditor {
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
                     const currentIndex = itemsCollection.indexOf(
-                        target as any as import("../../schema/app-schema").Item,
+                        target as unknown as import("../../schema/app-schema").Item,
                     );
                     target.updateText(beforeText);
                     const newItem = addNode(cursor.userId, currentIndex + 1);
@@ -326,11 +326,11 @@ export class CursorEditor {
                 return;
             }
         } else {
-            const parent = target.parent as any as import("../../schema/app-schema").Items;
+            const parent = target.parent as unknown as import("../../schema/app-schema").Items;
             if (parent) {
                 const itemsCollection = typeof parent.indexOf === "function"
                     ? parent
-                    : (parent as any).items;
+                    : (parent as unknown as { items: import("../../schema/app-schema").Items; }).items;
                 const addNode = typeof parent.addNode === "function"
                     ? parent.addNode.bind(parent)
                     : typeof itemsCollection?.addNode === "function"
@@ -339,7 +339,7 @@ export class CursorEditor {
 
                 if (itemsCollection && typeof itemsCollection.indexOf === "function" && addNode) {
                     const currentIndex = itemsCollection.indexOf(
-                        target as any as import("../../schema/app-schema").Item,
+                        target as unknown as import("../../schema/app-schema").Item,
                     );
                     // Add below without updating current text
                     const newItem = addNode(cursor.userId, currentIndex + 1);
@@ -484,20 +484,20 @@ export class CursorEditor {
         const prevItem = findPreviousItem(cursor.itemId);
         if (!prevItem) return;
 
-        const prevText = this.getPlainText(prevItem as any as import("../../schema/app-schema").Item);
-        const currentText = this.getPlainText(currentItem as any as import("../../schema/app-schema").Item);
+        const prevText = this.getPlainText(prevItem as unknown as import("../../schema/app-schema").Item);
+        const currentText = this.getPlainText(currentItem as unknown as import("../../schema/app-schema").Item);
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
-        const prevId = (prevItem as any as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
+        const prevId = (prevItem as unknown as import("../../schema/app-schema").Item)?.id ?? cursor.itemId;
         const newOffset = prevText.length;
 
         this.runInTransaction([
-            prevItem as any as import("../../schema/app-schema").Item,
-            currentItem as any as import("../../schema/app-schema").Item,
+            prevItem as unknown as import("../../schema/app-schema").Item,
+            currentItem as unknown as import("../../schema/app-schema").Item,
         ], () => {
-            this.updateItemText(prevItem as any as import("../../schema/app-schema").Item, combinedText);
-            this.deleteItemNode(currentItem as any as import("../../schema/app-schema").Item);
+            this.updateItemText(prevItem as unknown as import("../../schema/app-schema").Item, combinedText);
+            this.deleteItemNode(currentItem as unknown as import("../../schema/app-schema").Item);
         });
 
         cursor.itemId = prevId;
@@ -511,16 +511,16 @@ export class CursorEditor {
 
     private getPlainText(item: import("../../schema/app-schema").Item): string {
         if (!item) return "";
-        const textValue = (item as any as import("../../schema/app-schema").Item).text;
+        const textValue = (item as unknown as import("../../schema/app-schema").Item).text;
         if (typeof textValue === "string") return textValue;
         if (textValue && typeof (textValue as { toString(): string; }).toString === "function") {
             try {
                 return (textValue as { toString(): string; }).toString();
             } catch {}
         }
-        if (typeof (item as any).getText === "function") {
+        if (typeof (item as unknown as { getText(): string; }).getText === "function") {
             try {
-                const result = (item as any).getText();
+                const result = (item as unknown as { getText(): string; }).getText();
                 if (typeof result === "string") return result;
             } catch {}
         }
@@ -534,9 +534,9 @@ export class CursorEditor {
             return;
         }
 
-        const tree = (item as any as import("../../schema/app-schema").Item)?.tree;
-        const key = (item as any as import("../../schema/app-schema").Item)?.key
-            ?? (item as any as import("../../schema/app-schema").Item)?.id;
+        const tree = (item as unknown as import("../../schema/app-schema").Item)?.tree;
+        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
+            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
         if (!tree || !key || typeof tree.getNodeValueFromKey !== "function") return;
 
         const value = tree.getNodeValueFromKey(key);
@@ -569,13 +569,13 @@ export class CursorEditor {
             return;
         }
 
-        const key = (item as any as import("../../schema/app-schema").Item)?.key
-            ?? (item as any as import("../../schema/app-schema").Item)?.id;
+        const key = (item as unknown as import("../../schema/app-schema").Item)?.key
+            ?? (item as unknown as import("../../schema/app-schema").Item)?.id;
         if (!key) return;
 
         const treeCandidates = [
-            (item as any as import("../../schema/app-schema").Item)?.tree,
-            (item as any as import("../../schema/app-schema").Item)?.parent?.tree,
+            (item as unknown as import("../../schema/app-schema").Item)?.tree,
+            (item as unknown as import("../../schema/app-schema").Item)?.parent?.tree,
             (generalStore as { project?: { tree?: unknown; }; })?.project?.tree,
         ];
 
@@ -595,7 +595,7 @@ export class CursorEditor {
 
     private runInTransaction(participants: import("../../schema/app-schema").Item[], action: () => void) {
         const doc = participants
-            .map(item => (item as any as import("../../schema/app-schema").Item)?.ydoc)
+            .map(item => (item as unknown as import("../../schema/app-schema").Item)?.ydoc)
             .find(candidate => candidate && typeof candidate.transact === "function");
 
         if (doc) {
@@ -616,11 +616,11 @@ export class CursorEditor {
         const nextItem = findNextItem(cursor.itemId);
         if (!nextItem) return;
 
-        const currentText = (currentItem as any as import("../../schema/app-schema").Item).text || "";
-        const nextText = (nextItem as any as import("../../schema/app-schema").Item).text || "";
-        (currentItem as any as import("../../schema/app-schema").Item).updateText(currentText + nextText);
+        const currentText = (currentItem as unknown as import("../../schema/app-schema").Item).text || "";
+        const nextText = (nextItem as unknown as import("../../schema/app-schema").Item).text || "";
+        (currentItem as unknown as import("../../schema/app-schema").Item).updateText(currentText + nextText);
 
-        (nextItem as any as import("../../schema/app-schema").Item).delete();
+        (nextItem as unknown as import("../../schema/app-schema").Item).delete();
     }
 
     private deleteEmptyItem() {
@@ -649,7 +649,7 @@ export class CursorEditor {
         }
 
         store.clearCursorForItem(cursor.itemId);
-        (currentItem as any as import("../../schema/app-schema").Item).delete();
+        (currentItem as unknown as import("../../schema/app-schema").Item).delete();
 
         cursor.itemId = targetItemId;
         cursor.offset = targetOffset;
@@ -677,14 +677,8 @@ export class CursorEditor {
         const root = generalStore.currentPage;
         if (!root) return;
 
-        const startItem = searchItem(
-            root as any as import("../../schema/yjs-schema").Item,
-            selection.startItemId,
-        );
-        const endItem = searchItem(
-            root as any as import("../../schema/yjs-schema").Item,
-            selection.endItemId,
-        );
+        const startItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.startItemId);
+        const endItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.endItemId);
         if (!startItem || !endItem) return;
 
         const isReversed = !!selection.isReversed;
@@ -735,10 +729,10 @@ export class CursorEditor {
         }
 
         try {
-            const firstText = (actFirstItem as any as import("../../schema/app-schema").Item).text?.toString()
+            const firstText = (actFirstItem as unknown as import("../../schema/app-schema").Item).text?.toString()
                 || "";
             const newFirstText = firstText.substring(0, actFirstOffset);
-            const lastText = (actLastItem as any as import("../../schema/app-schema").Item).text?.toString() || "";
+            const lastText = (actLastItem as unknown as import("../../schema/app-schema").Item).text?.toString() || "";
             const newLastText = lastText.substring(actLastOffset);
 
             const itemsToRemoveIds: string[] = [];
@@ -750,14 +744,11 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            (actFirstItem as any as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            (actFirstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
 
             for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
                 const id = itemsToRemoveIds[i];
-                const item = searchItem(
-                    root as any as import("../../schema/yjs-schema").Item,
-                    id,
-                );
+                const item = searchItem(root as unknown as import("../../schema/yjs-schema").Item, id);
                 if (item) {
                     // `item.parent` is already the children collection (Items) that
                     // contains this item, not a node with a nested `.items` property.
@@ -894,13 +885,13 @@ export class CursorEditor {
             const current = walker.currentNode as HTMLElement;
             const itemId = current.getAttribute("data-item-id")!;
             const item = searchItem(
-                generalStore.currentPage as any as import("../../schema/yjs-schema").Item,
+                generalStore.currentPage as unknown as import("../../schema/yjs-schema").Item,
                 itemId,
             );
             if (!item) continue;
 
             if (item) {
-                const text = (item as any as import("../../schema/app-schema").Item).text || "";
+                const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
 
                 let start = 0;
                 let end = String(text).length;
@@ -942,7 +933,7 @@ export class CursorEditor {
         }
 
         for (const update of updates) {
-            const appItem = update.item as any as import("../../schema/app-schema").Item;
+            const appItem = update.item as unknown as import("../../schema/app-schema").Item;
             appItem.updateText(update.newText);
         }
 

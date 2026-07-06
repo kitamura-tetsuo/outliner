@@ -151,7 +151,7 @@
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    (e as import('yjs').YEvent<any> & { keysChanged: Set<string> }).keysChanged,
+                                    (e as { path: string[]; keysChanged?: Set<string> }).keysChanged,
                                 );
                             });
                         }
