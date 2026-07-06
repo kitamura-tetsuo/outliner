@@ -64,7 +64,7 @@
         "@types/jsdom": "^28.0.3",
         "@types/node": "^26.0.1",
         "@types/ws": "^8.18.1",
-        "@vitest/coverage-v8": "^4.1.1",
+        "@vitest/coverage-v8": "^4.1.10",
         "@vitest/ui": "^4.1.8",
         "chokidar-cli": "^3.0.0",
         "concurrently": "^10.0.3",
