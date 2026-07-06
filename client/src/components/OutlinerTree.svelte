@@ -2136,7 +2136,6 @@
         class="outliner"
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
-        role="application"
     >
         <div class="toolbar">
             <div class="actions">
