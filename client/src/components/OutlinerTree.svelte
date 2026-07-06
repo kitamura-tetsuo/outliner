@@ -334,10 +334,10 @@
                     } catch (uploadErr) {
                           logger.error({ error: uploadErr }, "Upload failed via file select");
                         // E2E fallback local URL for test environment (mocking network)
-                        if (typeof window !== 'undefined' && window.__E2E__) {
+                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
                             const localUrl = URL.createObjectURL(file);
-                            newItem.addAttachment(localUrl);
-                            window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                            try { newItem.addAttachment(localUrl); } catch {}
+                            try { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } })); } catch {}
                         }
                     }
                 }
@@ -1887,8 +1887,9 @@
             try {
                 targetItem.addAttachment(url);
             } catch {
-
-                try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                }
             }
         } else {
             // Create new item at top or bottom relative to targetItem
@@ -1909,8 +1910,9 @@
                 try {
                     newItem.addAttachment(url);
                 } catch {
-
-                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                    }
                 }
             }
         }
@@ -2095,18 +2097,17 @@
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
-                                const localUrl = URL.createObjectURL(file);
-                                try {
-                                    newItem.addAttachment(localUrl);
-                                } catch {
-
-                                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([localUrl]); } catch {}
-                                }
-                                try {
-                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
-                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                                    const localUrl = URL.createObjectURL(file);
+                                    try {
+                                        newItem.addAttachment(localUrl);
+                                    } catch {
+                                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([localUrl]); } catch {}
                                     }
-                                } catch {}
+                                    try {
+                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                                    } catch {}
+                                }
                             }
                         }
                     } catch (e) {

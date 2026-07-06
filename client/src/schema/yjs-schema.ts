@@ -141,6 +141,12 @@ export class Item {
 
     // Add attachment (ignore duplicates). Also fires CustomEvent for test synchronization
     addAttachment(url: string) {
+        if (
+            (url.startsWith("blob:") || url.startsWith("data:"))
+            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
+        ) {
+            throw new Error("Invalid attachment URL");
+        }
         const arr = this.attachments;
         const existing = arr.toArray();
         if (!existing.includes(url)) {
