@@ -115,7 +115,7 @@ onDestroy(() => {
                                 </button>
                             </div>
                             <div class="backlink-context">
-                                {#each getHighlightSegments(backlink.context, pageName) as segment}
+                                {#each getHighlightSegments(backlink.context, pageName) as segment, index (index)}
                                     {#if segment.type === 'highlight'}
                                         <span class="highlight">{segment.text}</span>
                                     {:else}
