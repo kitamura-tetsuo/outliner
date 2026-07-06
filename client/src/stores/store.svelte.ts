@@ -286,15 +286,25 @@ export class GeneralStore {
         const ymap = project?.ydoc?.getMap?.("orderedTree");
 
         // Setup observer immediately on the project itself
+        let snapshotTimeout: ReturnType<typeof setTimeout> | null = null;
+        let updatePending = false;
+        let rebuildPending = false;
+
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => {
-            try {
-                saveProjectSnapshot(project);
-            } catch {
-                // Ignore errors during snapshot saving
+            // Debounce saveProjectSnapshot to avoid O(N) traversal on every transaction
+            if (!snapshotTimeout) {
+                // Check if this project provider is still doing its initial sync.
+                // If it is, skip saving entirely since it will get saved after sync or on next edit.
+                const isInitialSync = typeof window !== 'undefined' && (window as unknown as { __YJS_STORE__?: { notYetSynced?: boolean } }).__YJS_STORE__?.notYetSynced;
+                if (!isInitialSync) {
+                    snapshotTimeout = setTimeout(() => {
+                        snapshotTimeout = null;
+                        try {
+                            saveProjectSnapshot(project);
+                        } catch {}
+                    }, 3000);
+                }
             }
-            this.pagesVersion++; // Trigger signal
-            // Make sure to re-assign to trigger Svelte 5 reactivity on the items wrapper itself
-            this._pagesData.items = project.items;
 
             // Check if we need to rebuild the page name cache
             let shouldRebuild = false;
@@ -337,7 +347,21 @@ export class GeneralStore {
             } catch {}
 
             if (shouldRebuild) {
-                this._rebuildPageNamesCache();
+                rebuildPending = true;
+            }
+
+            // Batch UI updates and cache rebuilds using microtasks
+            if (!updatePending) {
+                updatePending = true;
+                queueMicrotask(() => {
+                    updatePending = false;
+                    this.pagesVersion++; // Trigger signal
+                    this._pagesData.items = project.items;
+                    if (rebuildPending) {
+                        rebuildPending = false;
+                        this._rebuildPageNamesCache();
+                    }
+                });
             }
         };
 
