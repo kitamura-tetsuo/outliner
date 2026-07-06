@@ -80,7 +80,7 @@ export class Cursor implements CursorEditingContext {
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchItem(root as unknown as YjsItem, this.itemId) as
+            const found = searchItem(root as any as YjsItem, this.itemId) as
                 | Item
                 | undefined;
             if (found) return found;
@@ -89,7 +89,7 @@ export class Cursor implements CursorEditingContext {
         // Fallback: search across all pages in the current project
         try {
             const proj: { items?: { length: number; at: (i: number) => Item; }; } | undefined =
-                (generalStore as unknown as { project?: { items?: { length: number; at: (i: number) => Item; }; }; })
+                (generalStore as any)
                     .project;
             const pages = proj?.items;
             if (pages && typeof pages.length === "number") {
@@ -98,7 +98,7 @@ export class Cursor implements CursorEditingContext {
                     const p = pages.at(i);
                     if (!p) continue;
 
-                    const f = searchItem(p as unknown as YjsItem, this.itemId) as
+                    const f = searchItem(p as any as YjsItem, this.itemId) as
                         | Item
                         | undefined;
                     if (f) return f;
@@ -113,7 +113,7 @@ export class Cursor implements CursorEditingContext {
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
     findTarget(): YjsItem | undefined {
-        return this._findTarget() as unknown as YjsItem | undefined;
+        return this._findTarget() as any as YjsItem | undefined;
     }
 
     private getTargetText(target: { text?: unknown; } | undefined): string {
@@ -383,8 +383,8 @@ export class Cursor implements CursorEditingContext {
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 // Create the parent Item from the parentKey
 
-                parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(...args: unknown[]): YjsItem;
+                parentItemInstance = new (currentTarget!.constructor as any as {
+                    new(...args: any[]): YjsItem;
                 })(
                     currentTarget!.ydoc,
                     currentTarget!.tree,
@@ -1293,7 +1293,7 @@ export class Cursor implements CursorEditingContext {
         if (!root) return;
 
         // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root as unknown as Parameters<typeof getDeepestDescendant>[0]);
+        const deepest = getDeepestDescendant(root as any as Parameters<typeof getDeepestDescendant>[0]);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         this.applyToStore();
@@ -1329,42 +1329,42 @@ export class Cursor implements CursorEditingContext {
     moveItemUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemUp(project as unknown as YjsProject, this.itemId);
+            yjsService.moveItemUp(project as any as YjsProject, this.itemId);
         }
     }
 
     moveItemDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemDown(project as unknown as YjsProject, this.itemId);
+            yjsService.moveItemDown(project as any as YjsProject, this.itemId);
         }
     }
 
     moveSubtreeUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeUp(project as unknown as YjsProject, this.itemId);
+            yjsService.moveSubtreeUp(project as any as YjsProject, this.itemId);
         }
     }
 
     moveSubtreeDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeDown(project as unknown as YjsProject, this.itemId);
+            yjsService.moveSubtreeDown(project as any as YjsProject, this.itemId);
         }
     }
 
     indent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.indentItem(project as unknown as YjsProject, this.itemId);
+            yjsService.indentItem(project as any as YjsProject, this.itemId);
         }
     }
 
     outdent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.outdentItem(project as unknown as YjsProject, this.itemId);
+            yjsService.outdentItem(project as any as YjsProject, this.itemId);
         }
     }
 
@@ -1555,7 +1555,7 @@ export class Cursor implements CursorEditingContext {
                         const prevItemId = prevEl.getAttribute("data-item-id");
                         if (prevItemId && prevItemId !== this.itemId) {
                             prevItem = searchItem(
-                                generalStore.currentPage as unknown as YjsItem,
+                                generalStore.currentPage as any as YjsItem,
                                 prevItemId,
                             );
                             newItemId = prevItemId;
@@ -1610,7 +1610,7 @@ export class Cursor implements CursorEditingContext {
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as YjsItem;
+                nextItem = this.findNextItemViaDOM(this.itemId) as any as YjsItem;
             }
 
             // If we're at the end of the current item and still don't have a next item,
@@ -1637,7 +1637,7 @@ export class Cursor implements CursorEditingContext {
                             const root = generalStore.currentPage as import("../schema/app-schema").Item;
                             if (root) {
                                 nextItem = searchItem(
-                                    root as unknown as YjsItem,
+                                    root as any as YjsItem,
                                     nextItemId,
                                 );
                             }
@@ -1710,7 +1710,7 @@ export class Cursor implements CursorEditingContext {
                         if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
                             const nextItemId = allItemIds[currentIndex + 1];
                             const nextItemFromTree = searchItem(
-                                root as unknown as YjsItem,
+                                root as any as YjsItem,
                                 nextItemId,
                             );
                             if (nextItemFromTree) {
@@ -1802,8 +1802,8 @@ export class Cursor implements CursorEditingContext {
                 const parentCollection = currentTarget?.parent;
                 // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
                 if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
-                    prevItem = new (currentTarget!.constructor as unknown as {
-                        new(...args: unknown[]): YjsItem;
+                    prevItem = new (currentTarget!.constructor as any as {
+                        new(...args: any[]): YjsItem;
                     })(
                         currentTarget!.ydoc,
                         currentTarget!.tree,
@@ -1870,7 +1870,7 @@ export class Cursor implements CursorEditingContext {
 
             // If findNextItem failed, try to find the next item via DOM traversal as a fallback
             if (!nextItem) {
-                nextItem = this.findNextItemViaDOM(this.itemId) as unknown as YjsItem;
+                nextItem = this.findNextItemViaDOM(this.itemId) as any as YjsItem;
             }
 
             if (nextItem) {
@@ -2199,7 +2199,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItemId) {
                 const root = generalStore.currentPage as import("../schema/app-schema").Item;
                 if (root) {
-                    const found = searchItem(root as unknown as YjsItem, nextItemId);
+                    const found = searchItem(root as any as YjsItem, nextItemId);
                     if (found) return found;
                 }
             }

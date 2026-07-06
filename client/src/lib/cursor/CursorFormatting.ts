@@ -158,13 +158,13 @@ export class CursorFormatting {
             const itemId = current.getAttribute("data-item-id")!;
 
             const item = searchItem(
-                generalStore.currentPage! as unknown as import("../../schema/yjs-schema").Item,
+                generalStore.currentPage! as any as import("../../schema/yjs-schema").Item,
                 itemId,
             );
 
             // Apply format according to item position
             if (item) {
-                const text = (item as unknown as import("../../schema/app-schema").Item).text || "";
+                const text = (item as any as import("../../schema/app-schema").Item).text || "";
 
                 let start = 0;
                 let end = String(text).length;
@@ -206,7 +206,7 @@ export class CursorFormatting {
         }
 
         for (const update of updates) {
-            (update.item as unknown as import("../../schema/app-schema").Item).updateText(update.newText);
+            (update.item as any as import("../../schema/app-schema").Item).updateText(update.newText);
         }
 
         // Update cursor position (set to end of selection)
