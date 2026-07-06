@@ -13,7 +13,7 @@ const DEMO_PROJECT_ID = "demo";
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const FORCE_RESET_RATE_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 
-const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolean }>>();
+const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolean; }>>();
 const forceRateLimits = new Map<string, number>();
 
 export interface DemoResetState {
