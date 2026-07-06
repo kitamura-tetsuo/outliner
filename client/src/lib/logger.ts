@@ -137,15 +137,17 @@ function createEnhancedLogger(logger: pino.Logger): pino.Logger {
         const originalMethod = logger[level].bind(logger);
         // Type assertion to match pino's LogFn signature
         (enhancedLogger as unknown as Record<string, (...args: unknown[]) => void>)[level] = (...args: unknown[]) => {
-            // Get location information when log is called
-            const file = getCallerFile();
+            // Get location information when log is called only if the log is not suppressed
+            const skipLog = isVerboseConsoleSuppressed(level as "trace" | "debug" | "info" | "warn" | "error" | "fatal");
 
-            // Argument processing: Add location information if the first argument is an object
-            if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
-                args[0] = { file, ...(args[0] as Record<string, unknown>) };
-            } else {
-                // Add location information to the beginning if it is not an object
-                args.unshift({ file });
+            // Argument processing: Add location information only if we are actually going to log it somewhere
+            if (!skipLog) {
+                const file = getCallerFile();
+                if (args.length > 0 && typeof args[0] === "object" && args[0] !== null) {
+                    args[0] = { file, ...(args[0] as Record<string, unknown>) };
+                } else {
+                    args.unshift({ file });
+                }
             }
 
             // Call original log method
@@ -200,12 +202,21 @@ const consoleStyles = {
 export function isVerboseConsoleSuppressed(
     level: "trace" | "debug" | "info" | "warn" | "error" | "fatal",
 ): boolean {
-    const isVerboseLevel = level === "trace" || level === "debug";
     // Cast rather than rely on the ambient Window.DEBUG_MODE augmentation, since this file is
     // also type-checked under tsconfigs (e.g. client/e2e) that don't include that declaration.
     const debugModeEnabled = typeof window !== "undefined"
         && Boolean((window as unknown as { DEBUG_MODE?: string | boolean; }).DEBUG_MODE);
-    return isVerboseLevel && !debugModeEnabled;
+
+    if (level === "trace" || level === "debug") {
+        return !debugModeEnabled;
+    }
+
+    if (level === "info") {
+        const isDev = typeof import.meta !== "undefined" && Boolean(import.meta.env?.DEV);
+        return !(isDev || debugModeEnabled);
+    }
+
+    return false;
 }
 
 // Patched logger interface to prevent strict type checks on first argument
@@ -219,7 +230,10 @@ export interface EnhancedLogger extends pino.Logger {
 }
 
 export function getLogger(componentName?: string, enableConsole: boolean = true): EnhancedLogger {
-    const file = getCallerFile();
+    // Determine the module name lazily if not provided
+    // If componentName is omitted, we might need the file name, but we only compute it if needed
+    // However, for module name in child logger, we should evaluate it once here.
+    const file = componentName === undefined ? getCallerFile() : "";
     const module = componentName || file;
     const isCustomModule = componentName !== undefined && componentName !== file;
 
@@ -250,7 +264,7 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
 
                         try {
                             // Format file information and module name
-                            const sourceInfo = `${file}`;
+                            const sourceInfo = `${file || getCallerFile()}`;
                             const levelUpperCase = prop.toUpperCase();
 
                             // Separate processing depending on whether the first argument is an object or not
@@ -348,27 +362,28 @@ export function log(
         fatal: "#d9534f",
     };
 
-    // Get caller information (for debugging)
-    const file = getCallerFile();
-
     // Output directly to console
     // If componentName is the same as the file name and duplicated, do not include file name information
     if (skipConsole) {
         // Skip console output but still forward to the server-side logger below.
-    } else if (componentName === file.replace(/\.[jt]s$/, "")) {
-        (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
-            `%c[${componentName}]%c [${level.toUpperCase()}]:`,
-            `color: #6699cc; font-weight: bold`,
-            `color: ${levelColors[level]}; font-weight: bold`,
-            ...args,
-        );
     } else {
-        (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
-            `%c[${componentName}]%c [${level.toUpperCase()}]:`,
-            `color: #5cb85c; font-weight: bold`,
-            `color: ${levelColors[level]}; font-weight: bold`,
-            ...args,
-        );
+        // Get caller information (for debugging) only when needed
+        const file = getCallerFile();
+        if (componentName === file.replace(/\.[jt]s$/, "")) {
+            (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
+                `%c[${componentName}]%c [${level.toUpperCase()}]:`,
+                `color: #6699cc; font-weight: bold`,
+                `color: ${levelColors[level]}; font-weight: bold`,
+                ...args,
+            );
+        } else {
+            (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
+                `%c[${componentName}]%c [${level.toUpperCase()}]:`,
+                `color: #5cb85c; font-weight: bold`,
+                `color: ${levelColors[level]}; font-weight: bold`,
+                ...args,
+            );
+        }
     }
 
     // 2. Send to server using Pino logger (record in log file)
