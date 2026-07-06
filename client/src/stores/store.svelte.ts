@@ -295,7 +295,9 @@ export class GeneralStore {
             if (!snapshotTimeout) {
                 // Check if this project provider is still doing its initial sync.
                 // If it is, skip saving entirely since it will get saved after sync or on next edit.
-                const isInitialSync = typeof window !== 'undefined' && (window as unknown as { __YJS_STORE__?: { notYetSynced?: boolean } }).__YJS_STORE__?.notYetSynced;
+                const isInitialSync = typeof window !== "undefined"
+                    && (window as unknown as { __YJS_STORE__?: { notYetSynced?: boolean; }; }).__YJS_STORE__
+                        ?.notYetSynced;
                 if (!isInitialSync) {
                     snapshotTimeout = setTimeout(() => {
                         snapshotTimeout = null;
