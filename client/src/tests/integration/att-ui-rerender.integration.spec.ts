@@ -25,8 +25,7 @@ describe("ATT: attachments UI rerenders on Yjs updates (integration)", () => {
 
         const { container } = render(OutlinerTree, { pageItem: page, projectName: "test", pageName: "page" });
 
-        const ONEPX_PNG =
-            "https://example.com/onepx.png";
+        const ONEPX_PNG = "https://example.com/onepx.png";
 
         // Pre-condition: no preview images
         const sel = `[data-item-id="${item.id}"]`;
