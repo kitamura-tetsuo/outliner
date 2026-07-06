@@ -2132,7 +2132,7 @@
 
 {#key outlinerKey}
     <div
-        class="outliner"
+        class="outliner" role="presentation"
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
