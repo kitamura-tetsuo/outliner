@@ -1083,6 +1083,7 @@ function handleClick(event: MouseEvent) {
 
     // Component selector clicks should not trigger item editing (focusing textarea)
     if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
+        event.stopPropagation();
         return;
     }
 
@@ -1164,6 +1165,7 @@ function handleMouseDown(event: MouseEvent) {
 
     // Component selector clicks should not trigger item editing (focusing textarea)
     if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
+        event.stopPropagation();
         return;
     }
 

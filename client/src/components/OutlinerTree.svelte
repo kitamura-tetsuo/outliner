@@ -151,8 +151,7 @@
                                 logger.debug(
                                     " [Yjs Event]",
                                     e.path,
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    (e as import('yjs').YEvent<any> & { keysChanged: Set<string> }).keysChanged,
+                                    (e as import('yjs').YEvent<import('yjs').AbstractType<unknown>> & { keysChanged: Set<string> }).keysChanged,
                                 );
                             });
                         }
