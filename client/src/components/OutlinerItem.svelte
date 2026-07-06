@@ -87,6 +87,7 @@ import { resolvePath } from "../utils/pathUtils";
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
+import SqlBlock from "./SqlBlock.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -2235,6 +2236,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                             <option value="table">Table</option>
                             <option value="sqltable">SQL Table</option>
                             <option value="chart">Chart</option>
+                            <option value="sql">SQL Block</option>
                         </select>
                     </div>
                 {/if}
@@ -2254,6 +2256,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <div class="component-wrapper">
                     <ChartQueryEditor item={model.original} />
                     <ChartPanel item={model.original} />
+                </div>
+            {:else if (componentType ?? compTypeValue) === "sql"}
+                <div class="component-wrapper">
+                    <SqlBlock item={model.original} />
                 </div>
             {/if}
         </div>
