@@ -2163,7 +2163,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 </span>
                 {#if !isPageTitle && model.votes.length > 0}
                     <span
-                        class="vote-count"
+                        class="vote-count" class:has-count={model.votes.length > 0}
                         title={voterNames}
                         aria-label={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
                     >
@@ -2171,11 +2171,11 @@ export function setSelectionPosition(start: number, end: number = start) {
                     </span>
                 {/if}
                 {#if !isPageTitle}
-                    <span class="comment-count-visual" aria-hidden="true">{commentCountVisual}</span>
+                    <span class="comment-count-visual" class:has-count={commentCountVisual > 0} aria-hidden="true">{commentCountVisual}</span>
                 {/if}
                 {#if !isPageTitle}
                     <button type="button"
-                        class="comment-button"
+                        class="comment-button" class:has-count={commentCountVisual > 0}
                         data-testid="comment-button-{model.id}"
                         draggable="false"
                         onclick={(e) => { e.stopPropagation(); toggleComments(); }}
@@ -2191,7 +2191,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 {/if}
 
                 {#if referringAliases.length > 0}
-                    <div class="referring-aliases-container">
+                    <div class="referring-aliases-container" class:has-count={referringAliases.length > 0}>
                         <button type="button"
                             class="referring-aliases-button"
                             title="View referring aliases"
@@ -2269,7 +2269,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         </div>
 
         {#if model.votes.length > 0}
-            <span class="vote-count">{model.votes.length}</span>
+            <span class="vote-count" class:has-count={model.votes.length > 0}>{model.votes.length}</span>
         {/if}
         {#if !isPageTitle}
             <div class="item-actions">
@@ -2287,7 +2287,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 </button>
                 <button type="button"
                     onclick={toggleVote}
-                    class="vote-btn"
+                    class="vote-btn" class:has-count={model.votes.length > 0}
                     class:voted={model.votes.includes(currentUser)}
                     title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
                     aria-label={model.votes.includes(currentUser) ? "Remove vote from: " + truncatedText : "Vote for item: " + truncatedText}
@@ -2339,7 +2339,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 
 .item-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     min-height: 24px;
     flex: 1;
     min-width: 0;
@@ -2348,6 +2348,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 .collapse-btn,
 .bullet {
     width: 18px;
+    height: 24px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -2477,6 +2478,68 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding: 0 4px;
     font-size: 0.7rem;
     color: #666;
+}
+
+
+.component-selector,
+.referring-aliases-container,
+.comment-button,
+.vote-count,
+.comment-count-visual,
+.vote-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.outliner-item:hover .component-selector,
+.outliner-item:focus-within .component-selector,
+.outliner-item:hover .referring-aliases-container,
+.outliner-item:focus-within .referring-aliases-container,
+.outliner-item:hover .comment-button,
+.outliner-item:focus-within .comment-button,
+.outliner-item:hover .vote-count,
+.outliner-item:focus-within .vote-count,
+.outliner-item:hover .comment-count-visual,
+.outliner-item:focus-within .comment-count-visual,
+.outliner-item:hover .vote-btn,
+.outliner-item:focus-within .vote-btn,
+.comment-button.has-count,
+.referring-aliases-container.has-count,
+.vote-count.has-count,
+.comment-count-visual.has-count,
+.vote-btn.has-count {
+    opacity: 1;
+}
+
+
+.component-selector,
+.referring-aliases-container,
+.comment-button,
+.vote-count,
+.comment-count-visual,
+.vote-btn {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.outliner-item:hover .component-selector,
+.outliner-item:focus-within .component-selector,
+.outliner-item:hover .referring-aliases-container,
+.outliner-item:focus-within .referring-aliases-container,
+.outliner-item:hover .comment-button,
+.outliner-item:focus-within .comment-button,
+.outliner-item:hover .vote-count,
+.outliner-item:focus-within .vote-count,
+.outliner-item:hover .comment-count-visual,
+.outliner-item:focus-within .comment-count-visual,
+.outliner-item:hover .vote-btn,
+.outliner-item:focus-within .vote-btn,
+.comment-button.has-count,
+.referring-aliases-container.has-count,
+.vote-count.has-count,
+.comment-count-visual.has-count,
+.vote-btn.has-count {
+    opacity: 1;
 }
 
 .component-selector {
