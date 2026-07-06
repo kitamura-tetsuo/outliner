@@ -261,7 +261,7 @@ function handleBlur(event: FocusEvent) {
 <textarea
     bind:this={textareaRef}
     class="global-textarea"
-    aria-label="Text Editor"
+    aria-label="Edit item text"
     onkeydown={handleKeyDown}
     oninput={handleInput}
     oncompositionstart={handleCompositionStart}

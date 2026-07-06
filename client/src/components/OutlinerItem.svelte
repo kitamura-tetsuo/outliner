@@ -623,6 +623,7 @@ function handleComponentTypeChange(newType: string) {
 // Synchronization by Yjs fine-grained observe
 let textString = $state<string>("");
 let compTypeValue = $state<string | undefined>(undefined);
+let truncatedText = $derived(textString.length > 50 ? textString.substring(0, 50) + "..." : textString);
 
 onMount(() => {
     let unsubs: Array<() => void> = [];
@@ -2066,6 +2067,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     aria-selected={isPageTitle ? undefined : isItemActive}
     aria-setsize={isPageTitle ? undefined : ariaSetSize}
     aria-posinset={isPageTitle ? undefined : ariaPosInSet}
+    aria-label={isPageTitle ? undefined : truncatedText}
 
     bind:this={itemRef}
     data-item-id={model.id}
@@ -2271,13 +2273,13 @@ export function setSelectionPosition(start: number, end: number = start) {
         {/if}
         {#if !isPageTitle}
             <div class="item-actions">
-                <button type="button" onclick={addNewItem} title="Add new item" aria-label="Add new item">
+                <button type="button" onclick={addNewItem} title="Add new item" aria-label={"Add new item below: " + truncatedText}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
                 </button>
-                <button type="button" onclick={handleDelete} title="Delete" aria-label="Delete item">
+                <button type="button" onclick={handleDelete} title="Delete" aria-label={"Delete item: " + truncatedText}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -2288,7 +2290,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="vote-btn"
                     class:voted={model.votes.includes(currentUser)}
                     title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
-                    aria-label={model.votes.includes(currentUser) ? "Remove vote" : "Vote for this item"}
+                    aria-label={model.votes.includes(currentUser) ? "Remove vote from: " + truncatedText : "Vote for item: " + truncatedText}
                     aria-pressed={model.votes.includes(currentUser)}
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
