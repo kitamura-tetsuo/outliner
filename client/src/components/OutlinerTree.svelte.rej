@@ -1,0 +1,11 @@
+--- client/src/components/OutlinerTree.svelte
++++ client/src/components/OutlinerTree.svelte
+@@ -43,7 +43,7 @@
+     const outlinerKey = $derived.by(() => {
+         const ydocGuid = pageItem?.ydoc?.guid as string | undefined;
+         const id = pageItem?.id as string | undefined;
+-        return `${ydocGuid ?? ""}:${id ?? "no-id"}:${projectName ?? ""}:${pageName ?? ""}`;
++        return `${ydocGuid ?? ""}:${id ?? `${projectName}:${pageName}`}`;
+     });
+
+     onMount(() => {
