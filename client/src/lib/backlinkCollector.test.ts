@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Items } from "../schema/app-schema";
-import { collectBacklinks } from "./backlinkCollector";
+import { collectBacklinks, getHighlightSegments } from "./backlinkCollector";
 
 // Mock the store module
 vi.mock("../stores/store.svelte", () => {
@@ -104,5 +104,47 @@ describe("backlinkCollector", () => {
         // Implementation of collectBacklinks skips the page if pageText matches targetName
         const result = collectBacklinks("TargetPage");
         expect(result).toHaveLength(0);
+    });
+});
+
+describe("getHighlightSegments", () => {
+    it("should correctly handle empty context or pageName", () => {
+        expect(getHighlightSegments("", "Target")).toEqual([{ text: "", type: "normal" }]);
+        expect(getHighlightSegments("Hello", "")).toEqual([{ text: "Hello", type: "normal" }]);
+    });
+
+    it("should split context correctly around internal links", () => {
+        const segments = getHighlightSegments("Check [Target] here", "Target");
+        expect(segments).toEqual([
+            { text: "Check ", type: "normal" },
+            { text: "[Target]", type: "highlight" },
+            { text: " here", type: "normal" },
+        ]);
+    });
+
+    it("should split context correctly around project internal links", () => {
+        const segments = getHighlightSegments("Look at [/project/Target] page", "Target");
+        expect(segments).toEqual([
+            { text: "Look at ", type: "normal" },
+            { text: "[/project/Target]", type: "highlight" },
+            { text: " page", type: "normal" },
+        ]);
+    });
+
+    it("should handle regex metacharacters in pageName", () => {
+        const segments = getHighlightSegments("Look at [(Target)+.] page", "(Target)+.");
+        expect(segments).toEqual([
+            { text: "Look at ", type: "normal" },
+            { text: "[(Target)+.]", type: "highlight" },
+            { text: " page", type: "normal" },
+        ]);
+    });
+
+    it("should not modify or execute HTML in context", () => {
+        const segments = getHighlightSegments("XSS <script>alert(1)</script> [Target]", "Target");
+        expect(segments).toEqual([
+            { text: "XSS <script>alert(1)</script> ", type: "normal" },
+            { text: "[Target]", type: "highlight" },
+        ]);
     });
 });
