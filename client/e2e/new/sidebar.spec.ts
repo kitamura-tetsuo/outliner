@@ -5,7 +5,7 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 const getSidebarHelpers = (page: Page) => {
-    const sidebar = page.locator("aside.sidebar");
+    const sidebar = page.locator("aside.sidebar").first();
     const toggleButton = page.locator("button.sidebar-toggle");
 
     const isOpen = async () => {
@@ -82,7 +82,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Projects section should be initially expanded
-        const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
+        const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
         await expect(projectsHeader).toBeVisible();
         await expect(projectsHeader).toHaveAttribute("aria-expanded", "true");
 
@@ -111,7 +111,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Pages section should be initially expanded
-        const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        const pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
         await expect(pagesHeader).toBeVisible();
         await expect(pagesHeader).toHaveAttribute("aria-expanded", "true");
 
@@ -164,7 +164,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Projects section should be expanded
-        const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
+        const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
         await expect(projectsHeader).toHaveAttribute("aria-expanded", "true");
 
         // Verify project list is visible
@@ -184,7 +184,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(sidebar).toBeVisible();
 
         // Pages section should be expanded
-        const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        const pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
         await expect(pagesHeader).toHaveAttribute("aria-expanded", "true");
 
         // Verify page list is visible
@@ -233,12 +233,12 @@ test.describe("Sidebar Navigation", () => {
         await expect(toggleButton).toHaveAttribute("aria-label");
 
         // Projects header should have aria-expanded
-        const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
+        const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
         await expect(projectsHeader).toHaveAttribute("aria-expanded");
         await expect(projectsHeader).toHaveAttribute("aria-label");
 
         // Pages header should have aria-expanded
-        const pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        const pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
         await expect(pagesHeader).toHaveAttribute("aria-expanded");
         await expect(pagesHeader).toHaveAttribute("aria-label");
 
@@ -278,7 +278,7 @@ test.describe("Sidebar Navigation", () => {
         await page.waitForTimeout(1000);
 
         // Ensure Pages section is expanded
-        let pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+        let pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
         if (await pagesHeader.isVisible()) {
             const expanded = await pagesHeader.getAttribute("aria-expanded");
             if (expanded === "false") {
@@ -298,7 +298,7 @@ test.describe("Sidebar Navigation", () => {
             await page.waitForTimeout(1000);
 
             // Re-check if section needs expansion
-            pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+            pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
             if (await pagesHeader.isVisible()) {
                 const exp = await pagesHeader.getAttribute("aria-expanded");
                 if (exp === "false") {
@@ -318,7 +318,7 @@ test.describe("Sidebar Navigation", () => {
             await reopen();
 
             // Re-expand pages section
-            pagesHeader = page.locator('[aria-label="Toggle pages section"]');
+            pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
             if (await pagesHeader.isVisible()) {
                 const expanded = await pagesHeader.getAttribute("aria-expanded");
                 if (expanded === "false") {
@@ -396,7 +396,7 @@ test.describe("Sidebar Navigation", () => {
         await open();
 
         // Ensure the projects section is visible and expanded
-        const projectsHeader = page.locator('[aria-label="Toggle projects section"]');
+        const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
         await expect(projectsHeader).toHaveAttribute("aria-expanded", "true");
 
         const projectList = page.locator(".project-list");
