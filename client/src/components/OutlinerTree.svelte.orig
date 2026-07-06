@@ -43,7 +43,7 @@
     const outlinerKey = $derived.by(() => {
         const ydocGuid = pageItem?.ydoc?.guid as string | undefined;
         const id = pageItem?.id as string | undefined;
-        return `${ydocGuid ?? ""}:${id ?? `${projectName}:${pageName}`}`;
+        return `${ydocGuid ?? ""}:${id ?? `${projectName}:${pageName}`}:${projectName}:${pageName}`;
     });
 
     onMount(() => {
@@ -1881,7 +1881,7 @@
 
         const targetItem = displayItems[targetIndex].model.original;
         const items = pageItem.items as Items;
-        
+
         if (position === "middle") {
             // Add to existing item
             try {
@@ -1914,7 +1914,7 @@
                 }
             }
         }
-        
+
         // Refresh display items
         __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
     }
@@ -2028,7 +2028,7 @@
     }
     function handleTreeDragOver(event: DragEvent) {
         if (isReadOnly) return;
-        
+
         const dt = event.dataTransfer;
         if (dt) {
             const hasFiles = dt.types.includes("Files");
@@ -2042,13 +2042,13 @@
 
     async function handleTreeDrop(event: DragEvent) {
         if (isReadOnly) return;
-        
+
         const dt = event.dataTransfer;
         if (!dt) return;
 
         // Check if we already handled this in an item
         if (event.defaultPrevented) return;
-        
+
         event.preventDefault();
         event.stopPropagation();
 
