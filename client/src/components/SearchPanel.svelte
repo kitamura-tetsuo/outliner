@@ -41,7 +41,7 @@ const logger = getLogger("SearchPanel");
         try {
             isTestEnv =
                 typeof window !== "undefined" &&
-                localStorage.getItem("VITE_IS_TEST") === "true";
+                (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && localStorage.getItem("VITE_IS_TEST") === "true";
         } catch {}
     });
 

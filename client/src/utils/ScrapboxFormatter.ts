@@ -1072,7 +1072,7 @@ export class ScrapboxFormatter {
             // This is needed because unit tests don't set up the full store
             if (
                 typeof window.localStorage !== "undefined"
-                && (window.localStorage.getItem("VITE_IS_TEST") === "true"
+                && ((import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage.getItem("VITE_IS_TEST") === "true"
                     || window.localStorage.getItem("VITE_E2E_TEST") === "true")
             ) {
                 return "/Untitled%20Project";

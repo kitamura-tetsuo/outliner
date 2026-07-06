@@ -1396,16 +1396,7 @@
             const w = typeof window !== "undefined"
                 ? window
                 : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemDrop",
-                    targetItemId,
-                    position,
-                    sourceItemId,
-                    selection: selection ? "yes" : "no",
-                    t: Date.now(),
-                });
-            }
+
         } catch {}
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -1777,15 +1768,7 @@
             const w = typeof window !== "undefined"
                 ? window
                 : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemMoveDrop",
-                    source: sourceItemId,
-                    target: targetItemId,
-                    position,
-                    t: Date.now(),
-                });
-            }
+
         } catch {}
 
         try {
@@ -2054,10 +2037,10 @@
 
         const hasFileList = dt.files && dt.files.length > 0;
         const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
-        const hasE2eFiles = e2eFiles.length > 0;
 
-        if (hasFileList || hasFileItems || hasE2eFiles) {
+
+
+        if (hasFileList || hasFileItems) {
             const files: File[] = [];
             if (hasFileList) {
                 files.push(...Array.from(dt.files));
@@ -2068,9 +2051,6 @@
                         if (f) files.push(f);
                     }
                 }
-            } else if (hasE2eFiles) {
-                files.push(...e2eFiles);
-                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {

@@ -111,9 +111,9 @@ export class UserManager {
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || (typeof window !== "undefined" && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined"
-                && window.__E2E__ === true);
+                && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.__E2E__ === true);
 
         // Never use emulator in production environment
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
@@ -223,9 +223,9 @@ export class UserManager {
         const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
             || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_IS_TEST === "true")
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+            || (typeof window !== "undefined" && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
             || (typeof window !== "undefined"
-                && window.__E2E__ === true);
+                && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.__E2E__ === true);
         const isProduction = !(typeof import.meta !== "undefined" && import.meta.env?.DEV)
             && (typeof import.meta !== "undefined" && import.meta.env?.MODE) === "production";
 

@@ -365,39 +365,6 @@ onMount(async () => {
                 }
             }
         } catch {}
-
-        // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
-        try {
-            window.addEventListener('drop', (ev: Event) => {
-                try { logger.debug('[GlobalDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-            document.addEventListener('drop', (ev: Event) => {
-                try { logger.debug('[DocDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-            window.addEventListener('dragover', (ev: Event) => {
-                try { logger.debug('[GlobalDrop] dragover received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-        } catch {}
-
-    }
-});
-
-// Processing at component destruction
-onDestroy(async () => {
-    // Execute only in browser environment
-    if (browser) {
-        // Remove event listeners
-        window.removeEventListener("beforeunload", handleBeforeUnload);
-        document.removeEventListener(
-            "visibilitychange",
-            handleVisibilityChange,
-        );
-
-        try {
-            const { cleanupYjsClient } = await import("../services");
-            cleanupYjsClient();
-        } catch {}
-
         // Cancel periodic log rotation
         if (rotationInterval) {
             clearInterval(rotationInterval);

@@ -339,23 +339,6 @@ onMount(() => {
         cleanup.push(detachObserver);
     }
 
-    const handleWindowEvent = (event: Event) => {
-        try {
-            const detail = (event as CustomEvent<{ id?: string, itemId?: string, nodeId?: string, targetId?: string, count?: number, value?: number, len?: number, length?: number }>)?.detail;
-            if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
-            if (targetId == null) return;
-            if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
-        } catch {}
-    };
-
-    try {
-        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
-        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
-    } catch {}
-
     return () => {
         for (const fn of cleanup) {
             try { fn(); } catch {}
@@ -1677,10 +1660,8 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
-    const hasE2eFiles = e2eFiles.length > 0;
 
-    if (hasFileList || hasFileItems || hasE2eFiles) {
+    if (hasFileList || hasFileItems) {
         try {
             const files: File[] = [];
             if (hasFileList) {
@@ -1692,10 +1673,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         if (f) files.push(f);
                     }
                 }
-            } else if (hasE2eFiles) {
-                // Playwright fallback: Use last files recorded via DataTransfer.items.add
-                files.push(...e2eFiles);
-                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {

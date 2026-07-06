@@ -462,7 +462,7 @@ function setupConsoleSanitizer(): void {
     if (typeof window === "undefined") return;
 
     // Only sanitize in E2E test environment to preserve DevTools object inspection in dev/prod
-    const isTestEnv = localStorage.getItem("VITE_IS_TEST") === "true"
+    const isTestEnv = (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && localStorage.getItem("VITE_IS_TEST") === "true"
         || localStorage.getItem("VITE_E2E_TEST") === "true";
     if (!isTestEnv) return;
 

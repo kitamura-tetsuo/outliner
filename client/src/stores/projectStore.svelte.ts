@@ -25,9 +25,9 @@ export function projectsFromUserProject(
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
         || (typeof window !== "undefined" && window.location.hostname === "localhost")
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+        || (typeof window !== "undefined" && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined"
-            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+            && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
 
     // Deduplicate IDs for stabilization
     /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state */
@@ -105,8 +105,8 @@ if (typeof window !== "undefined") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
+        || (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
+        || (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
     if (isTestEnv) {
         (window as Window & typeof globalThis & { __PROJECT_STORE__?: typeof projectStore; }).__PROJECT_STORE__ =
             projectStore;

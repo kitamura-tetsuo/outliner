@@ -4,7 +4,7 @@ import { iterateItems } from "../utils/itemTraversal";
 
 const logger = getLogger();
 // Suppress verbose logs in E2E/Test environments
-const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
+const __IS_E2E__ = (typeof window !== "undefined" && (import.meta.env.MODE === "development" || import.meta.env.MODE === "test") && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
     || import.meta.env.MODE === "test"
     || import.meta.env.VITE_IS_TEST === "true";
 const debugLog = (...args: unknown[]) => {
