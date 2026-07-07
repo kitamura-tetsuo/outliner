@@ -15,6 +15,7 @@ describe("Demo manual reset policy", () => {
         templateVersion: DEMO_TEMPLATE_VERSION,
         now,
         force: false,
+        missingTemplatePages: false,
     };
 
     it("does not reset a freshly seeded document without force", () => {
