@@ -40,10 +40,25 @@ export async function startServer(
     overrides: ServerOverrides = {},
 ) {
     // SECURITY CRITICAL: Prevent accidental authentication bypass in production
-    if (process.env.ALLOW_TEST_ACCESS === "true" && process.env.NODE_ENV === "production") {
-        throw new Error(
-            "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled in PRODUCTION! Authentication bypass is active. Server refusing to start.",
-        );
+    if (process.env.ALLOW_TEST_ACCESS === "true") {
+        if (process.env.NODE_ENV === "production") {
+            throw new Error(
+                "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled in PRODUCTION! Authentication bypass is active. Server refusing to start.",
+            );
+        }
+
+        const allowedOrigins = config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean);
+        if (allowedOrigins.length > 0) {
+            const hasNonLocalhostOrigin = allowedOrigins.some(origin => {
+                return !origin.includes("localhost") && !origin.includes("127.0.0.1");
+            });
+
+            if (hasNonLocalhostOrigin) {
+                throw new Error(
+                    "SECURITY CRITICAL: ALLOW_TEST_ACCESS is enabled with a non-localhost CORS ORIGIN_ALLOWLIST. Authentication bypass is active. Server refusing to start.",
+                );
+            }
+        }
     }
 
     const checkContainerAccess = overrides.checkContainerAccess || defaultCheckAccess;
@@ -178,21 +193,6 @@ export async function startServer(
 
         res.json(response);
     });
-
-    // Message size limit extension
-    const onMessageExtension = {
-        async onMessage({ message, connection }: any) {
-            recordMessage();
-            if (message.byteLength > config.MAX_MESSAGE_SIZE_BYTES) {
-                logger.warn({
-                    event: "ws_connection_closed",
-                    reason: "message_too_large",
-                    size: message.byteLength,
-                });
-                connection.close(4005, "MESSAGE_TOO_LARGE");
-            }
-        },
-    } as Partial<import("@hocuspocus/server").Configuration>;
 
     const extensions = [
         new Logger({}),
@@ -415,6 +415,28 @@ export async function startServer(
             roomCounts.set(documentName, (roomCounts.get(documentName) ?? 0) + 1);
             logger.info({ event: "ws_connection_accepted", room: documentName });
 
+            let clientConnection: any;
+
+            // Register close handler before try/catch so counters are always decremented
+            // even if handleConnection throws and we manually close the socket
+            ws.on("close", (code: number, reason: Buffer) => {
+                totalSockets--;
+                if (totalSockets < 0) totalSockets = 0;
+                if (ip) {
+                    const count = (ipCounts.get(ip) ?? 1) - 1;
+                    if (count <= 0) ipCounts.delete(ip);
+                    else ipCounts.set(ip, count);
+                }
+                if (documentName) {
+                    const count = (roomCounts.get(documentName) ?? 1) - 1;
+                    if (count <= 0) roomCounts.delete(documentName);
+                    else roomCounts.set(documentName, count);
+                }
+                if (clientConnection) {
+                    clientConnection.handleClose({ code, reason: reason.toString() });
+                }
+            });
+
             // 7. Immediately hand over to Hocuspocus with minimal initial context (ip only).
             //    Async auth (token verification + access check) is done in onAuthenticate hook.
             try {
@@ -426,7 +448,7 @@ export async function startServer(
                     method: request.method,
                 });
 
-                const clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip });
+                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip });
 
                 ws.on("message", (data: any) => {
                     recordMessage();
@@ -441,23 +463,9 @@ export async function startServer(
                         ws.close(4005, "MESSAGE_TOO_LARGE");
                         return;
                     }
-                    clientConnection.handleMessage(data);
-                });
-
-                ws.on("close", (code: number, reason: Buffer) => {
-                    totalSockets--;
-                    if (totalSockets < 0) totalSockets = 0;
-                    if (ip) {
-                        const count = (ipCounts.get(ip) ?? 1) - 1;
-                        if (count <= 0) ipCounts.delete(ip);
-                        else ipCounts.set(ip, count);
+                    if (clientConnection) {
+                        clientConnection.handleMessage(data);
                     }
-                    if (documentName) {
-                        const count = (roomCounts.get(documentName) ?? 1) - 1;
-                        if (count <= 0) roomCounts.delete(documentName);
-                        else roomCounts.set(documentName, count);
-                    }
-                    clientConnection.handleClose({ code, reason: reason.toString() });
                 });
             } catch (e) {
                 logger.error({ error: e }, "Error handling Hocuspocus connection");

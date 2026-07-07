@@ -19,6 +19,7 @@ type Console = typeof console;
 // Window extension for test environment globals
 declare global {
     interface Window {
+    __E2E_LAST_FILES__?: File[];
         __CURRENT_PROJECT__?: Project;
         __CURRENT_PROJECT_TITLE__?: string;
         generalStore?: GeneralStore;
@@ -35,14 +36,8 @@ declare global {
         commandPaletteStore?: unknown;
         __KEYSTREAM__?: unknown;
         __E2E_DEBUG__?: boolean;
-        __E2E_ATTEMPTED_DROP__?: boolean;
-        __E2E_LAST_FILES__?: File[];
         __ITEM_ID_MAP__?: Record<string, string>;
         DataTransferItemList?: unknown;
-        __E2E_DT_ADD_PATCHED__?: boolean;
-        __E2E_DT_ITEMS_GETTER_PATCHED__?: boolean;
-        __E2E_FILE_CTOR_PATCHED__?: boolean;
-        __E2E_DT_CTOR_PATCHED__?: boolean;
         __E2E_LAST_DROP_EVENT__?: Event;
         __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[];
         E2E_LOGS?: unknown[];
@@ -51,7 +46,6 @@ declare global {
         __SEARCH_PANEL_VISIBLE__?: boolean;
         __E2E_LAST_MATCH_COUNT__?: number;
         __E2E_LAYOUT_MOUNTED__?: boolean;
-        __E2E_DROP_PATCHED__?: boolean;
         __PAGE_STATE__?: {
             loaded: boolean;
             projectName?: string;

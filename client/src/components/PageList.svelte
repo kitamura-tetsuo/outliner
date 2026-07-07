@@ -11,6 +11,8 @@ import { resolvePath } from "../utils/pathUtils";
 import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
 import { pageViewStore } from "../stores/PageViewStore.svelte";
 import { getBacklinkCount } from "../lib/backlinkCollector";
+import { store } from "../stores/store.svelte";
+import { findPageByName } from "../utils/pageUtils";
 
 interface Props {
     projectName?: string;
@@ -95,6 +97,18 @@ let sortedItems = $derived.by(() => {
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
         pageTitle = "New Page " + new Date().toLocaleString();
+    }
+
+    if (store.pageExists(pageTitle)) {
+        const existingPage = findPageByName(project.items, pageTitle);
+        if (existingPage) {
+            selectPage(existingPage);
+            const encodedTitle = encodeURIComponent(existingPage.text);
+            const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
+            goto(resolvePath(`${basePath}/${encodedTitle}`));
+            pageTitle = "";
+            return;
+        }
     }
 
     // Add a page directly to the project

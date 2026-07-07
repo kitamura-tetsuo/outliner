@@ -22,7 +22,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
     try {
         // provider.synced transitions
         provider.on("synced", (data: { state: boolean; }) => {
-            logger.info(`[yjs-conn] ${label} sync=${data.state}`);
+            logger.debug(`[yjs-conn] ${label} sync=${data.state}`);
         });
         // awareness states count
         const logAwareness = () => {
@@ -30,7 +30,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
                 const states = (awareness as { getStates?: () => Map<number, unknown>; })?.getStates?.();
                 const count = states?.size ?? 0;
                 const tree = doc.getMap("orderedTree") as import("yjs").Map<unknown>;
-                logger.info(`[yjs-conn] ${label} awareness.states=${count} tree.size=${tree.size}`);
+                logger.debug(`[yjs-conn] ${label} awareness.states=${count} tree.size=${tree.size}`);
             } catch {}
         };
         if (awareness) {
@@ -45,7 +45,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
         doc.on("update", (u: Uint8Array) => {
             updCount++;
             const bytes = u?.length ?? 0;
-            logger.info(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
+            logger.debug(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
         });
     } catch {
         // ignore debug wiring errors
@@ -74,7 +74,7 @@ function getWsBase(): string {
             return `ws://localhost:${port}`;
         }
     } catch {}
-    logger.info(
+    logger.debug(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
             typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
         }, final=${port}`,
@@ -117,7 +117,7 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
         || (typeof window !== "undefined"
             && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
                 || window.__E2E__ === true));
-    logger.info(
+    logger.debug(
         `[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth
             .currentUser}, forceRefresh=${forceRefresh}`,
     );
@@ -159,11 +159,11 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     }
 
     try {
-        logger.info(`[getFreshIdToken] Fetching ID token from Firebase Auth (forceRefresh=${forceRefresh})...`);
+        logger.debug(`[getFreshIdToken] Fetching ID token from Firebase Auth (forceRefresh=${forceRefresh})...`);
         // Only force a refresh when explicitly requested (e.g. after an auth failure). Using the
         // SDK's cache otherwise avoids an unnecessary network round-trip on every (re)connect.
         const token = await auth.currentUser.getIdToken(forceRefresh);
-        logger.info(`[getFreshIdToken] Token fetched successfully (len=${token?.length ?? 0})`);
+        logger.debug(`[getFreshIdToken] Token fetched successfully (len=${token?.length ?? 0})`);
         if (!token) throw new Error("Token is empty");
         return token;
     } catch (e) {
@@ -261,10 +261,10 @@ async function setupProviderForRoom(
         document: doc,
         token: tokenProvider,
     });
-    logger.info(`[${label}] Provider created for ${room}, wsBase=${wsBase}`);
+    logger.debug(`[${label}] Provider created for ${room}, wsBase=${wsBase}`);
 
     provider.on("status", (event: { status: string; }) => {
-        logger.info(`[yjs-conn] ${room} status: ${event.status}`);
+        logger.debug(`[yjs-conn] ${room} status: ${event.status}`);
     });
 
     provider.on("close", (event: { code?: number; reason?: string; }) => {
@@ -273,7 +273,7 @@ async function setupProviderForRoom(
         logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
 
         if (code === 4001 || code === 4003) {
-            logger.info(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
+            logger.debug(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
             forceTokenRefresh = true;
             void userManager.refreshToken();
         }
@@ -288,15 +288,15 @@ async function setupProviderForRoom(
     });
 
     // Detailed event logging for sync debugging
-    provider.on("authenticated", () => logger.info(`[yjs-conn] ${room} authenticated`));
+    provider.on("authenticated", () => logger.debug(`[yjs-conn] ${room} authenticated`));
     provider.on(
         "authenticationFailed",
         (data: unknown) => logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`),
     );
-    provider.on("stateless", (data: unknown) => logger.info({ data }, `[yjs-conn] ${room} stateless event`));
-    provider.on("reconnect", () => logger.info(`[yjs-conn] ${room} reconnecting...`));
+    provider.on("stateless", (data: unknown) => logger.debug({ data }, `[yjs-conn] ${room} stateless event`));
+    provider.on("reconnect", () => logger.debug(`[yjs-conn] ${room} reconnecting...`));
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
-        logger.info(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
+        logger.debug(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);
     });
 
     const awareness = provider.awareness;
@@ -328,7 +328,7 @@ async function setupProviderForRoom(
     const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
         return new Promise((resolve, reject) => {
             if (provider.isSynced) {
-                logger.info(`[${label}] Room ${room} already synced`);
+                logger.debug(`[${label}] Room ${room} already synced`);
                 setRoomSyncState(room, "synced");
                 resolve({ synced: true });
                 return;
@@ -353,7 +353,7 @@ async function setupProviderForRoom(
 
             const syncHandler = (data?: { state?: boolean; }) => {
                 if (!data || data.state !== false) {
-                    logger.info(`[${label}] Sync complete for ${room}`);
+                    logger.debug(`[${label}] Sync complete for ${room}`);
                     setRoomSyncState(room, "synced");
                     cleanup();
                     resolve({ synced: true });
@@ -389,7 +389,7 @@ async function setupProviderForRoom(
 }
 
 export async function createProjectConnection(projectId: string): Promise<ProjectConnection> {
-    logger.info(`[createProjectConnection] Starting for projectId=${projectId}`);
+    logger.debug(`[createProjectConnection] Starting for projectId=${projectId}`);
     const doc = new Y.Doc({ guid: projectId });
     const room = projectRoomPath(projectId);
 

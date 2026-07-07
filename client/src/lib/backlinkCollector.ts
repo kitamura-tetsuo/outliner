@@ -118,7 +118,7 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
             }
         }
 
-        logger.info(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
+        logger.debug(`Collected ${backlinks.length} backlinks for page: ${targetPageName}`);
         return backlinks;
     } catch (error) {
         logger.error({ error }, `Error collecting backlinks for page ${targetPageName}`);
@@ -175,7 +175,7 @@ function extractContext(text: string, internalLinkPattern: RegExp, projectLinkPa
  * @param string String to escape
  * @returns Escaped string
  */
-function escapeRegExp(string: string): string {
+export function escapeRegExp(string: string): string {
     return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
@@ -186,4 +186,39 @@ function escapeRegExp(string: string): string {
  */
 export function getBacklinkCount(pageName: string): number {
     return collectBacklinks(pageName).length;
+}
+
+export type HighlightSegment = { text: string; type: "normal" | "highlight"; };
+
+export function getHighlightSegments(context: string, pageName: string): HighlightSegment[] {
+    if (!context || !pageName) return [{ text: context, type: "normal" }];
+
+    const safePageName = escapeRegExp(pageName);
+    const pattern = new RegExp(`\\[(${safePageName})\\]|\\[\\/[^/]+\\/(${safePageName})\\]`, "gi");
+
+    const segments: HighlightSegment[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = pattern.exec(context)) !== null) {
+        if (match.index > lastIndex) {
+            segments.push({ text: context.substring(lastIndex, match.index), type: "normal" });
+        }
+
+        if (match[1] !== undefined) {
+            segments.push({ text: `[${match[1]}]`, type: "highlight" });
+        } else if (match[2] !== undefined) {
+            // Need to reconstruct the whole tag because the match only captured the pageName
+            // match[0] is the entire match, e.g., [/project/PageName]
+            segments.push({ text: match[0], type: "highlight" });
+        }
+
+        lastIndex = pattern.lastIndex;
+    }
+
+    if (lastIndex < context.length) {
+        segments.push({ text: context.substring(lastIndex), type: "normal" });
+    }
+
+    return segments;
 }

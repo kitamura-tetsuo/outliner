@@ -135,10 +135,30 @@ describe("websocket auth security (regression)", () => {
 
     it("ACCEPTS alg:none token in test environment", async () => {
         process.env.NODE_ENV = "test";
+        process.env.ALLOW_TEST_ACCESS = "true";
 
         const token = createNoneAlgToken();
         const decoded = await verifyIdTokenCached(token);
 
         expect(decoded.uid).to.equal("hacker");
+    });
+
+    it("REJECTS alg:none token when CI=true but ALLOW_TEST_ACCESS is missing", async () => {
+        process.env.CI = "true";
+        delete process.env.ALLOW_TEST_ACCESS;
+
+        const token = createNoneAlgToken();
+
+        try {
+            await verifyIdTokenCached(token);
+            throw new Error("Should have failed");
+        } catch (e: any) {
+            if (e.message.includes("alg:none tokens are not allowed")) {
+                return;
+            }
+            throw e;
+        } finally {
+            delete process.env.CI;
+        }
     });
 });

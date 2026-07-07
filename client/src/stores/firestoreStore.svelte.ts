@@ -66,7 +66,7 @@ class GeneralStore {
         const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
         const nextDefault = this.userProject?.defaultProjectId;
 
-        logger.info(
+        logger.debug(
             `[firestoreStore.setUserProject] prev.ucVersion=${prevVersion} prev.len=${prevLength} prev.default=${prevDefault} -> next.ucVersion=${this.ucVersion} next.len=${nextLength} next.default=${nextDefault}`,
         );
     }
@@ -141,7 +141,7 @@ class GeneralStore {
         const currentUser = userManager.getCurrentUser();
         // Early return if user is not logged in
         if (!currentUser) {
-            logger.info("Not starting Firestore observation because user is not logged in");
+            logger.debug("Not starting Firestore observation because user is not logged in");
             return () => {}; // Return cleanup function
         }
 
@@ -152,7 +152,7 @@ class GeneralStore {
         }
 
         const userId = currentUser.id;
-        logger.info(`Observing userProjects document for user ${userId}`);
+        logger.debug(`Observing userProjects document for user ${userId}`);
 
         try {
             // Get reference to document (/userProjects/{userId})
@@ -194,16 +194,16 @@ class GeneralStore {
                         const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
                         const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                         if (isTestEnv && hasSeeded && incomingEmpty) {
-                            logger.info(
+                            logger.debug(
                                 "FirestoreStore: keeping seeded userProject; ignoring empty snapshot in test env",
                             );
                         } else {
                             firestoreStore.setUserProject(projectData);
-                            logger.info(`Loaded container info for user ${userId}`);
-                            logger.info(`Default container ID: ${projectData.defaultProjectId || "None"}`);
+                            logger.debug(`Loaded container info for user ${userId}`);
+                            logger.debug(`Default container ID: ${projectData.defaultProjectId || "None"}`);
                         }
                     } else {
-                        logger.info(`Container info for user ${userId} does not exist`);
+                        logger.debug(`Container info for user ${userId} does not exist`);
                     }
                 },
                 error => {
@@ -276,7 +276,7 @@ let db: Firestore | undefined;
 try {
     // Use centrally managed Firebase app
     app = getFirebaseApp();
-    logger.info("Firebase app initialized via central management");
+    logger.debug("Firebase app initialized via central management");
 
     // Get Firestore instance
     db = getFirestore(app!);
@@ -308,12 +308,12 @@ try {
         const emulatorPort = parseInt(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT || "58080", 10);
 
         // Log emulator connection info
-        logger.info(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
+        logger.debug(`Connecting to Firestore emulator at ${emulatorHost}:${emulatorPort}`);
 
         try {
             // Connect to emulator
             connectFirestoreEmulator(db, emulatorHost, emulatorPort);
-            logger.info("Successfully connected to Firestore emulator");
+            logger.debug("Successfully connected to Firestore emulator");
         } catch (err) {
             const error = err instanceof Error ? err : new Error(String(err));
             logger.error({ error: error as Error }, "Failed to connect to Firestore emulator");
@@ -347,7 +347,7 @@ export async function saveProjectId(projectId: string): Promise<boolean> {
         }
 
         // Call via host adding /api/ prefix
-        logger.info(`Saving project ID via /api/saveProject`);
+        logger.debug(`Saving project ID via /api/saveProject`);
 
         // Call Firebase Functions to save container ID
         const url = getFirebaseFunctionUrl("saveProject");
@@ -383,19 +383,19 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
         // Check if user is logged in
         const currentUser = userManager.getCurrentUser();
         if (!currentUser) {
-            logger.info("Cannot get default project ID: User not logged in. Waiting for login...");
+            logger.debug("Cannot get default project ID: User not logged in. Waiting for login...");
             return undefined;
         }
 
         // 1. First try to get directly from store (if updated in real time)
         if (firestoreStore.userProject?.defaultProjectId) {
-            logger.info(`Found default project ID in store: ${firestoreStore.userProject.defaultProjectId}`);
+            logger.debug(`Found default project ID in store: ${firestoreStore.userProject.defaultProjectId}`);
             return firestoreStore.userProject.defaultProjectId;
         }
 
         // 2. If no value in store, get directly from Firestore
         try {
-            logger.info("No default project found in store, fetching from server...");
+            logger.debug("No default project found in store, fetching from server...");
             const userId = currentUser.id;
 
             // Check Firestore import
@@ -414,7 +414,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
                 const data = snapshot.data();
                 const projectId = data.defaultProjectId;
                 if (projectId) {
-                    logger.info(`Found default project ID from Firestore: ${projectId}`);
+                    logger.debug(`Found default project ID from Firestore: ${projectId}`);
                     return projectId;
                 }
             }
@@ -424,7 +424,7 @@ export async function getDefaultProjectId(): Promise<string | undefined> {
             // Firestore error is not fatal, so continue
         }
 
-        logger.info("No default project ID found");
+        logger.debug("No default project ID found");
         return undefined;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
@@ -452,7 +452,7 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
                 || import.meta.env.VITE_IS_TEST === "true"
                 || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
         ) {
-            logger.info("Test environment detected, saving project ID to mock store");
+            logger.debug("Test environment detected, saving project ID to mock store");
 
             // Create or update new container data
             /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Sets and Timestamp values, not reactive state */
@@ -481,7 +481,7 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
 
             // Update store
             firestoreStore.setUserProject(updatedData);
-            logger.info({ updatedData }, "Project ID saved to mock store");
+            logger.debug({ updatedData }, "Project ID saved to mock store");
 
             // Save current container ID to local storage as well
             window.localStorage.setItem("currentProjectId", projectId);
@@ -506,7 +506,7 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
 
         // Get Firebase Functions endpoint
         const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
-        logger.info(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
+        logger.debug(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Call Firebase Functions to save container ID
         const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
@@ -527,7 +527,7 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
         }
 
         const result = await response.json();
-        logger.info(`Successfully saved project ID to server for user ${currentUser.id}`);
+        logger.debug(`Successfully saved project ID to server for user ${currentUser.id}`);
         return result.success === true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));

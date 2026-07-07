@@ -13,6 +13,7 @@ describe("websocket auth helpers", () => {
         // Ensure test environment to prevent security warnings/errors during normal tests
         originalNodeEnv = process.env.NODE_ENV;
         process.env.NODE_ENV = "test";
+        process.env.ALLOW_TEST_ACCESS = "true";
         process.env.GCLOUD_PROJECT = "test-project";
 
         // Ensure admin app is initialized (if not already)
@@ -33,6 +34,7 @@ describe("websocket auth helpers", () => {
 
     afterEach(() => {
         process.env.NODE_ENV = originalNodeEnv;
+        delete process.env.ALLOW_TEST_ACCESS;
         sinon.restore();
         clearTokenCache();
     });

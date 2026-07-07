@@ -1,8 +1,8 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
 import {
-
     collectBacklinks,
+    getHighlightSegments,
 } from "$lib/backlinkCollector";
 import { getLogger } from "$lib/logger";
 import { yjsStore } from "../stores/yjsStore.svelte";
@@ -82,34 +82,7 @@ onDestroy(() => {
     // Cleanup
 });
 
-// Highlight links within the context
-function highlightLinkInContext(context: string, pageName: string): string {
-    if (!context || !pageName) return context;
 
-    // HTML escape
-    const escapeHtml = (text: string): string => {
-        return text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    };
-
-    // Internal link regex pattern
-    const escapedPageName = escapeHtml(pageName);
-    const internalLinkPattern = new RegExp(`\\\\[(${escapedPageName})\\\\]`, "gi");
-
-    // Project internal link regex pattern
-    const projectLinkPattern = new RegExp(`\\\\[\\\\/[^/]+\\\\/(${escapedPageName})\\\\]`, "gi");
-
-    // Highlight links
-    let result = context
-        .replace(internalLinkPattern, '<span class="highlight">[$1]</span>')
-        .replace(projectLinkPattern, '<span class="highlight">[/project/$1]</span>');
-
-    return result;
-}
 </script>
 
 <div class="backlink-panel">
@@ -152,8 +125,13 @@ function highlightLinkInContext(context: string, pageName: string): string {
                                 </button>
                             </div>
                             <div class="backlink-context">
-                                <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-                                {@html highlightLinkInContext(backlink.context, pageName)}
+                                {#each getHighlightSegments(backlink.context, pageName) as segment, index (index)}
+                                    {#if segment.type === 'highlight'}
+                                        <span class="highlight">{segment.text}</span>
+                                    {:else}
+                                        {segment.text}
+                                    {/if}
+                                {/each}
                             </div>
                         </li>
                     {/each}

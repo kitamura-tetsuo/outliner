@@ -364,7 +364,7 @@ const logger = getLogger("OutlinerBase");
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if effectivePageItem}
-        {#key effectivePageItem?.ydoc ? ((effectivePageItem.ydoc as unknown as { guid?: string }).guid ?? effectivePageItem.id) : effectivePageItem.id}
+        {#key `${effectivePageItem?.ydoc ? (effectivePageItem.ydoc as unknown as { guid?: string }).guid ?? "" : ""}:${effectivePageItem?.id ?? `${projectName}:${pageName}`}`}
             <OutlinerTree
                 pageItem={effectivePageItem}
                 {projectName}

@@ -9,6 +9,12 @@ import { startServer } from "../src/server.js";
 describe("CORS Middleware", () => {
     let app: any;
     let shutdown: any;
+    beforeEach(() => {
+        process.env.ALLOW_TEST_ACCESS = "false";
+    });
+    afterEach(() => {
+        delete process.env.ALLOW_TEST_ACCESS;
+    });
     let dbDir: string;
 
     afterEach(async () => {
