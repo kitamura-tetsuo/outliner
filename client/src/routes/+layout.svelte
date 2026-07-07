@@ -224,24 +224,8 @@ onMount(async () => {
             // Set up periodic log rotation
             rotationInterval = schedulePeriodicLogRotation();
         }
-        // Test-only: normalize drop events so Playwright's dispatchEvent("drop", {dataTransfer}) becomes a real DragEvent
-        try {
-            if (typeof window !== 'undefined' && isE2eCleanup) {
-                            }
-        } catch {}
 
-        // DEBUG: log drop/dragover events globally to diagnose Playwright dispatchEvent
-        try {
-            window.addEventListener('drop', (ev: Event) => {
-                try { logger.debug('[GlobalDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-            document.addEventListener('drop', (ev: Event) => {
-                try { logger.debug('[DocDrop] drop received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-            window.addEventListener('dragover', (ev: Event) => {
-                try { logger.debug('[GlobalDrop] dragover received target=', (ev?.target as Element | null)?.className || (ev?.target as Element | null)?.tagName); } catch {}
-            }, { capture: true });
-        } catch {}
+
 
     }
 });
