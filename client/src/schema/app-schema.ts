@@ -56,11 +56,21 @@ export class Comments {
         this._ensureInitialized = ensureInitialized;
     }
 
-    observe(f: (event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>, transaction: import("yjs").Transaction) => void) {
+    observe(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
         this.yArray.observe(f);
     }
 
-    unobserve(f: (event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>, transaction: import("yjs").Transaction) => void) {
+    unobserve(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
         this.yArray.unobserve(f);
     }
 
@@ -552,7 +562,7 @@ export class Item {
             // Window broadcast (for immediate UI reflection, deterministic)
             try {
                 if (typeof window !== "undefined") {
-                                    }
+                }
             } catch {}
         } catch {}
         return res;
@@ -569,7 +579,7 @@ export class Item {
             this.value.set("lastChanged", Date.now());
             try {
                 if (typeof window !== "undefined") {
-                                    }
+                }
             } catch {}
         } catch {}
         return res;

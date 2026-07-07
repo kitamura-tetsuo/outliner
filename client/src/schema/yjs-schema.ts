@@ -24,11 +24,21 @@ export class Comments {
         this.yArray = yArray;
     }
 
-    observe(f: (event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>, transaction: import("yjs").Transaction) => void) {
+    observe(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
         this.yArray.observe(f);
     }
 
-    unobserve(f: (event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>, transaction: import("yjs").Transaction) => void) {
+    unobserve(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
         this.yArray.unobserve(f);
     }
 
@@ -43,7 +53,6 @@ export class Comments {
         c.set("lastChanged", time);
         this.yArray.push([c]);
 
-
         return { id: id };
     }
 
@@ -53,7 +62,6 @@ export class Comments {
 
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
-
         }
     }
 
