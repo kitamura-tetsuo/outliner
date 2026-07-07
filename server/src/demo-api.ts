@@ -2,7 +2,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject } from "./demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { getClientIp } from "./utils/ip.js";
@@ -22,6 +22,7 @@ export interface DemoResetState {
     templateVersion: number | undefined;
     now: number;
     force: boolean;
+    missingTemplatePages: boolean;
 }
 
 // Decide whether the shared demo document must be re-seeded. `force` is the
@@ -31,7 +32,8 @@ export function shouldResetDemo(state: DemoResetState): boolean {
         || state.isEmpty
         || !state.lastReset
         || (state.now - state.lastReset > RESET_INTERVAL_MS)
-        || state.templateVersion !== DEMO_TEMPLATE_VERSION;
+        || state.templateVersion !== DEMO_TEMPLATE_VERSION
+        || state.missingTemplatePages;
 }
 
 export function createDemoRouter(hocuspocus: HocuspocusInstance) {
@@ -81,16 +83,42 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     const lastReset = metadata.get("lastReset") as number | undefined;
                     const templateVersion = metadata.get("templateVersion") as number | undefined;
 
-                    const orderedTree = doc.getMap("orderedTree");
+                    const orderedTree = doc.getMap("orderedTree") as Y.Map<unknown>;
                     const keys = Array.from(orderedTree.keys());
                     const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
 
-                    const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force });
+                    // Check if any required template page title is missing or renamed
+                    let missingTemplatePages = false;
+                    if (!isEmpty) {
+                        const expectedTitles = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
+                        const existingTitles = new Set<string>();
+
+                        // We instantiate the Tree to safely read document structure
+                        new YTree(doc.getMap("orderedTree"));
+                        const docProject = Project.fromDoc(doc as unknown as Y.Doc);
+                        const rootItems = docProject.items;
+                        if (rootItems) {
+                            for (const item of rootItems) {
+                                if (item.text) {
+                                    existingTitles.add(item.text.toString().trim().toLowerCase());
+                                }
+                            }
+                        }
+
+                        for (const expected of expectedTitles) {
+                            if (!existingTitles.has(expected)) {
+                                missingTemplatePages = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force, missingTemplatePages });
 
                     if (shouldReset) {
                         logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
-                        // Initialize YTree wrapper on the live doc FIRST
+                        // Initialize YTree wrapper on the live doc FIRST (might be redundant if already instantiated above, but safe)
                         new YTree(doc.getMap("orderedTree"));
                         const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
