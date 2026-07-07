@@ -49,6 +49,6 @@ describe("Item Attachment URL Validation", () => {
         expect(item.attachments.length).toBe(1);
 
         // Cleanup
-        delete (globalThis as Omit<typeof globalThis, 'window'> & { window?: unknown }).window;
+        delete (globalThis as Omit<typeof globalThis, "window"> & { window?: unknown; }).window;
     });
 });
