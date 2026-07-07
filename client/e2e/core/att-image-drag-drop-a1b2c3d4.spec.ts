@@ -97,12 +97,15 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
         // Initial count is 3
         await expect(page.locator(".outliner-item")).toHaveCount(3);
 
-        await page.evaluate(() => {
+                const dtHandle = await page.evaluateHandle(() => {
             const dt = new DataTransfer();
             const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
             const file = new File([pngHeader], "end-drop.png", { type: "image/png" });
-            (globalThis as any).__E2E_LAST_FILES__ = [file];
+            dt.items.add(file);
+            return dt;
+        });
 
+        await page.evaluate(({ dt }) => {
             const target = document.querySelector(".tree-container");
             if (!target) throw new Error("tree-container not found");
 
@@ -114,7 +117,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             });
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
-        });
+        }, { dt: dtHandle });
 
         // Should have 4 items now
         await expect(page.locator(".outliner-item")).toHaveCount(4, { timeout: 15000 });
