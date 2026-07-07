@@ -20,14 +20,17 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
         fileName: string,
         position: "top" | "middle" | "bottom" | null = null,
     ) {
-        await page.evaluate(({ sel, name, pos }) => {
+        // Construct the DataTransfer inside evaluateHandle so we have a true object
+        // holding the File to bypass Playwright's isolation
+        const dtHandle = await page.evaluateHandle((name: string) => {
             const dt = new DataTransfer();
             const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
             const file = new File([pngHeader], name, { type: "image/png" });
+            dt.items.add(file);
+            return dt;
+        }, fileName);
 
-            // Set fallback for E2E
-            (globalThis as any).__E2E_LAST_FILES__ = [file];
-
+        await page.evaluate(({ sel, pos, dt }) => {
             const target = document.querySelector(sel);
             if (!target) throw new Error(`Target ${sel} not found`);
 
@@ -58,7 +61,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
             });
             (event as any).dataTransfer = dt;
             target.dispatchEvent(event);
-        }, { sel: selector, name: fileName, pos: position });
+        }, { sel: selector, pos: position, dt: dtHandle });
     }
 
     test("drop image on item middle adds attachment to that item", async ({ page }) => {
@@ -97,7 +100,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
         // Initial count is 3
         await expect(page.locator(".outliner-item")).toHaveCount(3);
 
-        const dtHandle = await page.evaluateHandle(() => {
+                const dtHandle = await page.evaluateHandle(() => {
             const dt = new DataTransfer();
             const pngHeader = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0]);
             const file = new File([pngHeader], "end-drop.png", { type: "image/png" });
