@@ -53,6 +53,7 @@ try {
 
 
 import { uploadAttachment } from "../services/attachmentService";
+import { processAndUploadAttachment, addAttachmentSafely } from "../services/attachmentUpload";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
@@ -86,6 +87,9 @@ import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import OutlinerItemComments from "./OutlinerItemComments.svelte";
+import OutlinerItemVotes from "./OutlinerItemVotes.svelte";
+import OutlinerItemTypeSelector from "./OutlinerItemTypeSelector.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
 import SqlBlock from "./SqlBlock.svelte";
 
@@ -509,34 +513,7 @@ const aliasTargetIdEffective = $derived.by(() => {
 // aliasTarget $derived variable removed (moved to OutlinerItemAlias.svelte)
 // Duplicate code related to attachments removed (moved to OutlinerItemAttachments.svelte)
 
-interface AttachmentTarget {
-    id?: string;
-    addAttachment?: (url: string) => void;
-    attachments?: string[][] | { push: (arr: string[]) => void };
-}
 
-function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
-    try {
-        if (cand.addAttachment) {
-            cand.addAttachment(url);
-        } else {
-            throw new Error('Method addAttachment not found');
-        }
-    } catch {
-        try {
-            if (hasAttachments(cand)) {
-                cand.attachments?.push?.([url]);
-            }
-        } catch {}
-    }
-    if (isTest && typeof window !== "undefined") {
-        try {
-            window.dispatchEvent(new CustomEvent('item-attachments-changed', {
-                detail: { id: String(cand.id) }
-            }));
-        } catch {}
-    }
-}
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
     function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
@@ -558,7 +535,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            addAttachmentSafely(cand, url, IS_TEST);
+                            addAttachmentSafely(cand as any, url, IS_TEST);
                             break;
                         }
                     }
@@ -991,17 +968,14 @@ function toggleVote() {
     }
 }
 
-function toggleComments() {
-    if (hasOpenComment(generalStore)) {
-        if (generalStore.openCommentItemId === model.id) {
-            generalStore.openCommentItemId = null;
-            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
-        } else {
-            generalStore.openCommentItemId = model.id;
-            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
+
+    let commentsRef: any = null;
+    function toggleComments() {
+        if (commentsRef && commentsRef.toggleComments) {
+            commentsRef.toggleComments();
         }
     }
-}
+
 
 function handleContentClick(e: MouseEvent) {
     const el = e.target as HTMLElement | null;
@@ -1746,7 +1720,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
                                         if (cand && String(cand?.id) === String(mappedId)) {
-                                            addAttachmentSafely(cand, localUrl, IS_TEST);
+                                            addAttachmentSafely(cand as any, localUrl, IS_TEST);
                                             break;
                                         }
                                     }
@@ -2228,19 +2202,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 
                 <!-- Component type selector -->
                 {#if !isPageTitle}
-                    <div class="component-selector">
-                        <select
-                            value={(componentType ?? compTypeValue) || "none"}
-                            onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
-                            aria-label="Item component type"
-                        >
-                            <option value="none">Text</option>
-                            <option value="table">Table</option>
-                            <option value="sqltable">SQL Table</option>
-                            <option value="chart">Chart</option>
-                            <option value="sql">SQL Block</option>
-                        </select>
-                    </div>
+                    <OutlinerItemTypeSelector {componentType} {compTypeValue} {handleComponentTypeChange} />
                 {/if}
 
             </div>
@@ -2303,16 +2265,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     <!-- Comment Thread (visible only for active item; default to first non-title item when none selected) -->
 
 
-    {#if isCommentsVisible}
-        <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
-        <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        {@html (() => { try { void item.comments; } catch {} return ''; })() }
-        <CommentThread
-            comments={ensuredComments}
-            item={item}
-            currentUser={currentUser}
-        />
-    {/if}
+    <OutlinerItemComments bind:this={commentsRef} modelId={model.id} index={index} {item} {ensuredComments} {currentUser} {isCommentsVisible} />
 </div>
 
 <style>
@@ -2460,34 +2413,15 @@ export function setSelectionPosition(start: number, end: number = start) {
     outline-offset: -2px;
 }
 
-.vote-btn {
-    color: #ccc;
-}
 
-.vote-btn.voted {
-    color: gold;
-}
 
-.vote-count {
-    margin-left: 4px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    padding: 0 4px;
-    font-size: 0.7rem;
-    color: #666;
-}
 
-.component-selector {
-    margin-left: 8px;
-}
 
-.component-selector select {
-    padding: 2px 4px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    background-color: white;
-}
+
+
+
+
+
 
 .title-text {
     font-size: 1.5em;

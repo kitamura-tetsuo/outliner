@@ -2,6 +2,7 @@ import type { Item, Items } from "../schema/app-schema";
 import type { Item as YjsItem, Project as YjsProject } from "../schema/yjs-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
+import { moveUp, moveDown, moveLeft, moveRight } from "./cursor/CursorNavigation";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
@@ -40,7 +41,7 @@ export class Cursor implements CursorEditingContext {
     userId: string;
     // Initial column position used for up/down key navigation
     private readonly editor: CursorEditor;
-    private initialColumn: number | null = null;
+    public initialColumn: number | null = null;
 
     private getSelection() {
         return getSelectionForUser(this.userId);
@@ -116,7 +117,7 @@ export class Cursor implements CursorEditingContext {
         return this._findTarget() as unknown as YjsItem | undefined;
     }
 
-    private getTargetText(target: { text?: unknown; } | undefined): string {
+    public getTargetText(target: { text?: unknown; } | undefined): string {
         const raw = target?.text;
         if (typeof raw === "string") return raw;
         if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
@@ -203,350 +204,13 @@ export class Cursor implements CursorEditingContext {
     }
 
     // Reset initial column position when operations other than up/down keys are performed
-    private resetInitialColumn() {
+    public resetInitialColumn() {
         this.initialColumn = null;
     }
-
-    moveLeft() {
-        // Reset initial column position as this is not an up/down key operation
-        this.resetInitialColumn();
-
-        const target = this.findTarget();
-        if (!target) return;
-
-        if (this.offset > 0) {
-            this.offset = Math.max(0, this.offset - 1);
-            this.applyToStore();
-
-            // Ensure cursor is correctly updated
-            store.startCursorBlink();
-        } else {
-            // Move to previous item at start of line
-            this.navigateToItem("left");
-        }
-    }
-
-    moveRight() {
-        // Reset initial column position as this is not an up/down key operation
-        this.resetInitialColumn();
-
-        const target = this.findTarget();
-
-        const text = this.getTargetText(target);
-
-        // If at or beyond the end of the current item, find next item directly in DOM
-        if (text.length > 0 && this.offset >= text.length) {
-            // Try to find the next item directly in the DOM first
-            if (typeof document !== "undefined") {
-                const currentItemElement = document.querySelector(`[data-item-id="${escapeId(this.itemId)}"]`);
-                if (currentItemElement) {
-                    const root = document.querySelector(".outliner") || document.body;
-                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                        acceptNode(node) {
-                            return (node as Element).hasAttribute("data-item-id")
-                                ? NodeFilter.FILTER_ACCEPT
-                                : NodeFilter.FILTER_SKIP;
-                        },
-                    });
-                    walker.currentNode = currentItemElement;
-                    const nextElement = walker.nextNode() as HTMLElement | null;
-
-                    if (nextElement) {
-                        const nextItemId = nextElement.getAttribute("data-item-id");
-
-                        if (nextItemId && nextItemId !== this.itemId) {
-                            // Set the new item and offset
-                            this.itemId = nextItemId;
-                            this.offset = 0;
-
-                            // Update the store to reflect the changes
-                            this.applyToStore();
-
-                            // Start cursor blinking
-                            store.startCursorBlink();
-
-                            // Exit early since we've manually handled the navigation
-                            return;
-                        }
-                    }
-                }
-            }
-
-            // Fallback to navigateToItem if DOM approach didn't work
-            this.navigateToItem("right");
-        } else if (text.length > 0 && this.offset < text.length) {
-            // Within the current item, just move the cursor right by one position
-            this.offset = this.offset + 1;
-            this.applyToStore();
-
-            // Ensure cursor is correctly updated
-            store.startCursorBlink();
-        } else {
-            // Empty text case - try to move to next item
-            this.navigateToItem("right");
-        }
-    }
-
-    moveUp() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(`moveUp called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // Get visual line information
-        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
-        }
-
-        if (!visualLineInfo) {
-            // Fallback: Logical line processing (based on newline characters)
-
-            const text = this.getTargetText(target);
-            const currentLineIndex = getCurrentLineIndex(text, this.offset);
-            if (currentLineIndex > 0) {
-                const prevLineStart = getLineStartOffset(text, currentLineIndex - 1);
-                this.offset = prevLineStart;
-                this.applyToStore();
-                store.startCursorBlink();
-            } else {
-                this.navigateToItem("up");
-            }
-            return;
-        }
-
-        const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
-
-        // Calculate current column position (position within visual line)
-        const currentColumn = this.offset - lineStartOffset;
-
-        // Set or update initial column position
-        if (this.initialColumn === null) {
-            this.initialColumn = currentColumn;
-        }
-
-        // Column position to use (initial column position)
-        const targetColumn = this.initialColumn;
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(
-                `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
-            );
-        }
-
-        if (lineIndex > 0) {
-            // Move to the visual line above within the same item
-            const prevLineRange = getVisualLineOffsetRange(this.itemId, lineIndex - 1);
-            if (prevLineRange) {
-                const prevLineLength = prevLineRange.endOffset - prevLineRange.startOffset;
-                // Move to the initial column position or the line length, whichever is shorter
-                this.offset = prevLineRange.startOffset + Math.min(targetColumn, prevLineLength);
-                this.applyToStore();
-
-                // Debug information
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
-                    logger.debug(
-                        `Moved to previous visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
-                    );
-                }
-
-                // Start cursor blinking
-                store.startCursorBlink();
-            }
-        } else {
-            // Find the previous item
-            const prevItem = findPreviousItem(this.itemId);
-            // Also check for parent item when there's no previous sibling
-            // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
-            const currentTarget = this.findTarget();
-            const parentCollection = currentTarget?.parent;
-            // Get the parent Item by creating it from parentKey
-            let parentItemInstance: import("../schema/app-schema").Item | YjsItem | null = null;
-            if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
-                // Create the parent Item from the parentKey
-
-                parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(...args: unknown[]): YjsItem;
-                })(
-                    currentTarget!.ydoc,
-                    currentTarget!.tree,
-                    parentCollection.parentKey,
-                );
-            }
-            const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
-
-            if (prevItem || hasParentToNavigateTo) {
-                // Move to previous item or parent item
-                // navigateToItem("up") will handle both cases
-                this.navigateToItem("up");
-
-                // Debug information
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
-                    logger.debug(`Moved to previous item: itemId=${this.itemId}, offset=${this.offset}`);
-                }
-            } else {
-                // If there is no previous or parent item, move to the start of the same item
-                if (this.offset > 0) {
-                    this.offset = 0;
-                    this.applyToStore();
-
-                    // Ensure cursor is correctly updated
-                    store.startCursorBlink();
-
-                    // Debug information
-                    if (
-                        typeof window !== "undefined"
-                        && window.DEBUG_MODE
-                    ) {
-                        logger.debug(`Moved to start of current item: offset=${this.offset}`);
-                    }
-                }
-            }
-        }
-    }
-
-    moveDown() {
-        const target = this.findTarget();
-        if (!target) return;
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(`moveDown called for itemId=${this.itemId}, offset=${this.offset}`);
-        }
-
-        // Get visual line information
-        const visualLineInfo = getVisualLineInfo(this.itemId, this.offset);
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(`getVisualLineInfo result:`, visualLineInfo);
-        }
-
-        if (!visualLineInfo) {
-            // Fallback: Logical line processing (based on newline characters)
-
-            const text = this.getTargetText(target);
-            const lines = text.split("\n");
-            const currentLineIndex = getCurrentLineIndex(text, this.offset);
-            if (currentLineIndex < lines.length - 1) {
-                const nextLineStart = getLineStartOffset(text, currentLineIndex + 1);
-                this.offset = nextLineStart;
-                this.applyToStore();
-                store.startCursorBlink();
-            } else {
-                this.navigateToItem("down");
-            }
-            return;
-        }
-
-        const { lineIndex, lineStartOffset, totalLines } = visualLineInfo;
-
-        // Calculate current column position (position within visual line)
-        const currentColumn = this.offset - lineStartOffset;
-
-        // Set or update initial column position
-        if (this.initialColumn === null) {
-            this.initialColumn = currentColumn;
-        }
-
-        // Column position to use (initial column position)
-        const targetColumn = this.initialColumn;
-
-        // Debug information
-        if (
-            typeof window !== "undefined"
-            && window.DEBUG_MODE
-        ) {
-            logger.debug(
-                `Visual line info: lineIndex=${lineIndex}, totalLines=${totalLines}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
-            );
-        }
-
-        if (lineIndex < totalLines - 1) {
-            // Move to the visual line below within the same item
-            const nextLineRange = getVisualLineOffsetRange(this.itemId, lineIndex + 1);
-            if (nextLineRange) {
-                const nextLineLength = nextLineRange.endOffset - nextLineRange.startOffset;
-                // Move to the initial column position or the line length, whichever is shorter
-                this.offset = nextLineRange.startOffset + Math.min(targetColumn, nextLineLength);
-                this.applyToStore();
-
-                // Debug information
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
-                    logger.debug(
-                        `Moved to next visual line in same item: offset=${this.offset}, targetColumn=${targetColumn}`,
-                    );
-                }
-
-                // Start cursor blinking
-                store.startCursorBlink();
-            }
-        } else {
-            // Find the next item
-            const nextItem = findNextItem(this.itemId);
-            if (nextItem) {
-                // Move to the first visual line of the next item
-                this.navigateToItem("down");
-
-                // Debug information
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
-                    logger.debug(`Moved to next item: itemId=${this.itemId}, offset=${this.offset}`);
-                }
-            } else {
-                // If there is no next item, move to the end of the same item
-
-                const text = this.getTargetText(target);
-                if (this.offset < text.length) {
-                    this.offset = text.length;
-                    this.applyToStore();
-
-                    // Ensure cursor is correctly updated
-                    store.startCursorBlink();
-
-                    // Debug information
-                    if (
-                        typeof window !== "undefined"
-                        && window.DEBUG_MODE
-                    ) {
-                        logger.debug(`Moved to end of current item: offset=${this.offset}`);
-                    }
-                }
-            }
-        }
-    }
+moveLeft() { moveLeft(this); store.startCursorBlink(); }
+moveRight() { moveRight(this); store.startCursorBlink(); }
+moveUp() { moveUp(this); store.startCursorBlink(); }
+moveDown() { moveDown(this); store.startCursorBlink(); }
 
     /**
      * Insert text
@@ -1494,7 +1158,7 @@ export class Cursor implements CursorEditingContext {
      * Navigate between items
      * @param direction Direction of movement
      */
-    private navigateToItem(direction: "left" | "right" | "up" | "down") {
+    public navigateToItem(direction: "left" | "right" | "up" | "down") {
         // Debug information
         if (
             typeof window !== "undefined"
