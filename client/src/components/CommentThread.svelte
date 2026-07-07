@@ -128,12 +128,7 @@ onMount(() => {
 function add() {
         // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
-    if (!text) {
-        try {
-            const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-            text = inputEl?.value ?? '';
-        } catch {}
-    }
+
     if (!text) return;
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
@@ -176,9 +171,7 @@ function add() {
     // Predictive immediate reflection: Estimate +1 from current DOM and update badge immediately (run before normal path)
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const threadEl = container?.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
-        const before = threadEl ? threadEl.querySelectorAll('.comment').length : 0;
-        const predicted = before + 1;
+        const predicted = 1;
         const id = props.item?.id || container?.getAttribute('data-item-id');
         if (id) {
             const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
