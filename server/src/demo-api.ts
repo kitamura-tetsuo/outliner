@@ -93,14 +93,21 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         const expectedTitles = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
                         const existingTitles = new Set<string>();
 
-                        // We instantiate the Tree to safely read document structure
-                        new YTree(doc.getMap("orderedTree"));
-                        const docProject = Project.fromDoc(doc as unknown as Y.Doc);
-                        const rootItems = docProject.items;
-                        if (rootItems) {
-                            for (const item of rootItems) {
-                                if (item.text) {
-                                    existingTitles.add(item.text.toString().trim().toLowerCase());
+                        // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
+                        const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
+                        for (const key of treeMap.keys()) {
+                            if (key === "root" || key === "deleted") continue;
+                            const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
+                            if (
+                                nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
+                                && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
+                            ) {
+                                const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
+                                if (valueMap && valueMap.has("text")) {
+                                    const text = valueMap.get("text") as Y.Text | undefined;
+                                    if (text) {
+                                        existingTitles.add(text.toString().trim().toLowerCase());
+                                    }
                                 }
                             }
                         }
@@ -125,8 +132,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     if (shouldReset) {
                         logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
 
-                        // Initialize YTree wrapper on the live doc FIRST (might be redundant if already instantiated above, but safe)
-                        new YTree(doc.getMap("orderedTree"));
                         const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
                         // We do not use transact() for massive deletion because it bypasses the wrapper
