@@ -15,6 +15,7 @@ describe("Item Attachment URL Validation", () => {
     });
 
     it("should reject blob: URLs in non-E2E mode", () => {
+        import.meta.env.MODE = "production";
         const doc = new Y.Doc();
         const map = doc.getMap();
         // @ts-expect-error: We use Y.Map directly for tests
@@ -25,6 +26,7 @@ describe("Item Attachment URL Validation", () => {
     });
 
     it("should reject data: URLs in non-E2E mode", () => {
+        import.meta.env.MODE = "production";
         const doc = new Y.Doc();
         const map = doc.getMap();
         // @ts-expect-error: We use Y.Map directly for tests
@@ -35,6 +37,7 @@ describe("Item Attachment URL Validation", () => {
     });
 
     it("should allow blob: URLs in E2E mode", () => {
+        import.meta.env.MODE = "test";
         const doc = new Y.Doc();
         const map = doc.getMap();
         // @ts-expect-error: We use Y.Map directly for tests

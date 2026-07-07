@@ -13,7 +13,7 @@ export function getEnv(key: string, defaultValue: string = ""): string {
         || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined"
-            && window.__E2E__ === true);
+            );
 
     // Processing specific to the test environment
     if (isTestEnv) {

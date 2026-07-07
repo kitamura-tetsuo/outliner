@@ -180,7 +180,7 @@ onMount(async () => {
         // Disable Service Worker in E2E tests to prevent interference with navigation or page closing
         const isE2e = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && window.__E2E__ === true);
+            || (typeof window !== "undefined" );
         if (!isE2e && !import.meta.env.DEV && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -215,7 +215,7 @@ onMount(async () => {
         // Disable cleanup listeners in E2E to avoid interference with page transitions
         const isE2eCleanup = import.meta.env.MODE === "test"
             || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" && window.__E2E__ === true);
+            || (typeof window !== "undefined" );
         if (!isE2eCleanup) {
             // Register event listener for browser termination
             window.addEventListener("beforeunload", handleBeforeUnload);

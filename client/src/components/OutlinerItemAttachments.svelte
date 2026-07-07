@@ -13,7 +13,7 @@ interface HasToArrayAttachments { attachments?: { toArray?: () => unknown[] } }
 
 const logger = getLogger("OutlinerItemAttachments");
 
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') ;
 
 interface Props {
     modelId: string;

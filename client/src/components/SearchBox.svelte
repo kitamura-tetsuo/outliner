@@ -113,8 +113,7 @@ const logger = getLogger("SearchBox");
                         }
                         if (arr.length) {
                             if (
-                                typeof window !== "undefined" &&
-                                window.__E2E__
+                                import.meta.env.MODE === "test"
                             ) {
                                 logger.debug(
                                     "[SearchBox Debug] Source found items:",
@@ -154,7 +153,7 @@ const logger = getLogger("SearchBox");
                 }
             }
 
-            if (typeof window !== "undefined" && window.__E2E__) {
+            if (import.meta.env.MODE === "test") {
                 logger.debug(
                     "[SearchBox Debug] collectPages found NO items. Sources tried:",
                     sources.length,

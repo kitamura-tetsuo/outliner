@@ -40,7 +40,7 @@ const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
 const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') ;
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     if (hasDebug(logger)) {
@@ -339,22 +339,6 @@ onMount(() => {
         cleanup.push(detachObserver);
     }
 
-    const handleWindowEvent = (event: Event) => {
-        try {
-            const detail = (event as CustomEvent<{ id?: string, itemId?: string, nodeId?: string, targetId?: string, count?: number, value?: number, len?: number, length?: number }>)?.detail;
-            if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
-            if (targetId == null) return;
-            if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
-        } catch {}
-    };
-
-    try {
-        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
-        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
-    } catch {}
 
     return () => {
         for (const fn of cleanup) {
@@ -523,7 +507,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             throw new Error('Method addAttachment not found');
         }
     } catch {
-        if (isTest || (typeof window !== 'undefined' && window.__E2E__)) {
+        if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
@@ -1721,7 +1705,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
                     } catch (e) {
                         // Fallback with local preview even if upload fails (E2E stabilization)
-                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                        if (import.meta.env.MODE === 'test' ) {
                             try {
                                 const localUrl = URL.createObjectURL(file);
                                 if (!dropTargetPosition || dropTargetPosition === "middle") {
@@ -1757,7 +1741,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test' ) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1773,7 +1757,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' ) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
@@ -1888,7 +1872,7 @@ onMount(() => {
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
-        if (anyWin.__E2E__) {
+        if (import.meta.env.MODE === "test") {
             const selfInvoker = (el: Element) => {
                 try {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {

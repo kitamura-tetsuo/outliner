@@ -43,17 +43,6 @@ let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
-function e2eLog(entry: E2ELogEntry) {
-    if (import.meta.env.MODE !== "test" && import.meta.env.VITE_IS_TEST !== "true") return;
-    try {
-        interface WindowWithE2E extends Window {
-            E2E_LOGS?: E2ELogEntry[];
-        }
-        const w = window as unknown as WindowWithE2E;
-        w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-        w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
-    } catch {}
-}
 
 // 
 //  
@@ -151,13 +140,13 @@ onMount(() => {
     const handler = (e: Event) => {
         const now = Date.now();
         const el = e.target as HTMLElement | null;
-        try { e2eLog({ tag: 'doc:click', target: (el?.getAttribute?.('data-testid') || el?.closest?.('[data-testid]')?.getAttribute?.('data-testid') || null) }); } catch {}
+        try {  } catch {}
         if (now - lastFiredAt < 50) return; // coalesce bursts
         if (!el) return;
         const btn = el.closest('[data-testid="add-comment-btn"]');
         if (btn) {
             lastFiredAt = now;
-            try { e2eLog({ tag: 'delegate:add-click' }); } catch {}
+            try {  } catch {}
             try { add(); } catch {}
         }
     };
@@ -193,7 +182,7 @@ function add() {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
         const before = container ? (container.querySelectorAll('[data-testid="comment-thread"] .comment').length) : 0;
         const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
-        e2eLog({ tag: 'add:start', id: cid, before, newText });
+
     } catch {}
     // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
@@ -313,7 +302,7 @@ function add() {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
         const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
         const after = (renderCommentsState?.length ?? 0);
-        e2eLog({ tag: 'add:end', id: cid, after });
+
     } catch {}
     newText = '';
 }
@@ -412,7 +401,7 @@ onMount(() => {
     try {
         const btns = threadRef?.querySelectorAll('[data-testid="add-comment-btn"]').length || 0;
         const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-        e2eLog({ tag: 'mounted', hasThreadRef: !!threadRef, btns, inputValue: inputEl?.value ?? '' });
+
     } catch {}
 });
 
@@ -435,7 +424,7 @@ onMount(() => {
         </div>
     {/each}
     <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try {  } catch {} }} onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>

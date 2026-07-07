@@ -39,7 +39,6 @@ declare global {
         DataTransferItemList?: unknown;
         __E2E_LAST_DROP_EVENT__?: Event;
         __E2E_DROP_HANDLERS__?: ((el: Element, ev: DragEvent) => void)[];
-        E2E_LOGS?: unknown[];
         __itemCommentPatched?: boolean;
         commentCountsByItemId?: Map<string, number>;
         __SEARCH_PANEL_VISIBLE__?: boolean;
