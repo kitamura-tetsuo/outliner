@@ -2056,10 +2056,7 @@
 
         const hasFileList = dt.files && dt.files.length > 0;
         const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
-        const hasE2eFiles = e2eFiles.length > 0;
-
-        if (hasFileList || hasFileItems || hasE2eFiles) {
+        if (hasFileList || hasFileItems) {
             const files: File[] = [];
             if (hasFileList) {
                 files.push(...Array.from(dt.files));
@@ -2070,9 +2067,6 @@
                         if (f) files.push(f);
                     }
                 }
-            } else if (hasE2eFiles) {
-                files.push(...e2eFiles);
-                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {

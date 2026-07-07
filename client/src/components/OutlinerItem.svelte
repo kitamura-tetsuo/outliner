@@ -1680,10 +1680,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    const e2eFiles: File[] = (typeof window !== 'undefined' && window.__E2E_LAST_FILES__ && Array.isArray(window.__E2E_LAST_FILES__)) ? window.__E2E_LAST_FILES__ as File[] : [];
-    const hasE2eFiles = e2eFiles.length > 0;
-
-    if (hasFileList || hasFileItems || hasE2eFiles) {
+    if (hasFileList || hasFileItems) {
         try {
             const files: File[] = [];
             if (hasFileList) {
@@ -1695,10 +1692,6 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                         if (f) files.push(f);
                     }
                 }
-            } else if (hasE2eFiles) {
-                // Playwright fallback: Use last files recorded via DataTransfer.items.add
-                files.push(...e2eFiles);
-                try { window.__E2E_LAST_FILES__ = []; } catch {}
             }
 
             if (files.length > 0) {
