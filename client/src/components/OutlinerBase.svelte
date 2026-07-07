@@ -4,9 +4,8 @@ const logger = getLogger("OutlinerBase");
 
     // moved to onMount to avoid initial-value capture warnings
 
-    import { Comments, Item } from "../schema/app-schema";
-    import * as Y from "yjs";
-    import { store as generalStore } from "../stores/store.svelte";
+    import { Item } from "../schema/app-schema";
+        import { store as generalStore } from "../stores/store.svelte";
     import { onMount } from "svelte";
     import { extractPagePreview } from "../lib/pagePreview";
     import GlobalTextArea from "./GlobalTextArea.svelte";
@@ -20,7 +19,7 @@ const logger = getLogger("OutlinerBase");
         projectName: string;
         pageName: string;
         isReadOnly?: boolean;
-        isTemporary?: boolean;
+
         onEdit?: () => void;
     }
 
@@ -29,7 +28,7 @@ const logger = getLogger("OutlinerBase");
         projectName,
         pageName,
         isReadOnly = false,
-        isTemporary = false,
+
         onEdit,
     }: Props = $props();
 

@@ -554,17 +554,10 @@ export class Item {
         }
         const comments = new Comments(arr);
         const res = comments.addComment(author, text);
-        try {
-            const len = arr?.length ?? 0;
-            // Cache primitive numeric value in Y.Map to ensure reflection
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            // Window broadcast (for immediate UI reflection, deterministic)
-            try {
-                if (typeof window !== "undefined") {
-                }
-            } catch {}
-        } catch {}
+        const len = arr?.length ?? 0;
+        // Cache primitive numeric value in Y.Map to ensure reflection
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 
@@ -573,15 +566,9 @@ export class Item {
         if (!arr) return;
         const comments = new Comments(arr);
         const res = comments.deleteComment(commentId);
-        try {
-            const len = arr?.length ?? 0;
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            try {
-                if (typeof window !== "undefined") {
-                }
-            } catch {}
-        } catch {}
+        const len = arr?.length ?? 0;
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 

@@ -9,21 +9,6 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 const logger = getLogger("CommentThread");
 const dispatch = createEventDispatcher();
 
-interface E2ELogEntry {
-    tag?: string;
-    id?: string;
-    before?: number;
-    after?: number;
-    newText?: string;
-    url?: string;
-    t?: number;
-    comp?: string;
-    hasThreadRef?: boolean;
-    btns?: number;
-    inputValue?: string;
-    target?: string | null;
-    [key: string]: unknown;
-}
 
 interface Props {
     comments?: Comments;
@@ -134,43 +119,6 @@ onMount(() => {
 // Fallback removal: Remove onMount click delegation/auto-add/global delegation
 
 
-// Click delegation safety net to ensure add() fires in all environments
-onMount(() => {
-    let lastFiredAt = 0;
-    const handler = (e: Event) => {
-        const now = Date.now();
-        const el = e.target as HTMLElement | null;
-        try {  } catch {}
-        if (now - lastFiredAt < 50) return; // coalesce bursts
-        if (!el) return;
-        const btn = el.closest('[data-testid="add-comment-btn"]');
-        if (btn) {
-            lastFiredAt = now;
-            try {  } catch {}
-            try { add(); } catch {}
-        }
-    };
-    try { threadRef?.addEventListener('click', handler, { capture: true }); } catch {}
-    // Direct binding on the button element as the strongest fallback
-    try {
-        const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-        btnEl?.addEventListener('click', handler, { capture: true });
-    } catch {}
-    // Global capture as ultimate safety
-    try { document.addEventListener('click', handler, true); } catch {}
-    try { document.addEventListener('pointerdown', handler, true); } catch {}
-    try { document.addEventListener('mousedown', handler, true); } catch {}
-    return () => {
-        try { threadRef?.removeEventListener('click', handler, { capture: true }); } catch {}
-        try {
-            const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-            btnEl?.removeEventListener('click', handler, { capture: true });
-        } catch {}
-        try { document.removeEventListener('click', handler, true); } catch {}
-        try { document.removeEventListener('pointerdown', handler, true); } catch {}
-        try { document.removeEventListener('mousedown', handler, true); } catch {}
-    };
-});
 
 
 
@@ -178,13 +126,7 @@ onMount(() => {
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions
 
 function add() {
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const before = container ? (container.querySelectorAll('[data-testid="comment-thread"] .comment').length) : 0;
-        const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
-
-    } catch {}
-    // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
+        // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
     if (!text) {
         try {
@@ -298,13 +240,7 @@ function add() {
 
 
 
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
-        const after = (renderCommentsState?.length ?? 0);
-
-    } catch {}
-    newText = '';
+        newText = '';
 }
 function remove(id: string) {
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
@@ -396,14 +332,6 @@ function saveEdit(id: string) {
     }
 }
 
-// Mount diagnostics for E2E visibility
-onMount(() => {
-    try {
-        const btns = threadRef?.querySelectorAll('[data-testid="add-comment-btn"]').length || 0;
-        const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-
-    } catch {}
-});
 
 </script>
 
@@ -424,7 +352,7 @@ onMount(() => {
         </div>
     {/each}
     <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try {  } catch {} }} onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text"  onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>
