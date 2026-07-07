@@ -113,7 +113,14 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                         }
                     }
 
-                    const shouldReset = shouldResetDemo({ isEmpty, lastReset, templateVersion, now, force, missingTemplatePages });
+                    const shouldReset = shouldResetDemo({
+                        isEmpty,
+                        lastReset,
+                        templateVersion,
+                        now,
+                        force,
+                        missingTemplatePages,
+                    });
 
                     if (shouldReset) {
                         logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
