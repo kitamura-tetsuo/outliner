@@ -28,9 +28,12 @@ test.describe("Admin Check (API-0003)", () => {
         }
 
         // First try accessing via Firebase Hosting emulator
-        let response = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing", {
-            data: { idToken: "invalid-token", projectId: "test-project" },
-        });
+        let response = await page.request.post(
+            "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "invalid-token", projectId: "test-project" },
+            },
+        );
 
         // Output debug information
         console.log(`Hosting response status: ${response.status()}`);
@@ -78,9 +81,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 when projectId is not specified", async ({ page }) => {
         // Call Firebase Functions API without specifying projectId and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing", {
-            data: { idToken: "any-token" },
-        });
+        const response = await page.request.post(
+            "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "any-token" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
@@ -90,9 +96,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 when ID token is not specified", async ({ page }) => {
         // Call Firebase Functions API without specifying ID token and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing", {
-            data: { projectId: "test-project" },
-        });
+        const response = await page.request.post(
+            "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+            {
+                data: { projectId: "test-project" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
@@ -102,9 +111,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 with empty ID token", async ({ page }) => {
         // Call Firebase Functions API with empty ID token and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing", {
-            data: { idToken: "", projectId: "test-project" },
-        });
+        const response = await page.request.post(
+            "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "", projectId: "test-project" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
