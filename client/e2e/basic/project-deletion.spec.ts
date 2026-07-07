@@ -26,7 +26,7 @@ test.describe("Project Deletion", () => {
 
         // Helper to save project
         const saveProject = async (projectId: string) => {
-            const response = await page.request.post("http://localhost:57000/api/save-project", {
+            const response = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/saveProject", {
                 data: {
                     idToken,
                     projectId,

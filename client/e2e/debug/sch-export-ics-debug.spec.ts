@@ -21,13 +21,13 @@ test("debug: create and list schedules before UI", async ({ page }, testInfo) =>
 
     const nextRunAt = Date.now() + 10 * 60 * 1000;
 
-    const createRes = await page.request.post("http://localhost:57070/api/create-schedule", {
+    const createRes = await page.request.post("/api/create-schedule", {
         data: { idToken, pageId, schedule: { strategy: "one_shot", nextRunAt } },
     });
     console.log("create status:", createRes.status());
     expect(createRes.status()).toBe(200);
 
-    const listRes = await page.request.post("http://localhost:57070/api/list-schedules", {
+    const listRes = await page.request.post("/api/list-schedules", {
         data: { idToken, pageId },
     });
     console.log("list status:", listRes.status());

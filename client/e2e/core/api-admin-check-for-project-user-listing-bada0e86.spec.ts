@@ -43,7 +43,7 @@ test.describe("Admin Check (API-0003)", () => {
             // First, health check for Functions emulator
             try {
                 const functionsHealthResponse = await page.request.get(
-                    "http://127.0.0.1:57070/outliner-d57b0/us-central1/health",
+                    "/api/azure-health-check",
                 );
                 console.log(`Functions health check status: ${functionsHealthResponse.status()}`);
             } catch (error) {
@@ -51,7 +51,7 @@ test.describe("Admin Check (API-0003)", () => {
             }
 
             response = await page.request.post(
-                "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+                "/api/admin-check-for-project-user-listing",
                 {
                     data: { idToken: "invalid-token", projectId: "test-project" },
                 },
