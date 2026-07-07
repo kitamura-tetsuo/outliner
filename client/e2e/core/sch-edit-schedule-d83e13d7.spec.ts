@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Schedule Editing", () => {
     test("update schedule via API", async ({ page }) => {
-        const update = await page.request.post("/api/update-schedule", {
+        const update = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/updateSchedule", {
             data: {
                 idToken: "dummy-token",
                 pageId: "page-1",

@@ -85,7 +85,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         // The pageId is already stable after the navigation flow in onMount.
 
         // Create a schedule with the retrieved pageId
-        const resp = await page.request.post("/api/create-schedule", {
+        const resp = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule", {
             data: {
                 idToken,
                 pageId: resolvedPageId,
