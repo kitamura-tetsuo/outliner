@@ -19,7 +19,6 @@ interface Props {
 }
 
 let props: Props = $props();
-let comments = $derived.by(() => props.comments ?? props.item?.comments);
 let onCountChanged = $derived.by(() => props.onCountChanged);
 let newText = $state("");
 let editingId = $state<string | null>(null);
@@ -42,56 +41,46 @@ let lastNotifiedCount = $state(-1);
 onMount(() => {
     let unobserve: (() => void) | undefined;
     try {
-        // 1) Get internal yArray if Comments wrapper exists (private but accessible in JS)
-        let yarr: import("yjs").Array<import("yjs").Map<unknown>> | undefined = (comments as unknown as { yArray?: import("yjs").Array<import("yjs").Map<unknown>> })?.yArray;
-        // 2) If not, ensure "comments" via item Y.Map
-        if (!yarr && props.item) {
-            const item = props.item as ItemLike;
-            const tree = item?.tree;
-            const key = item?.key;
-            const value = tree?.getNodeValueFromKey?.(key) as Y.Map<unknown> | undefined;
-            if (value) {
-                yarr = value.get?.("comments") as Y.Array<Y.Map<unknown>> | undefined;
-                if (!yarr) {
-                    yarr = new Y.Array<Y.Map<unknown>>();
-                    value.set?.("comments", yarr);
-                }
+        const item = props.item as ItemLike;
+        if (item) {
+            const ymap = item.tree?.getNodeValueFromKey?.(item.key) as Y.Map<unknown> | undefined;
+            if (ymap && typeof ymap.observeDeep === "function") {
+                const handler = () => {
+                    try {
+                        const actualArr = ymap.get("comments") as Y.Array<Y.Map<unknown>> | undefined;
+                        if (actualArr) {
+                            const plainComments = actualArr.toArray().map((yMap: Y.Map<unknown>) => ({
+                                id: yMap.get("id") as string,
+                                author: yMap.get("author") as string,
+                                text: yMap.get("text") as string,
+                                created: yMap.get("created") as number,
+                                lastChanged: yMap.get("lastChanged") as number,
+                            }));
+                            const currentRenderState = renderCommentsState;
+                            const needsUpdate = plainComments.length !== currentRenderState.length ||
+                                plainComments.some((yjsComment, index) => {
+                                    const currentComment = currentRenderState[index];
+                                    return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
+                                });
+                            if (needsUpdate) {
+                                renderCommentsState = plainComments;
+                            }
+                        } else {
+                            renderCommentsState = [];
+                        }
+                    } catch (e) {
+                        logger.error({ error: e as Error }, "Error in observe handler");
+                    }
+                };
+                ymap.observeDeep(handler);
+                unobserve = () => { try { ymap.unobserveDeep(handler); } catch {} };
+                // Initial reflection
+                handler();
             }
         }
-        if (yarr && typeof yarr.observeDeep === "function") {
-            // Use the Y.Array directly to get the plain array, rather than going through the comment object which might be outdated
-            const handler = () => {
-                try {
-                    // Convert the Y.Array directly to plain objects
-                    const plainComments = yarr.toArray().map((yMap: Y.Map<unknown>) => ({
-                        id: yMap.get("id") as string,
-                        author: yMap.get("author") as string,
-                        text: yMap.get("text") as string,
-                        created: yMap.get("created") as number,
-                        lastChanged: yMap.get("lastChanged") as number,
-                    }));
-                    // Only update renderCommentsState if it's different from the Yjs state
-                    // This prevents the observer from overwriting UI changes when they're more recent
-                    const currentRenderState = renderCommentsState;
-                    const needsUpdate = plainComments.length !== currentRenderState.length ||
-                        plainComments.some((yjsComment, index) => {
-                            const currentComment = currentRenderState[index];
-                            return !currentComment || currentComment.id !== yjsComment.id || currentComment.text !== yjsComment.text;
-                        });
-
-                    if (needsUpdate) {
-                        renderCommentsState = plainComments;
-                    }
-                } catch (e) {
-                    logger.error({ error: e as Error }, "Error in observe handler");
-                }
-            };
-            yarr.observeDeep(handler);
-            unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
-            // Initial reflection
-            handler();
-        }
-    } catch {}
+    } catch (e) {
+        logger.error({ error: e as Error }, "Error setting up ymap deep observer");
+    }
     return () => { try { unobserve?.(); } catch {} };
 });
 
@@ -126,10 +115,15 @@ onMount(() => {
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions
 
 function add() {
-        // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
+    const textarea = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLTextAreaElement | null;
+    if (!text && textarea && textarea.value) {
+        text = textarea.value;
+    }
 
-    if (!text) return;
+    if (!text) {
+        return;
+    }
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
         try {
@@ -344,10 +338,10 @@ function saveEdit(id: string) {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text"  onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
-        <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
-    </form>
+    <div class="comment-form-container" data-testid="comment-form">
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text"  onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} onkeydown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }} />
+        <button type="button" onclick={add} data-testid="add-comment-btn" aria-label="Add comment">Add</button>
+    </div>
 </div>
 
 <style>

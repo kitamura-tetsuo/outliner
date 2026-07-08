@@ -8,7 +8,6 @@
 
 interface HasDebug { debug: (...args: unknown[]) => void; }
 interface HasComments { comments?: unknown[]; setComments?: (arr: unknown[]) => void; }
-interface HasObserve { observe?: (cb: () => void) => void; unobserve?: (cb: () => void) => void; }
 interface HasTreeKey { tree?: { getNodeValueFromKey?: (k: string) => unknown }; key: string; }
 interface HasAttachments { attachments: string[][] | { push: (arr: string[]) => void }; }
 interface HasComponentType { componentType?: string; }
@@ -21,7 +20,6 @@ interface E2EWindow {
 
 function hasDebug(obj: unknown): obj is HasDebug { return !!obj && typeof (obj as HasDebug).debug === 'function'; }
 function hasComments(obj: unknown): obj is HasComments { return !!obj && typeof obj === 'object' && 'comments' in obj; }
-function hasObserve(obj: unknown): obj is HasObserve { return !!obj && typeof (obj as HasObserve).observe === 'function'; }
 function hasTreeKey(obj: unknown): obj is HasTreeKey { return !!obj && typeof (obj as HasTreeKey).key === 'string'; }
 function hasAttachments(obj: unknown): obj is HasAttachments { return !!obj && typeof obj === 'object' && 'attachments' in obj; }
 function hasComponentType(obj: unknown): obj is HasComponentType { return !!obj && typeof obj === 'object' && 'componentType' in obj; }
@@ -299,46 +297,29 @@ function syncCommentCountFromItem() {
     }
 }
 
-/**
- * Apply comment count to local state (for observe callback)
- */
-function applyCommentCount(arrOrCount: unknown) {
-    let newCount: number;
-    if (typeof arrOrCount === "number") {
-        newCount = arrOrCount;
-    } else {
-        newCount = normalizeCommentCount(arrOrCount);
-    }
-    if (commentCountLocal !== newCount) {
-        commentCountLocal = newCount;
-    }
-}
-
-/**
- * Set up observe for Yjs comments array
- */
-function attachCommentObserver(): (() => void) | null {
-    try {
-        const arr: unknown[] = ensureCommentsArray();
-        if (hasObserve(arr)) {
-            const observer = () => applyCommentCount(arr);
-            arr.observe!(observer);
-            return () => arr.unobserve?.(observer);
-        }
-    } catch {}
-    return null;
-    }
 
 
 onMount(() => {
     syncCommentCountFromItem();
     const cleanup: Array<() => void> = [];
 
-    const detachObserver = attachCommentObserver();
-    if (typeof detachObserver === "function") {
-        cleanup.push(detachObserver);
+    // Observe changes to the item's Y.Map (including nested comments array) deep
+    try {
+        if (hasTreeKey(item)) {
+            const ymap = item.tree?.getNodeValueFromKey?.(item.key) as { observeDeep?: (cb: () => void) => void, unobserveDeep?: (cb: () => void) => void } | undefined;
+            if (ymap && typeof ymap.observeDeep === "function") {
+                const commentsObs = () => {
+                    syncCommentCountFromItem();
+                };
+                ymap.observeDeep(commentsObs);
+                cleanup.push(() => {
+                    try { ymap.unobserveDeep(commentsObs); } catch {}
+                });
+            }
+        }
+    } catch (err) {
+        logger.error({ error: err }, "[OutlinerItem] Error setting up deep comment observer:");
     }
-
 
     return () => {
         for (const fn of cleanup) {
