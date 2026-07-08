@@ -143,8 +143,7 @@
                 const handler = (events: import('yjs').YEvent<import('yjs').AbstractType<unknown>>[], _transaction: import('yjs').Transaction) => {
                     try {
                         if (
-                            typeof window !== "undefined" &&
-                            window.__E2E__
+                            import.meta.env.MODE === "test"
                         ) {
                             logger.debug("OutlinerTree: observeDeep tick");
                             events.forEach((e) => {
@@ -208,7 +207,7 @@
     // Fallback for E2E environment: Ensure DOM updates in environments where observe rarely arrives
     onMount(() => {
         try {
-            if (typeof window !== "undefined" && window.__E2E__) {
+            if (import.meta.env.MODE === "test") {
                 const timer = setInterval(() => {
                     __lastUpdateInfo = {
                         tick: Date.now(),
@@ -314,7 +313,7 @@
         try { containerId = await getDefaultContainerId(); } catch {}
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
-        if (!containerId && !(typeof window !== 'undefined' && window.__E2E__)) {
+        if (!containerId && import.meta.env.MODE !== "test") {
               logger.error("No valid container ID found for file upload");
             return;
         }
@@ -1392,21 +1391,7 @@
         const { targetItemId, position, text, selection, sourceItemId, attachmentUrl } =
             event.detail;
 
-        try {
-            const w = typeof window !== "undefined"
-                ? window
-                : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemDrop",
-                    targetItemId,
-                    position,
-                    sourceItemId,
-                    selection: selection ? "yes" : "no",
-                    t: Date.now(),
-                });
-            }
-        } catch {}
+
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(
@@ -1773,20 +1758,7 @@
         const sourceKey = sourceItem.key!;
         const targetKey = targetItem.key!;
 
-        try {
-            const w = typeof window !== "undefined"
-                ? window
-                : null;
-            if (w && Array.isArray(w.E2E_LOGS)) {
-                w.E2E_LOGS.push({
-                    tag: "handleItemMoveDrop",
-                    source: sourceItemId,
-                    target: targetItemId,
-                    position,
-                    t: Date.now(),
-                });
-            }
-        } catch {}
+
 
         try {
 

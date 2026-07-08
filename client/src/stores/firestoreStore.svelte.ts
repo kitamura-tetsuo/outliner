@@ -55,9 +55,7 @@ class GeneralStore {
             const __isTestEnv = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                || (typeof window !== "undefined"
-                    && window.__E2E__ === true);
+                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
@@ -188,9 +186,7 @@ class GeneralStore {
                             || process.env.NODE_ENV === "test"
                             || import.meta.env.VITE_IS_TEST === "true"
                             || (typeof window !== "undefined"
-                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            || (typeof window !== "undefined"
-                                && window.__E2E__ === true);
+                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
                         const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
                         const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                         if (isTestEnv && hasSeeded && incomingEmpty) {
@@ -261,8 +257,7 @@ if (typeof window !== "undefined") {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost"
-        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || window.__E2E__ === true;
+        || window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
     if (isTestEnv) {
         window.__FIRESTORE_STORE__ = firestoreStore;
     }
@@ -286,9 +281,7 @@ try {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined"
-            && window.__E2E__ === true);
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
     // Never use emulator in production environment
     const isProduction = process.env.NODE_ENV === "production"
@@ -547,19 +540,17 @@ if (typeof window !== "undefined") {
     const __isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined"
-            && window.__E2E__ === true);
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
     const isProd = import.meta.env.MODE === "production" || process.env.NODE_ENV === "production";
 
     // Enable automatic sync if:
     // 1) It's production (always sync in prod)
     // 2) OR it's not a test environment
-    // 3) OR it's an E2E test
+    // 3) OR it's a real E2E test (Playwright sets window.__E2E__; unit tests under
+    //    vitest do not), which needs live Firestore sync against the emulator
     const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined"
-            && window.__E2E__ === true);
+        || (typeof window !== "undefined" && window.__E2E__ === true);
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;

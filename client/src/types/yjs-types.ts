@@ -53,6 +53,7 @@ export interface TreeNode {
 import type { Comments } from "../schema/app-schema";
 export interface ItemLike extends TreeNode {
     comments?: Comments;
+    ensureComments?: () => Comments;
     ydoc: Y.Doc;
     id: string;
     text: string;

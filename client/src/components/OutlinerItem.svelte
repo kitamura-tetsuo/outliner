@@ -40,7 +40,7 @@ const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
 const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') ;
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     if (hasDebug(logger)) {
@@ -319,12 +319,46 @@ function applyCommentCount(arrOrCount: unknown) {
  */
 function attachCommentObserver(): (() => void) | null {
     try {
-        const arr: unknown[] = ensureCommentsArray();
-        if (hasObserve(arr)) {
-            const observer = () => applyCommentCount(arr);
-            arr.observe!(observer);
-            return () => arr.unobserve?.(observer);
+        let detachArray: (() => void) | null = null;
+
+        const attachToArray = () => {
+            try { detachArray?.(); } catch {}
+            detachArray = null;
+            const arr: unknown[] = ensureCommentsArray();
+            if (hasObserve(arr)) {
+                const observer = () => applyCommentCount(arr);
+                arr.observe!(observer);
+                detachArray = () => arr.unobserve?.(observer);
+                observer();
+            }
+        };
+
+        attachToArray();
+
+        // Item.comments lazily returns a throwaway empty-array stub until the first
+        // comment triggers real Y.Array creation, so also watch the item's own Y.Map
+        // for the "comments" key appearing and re-attach to the real array when it does.
+        let detachMap: (() => void) | null = null;
+        if (hasTreeKey(item)) {
+            type CommentsKeyEvent = { changes?: { keys?: Map<string, unknown> } };
+            const valueMap = item.tree?.getNodeValueFromKey?.(item.key) as
+                | { observe?: (f: (e: CommentsKeyEvent) => void) => void; unobserve?: (f: (e: CommentsKeyEvent) => void) => void }
+                | undefined;
+            if (valueMap && typeof valueMap.observe === "function") {
+                const mapHandler = (event: CommentsKeyEvent) => {
+                    if (event?.changes?.keys?.has("comments")) {
+                        attachToArray();
+                    }
+                };
+                valueMap.observe(mapHandler);
+                detachMap = () => valueMap.unobserve?.(mapHandler);
+            }
         }
+
+        return () => {
+            try { detachArray?.(); } catch {}
+            try { detachMap?.(); } catch {}
+        };
     } catch {}
     return null;
     }
@@ -339,22 +373,6 @@ onMount(() => {
         cleanup.push(detachObserver);
     }
 
-    const handleWindowEvent = (event: Event) => {
-        try {
-            const detail = (event as CustomEvent<{ id?: string, itemId?: string, nodeId?: string, targetId?: string, count?: number, value?: number, len?: number, length?: number }>)?.detail;
-            if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
-            if (targetId == null) return;
-            if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
-        } catch {}
-    };
-
-    try {
-        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
-        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
-    } catch {}
 
     return () => {
         for (const fn of cleanup) {
@@ -523,7 +541,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             throw new Error('Method addAttachment not found');
         }
     } catch {
-        if (isTest || (typeof window !== 'undefined' && window.__E2E__)) {
+        if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
@@ -1000,6 +1018,9 @@ function toggleComments() {
             generalStore.openCommentItemId = null;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
         } else {
+            // Force the real backing Y.Array to exist before the thread mounts, so its
+            // observer doesn't attach to the throwaway empty-array stub (see Item.ensureComments).
+            try { item.ensureComments?.(); } catch {}
             generalStore.openCommentItemId = model.id;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
         }
@@ -1721,7 +1742,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
                     } catch (e) {
                         // Fallback with local preview even if upload fails (E2E stabilization)
-                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                        if (import.meta.env.MODE === 'test' ) {
                             try {
                                 const localUrl = URL.createObjectURL(file);
                                 if (!dropTargetPosition || dropTargetPosition === "middle") {
@@ -1757,7 +1778,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test' ) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1773,7 +1794,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' ) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
@@ -1888,7 +1909,7 @@ onMount(() => {
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
-        if (anyWin.__E2E__) {
+        if (import.meta.env.MODE === "test") {
             const selfInvoker = (el: Element) => {
                 try {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -2309,6 +2330,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         <CommentThread
             comments={ensuredComments}
             item={item}
+            onCountChanged={applyCommentCount}
             currentUser={currentUser}
         />
     {/if}

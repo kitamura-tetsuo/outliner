@@ -24,6 +24,24 @@ export class Comments {
         this.yArray = yArray;
     }
 
+    observe(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.observe(f);
+    }
+
+    unobserve(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.unobserve(f);
+    }
+
     addComment(author: string, text: string) {
         const time = Date.now();
         const c = new Y.Map<CommentValueType>();
@@ -35,12 +53,6 @@ export class Comments {
         c.set("lastChanged", time);
         this.yArray.push([c]);
 
-        // Client side event dispatch for UI updates (badge count)
-        if (typeof window !== "undefined") {
-            window.dispatchEvent(
-                new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
-            );
-        }
         return { id: id };
     }
 
@@ -50,11 +62,6 @@ export class Comments {
 
         if (idx >= 0) {
             this.yArray.delete(idx, 1);
-            if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                    new CustomEvent("item-comment-count", { detail: { id: this.itemId, count: this.yArray.length } }),
-                );
-            }
         }
     }
 

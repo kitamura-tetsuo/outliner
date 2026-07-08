@@ -115,8 +115,7 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test"
         || (typeof window !== "undefined"
-            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-                || window.__E2E__ === true));
+            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"));
     logger.debug(
         `[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth
             .currentUser}, forceRefresh=${forceRefresh}`,
