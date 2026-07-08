@@ -319,12 +319,46 @@ function applyCommentCount(arrOrCount: unknown) {
  */
 function attachCommentObserver(): (() => void) | null {
     try {
-        const arr: unknown[] = ensureCommentsArray();
-        if (hasObserve(arr)) {
-            const observer = () => applyCommentCount(arr);
-            arr.observe!(observer);
-            return () => arr.unobserve?.(observer);
+        let detachArray: (() => void) | null = null;
+
+        const attachToArray = () => {
+            try { detachArray?.(); } catch {}
+            detachArray = null;
+            const arr: unknown[] = ensureCommentsArray();
+            if (hasObserve(arr)) {
+                const observer = () => applyCommentCount(arr);
+                arr.observe!(observer);
+                detachArray = () => arr.unobserve?.(observer);
+                observer();
+            }
+        };
+
+        attachToArray();
+
+        // Item.comments lazily returns a throwaway empty-array stub until the first
+        // comment triggers real Y.Array creation, so also watch the item's own Y.Map
+        // for the "comments" key appearing and re-attach to the real array when it does.
+        let detachMap: (() => void) | null = null;
+        if (hasTreeKey(item)) {
+            type CommentsKeyEvent = { changes?: { keys?: Map<string, unknown> } };
+            const valueMap = item.tree?.getNodeValueFromKey?.(item.key) as
+                | { observe?: (f: (e: CommentsKeyEvent) => void) => void; unobserve?: (f: (e: CommentsKeyEvent) => void) => void }
+                | undefined;
+            if (valueMap && typeof valueMap.observe === "function") {
+                const mapHandler = (event: CommentsKeyEvent) => {
+                    if (event?.changes?.keys?.has("comments")) {
+                        attachToArray();
+                    }
+                };
+                valueMap.observe(mapHandler);
+                detachMap = () => valueMap.unobserve?.(mapHandler);
+            }
         }
+
+        return () => {
+            try { detachArray?.(); } catch {}
+            try { detachMap?.(); } catch {}
+        };
     } catch {}
     return null;
     }
@@ -984,6 +1018,9 @@ function toggleComments() {
             generalStore.openCommentItemId = null;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
         } else {
+            // Force the real backing Y.Array to exist before the thread mounts, so its
+            // observer doesn't attach to the throwaway empty-array stub (see Item.ensureComments).
+            try { item.ensureComments?.(); } catch {}
             generalStore.openCommentItemId = model.id;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
         }
@@ -2293,6 +2330,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         <CommentThread
             comments={ensuredComments}
             item={item}
+            onCountChanged={applyCommentCount}
             currentUser={currentUser}
         />
     {/if}
