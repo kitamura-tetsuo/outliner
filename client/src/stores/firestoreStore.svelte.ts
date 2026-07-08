@@ -547,7 +547,10 @@ if (typeof window !== "undefined") {
     // Enable automatic sync if:
     // 1) It's production (always sync in prod)
     // 2) OR it's not a test environment
-    const shouldAutoSync = isProd || !__isTestEnv;
+    // 3) OR it's a real E2E test (Playwright sets window.__E2E__; unit tests under
+    //    vitest do not), which needs live Firestore sync against the emulator
+    const shouldAutoSync = isProd || !__isTestEnv
+        || (typeof window !== "undefined" && window.__E2E__ === true);
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
