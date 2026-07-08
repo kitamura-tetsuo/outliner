@@ -543,6 +543,22 @@ export class Item {
         return new Comments(arr);
     }
 
+    /**
+     * Force creation of the real backing Y.Array for comments (as opposed to
+     * the lazy EMPTY_Y_ARRAY stub returned by `comments` when none exists
+     * yet). Callers that need to observe comments before any comment is
+     * added (e.g. opening a comment thread UI) should call this first so
+     * their observer attaches to the actual array rather than the stub.
+     */
+    ensureComments(): Comments {
+        let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<CommentValueType>>();
+            this.value.set("comments", arr);
+        }
+        return new Comments(arr);
+    }
+
     addComment(author: string, text: string) {
         try {
             logger.info("[Item.addComment] id=", this.id);

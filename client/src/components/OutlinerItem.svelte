@@ -984,6 +984,9 @@ function toggleComments() {
             generalStore.openCommentItemId = null;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
         } else {
+            // Force the real backing Y.Array to exist before the thread mounts, so its
+            // observer doesn't attach to the throwaway empty-array stub (see Item.ensureComments).
+            try { item.ensureComments?.(); } catch {}
             generalStore.openCommentItemId = model.id;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
         }
