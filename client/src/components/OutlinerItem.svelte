@@ -86,6 +86,8 @@ import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
+import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
 import SqlBlock from "./SqlBlock.svelte";
 
@@ -2180,13 +2182,11 @@ export function setSelectionPosition(start: number, end: number = start) {
                     {@html formattedHtml}
                 </span>
                 {#if !isPageTitle && model.votes.length > 0}
-                    <span
-                        class="vote-count" class:has-count={model.votes.length > 0}
+                    <OutlinerItemVoteCount
+                        count={model.votes.length}
                         title={voterNames}
-                        aria-label={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
-                    >
-                        {model.votes.length}
-                    </span>
+                        ariaLabel={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
+                    />
                 {/if}
                 {#if !isPageTitle}
                     <span class="comment-count-visual" class:has-count={commentCountVisual > 0} aria-hidden="true">{commentCountVisual}</span>
@@ -2287,7 +2287,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         </div>
 
         {#if model.votes.length > 0}
-            <span class="vote-count" class:has-count={model.votes.length > 0}>{model.votes.length}</span>
+            <OutlinerItemVoteCount count={model.votes.length} />
         {/if}
         {#if !isPageTitle}
             <div class="item-actions">
@@ -2303,18 +2303,12 @@ export function setSelectionPosition(start: number, end: number = start) {
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 </button>
-                <button type="button"
-                    onclick={toggleVote}
-                    class="vote-btn" class:has-count={model.votes.length > 0}
-                    class:voted={model.votes.includes(currentUser)}
-                    title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
-                    aria-label={model.votes.includes(currentUser) ? "Remove vote from: " + truncatedText : "Vote for item: " + truncatedText}
-                    aria-pressed={model.votes.includes(currentUser)}
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                </button>
+                <OutlinerItemVoteButton
+                    voted={model.votes.includes(currentUser)}
+                    count={model.votes.length}
+                    truncatedText={truncatedText}
+                    onVote={toggleVote}
+                />
             </div>
         {/if}
         </div>
@@ -2482,30 +2476,10 @@ export function setSelectionPosition(start: number, end: number = start) {
     outline-offset: -2px;
 }
 
-.vote-btn {
-    color: #ccc;
-}
-
-.vote-btn.voted {
-    color: gold;
-}
-
-.vote-count {
-    margin-left: 4px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    padding: 0 4px;
-    font-size: 0.7rem;
-    color: #666;
-}
-
-
 .component-selector,
 .referring-aliases-container,
 .comment-button,
-.vote-count,
-.comment-count-visual,
-.vote-btn {
+.comment-count-visual {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2516,17 +2490,11 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .referring-aliases-container,
 .outliner-item:hover .comment-button,
 .outliner-item:focus-within .comment-button,
-.outliner-item:hover .vote-count,
-.outliner-item:focus-within .vote-count,
 .outliner-item:hover .comment-count-visual,
 .outliner-item:focus-within .comment-count-visual,
-.outliner-item:hover .vote-btn,
-.outliner-item:focus-within .vote-btn,
 .comment-button.has-count,
 .referring-aliases-container.has-count,
-.vote-count.has-count,
-.comment-count-visual.has-count,
-.vote-btn.has-count {
+.comment-count-visual.has-count {
     opacity: 1;
 }
 
@@ -2534,9 +2502,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 .component-selector,
 .referring-aliases-container,
 .comment-button,
-.vote-count,
-.comment-count-visual,
-.vote-btn {
+.comment-count-visual {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2547,17 +2513,11 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .referring-aliases-container,
 .outliner-item:hover .comment-button,
 .outliner-item:focus-within .comment-button,
-.outliner-item:hover .vote-count,
-.outliner-item:focus-within .vote-count,
 .outliner-item:hover .comment-count-visual,
 .outliner-item:focus-within .comment-count-visual,
-.outliner-item:hover .vote-btn,
-.outliner-item:focus-within .vote-btn,
 .comment-button.has-count,
 .referring-aliases-container.has-count,
-.vote-count.has-count,
-.comment-count-visual.has-count,
-.vote-btn.has-count {
+.comment-count-visual.has-count {
     opacity: 1;
 }
 
