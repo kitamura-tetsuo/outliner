@@ -2330,6 +2330,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         <CommentThread
             comments={ensuredComments}
             item={item}
+            onCountChanged={applyCommentCount}
             currentUser={currentUser}
         />
     {/if}
