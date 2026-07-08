@@ -329,7 +329,7 @@ onMount(() => {
                 } else {
                     localCursorVisible = store.cursorVisible;
                 }
-            }, 16) as unknown as number; // Update at ~60fps interval
+            }, 16); // Update at ~60fps interval
         });
     } catch (error) {
         logger.warn('Failed to subscribe to store changes:', error);
@@ -712,14 +712,14 @@ function getItemsInRange(startId: string, endId: string): string[] {
 let mutationObserver: MutationObserver;
 
 // Variable to debounce (rate limit) position map updates
-let updatePositionMapTimer: number;
+let updatePositionMapTimer: ReturnType<typeof setTimeout>;
 
 // Update position map with debounce
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
         if (!aliasPickerStore.isVisible) updatePositionMap();
-    }, 100) as unknown as number;
+    }, 100);
 }
 
 // Data reflection from store is guaranteed by MutationObserver and onMount initialization
@@ -827,10 +827,10 @@ onMount(() => {
             // Intentionally empty - catch potential errors without further handling
         }
     };
-    try { window.addEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+    try { window.addEventListener('aliaspicker-visibility', handler as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     }
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as unknown as EventListener); } catch {
+    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as EventListener); } catch {
         // Intentionally empty - catch potential errors without further handling
     } };
 });
@@ -887,7 +887,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const typedItems = items as unknown as { at?: (i: number) => { id: string, text?: string }, [key: number]: { id: string, text?: string } };
+      const typedItems = items as any;
       const it = typedItems!.at ? typedItems.at(i) : typedItems![i];
       if (it?.id === itemId) {
         return String(it?.text ?? "");
@@ -938,11 +938,11 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
-      if (typeof navigator !== 'undefined' && (navigator as unknown as { clipboard?: { writeText?: unknown } })?.clipboard?.writeText) {
-        (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
+      if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
+        (navigator as any).clipboard.writeText(rectText).catch(() => {});
       }
       if (typeof window !== 'undefined') {
-        (window as typeof window & { lastCopiedText?: string }).lastCopiedText = rectText;
+        (window as any).lastCopiedText = rectText;
       }
       if (clipboardRef) {
         clipboardRef.value = rectText;
@@ -1094,8 +1094,8 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as unknown as { clipboard?: { writeText?: unknown } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
+    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
+      (navigator as any).clipboard.writeText(selectedText).catch(() => {});
     }
 
     // Always update hidden textarea to maintain test focus
@@ -1225,13 +1225,13 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as unknown as { clipboard?: { writeText?: unknown } })?.clipboard?.writeText) {
-      (navigator as typeof navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
+    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
+      (navigator as any).clipboard.writeText(combinedText).catch(() => {});
     }
     // Save to global variable (for E2E test environment only)
     // Not used in production, but needed to verify copy content in E2E tests
     if (typeof window !== 'undefined') {
-      (window as typeof window & { lastCopiedText?: string }).lastCopiedText = combinedText;
+      (window as any).lastCopiedText = combinedText;
     }
   }
 
