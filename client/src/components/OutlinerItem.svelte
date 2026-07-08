@@ -1863,35 +1863,54 @@ onMount(() => {
             dropTargetPosition = null;
         };
 
+        const dropHandler = (e: Event) => handleDrop(e as DragEvent | CustomEvent);
+        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
+
         if (displayRef) {
             displayForward = maybeForward;
             displayRef.addEventListener('synthetic-drop', displayForward as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
             itemRef.addEventListener('synthetic-drop', itemForward as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
         }
+
+        // Store handlers for removal
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dragOverHandler = dragOverHandler;
+        (itemRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
+
     } catch {}
     return () => {
         try {
+            const displayDropHandler = (displayRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
+            const displayDragOverHandler = (displayRef as HTMLElement & { _dragOverHandler?: EventListener })?._dragOverHandler;
+            const itemDropHandler = (itemRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
+
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
+            if (displayDropHandler) {
+                displayRef?.removeEventListener?.('drop', displayDropHandler, { capture: true } as EventListenerOptions);
+                displayRef?.removeEventListener?.('drop', displayDropHandler, { capture: false } as EventListenerOptions);
+            }
+            if (displayDragOverHandler) {
+                displayRef?.removeEventListener?.('dragover', displayDragOverHandler, { capture: true } as EventListenerOptions);
+                displayRef?.removeEventListener?.('dragover', displayDragOverHandler, { capture: false } as EventListenerOptions);
+            }
             if (itemForward) {
                 itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+            if (itemDropHandler) {
+                itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: true } as EventListenerOptions);
+                itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: false } as EventListenerOptions);
+            }
         } catch {}
     };
 });
