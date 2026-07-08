@@ -328,12 +328,28 @@ function saveEdit(id: string) {
 
 </script>
 
-<div class="comment-thread" data-testid="comment-thread" bind:this={threadRef}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!--
+    Stop pointerdown/mousedown/click from bubbling to OutlinerItem's item-editing handlers
+    (handleMouseDown/handleClick), which otherwise treat any click inside this thread as a
+    request to start editing the item's own text and steal focus to its textarea - cancelling,
+    among other things, the Add button's native form-submit default action before it can run.
+-->
+<div
+    class="comment-thread"
+    data-testid="comment-thread"
+    bind:this={threadRef}
+    onpointerdown={(e) => e.stopPropagation()}
+    onmousedown={(e) => e.stopPropagation()}
+    onclick={(e) => e.stopPropagation()}
+>
     <div class="comment-summary"><span class="thread-comment-count">{renderCommentsState.length}</span></div>
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
-                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
                 <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
                 <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
             {:else}
@@ -344,14 +360,11 @@ function saveEdit(id: string) {
             {/if}
         </div>
     {/each}
-    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <form
         onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }}
-        onpointerdown={(e) => e.stopPropagation()}
-        onmousedown={(e) => e.stopPropagation()}
         data-testid="comment-form"
     >
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text"  onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>
