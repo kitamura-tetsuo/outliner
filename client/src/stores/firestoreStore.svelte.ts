@@ -55,8 +55,7 @@ class GeneralStore {
             const __isTestEnv = import.meta.env.MODE === "test"
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
-                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                || (typeof window !== "undefined");
+                || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
@@ -187,8 +186,7 @@ class GeneralStore {
                             || process.env.NODE_ENV === "test"
                             || import.meta.env.VITE_IS_TEST === "true"
                             || (typeof window !== "undefined"
-                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-                            || (typeof window !== "undefined");
+                                && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
                         const hasSeeded = !!(firestoreStore.userProject?.accessibleProjectIds?.length);
                         const incomingEmpty = !(projectData.accessibleProjectIds?.length);
                         if (isTestEnv && hasSeeded && incomingEmpty) {
@@ -283,8 +281,7 @@ try {
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined");
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
     // Never use emulator in production environment
     const isProduction = process.env.NODE_ENV === "production"
@@ -543,17 +540,14 @@ if (typeof window !== "undefined") {
     const __isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-        || (typeof window !== "undefined");
+        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
     const isProd = import.meta.env.MODE === "production" || process.env.NODE_ENV === "production";
 
     // Enable automatic sync if:
     // 1) It's production (always sync in prod)
     // 2) OR it's not a test environment
-    // 3) OR it's an E2E test
-    const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined");
+    const shouldAutoSync = isProd || !__isTestEnv;
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
