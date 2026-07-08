@@ -126,7 +126,6 @@ onMount(() => {
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions
 
 function add() {
-    try { console.warn("[DIAG add]", JSON.stringify({ newText, hasComments: !!props.comments, hasItem: !!props.item })); } catch {}
         // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
 
@@ -207,7 +206,6 @@ function add() {
                 }
             } catch {}
         }
-        try { console.warn("[DIAG countNow]", JSON.stringify({ countNow, lastNotifiedCount })); } catch {}
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
@@ -346,9 +344,15 @@ function saveEdit(id: string) {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { try { console.warn("[DIAG submit]", "fired"); } catch {} e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <form
+        onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }}
+        onpointerdown={(e) => e.stopPropagation()}
+        onmousedown={(e) => e.stopPropagation()}
+        data-testid="comment-form"
+    >
         <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text"  onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
-        <button type="submit" data-testid="add-comment-btn" aria-label="Add comment" onclick={() => { try { console.warn("[DIAG click]", "add-btn clicked"); } catch {} }}>Add</button>
+        <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>
 
