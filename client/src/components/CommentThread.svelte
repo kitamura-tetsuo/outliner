@@ -126,6 +126,7 @@ onMount(() => {
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions
 
 function add() {
+    try { console.error("[DIAG add]", JSON.stringify({ newText, hasComments: !!props.comments, hasItem: !!props.item })); } catch {}
         // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
 
@@ -206,6 +207,7 @@ function add() {
                 }
             } catch {}
         }
+        try { console.error("[DIAG countNow]", JSON.stringify({ countNow, lastNotifiedCount })); } catch {}
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
