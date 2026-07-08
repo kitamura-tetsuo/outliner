@@ -887,7 +887,7 @@ function getTextByItemId(itemId: string): string {
     const items = page?.items;
     const len = items?.length ?? 0;
     for (let i = 0; i < len; i++) {
-      const typedItems = items as any;
+      const typedItems = items as object as { at?: (i: number) => { id: string, text?: string }, [key: number]: { id: string, text?: string } };
       const it = typedItems!.at ? typedItems.at(i) : typedItems![i];
       if (it?.id === itemId) {
         return String(it?.text ?? "");
@@ -938,11 +938,11 @@ function handleCopy(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', rectText);
       }
-      if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
-        (navigator as any).clipboard.writeText(rectText).catch(() => {});
+      if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
+        (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
       }
       if (typeof window !== 'undefined') {
-        (window as any).lastCopiedText = rectText;
+        (window as Window & typeof globalThis & { lastCopiedText?: string }).lastCopiedText = rectText;
       }
       if (clipboardRef) {
         clipboardRef.value = rectText;
@@ -1094,8 +1094,8 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', selectedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
-      (navigator as any).clipboard.writeText(selectedText).catch(() => {});
+    if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
+      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
     }
 
     // Always update hidden textarea to maintain test focus
@@ -1225,13 +1225,13 @@ function handleCopy(event: ClipboardEvent) {
       event.clipboardData.setData('text/plain', combinedText);
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
-    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
-      (navigator as any).clipboard.writeText(combinedText).catch(() => {});
+    if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
+      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
     }
     // Save to global variable (for E2E test environment only)
     // Not used in production, but needed to verify copy content in E2E tests
     if (typeof window !== 'undefined') {
-      (window as any).lastCopiedText = combinedText;
+      (window as Window & typeof globalThis & { lastCopiedText?: string }).lastCopiedText = combinedText;
     }
   }
 

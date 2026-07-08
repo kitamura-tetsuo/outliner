@@ -1880,16 +1880,16 @@ onMount(() => {
         }
 
         // Store handlers for removal
-        (displayRef as any)._dropHandler = dropHandler;
-        (displayRef as any)._dragOverHandler = dragOverHandler;
-        (itemRef as any)._dropHandler = dropHandler;
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dragOverHandler = dragOverHandler;
+        (itemRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
 
     } catch {}
     return () => {
         try {
-            const displayDropHandler = (displayRef as any)?._dropHandler;
-            const displayDragOverHandler = (displayRef as any)?._dragOverHandler;
-            const itemDropHandler = (itemRef as any)?._dropHandler;
+            const displayDropHandler = (displayRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
+            const displayDragOverHandler = (displayRef as HTMLElement & { _dragOverHandler?: EventListener })?._dragOverHandler;
+            const itemDropHandler = (itemRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
 
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
