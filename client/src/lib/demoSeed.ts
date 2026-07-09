@@ -64,7 +64,7 @@ export async function seedDemo(options: { force?: boolean; throwOnError?: boolea
             if (!seedErr.message.includes("fetch")) {
                 throw seedErr;
             } else {
-                 throw new Error(`Failed to connect to the server: ${seedErr.message}`);
+                throw new Error(`Failed to connect to the server: ${seedErr.message}`);
             }
         }
         logger.warn(`Error seeding demo ${seedErr}`);
