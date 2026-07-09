@@ -69,7 +69,7 @@
     }
 </script>
 
-<aside class="sidebar" class:open={isOpen}>
+<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar">
     <div class="sidebar-content">
         <div class="header">
             <h2 class="sidebar-title">Databases</h2>

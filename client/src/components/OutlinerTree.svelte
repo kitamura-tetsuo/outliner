@@ -2158,19 +2158,20 @@
 
         <div
             class="tree-container"
-            role="tree"
-            tabindex="0"
-            aria-label="Outliner Tree"
+            role="presentation"
+            tabindex="-1"
             bind:this={treeContainer}
             ondrop={handleTreeDrop}
             ondragover={handleTreeDragOver}
         >
-            <!-- Flat display items (static placement) -->
-            {#each displayItems as display, index (display.model.id)}
-                <div
-                    class="item-container"
-                    style="--item-depth: {display.depth}"
-                >
+            <!-- Flat display items (static placement) wrapped in tree role -->
+            <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-wrapper">
+                {#each displayItems as display, index (display.model.id)}
+                    <div
+                        class="item-container"
+                        role="presentation"
+                        style="--item-depth: {display.depth}"
+                    >
                     <OutlinerItem
                         model={display.model}
                         depth={display.depth}
@@ -2192,8 +2193,9 @@
                         on:drop={handleItemDrop}
                         on:drag-end={handleItemDragEnd}
                     />
-                </div>
-            {/each}
+                    </div>
+                {/each}
+            </div>
 
             {#if displayItems.length === 0 && !isReadOnly}
                 <div class="empty-state">
