@@ -51,7 +51,7 @@
 
 </script>
 
-<aside class="sidebar" class:open={isOpen}>
+<aside class="sidebar" class:open={isOpen} aria-label="Main Navigation">
     <div class="sidebar-content">
         <h2 class="sidebar-title">Sidebar</h2>
         <p class="sidebar-description">
