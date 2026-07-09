@@ -48,7 +48,7 @@ export async function seedDemo(options: { force?: boolean; throwOnError?: boolea
                 } else if (errorData && errorData.error) {
                     errorMsg = errorData.error;
                 }
-            } catch (e) {
+            } catch (_e) {
                 // Ignore JSON parse error, keep statusText
             }
             logger.warn(`Failed to seed demo: ${errorMsg}`);
@@ -64,7 +64,7 @@ export async function seedDemo(options: { force?: boolean; throwOnError?: boolea
             if (!seedErr.message.includes("fetch")) {
                 throw seedErr;
             } else {
-                throw new Error(`Failed to connect to the server: ${seedErr.message}`);
+                throw new Error(`Failed to connect to the server: ${seedErr.message}`, { cause: seedErr });
             }
         }
         logger.warn(`Error seeding demo ${seedErr}`);
