@@ -2271,7 +2271,9 @@ export function setSelectionPosition(start: number, end: number = start) {
                         <select
                             value={(componentType ?? compTypeValue) || "none"}
                             onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
+                            onpointerdown={(e: Event) => e.stopPropagation()}
                             onmousedown={(e: Event) => e.stopPropagation()}
+                            onmouseup={(e: Event) => e.stopPropagation()}
                             onclick={(e: Event) => e.stopPropagation()}
                             aria-label="Item component type"
                         >
