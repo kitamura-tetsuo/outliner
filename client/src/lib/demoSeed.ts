@@ -24,7 +24,7 @@ function resolveApiBaseUrl(): string {
  * Pass `{ force: true }` to trigger the 24h reset manually, regardless of
  * when the demo content was last seeded.
  */
-export async function seedDemo(options: { force?: boolean; } = {}): Promise<void> {
+export async function seedDemo(options: { force?: boolean; throwOnError?: boolean; } = {}): Promise<void> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -40,9 +40,33 @@ export async function seedDemo(options: { force?: boolean; } = {}): Promise<void
             body: JSON.stringify({ force: options.force === true }),
         });
         if (!response.ok) {
-            logger.warn(`Failed to seed demo: ${response.statusText}`);
+            let errorMsg = response.statusText;
+            try {
+                const errorData = await response.json();
+                if (errorData && errorData.message) {
+                    errorMsg = errorData.message;
+                } else if (errorData && errorData.error) {
+                    errorMsg = errorData.error;
+                }
+            } catch (e) {
+                // Ignore JSON parse error, keep statusText
+            }
+            logger.warn(`Failed to seed demo: ${errorMsg}`);
+            if (options.throwOnError) {
+                throw new Error(errorMsg);
+            }
         }
     } catch (seedErr) {
+        if (options.throwOnError && seedErr instanceof Error && seedErr.message !== "Failed to fetch") {
+            throw seedErr;
+        } else if (options.throwOnError && seedErr instanceof Error) {
+            // Re-throw if it was an error we created, otherwise it might be network fetch error
+            if (!seedErr.message.includes("fetch")) {
+                throw seedErr;
+            } else {
+                 throw new Error(`Failed to connect to the server: ${seedErr.message}`);
+            }
+        }
         logger.warn(`Error seeding demo ${seedErr}`);
     }
 }

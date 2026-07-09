@@ -15,6 +15,7 @@
     let isLoading = $state(true);
     let isResetting = $state(false);
     let resetDone = $state(false);
+    let resetError: string | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
     let isDestroyed = false;
 
@@ -62,7 +63,8 @@
         try {
             isResetting = true;
             resetDone = false;
-            await seedDemo({ force: true });
+            resetError = undefined;
+            await seedDemo({ force: true, throwOnError: true });
             if (isDestroyed) return;
             removeYjsClientByProjectId(DEMO_PROJECT_NAME);
             yjsStore.yjsClient = undefined;
@@ -71,6 +73,8 @@
             if (isDestroyed) return;
             resetDone = error === undefined;
             setTimeout(() => { resetDone = false; }, 3000);
+        } catch (err) {
+            resetError = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
         } finally {
             isResetting = false;
         }
@@ -120,6 +124,11 @@
         {#if resetDone}
             <p class="mt-1 text-sm text-green-600" data-testid="demo-reset-done" role="status" aria-live="polite">
                 Demo content has been reset.
+            </p>
+        {/if}
+        {#if resetError}
+            <p class="mt-1 text-sm text-red-600" data-testid="demo-reset-error" role="status" aria-live="assertive">
+                {resetError}
             </p>
         {/if}
     </div>
