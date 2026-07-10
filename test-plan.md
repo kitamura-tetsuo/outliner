@@ -1,21 +1,15 @@
-Wait! If `pageTitle` passes, but `firstItem` fails, maybe the problem isn't that `OutlinerTree` didn't remount.
-If `OutlinerTree` didn't remount, it would STILL display "Another item" from the previous page, and so `firstItem` WOULD be visible! But it would have the text "Another item".
-Wait, the error says:
+# Improvement Plan
 
-```
-    Error: expect(locator).toBeVisible() failed
+**Target Application:** Client source files
+**Improvement Type:** Bug fix / Memory directive compliance
 
-    Locator: locator('.outliner-item-content .item-text').first()
-    Expected: visible
-    Timeout: 10000ms
-    Error: element(s) not found
-```
+### Plan Details
 
-Element not found! This means there are NO items with class `.outliner-item-content .item-text`!
-Wait, in the test I wrote:
+1. **Fix `window.appStore` fallbacks:**
+   - Modify `client/src/components/SearchPanel.svelte` to correctly use `window.appStore || window.generalStore`.
+   - Modify `client/src/components/OutlinerItem.svelte` (around line 1517) to correctly use `window.appStore || window.generalStore`.
+2. **Fix `stopPropagation` on interactive controls:**
+   - Modify `client/src/components/OutlinerItem.svelte`'s action buttons (the `Add new item` and `Delete` buttons at line ~2317) to include `e.stopPropagation()` for `onclick`, `onmousedown`, `onpointerdown`, and `onmouseup`.
+3. **Verify changes locally** (Pre-commit steps).
 
-```typescript
-const firstItem = page.locator(".outliner-item-content .item-text").first();
-```
-
-Is the class name correct? Let's check `lnk-click-navigation-6feab1d7.spec.ts` or other tests.
+Let's check if there are other areas missing `stopPropagation` in `EditorOverlay.svelte` or `OutlinerItem.svelte`.

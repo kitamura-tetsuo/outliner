@@ -26,7 +26,7 @@ const logger = getLogger("SearchBox");
         if (typeof window !== "undefined") {
             const cur = window.__CURRENT_PROJECT__;
             if (cur) return cur;
-            const gs = window.generalStore;
+            const gs = window.appStore || window.generalStore;
             if (gs?.project) return gs.project;
             const parts = window.location.pathname.split("/").filter(Boolean);
             void parts[0]; // Previously projectTitle
