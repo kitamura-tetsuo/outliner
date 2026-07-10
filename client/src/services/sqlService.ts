@@ -189,9 +189,7 @@ export function runQuery(sql: string, allowMutation = false) {
         .replace(/"(?:[^"\\]|\\.)*"/g, "");
 
     if (!allowMutation) {
-        if (
-            /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(strippedSql) || /\bREPLACE\s+INTO\b/i.test(strippedSql)
-        ) {
+        if (/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(strippedSql) || /\bREPLACE\s+INTO\b/i.test(strippedSql)) {
             throw new Error("Only SELECT queries are allowed");
         }
     }
