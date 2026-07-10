@@ -4,7 +4,7 @@ const logger = getLogger("API");
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     try {
         let force = false;
         try {
@@ -30,11 +30,24 @@ export const POST: RequestHandler = async ({ request }) => {
             ? `${apiBaseUrl}api/seed-demo`
             : `${apiBaseUrl}/api/seed-demo`;
 
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+
+        const forwardedHeaders = ["x-forwarded-for", "cf-connecting-ip", "fly-client-ip", "fastly-client-ip", "true-client-ip"];
+        for (const h of forwardedHeaders) {
+            const val = request.headers.get(h);
+            if (val) headers[h] = val;
+        }
+        if (!headers["x-forwarded-for"]) {
+            try {
+                headers["x-forwarded-for"] = getClientAddress();
+            } catch (e) {}
+        }
+
         const response = await fetch(endpoint, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({ force }),
         });
 
