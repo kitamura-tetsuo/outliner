@@ -384,10 +384,10 @@ export class Cursor implements CursorEditingContext {
                 // Create the parent Item from the parentKey
 
                 parentItemInstance = new (currentTarget!.constructor as unknown as {
-                    new(ydoc: any, tree: any, key: string): YjsItem;
+                    new(ydoc: import("yjs").Doc, tree: import("yjs-orderedtree").YTree, key: string): YjsItem;
                 })(
                     currentTarget!.ydoc,
-                    (currentTarget as any).tree,
+                    (currentTarget as unknown as { tree: import("yjs-orderedtree").YTree; }).tree,
                     parentCollection.parentKey,
                 );
             }
@@ -1797,10 +1797,10 @@ export class Cursor implements CursorEditingContext {
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 try {
                     parentItemInstance = new (currentTarget!.constructor as unknown as {
-                        new(ydoc: any, tree: any, key: string): YjsItem;
+                        new(ydoc: import("yjs").Doc, tree: import("yjs-orderedtree").YTree, key: string): YjsItem;
                     })(
                         currentTarget!.ydoc,
-                        (currentTarget as any).tree,
+                        (currentTarget as unknown as { tree: import("yjs-orderedtree").YTree; }).tree,
                         parentCollection.parentKey,
                     );
                 } catch {}
