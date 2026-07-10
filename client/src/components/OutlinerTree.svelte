@@ -67,7 +67,7 @@
     let mobileToolbarBottomOffset = $state(0);
 
     // Throttle scroll event to improve performance
-    let scrollTimeout: number | null = null;
+    let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
     function handleScroll() {
         if (scrollTimeout) return;
 

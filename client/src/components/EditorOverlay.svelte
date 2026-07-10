@@ -298,7 +298,7 @@ onMount(() => {
 
     // Subscribe to store changes with debounce to avoid infinite loops
 
-    let updateTimeout: number | null = null;
+    let updateTimeout: ReturnType<typeof setTimeout> | null = null;
     let unsubscribe = () => {};
 
     // Subscribe to store changes in all environments to ensure proper updates

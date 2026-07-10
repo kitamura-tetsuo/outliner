@@ -31,9 +31,9 @@ const PREVIEW_STYLES = {
 // Currently displayed preview element
 let currentPreview: HTMLElement | null = null;
 // Timer for showing preview
-let previewTimer: number | null = null;
+let previewTimer: ReturnType<typeof setTimeout> | null = null;
 // Timer for hiding preview
-let hideTimer: number | null = null;
+let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Checks if a page exists
