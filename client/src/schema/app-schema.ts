@@ -90,14 +90,17 @@ export class Comments {
     }
 
     get length() {
+        if (!this.yArray.doc) return 0;
         return this.yArray.length;
     }
 
     toArray(): Y.Map<CommentValueType>[] {
+        if (!this.yArray.doc) return [];
         return this.yArray.toArray();
     }
 
     toPlain(): Comment[] {
+        if (!this.yArray?.doc) return [];
         if (typeof this.yArray?.toArray !== "function") return [];
         return this.yArray.toArray().map((m) => ({
             id: m.get("id") as string,
@@ -126,6 +129,7 @@ export class TableRows {
     }
 
     get length() {
+        if (!this.yArray.doc) return 0;
         return this.yArray.length;
     }
 
@@ -165,6 +169,7 @@ export class TableRows {
 
     /** Plain snapshot of every row keyed by column name. */
     toPlain(columns: string[]): Record<string, string>[] {
+        if (!this.yArray?.doc) return [];
         if (typeof this.yArray?.toArray !== "function") return [];
         return this.yArray.toArray().map((row) => {
             const obj: Record<string, string> = {};
