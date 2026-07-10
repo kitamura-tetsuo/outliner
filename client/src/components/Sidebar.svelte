@@ -138,6 +138,7 @@
                         onclick={(e) => {
                             e.stopPropagation();
                             if (store.project) {
+                                if (store.pageExists("Untitled")) return;
                                 const newPage = store.project.addPage("Untitled", "tester");
                                 const pageHref = resolvePath(
                                     `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
