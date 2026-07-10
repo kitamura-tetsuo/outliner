@@ -287,9 +287,20 @@
     function handleAddItem() {
         if (pageItem && !isReadOnly && pageItem.items) {
             // Add item to end
-            pageItem.items.addNode(currentUser);
+            const node = pageItem.items.addNode(currentUser);
             // Trigger a re-render
             __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
+
+            // Focus the newly created item
+            if (node && node.id) {
+                editorOverlayStore.setCursor({
+                    itemId: node.id,
+                    offset: 0,
+                    isActive: true,
+                    userId: "local",
+                });
+                editorOverlayStore.setActiveItem(node.id);
+            }
         }
     }
 
