@@ -259,7 +259,7 @@
                         newItem.id,
                         file,
                         (url) => newItem.addAttachment(url),
-                        (localUrl, err) => {
+                        (localUrl) => {
                             // E2E fallback local URL for test environment (mocking network)
                             if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
                                 newItem.addAttachment(localUrl);
@@ -1999,7 +1999,7 @@
                                         try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                                     }
                                 },
-                                (localUrl, err) => {
+                                (localUrl) => {
                                     try {
                                         newItem.addAttachment(localUrl);
                                     } catch {

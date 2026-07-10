@@ -12,7 +12,7 @@ export async function uploadAttachmentWithFallback(
     file: File,
     onSuccess: (url: string) => void,
     onFallback: (localUrl: string, error: unknown) => void,
-    callerLogger?: any,
+    callerLogger?: { error: (msg: string | { error: Error; }, details?: string) => void; },
 ): Promise<void> {
     const log = callerLogger || logger;
 

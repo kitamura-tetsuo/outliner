@@ -1704,7 +1704,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 });
                             }
                         },
-                        (localUrl, err) => {
+                        (localUrl) => {
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 try { model.original.addAttachment(localUrl); } catch { try { (model.original as any).attachments?.push?.([localUrl]); } catch {} }
