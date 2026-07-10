@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/svelte";
-import { describe, expect, it, vi, beforeAll } from "vitest";
-import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Item } from "../schema/app-schema";
+import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 
 // Mock logger
 vi.mock("../lib/logger", () => ({
