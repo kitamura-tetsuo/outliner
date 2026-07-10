@@ -1798,7 +1798,7 @@ export class Cursor implements CursorEditingContext {
 
             // Additional logic to navigate to parent when there's no previous sibling
             const currentTarget = this.findTarget();
-            const parentCollection = currentTarget?.parent as { parentKey?: string } | undefined;
+            const parentCollection = currentTarget?.parent as { parentKey?: string; } | undefined;
             let parentItemInstance: import("../schema/app-schema").Item | YjsItem | null = null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 try {
