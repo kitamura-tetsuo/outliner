@@ -109,25 +109,75 @@ describe("Sidebar", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // Reset store state
-        store.project = {
-            title: "Test Project",
-        } as unknown as Project;
+        const mockProject = Project.createInstance("Test Project");
+        store.project = mockProject;
+
+        // Mock items behavior for the test
+        const mockItems1 = { length: 0 } as import("../schema/app-schema").Items;
+        const mockItems2 = { length: 0 } as import("../schema/app-schema").Items;
+
         store.pages = {
-            current: [
-                {
-                    id: "page-1",
-                    text: "Test Page 1",
-                    lastChanged: new Date("2024-01-01").getTime(),
-                    items: { length: 0 },
+            current: {
+                length: 2,
+                at: (index: number) => {
+                    if (index === 0) return {
+                        id: "page-1",
+                        text: "Test Page 1",
+                        lastChanged: new Date("2024-01-01").getTime(),
+                        items: mockItems1,
+                        ydoc: {} as any,
+                        tree: {} as any,
+                        key: "page-1",
+                        attachments: {} as any,
+                        votes: {} as any,
+                        comments: {} as any,
+                        tableRows: {} as any,
+                        tableSchema: "",
+                        tableColumns: [],
+                        defineTable: () => {},
+                        aliasTargetId: undefined,
+                        preview: undefined,
+                        updateText: () => {},
+                        addAttachment: () => {},
+                        toggleVote: () => {},
+                        componentType: undefined,
+                        chartQuery: undefined,
+                        author: "",
+                        created: 0,
+                    };
+                    if (index === 1) return {
+                        id: "page-2",
+                        text: "Test Page 2",
+                        lastChanged: new Date("2024-01-02").getTime(),
+                        items: mockItems2,
+                        ydoc: {} as any,
+                        tree: {} as any,
+                        key: "page-2",
+                        attachments: {} as any,
+                        votes: {} as any,
+                        comments: {} as any,
+                        tableRows: {} as any,
+                        tableSchema: "",
+                        tableColumns: [],
+                        defineTable: () => {},
+                        aliasTargetId: undefined,
+                        preview: undefined,
+                        updateText: () => {},
+                        addAttachment: () => {},
+                        toggleVote: () => {},
+                        componentType: undefined,
+                        chartQuery: undefined,
+                        author: "",
+                        created: 0,
+                    };
+                    return undefined;
                 },
-                {
-                    id: "page-2",
-                    text: "Test Page 2",
-                    lastChanged: new Date("2024-01-02").getTime(),
-                    items: { length: 0 },
-                },
-            ],
-        } as unknown as typeof store.pages;
+                *[Symbol.iterator](this: any) {
+                    yield this.at(0);
+                    yield this.at(1);
+                }
+            } as any,
+        };
         store.pagesVersion = 0;
     });
 
@@ -213,8 +263,8 @@ describe("Sidebar", () => {
             const originalProject = store.project;
             const originalPages = store.pages;
 
-            store.project = Project.createInstance("Empty Project") as unknown as Project;
-            store.pages = { current: [] } as unknown as typeof store.pages;
+            store.project = Project.createInstance("Empty Project");
+            store.pages = { current: { length: 0 } as any };
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
@@ -327,11 +377,10 @@ describe("Sidebar", () => {
             vi.mocked(appStores).page = readable({
                 url: { pathname: "/tetsuo/Test%20Page%201" },
                 params: { project: "tetsuo" },
-            }) as unknown as typeof appStores.page;
+            }) as any;
 
-            store.project = {
-                title: "4a934322-05de-4c97-932c-bc87fb43e18c",
-            } as unknown as Project;
+            const proj = Project.createInstance("4a934322-05de-4c97-932c-bc87fb43e18c");
+            store.project = proj;
 
             try {
                 render(Sidebar, { isOpen: true });

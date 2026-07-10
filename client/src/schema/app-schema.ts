@@ -34,7 +34,6 @@ class EmptyYArray {
         return [][Symbol.iterator]();
     }
 }
-const EMPTY_Y_ARRAY = new EmptyYArray() as unknown as Y.Array<unknown>;
 
 import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
@@ -269,17 +268,7 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
         } catch {
-            return {
-                get: () => null,
-                set: () => {},
-                observeDeep: () => {},
-                unobserveDeep: () => {},
-                observe: () => {},
-                unobserve: () => {},
-                delete: () => {},
-                has: () => false,
-                toJSON: () => ({}),
-            } as unknown as Y.Map<ItemValueType>;
+            return new Y.Map<ItemValueType>();
         }
     }
 
@@ -370,7 +359,7 @@ export class Item {
     get tableRows(): TableRows {
         let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
         if (!arr) {
-            arr = EMPTY_Y_ARRAY as unknown as Y.Array<Y.Map<RowValueType>>;
+            arr = new Y.Array<Y.Map<RowValueType>>();
             return new TableRows(arr, () => {
                 let actual = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
                 if (!actual) {
@@ -407,7 +396,7 @@ export class Item {
     }
     set preview(v: { lines: string[]; image: string | null; } | undefined) {
         if (v === undefined) this.value.delete("preview");
-        else this.value.set("preview", v as unknown as ItemValueType);
+        else this.value.set("preview", v);
     }
 
     updateText(text: string) {
@@ -420,7 +409,7 @@ export class Item {
     get votes(): Y.Array<string> {
         let arr = this.value.get("votes") as Y.Array<string> | undefined;
         if (!arr) {
-            arr = EMPTY_Y_ARRAY as unknown as Y.Array<string>;
+            arr = new Y.Array<string>();
         }
         return arr;
     }
@@ -440,7 +429,7 @@ export class Item {
     get attachments(): Y.Array<string> {
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) {
-            arr = EMPTY_Y_ARRAY as unknown as Y.Array<string>;
+            arr = new Y.Array<string>();
         }
         return arr;
     }
@@ -530,7 +519,7 @@ export class Item {
     get comments(): Comments {
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
-            arr = EMPTY_Y_ARRAY as unknown as Y.Array<Y.Map<CommentValueType>>;
+            arr = new Y.Array<Y.Map<CommentValueType>>();
             return new Comments(arr, () => {
                 let actual = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
                 if (!actual) {
