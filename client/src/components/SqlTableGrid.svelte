@@ -15,7 +15,7 @@ let { item }: Props = $props();
 // component does not need to import the yjs runtime directly.
 
 const DEFAULT_DDL =
-    "CREATE TABLE tasks (\n  id INTEGER PRIMARY KEY,\n  title TEXT,\n  status TEXT,\n  due TEXT\n)";
+    "DROP TABLE IF EXISTS tasks;\nCREATE TABLE tasks (\n  id INTEGER PRIMARY KEY,\n  title TEXT,\n  status TEXT,\n  due TEXT\n)";
 
 // Plain $state mirrors kept in sync with Yjs via observers (mirror pattern).
 let schema = $state<string>("");
