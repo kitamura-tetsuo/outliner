@@ -1,6 +1,7 @@
 <script lang="ts">
 import { onMount, tick } from "svelte";
 import type { Item } from "../schema/app-schema";
+import { isYjsObservable, isYjsObservableDeep } from "../utils/typeGuards";
 import { parseCreateTable } from "../services/tableSchema";
 import TableDefinitionEditor from "./TableDefinitionEditor.svelte";
 
@@ -40,23 +41,35 @@ function syncFromItem() {
 
 onMount(() => {
     // Touch tableRows so the backing Y.Array exists before we observe it.
-    const rowsArray = item.tableRows.toArray() as unknown as Observable;
-    const valueMap = item.tree.getNodeValueFromKey(item.key) as unknown as Observable;
+    const rowsArray = item.tableRows.toArray();
+    const valueMap = item.tree.getNodeValueFromKey(item.key);
+
+    // Note: event handlers are attached in the cleanup return block below
 
     syncFromItem();
     draftSql = schema || DEFAULT_DDL;
     definitionMode = columns.length === 0;
 
     const handler = () => syncFromItem();
-    valueMap.observe(handler);
-    rowsArray.observeDeep(handler);
+    if (isYjsObservable(valueMap)) {
+        valueMap.observe(handler);
+    }
+    // Note: item.tableRows.toArray() returns a plain array, so it is not observable.
+    // We should observe item.tableRows instead to get deep reactivity.
+    if (isYjsObservableDeep(item.tableRows)) {
+        item.tableRows.observeDeep(handler);
+    }
 
     return () => {
         try {
-            valueMap.unobserve(handler);
+            if (isYjsObservable(valueMap)) {
+                valueMap.unobserve(handler);
+            }
         } catch {}
         try {
-            rowsArray.unobserveDeep(handler);
+            if (isYjsObservableDeep(item.tableRows)) {
+                item.tableRows.unobserveDeep(handler);
+            }
         } catch {}
     };
 });

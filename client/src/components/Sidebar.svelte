@@ -2,6 +2,7 @@
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolvePath } from "../utils/pathUtils";
+    import { isArrayLikeItems } from "../utils/typeGuards";
     import { goto } from "$app/navigation";
 
 
@@ -25,11 +26,12 @@
         if (Array.isArray(current)) return current;
         // For Y.Array/Items, iterate and collect
         const result: import("../schema/app-schema").Item[] = [];
-        const currentItems = current as unknown as { length: number; at: (idx: number) => import("../schema/app-schema").Item | undefined };
-        const len = currentItems.length ?? 0;
-        for (let i = 0; i < len; i++) {
-            const item = currentItems.at?.(i);
-            if (item) result.push(item);
+        if (isArrayLikeItems(current)) {
+            const len = current.length ?? 0;
+            for (let i = 0; i < len; i++) {
+                const item = current.at(i);
+                if (item) result.push(item);
+            }
         }
         return result;
     });
