@@ -19,7 +19,7 @@ test.describe("Accessible outline tree semantics", () => {
     });
 
     test("outline container and items expose tree/treeitem ARIA roles", async ({ page }) => {
-        await expect(page.locator(".tree-items-wrapper")).toHaveAttribute("role", "tree");
+        await expect(page.locator(".tree-items-role-wrapper")).toHaveAttribute("role", "tree");
 
         const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(firstItemId).not.toBeNull();
