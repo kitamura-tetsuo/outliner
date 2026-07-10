@@ -2136,37 +2136,71 @@
             ondrop={handleTreeDrop}
             ondragover={handleTreeDragOver}
         >
-            <!-- Flat display items (static placement) wrapped in tree role -->
-            <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-wrapper">
-                {#each displayItems as display, index (display.model.id)}
+            <!-- Flat display items (static placement) -->
+            <div class="tree-items-wrapper">
+                {#if displayItems.length > 0}
+                    <!-- Page Title (index 0) is rendered outside the tree role to prevent aria-required-children violations -->
                     <div
                         class="item-container"
                         role="presentation"
-                        style="--item-depth: {display.depth}"
+                        style="--item-depth: {displayItems[0].depth}"
                     >
-                    <OutlinerItem
-                        model={display.model}
-                        depth={display.depth}
-                        {currentUser}
-                        {isReadOnly}
-                        isCollapsed={viewModel.isCollapsed(display.model.id)}
-                        hasChildren={viewModel.hasChildren(display.model.id)}
-                        isPageTitle={index === 0}
-                        ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
-                        ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
-                        {index}
-                        on:toggle-collapse={handleToggleCollapse}
-                        on:indent={handleIndent}
-                        on:unindent={handleUnindent}
-                        on:navigate-to-item={handleNavigateToItem}
-                        on:add-sibling={handleAddSibling}
-                        on:drag-start={handleItemDragStart}
-                        on:drag={handleItemDrag}
-                        on:drop={handleItemDrop}
-                        on:drag-end={handleItemDragEnd}
-                    />
+                        <OutlinerItem
+                            model={displayItems[0].model}
+                            depth={displayItems[0].depth}
+                            {currentUser}
+                            {isReadOnly}
+                            isCollapsed={viewModel.isCollapsed(displayItems[0].model.id)}
+                            hasChildren={viewModel.hasChildren(displayItems[0].model.id)}
+                            isPageTitle={true}
+                            ariaSetSize={ariaTreeMeta.get(displayItems[0].model.id)?.setSize}
+                            ariaPosInSet={ariaTreeMeta.get(displayItems[0].model.id)?.posInSet}
+                            index={0}
+                            on:toggle-collapse={handleToggleCollapse}
+                            on:indent={handleIndent}
+                            on:unindent={handleUnindent}
+                            on:navigate-to-item={handleNavigateToItem}
+                            on:add-sibling={handleAddSibling}
+                            on:drag-start={handleItemDragStart}
+                            on:drag={handleItemDrag}
+                            on:drop={handleItemDrop}
+                            on:drag-end={handleItemDragEnd}
+                        />
                     </div>
-                {/each}
+                {/if}
+                <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
+                    {#each displayItems as display, index (display.model.id)}
+                        {#if index > 0}
+                            <div
+                                class="item-container"
+                                role="presentation"
+                                style="--item-depth: {display.depth}"
+                            >
+                            <OutlinerItem
+                                model={display.model}
+                                depth={display.depth}
+                                {currentUser}
+                                {isReadOnly}
+                                isCollapsed={viewModel.isCollapsed(display.model.id)}
+                                hasChildren={viewModel.hasChildren(display.model.id)}
+                                isPageTitle={false}
+                                ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
+                                ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
+                                {index}
+                                on:toggle-collapse={handleToggleCollapse}
+                                on:indent={handleIndent}
+                                on:unindent={handleUnindent}
+                                on:navigate-to-item={handleNavigateToItem}
+                                on:add-sibling={handleAddSibling}
+                                on:drag-start={handleItemDragStart}
+                                on:drag={handleItemDrag}
+                                on:drop={handleItemDrop}
+                                on:drag-end={handleItemDragEnd}
+                            />
+                            </div>
+                        {/if}
+                    {/each}
+                </div>
             </div>
 
             {#if displayItems.length <= 1 && !isReadOnly}
