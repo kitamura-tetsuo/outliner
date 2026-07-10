@@ -34,7 +34,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
             "Content-Type": "application/json",
         };
 
-        const forwardedHeaders = ["x-forwarded-for", "cf-connecting-ip", "fly-client-ip", "fastly-client-ip", "true-client-ip"];
+        const forwardedHeaders = [
+            "x-forwarded-for",
+            "cf-connecting-ip",
+            "fly-client-ip",
+            "fastly-client-ip",
+            "true-client-ip",
+        ];
         for (const h of forwardedHeaders) {
             const val = request.headers.get(h);
             if (val) headers[h] = val;
