@@ -13,7 +13,7 @@ vi.mock("../lib/logger", () => ({
 
 // Mock global __E2E__ flag so data URLs are allowed
 beforeAll(() => {
-    // @ts-ignore
+    // @ts-expect-error: mocking window object for E2E mode
     globalThis.window = { __E2E__: true };
 });
 

@@ -126,13 +126,13 @@ describe("Sidebar", () => {
                             text: "Test Page 1",
                             lastChanged: new Date("2024-01-01").getTime(),
                             items: mockItems1,
-                            ydoc: {} as any,
-                            tree: {} as any,
+                            ydoc: {} as import("yjs").Doc,
+                            tree: {} as import("yjs-orderedtree").YTree,
                             key: "page-1",
-                            attachments: {} as any,
-                            votes: {} as any,
-                            comments: {} as any,
-                            tableRows: {} as any,
+                            attachments: [] as unknown as import("yjs").Array<string>,
+                            votes: [] as unknown as import("yjs").Array<string>,
+                            comments: {} as import("../schema/app-schema").Comments,
+                            tableRows: {} as import("../schema/app-schema").TableRows,
                             tableSchema: "",
                             tableColumns: [],
                             defineTable: () => {},
@@ -153,13 +153,13 @@ describe("Sidebar", () => {
                             text: "Test Page 2",
                             lastChanged: new Date("2024-01-02").getTime(),
                             items: mockItems2,
-                            ydoc: {} as any,
-                            tree: {} as any,
+                            ydoc: {} as import("yjs").Doc,
+                            tree: {} as import("yjs-orderedtree").YTree,
                             key: "page-2",
-                            attachments: {} as any,
-                            votes: {} as any,
-                            comments: {} as any,
-                            tableRows: {} as any,
+                            attachments: [] as unknown as import("yjs").Array<string>,
+                            votes: [] as unknown as import("yjs").Array<string>,
+                            comments: {} as import("../schema/app-schema").Comments,
+                            tableRows: {} as import("../schema/app-schema").TableRows,
                             tableSchema: "",
                             tableColumns: [],
                             defineTable: () => {},
@@ -176,11 +176,11 @@ describe("Sidebar", () => {
                     }
                     return undefined;
                 },
-                *[Symbol.iterator](this: any) {
+                *[Symbol.iterator](this: { at: (i: number) => import("../schema/app-schema").Item | undefined; }) {
                     yield this.at(0);
                     yield this.at(1);
                 },
-            } as any,
+            } as unknown as import("../schema/app-schema").Items,
         };
         store.pagesVersion = 0;
     });
@@ -268,7 +268,7 @@ describe("Sidebar", () => {
             const originalPages = store.pages;
 
             store.project = Project.createInstance("Empty Project");
-            store.pages = { current: { length: 0 } as any };
+            store.pages = { current: { length: 0 } as unknown as import("../schema/app-schema").Items };
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
@@ -381,7 +381,7 @@ describe("Sidebar", () => {
             vi.mocked(appStores).page = readable({
                 url: { pathname: "/tetsuo/Test%20Page%201" },
                 params: { project: "tetsuo" },
-            }) as any;
+            }) as unknown as typeof appStores.page;
 
             const proj = Project.createInstance("4a934322-05de-4c97-932c-bc87fb43e18c");
             store.project = proj;
