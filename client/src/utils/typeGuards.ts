@@ -25,37 +25,37 @@ export interface YjsObservable {
 
 export function isArrayLikeItems(obj: unknown): obj is ArrayLikeItems {
     return (
-        typeof obj === "object" &&
-        obj !== null &&
-        "length" in obj &&
-        typeof (obj as ArrayLikeItems).length === "number" &&
-        "at" in obj &&
-        typeof (obj as ArrayLikeItems).at === "function"
+        typeof obj === "object"
+        && obj !== null
+        && "length" in obj
+        && typeof (obj as ArrayLikeItems).length === "number"
+        && "at" in obj
+        && typeof (obj as ArrayLikeItems).at === "function"
     );
 }
 
 export function isArrayLikeUnknown(obj: unknown): obj is ArrayLikeUnknown {
     return (
-        typeof obj === "object" &&
-        obj !== null &&
-        ("length" in obj || "at" in obj || "toArray" in obj)
+        typeof obj === "object"
+        && obj !== null
+        && ("length" in obj || "at" in obj || "toArray" in obj)
     );
 }
 
 export function isYjsObservableDeep(obj: unknown): obj is YjsObservableDeep {
     return (
-        typeof obj === "object" &&
-        obj !== null &&
-        "observeDeep" in obj &&
-        "unobserveDeep" in obj
+        typeof obj === "object"
+        && obj !== null
+        && "observeDeep" in obj
+        && "unobserveDeep" in obj
     );
 }
 
 export function isYjsObservable(obj: unknown): obj is YjsObservable {
     return (
-        typeof obj === "object" &&
-        obj !== null &&
-        "observe" in obj &&
-        "unobserve" in obj
+        typeof obj === "object"
+        && obj !== null
+        && "observe" in obj
+        && "unobserve" in obj
     );
 }
