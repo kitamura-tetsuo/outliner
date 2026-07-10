@@ -1794,74 +1794,67 @@ export class Cursor implements CursorEditingContext {
                 }
             }
         } else if (direction === "up") {
-            let prevItem = findPreviousItem(this.itemId);
-            // If no previous sibling, try to navigate to parent item for up direction
-            // Note: item.parent returns Items (collection), not Item. We need to find the parent Item.
-            if (!prevItem) {
-                const currentTarget = this.findTarget();
-                const parentCollection = currentTarget?.parent;
-                // Get the parent Item by creating it from parentKey (skip "root" as it's the project level)
-                if (parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
-                    prevItem = new (currentTarget!.constructor as unknown as {
-                        new(...args: unknown[]): YjsItem;
-                    })(
+            const prevItem = findPreviousItem(this.itemId);
+
+            // Additional logic to navigate to parent when there's no previous sibling
+            const currentTarget = this.findTarget();
+            const parentCollection = currentTarget?.parent as any;
+            let parentItemInstance: any = null;
+            if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
+                try {
+                    parentItemInstance = new (currentTarget!.constructor as any)(
                         currentTarget!.ydoc,
-                        currentTarget!.tree,
+                        (currentTarget as any).tree,
                         parentCollection.parentKey,
                     );
-                }
+                } catch {}
             }
+            const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
 
-            if (prevItem) {
-                newItemId = prevItem.id;
+            if (prevItem || hasParentToNavigateTo) {
+                const targetPrevItem = prevItem || parentItemInstance;
+                newItemId = targetPrevItem.id;
+                const prevText = (targetPrevItem.text && typeof targetPrevItem.text.toString === "function")
+                    ? targetPrevItem.text.toString()
+                    : "";
+                const prevLines = prevText.split("\n");
+                const lastLineIndex = prevLines.length - 1;
+                const lastLineStart = getLineStartOffset(prevText, lastLineIndex);
+                const lastLineEnd = getLineEndOffset(prevText, lastLineIndex);
+                const lastLineLength = lastLineEnd - lastLineStart;
 
-                const prevText = this.getTargetText(prevItem);
-                const visualLineInfo = getVisualLineInfo(prevItem.id, prevText.length > 0 ? prevText.length - 1 : 0);
-                let lastLineIndex: number | undefined;
-                let lastLineStart: number | undefined;
-                let lastLineLength: number | undefined;
-                let targetColumn: number | undefined;
+                // Calculate the position with the smallest change in x-coordinate
+                // Select the position closest to the initial column position or the current column position
+                // Do not exceed the length of the last line of the previous item
+                const targetColumn = Math.min(
+                    this.initialColumn !== null ? this.initialColumn : currentColumn,
+                    lastLineLength,
+                );
+                newOffset = lastLineStart + targetColumn;
 
-                if (visualLineInfo && visualLineInfo.totalLines > 0) {
-                    lastLineIndex = visualLineInfo.totalLines - 1;
-                    const lastLineRange = getVisualLineOffsetRange(prevItem.id, lastLineIndex);
-                    if (lastLineRange) {
-                        lastLineStart = lastLineRange.startOffset;
-                        lastLineLength = lastLineRange.endOffset - lastLineRange.startOffset;
-
-                        let desiredColumn = this.initialColumn !== null ? this.initialColumn : currentColumn;
-                        if (this.offset === 0) {
-                            desiredColumn = 0;
-                        }
-
-                        targetColumn = Math.min(desiredColumn, lastLineLength);
-                        newOffset = lastLineStart + targetColumn;
-                    } else {
-                        newOffset = prevText.length;
-                    }
-                } else {
-                    newOffset = prevText.length;
+                // Special case: If the current cursor is at the beginning of the line (offset 0),
+                // move to the beginning of the last line of the previous item
+                if (this.offset === 0) {
+                    newOffset = lastLineStart;
                 }
 
                 itemChanged = true;
 
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
+                // Debug info
+                logger.debug(
+                    `navigateToItem up - Moving to previous item's last line: itemId=${targetPrevItem.id}, offset=${newOffset}, targetColumn=${targetColumn}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}`,
+                );
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(
-                        `Moving up to previous item's last line: id=${prevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}, targetColumn=${targetColumn}`,
+                        `Moving up to previous item's last line: id=${targetPrevItem.id}, lastLineIndex=${lastLineIndex}, lastLineStart=${lastLineStart}, lastLineLength=${lastLineLength}, newOffset=${newOffset}, currentColumn=${currentColumn}`,
                     );
                 }
             } else {
-                // If no previous item, move to the start of the same item
+                // If there is no previous item, move to the beginning of the same item
                 newOffset = 0;
 
-                // Debug information
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
+                // Debug info
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`No previous item, moving to start of current item: offset=${newOffset}`);
                 }
             }

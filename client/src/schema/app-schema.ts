@@ -56,6 +56,24 @@ export class Comments {
         this._ensureInitialized = ensureInitialized;
     }
 
+    observe(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.observe(f);
+    }
+
+    unobserve(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.unobserve(f);
+    }
+
     addComment(author: string, text: string) {
         const time = Date.now();
         const c = new Y.Map<CommentValueType>();
@@ -485,13 +503,7 @@ export class Item {
         try {
             logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
         } catch {}
-        try {
-            const w = (typeof window !== "undefined") ? window : null;
-            if (w) {
-                w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-                w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
-            }
-        } catch {}
+
         arr.push([url]);
         this.value.set("lastChanged", Date.now());
         try {
@@ -531,6 +543,22 @@ export class Item {
         return new Comments(arr);
     }
 
+    /**
+     * Force creation of the real backing Y.Array for comments (as opposed to
+     * the lazy EMPTY_Y_ARRAY stub returned by `comments` when none exists
+     * yet). Callers that need to observe comments before any comment is
+     * added (e.g. opening a comment thread UI) should call this first so
+     * their observer attaches to the actual array rather than the stub.
+     */
+    ensureComments(): Comments {
+        let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<CommentValueType>>();
+            this.value.set("comments", arr);
+        }
+        return new Comments(arr);
+    }
+
     addComment(author: string, text: string) {
         try {
             logger.info("[Item.addComment] id=", this.id);
@@ -542,21 +570,10 @@ export class Item {
         }
         const comments = new Comments(arr);
         const res = comments.addComment(author, text);
-        try {
-            const len = arr?.length ?? 0;
-            // Cache primitive numeric value in Y.Map to ensure reflection
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            // Window broadcast (for immediate UI reflection, deterministic)
-            try {
-                if (typeof window !== "undefined") {
-                    logger.info("[Item.addComment] dispatch item-comment-count id=", this.id, "count=", len);
-                    window.dispatchEvent(
-                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
-                    );
-                }
-            } catch {}
-        } catch {}
+        const len = arr?.length ?? 0;
+        // Cache primitive numeric value in Y.Map to ensure reflection
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 
@@ -565,18 +582,9 @@ export class Item {
         if (!arr) return;
         const comments = new Comments(arr);
         const res = comments.deleteComment(commentId);
-        try {
-            const len = arr?.length ?? 0;
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            try {
-                if (typeof window !== "undefined") {
-                    window.dispatchEvent(
-                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
-                    );
-                }
-            } catch {}
-        } catch {}
+        const len = arr?.length ?? 0;
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 

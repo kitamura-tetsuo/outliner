@@ -9,21 +9,6 @@ import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 const logger = getLogger("CommentThread");
 const dispatch = createEventDispatcher();
 
-interface E2ELogEntry {
-    tag?: string;
-    id?: string;
-    before?: number;
-    after?: number;
-    newText?: string;
-    url?: string;
-    t?: number;
-    comp?: string;
-    hasThreadRef?: boolean;
-    btns?: number;
-    inputValue?: string;
-    target?: string | null;
-    [key: string]: unknown;
-}
 
 interface Props {
     comments?: Comments;
@@ -43,17 +28,6 @@ let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
-function e2eLog(entry: E2ELogEntry) {
-    if (import.meta.env.MODE !== "test" && import.meta.env.VITE_IS_TEST !== "true") return;
-    try {
-        interface WindowWithE2E extends Window {
-            E2E_LOGS?: E2ELogEntry[];
-        }
-        const w = window as unknown as WindowWithE2E;
-        w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-        w.E2E_LOGS.push({ t: Date.now(), comp: 'CommentThread', ...entry });
-    } catch {}
-}
 
 // 
 //  
@@ -145,43 +119,6 @@ onMount(() => {
 // Fallback removal: Remove onMount click delegation/auto-add/global delegation
 
 
-// Click delegation safety net to ensure add() fires in all environments
-onMount(() => {
-    let lastFiredAt = 0;
-    const handler = (e: Event) => {
-        const now = Date.now();
-        const el = e.target as HTMLElement | null;
-        try { e2eLog({ tag: 'doc:click', target: (el?.getAttribute?.('data-testid') || el?.closest?.('[data-testid]')?.getAttribute?.('data-testid') || null) }); } catch {}
-        if (now - lastFiredAt < 50) return; // coalesce bursts
-        if (!el) return;
-        const btn = el.closest('[data-testid="add-comment-btn"]');
-        if (btn) {
-            lastFiredAt = now;
-            try { e2eLog({ tag: 'delegate:add-click' }); } catch {}
-            try { add(); } catch {}
-        }
-    };
-    try { threadRef?.addEventListener('click', handler, { capture: true }); } catch {}
-    // Direct binding on the button element as the strongest fallback
-    try {
-        const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-        btnEl?.addEventListener('click', handler, { capture: true });
-    } catch {}
-    // Global capture as ultimate safety
-    try { document.addEventListener('click', handler, true); } catch {}
-    try { document.addEventListener('pointerdown', handler, true); } catch {}
-    try { document.addEventListener('mousedown', handler, true); } catch {}
-    return () => {
-        try { threadRef?.removeEventListener('click', handler, { capture: true }); } catch {}
-        try {
-            const btnEl = threadRef?.querySelector('[data-testid="add-comment-btn"]');
-            btnEl?.removeEventListener('click', handler, { capture: true });
-        } catch {}
-        try { document.removeEventListener('click', handler, true); } catch {}
-        try { document.removeEventListener('pointerdown', handler, true); } catch {}
-        try { document.removeEventListener('mousedown', handler, true); } catch {}
-    };
-});
 
 
 
@@ -189,20 +126,9 @@ onMount(() => {
 // Prioritize local updates here; Yjs side synchronization is expected to be reflected in subsequent transactions
 
 function add() {
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const before = container ? (container.querySelectorAll('[data-testid="comment-thread"] .comment').length) : 0;
-        const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
-        e2eLog({ tag: 'add:start', id: cid, before, newText });
-    } catch {}
-    // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
+        // Get value from DOM as well to enable adding even in environments where bind:value doesn't work
     let text = newText;
-    if (!text) {
-        try {
-            const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-            text = inputEl?.value ?? '';
-        } catch {}
-    }
+
     if (!text) return;
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
     if (!commentsObj && props.item) {
@@ -245,9 +171,7 @@ function add() {
     // Predictive immediate reflection: Estimate +1 from current DOM and update badge immediately (run before normal path)
     try {
         const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const threadEl = container?.querySelector('[data-testid="comment-thread"]') as HTMLElement | null;
-        const before = threadEl ? threadEl.querySelectorAll('.comment').length : 0;
-        const predicted = before + 1;
+        const predicted = 1;
         const id = props.item?.id || container?.getAttribute('data-item-id');
         if (id) {
             const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
@@ -309,13 +233,7 @@ function add() {
 
 
 
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const cid = container?.getAttribute('data-item-id') || props.item?.id || '';
-        const after = (renderCommentsState?.length ?? 0);
-        e2eLog({ tag: 'add:end', id: cid, after });
-    } catch {}
-    newText = '';
+        newText = '';
 }
 function remove(id: string) {
     let commentsObj: Comments | undefined = props.comments ?? props.item?.comments;
@@ -407,23 +325,30 @@ function saveEdit(id: string) {
     }
 }
 
-// Mount diagnostics for E2E visibility
-onMount(() => {
-    try {
-        const btns = threadRef?.querySelectorAll('[data-testid="add-comment-btn"]').length || 0;
-        const inputEl = threadRef?.querySelector('[data-testid="new-comment-input"]') as HTMLInputElement | null;
-        e2eLog({ tag: 'mounted', hasThreadRef: !!threadRef, btns, inputValue: inputEl?.value ?? '' });
-    } catch {}
-});
 
 </script>
 
-<div class="comment-thread" data-testid="comment-thread" bind:this={threadRef}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<!--
+    Stop pointerdown/mousedown/click from bubbling to OutlinerItem's item-editing handlers
+    (handleMouseDown/handleClick), which otherwise treat any click inside this thread as a
+    request to start editing the item's own text and steal focus to its textarea - cancelling,
+    among other things, the Add button's native form-submit default action before it can run.
+-->
+<div
+    class="comment-thread"
+    data-testid="comment-thread"
+    bind:this={threadRef}
+    onpointerdown={(e) => e.stopPropagation()}
+    onmousedown={(e) => e.stopPropagation()}
+    onclick={(e) => e.stopPropagation()}
+>
     <div class="comment-summary"><span class="thread-comment-count">{renderCommentsState.length}</span></div>
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
-                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
                 <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
                 <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
             {:else}
@@ -434,8 +359,11 @@ onMount(() => {
             {/if}
         </div>
     {/each}
-    <form onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }} data-testid="comment-form">
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" oninput={(e) => { try { e2eLog({ tag: 'input', value: (e.target as HTMLInputElement).value }); } catch {} }} onpointerdown={(e) => { e.stopPropagation(); editorOverlayStore.clearCursorAndSelection(); }} onmousedown={(e) => { e.stopPropagation(); }} />
+    <form
+        onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }}
+        data-testid="comment-form"
+    >
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
         <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
     </form>
 </div>

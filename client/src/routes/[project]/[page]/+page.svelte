@@ -588,9 +588,6 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 projectName={projectName || ""}
                 pageName={pageName || ""}
                 isReadOnly={false}
-                isTemporary={store.currentPage
-                    ? store.currentPage.id.startsWith("temp-")
-                    : false}
                 onEdit={undefined}
             />
         {/key}

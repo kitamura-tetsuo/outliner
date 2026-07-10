@@ -40,7 +40,7 @@ const logger = getLogger("OutlinerItem");
 
 // Debug/Test flags and logger.debug suppression
 const DEBUG_LOG: boolean = (typeof window !== 'undefined') && ((window.__E2E_DEBUG__ === true) || (window.localStorage?.getItem?.('DEBUG_OUTLINER') === 'true'));
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') || ((typeof window !== 'undefined') && (window.__E2E__ === true));
+const IS_TEST: boolean = (import.meta.env.MODE === 'test') ;
 // Override logger.debug to respect DEBUG_LOG to reduce log noise
 try {
     if (hasDebug(logger)) {
@@ -86,6 +86,8 @@ import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
+import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
 import SqlBlock from "./SqlBlock.svelte";
 
@@ -319,12 +321,46 @@ function applyCommentCount(arrOrCount: unknown) {
  */
 function attachCommentObserver(): (() => void) | null {
     try {
-        const arr: unknown[] = ensureCommentsArray();
-        if (hasObserve(arr)) {
-            const observer = () => applyCommentCount(arr);
-            arr.observe!(observer);
-            return () => arr.unobserve?.(observer);
+        let detachArray: (() => void) | null = null;
+
+        const attachToArray = () => {
+            try { detachArray?.(); } catch {}
+            detachArray = null;
+            const arr: unknown[] = ensureCommentsArray();
+            if (hasObserve(arr)) {
+                const observer = () => applyCommentCount(arr);
+                arr.observe!(observer);
+                detachArray = () => arr.unobserve?.(observer);
+                observer();
+            }
+        };
+
+        attachToArray();
+
+        // Item.comments lazily returns a throwaway empty-array stub until the first
+        // comment triggers real Y.Array creation, so also watch the item's own Y.Map
+        // for the "comments" key appearing and re-attach to the real array when it does.
+        let detachMap: (() => void) | null = null;
+        if (hasTreeKey(item)) {
+            type CommentsKeyEvent = { changes?: { keys?: Map<string, unknown> } };
+            const valueMap = item.tree?.getNodeValueFromKey?.(item.key) as
+                | { observe?: (f: (e: CommentsKeyEvent) => void) => void; unobserve?: (f: (e: CommentsKeyEvent) => void) => void }
+                | undefined;
+            if (valueMap && typeof valueMap.observe === "function") {
+                const mapHandler = (event: CommentsKeyEvent) => {
+                    if (event?.changes?.keys?.has("comments")) {
+                        attachToArray();
+                    }
+                };
+                valueMap.observe(mapHandler);
+                detachMap = () => valueMap.unobserve?.(mapHandler);
+            }
         }
+
+        return () => {
+            try { detachArray?.(); } catch {}
+            try { detachMap?.(); } catch {}
+        };
     } catch {}
     return null;
     }
@@ -339,22 +375,6 @@ onMount(() => {
         cleanup.push(detachObserver);
     }
 
-    const handleWindowEvent = (event: Event) => {
-        try {
-            const detail = (event as CustomEvent<{ id?: string, itemId?: string, nodeId?: string, targetId?: string, count?: number, value?: number, len?: number, length?: number }>)?.detail;
-            if (!detail) return;
-            const targetId = detail.id ?? detail.itemId ?? detail.nodeId ?? detail.targetId;
-            if (targetId == null) return;
-            if (String(targetId) !== String(model?.id)) return;
-            const possibleCount = detail.count ?? detail.value ?? detail.len ?? detail.length;
-            applyCommentCount(possibleCount);
-        } catch {}
-    };
-
-    try {
-        window.addEventListener("item-comment-count", handleWindowEvent as EventListener);
-        cleanup.push(() => { try { window.removeEventListener("item-comment-count", handleWindowEvent as EventListener); } catch {} });
-    } catch {}
 
     return () => {
         for (const fn of cleanup) {
@@ -523,7 +543,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             throw new Error('Method addAttachment not found');
         }
     } catch {
-        if (isTest || (typeof window !== 'undefined' && window.__E2E__)) {
+        if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
@@ -1000,6 +1020,9 @@ function toggleComments() {
             generalStore.openCommentItemId = null;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
         } else {
+            // Force the real backing Y.Array to exist before the thread mounts, so its
+            // observer doesn't attach to the throwaway empty-array stub (see Item.ensureComments).
+            try { item.ensureComments?.(); } catch {}
             generalStore.openCommentItemId = model.id;
             try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
         }
@@ -1721,7 +1744,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
                     } catch (e) {
                         // Fallback with local preview even if upload fails (E2E stabilization)
-                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                        if (import.meta.env.MODE === 'test' ) {
                             try {
                                 const localUrl = URL.createObjectURL(file);
                                 if (!dropTargetPosition || dropTargetPosition === "middle") {
@@ -1757,7 +1780,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
                 // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test' ) {
                     try {
                         const blob = new Blob(["e2e"], { type: "text/plain" });
                         const localUrl = URL.createObjectURL(blob);
@@ -1773,7 +1796,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     }
 
     // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if ((import.meta.env.MODE === 'test' ) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
@@ -1840,35 +1863,54 @@ onMount(() => {
             dropTargetPosition = null;
         };
 
+        const dropHandler = (e: Event) => handleDrop(e as DragEvent | CustomEvent);
+        const dragOverHandler = (e: Event) => handleDragOver(e as DragEvent);
+
         if (displayRef) {
             displayForward = maybeForward;
             displayRef.addEventListener('synthetic-drop', displayForward as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            displayRef.addEventListener('dragover', handleDragOver as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: true } as AddEventListenerOptions);
+            displayRef.addEventListener('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
         }
         if (itemRef) {
             itemForward = maybeForward;
             itemRef.addEventListener('synthetic-drop', itemForward as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: true } as AddEventListenerOptions);
-            itemRef.addEventListener('drop', handleDrop as unknown as EventListener, { capture: false } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: true } as AddEventListenerOptions);
+            itemRef.addEventListener('drop', dropHandler, { capture: false } as AddEventListenerOptions);
         }
+
+        // Store handlers for removal
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
+        (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dragOverHandler = dragOverHandler;
+        (itemRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
+
     } catch {}
     return () => {
         try {
+            const displayDropHandler = (displayRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
+            const displayDragOverHandler = (displayRef as HTMLElement & { _dragOverHandler?: EventListener })?._dragOverHandler;
+            const itemDropHandler = (itemRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
+
             if (displayForward) {
                 displayRef?.removeEventListener?.('synthetic-drop', displayForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: true } as EventListenerOptions);
-            displayRef?.removeEventListener?.('dragover', handleDragOver as unknown as EventListener, { capture: false } as EventListenerOptions);
+            if (displayDropHandler) {
+                displayRef?.removeEventListener?.('drop', displayDropHandler, { capture: true } as EventListenerOptions);
+                displayRef?.removeEventListener?.('drop', displayDropHandler, { capture: false } as EventListenerOptions);
+            }
+            if (displayDragOverHandler) {
+                displayRef?.removeEventListener?.('dragover', displayDragOverHandler, { capture: true } as EventListenerOptions);
+                displayRef?.removeEventListener?.('dragover', displayDragOverHandler, { capture: false } as EventListenerOptions);
+            }
             if (itemForward) {
                 itemRef?.removeEventListener?.('synthetic-drop', itemForward as EventListener, { capture: true } as EventListenerOptions);
             }
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: true } as EventListenerOptions);
-            itemRef?.removeEventListener?.('drop', handleDrop as unknown as EventListener, { capture: false } as EventListenerOptions);
+            if (itemDropHandler) {
+                itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: true } as EventListenerOptions);
+                itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: false } as EventListenerOptions);
+            }
         } catch {}
     };
 });
@@ -1888,7 +1930,7 @@ onMount(() => {
         anyWin.__E2E_DROP_HANDLERS__.push(fn);
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
-        if (anyWin.__E2E__) {
+        if (import.meta.env.MODE === "test") {
             const selfInvoker = (el: Element) => {
                 try {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -2159,13 +2201,11 @@ export function setSelectionPosition(start: number, end: number = start) {
                     {@html formattedHtml}
                 </span>
                 {#if !isPageTitle && model.votes.length > 0}
-                    <span
-                        class="vote-count" class:has-count={model.votes.length > 0}
+                    <OutlinerItemVoteCount
+                        count={model.votes.length}
                         title={voterNames}
-                        aria-label={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
-                    >
-                        {model.votes.length}
-                    </span>
+                        ariaLabel={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
+                    />
                 {/if}
                 {#if !isPageTitle}
                     <span class="comment-count-visual" class:has-count={commentCountVisual > 0} aria-hidden="true">{commentCountVisual}</span>
@@ -2231,6 +2271,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                         <select
                             value={(componentType ?? compTypeValue) || "none"}
                             onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
+                            onpointerdown={(e: Event) => e.stopPropagation()}
+                            onmousedown={(e: Event) => e.stopPropagation()}
+                            onmouseup={(e: Event) => e.stopPropagation()}
+                            onclick={(e: Event) => e.stopPropagation()}
                             aria-label="Item component type"
                         >
                             <option value="none">Text</option>
@@ -2266,7 +2310,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         </div>
 
         {#if model.votes.length > 0}
-            <span class="vote-count" class:has-count={model.votes.length > 0}>{model.votes.length}</span>
+            <OutlinerItemVoteCount count={model.votes.length} />
         {/if}
         {#if !isPageTitle}
             <div class="item-actions">
@@ -2282,18 +2326,12 @@ export function setSelectionPosition(start: number, end: number = start) {
                         <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                     </svg>
                 </button>
-                <button type="button"
-                    onclick={toggleVote}
-                    class="vote-btn" class:has-count={model.votes.length > 0}
-                    class:voted={model.votes.includes(currentUser)}
-                    title={model.votes.includes(currentUser) ? "Remove vote" : "Vote"}
-                    aria-label={model.votes.includes(currentUser) ? "Remove vote from: " + truncatedText : "Vote for item: " + truncatedText}
-                    aria-pressed={model.votes.includes(currentUser)}
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill={model.votes.includes(currentUser) ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                    </svg>
-                </button>
+                <OutlinerItemVoteButton
+                    voted={model.votes.includes(currentUser)}
+                    count={model.votes.length}
+                    truncatedText={truncatedText}
+                    onVote={toggleVote}
+                />
             </div>
         {/if}
         </div>
@@ -2309,6 +2347,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         <CommentThread
             comments={ensuredComments}
             item={item}
+            onCountChanged={applyCommentCount}
             currentUser={currentUser}
         />
     {/if}
@@ -2460,30 +2499,10 @@ export function setSelectionPosition(start: number, end: number = start) {
     outline-offset: -2px;
 }
 
-.vote-btn {
-    color: #ccc;
-}
-
-.vote-btn.voted {
-    color: gold;
-}
-
-.vote-count {
-    margin-left: 4px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    padding: 0 4px;
-    font-size: 0.7rem;
-    color: #666;
-}
-
-
 .component-selector,
 .referring-aliases-container,
 .comment-button,
-.vote-count,
-.comment-count-visual,
-.vote-btn {
+.comment-count-visual {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2494,17 +2513,11 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .referring-aliases-container,
 .outliner-item:hover .comment-button,
 .outliner-item:focus-within .comment-button,
-.outliner-item:hover .vote-count,
-.outliner-item:focus-within .vote-count,
 .outliner-item:hover .comment-count-visual,
 .outliner-item:focus-within .comment-count-visual,
-.outliner-item:hover .vote-btn,
-.outliner-item:focus-within .vote-btn,
 .comment-button.has-count,
 .referring-aliases-container.has-count,
-.vote-count.has-count,
-.comment-count-visual.has-count,
-.vote-btn.has-count {
+.comment-count-visual.has-count {
     opacity: 1;
 }
 
@@ -2512,9 +2525,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 .component-selector,
 .referring-aliases-container,
 .comment-button,
-.vote-count,
-.comment-count-visual,
-.vote-btn {
+.comment-count-visual {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2525,17 +2536,11 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .referring-aliases-container,
 .outliner-item:hover .comment-button,
 .outliner-item:focus-within .comment-button,
-.outliner-item:hover .vote-count,
-.outliner-item:focus-within .vote-count,
 .outliner-item:hover .comment-count-visual,
 .outliner-item:focus-within .comment-count-visual,
-.outliner-item:hover .vote-btn,
-.outliner-item:focus-within .vote-btn,
 .comment-button.has-count,
 .referring-aliases-container.has-count,
-.vote-count.has-count,
-.comment-count-visual.has-count,
-.vote-btn.has-count {
+.comment-count-visual.has-count {
     opacity: 1;
 }
 

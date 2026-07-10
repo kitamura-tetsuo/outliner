@@ -238,7 +238,6 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             projectName={DEMO_PROJECT_NAME}
             pageName={pageName}
             isReadOnly={false}
-            isTemporary={false}
             onEdit={undefined}
         />
 
