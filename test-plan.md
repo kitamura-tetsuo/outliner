@@ -4,6 +4,7 @@
 **Improvement Type:** Bug fix / Memory directive compliance
 
 ### Plan Details
+
 1. **Fix `window.appStore` fallbacks:**
    - Modify `client/src/components/SearchPanel.svelte` to correctly use `window.appStore || window.generalStore`.
    - Modify `client/src/components/OutlinerItem.svelte` (around line 1517) to correctly use `window.appStore || window.generalStore`.
