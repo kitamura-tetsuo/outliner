@@ -350,6 +350,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         if (!store.project || !pageName) return;
         try {
             const currentUserId = userManager.getCurrentUser()?.id || "anonymous";
+            if (store.pageExists(pageName)) return;
             const created = store.project.addPage(pageName, currentUserId);
             if (created) {
                 store.currentPage = created;
@@ -370,6 +371,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 const proj = store.project;
                 if (proj?.addPage && pageName) {
                     try {
+                        if (store.pageExists(pageName)) return;
                         const created = proj.addPage(pageName, "tester");
                         if (created) {
                             store.currentPage = created;
