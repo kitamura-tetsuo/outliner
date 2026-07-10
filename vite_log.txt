@@ -1,0 +1,20 @@
+
+> outliner@0.0.1 dev
+> npm run paraglide:compile && vite dev
+
+
+> outliner@0.0.1 paraglide:compile
+> paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide
+
+ℹ [paraglide-js] Compiling inlang project ...
+✔ [paraglide-js] Successfully compiled inlang project.
+✔ [paraglide-js] Compilation complete (locale-modules)
+1:38:31 AM [vite] (client) Re-optimizing dependencies because vite config has changed
+
+  VITE v8.1.3  ready in 2584 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+1:38:33 AM [vite] (client) [optimizer] bundling dependencies...
+1:39:24 AM [vite] (client) [optimizer] bundling dependencies...
+1:39:26 AM [vite] (client) dependency optimized: @sentry/sveltekit
