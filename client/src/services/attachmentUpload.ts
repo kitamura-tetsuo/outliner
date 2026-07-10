@@ -6,7 +6,7 @@ export async function uploadAttachmentWithFallback(
     file: File,
     onSuccess: (url: string) => void,
     onFallback?: (localUrl: string) => void,
-    customLogger?: { error: (info: { error: Error }, msg: string) => void; }
+    customLogger?: { error: (info: { error: Error; }, msg: string) => void; },
 ): Promise<void> {
     try {
         const url = await uploadAttachment(containerId, itemId, file);
@@ -20,8 +20,9 @@ export async function uploadAttachmentWithFallback(
 
         // E2E fallback local URL for test environment (mocking network)
         if (
-            import.meta.env.MODE === 'test' ||
-            (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)
+            import.meta.env.MODE === "test"
+            || (typeof window !== "undefined"
+                && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__)
         ) {
             try {
                 const localUrl = URL.createObjectURL(file);
@@ -31,9 +32,9 @@ export async function uploadAttachmentWithFallback(
                     onSuccess(localUrl);
                 }
 
-                if (typeof window !== 'undefined') {
+                if (typeof window !== "undefined") {
                     window.dispatchEvent(
-                        new CustomEvent('item-attachments-changed', { detail: { id: String(itemId) } })
+                        new CustomEvent("item-attachments-changed", { detail: { id: String(itemId) } }),
                     );
                 }
             } catch (fallbackErr) {
