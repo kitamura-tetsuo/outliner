@@ -17,6 +17,7 @@ export type ItemValueType =
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>
     | Y.Array<Y.Map<RowValueType>>
+    | { lines: string[]; image: string | null; }
     | undefined;
 
 /**
