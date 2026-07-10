@@ -1735,7 +1735,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                     }
                                 } catch {}
                             },
-                            logger as any
+                            logger
                         );
                     } catch (e) {
                         logger.error({ error: e as Error }, "attachment upload failed");

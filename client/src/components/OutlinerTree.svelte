@@ -1994,7 +1994,7 @@
                                         try { newItem.addAttachment(url); } catch { try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {} }
                                     },
                                     undefined,
-                                    logger as any
+                                    logger
                                 );
                             } catch (e) {
                                 logger.error(e);
