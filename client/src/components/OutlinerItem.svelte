@@ -2090,8 +2090,8 @@ export function setSelectionPosition(start: number, end: number = start) {
 // Fire event to move to another item
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<!-- svelte-ignore a11y_click_events_have_key_events -->
+
+
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
@@ -2101,7 +2101,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
 
-    role={isPageTitle ? undefined : "treeitem"}
+    role={isPageTitle ? "presentation" : "treeitem"}
     aria-level={isPageTitle ? undefined : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
     aria-selected={isPageTitle ? undefined : isItemActive}
@@ -2161,6 +2161,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             {:else}
                 <span
                     class="bullet drag-handle"
+                    role="presentation"
                     draggable={!isReadOnly}
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
@@ -2174,6 +2175,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             <div
                 bind:this={displayRef}
                 class="item-content"
+                role="presentation"
                 class:page-title-content={isPageTitle}
                 class:dragging={isDragSource}
                 class:drop-target={isDropTarget}
@@ -2240,9 +2242,9 @@ export function setSelectionPosition(start: number, end: number = start) {
                         </button>
                         
                         {#if isAliasDropdownOpen}
-                            <!-- svelte-ignore a11y_click_events_have_key_events -->
-                            <!-- svelte-ignore a11y_no_static_element_interactions -->
-                            <div class="dropdown-overlay" onclick={() => isAliasDropdownOpen = false}></div>
+
+
+                            <div class="dropdown-overlay" role="presentation" onclick={() => isAliasDropdownOpen = false}></div>
                             <div class="referring-aliases-dropdown">
                                 <div class="dropdown-header">Referenced by</div>
                                 <ul class="dropdown-list">
