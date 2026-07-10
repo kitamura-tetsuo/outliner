@@ -1,5 +1,5 @@
-import { uploadAttachment } from "./attachmentService";
 import { getLogger } from "../lib/logger";
+import { uploadAttachment } from "./attachmentService";
 
 const logger = getLogger("attachmentUpload");
 
@@ -12,7 +12,7 @@ export async function uploadAttachmentWithFallback(
     file: File,
     onSuccess: (url: string) => void,
     onFallback: (localUrl: string, error: unknown) => void,
-    callerLogger?: any
+    callerLogger?: any,
 ): Promise<void> {
     const log = callerLogger || logger;
 

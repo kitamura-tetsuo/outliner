@@ -1,10 +1,10 @@
-const fs = require('fs');
+const fs = require("fs");
 
-let content = fs.readFileSync('client/src/components/OutlinerItem.svelte', 'utf8');
+let content = fs.readFileSync("client/src/components/OutlinerItem.svelte", "utf8");
 
 content = content.replace(
     'import { uploadAttachment } from "../services/attachmentService";',
-    'import { uploadAttachmentWithFallback } from "../services";'
+    'import { uploadAttachmentWithFallback } from "../services";',
 );
 
 const searchStr = `                    try {
@@ -115,6 +115,6 @@ const replaceStr = `                    await uploadAttachmentWithFallback(
 if (!content.includes(searchStr)) {
     console.log("Could not find the target string to replace in OutlinerItem.svelte");
 } else {
-    fs.writeFileSync('client/src/components/OutlinerItem.svelte', content.replace(searchStr, replaceStr));
+    fs.writeFileSync("client/src/components/OutlinerItem.svelte", content.replace(searchStr, replaceStr));
     console.log("Updated OutlinerItem.svelte");
 }

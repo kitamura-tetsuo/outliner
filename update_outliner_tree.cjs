@@ -1,10 +1,10 @@
-const fs = require('fs');
+const fs = require("fs");
 
-let content = fs.readFileSync('client/src/components/OutlinerTree.svelte', 'utf8');
+let content = fs.readFileSync("client/src/components/OutlinerTree.svelte", "utf8");
 
 content = content.replace(
     'import { uploadAttachment } from "../services/attachmentService";',
-    'import { uploadAttachmentWithFallback } from "../services";'
+    'import { uploadAttachmentWithFallback } from "../services";',
 );
 
 const searchStr1 = `                    try {
@@ -96,4 +96,4 @@ if (!content.includes(searchStr2)) {
     console.log("Replaced searchStr2");
 }
 
-fs.writeFileSync('client/src/components/OutlinerTree.svelte', content);
+fs.writeFileSync("client/src/components/OutlinerTree.svelte", content);
