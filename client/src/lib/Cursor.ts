@@ -1708,7 +1708,6 @@ export class Cursor implements CursorEditingContext {
                             const nextItemId = allItemIds[currentIndex + 1];
                             const nextItemFromTree = searchAppItem(root, nextItemId);
                             if (nextItemFromTree) {
-                                nextItem = nextItemFromTree as unknown as YjsItem;
                                 newItemId = nextItemId;
                                 newOffset = 0;
                                 itemChanged = true;
