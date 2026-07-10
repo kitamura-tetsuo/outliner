@@ -17,9 +17,13 @@ import {
     getVisualLineInfo,
     getVisualLineOffsetRange,
     hasSelection as storeHasSelection,
-    searchItem,
     selectionSpansMultipleItems,
 } from "./cursor";
+import { searchItem as searchYjsItem } from "./cursor/CursorNavigationUtils";
+
+function searchAppItem(root: Item, id: string): Item | undefined {
+    return searchYjsItem(root as unknown as YjsItem, id) as Item | undefined;
+}
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { getLogger } from "./logger";
 import { yjsService } from "./yjs/service";
@@ -80,9 +84,7 @@ export class Cursor implements CursorEditingContext {
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchItem(root as unknown as YjsItem, this.itemId) as
-                | Item
-                | undefined;
+            const found = searchAppItem(root, this.itemId);
             if (found) return found;
         }
 
@@ -98,9 +100,7 @@ export class Cursor implements CursorEditingContext {
                     const p = pages.at(i);
                     if (!p) continue;
 
-                    const f = searchItem(p as unknown as YjsItem, this.itemId) as
-                        | Item
-                        | undefined;
+                    const f = searchAppItem(p, this.itemId);
                     if (f) return f;
                 }
             }
@@ -1554,10 +1554,10 @@ export class Cursor implements CursorEditingContext {
                     if (prevEl) {
                         const prevItemId = prevEl.getAttribute("data-item-id");
                         if (prevItemId && prevItemId !== this.itemId) {
-                            prevItem = searchItem(
-                                generalStore.currentPage as unknown as YjsItem,
-                                prevItemId,
-                            );
+                            const root = generalStore.currentPage as Item | undefined;
+                            if (root) {
+                                prevItem = searchAppItem(root, prevItemId) as unknown as YjsItem;
+                            }
                             newItemId = prevItemId;
                             const treeTextLength = prevItem
                                 ? this.getTargetText(prevItem).length
@@ -1636,10 +1636,7 @@ export class Cursor implements CursorEditingContext {
                             // Try to find this item in the Yjs tree
                             const root = generalStore.currentPage as import("../schema/app-schema").Item;
                             if (root) {
-                                nextItem = searchItem(
-                                    root as unknown as YjsItem,
-                                    nextItemId,
-                                );
+                                nextItem = searchAppItem(root, nextItemId) as unknown as YjsItem;
                             }
                         }
                     }
@@ -1709,10 +1706,7 @@ export class Cursor implements CursorEditingContext {
                         const currentIndex = allItemIds.indexOf(this.itemId);
                         if (currentIndex !== -1 && currentIndex < allItemIds.length - 1) {
                             const nextItemId = allItemIds[currentIndex + 1];
-                            const nextItemFromTree = searchItem(
-                                root as unknown as YjsItem,
-                                nextItemId,
-                            );
+                            const nextItemFromTree = searchAppItem(root, nextItemId);
                             if (nextItemFromTree) {
                                 newItemId = nextItemId;
                                 newOffset = 0;
@@ -2195,7 +2189,7 @@ export class Cursor implements CursorEditingContext {
             if (nextItemId) {
                 const root = generalStore.currentPage as import("../schema/app-schema").Item;
                 if (root) {
-                    const found = searchItem(root as unknown as YjsItem, nextItemId);
+                    const found = searchAppItem(root, nextItemId);
                     if (found) return found;
                 }
             }
