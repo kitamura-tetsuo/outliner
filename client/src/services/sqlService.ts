@@ -179,7 +179,7 @@ function extendQuery(
     return { sql: modified, aliases, tableMap, pkAliasMap };
 }
 
-export function runQuery(sql: string) {
+export function runQuery(sql: string, allowMutation = false) {
     if (!db) throw new Error("DB not initialized");
 
     const strippedSql = sql
@@ -188,8 +188,12 @@ export function runQuery(sql: string) {
         .replace(/'(?:[^'\\]|\\.)*'/g, "")
         .replace(/"(?:[^"\\]|\\.)*"/g, "");
 
-    if (/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(strippedSql) || /\bREPLACE\s+INTO\b/i.test(strippedSql)) {
-        throw new Error("Only SELECT queries are allowed");
+    if (!allowMutation) {
+        if (
+            /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE)\b/i.test(strippedSql) || /\bREPLACE\s+INTO\b/i.test(strippedSql)
+        ) {
+            throw new Error("Only SELECT queries are allowed");
+        }
     }
 
     const { sql: extended, tableMap, pkAliasMap } = extendQuery(sql);

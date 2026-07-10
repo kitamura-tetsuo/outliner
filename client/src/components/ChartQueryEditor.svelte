@@ -20,7 +20,7 @@ onMount(async () => {
         isInitialized = true;
         // If there's already a query, run it
         if (item.chartQuery) {
-            runQuery(item.chartQuery as string);
+            runQuery(item.chartQuery as string, true);
         }
     } catch (error) {
           logger.error({ error }, "Error initializing database");
@@ -34,7 +34,7 @@ async function run() {
         
         // Run the query
         await initDb();
-        runQuery(sql as string);
+        runQuery(sql as string, true);
     } catch (error) {
           logger.error({ error }, "Error running query");
     }

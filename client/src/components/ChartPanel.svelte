@@ -33,7 +33,7 @@ onMount(() => {
         isInitialized = true;
         chart = echarts.init(chartDiv);
         if (item && item.chartQuery) {
-            runQuery(item.chartQuery);
+            runQuery(item.chartQuery, true);
         }
         unsub = queryStore.subscribe(update);
     }).catch(error => {
@@ -50,7 +50,7 @@ async function runItemQuery() {
     if (item && item.chartQuery && isInitialized) {
         try {
             await initDb();
-            runQuery(item.chartQuery);
+            runQuery(item.chartQuery, true);
         } catch (error) {
               logger.error({ error }, "Error running item query");
         }

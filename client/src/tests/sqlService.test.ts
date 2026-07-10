@@ -44,6 +44,10 @@ describe("sqlService", () => {
         expect(data.rows[0][t1PkAlias!]).toBe("1");
     });
 
+    it("rejects mutation queries by default", () => {
+        expect(() => runQuery("CREATE TABLE temp(id TEXT)")).toThrow("Only SELECT queries are allowed");
+    });
+
     it("applyEdit updates db and reruns query", () => {
         rawExec('CREATE TABLE tbl2(id TEXT PRIMARY KEY, val INTEGER); INSERT INTO tbl2 VALUES("1",1);');
         runQuery(
