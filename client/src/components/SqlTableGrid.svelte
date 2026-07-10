@@ -13,12 +13,6 @@ let { item }: Props = $props();
 
 // Minimal structural type for the Yjs observe surface we rely on, so this
 // component does not need to import the yjs runtime directly.
-interface Observable {
-    observe(f: () => void): void;
-    unobserve(f: () => void): void;
-    observeDeep(f: () => void): void;
-    unobserveDeep(f: () => void): void;
-}
 
 const DEFAULT_DDL =
     "CREATE TABLE tasks (\n  id INTEGER PRIMARY KEY,\n  title TEXT,\n  status TEXT,\n  due TEXT\n)";
@@ -41,7 +35,6 @@ function syncFromItem() {
 
 onMount(() => {
     // Touch tableRows so the backing Y.Array exists before we observe it.
-    const rowsArray = item.tableRows.toArray();
     const valueMap = item.tree.getNodeValueFromKey(item.key);
 
     // Note: event handlers are attached in the cleanup return block below

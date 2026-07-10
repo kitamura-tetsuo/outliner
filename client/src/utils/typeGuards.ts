@@ -14,13 +14,13 @@ export interface ArrayLikeUnknown {
 }
 
 export interface YjsObservableDeep {
-    observeDeep(f: (events: any[], transaction: any) => void): void;
-    unobserveDeep(f: (events: any[], transaction: any) => void): void;
+    observeDeep(f: (events: unknown[], transaction: unknown) => void): void;
+    unobserveDeep(f: (events: unknown[], transaction: unknown) => void): void;
 }
 
 export interface YjsObservable {
-    observe(f: (event: any, transaction: any) => void): void;
-    unobserve(f: (event: any, transaction: any) => void): void;
+    observe(f: (event: unknown, transaction: unknown) => void): void;
+    unobserve(f: (event: unknown, transaction: unknown) => void): void;
 }
 
 export function isArrayLikeItems(obj: unknown): obj is ArrayLikeItems {
