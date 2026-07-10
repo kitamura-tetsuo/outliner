@@ -1798,12 +1798,15 @@ export class Cursor implements CursorEditingContext {
 
             // Additional logic to navigate to parent when there's no previous sibling
             const currentTarget = this.findTarget();
-            const parentCollection = currentTarget?.parent as any;
-            let parentItemInstance: any = null;
+            const parentCollection = currentTarget?.parent as { parentKey?: string } | undefined;
+            let parentItemInstance: import("../schema/app-schema").Item | YjsItem | null = null;
             if (!prevItem && parentCollection && parentCollection.parentKey && parentCollection.parentKey !== "root") {
                 try {
-                    parentItemInstance = new (currentTarget!.constructor as any)(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const Constructor = currentTarget!.constructor as any;
+                    parentItemInstance = new Constructor(
                         currentTarget!.ydoc,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (currentTarget as any).tree,
                         parentCollection.parentKey,
                     );
@@ -1812,7 +1815,7 @@ export class Cursor implements CursorEditingContext {
             const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
 
             if (prevItem || hasParentToNavigateTo) {
-                const targetPrevItem = prevItem || parentItemInstance;
+                const targetPrevItem = prevItem || parentItemInstance!;
                 newItemId = targetPrevItem.id;
                 const prevText = (targetPrevItem.text && typeof targetPrevItem.text.toString === "function")
                     ? targetPrevItem.text.toString()
