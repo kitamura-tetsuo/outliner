@@ -5,6 +5,7 @@
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { page as pageStore } from "$app/stores";
+    import { isArrayLikeItems } from "../utils/typeGuards";
 
     let { isOpen = $bindable(false) } = $props();
 
@@ -16,12 +17,14 @@
 
         const result: { pageName: string; tableName: string; schema: string }[] = [];
         const currentItems = Array.isArray(current) ? current : (() => {
-            const arr = [];
-            const items = current as unknown as { length: number; at: (idx: number) => Item | undefined };
-            const len = items.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const item = items.at?.(i);
-                if (item) arr.push(item);
+            const arr: import("../schema/app-schema").Item[] = [];
+            const items = current;
+            if (isArrayLikeItems(items)) {
+                const len = items.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const item = items.at(i);
+                    if (item) arr.push(item);
+                }
             }
             return arr;
         })();
