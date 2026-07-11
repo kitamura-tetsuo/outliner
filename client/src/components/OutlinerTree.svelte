@@ -2179,39 +2179,41 @@
                         />
                     </div>
                 {/if}
-                <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
-                    {#each displayItems as display, index (display.model.id)}
-                        {#if index > 0}
-                            <div
-                                class="item-container"
-                                role="presentation"
-                                style="--item-depth: {display.depth}"
-                            >
-                            <OutlinerItem
-                                model={display.model}
-                                depth={display.depth}
-                                {currentUser}
-                                {isReadOnly}
-                                isCollapsed={viewModel.isCollapsed(display.model.id)}
-                                hasChildren={viewModel.hasChildren(display.model.id)}
-                                isPageTitle={false}
-                                ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
-                                ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
-                                {index}
-                                on:toggle-collapse={handleToggleCollapse}
-                                on:indent={handleIndent}
-                                on:unindent={handleUnindent}
-                                on:navigate-to-item={handleNavigateToItem}
-                                on:add-sibling={handleAddSibling}
-                                on:drag-start={handleItemDragStart}
-                                on:drag={handleItemDrag}
-                                on:drop={handleItemDrop}
-                                on:drag-end={handleItemDragEnd}
-                            />
-                            </div>
-                        {/if}
-                    {/each}
-                </div>
+                {#if displayItems.length > 1}
+                    <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
+                        {#each displayItems as display, index (display.model.id)}
+                            {#if index > 0}
+                                <div
+                                    class="item-container"
+                                    role="presentation"
+                                    style="--item-depth: {display.depth}"
+                                >
+                                <OutlinerItem
+                                    model={display.model}
+                                    depth={display.depth}
+                                    {currentUser}
+                                    {isReadOnly}
+                                    isCollapsed={viewModel.isCollapsed(display.model.id)}
+                                    hasChildren={viewModel.hasChildren(display.model.id)}
+                                    isPageTitle={false}
+                                    ariaSetSize={ariaTreeMeta.get(display.model.id)?.setSize}
+                                    ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
+                                    {index}
+                                    on:toggle-collapse={handleToggleCollapse}
+                                    on:indent={handleIndent}
+                                    on:unindent={handleUnindent}
+                                    on:navigate-to-item={handleNavigateToItem}
+                                    on:add-sibling={handleAddSibling}
+                                    on:drag-start={handleItemDragStart}
+                                    on:drag={handleItemDrag}
+                                    on:drop={handleItemDrop}
+                                    on:drag-end={handleItemDragEnd}
+                                />
+                                </div>
+                            {/if}
+                        {/each}
+                    </div>
+                {/if}
             </div>
 
             {#if displayItems.length <= 1 && !isReadOnly}
