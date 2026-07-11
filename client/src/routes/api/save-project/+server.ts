@@ -4,7 +4,7 @@ const logger = getLogger("API");
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     try {
         const { idToken, projectId } = await request.json();
 
@@ -14,11 +14,31 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Proxy to Firebase Functions endpoint
         const apiBaseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+
+        const forwardedHeaders = [
+            "x-forwarded-for",
+            "cf-connecting-ip",
+            "fly-client-ip",
+            "fastly-client-ip",
+            "true-client-ip",
+        ];
+        for (const h of forwardedHeaders) {
+            const val = request.headers.get(h);
+            if (val) headers[h] = val;
+        }
+        if (!headers["x-forwarded-for"]) {
+            try {
+                headers["x-forwarded-for"] = getClientAddress();
+            } catch (_e) {}
+        }
+
         const response = await fetch(`${apiBaseUrl}/api/save-project`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({
                 idToken,
                 projectId,
