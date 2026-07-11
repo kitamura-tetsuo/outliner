@@ -1,5 +1,4 @@
 <script lang="ts">
-import { safeDecodeURIComponent } from "../../../../utils/urlUtils";
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
 import { goto } from "$app/navigation";
@@ -69,8 +68,8 @@ onMount(async () => {
     });
 
     const params = $page.params as { project: string; page: string; };
-    project = safeDecodeURIComponent(params.project || "");
-    pageTitle = safeDecodeURIComponent(params.page || "");
+    project = params.project;
+    pageTitle = params.page;
 
     // E2E stability: Check if project data is already loaded
     // IMPORTANT: Also check if the loaded project has the correct title (handles store reset during navigation)
