@@ -95,6 +95,7 @@ server/e2e-src/
 
 llm_task.md
 .auto-coder/
+.claude/
 
 *.log
 !.github/
