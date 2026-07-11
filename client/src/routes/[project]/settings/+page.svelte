@@ -50,7 +50,7 @@
     }
 
     function hydrateFromSnapshotIfNeeded() {
-        const projectName = $page.params.project as string | undefined;
+        const projectName = $page.params.project;
         if (!projectName) return;
         if (!projectLooksLikePlaceholder(store.project)) return;
         const snapshot = loadProjectSnapshot(projectName);
@@ -113,7 +113,7 @@
             yjsStore.yjsClient?.getProject() || store.project;
         logger.debug("doExport: using project from store:", !!projectForExport);
 
-        const projectName = $page.params.project as string | undefined;
+        const projectName = $page.params.project;
 
         let exportContent: string | undefined;
 
@@ -174,7 +174,7 @@
             return;
         }
 
-        const projectName = $page.params.project as string | undefined;
+        const projectName = $page.params.project;
 
         logger.debug("doImport: Starting import process");
         logger.debug("doImport: Import format:", importFormat);

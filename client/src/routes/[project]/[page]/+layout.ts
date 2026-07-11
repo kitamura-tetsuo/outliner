@@ -1,4 +1,3 @@
-import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 // E2E stability: Load project data before rendering any page in the route
 // This ensures that when navigating directly to child routes like /schedule,
 // the project data is already loaded and available in the store
@@ -8,10 +7,8 @@ import type { LayoutLoad } from "./$types";
 const logger = getLogger("LayoutTS");
 
 export const load: LayoutLoad = async ({ params, url }) => {
-    let projectName = params.project ?? "";
-    projectName = safeDecodeURIComponent(projectName);
-    let pageName = params.page ?? "";
-    pageName = safeDecodeURIComponent(pageName);
+    const projectName = params.project ?? "";
+    const pageName = params.page ?? "";
 
     // Validate required parameters
     if (!projectName || !pageName) {

@@ -1,5 +1,4 @@
 <script lang="ts">
-import { safeDecodeURIComponent } from "../../utils/urlUtils";
 
         import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
@@ -16,7 +15,7 @@ import { safeDecodeURIComponent } from "../../utils/urlUtils";
 
     // Get URL parameters (reactively)
     let projectName = $derived.by(() => {
-        return safeDecodeURIComponent($page.params.project || "");
+        return $page.params.project;
     });
 
     // Reactive page list (depends on store.pagesVersion)

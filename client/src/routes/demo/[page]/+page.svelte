@@ -1,5 +1,4 @@
 <script lang="ts">
-import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
@@ -18,7 +17,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     const logger = getLogger("DemoPageView");
 
     let pageName: string = $derived.by(() => {
-        return safeDecodeURIComponent($page.params.page ?? "");
+        return $page.params.page;
     });
 
     let isLoading = $state(true);
@@ -117,7 +116,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         const unsub = page.subscribe(($p) => {
             let name = $p.params?.page ?? "";
             if (!name) return;
-            name = safeDecodeURIComponent(name);
+
             if (name === lastLoaded) return;
             lastLoaded = name;
             loadDemoPage(name);

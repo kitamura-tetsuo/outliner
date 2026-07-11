@@ -1,5 +1,4 @@
 <script lang="ts">
-import { safeDecodeURIComponent } from "../../../../utils/urlUtils";
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
 import { page } from "$app/stores";
@@ -16,8 +15,8 @@ onMount(() => {
     try {
         const params = $page.params as { project: string; page: string; };
         if (params) {
-            project = safeDecodeURIComponent(params.project || "");
-            pageTitle = safeDecodeURIComponent(params.page || "");
+            project = params.project;
+            pageTitle = params.page;
             content = getCurrentContent(project, pageTitle);
             logger.debug("Diff page initialized:", { project, pageTitle, content });
         }
