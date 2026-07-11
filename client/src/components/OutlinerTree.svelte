@@ -14,6 +14,7 @@
     import { userManager } from "../auth/UserManager";
     import { uploadAttachment } from "../services/attachmentService";
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
+    import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
@@ -228,6 +229,21 @@
         // Return flat display array
         return viewModel.getVisibleItems();
     });
+
+    // Item-reordering drag-and-drop controller (see client/src/lib/TreeDnD.ts).
+    // File-upload and text-selection drag-and-drop remain handled inline below.
+    const treeDnDContext: TreeDnDContext = {
+        get displayItems() {
+            return displayItems;
+        },
+        get pageItem() {
+            return pageItem;
+        },
+        onStructureChanged() {
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
+        },
+    };
+    const treeDnD = new TreeDnD(treeDnDContext);
 
     // Compute aria-setsize/aria-posinset per item based on its siblings (same parentId),
     // so screen readers can announce tree position (e.g. "item 2 of 5").
@@ -1425,8 +1441,9 @@
                 );
             }
         } else if (sourceItemId) {
-            // Drag & drop of entire single item
-            handleItemMoveDrop(sourceItemId, targetItemId, position);
+            // Drag & drop of entire single item (reorder/reparent) -- delegated to the
+            // TreeDnD controller (client/src/lib/TreeDnD.ts).
+            treeDnD.moveItem(sourceItemId, targetItemId, position);
         } else if (attachmentUrl) {
             // External attachment drop
             handleExternalAttachmentDrop(targetItemId, position, attachmentUrl);
@@ -1709,130 +1726,6 @@
 
         // Clear selection
         editorOverlayStore.clearSelections();
-    }
-
-    // Move entire item
-    function handleItemMoveDrop(
-        sourceItemId: string,
-        targetItemId: string,
-        position: string,
-    ) {
-        // Debug info
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                `handleItemMoveDrop called with sourceItemId=${sourceItemId}, targetItemId=${targetItemId}, position=${position}`,
-            );
-        }
-
-        // Get source and target item indices
-        const sourceIndex = displayItems.findIndex(
-            (d) => d.model.id === sourceItemId,
-        );
-        const targetIndex = displayItems.findIndex(
-            (d) => d.model.id === targetItemId,
-        );
-
-        if (sourceIndex < 0 || targetIndex < 0) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(
-                    `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
-                );
-            }
-            return;
-        }
-
-        // Do nothing if source and target are the same item
-        if (sourceIndex === targetIndex) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(
-                    `Source and target are the same item, no action needed`,
-                );
-            }
-            return;
-        }
-
-        const items = pageItem.items as Items;
-        const sourceItem = displayItems[sourceIndex].model.original;
-        const targetItem = displayItems[targetIndex].model.original;
-
-        const sourceKey = sourceItem.key!;
-        const targetKey = targetItem.key!;
-
-
-
-        try {
-
-            const tree = items.tree;
-            const doc = pageItem?.ydoc;
-
-            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
-
-            const targetParent = tree.getNodeParentFromKey?.(targetKey);
-
-            const run = () => {
-                // Middle drop should nest under the target item.
-                if (position === "middle") {
-                    if (sourceParent !== targetKey) {
-
-                        tree.moveChildToParent(sourceKey, targetKey);
-                    }
-                    if (
-
-                        typeof tree.recomputeParentsAndChildren === "function"
-                    ) {
-
-                        tree.recomputeParentsAndChildren();
-                    }
-
-                    tree.setNodeOrderToEnd(sourceKey);
-                    return;
-                }
-
-                // For top/bottom drops, ensure the item is a sibling before reordering.
-                if (
-                    sourceParent &&
-                    targetParent &&
-                    sourceParent !== targetParent
-                ) {
-
-                    tree.moveChildToParent(sourceKey, targetParent);
-                }
-
-                if (typeof tree.recomputeParentsAndChildren === "function") {
-
-                    tree.recomputeParentsAndChildren();
-                }
-
-                if (position === "top") {
-                    tree.setNodeBefore(sourceKey, targetKey);
-                } else {
-
-                    tree.setNodeAfter(sourceKey, targetKey);
-                }
-            };
-
-            if (typeof doc?.transact === "function") {
-
-                doc.transact(run, "item-drop-reorder");
-            } else {
-                run();
-            }
-
-            // Ensure derived display list re-renders after order-only updates (Y.Tree order changes don't emit observeDeep events reliably)
-            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
-
-            editorOverlayStore.setCursor({
-                itemId: sourceItemId,
-                offset: 0,
-                isActive: true,
-                userId: "local",
-            });
-
-            editorOverlayStore.setActiveItem(sourceItemId);
-            editorOverlayStore.clearSelections();
-        } catch (error) {
-              logger.error({ error }, "Failed to move item:");
-        }
     }
 
     // Drop text from external source
