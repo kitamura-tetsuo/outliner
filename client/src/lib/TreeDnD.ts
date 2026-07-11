@@ -1,5 +1,5 @@
-import type { OutlinerViewModel } from "../stores/OutlinerViewModel";
 import type { EditorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+import type { OutlinerViewModel } from "../stores/OutlinerViewModel";
 
 export class TreeDnD {
     private viewModel: OutlinerViewModel;
@@ -21,7 +21,7 @@ export class TreeDnD {
         this.isReadOnly = isReadOnly;
     }
 
-    handleItemDragStart(event: CustomEvent<{ itemId: string; offset?: number }>, displayItems: any[]) {
+    handleItemDragStart(event: CustomEvent<{ itemId: string; offset?: number; }>, displayItems: any[]) {
         if (this.isReadOnly) return;
 
         const { itemId, offset } = event.detail;
@@ -34,7 +34,7 @@ export class TreeDnD {
         this.updateDragSelection(displayItems);
     }
 
-    handleItemDrag(event: CustomEvent<{ itemId: string; offset: number }>, displayItems: any[], isDragging: boolean) {
+    handleItemDrag(event: CustomEvent<{ itemId: string; offset: number; }>, displayItems: any[], isDragging: boolean) {
         if (this.isReadOnly || !isDragging || !this.dragStartItemId) return;
 
         const { itemId, offset } = event.detail;
@@ -70,9 +70,9 @@ export class TreeDnD {
 
         if (startIndex === -1 || currentIndex === -1) return;
 
-        const isReversed = startIndex > currentIndex ||
-            (startIndex === currentIndex &&
-                this.dragStartOffset > this.dragCurrentOffset);
+        const isReversed = startIndex > currentIndex
+            || (startIndex === currentIndex
+                && this.dragStartOffset > this.dragCurrentOffset);
 
         // Determine start and end based on visual order
         const startItemId = isReversed ? this.dragCurrentItemId : this.dragStartItemId;
@@ -88,7 +88,7 @@ export class TreeDnD {
             endItemId: endItemId as string,
             endOffset: endOffset,
             userId: "local",
-            isReversed: isReversed
+            isReversed: isReversed,
         });
 
         // Update cursor position
