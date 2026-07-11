@@ -4,7 +4,7 @@ const logger = getLogger("ChartPanel");
 
 import * as echarts from "echarts";
 import { onMount } from "svelte";
-import { queryStore, dbChangeStore } from "../services/sqlService";
+import { dbChangeStore } from "../services/sqlService";
 import { initDb, runQuery } from "../services/sqlService";
 import type { Item } from "../schema/app-schema";
 
