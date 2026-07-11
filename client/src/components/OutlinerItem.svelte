@@ -2079,7 +2079,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             {#if hasChildren}
                 <button type="button"
                     class="collapse-btn drag-handle"
-                    onclick={toggleCollapse}
+                    onclick={(e) => { e.stopPropagation(); toggleCollapse(); }}
                     title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
                     aria-expanded={!isCollapsed}
@@ -2087,6 +2087,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
+                    onpointerdown={(e) => { e.stopPropagation(); }}
+                    onmouseup={(e) => { e.stopPropagation(); }}
                 >
                     <svg
                         class="chevron-icon"
@@ -2115,6 +2117,9 @@ export function setSelectionPosition(start: number, end: number = start) {
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
+                    onpointerdown={(e) => { e.stopPropagation(); }}
+                    onmouseup={(e) => { e.stopPropagation(); }}
+                    onclick={(e) => { e.stopPropagation(); }}
                 >•</span>
             {/if}
         {/if}
@@ -2184,7 +2189,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                         <button type="button"
                             class="referring-aliases-button"
                             title="View referring aliases"
-                            onclick={toggleAliasDropdown}
+                            onclick={(e) => { e.stopPropagation(); toggleAliasDropdown(e); }}
+                            onpointerdown={(e) => { e.stopPropagation(); }}
+                            onmousedown={(e) => { e.stopPropagation(); }}
+                            onmouseup={(e) => { e.stopPropagation(); }}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="referring-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                             <span class="referring-count">{referringAliases.length}</span>
@@ -2199,7 +2207,11 @@ export function setSelectionPosition(start: number, end: number = start) {
                                 <ul class="dropdown-list">
                                     {#each referringAliases as ref (ref.item.id)}
                                         <li>
-                                            <button type="button" onclick={(e) => handleAliasNavigation(ref.pageTitle, ref.item.id, e)}>
+                                            <button type="button"
+                                                onclick={(e) => { e.stopPropagation(); handleAliasNavigation(ref.pageTitle, ref.item.id, e); }}
+                                                onpointerdown={(e) => { e.stopPropagation(); }}
+                                                onmousedown={(e) => { e.stopPropagation(); }}
+                                                onmouseup={(e) => { e.stopPropagation(); }}>
                                                 <div class="ref-page">{ref.pageTitle}</div>
                                                 <div class="ref-text">{String(ref.item.text || '(empty)')}</div>
                                             </button>

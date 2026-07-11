@@ -105,7 +105,7 @@ const logger = getLogger("SearchPanel");
         // 2) Fallback to appStore.pages.current or generalStore.pages.current
         try {
             const w = (window as Window & typeof globalThis & { appStore?: { pages?: { current?: unknown[] } }, generalStore?: { pages?: { current?: unknown[] } } });
-            const gs = w.appStore || w.generalStore;
+            const gs = w?.appStore || w?.generalStore;
             const pages = gs?.pages?.current;
             const arr: Item[] = [];
             if (pages) {
