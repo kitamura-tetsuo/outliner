@@ -2,7 +2,7 @@
 import { onMount } from "svelte";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("ChartQueryEditor");
-import { initDb, runQuery } from "../services/sqlService";
+import { initDb, runQuery, dbChangeStore } from "../services/sqlService";
 import type { Item } from "../schema/app-schema";
 
 interface Props {
@@ -18,6 +18,9 @@ onMount(async () => {
     try {
         await initDb();
         isInitialized = true;
+        dbChangeStore.subscribe(() => {
+            if (item.chartQuery) runQuery(item.chartQuery as string, true);
+        });
         // If there's already a query, run it
         if (item.chartQuery) {
             runQuery(item.chartQuery as string, true);

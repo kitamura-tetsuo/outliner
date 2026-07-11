@@ -24,6 +24,7 @@ let currentSelect = "";
 let worker: SyncWorker | null = null;
 
 export const queryStore = writable<QueryResult>({ rows: [], columnsMeta: [] });
+export const dbChangeStore = writable<number>(0);
 
 // Expose queryStore to window object in test environment
 declare global {
@@ -179,7 +180,7 @@ function extendQuery(
     return { sql: modified, aliases, tableMap, pkAliasMap };
 }
 
-export function runQuery(sql: string, allowMutation = false) {
+export function runQuery(sql: string, allowMutation = false): QueryResult | void {
     if (!db) throw new Error("DB not initialized");
 
     const strippedSql = sql
@@ -219,7 +220,7 @@ export function runQuery(sql: string, allowMutation = false) {
 
     if (!res) {
         queryStore.set({ rows: [], columnsMeta: [] });
-        return;
+        return { rows: [], columnsMeta: [] };
     }
 
     const pkAliases: Record<string, string> = {};
@@ -250,6 +251,7 @@ export function runQuery(sql: string, allowMutation = false) {
         return obj;
     });
     queryStore.set({ rows, columnsMeta });
+    return { rows, columnsMeta };
 }
 
 export function getDb() {
@@ -267,6 +269,7 @@ export function applyEdit(info: EditInfo, value: unknown) {
     }
     const op: Op = { table: info.table, pk: info.pk, column: info.column, value };
     worker.applyOp(op);
+    dbChangeStore.update(n => n + 1);
     if (currentSelect) {
         rawExec(currentSelect);
         runQuery(currentSelect);
@@ -281,6 +284,7 @@ export function syncYDatabase(ydb: import("yjs").Map<unknown>) {
         worker.off?.("remote_change");
 
         worker.on("remote_change", () => {
+            dbChangeStore.update(n => n + 1);
             if (currentSelect) {
                 try {
                     runQuery(currentSelect);

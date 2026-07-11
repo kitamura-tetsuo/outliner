@@ -4,7 +4,7 @@ const logger = getLogger("ChartPanel");
 
 import * as echarts from "echarts";
 import { onMount } from "svelte";
-import { queryStore } from "../services/sqlService";
+import { dbChangeStore } from "../services/sqlService";
 import { initDb, runQuery } from "../services/sqlService";
 import type { Item } from "../schema/app-schema";
 
@@ -33,9 +33,13 @@ onMount(() => {
         isInitialized = true;
         chart = echarts.init(chartDiv);
         if (item && item.chartQuery) {
-            runQuery(item.chartQuery, true);
+            runItemQuery();
         }
-        unsub = queryStore.subscribe(update);
+        unsub = dbChangeStore.subscribe(() => {
+            if (isInitialized && item && item.chartQuery) {
+                runItemQuery();
+            }
+        });
     }).catch(error => {
         logger.error({ error }, "Error initializing chart");
     });
@@ -50,7 +54,8 @@ async function runItemQuery() {
     if (item && item.chartQuery && isInitialized) {
         try {
             await initDb();
-            runQuery(item.chartQuery, true);
+            const result = runQuery(item.chartQuery, true);
+            if (result) update(result as QueryResult);
         } catch (error) {
               logger.error({ error }, "Error running item query");
         }
