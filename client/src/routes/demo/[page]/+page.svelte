@@ -23,8 +23,21 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
+    let lastReset = $state(0);
     let isSearchPanelVisible = $state(false);
     let isDestroyed = false;
+
+    $effect(() => {
+        if (store.project) {
+            const meta = store.project.ydoc.getMap("metadata");
+            const updateReset = () => {
+                lastReset = (meta.get("lastReset") as number) ?? 0;
+            };
+            updateReset();
+            meta.observe(updateReset);
+            return () => meta.unobserve(updateReset);
+        }
+    });
 
     function findPage(name: string): Item | undefined {
         if (!store.project?.items) return undefined;
@@ -232,16 +245,18 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             </div>
         </div>
     {:else if store.currentPage}
-        <OutlinerBase
-            pageItem={store.currentPage}
-            projectName={DEMO_PROJECT_NAME}
-            pageName={pageName}
-            isReadOnly={false}
-            onEdit={undefined}
-        />
+        {#key lastReset}
+            <OutlinerBase
+                pageItem={store.currentPage}
+                projectName={DEMO_PROJECT_NAME}
+                pageName={pageName}
+                isReadOnly={false}
+                onEdit={undefined}
+            />
 
-        <!-- Backlink Panel -->
-        <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+            <!-- Backlink Panel -->
+            <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+        {/key}
     {/if}
 
     <!-- Search Panel -->
