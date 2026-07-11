@@ -87,15 +87,10 @@ const logger = getLogger("SearchBox");
                 () => effectiveProject?.items,
                 // Fallback 2: projectToUse.items
                 () => projectToUse?.items,
-                // Fallback 3: window.generalStore.project.items
+                // Fallback 3: (window.appStore || window.generalStore).project.items
                 () =>
                     typeof window !== "undefined"
-                        ? window.generalStore?.project?.items
-                        : undefined,
-                // Fallback 4: window.appStore.project.items
-                () =>
-                    typeof window !== "undefined"
-                        ? window.appStore?.project?.items
+                        ? (window.appStore || window.generalStore)?.project?.items
                         : undefined,
             ];
 
