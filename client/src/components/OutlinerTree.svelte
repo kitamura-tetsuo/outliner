@@ -3,7 +3,6 @@
 
 
 
-    import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
@@ -17,6 +16,7 @@
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
+    import OutlinerToolbar from "./OutlinerToolbar.svelte";
 
     const logger = getLogger("OutlinerTree");
 
@@ -304,14 +304,6 @@
         }
     }
 
-    let fileInput: HTMLInputElement | null = $state(null);
-
-    function triggerFileSelect() {
-        if (fileInput) {
-            fileInput.click();
-        }
-    }
-
     async function handleFileSelect(event: Event) {
         if (isReadOnly) return;
 
@@ -397,8 +389,7 @@
         viewModel.toggleCollapsed(itemId);
     }
 
-    function handleIndent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
+    function handleIndent(itemId: string | undefined) {
         if (!itemId || itemId === "page-title") return;
 
         const itemViewModel = viewModel.getViewModel(itemId);
@@ -509,8 +500,7 @@
         editorOverlayStore.setActiveItem(itemId);
     }
 
-    function handleUnindent(event: CustomEvent) {
-        const itemId: string | undefined = event?.detail?.itemId;
+    function handleUnindent(itemId: string | undefined) {
         if (!itemId || itemId === "page-title") return;
 
         const itemViewModel = viewModel.getViewModel(itemId);
@@ -898,8 +888,7 @@
     }
 
     // Handler to add new item at same level
-    function handleAddSibling(event: CustomEvent) {
-        const { itemId } = event.detail;
+    function handleAddSibling(itemId: string) {
         const currentIndex = displayItems.findIndex(
             (item) => item.model.id === itemId,
         );
@@ -2106,6 +2095,60 @@
             }
         }
     }
+
+    // Mobile Action Toolbar handlers: resolve the currently active item and
+    // delegate to the same handlers used by keyboard/drag interactions.
+    function handleMobileIndent() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        handleIndent(activeItemId);
+    }
+
+    function handleMobileOutdent() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        handleUnindent(activeItemId);
+    }
+
+    function handleMobileInsertAbove() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        handleAddSibling(activeItemId);
+    }
+
+    function handleMobileInsertBelow() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        handleAddSibling(activeItemId);
+    }
+
+    function handleMobileNewChild() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        handleAddSibling(activeItemId);
+    }
+
+    function handleMobileInsertSiblingBelow() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        editorOverlayStore.setActiveItem(activeItemId);
+        // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
+        const activeCursor = (editorOverlayStore as typeof editorOverlayStore & { getCursorForItem?: (id: string) => unknown }).getCursorForItem?.(activeItemId);
+        if (activeCursor) {
+            // GlobalTextArea will handle key events, let's just dispatch to document
+            const event = new KeyboardEvent('keydown', {
+                key: 'Enter',
+                ctrlKey: true,
+                bubbles: true
+            });
+            document.dispatchEvent(event);
+        }
+    }
 </script>
 
 {#key outlinerKey}
@@ -2114,30 +2157,13 @@
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
-        <div class="toolbar">
-            <div class="actions">
-                <button type="button" onclick={handleAddItem}>Add Item</button>
-                <button type="button" onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    bind:this={fileInput}
-                    onchange={handleFileSelect}
-                    style="display: none;"
-                />
-                <a href={resolvePath(`/${projectName}/${pageName}/diff`)} class="button-style">History / Diff</a>
-            </div>
-            <details class="a11y-help">
-                <summary>Keyboard &amp; accessibility help</summary>
-                <ul>
-                    <li><strong>Tab</strong> / <strong>Shift+Tab</strong>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
-                    <li><strong>Alt+↑</strong> / <strong>Alt+↓</strong>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
-                    <li><strong>↑</strong> / <strong>↓</strong>: move the cursor between items</li>
-                    <li><strong>Enter</strong>: add a new item below the current one</li>
-                </ul>
-            </details>
-        </div>
+        <OutlinerToolbar
+            mode="desktop"
+            {projectName}
+            {pageName}
+            onAddItem={handleAddItem}
+            onFileSelect={handleFileSelect}
+        />
 
         <div
             class="tree-container"
@@ -2168,10 +2194,10 @@
                             ariaPosInSet={ariaTreeMeta.get(displayItems[0].model.id)?.posInSet}
                             index={0}
                             on:toggle-collapse={handleToggleCollapse}
-                            on:indent={handleIndent}
-                            on:unindent={handleUnindent}
+                            on:indent={(e) => handleIndent(e.detail?.itemId)}
+                            on:unindent={(e) => handleUnindent(e.detail?.itemId)}
                             on:navigate-to-item={handleNavigateToItem}
-                            on:add-sibling={handleAddSibling}
+                            on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
                             on:drag-start={handleItemDragStart}
                             on:drag={handleItemDrag}
                             on:drop={handleItemDrop}
@@ -2200,10 +2226,10 @@
                                     ariaPosInSet={ariaTreeMeta.get(display.model.id)?.posInSet}
                                     {index}
                                     on:toggle-collapse={handleToggleCollapse}
-                                    on:indent={handleIndent}
-                                    on:unindent={handleUnindent}
+                                    on:indent={(e) => handleIndent(e.detail?.itemId)}
+                                    on:unindent={(e) => handleUnindent(e.detail?.itemId)}
                                     on:navigate-to-item={handleNavigateToItem}
-                                    on:add-sibling={handleAddSibling}
+                                    on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
                                     on:drag-start={handleItemDragStart}
                                     on:drag={handleItemDrag}
                                     on:drop={handleItemDrop}
@@ -2262,165 +2288,18 @@
     </div>
 {/key}
 
-<!-- Mobile Action Toolbar (appears on mobile devices when needed) -->
-<div
-    class="mobile-action-toolbar"
-    data-testid="mobile-action-toolbar"
-    role="toolbar"
-    aria-label="Mobile Action Toolbar"
-    style="bottom: {mobileToolbarBottomOffset}px"
->
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="Indent"
-        title="Indent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleIndent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-    </button>
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="Outdent"
-        title="Outdent"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId },
-            } as CustomEvent;
-            handleUnindent(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-    </button>
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="Insert Above"
-        title="Insert Above"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "above" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-    </button>
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="Insert Below"
-        title="Insert Below"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "below" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-    </button>
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="New Child"
-        title="New Child"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            const mockEvent = {
-                detail: { itemId: activeItemId, position: "child" },
-            } as CustomEvent;
-            handleAddSibling(mockEvent);
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-    </button>
-    <button type="button"
-        class="mobile-toolbar-btn"
-        aria-label="Insert Sibling Below"
-        title="Insert Sibling Below"
-        onclick={() => {
-            const activeItemId = resolveActiveItemId();
-            if (!activeItemId) return;
-            editorOverlayStore.setActiveItem(activeItemId);
-            // Simulate Ctrl+Enter by calling Cursor event handler if cursor is available, or dispatching an event that GlobalTextArea catches
-
-            const activeCursor = (editorOverlayStore as typeof editorOverlayStore & { getCursorForItem?: (id: string) => unknown }).getCursorForItem?.(activeItemId);
-            if (activeCursor) {
-                // GlobalTextArea will handle key events, let's just dispatch to document
-                const event = new KeyboardEvent('keydown', {
-                    key: 'Enter',
-                    ctrlKey: true,
-                    bubbles: true
-                });
-                document.dispatchEvent(event);
-            }
-        }}
-    >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="9 10 4 15 9 20"></polyline>
-            <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
-        </svg>
-    </button>
-</div>
+<OutlinerToolbar
+    mode="mobile"
+    {mobileToolbarBottomOffset}
+    onIndent={handleMobileIndent}
+    onOutdent={handleMobileOutdent}
+    onInsertAbove={handleMobileInsertAbove}
+    onInsertBelow={handleMobileInsertBelow}
+    onNewChild={handleMobileNewChild}
+    onInsertSiblingBelow={handleMobileInsertSiblingBelow}
+/>
 
 <style>
-    /* Mobile Action Toolbar */
-    .mobile-action-toolbar {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: none; /* Hidden by default on desktop */
-        background: white;
-        border-top: 1px solid #ddd;
-        padding: 8px;
-        z-index: 1000;
-        justify-content: space-around;
-        align-items: center;
-        height: 50px;
-    }
-
-    @media (max-width: 768px) {
-        .mobile-action-toolbar {
-            display: flex; /* Visible on mobile */
-        }
-    }
-
-    .mobile-toolbar-btn {
-        background: #f0f0f0;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        padding: 6px 10px;
-        cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-    }
-
-    .mobile-toolbar-btn:hover {
-        background: #e0e0e0;
-    }
-
-
     .outliner {
         background: white;
         border: 1px solid #ddd;
@@ -2430,56 +2309,6 @@
         flex-direction: column;
         position: relative;
         min-height: calc(100vh - 140px);
-    }
-
-    .toolbar {
-        display: flex;
-
-        justify-content: flex-end;
-        align-items: center;
-        padding: 8px 16px;
-        background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
-        flex-shrink: 0; /* Prevent toolbar from shrinking */
-    }
-
-    .actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .actions button, .actions a.button-style {
-        text-decoration: none;
-        color: inherit;
-        display: inline-flex;
-        align-items: center;
-        box-sizing: border-box;
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
-    .actions button:hover, .actions a.button-style:hover {
-        background: #e8e8e8;
-    }
-
-    .a11y-help {
-        margin-top: 8px;
-        font-size: 13px;
-        color: #444;
-    }
-
-    .a11y-help summary {
-        cursor: pointer;
-        color: #2563eb;
-    }
-
-    .a11y-help ul {
-        margin: 8px 0 0;
-        padding-left: 20px;
     }
 
     .tree-container {
