@@ -4,7 +4,7 @@ const logger = getLogger("API");
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
     try {
         const idToken = url.searchParams.get("idToken");
         const pageId = url.searchParams.get("pageId");
@@ -15,11 +15,31 @@ export const GET: RequestHandler = async ({ url }) => {
 
         // Proxy to Firebase Functions endpoint
         const apiBaseUrl = process.env.VITE_FIREBASE_FUNCTIONS_URL || "http://localhost:57000";
+
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+        };
+
+        const forwardedHeaders = [
+            "x-forwarded-for",
+            "cf-connecting-ip",
+            "fly-client-ip",
+            "fastly-client-ip",
+            "true-client-ip",
+        ];
+        for (const h of forwardedHeaders) {
+            const val = request.headers.get(h);
+            if (val) headers[h] = val;
+        }
+        if (!headers["x-forwarded-for"]) {
+            try {
+                headers["x-forwarded-for"] = getClientAddress();
+            } catch (_e) {}
+        }
+
         const response = await fetch(`${apiBaseUrl}/api/list-schedules`, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers,
             body: JSON.stringify({
                 idToken,
                 pageId,
