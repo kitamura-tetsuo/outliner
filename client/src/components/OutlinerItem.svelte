@@ -524,7 +524,8 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                 const w = (typeof window !== "undefined") ? window : null;
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
-                const curPage = (w?.generalStore as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
+                const gs = w?.appStore || w?.generalStore;
+                const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
                 if (mappedId && curPage?.items) {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
@@ -1708,10 +1709,10 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                 }
                                 // Auxiliary reflection to Doc after connection (via ID map)
                                 try {
-                                    const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
+                                    const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { appStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
                                     const map = w?.__ITEM_ID_MAP__;
                                     const mappedId = map ? map[String(model.id)] : undefined;
-                                    const curPage = w?.generalStore?.currentPage;
+                                    const curPage = w?.appStore?.currentPage || w?.generalStore?.currentPage;
                                     if (mappedId && curPage?.items) {
                                         for (let i = 0; i < (curPage.items.length || 0); i++) {
                                             const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
