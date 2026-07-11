@@ -13,8 +13,7 @@ vi.mock("../lib/logger", () => ({
 
 // Mock global __E2E__ flag so data URLs are allowed
 beforeAll(() => {
-    // @ts-expect-error: mocking window object for E2E mode
-    globalThis.window = { __E2E__: true };
+    globalThis.window = { __E2E__: true } as Window & typeof globalThis & { __E2E__?: boolean; };
 });
 
 describe("OutlinerItemAttachments", () => {
