@@ -27,7 +27,13 @@ function toggleEditor() {
             </svg>
             <span>SQL Block</span>
         </div>
-        <div class="sql-block-controls">
+        <div class="sql-block-controls"
+             onmousedown={(e: Event) => e.stopPropagation()}
+             onclick={(e: Event) => e.stopPropagation()}
+             onpointerdown={(e: Event) => e.stopPropagation()}
+             onmouseup={(e: Event) => e.stopPropagation()}
+             role="presentation"
+        >
             <select bind:value={viewMode} aria-label="View Mode">
                 <option value="grid">Grid</option>
                 <option value="chart">Chart</option>
