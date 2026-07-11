@@ -475,7 +475,7 @@ function setupGlobalErrorHandlers(): void {
 }
 
 // Safely stringify console.error/warn arguments to suppress [unserializable] spam in Playwright
-function setupConsoleSanitizer(): void {
+export function setupConsoleSanitizer(): void {
     if (typeof window === "undefined") return;
 
     // Only sanitize in E2E test environment to preserve DevTools object inspection in dev/prod
@@ -499,7 +499,12 @@ function setupConsoleSanitizer(): void {
                     : undefined;
                 if (name || msg) return `${name || "Object"}: ${msg || ""}`;
                 // Minimal JSON stringification (avoid circular references)
-                return JSON.stringify(arg, (_k, v) => (typeof v === "object" ? undefined : v)) || "[object]";
+                return JSON.stringify(
+                    arg,
+                    (k, v) => (k !== "" && typeof v === "object" && v !== null
+                        ? `[object ${v.constructor?.name || "Object"}]`
+                        : v),
+                ) || "[object]";
             }
             return String(arg);
         } catch {
