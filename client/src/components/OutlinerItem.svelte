@@ -2356,7 +2356,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     {#if isCommentsVisible}
         <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        {@html (() => { try { void item.comments; } catch {} return ''; })() }
+        { (() => { try { void item.comments; } catch {} return ''; })() }
         <CommentThread
             comments={ensuredComments}
             item={item}
