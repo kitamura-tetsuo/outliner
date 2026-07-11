@@ -156,7 +156,13 @@ function selectPage(page: Item) {
         <h2 class="m-0 text-lg font-medium text-gray-800">Pages</h2>
 
         <div class="flex items-center gap-3">
-            <div class="flex items-center">
+            <div class="flex items-center"
+                onmousedown={(e: Event) => e.stopPropagation()}
+                onclick={(e: Event) => e.stopPropagation()}
+                onpointerdown={(e: Event) => e.stopPropagation()}
+                onmouseup={(e: Event) => e.stopPropagation()}
+                role="presentation"
+            >
                 <label for="sort-order" class="sr-only">Sort order</label>
                 <select
                     id="sort-order"

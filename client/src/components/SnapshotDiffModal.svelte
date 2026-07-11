@@ -185,7 +185,13 @@ $effect(() => {
         <div class="flex-1 flex flex-col overflow-hidden gap-2">
             {#if selectedId}
             <div class="flex justify-between items-center bg-gray-100 p-2 rounded text-sm flex-shrink-0">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2"
+                     onmousedown={(e: Event) => e.stopPropagation()}
+                     onclick={(e: Event) => e.stopPropagation()}
+                     onpointerdown={(e: Event) => e.stopPropagation()}
+                     onmouseup={(e: Event) => e.stopPropagation()}
+                     role="presentation"
+                >
                     <label for="compare-target" class="font-medium text-gray-700">Compare with:</label>
                     <select
                         id="compare-target"
@@ -205,7 +211,13 @@ $effect(() => {
                     </select>
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2"
+                     onmousedown={(e: Event) => e.stopPropagation()}
+                     onclick={(e: Event) => e.stopPropagation()}
+                     onpointerdown={(e: Event) => e.stopPropagation()}
+                     onmouseup={(e: Event) => e.stopPropagation()}
+                     role="presentation"
+                >
                     <label for="view-mode" class="font-medium text-gray-700">View mode:</label>
                     <select
                         id="view-mode"
