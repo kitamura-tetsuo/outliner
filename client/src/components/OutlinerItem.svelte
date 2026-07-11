@@ -86,6 +86,7 @@ import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
 import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
@@ -2165,23 +2166,12 @@ export function setSelectionPosition(start: number, end: number = start) {
                     />
                 {/if}
                 {#if !isPageTitle}
-                    <span class="comment-count-visual" class:has-count={commentCountVisual > 0} aria-hidden="true">{commentCountVisual}</span>
-                {/if}
-                {#if !isPageTitle}
-                    <button type="button"
-                        class="comment-button" class:has-count={commentCountVisual > 0}
-                        data-testid="comment-button-{model.id}"
-                        draggable="false"
-                        onclick={(e) => { e.stopPropagation(); toggleComments(); }}
-                        onpointerdown={(e) => { e.stopPropagation(); }}
-                        onmousedown={(e) => { e.stopPropagation(); }}
-                        onmouseup={(e) => { e.stopPropagation(); }}
-                        aria-label={isCommentsVisible ? "Close comments" : `Open comments (${commentCountVisual})`}
-                        aria-expanded={isCommentsVisible}
-                    >
-                        <span class="comment-icon">💬</span>
-                        <span class="comment-count">{commentCountVisual}</span>
-                    </button>
+                    <OutlinerItemCommentButton
+                        modelId={model.id}
+                        commentCount={commentCountVisual}
+                        isVisible={isCommentsVisible}
+                        onToggle={toggleComments}
+                    />
                 {/if}
 
                 {#if referringAliases.length > 0}
@@ -2474,9 +2464,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 
 .component-selector,
-.referring-aliases-container,
-.comment-button,
-.comment-count-visual {
+.referring-aliases-container {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2485,21 +2473,13 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .component-selector,
 .outliner-item:hover .referring-aliases-container,
 .outliner-item:focus-within .referring-aliases-container,
-.outliner-item:hover .comment-button,
-.outliner-item:focus-within .comment-button,
-.outliner-item:hover .comment-count-visual,
-.outliner-item:focus-within .comment-count-visual,
-.comment-button.has-count,
-.referring-aliases-container.has-count,
-.comment-count-visual.has-count {
+.referring-aliases-container.has-count {
     opacity: 1;
 }
 
 
 .component-selector,
-.referring-aliases-container,
-.comment-button,
-.comment-count-visual {
+.referring-aliases-container {
     opacity: 0;
     transition: opacity 0.2s;
 }
@@ -2508,13 +2488,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 .outliner-item:focus-within .component-selector,
 .outliner-item:hover .referring-aliases-container,
 .outliner-item:focus-within .referring-aliases-container,
-.outliner-item:hover .comment-button,
-.outliner-item:focus-within .comment-button,
-.outliner-item:hover .comment-count-visual,
-.outliner-item:focus-within .comment-count-visual,
-.comment-button.has-count,
-.referring-aliases-container.has-count,
-.comment-count-visual.has-count {
+.referring-aliases-container.has-count {
     opacity: 1;
 }
 
@@ -2638,30 +2612,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 /* alias-path, alias-subtree, attachments, attachment-preview styles deleted */
 /* Moved to OutlinerItemAlias.svelte and OutlinerItemAttachments.svelte */
-
-.comment-count {
-    background-color: #e3f2fd;
-    color: #1976d2;
-    border-radius: 10px;
-    padding: 2px 6px;
-    font-size: 0.75rem;
-    margin-left: 4px;
-    display: inline-block;
-}
-
-.comment-button {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-left: 4px;
-    padding: 2px 4px;
-    border-radius: 3px;
-}
-
-.comment-button:hover {
-    background-color: #f0f0f0;
-}
+/* comment-count, comment-button styles moved to OutlinerItemCommentButton.svelte */
 
 
 /* Referring Aliases UI */
