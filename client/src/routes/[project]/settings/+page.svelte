@@ -299,10 +299,16 @@
     ></textarea>
 </div>
 <div class="import-section">
-    <select bind:value={importFormat} data-testid="import-format-select">
-        <option value="opml">OPML</option>
-        <option value="markdown">Markdown</option>
-    </select>
+    <div onmousedown={(e: Event) => e.stopPropagation()}
+         onclick={(e: Event) => e.stopPropagation()}
+         onpointerdown={(e: Event) => e.stopPropagation()}
+         onmouseup={(e: Event) => e.stopPropagation()}
+         role="presentation">
+        <select bind:value={importFormat} data-testid="import-format-select">
+            <option value="opml">OPML</option>
+            <option value="markdown">Markdown</option>
+        </select>
+    </div>
     <textarea bind:value={importText} data-testid="import-input"></textarea>
     <button type="button" onclick={doImport}>Import</button>
 </div>
