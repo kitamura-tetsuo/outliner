@@ -315,7 +315,8 @@ export class KeyEventHandler {
             const gsAny: unknown = typeof window !== "undefined"
                 ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                 : null;
-            const gs = (gsAny as any)?.appStore || (gsAny as any)?.generalStore;
+            const gs = (gsAny as { appStore?: unknown; generalStore?: unknown; })?.appStore
+                || (gsAny as { appStore?: unknown; generalStore?: unknown; })?.generalStore;
             const ta: HTMLTextAreaElement | undefined = (gs as { textareaRef?: HTMLTextAreaElement; })?.textareaRef;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
@@ -460,7 +461,8 @@ export class KeyEventHandler {
                         const wAny: unknown = typeof window !== "undefined"
                             ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                             : null;
-                        const gs = (wAny as any)?.appStore || (wAny as any)?.generalStore;
+                        const gs = (wAny as { appStore?: unknown; generalStore?: unknown; })?.appStore
+                            || (wAny as { appStore?: unknown; generalStore?: unknown; })?.generalStore;
 
                         const items = (gs as {
                             currentPage?: {
@@ -579,7 +581,8 @@ export class KeyEventHandler {
                 const wAny: unknown = typeof window !== "undefined"
                     ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                     : null;
-                const gs = (wAny as any)?.appStore || (wAny as any)?.generalStore;
+                const gs = (wAny as { appStore?: unknown; generalStore?: unknown; })?.appStore
+                    || (wAny as { appStore?: unknown; generalStore?: unknown; })?.generalStore;
                 const ta: HTMLTextAreaElement | undefined = (gs as { textareaRef?: HTMLTextAreaElement; })?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
