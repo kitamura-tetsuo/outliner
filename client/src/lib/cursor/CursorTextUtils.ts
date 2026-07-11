@@ -87,6 +87,22 @@ export function getCurrentLineIndex(text: string, offset: number): number {
 }
 
 /**
+ * Normalize an item's `text` field (which may be a plain string or a
+ * Yjs/SharedTree text-like object exposing `toString()`) into a plain string.
+ * Mirrors the legacy `Cursor.getTargetText` behaviour exactly.
+ */
+export function resolveItemText(target: { text?: unknown; } | undefined): string {
+    const raw = target?.text;
+    if (typeof raw === "string") return raw;
+    if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
+        try {
+            return (raw as { toString?: () => string; }).toString?.() || "";
+        } catch {}
+    }
+    return raw == null ? "" : String(raw);
+}
+
+/**
  * Convert an offset into a zero-based column value.
  */
 export function getCurrentColumn(text: string, offset: number): number {
