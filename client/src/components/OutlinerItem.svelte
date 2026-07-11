@@ -77,20 +77,17 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 import { getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
-import ChartPanel from "./ChartPanel.svelte";
-import ChartQueryEditor from "./ChartQueryEditor.svelte";
 import CommentThread from "./CommentThread.svelte";
-import InlineJoinTable from "./InlineJoinTable.svelte";
 import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
+import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
+import OutlinerItemComponentTypeSelector from "./OutlinerItemComponentTypeSelector.svelte";
 import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
-import SqlTableGrid from "./SqlTableGrid.svelte";
-import SqlBlock from "./SqlBlock.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -2222,46 +2219,16 @@ export function setSelectionPosition(start: number, end: number = start) {
 
                 <!-- Component type selector -->
                 {#if !isPageTitle}
-                    <div class="component-selector">
-                        <select
-                            value={(componentType ?? compTypeValue) || "none"}
-                            onchange={(e: Event) => handleComponentTypeChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
-                            onpointerdown={(e: Event) => e.stopPropagation()}
-                            onmousedown={(e: Event) => e.stopPropagation()}
-                            onmouseup={(e: Event) => e.stopPropagation()}
-                            onclick={(e: Event) => e.stopPropagation()}
-                            aria-label="Item component type"
-                        >
-                            <option value="none">Text</option>
-                            <option value="table">Table</option>
-                            <option value="sqltable">SQL Table</option>
-                            <option value="chart">Chart</option>
-                            <option value="sql">SQL Block</option>
-                        </select>
-                    </div>
+                    <OutlinerItemComponentTypeSelector
+                        value={(componentType ?? compTypeValue) || "none"}
+                        onChange={handleComponentTypeChange}
+                    />
                 {/if}
 
             </div>
 
             <!-- Component display -->
-            {#if (componentType ?? compTypeValue) === "table"}
-                <div class="component-wrapper">
-                    <InlineJoinTable />
-                </div>
-            {:else if (componentType ?? compTypeValue) === "sqltable"}
-                <div class="component-wrapper">
-                    <SqlTableGrid item={model.original} />
-                </div>
-            {:else if (componentType ?? compTypeValue) === "chart"}
-                <div class="component-wrapper">
-                    <ChartQueryEditor item={model.original} />
-                    <ChartPanel item={model.original} />
-                </div>
-            {:else if (componentType ?? compTypeValue) === "sql"}
-                <div class="component-wrapper">
-                    <SqlBlock item={model.original} />
-                </div>
-            {/if}
+            <OutlinerItemComponentRenderer componentType={componentType ?? compTypeValue} item={model.original} />
         </div>
 
         {#if model.votes.length > 0}
@@ -2394,11 +2361,6 @@ export function setSelectionPosition(start: number, end: number = start) {
     flex-direction: column;
 }
 
-.component-wrapper {
-    margin-top: 4px;
-    width: 100%;
-}
-
 .item-content {
     position: relative;
     cursor: text;
@@ -2464,14 +2426,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     outline-offset: -2px;
 }
 
-.component-selector,
 .referring-aliases-container {
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.outliner-item:hover .component-selector,
-.outliner-item:focus-within .component-selector,
 .outliner-item:hover .referring-aliases-container,
 .outliner-item:focus-within .referring-aliases-container,
 .referring-aliases-container.has-count {
@@ -2479,30 +2438,15 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 
 
-.component-selector,
 .referring-aliases-container {
     opacity: 0;
     transition: opacity 0.2s;
 }
 
-.outliner-item:hover .component-selector,
-.outliner-item:focus-within .component-selector,
 .outliner-item:hover .referring-aliases-container,
 .outliner-item:focus-within .referring-aliases-container,
 .referring-aliases-container.has-count {
     opacity: 1;
-}
-
-.component-selector {
-    margin-left: 8px;
-}
-
-.component-selector select {
-    padding: 2px 4px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    background-color: white;
 }
 
 .title-text {
