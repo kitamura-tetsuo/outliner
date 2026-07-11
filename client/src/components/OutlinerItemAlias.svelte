@@ -156,12 +156,20 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alias-icon"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
         {#if aliasPath.length > 0}
             {#each aliasPath as p, i (p.id)}
-                <button type="button" onclick={() => { /* dispatch navigate-to-item */ }}>
+                <button type="button"
+                    onclick={(e) => { e.stopPropagation(); /* dispatch navigate-to-item */ }}
+                    onpointerdown={(e) => { e.stopPropagation(); }}
+                    onmousedown={(e) => { e.stopPropagation(); }}
+                    onmouseup={(e) => { e.stopPropagation(); }}>
                     {p.text || "Loading..."}
                 </button>{i < aliasPath.length - 1 ? "/" : ""}
             {/each}
         {:else}
-            <button type="button">
+            <button type="button"
+                onclick={(e) => { e.stopPropagation(); }}
+                onpointerdown={(e) => { e.stopPropagation(); }}
+                onmousedown={(e) => { e.stopPropagation(); }}
+                onmouseup={(e) => { e.stopPropagation(); }}>
                 {findItem(generalStore.currentPage as unknown as Item, aliasTargetIdEffective)?.text || "Loading..."}
             </button>
         {/if}

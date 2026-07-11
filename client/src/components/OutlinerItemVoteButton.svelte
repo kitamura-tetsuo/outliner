@@ -10,7 +10,10 @@ let { voted, count, truncatedText, onVote }: Props = $props();
 </script>
 
 <button type="button"
-    onclick={onVote}
+    onclick={(e) => { e.stopPropagation(); onVote(); }}
+    onpointerdown={(e) => { e.stopPropagation(); }}
+    onmousedown={(e) => { e.stopPropagation(); }}
+    onmouseup={(e) => { e.stopPropagation(); }}
     class="vote-btn" class:has-count={count > 0}
     class:voted={voted}
     title={voted ? "Remove vote" : "Vote"}
