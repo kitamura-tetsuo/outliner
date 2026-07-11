@@ -245,7 +245,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             </div>
         </div>
     {:else if store.currentPage}
-        {#key lastReset}
+        {#key `${lastReset}-${store.currentPage.id}`}
             <OutlinerBase
                 pageItem={store.currentPage}
                 projectName={DEMO_PROJECT_NAME}
