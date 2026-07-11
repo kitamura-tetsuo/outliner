@@ -17,6 +17,9 @@
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
+    import OutlinerToolbar from "./OutlinerToolbar.svelte";
+import { TreeDnD } from "../lib/TreeDnD";
+
 
     const logger = getLogger("OutlinerTree");
 
@@ -304,6 +307,7 @@
         }
     }
 
+let treeDnD: any = null;
     let fileInput: HTMLInputElement | null = $state(null);
 
     function triggerFileSelect() {
@@ -1300,9 +1304,7 @@
         // End drag
         isDragging = false;
 
-        // Reset drag info
-        dragStartItemId = null;
-        dragCurrentItemId = null;
+        treeDnD?.handleItemDragEnd();
     }
 
     // The mouse button may be released outside the tree (or the window);
@@ -1452,19 +1454,7 @@
         dragCurrentItemId = null;
     }
 
-    // Item drag end event handler
-    function handleItemDragEnd(event: CustomEvent) {
-        const { itemId } = event.detail;
 
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Drag end: itemId=${itemId}`);
-        }
-
-        // Reset drag state
-        isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
-    }
 
     // Drop selection within single item
     function handleSingleItemSelectionDrop(
@@ -2114,30 +2104,14 @@
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
-        <div class="toolbar">
-            <div class="actions">
-                <button type="button" onclick={handleAddItem}>Add Item</button>
-                <button type="button" onclick={triggerFileSelect} aria-label="Add Image" title="Add Image">Add Image</button>
-                <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    bind:this={fileInput}
-                    onchange={handleFileSelect}
-                    style="display: none;"
-                />
-                <a href={resolvePath(`/${projectName}/${pageName}/diff`)} class="button-style">History / Diff</a>
-            </div>
-            <details class="a11y-help">
-                <summary>Keyboard &amp; accessibility help</summary>
-                <ul>
-                    <li><strong>Tab</strong> / <strong>Shift+Tab</strong>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
-                    <li><strong>Alt+↑</strong> / <strong>Alt+↓</strong>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
-                    <li><strong>↑</strong> / <strong>↓</strong>: move the cursor between items</li>
-                    <li><strong>Enter</strong>: add a new item below the current one</li>
-                </ul>
-            </details>
-        </div>
+        <OutlinerToolbar
+            {projectName}
+            {pageName}
+            onAddItem={handleAddItem}
+            onTriggerFileSelect={triggerFileSelect}
+            onFileSelect={handleFileSelect}
+            bind:fileInput={fileInput}
+        />
 
         <div
             class="tree-container"
@@ -2172,10 +2146,10 @@
                             on:unindent={handleUnindent}
                             on:navigate-to-item={handleNavigateToItem}
                             on:add-sibling={handleAddSibling}
-                            on:drag-start={handleItemDragStart}
-                            on:drag={handleItemDrag}
+                            on:drag-start={(e) => { isDragging = true; treeDnD?.handleItemDragStart(e, displayItems); }}
+                            on:drag={(e) => treeDnD?.handleItemDrag(e, displayItems, isDragging)}
                             on:drop={handleItemDrop}
-                            on:drag-end={handleItemDragEnd}
+                            on:drag-end={() => { isDragging = false; treeDnD?.handleItemDragEnd(); }}
                         />
                     </div>
                 {/if}
@@ -2204,10 +2178,10 @@
                                     on:unindent={handleUnindent}
                                     on:navigate-to-item={handleNavigateToItem}
                                     on:add-sibling={handleAddSibling}
-                                    on:drag-start={handleItemDragStart}
-                                    on:drag={handleItemDrag}
+                                    on:drag-start={(e) => { isDragging = true; treeDnD?.handleItemDragStart(e, displayItems); }}
+                                    on:drag={(e) => treeDnD?.handleItemDrag(e, displayItems, isDragging)}
                                     on:drop={handleItemDrop}
-                                    on:drag-end={handleItemDragEnd}
+                                    on:drag-end={() => { isDragging = false; treeDnD?.handleItemDragEnd(); }}
                                 />
                                 </div>
                             {/if}
@@ -2430,56 +2404,6 @@
         flex-direction: column;
         position: relative;
         min-height: calc(100vh - 140px);
-    }
-
-    .toolbar {
-        display: flex;
-
-        justify-content: flex-end;
-        align-items: center;
-        padding: 8px 16px;
-        background: #f5f5f5;
-        border-bottom: 1px solid #ddd;
-        flex-shrink: 0; /* Prevent toolbar from shrinking */
-    }
-
-    .actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .actions button, .actions a.button-style {
-        text-decoration: none;
-        color: inherit;
-        display: inline-flex;
-        align-items: center;
-        box-sizing: border-box;
-        background: #f0f0f0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-size: 14px;
-    }
-
-    .actions button:hover, .actions a.button-style:hover {
-        background: #e8e8e8;
-    }
-
-    .a11y-help {
-        margin-top: 8px;
-        font-size: 13px;
-        color: #444;
-    }
-
-    .a11y-help summary {
-        cursor: pointer;
-        color: #2563eb;
-    }
-
-    .a11y-help ul {
-        margin: 8px 0 0;
-        padding-left: 20px;
     }
 
     .tree-container {
