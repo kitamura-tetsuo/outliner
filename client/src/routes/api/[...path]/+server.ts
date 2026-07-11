@@ -13,9 +13,16 @@ const proxyRequest = async (event: RequestEvent) => {
         ? undefined
         : await event.request.arrayBuffer();
 
+    const headers = new Headers(event.request.headers);
+    if (!headers.has("x-forwarded-for")) {
+        try {
+            headers.set("x-forwarded-for", event.getClientAddress());
+        } catch (_e) {}
+    }
+
     const response = await fetch(targetUrl, {
         method,
-        headers: event.request.headers,
+        headers,
         body,
     });
 
