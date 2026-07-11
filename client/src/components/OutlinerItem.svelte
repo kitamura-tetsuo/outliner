@@ -46,7 +46,7 @@ try {
 } catch {}
 
 
-import { uploadAttachment } from "../services/attachmentService";
+import { uploadAttachmentWithFallback } from "../services";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 
 
@@ -1685,27 +1685,26 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                 containerId = containerId || "test-container";
 
                 for (const file of files) {
-                    try {
-                        const url = await uploadAttachment(containerId, model.id, file);
-                        
-                        if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            addAttachmentToDomTargetOrModel(event as any, url);
-                            // Reflect to Doc after connection
-                            try { mirrorAttachment(url); } catch {}
-                        } else {
-                            // Dispatch event for top/bottom insertion
-                            dispatch("drop", {
-                                targetItemId: model.id,
-                                position: dropTargetPosition,
-                                attachmentUrl: url
-                            });
-                        }
-
-                    } catch (e) {
-                        // Fallback with local preview even if upload fails (E2E stabilization)
-                        try {
-                            const localUrl = URL.createObjectURL(file);
+                    await uploadAttachmentWithFallback(
+                        containerId,
+                        model.id,
+                        file,
+                        (url) => {
+                            if (!dropTargetPosition || dropTargetPosition === "middle") {
+                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                addAttachmentToDomTargetOrModel(event as any, url);
+                                // Reflect to Doc after connection
+                                try { mirrorAttachment(url); } catch {}
+                            } else {
+                                // Dispatch event for top/bottom insertion
+                                dispatch("drop", {
+                                    targetItemId: model.id,
+                                    position: dropTargetPosition,
+                                    attachmentUrl: url
+                                });
+                            }
+                        },
+                        (localUrl) => {
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
                                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                 try { model.original.addAttachment(localUrl); } catch { try { (model.original as any).attachments?.push?.([localUrl]); } catch {} }
@@ -1734,9 +1733,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
                                     }
                                 }
                             } catch {}
-                        } catch {}
-                        logger.error({ error: e as Error }, "attachment upload failed");
-                    }
+                        },
+                        logger
+                    );
                 }
             } else {
                 // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,

@@ -49,3 +49,4 @@ export {
 
 // Attachment Service
 export { deleteAttachment, listAttachments, uploadAttachment } from "./attachmentService";
+export { uploadAttachmentWithFallback } from "./attachmentUpload";

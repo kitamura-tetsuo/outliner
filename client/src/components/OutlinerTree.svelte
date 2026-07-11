@@ -9,7 +9,7 @@
     import type { DisplayItem } from "../stores/OutlinerViewModel";
     import { OutlinerViewModel } from "../stores/OutlinerViewModel";
     import { userManager } from "../auth/UserManager";
-    import { uploadAttachment } from "../services/attachmentService";
+    import { uploadAttachmentWithFallback } from "../services";
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
@@ -254,18 +254,19 @@
                 // Create new item at the end
                 const newItem = items.addNode(currentUser, items.length);
                 if (newItem) {
-                    try {
-                        const url = await uploadAttachment(containerId, newItem.id, file);
-                        newItem.addAttachment(url);
-                    } catch (uploadErr) {
-                          console.error("Upload failed via file select", uploadErr);
-                        // E2E fallback local URL for test environment (mocking network)
-                        if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
-                            const localUrl = URL.createObjectURL(file);
-                            newItem.addAttachment(localUrl);
-                            window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                    await uploadAttachmentWithFallback(
+                        containerId,
+                        newItem.id,
+                        file,
+                        (url) => newItem.addAttachment(url),
+                        (localUrl) => {
+                            // E2E fallback local URL for test environment (mocking network)
+                            if (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__) {
+                                newItem.addAttachment(localUrl);
+                                window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                            }
                         }
-                    }
+                    );
                 }
             } catch (e) {
                   console.error("Failed to process selected file", e);
@@ -1987,27 +1988,31 @@
                         // Create new item at the end
                         const newItem = items.addNode(currentUser, items.length);
                         if (newItem) {
-                            try {
-                                const url = await uploadAttachment(containerId, newItem.id, file);
-                                try {
-                                    newItem.addAttachment(url);
-                                } catch {
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
-                                }
-                            } catch (uploadErr) {
-                                logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
-                                const localUrl = URL.createObjectURL(file);
-                                try {
-                                    newItem.addAttachment(localUrl);
-                                } catch {
-                                    try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
-                                }
-                                try {
-                                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
-                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                            await uploadAttachmentWithFallback(
+                                containerId,
+                                newItem.id,
+                                file,
+                                (url) => {
+                                    try {
+                                        newItem.addAttachment(url);
+                                    } catch {
+                                        try { (newItem as unknown as { attachments: [string][] }).attachments.push([url]); } catch {}
                                     }
-                                } catch {}
-                            }
+                                },
+                                (localUrl) => {
+                                    try {
+                                        newItem.addAttachment(localUrl);
+                                    } catch {
+                                        try { (newItem as unknown as { attachments: [string][] }).attachments.push([localUrl]); } catch {}
+                                    }
+                                    try {
+                                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && (window as Window & typeof globalThis & { __E2E__?: boolean }).__E2E__)) {
+                                            window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
+                                        }
+                                    } catch {}
+                                },
+                                logger
+                            );
                         }
                     } catch (e) {
                         logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
