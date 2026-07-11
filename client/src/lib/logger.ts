@@ -499,7 +499,12 @@ export function setupConsoleSanitizer(): void {
                     : undefined;
                 if (name || msg) return `${name || "Object"}: ${msg || ""}`;
                 // Minimal JSON stringification (avoid circular references)
-                return JSON.stringify(arg, (k, v) => (k !== "" && typeof v === "object" && v !== null ? `[object ${v.constructor?.name || "Object"}]` : v)) || "[object]";
+                return JSON.stringify(
+                    arg,
+                    (k, v) => (k !== "" && typeof v === "object" && v !== null
+                        ? `[object ${v.constructor?.name || "Object"}]`
+                        : v),
+                ) || "[object]";
             }
             return String(arg);
         } catch {
