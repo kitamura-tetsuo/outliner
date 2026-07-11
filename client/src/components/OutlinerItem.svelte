@@ -448,58 +448,7 @@ let aliasLastConfirmedPulse = $derived.by(() => {
     return null;
     });
 
-// Update DOM attributes when aliasLastConfirmedPulse changes
-$effect(() => {
-    if (aliasLastConfirmedPulse && itemRef) {
-        const { itemId, targetId } = aliasLastConfirmedPulse;
-        try {
-            // Set attribute on this item
-            (itemRef as HTMLElement)?.setAttribute?.('data-alias-target-id', String(targetId));
-
-            // Set attribute on all matching items efficiently
-            const root = document.querySelector(".outliner") || document.body;
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                acceptNode(node) {
-                    return (node as Element).getAttribute("data-item-id") === itemId
-                        ? NodeFilter.FILTER_ACCEPT
-                        : NodeFilter.FILTER_SKIP;
-                },
-            });
-            while (walker.nextNode()) {
-                (walker.currentNode as HTMLElement).setAttribute('data-alias-target-id', String(targetId));
-            }
-
-            // E2E support: set attribute on all items in test environment
-            const isTest = (typeof localStorage !== 'undefined') && localStorage.getItem('VITE_IS_TEST') === 'true';
-            if (isTest) {
-                const allWalker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                    acceptNode(node) {
-                        return (node as Element).hasAttribute("data-item-id")
-                            ? NodeFilter.FILTER_ACCEPT
-                            : NodeFilter.FILTER_SKIP;
-                    },
-                });
-                while (allWalker.nextNode()) {
-                    const el = allWalker.currentNode as HTMLElement;
-                    if (!el.classList.contains('page-title')) {
-                        el.setAttribute('data-alias-target-id', String(targetId));
-                    }
-                }
-
-                // Create mirror element for E2E utility world
-                let mirror = document.getElementById('e2e-alias-mirror') as HTMLElement | null;
-                if (!mirror) {
-                    mirror = document.createElement('div');
-                    mirror.id = 'e2e-alias-mirror';
-                    mirror.style.display = 'none';
-                    document.body.prepend(mirror);
-                }
-                mirror.setAttribute('data-item-id', String(itemId));
-                mirror.setAttribute('data-alias-target-id', String(targetId));
-            }
-        } catch {}
-    }
-});
+// Update DOM attributes when aliasLastConfirmedPulse changes (Removed $effect as it is unnecessary)
 
 const aliasTargetIdEffective = $derived.by(() => {
 
