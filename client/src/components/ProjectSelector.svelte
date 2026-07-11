@@ -242,7 +242,13 @@
     {/if}
 
     <div class="selector-content">
-        <div class="select-container">
+        <div class="select-container"
+             onmousedown={(e: Event) => e.stopPropagation()}
+             onclick={(e: Event) => e.stopPropagation()}
+             onpointerdown={(e: Event) => e.stopPropagation()}
+             onmouseup={(e: Event) => e.stopPropagation()}
+             role="presentation"
+        >
             <select
                 bind:value={selectedProjectId}
                 onchange={handleProjectChange}
