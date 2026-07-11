@@ -59,6 +59,7 @@ declare global {
         aliasPickerStore?: AliasPickerStore;
         appStore?: {
             project?: Project;
+            textareaRef?: HTMLTextAreaElement | null;
         };
         DEBUG_MODE?: boolean;
         lastCopiedText?: string;
