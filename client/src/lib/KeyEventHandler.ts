@@ -313,9 +313,10 @@ export class KeyEventHandler {
             const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
             const gsAny: unknown = typeof window !== "undefined"
-                ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
+                ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                 : null;
-            const ta: HTMLTextAreaElement | undefined = (gsAny as { textareaRef?: HTMLTextAreaElement; })?.textareaRef;
+            const gs = (gsAny as any)?.appStore || (gsAny as any)?.generalStore;
+            const ta: HTMLTextAreaElement | undefined = (gs as { textareaRef?: HTMLTextAreaElement; })?.textareaRef;
             const taValue: string | null = ta?.value ?? null;
             const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;
             const source = typeof taValue === "string" ? taValue : text;
@@ -456,9 +457,10 @@ export class KeyEventHandler {
                         cursor.applyToStore();
 
                         // Add new item to end and show AliasPicker
-                        const gs: unknown = typeof window !== "undefined"
-                            ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
+                        const wAny: unknown = typeof window !== "undefined"
+                            ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                             : null;
+                        const gs = (wAny as any)?.appStore || (wAny as any)?.generalStore;
 
                         const items = (gs as {
                             currentPage?: {
@@ -574,9 +576,10 @@ export class KeyEventHandler {
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
                 // Use textarea actual value in combination for strict detection
-                const gs: unknown = typeof window !== "undefined"
-                    ? (window as Window & typeof globalThis & { [key: string]: unknown; }).generalStore
+                const wAny: unknown = typeof window !== "undefined"
+                    ? (window as Window & typeof globalThis & { appStore?: unknown; generalStore?: unknown; })
                     : null;
+                const gs = (wAny as any)?.appStore || (wAny as any)?.generalStore;
                 const ta: HTMLTextAreaElement | undefined = (gs as { textareaRef?: HTMLTextAreaElement; })?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;
                 const caretPos: number = typeof ta?.selectionStart === "number" ? ta!.selectionStart : cursor.offset;

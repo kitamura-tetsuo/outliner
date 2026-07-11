@@ -103,6 +103,10 @@ function getAttachmentLabel(url: string): string {
                 class="attachment-link"
                 aria-label={getAttachmentLabel(url)}
                 title={getAttachmentLabel(url)}
+                onmousedown={(e: Event) => e.stopPropagation()}
+                onpointerdown={(e: Event) => e.stopPropagation()}
+                onmouseup={(e: Event) => e.stopPropagation()}
+                onclick={(e: Event) => e.stopPropagation()}
             >
                 <img src={url} class="attachment-preview" alt="" />
             </a>
