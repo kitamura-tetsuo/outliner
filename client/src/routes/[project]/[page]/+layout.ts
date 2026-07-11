@@ -7,8 +7,8 @@ import type { LayoutLoad } from "./$types";
 const logger = getLogger("LayoutTS");
 
 export const load: LayoutLoad = async ({ params, url }) => {
-    let projectName = params.project ?? "";
-    let pageName = params.page ?? "";
+    const projectName = params.project ?? "";
+    const pageName = params.page ?? "";
 
     // Validate required parameters
     if (!projectName || !pageName) {
