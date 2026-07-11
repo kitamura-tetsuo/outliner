@@ -3,8 +3,7 @@
 
 
 
-    import { resolvePath } from "../utils/pathUtils";
-    import { onDestroy, onMount } from "svelte";
+        import { onDestroy, onMount } from "svelte";
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
@@ -18,7 +17,7 @@
     import EditorOverlay from "./EditorOverlay.svelte";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
-import { TreeDnD } from "../lib/TreeDnD";
+    import { TreeDnD } from "../lib/TreeDnD";
 
 
     const logger = getLogger("OutlinerTree");
@@ -121,10 +120,10 @@ import { TreeDnD } from "../lib/TreeDnD";
 
     // Drag selection related state
     let isDragging = $state(false);
-    let dragStartItemId = $state<string | null>(null);
-    let dragStartOffset = $state(0);
-    let dragCurrentItemId = $state<string | null>(null);
-    let dragCurrentOffset = $state(0);
+
+
+
+
 
     // To prevent infinite loops, we'll cache the last known structure and only update when it changes
 
@@ -307,7 +306,7 @@ import { TreeDnD } from "../lib/TreeDnD";
         }
     }
 
-let treeDnD: any = null;
+    let treeDnD: TreeDnD | undefined = $state();
     let fileInput: HTMLInputElement | null = $state(null);
 
     function triggerFileSelect() {
@@ -1314,90 +1313,10 @@ let treeDnD: any = null;
         return () => window.removeEventListener("mouseup", handleTreeMouseUp);
     });
 
-    // Item drag start event handler
-    function handleItemDragStart(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
 
-        // Save drag start info (native item drags dispatch drag-start without an offset)
-        isDragging = true;
-        dragStartItemId = itemId;
-        dragStartOffset = offset ?? 0;
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset ?? 0;
 
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Drag start: itemId=${itemId}, offset=${offset}`);
-        }
-    }
 
-    // Item drag event handler
-    function handleItemDrag(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
 
-        // Ignore if not dragging
-        if (!isDragging || !dragStartItemId) return;
-
-        // Update current drag position
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset;
-
-        // Update selection range
-        updateDragSelection();
-
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Dragging: itemId=${itemId}, offset=${offset}`);
-        }
-    }
-
-    // Update drag selection range
-    function updateDragSelection() {
-        if (!dragStartItemId || !dragCurrentItemId) return;
-
-        // Get start and current item indices
-        const startIndex = displayItems.findIndex(
-            (item) => item.model.id === dragStartItemId,
-        );
-        const currentIndex = displayItems.findIndex(
-            (item) => item.model.id === dragCurrentItemId,
-        );
-
-        if (startIndex === -1 || currentIndex === -1) return;
-
-        // Determine selection direction
-        const isReversed =
-            startIndex > currentIndex ||
-            (startIndex === currentIndex &&
-                dragStartOffset > dragCurrentOffset);
-
-        // Determine selection start and end
-        const startItemId = isReversed ? dragCurrentItemId : dragStartItemId;
-        const startOffset = isReversed ? dragCurrentOffset : dragStartOffset;
-        const endItemId = isReversed ? dragStartItemId : dragCurrentItemId;
-        const endOffset = isReversed ? dragStartOffset : dragCurrentOffset;
-
-        // Set selection range (replace the previous drag selection instead of
-        // accumulating one selection per mousemove)
-        editorOverlayStore.clearSelectionForUser("local");
-        editorOverlayStore.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: "local",
-            isReversed,
-        });
-
-        // Update cursor position
-        editorOverlayStore.setCursor({
-            itemId: dragCurrentItemId,
-            offset: dragCurrentOffset,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Set active item
-        editorOverlayStore.setActiveItem(dragCurrentItemId);
-    }
 
     // Item drop event handler
     function handleItemDrop(event: CustomEvent) {
@@ -1450,8 +1369,8 @@ let treeDnD: any = null;
 
         // Reset drag state
         isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
+
+
     }
 
 

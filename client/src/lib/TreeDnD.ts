@@ -21,7 +21,10 @@ export class TreeDnD {
         this.isReadOnly = isReadOnly;
     }
 
-    handleItemDragStart(event: CustomEvent<{ itemId: string; offset?: number; }>, displayItems: any[]) {
+    handleItemDragStart(
+        event: CustomEvent<{ itemId: string; offset?: number; }>,
+        displayItems: import("../stores/OutlinerViewModel").DisplayItem[],
+    ) {
         if (this.isReadOnly) return;
 
         const { itemId, offset } = event.detail;
@@ -34,7 +37,11 @@ export class TreeDnD {
         this.updateDragSelection(displayItems);
     }
 
-    handleItemDrag(event: CustomEvent<{ itemId: string; offset: number; }>, displayItems: any[], isDragging: boolean) {
+    handleItemDrag(
+        event: CustomEvent<{ itemId: string; offset: number; }>,
+        displayItems: import("../stores/OutlinerViewModel").DisplayItem[],
+        isDragging: boolean,
+    ) {
         if (this.isReadOnly || !isDragging || !this.dragStartItemId) return;
 
         const { itemId, offset } = event.detail;
@@ -57,15 +64,15 @@ export class TreeDnD {
         this.editorOverlayStore.clearSelections();
     }
 
-    private updateDragSelection(displayItems: any[]) {
+    private updateDragSelection(displayItems: import("../stores/OutlinerViewModel").DisplayItem[]) {
         if (!this.dragStartItemId || !this.dragCurrentItemId) return;
 
         // Find items in flat display list
         const startIndex = displayItems.findIndex(
-            (item) => item.model.id === this.dragStartItemId,
+            (item: import("../stores/OutlinerViewModel").DisplayItem) => item.model?.id === this.dragStartItemId,
         );
         const currentIndex = displayItems.findIndex(
-            (item) => item.model.id === this.dragCurrentItemId,
+            (item: import("../stores/OutlinerViewModel").DisplayItem) => item.model?.id === this.dragCurrentItemId,
         );
 
         if (startIndex === -1 || currentIndex === -1) return;
@@ -80,8 +87,6 @@ export class TreeDnD {
         const endItemId = isReversed ? this.dragStartItemId : this.dragCurrentItemId;
         const endOffset = isReversed ? this.dragStartOffset : this.dragCurrentOffset;
 
-        // Set selection range (replace the previous drag selection instead of
-        // accumulating)
         this.editorOverlayStore.setSelection({
             startItemId: startItemId as string,
             startOffset: startOffset,
