@@ -6,6 +6,20 @@ import { store } from "../stores/store.svelte";
 import Sidebar from "./Sidebar.svelte";
 
 // Mock the stores
+
+vi.mock("../stores/authStore.svelte", () => {
+    return {
+        authStore: {
+            get isAuthenticated() {
+                return true;
+            },
+            get user() {
+                return { email: "test@example.com" };
+            },
+        },
+    };
+});
+
 vi.mock("../stores/projectStore.svelte", () => {
     const mockProjectStore = {
         projects: [
@@ -194,7 +208,6 @@ describe("Sidebar", () => {
             render(Sidebar, { isOpen: true });
 
             expect(screen.getByText("Sidebar")).toBeInTheDocument();
-            expect(screen.getByText("This is a placeholder sidebar component.")).toBeInTheDocument();
         });
 
         it("should render the sidebar with correct classes when open", () => {
