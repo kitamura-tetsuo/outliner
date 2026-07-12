@@ -324,7 +324,7 @@ async function setupProviderForRoom(
         } else {
             awareness.setLocalStateField("user", {
                 userId: getSessionAnonId(
-                    (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID
+                    (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID,
                 ),
                 name: "Guest",
                 color: undefined,
