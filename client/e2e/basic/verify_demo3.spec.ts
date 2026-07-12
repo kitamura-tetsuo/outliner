@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 
-test('verify demo page click', async ({ page }) => {
-    await page.goto('http://127.0.0.1:7090/demo');
+test("verify demo page click", async ({ page }) => {
+    await page.goto("http://127.0.0.1:7090/demo");
     await page.waitForTimeout(2000);
 
     // Evaluate in browser to click
@@ -11,5 +11,5 @@ test('verify demo page click', async ({ page }) => {
     });
 
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: 'demo3.png' });
+    await page.screenshot({ path: "demo3.png" });
 });
