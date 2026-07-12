@@ -186,8 +186,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                             // which are suspended during a transaction.
                             populateDemoProject(docProject, "seed-server");
                         } finally {
-
-                           await directConnection.transact((document: unknown) => {
+                            await directConnection.transact((document: unknown) => {
                                 const ydoc = document as unknown as Y.Doc;
                                 const meta = ydoc.getMap("metadata");
                                 meta.set("isResetting", false);
