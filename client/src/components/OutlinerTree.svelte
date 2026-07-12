@@ -340,7 +340,7 @@
         containerId = containerId || "test-container";
 
         const items = pageItem.items as Items;
-        const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
+        const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__);
 
         for (const file of files) {
             await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
@@ -1734,7 +1734,7 @@
             try {
                 targetItem.addAttachment(url);
             } catch {
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                     try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                 }
             }
@@ -1757,7 +1757,7 @@
                 try {
                     newItem.addAttachment(url);
                 } catch {
-                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                         try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                     }
                 }
@@ -1905,7 +1905,7 @@
         if (files.length > 0) {
             const containerId = await resolveUploadContainerId();
             const items = pageItem.items as Items;
-            const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
+            const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__);
 
             for (const file of files) {
                 await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
