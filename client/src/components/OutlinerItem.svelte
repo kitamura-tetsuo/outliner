@@ -2276,11 +2276,15 @@ export function setSelectionPosition(start: number, end: number = start) {
     opacity: 0;
     transition: opacity 0.2s;
     flex-shrink: 0;
+    pointer-events: none;
+    visibility: hidden;
 }
 
 .outliner-item:hover .item-actions,
 .outliner-item:focus-within .item-actions {
     opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
 }
 
 .item-actions button {
