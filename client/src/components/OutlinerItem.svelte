@@ -514,7 +514,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original as any, url, IS_TEST);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -1656,7 +1656,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         import.meta.env.MODE === 'test',
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as any,
+        addAttachmentSafely as unknown as (modelOriginal: unknown, url: string, isTest: boolean) => void,
         model.original,
         event
     );

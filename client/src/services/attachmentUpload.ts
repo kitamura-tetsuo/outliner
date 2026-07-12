@@ -50,7 +50,9 @@ export async function handleFileUploadFromDrop(
                     containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined;
                 } catch {}
                 try {
-                    containerId = containerId || (window as any).__CURRENT_PROJECT_TITLE__;
+                    containerId = containerId
+                        || (window as Window & typeof globalThis & { __CURRENT_PROJECT_TITLE__?: string; })
+                            .__CURRENT_PROJECT_TITLE__;
                 } catch {}
             }
             containerId = containerId || "test-container";
@@ -82,10 +84,33 @@ export async function handleFileUploadFromDrop(
                                 });
                             }
                             try {
-                                const w = (typeof window !== "undefined") ? (window as any) : null;
+                                const w = (typeof window !== "undefined")
+                                    ? (window as Window & typeof globalThis & {
+                                        __ITEM_ID_MAP__?: Record<string, string>;
+                                        appStore?: unknown;
+                                        generalStore?: unknown;
+                                    })
+                                    : null;
                                 const map = w?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(modelId)] : undefined;
-                                const curPage = w?.appStore?.currentPage || w?.generalStore?.currentPage;
+                                const curPage = ((w?.appStore as unknown as Record<string, unknown>)?.currentPage
+                                    || (w?.generalStore as unknown as Record<string, unknown>)?.currentPage) as {
+                                        items?: {
+                                            length: number;
+                                            at?: (
+                                                i: number,
+                                            ) => {
+                                                id?: string;
+                                                text?: string;
+                                                addAttachment?: (u: string) => void;
+                                            };
+                                            [key: number]: {
+                                                id?: string;
+                                                text?: string;
+                                                addAttachment?: (u: string) => void;
+                                            };
+                                        };
+                                    } | undefined;
                                 if (mappedId && curPage?.items) {
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
