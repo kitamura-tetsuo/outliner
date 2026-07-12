@@ -532,7 +532,7 @@
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            ...(projectName ? [{ label: projectName, href: `/${projectName}` }] : []),
+            ...(projectName ? [{ label: projectName, href: `/${encodeURIComponent(projectName)}` }] : []),
             ...(pageName ? [{ label: pageName }] : [])
         ]} />
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 import { goto } from "$app/navigation";
+import { resolvePath } from "../utils/pathUtils";
 import {
     collectBacklinks,
     getHighlightSegments,
@@ -62,10 +63,10 @@ function togglePanel() {
 function navigateToPage(_pageId: string, pageName: string) {
     if (!projectName) {
         // If no project name is specified, use the current project
-        goto(`/${pageName}`);
+        goto(resolvePath(`/${encodeURIComponent(pageName)}`));
     }
     else {
-        goto(`/${projectName}/${pageName}`);
+        goto(resolvePath(`/${projectName === 'demo' ? 'demo' : encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`));
     }
 }
 
