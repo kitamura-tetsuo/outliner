@@ -24,7 +24,7 @@ describe("SEA-0001 page title search box late load", () => {
         generalStore.project = project;
         // Re-render with the project prop to ensure effectiveProject updates
         rerender({ project });
-        const result = await screen.findByRole("button", { name: "second page" });
+        const result = await screen.findByRole("button", { name: "Go to page second page" });
         await user.click(result);
         expect(goto).toHaveBeenCalledWith("/my%20project/second%20page");
     });
