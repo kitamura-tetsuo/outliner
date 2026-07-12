@@ -77,10 +77,32 @@ function update(data: QueryResult) {
         return;
     }
     const columns = data.columnsMeta.map((c: ColumnMeta) => c.name);
+
+    const firstRow = data.rows[0];
+    let labelColumn: string | undefined;
+    const numericColumns: string[] = [];
+
+    for (const col of columns) {
+        if (typeof firstRow[col] === "number") {
+            numericColumns.push(col);
+        } else if (!labelColumn) {
+            labelColumn = col;
+        }
+    }
+
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: Record<string, unknown>, i: number) => i.toString()) },
+        xAxis: {
+            type: "category",
+            data: labelColumn
+                ? data.rows.map((r: Record<string, unknown>) => String(r[labelColumn!]))
+                : data.rows.map((_: Record<string, unknown>, i: number) => i.toString())
+        },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: Record<string, unknown>) => r[col]) })),
+        series: numericColumns.map(col => ({
+            name: col,
+            type: "bar",
+            data: data.rows.map((r: Record<string, unknown>) => r[col])
+        })),
     };
     chart.setOption(option, { notMerge: true });
 }
