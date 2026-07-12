@@ -23,6 +23,21 @@ vi.mock("../stores/projectStore.svelte", () => {
 // Import the mocked projectStore for test manipulation
 import { projectStore } from "../stores/projectStore.svelte";
 
+vi.mock("../stores/authStore.svelte", () => {
+    return {
+        authStore: {
+            get isAuthenticated() {
+                return (globalThis as any)._mockIsAuthenticated ?? true;
+            },
+            set isAuthenticated(val: boolean) {
+                (globalThis as any)._mockIsAuthenticated = val;
+            }
+        },
+    };
+});
+
+import { authStore } from "../stores/authStore.svelte";
+
 vi.mock("../stores/store.svelte", () => {
     const mockProject = {
         title: "Test Project",
@@ -191,10 +206,10 @@ describe("Sidebar", () => {
 
     describe("Rendering", () => {
         it("should render the sidebar component", () => {
-            render(Sidebar, { isOpen: true });
+            const { container } = render(Sidebar, { isOpen: true });
 
-            expect(screen.getByText("Sidebar")).toBeInTheDocument();
-            expect(screen.getByText("This is a placeholder sidebar component.")).toBeInTheDocument();
+            const sidebarElement = container.querySelector("aside.sidebar");
+            expect(sidebarElement).toBeInTheDocument();
         });
 
         it("should render the sidebar with correct classes when open", () => {
@@ -244,7 +259,9 @@ describe("Sidebar", () => {
         it("should render 'No projects available' when no projects", () => {
             // Temporarily override the mock
             const originalProjects = projectStore.projects;
+            const originalAuth = authStore.isAuthenticated;
             projectStore.projects = [];
+            (authStore as any).isAuthenticated = true;
 
             const { rerender } = render(Sidebar, { isOpen: true });
 
@@ -252,6 +269,21 @@ describe("Sidebar", () => {
 
             // Restore
             projectStore.projects = originalProjects;
+            (authStore as any).isAuthenticated = originalAuth;
+            rerender({ isOpen: true });
+        });
+
+        it("should render 'Sign in to see your projects' when unauthenticated", () => {
+            // Temporarily override the mock
+            const originalAuth = authStore.isAuthenticated;
+            (authStore as any).isAuthenticated = false;
+
+            const { rerender } = render(Sidebar, { isOpen: true });
+
+            expect(screen.getByText("Sign in to see your projects")).toBeInTheDocument();
+
+            // Restore
+            (authStore as any).isAuthenticated = originalAuth;
             rerender({ isOpen: true });
         });
 
