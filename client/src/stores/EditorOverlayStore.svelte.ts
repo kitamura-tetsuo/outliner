@@ -1,4 +1,3 @@
-import type { Awareness } from "y-protocols/awareness";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
@@ -1868,13 +1867,19 @@ export class EditorOverlayStore {
 
     private pushPresenceState() {
         try {
-            const client = yjsStore.yjsClient as unknown as { [key: string]: unknown; };
+            const client = yjsStore.yjsClient as import("../yjs/YjsClient").YjsClient | undefined;
             if (!client) {
                 logger.debug("[pushPresenceState] No client");
                 return;
             }
 
-            // Use page-level awareness (cursor/selection is page-specific)
+            const awareness = client.getAwareness();
+            if (!awareness) {
+                logger.debug("[pushPresenceState] No awareness");
+                return;
+            }
+            logger.debug("[pushPresenceState] Got awareness");
+
             const currentPage = (window as Window & typeof globalThis & {
                 DEBUG_MODE?: boolean;
                 generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
@@ -1890,22 +1895,11 @@ export class EditorOverlayStore {
                 return;
             }
 
-            const pageAwareness = (client as { getPageAwareness?: (p: string) => Awareness; }).getPageAwareness?.(
-                pageId,
-            );
-            if (!pageAwareness) {
-                logger.debug("[pushPresenceState] No pageAwareness", {
-                    pageId,
-                    hasGetPageAwareness: !!(client as { getPageAwareness?: (p: string) => unknown; }).getPageAwareness,
-                });
-                return;
-            }
-            logger.debug("[pushPresenceState] Got pageAwareness", { pageId });
-
             const cursor = this.getLocalPrimaryCursor();
             const selection = this.getLocalPrimarySelection();
 
             const presenceState = {
+                pageId,
                 cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
                 selection: selection
                     ? {
@@ -1920,8 +1914,8 @@ export class EditorOverlayStore {
                     : undefined,
             };
 
-            // Set directly to page-level awareness
-            yjsService.setPresence(pageAwareness, (!cursor && !selection) ? null : presenceState);
+            // Set to project-level awareness
+            yjsService.setPresence(awareness, (!cursor && !selection) ? null : presenceState);
         } catch {
             // Skip presence sync in environments where Awareness is not available
         }
