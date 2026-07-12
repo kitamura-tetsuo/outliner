@@ -66,7 +66,7 @@ async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unk
     }
     editingCell = null;
     await tick();
-    const cell = document.querySelector(`td[data-row="${rowIndex}"][data-col="${columnKey.replace(/"/g, '\"')}"]`) as HTMLElement;
+    const cell = document.querySelector(`td[data-row="${rowIndex}"][data-col="${columnKey.replace(/"/g, '\\"')}"]`) as HTMLElement;
     cell?.focus();
 }
 
