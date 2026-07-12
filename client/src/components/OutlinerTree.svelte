@@ -12,7 +12,7 @@
     import type { DisplayItem } from "../stores/OutlinerViewModel";
     import { OutlinerViewModel } from "../stores/OutlinerViewModel";
     import { userManager } from "../auth/UserManager";
-    import { uploadAttachment } from "../services/attachmentService";
+    import { extractFiles, resolveUploadContainerId, uploadFileToNewItemAtEnd } from "../services/attachmentUpload";
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
@@ -324,7 +324,7 @@
         if (isReadOnly) return;
 
         const target = event.target as HTMLInputElement;
-        const files: File[] = target.files ? Array.from(target.files) : [];
+        const files = extractFiles(target.files);
 
         if (files.length === 0) return;
 
@@ -340,28 +340,10 @@
         containerId = containerId || "test-container";
 
         const items = pageItem.items as Items;
+        const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
 
         for (const file of files) {
-            try {
-                // Create new item at the end
-                const newItem = items.addNode(currentUser, items.length);
-                if (newItem) {
-                    try {
-                        const url = await uploadAttachment(containerId, newItem.id, file);
-                        newItem.addAttachment(url);
-                    } catch (uploadErr) {
-                          logger.error({ error: uploadErr }, "Upload failed via file select");
-                        // E2E fallback local URL for test environment (mocking network)
-                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
-                            const localUrl = URL.createObjectURL(file);
-                            try { newItem.addAttachment(localUrl); } catch {}
-                            try { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } })); } catch {}
-                        }
-                    }
-                }
-            } catch (e) {
-                  logger.error({ error: e }, "Failed to process selected file");
-            }
+            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
         }
 
         if (target) {
@@ -1919,62 +1901,16 @@
         event.preventDefault();
         event.stopPropagation();
 
-        const hasFileList = dt.files && dt.files.length > 0;
-        const hasFileItems = dt.items && Array.from(dt.items).some(it => it.kind === "file");
-        if (hasFileList || hasFileItems) {
-            const files: File[] = [];
-            if (hasFileList) {
-                files.push(...Array.from(dt.files));
-            } else if (hasFileItems) {
-                for (const it of Array.from(dt.items)) {
-                    if (it.kind === "file") {
-                        const f = it.getAsFile();
-                        if (f) files.push(f);
-                    }
-                }
+        const files = extractFiles(dt);
+        if (files.length > 0) {
+            const containerId = await resolveUploadContainerId();
+            const items = pageItem.items as Items;
+            const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
+
+            for (const file of files) {
+                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
             }
-
-            if (files.length > 0) {
-                let containerId: string | undefined = undefined;
-                try { containerId = await getDefaultContainerId(); } catch {}
-                containerId = containerId || "test-container";
-
-                const items = pageItem.items as Items;
-
-                for (const file of files) {
-                    try {
-                        // Create new item at the end
-                        const newItem = items.addNode(currentUser, items.length);
-                        if (newItem) {
-                            try {
-                                const url = await uploadAttachment(containerId, newItem.id, file);
-                                try {
-                                    newItem.addAttachment(url);
-                                } catch {
-
-                                    try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
-                                }
-                            } catch (uploadErr) {
-                                logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
-                                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
-                                    const localUrl = URL.createObjectURL(file);
-                                    try {
-                                        newItem.addAttachment(localUrl);
-                                    } catch {
-                                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([localUrl]); } catch {}
-                                    }
-                                    try {
-                                        window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } }));
-                                    } catch {}
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        logger.error({ error: e as Error }, "Failed to upload file to tree bottom");
-                    }
-                }
-                __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
-            }
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
         } else {
             const text = dt.getData("text/plain");
             if (text) {

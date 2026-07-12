@@ -1,8 +1,80 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("AttachmentUpload");
 
+import type { Item, Items } from "../schema/app-schema";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 import { uploadAttachment } from "./attachmentService";
+
+/** Extracts the dropped/selected files from a DataTransfer or FileList, regardless of which API the browser populated. */
+export function extractFiles(source: DataTransfer | FileList | null): File[] {
+    if (!source) return [];
+    const files: File[] = [];
+    const fileList = (source as DataTransfer).files ?? (source as FileList);
+    if (fileList && fileList.length > 0) {
+        files.push(...Array.from(fileList));
+        return files;
+    }
+    const items = (source as DataTransfer).items;
+    if (items) {
+        for (const it of Array.from(items)) {
+            if (it.kind === "file") {
+                const f = it.getAsFile();
+                if (f) files.push(f);
+            }
+        }
+    }
+    return files;
+}
+
+/** Resolves the container ID to use for an attachment upload, falling back to "test-container" outside production. */
+export async function resolveUploadContainerId(): Promise<string> {
+    let containerId: string | undefined;
+    try {
+        containerId = await getDefaultContainerId();
+    } catch {}
+    return containerId || "test-container";
+}
+
+function addAttachmentWithFallback(item: Item, url: string) {
+    try {
+        item.addAttachment(url);
+    } catch {
+        try {
+            (item as Item & { attachments?: { push: (arr: [string]) => void; }; }).attachments?.push([url]);
+        } catch {}
+    }
+}
+
+/** Uploads a file to a newly created item at the end of `items`, with the shared blob-URL fallback. */
+export async function uploadFileToNewItemAtEnd(
+    items: Items,
+    currentUser: string,
+    containerId: string,
+    file: File,
+    isTestEnv: boolean,
+): Promise<void> {
+    try {
+        const newItem = items.addNode(currentUser, items.length);
+        if (!newItem) return;
+        try {
+            const url = await uploadAttachment(containerId, newItem.id, file);
+            addAttachmentWithFallback(newItem, url);
+        } catch (uploadErr) {
+            logger.error({ error: uploadErr as Error }, "Attachment upload failed, using local fallback");
+            if (isTestEnv) {
+                const localUrl = URL.createObjectURL(file);
+                addAttachmentWithFallback(newItem, localUrl);
+                try {
+                    window.dispatchEvent(
+                        new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }),
+                    );
+                } catch {}
+            }
+        }
+    } catch (e) {
+        logger.error({ error: e as Error }, "Failed to upload file to new item");
+    }
+}
 
 interface DropEventDetail {
     targetItemId?: string;
