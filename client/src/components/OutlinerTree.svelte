@@ -26,6 +26,7 @@
         projectName?: string;
         pageName?: string;
         isReadOnly?: boolean;
+        isEmbedded?: boolean;
         onEdit?: () => void;
     }
 
@@ -34,6 +35,7 @@
         projectName = "",
         pageName = "",
         isReadOnly = false,
+        isEmbedded = false,
         onEdit,
     }: Props = $props();
 
@@ -1983,16 +1985,19 @@
 {#key outlinerKey}
     <div
         class="outliner" role="presentation"
+        class:embedded={isEmbedded}
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
-        <OutlinerToolbar
-            mode="desktop"
-            {projectName}
-            {pageName}
-            onAddItem={handleAddItem}
-            onFileSelect={handleFileSelect}
-        />
+        {#if !isEmbedded}
+            <OutlinerToolbar
+                mode="desktop"
+                {projectName}
+                {pageName}
+                onAddItem={handleAddItem}
+                onFileSelect={handleFileSelect}
+            />
+        {/if}
 
         <div
             class="tree-container"
@@ -2006,33 +2011,35 @@
             <div class="tree-items-wrapper">
                 {#if displayItems.length > 0}
                     <!-- Page Title (index 0) is rendered outside the tree role to prevent aria-required-children violations -->
-                    <div
-                        class="item-container"
-                        role="presentation"
-                        style="--item-depth: {displayItems[0].depth}"
-                    >
-                        <OutlinerItem
-                            model={displayItems[0].model}
-                            depth={displayItems[0].depth}
-                            {currentUser}
-                            {isReadOnly}
-                            isCollapsed={viewModel.isCollapsed(displayItems[0].model.id)}
-                            hasChildren={viewModel.hasChildren(displayItems[0].model.id)}
-                            isPageTitle={true}
-                            ariaSetSize={ariaTreeMeta.get(displayItems[0].model.id)?.setSize}
-                            ariaPosInSet={ariaTreeMeta.get(displayItems[0].model.id)?.posInSet}
-                            index={0}
-                            on:toggle-collapse={handleToggleCollapse}
-                            on:indent={(e) => handleIndent(e.detail?.itemId)}
-                            on:unindent={(e) => handleUnindent(e.detail?.itemId)}
-                            on:navigate-to-item={handleNavigateToItem}
-                            on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
-                            on:drag-start={handleItemDragStart}
-                            on:drag={handleItemDrag}
-                            on:drop={handleItemDrop}
-                            on:drag-end={handleItemDragEnd}
-                        />
-                    </div>
+                    {#if !isEmbedded}
+                        <div
+                            class="item-container"
+                            role="presentation"
+                            style="--item-depth: {displayItems[0].depth}"
+                        >
+                            <OutlinerItem
+                                model={displayItems[0].model}
+                                depth={displayItems[0].depth}
+                                {currentUser}
+                                {isReadOnly}
+                                isCollapsed={viewModel.isCollapsed(displayItems[0].model.id)}
+                                hasChildren={viewModel.hasChildren(displayItems[0].model.id)}
+                                isPageTitle={true}
+                                ariaSetSize={ariaTreeMeta.get(displayItems[0].model.id)?.setSize}
+                                ariaPosInSet={ariaTreeMeta.get(displayItems[0].model.id)?.posInSet}
+                                index={0}
+                                on:toggle-collapse={handleToggleCollapse}
+                                on:indent={(e) => handleIndent(e.detail?.itemId)}
+                                on:unindent={(e) => handleUnindent(e.detail?.itemId)}
+                                on:navigate-to-item={handleNavigateToItem}
+                                on:add-sibling={(e) => handleAddSibling(e.detail?.itemId)}
+                                on:drag-start={handleItemDragStart}
+                                on:drag={handleItemDrag}
+                                on:drop={handleItemDrop}
+                                on:drag-end={handleItemDragEnd}
+                            />
+                        </div>
+                    {/if}
                 {/if}
                 {#if displayItems.length > 1}
                     <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
@@ -2071,7 +2078,7 @@
                 {/if}
             </div>
 
-            {#if displayItems.length <= 1 && !isReadOnly}
+            {#if displayItems.length <= 1 && !isReadOnly && !isEmbedded}
                 <div class="empty-state">
                     <div class="empty-icon" aria-hidden="true">
                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2117,16 +2124,18 @@
     </div>
 {/key}
 
-<OutlinerToolbar
-    mode="mobile"
-    {mobileToolbarBottomOffset}
-    onIndent={handleMobileIndent}
-    onOutdent={handleMobileOutdent}
-    onInsertAbove={handleMobileInsertAbove}
-    onInsertBelow={handleMobileInsertBelow}
-    onNewChild={handleMobileNewChild}
-    onInsertSiblingBelow={handleMobileInsertSiblingBelow}
-/>
+{#if !isEmbedded}
+    <OutlinerToolbar
+        mode="mobile"
+        {mobileToolbarBottomOffset}
+        onIndent={handleMobileIndent}
+        onOutdent={handleMobileOutdent}
+        onInsertAbove={handleMobileInsertAbove}
+        onInsertBelow={handleMobileInsertBelow}
+        onNewChild={handleMobileNewChild}
+        onInsertSiblingBelow={handleMobileInsertSiblingBelow}
+    />
+{/if}
 
 <style>
     .outliner {
@@ -2140,10 +2149,22 @@
         min-height: calc(100vh - 140px);
     }
 
+    .outliner.embedded {
+        border: none;
+        margin-bottom: 0;
+        min-height: auto;
+        background: transparent;
+    }
+
     .tree-container {
         padding: 8px 16px;
         position: relative; /* Reference point for absolute positioning of child elements */
         min-height: 100px; /* Set minimum height */
+    }
+
+    .outliner.embedded .tree-container {
+        padding: 0;
+        min-height: auto;
     }
 
     .item-container {
