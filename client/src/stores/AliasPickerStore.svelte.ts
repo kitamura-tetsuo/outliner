@@ -16,20 +16,9 @@ class AliasPickerStore {
     // prevent double-confirm
     private isConfirming = false;
     // Most recent confirmed information (for OutlinerItem to refer to tentatively before Yjs reflection)
-    lastConfirmedItemId: string | null = null;
-    lastConfirmedTargetId: string | null = null;
-    private _lastConfirmedAt: number | null = null;
-    private _tick: number = 0;
-    get lastConfirmedAt(): number | null {
-        return this._lastConfirmedAt;
-    }
-    set lastConfirmedAt(v: number | null) {
-        this._lastConfirmedAt = v;
-        this._tick = (this._tick + 1) | 0;
-    }
-    get tick(): number {
-        return this._tick;
-    }
+    lastConfirmedItemId: string | null = $state(null);
+    lastConfirmedTargetId: string | null = $state(null);
+    lastConfirmedAt: number | null = $state(null);
 
     query = "";
     show(itemId: string) {

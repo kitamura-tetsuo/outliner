@@ -429,28 +429,8 @@ onMount(() => {
         }
     } catch {}
 });
-// Reactively track aliasPickerStore changes using $derived
-// This replaces the polling approach with proper Svelte 5 reactivity
-let aliasLastConfirmedPulse = $derived.by(() => {
-    // Subscribe to aliasPickerStore changes
-
-    const ap = aliasPickerStore;
-    const li = ap?.lastConfirmedItemId;
-    const lt = ap?.lastConfirmedTargetId;
-    const la = ap?.lastConfirmedAt as number | null;
-
-    if (li && lt && la && (Date.now() - la < 6000) && li === model.id) {
-        return { itemId: li, targetId: lt, at: la };
-    }
-    return null;
-    });
-
-// Update DOM attributes when aliasLastConfirmedPulse changes (Removed $effect as it is unnecessary)
-
 const aliasTargetIdEffective = $derived.by(() => {
 
-    void aliasPickerStore?.tick;
-    void aliasLastConfirmedPulse; // Make sure to react to pulse changes
     const base = aliasTargetId;
     if (base) return base;
 
@@ -464,10 +444,6 @@ const aliasTargetIdEffective = $derived.by(() => {
     if (lastTargetId && lastAt && Date.now() - lastAt < 2000) {
         if (lastItemId === model.id) return lastTargetId;
         if (isE2E && isEmpty) return lastTargetId;
-    }
-    // Check pulse for recent confirmations
-    if (aliasLastConfirmedPulse && (Date.now() - aliasLastConfirmedPulse.at < 2000)) {
-        if (aliasLastConfirmedPulse.itemId === model.id) return aliasLastConfirmedPulse.targetId;
     }
     return undefined;
 });
@@ -1972,13 +1948,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     data-active={isItemActive}
     data-alias-target-id={
 
-        [ aliasPickerStore?.tick,
-          (aliasTargetIdEffective
+        [ (aliasTargetIdEffective
 
             || ((aliasPickerStore?.lastConfirmedItemId === model.id)
 
                 && aliasPickerStore?.lastConfirmedTargetId)
-            || (aliasLastConfirmedPulse && aliasLastConfirmedPulse.itemId === model.id && aliasLastConfirmedPulse.targetId)
             || "") ][1] as string
     }
 >
