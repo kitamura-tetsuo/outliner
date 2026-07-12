@@ -54,6 +54,7 @@ test.describe("Item Voting", () => {
         const voteCount = page.locator(".vote-count").first();
         await expect(voteCount).toBeVisible();
         await expect(voteCount).toHaveText("1");
+        await expect(secondItem.locator(".vote-count")).toHaveCount(1);
 
         // Click to remove vote
         await itemActionBtn.click();
