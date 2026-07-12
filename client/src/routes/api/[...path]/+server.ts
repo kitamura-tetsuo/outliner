@@ -26,7 +26,7 @@ const proxyRequest = async (event: RequestEvent) => {
         "referer",
         "x-forwarded-for",
         "cf-connecting-ip",
-        "fly-client-ip"
+        "fly-client-ip",
     ];
 
     for (const [key, value] of event.request.headers.entries()) {
