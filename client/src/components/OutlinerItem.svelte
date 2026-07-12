@@ -2201,7 +2201,8 @@ export function setSelectionPosition(start: number, end: number = start) {
     margin: 0;
     padding-top: 4px;
     padding-bottom: 4px;
-    min-height: 24px; /* E2E stabilization: Ensure visible boundary is not zero immediately after new insertion */
+    min-height: 24px;
+    flex-wrap: wrap; /* E2E stabilization: Ensure visible boundary is not zero immediately after new insertion */
 }
 
 .page-title {
@@ -2219,6 +2220,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     display: flex;
     align-items: flex-start;
     min-height: 24px;
+    flex-wrap: wrap;
     flex: 1;
     min-width: 0;
 }
@@ -2300,7 +2302,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     flex: 1;
     white-space: pre-wrap;
     display: inline-block;
-    min-width: 1px;
+    min-width: 60%;
 }
 
 .item-actions {

@@ -344,7 +344,7 @@ onDestroy(async () => {
 <style>
 /* Keep content clear of the fixed Toolbar (height ~4rem) */
 .main-content {
-    padding-top: 5rem;
+    padding-top: var(--header-height, 5rem);
     transition: margin-left 0.3s ease, width 0.3s ease;
     width: 100%;
     box-sizing: border-box;
@@ -421,5 +421,11 @@ onDestroy(async () => {
     top: 0.5rem;
     outline: 2px solid white;
     box-shadow: 0 0 0 4px #3b82f6;
+}
+
+@media (max-width: 640px) {
+    .main-content {
+        padding-top: 8rem;
+    }
 }
 </style>
