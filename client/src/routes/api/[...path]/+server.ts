@@ -13,7 +13,28 @@ const proxyRequest = async (event: RequestEvent) => {
         ? undefined
         : await event.request.arrayBuffer();
 
-    const headers = new Headers(event.request.headers);
+    const headers = new Headers();
+    const whitelist = [
+        "authorization",
+        "content-type",
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "cookie",
+        "user-agent",
+        "origin",
+        "referer",
+        "x-forwarded-for",
+        "cf-connecting-ip",
+        "fly-client-ip",
+    ];
+
+    for (const [key, value] of event.request.headers.entries()) {
+        if (whitelist.includes(key.toLowerCase())) {
+            headers.set(key, value);
+        }
+    }
+
     if (!headers.has("x-forwarded-for")) {
         try {
             headers.set("x-forwarded-for", event.getClientAddress());
