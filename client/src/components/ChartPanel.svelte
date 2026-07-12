@@ -77,10 +77,33 @@ function update(data: QueryResult) {
         return;
     }
     const columns = data.columnsMeta.map((c: ColumnMeta) => c.name);
+
+    let xAxisData: string[] = [];
+    let seriesData: any[] = [];
+
+    if (data.rows.length > 0) {
+        const firstRow = data.rows[0];
+        const numericColumns = columns.filter(col => typeof firstRow[col] === "number");
+        const labelColumns = columns.filter(col => typeof firstRow[col] !== "number");
+
+        if (labelColumns.length > 0) {
+            const labelCol = labelColumns[0];
+            xAxisData = data.rows.map(r => String(r[labelCol]));
+        } else {
+            xAxisData = data.rows.map((_, i) => i.toString());
+        }
+
+        seriesData = numericColumns.map(col => ({
+            type: "bar",
+            name: col,
+            data: data.rows.map((r: Record<string, unknown>) => r[col])
+        }));
+    }
+
     const option = {
-        xAxis: { type: "category", data: data.rows.map((_: Record<string, unknown>, i: number) => i.toString()) },
+        xAxis: { type: "category", data: xAxisData },
         yAxis: { type: "value" },
-        series: columns.map(col => ({ type: "bar", data: data.rows.map((r: Record<string, unknown>) => r[col]) })),
+        series: seriesData,
     };
     chart.setOption(option, { notMerge: true });
 }
