@@ -14,6 +14,7 @@
 
     let isLoading = $state(true);
     let isResetting = $state(false);
+    let isResettingRemote = $state(false);
     let resetDone = $state(false);
     let resetError: string | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
@@ -23,6 +24,18 @@
     let pages = $derived.by(() => {
         void store.pagesVersion;
         return store.pages?.current;
+    });
+
+    $effect(() => {
+        if (store.project) {
+            const meta = store.project.ydoc.getMap("metadata");
+            const updateReset = () => {
+                isResettingRemote = (meta.get("isResetting") as boolean) ?? false;
+            };
+            updateReset();
+            meta.observe(updateReset);
+            return () => meta.unobserve(updateReset);
+        }
     });
 
     async function initializeDemo() {
@@ -110,12 +123,12 @@
             <h1 class="text-2xl font-bold">Public Demo Project</h1>
             <button type="button"
                 onclick={resetDemo}
-                disabled={isResetting || isLoading}
+                disabled={isResetting || isResettingRemote || isLoading}
                 data-testid="demo-reset-button"
-                aria-label={isResetting ? "Resetting demo content" : "Reset demo content"}
+                aria-label={isResetting || isResettingRemote ? "Resetting demo content" : "Reset demo content"}
                 class="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                {isResetting ? "Resetting..." : "Reset demo content"}
+                {isResetting || isResettingRemote ? "Resetting..." : "Reset demo content"}
             </button>
         </div>
         <p class="mt-1 text-sm text-gray-500">

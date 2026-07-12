@@ -46,8 +46,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
             if (force) {
                 const clientIp = getClientIp(req);
-                const lastForce = forceRateLimits.get(clientIp) || 0;
                 const now = Date.now();
+                for (const [ip, time] of forceRateLimits.entries()) {
+                    if (now - time > FORCE_RESET_RATE_LIMIT_MS) {
+                        forceRateLimits.delete(ip);
+                    }
+                }
+                const lastForce = forceRateLimits.get(clientIp) || 0;
                 if (now - lastForce < FORCE_RESET_RATE_LIMIT_MS) {
                     logger.warn({ event: "seed_demo_rate_limit_exceeded", ip: clientIp });
                     res.status(429).json({ error: "Too Many Requests", message: "Force reset is rate limited" });
@@ -134,43 +139,57 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                         const docProject = Project.fromDoc(doc as unknown as Y.Doc);
 
-                        // We do not use transact() for massive deletion because it bypasses the wrapper
-                        // and causes observers on connected clients to crash.
-                        // Instead, safely delete items one by one using the wrapper API.
-                        const rootItems = docProject.items;
-                        if (rootItems) {
-                            for (let i = rootItems.length - 1; i >= 0; i--) {
-                                const child = rootItems.at(i);
-                                if (child) {
-                                    child.delete();
-                                }
-                            }
-                        }
-
                         await directConnection.transact((document: unknown) => {
                             const ydoc = document as unknown as Y.Doc;
-
-                            // Clear items map of any orphaned nodes completely
-                            const orderedTreeMap = ydoc.getMap("orderedTree");
-                            const itemsMap = ydoc.getMap("items");
-                            Array.from(itemsMap.keys()).forEach(key => {
-                                if (!orderedTreeMap.has(key)) {
-                                    itemsMap.delete(key);
-                                }
-                            });
-
-                            // Re-initialize metadata
                             const meta = ydoc.getMap("metadata");
-                            meta.set("title", DEMO_PROJECT_TITLE);
-                            meta.set("lastReset", now);
-                            meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                            meta.set("isResetting", true);
                         });
 
-                        // Rebuild the template directly in the live document.
-                        // This is done sequentially outside the transaction because
-                        // yjs-orderedtree relies on synchronous observeDeep callbacks
-                        // which are suspended during a transaction.
-                        populateDemoProject(docProject, "seed-server");
+                        try {
+                            // We do not use transact() for massive deletion because it bypasses the wrapper
+                            // and causes observers on connected clients to crash.
+                            // Instead, safely delete items one by one using the wrapper API.
+                            const rootItems = docProject.items;
+                            if (rootItems) {
+                                for (let i = rootItems.length - 1; i >= 0; i--) {
+                                    const child = rootItems.at(i);
+                                    if (child) {
+                                        child.delete();
+                                    }
+                                }
+                            }
+
+                            await directConnection.transact((document: unknown) => {
+                                const ydoc = document as unknown as Y.Doc;
+
+                                // Clear items map of any orphaned nodes completely
+                                const orderedTreeMap = ydoc.getMap("orderedTree");
+                                const itemsMap = ydoc.getMap("items");
+                                Array.from(itemsMap.keys()).forEach(key => {
+                                    if (!orderedTreeMap.has(key)) {
+                                        itemsMap.delete(key);
+                                    }
+                                });
+
+                                // Re-initialize metadata
+                                const meta = ydoc.getMap("metadata");
+                                meta.set("title", DEMO_PROJECT_TITLE);
+                                meta.set("lastReset", now);
+                                meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                            });
+
+                            // Rebuild the template directly in the live document.
+                            // This is done sequentially outside the transaction because
+                            // yjs-orderedtree relies on synchronous observeDeep callbacks
+                            // which are suspended during a transaction.
+                            populateDemoProject(docProject, "seed-server");
+                        } finally {
+                            await directConnection.transact((document: unknown) => {
+                                const ydoc = document as unknown as Y.Doc;
+                                const meta = ydoc.getMap("metadata");
+                                meta.set("isResetting", false);
+                            });
+                        }
                     } else {
                         logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                     }

@@ -24,6 +24,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
+    let isResettingRemote = $state(false);
     let isSearchPanelVisible = $state(false);
     let isDestroyed = false;
 
@@ -32,6 +33,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             const meta = store.project.ydoc.getMap("metadata");
             const updateReset = () => {
                 lastReset = (meta.get("lastReset") as number) ?? 0;
+                isResettingRemote = (meta.get("isResetting") as boolean) ?? false;
             };
             updateReset();
             meta.observe(updateReset);
@@ -250,7 +252,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 pageItem={store.currentPage}
                 projectName={DEMO_PROJECT_NAME}
                 pageName={pageName}
-                isReadOnly={false}
+                isReadOnly={isResettingRemote}
                 onEdit={undefined}
             />
 
