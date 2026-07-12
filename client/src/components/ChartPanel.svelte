@@ -79,7 +79,7 @@ function update(data: QueryResult) {
     const columns = data.columnsMeta.map((c: ColumnMeta) => c.name);
 
     let xAxisData: string[] = [];
-    let seriesData: any[] = [];
+    let seriesData: echarts.SeriesOption[] = [];
 
     if (data.rows.length > 0) {
         const firstRow = data.rows[0];
