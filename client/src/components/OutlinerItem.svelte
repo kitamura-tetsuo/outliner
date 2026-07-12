@@ -567,7 +567,7 @@ function handleComponentTypeChange(newType: string) {
         try {
             const m = (it as Item).yMap;
             if (m && typeof m.set === "function") {
-                m.set(key, value as any);
+                m.set(key, value as import("../types/yjs-types").ItemValueType);
                 if (key !== "lastChanged") m.set("lastChanged", Date.now());
                 return true;
             }
