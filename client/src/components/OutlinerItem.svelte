@@ -391,7 +391,7 @@ const voterNames = $derived.by(() => {
         const u = presenceStore.users[uid];
         // If user is online, show name. If offline but ID matches a known pattern, maybe abbreviated ID?
         // Fallback to "User <ID>"
-        return u ? u.userName : `User ${uid.slice(0, 4)}`;
+        return u ? u.userName : uid;
     }).join(", ");
 });
 
@@ -2141,9 +2141,6 @@ export function setSelectionPosition(start: number, end: number = start) {
             <OutlinerItemComponentRenderer componentType={componentType ?? compTypeValue} item={model.original} />
         </div>
 
-        {#if model.votes.length > 0}
-            <OutlinerItemVoteCount count={model.votes.length} />
-        {/if}
         {#if !isPageTitle}
             <div class="item-actions">
                 <button type="button"
