@@ -4,6 +4,7 @@
 import { page } from "$app/stores";
 import { onMount } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
+import Breadcrumb from "../../../../components/Breadcrumb.svelte";
 import { getCurrentContent } from "../../../../services";
 
 let project = $state("");
@@ -30,9 +31,24 @@ onMount(() => {
 });
 </script>
 
-<SnapshotDiffModal
-    {project}
-    page={pageTitle}
-    bind:currentContent={content}
-    author={user}
-/>
+<svelte:head>
+    <title>{pageTitle && project ? `History / Diff - ${pageTitle} - ${project} | Outliner` : 'History / Diff | Outliner'}</title>
+</svelte:head>
+
+<main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
+    <div class="mb-4">
+        <Breadcrumb items={[
+            { label: "Home", href: "/" },
+            ...(project ? [{ label: project, href: `/${encodeURIComponent(project)}` }] : []),
+            ...(pageTitle ? [{ label: pageTitle, href: `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}` }] : []),
+            { label: "History" }
+        ]} />
+    </div>
+
+    <SnapshotDiffModal
+        {project}
+        page={pageTitle}
+        bind:currentContent={content}
+        author={user}
+    />
+</main>
