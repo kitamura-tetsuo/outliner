@@ -9,6 +9,9 @@ vi.mock("../services/sqlService", () => {
     return {
         queryStore: writable({ rows: [], columnsMeta: [] }),
         applyEdit: vi.fn(),
+        initDb: vi.fn().mockResolvedValue(undefined),
+        dbChangeStore: writable(0),
+        runQuery: vi.fn(),
     };
 });
 
@@ -26,6 +29,9 @@ describe("EditableQueryGrid", () => {
         });
 
         render(EditableQueryGrid);
+
+        // Wait for onMount to finish using a short timeout or just wait for Svelte 5 tick
+        await new Promise(r => setTimeout(r, 10));
 
         // Find the cell containing "Test"
         const cellText = screen.getByText("Test");
