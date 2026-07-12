@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 8;
+export const DEMO_TEMPLATE_VERSION = 9;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -57,7 +57,7 @@ export interface DemoPageTemplate {
 // A small, self-contained SVG image encoded as a data URI so the seeded
 // attachment renders without any network access (handy for verification).
 const DEMO_ATTACHMENT_IMAGE =
-    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2740%27%20height%3D%2740%27%3E%3Crect%20width%3D%2740%27%20height%3D%2740%27%20fill%3D%27%233b82f6%27%2F%3E%3Ctext%20x%3D%2720%27%20y%3D%2725%27%20font-size%3D%2710%27%20fill%3D%27white%27%20text-anchor%3D%27middle%27%3EIMG%3C%2Ftext%3E%3C%2Fsvg%3E";
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2740%27%20height%3D%2740%27%20viewBox%3D%270%200%2040%2040%27%3E%3Crect%20width%3D%2740%27%20height%3D%2740%27%20rx%3D%278%27%20fill%3D%27%233b82f6%27%2F%3E%3Ccircle%20cx%3D%2720%27%20cy%3D%2716%27%20r%3D%276%27%20fill%3D%27white%27%2F%3E%3Cpath%20d%3D%27M8%2032L16%2022L22%2028L32%2014V32H8Z%27%20fill%3D%27white%27%2F%3E%3C%2Fsvg%3E";
 
 // A self-contained SQL query that builds its own data and selects it, so the
 // chart component renders a deterministic bar chart with no external source.
@@ -117,6 +117,7 @@ export const demoPages: DemoPageTemplate[] = [
             "      Grandchild item",
             "    Another child",
             "Try reorganizing the tree above with Tab and Shift+Tab.",
+            "Try clicking on [Internal Links] to see the backlink panel update.",
         ],
     },
     {
@@ -135,7 +136,7 @@ export const demoPages: DemoPageTemplate[] = [
         lines: [
             "Use the Search button at the top of a page to search across the whole project.",
             "Recent searches are remembered for quick access.",
-            "The inline command palette opens when you type [/ inside an item.",
+            "The inline command palette opens when you type / inside an item.",
             "Breadcrumbs at the top of each page let you jump back to the project or home.",
         ],
     },
@@ -222,6 +223,7 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "SQL Tables: this item renders an editable, query-backed table grid.",
                 componentType: "table",
+                chartQuery: "CREATE TABLE demo_users (id TEXT PRIMARY KEY, name TEXT);",
             },
             { text: "Aliases: an item can mirror another item and stay in sync with the original." },
             {

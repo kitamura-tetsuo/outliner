@@ -343,7 +343,7 @@
         const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
 
         for (const file of files) {
-            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
+            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv || false);
         }
 
         if (target) {
@@ -1908,7 +1908,7 @@
             const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
 
             for (const file of files) {
-                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
+                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv || false);
             }
             __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
         } else {
