@@ -310,9 +310,23 @@ async function setupProviderForRoom(
                 color: undefined,
             });
         } else {
+            let anonId = "anon-"
+                + (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID;
+            try {
+                if (typeof window !== "undefined" && window.sessionStorage) {
+                    const stored = window.sessionStorage.getItem("outliner_guest_id");
+                    if (stored) {
+                        anonId = stored;
+                    } else {
+                        anonId = "anon-" + Math.random().toString(36).substring(2, 10);
+                        window.sessionStorage.setItem("outliner_guest_id", anonId);
+                    }
+                }
+            } catch {
+                // ignore
+            }
             awareness.setLocalStateField("user", {
-                userId: "anon-"
-                    + (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID,
+                userId: anonId,
                 name: "Guest",
                 color: undefined,
             });

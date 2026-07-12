@@ -21,7 +21,6 @@ export class PresenceStore {
     removeUser(userId: string) {
         const { [userId]: _, ...rest } = this.users;
         this.users = rest;
-        this.users = rest;
         try {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("presence-users-changed"));
