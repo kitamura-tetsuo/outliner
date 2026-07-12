@@ -4,6 +4,8 @@ const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
     import { onDestroy, onMount, untrack } from "svelte";
+    import { page as pageStore } from "$app/stores";
+    import { get } from "svelte/store";
     import { store } from "../stores/store.svelte";
     import {
         buildRegExp,
@@ -322,8 +324,13 @@ const logger = getLogger("SearchPanel");
         const pageName = encodeURIComponent(
             (match.page.text?.toString?.() ?? String(match.page.text ?? "")) as string,
         );
-        const projectTitle = encodeURIComponent(project.title);
-        goto(resolvePath(`/${projectTitle}/${pageName}`));
+        const currentPage = get(pageStore);
+        if (currentPage.url.pathname.startsWith('/demo')) {
+            goto(resolvePath(`/demo/${pageName}`));
+        } else {
+            const projectTitle = encodeURIComponent(project.title);
+            goto(resolvePath(`/${projectTitle}/${pageName}`));
+        }
     }
 
     onDestroy(() => {
