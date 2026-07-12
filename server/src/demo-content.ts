@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 9;
+export const DEMO_TEMPLATE_VERSION = 10;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -24,10 +24,14 @@ export const DEMO_LANDING_PAGE_TITLE = "Welcome";
 // non-text feature is seeded with concrete, reproducible data.
 export interface DemoItem {
     tableSchema?: string;
+    // Column names of the item-embedded table (JSON-cached on the item).
+    tableColumns?: string[];
+    // Seed rows for the item-embedded table, keyed by column name.
+    tableRows?: Record<string, string>[];
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "table" | "chart";
+    componentType?: "table" | "chart" | "tasks" | "habits";
     // For chart components: a self-contained SQL query (CREATE + INSERT +
     // SELECT) so the chart renders without any external data source.
     chartQuery?: string;
@@ -67,6 +71,135 @@ const DEMO_CHART_QUERY =
     + ' INSERT INTO sales VALUES("1","Jan",120),("2","Feb",180),("3","Mar",150),("4","Apr",210);'
     + " SELECT month AS sales_month, revenue AS sales_revenue FROM sales";
 
+// Table definitions for the task manager / habit tracker components.
+// These strings must stay byte-identical to TASK_TABLE_DDL / HABIT_TABLE_DDL in
+// client/src/services/taskHabitService.ts so the components recognize the
+// seeded tables as their own schema.
+const DEMO_TASK_TABLE_DDL = "CREATE TABLE tasks (\n"
+    + "  id TEXT PRIMARY KEY,\n"
+    + "  title TEXT,\n"
+    + "  status TEXT,\n"
+    + "  priority TEXT,\n"
+    + "  due_at TEXT,\n"
+    + "  repeat_days TEXT,\n"
+    + "  created_at TEXT,\n"
+    + "  completed_at TEXT\n"
+    + ")";
+const DEMO_TASK_COLUMNS = ["id", "title", "status", "priority", "due_at", "repeat_days", "created_at", "completed_at"];
+
+const DEMO_HABIT_TABLE_DDL = "CREATE TABLE habits (\n"
+    + "  id TEXT PRIMARY KEY,\n"
+    + "  kind TEXT,\n"
+    + "  habit_id TEXT,\n"
+    + "  name TEXT,\n"
+    + "  interval_days TEXT,\n"
+    + "  date TEXT,\n"
+    + "  created_at TEXT\n"
+    + ")";
+const DEMO_HABIT_COLUMNS = ["id", "kind", "habit_id", "name", "interval_days", "date", "created_at"];
+
+// Local date helpers so the seeded tasks/habits stay relative to the seeding
+// moment (the demo is re-seeded at least daily, so drift stays small).
+function demoDate(daysFromToday: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromToday);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const DEMO_TASK_ROWS: Record<string, string>[] = [
+    {
+        id: "demo-task-overdue",
+        title: "Reply to the design review",
+        status: "open",
+        priority: "high",
+        due_at: demoDate(-1),
+        repeat_days: "",
+        created_at: `${demoDate(-3)}T09:00:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-today",
+        title: "Prepare tomorrow's standup notes",
+        status: "open",
+        priority: "medium",
+        due_at: demoDate(0),
+        repeat_days: "",
+        created_at: `${demoDate(-1)}T18:30:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-recurring",
+        title: "Water the plants",
+        status: "open",
+        priority: "low",
+        due_at: `${demoDate(1)}T09:00`,
+        repeat_days: "3",
+        created_at: `${demoDate(-2)}T08:00:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-upcoming",
+        title: "Book dentist appointment",
+        status: "open",
+        priority: "medium",
+        due_at: demoDate(4),
+        repeat_days: "",
+        created_at: `${demoDate(-1)}T12:00:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-done",
+        title: "Send the weekly report",
+        status: "done",
+        priority: "high",
+        due_at: demoDate(-1),
+        repeat_days: "",
+        created_at: `${demoDate(-2)}T10:00:00`,
+        completed_at: `${demoDate(-1)}T16:45:00`,
+    },
+];
+
+const DEMO_HABIT_ROWS: Record<string, string>[] = [
+    {
+        id: "demo-habit-stretch",
+        kind: "habit",
+        habit_id: "",
+        name: "Morning stretch",
+        interval_days: "1",
+        date: "",
+        created_at: `${demoDate(-6)}T07:00:00`,
+    },
+    {
+        id: "demo-habit-review",
+        kind: "habit",
+        habit_id: "",
+        name: "Weekly review",
+        interval_days: "7",
+        date: "",
+        created_at: `${demoDate(-6)}T07:00:00`,
+    },
+    // A three-day streak ending yesterday: check today's cell to extend it.
+    ...[-3, -2, -1].map((offset) => ({
+        id: `demo-habit-stretch-log${offset}`,
+        kind: "log",
+        habit_id: "demo-habit-stretch",
+        name: "",
+        interval_days: "",
+        date: demoDate(offset),
+        created_at: `${demoDate(offset)}T07:10:00`,
+    })),
+    {
+        id: "demo-habit-review-log",
+        kind: "log",
+        habit_id: "demo-habit-review",
+        name: "",
+        interval_days: "",
+        date: demoDate(-5),
+        created_at: `${demoDate(-5)}T19:00:00`,
+    },
+];
+
 export const demoPages: DemoPageTemplate[] = [
     {
         title: DEMO_LANDING_PAGE_TITLE,
@@ -85,6 +218,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Comments and Votes]: discussing and voting on items, with live seeded threads and votes.",
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
             "  [Advanced Features]: live charts, SQL tables, aliases, and attachments.",
+            "  [Tasks and Habits]: SQL-backed task management and habit tracking.",
             "Give it a try! Everything in this project is editable.",
         ],
     },
@@ -245,6 +379,39 @@ export const demoPages: DemoPageTemplate[] = [
             { text: "[[2026-07-12]] Date tagged item for the schedule view" },
         ],
     },
+    {
+        title: "Tasks and Habits",
+        items: [
+            {
+                text:
+                    "Practical task management and habit tracking, built on the SQL table feature. The items below are live components.",
+            },
+            {
+                text:
+                    "Task manager: add tasks with due dates, priorities and repeat intervals. Completing a repeating task schedules the next occurrence automatically.",
+                componentType: "tasks",
+                tableSchema: DEMO_TASK_TABLE_DDL,
+                tableColumns: DEMO_TASK_COLUMNS,
+                tableRows: DEMO_TASK_ROWS,
+            },
+            {
+                text:
+                    "Habit tracker: check off each day in the grid and watch your streak grow. Each habit has its own repeat interval.",
+                componentType: "habits",
+                tableSchema: DEMO_HABIT_TABLE_DDL,
+                tableColumns: DEMO_HABIT_COLUMNS,
+                tableRows: DEMO_HABIT_ROWS,
+            },
+            {
+                text:
+                    "The Today, Upcoming, Overdue and Completed views — and the habit streaks — are computed with real SQL (SQLite) over the collaborative table rows.",
+            },
+            {
+                text:
+                    "Every task records its registration time, and completed tasks keep their completion timestamp.",
+            },
+        ],
+    },
 ];
 
 // Populate an existing, empty project with the demo template pages.
@@ -298,6 +465,10 @@ function addDemoItems(
         if (def.componentType) node.componentType = def.componentType;
         if (def.chartQuery !== undefined) node.chartQuery = def.chartQuery;
         if (def.tableSchema !== undefined) node.tableSchema = def.tableSchema;
+        if (def.tableColumns !== undefined) node.tableColumns = def.tableColumns;
+        if (def.tableRows) {
+            for (const row of def.tableRows) node.addTableRow(row);
+        }
         if (def.votes) {
             for (const voter of def.votes) node.toggleVote(voter);
         }

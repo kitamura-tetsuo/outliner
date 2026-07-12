@@ -2,9 +2,11 @@
 import type { Item } from "../schema/app-schema";
 import ChartPanel from "./ChartPanel.svelte";
 import ChartQueryEditor from "./ChartQueryEditor.svelte";
+import HabitTracker from "./HabitTracker.svelte";
 import InlineJoinTable from "./InlineJoinTable.svelte";
 import SqlBlock from "./SqlBlock.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
+import TaskManager from "./TaskManager.svelte";
 
 interface Props {
     componentType: string | undefined;
@@ -30,6 +32,14 @@ let { componentType, item }: Props = $props();
 {:else if componentType === "sql"}
     <div class="component-wrapper">
         <SqlBlock item={item} />
+    </div>
+{:else if componentType === "tasks"}
+    <div class="component-wrapper">
+        <TaskManager item={item} />
+    </div>
+{:else if componentType === "habits"}
+    <div class="component-wrapper">
+        <HabitTracker item={item} />
     </div>
 {/if}
 

@@ -16,7 +16,14 @@ export type ItemValueType =
     | Y.Text
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>
+    | Y.Array<Y.Map<RowValueType>>
     | undefined;
+
+/**
+ * Type for a single editable cell value in a SQL-defined table row.
+ * Cells are stored as strings and coerced for display/persistence.
+ */
+export type RowValueType = string;
 
 /**
  * Type for the value stored in a Y.Map representing a Comment

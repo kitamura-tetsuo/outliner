@@ -3,7 +3,13 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+import type {
+    CommentValueType,
+    ItemValueType,
+    PlainItemData,
+    RowValueType,
+    YDocOptions,
+} from "../types/yjs-types.js";
 
 export type Comment = {
     id: string;
@@ -186,6 +192,52 @@ export class Item {
     set chartQuery(v: string | undefined) {
         this.value.set("chartQuery", v);
         this.value.set("lastChanged", Date.now());
+    }
+
+    // Column names of the item-embedded table, cached as JSON (matches the
+    // client-side schema so seeded tables render in the grid components).
+    get tableColumns(): string[] {
+        const raw = this.value.get("tableColumns") as string | undefined;
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? (parsed as string[]) : [];
+        } catch {
+            return [];
+        }
+    }
+    set tableColumns(v: string[]) {
+        this.value.set("tableColumns", JSON.stringify(v ?? []));
+        this.value.set("lastChanged", Date.now());
+    }
+
+    /** Append a row (cell values keyed by column name) to the item-embedded table. */
+    addTableRow(values: Record<string, string>): void {
+        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<RowValueType>>();
+            this.value.set("tableRows", arr);
+        }
+        const row = new Y.Map<RowValueType>();
+        for (const [key, value] of Object.entries(values)) {
+            row.set(key, value);
+        }
+        arr.push([row]);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    /** Plain snapshot of the item-embedded table rows keyed by column name. */
+    tableRowsToPlain(columns: string[]): Record<string, string>[] {
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) return [];
+        return arr.toArray().map((row) => {
+            const obj: Record<string, string> = {};
+            for (const col of columns) {
+                const v = row.get(col);
+                obj[col] = v === undefined || v === null ? "" : String(v);
+            }
+            return obj;
+        });
     }
 
     // alias target id stored in Y.Map
