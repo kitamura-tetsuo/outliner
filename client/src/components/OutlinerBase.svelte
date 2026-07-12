@@ -36,6 +36,22 @@ const logger = getLogger("OutlinerBase");
 
     // Fallback: if pageItem is not yet provided, ensure a minimal page from global store
     // Automatically adopt currentPage from the global store while props.pageItem is missing
+    let isServerResetting = $state(false);
+
+    $effect(() => {
+        if (!effectivePageItem) return;
+        const currentDoc = effectivePageItem.ydoc;
+        if (!currentDoc) return;
+        const meta = currentDoc.getMap("metadata");
+
+        const updateResetting = () => {
+            isServerResetting = !!meta.get("isResetting");
+        };
+        updateResetting();
+        meta.observe(updateResetting);
+        return () => meta.unobserve(updateResetting);
+    });
+
     let effectivePageItem: Item | undefined = $derived.by(() => {
         const byProp = pageItem as Item | undefined;
         if (byProp) return byProp;
@@ -86,7 +102,7 @@ const logger = getLogger("OutlinerBase");
                 pageItem={effectivePageItem}
                 {projectName}
                 {pageName}
-                {isReadOnly}
+                isReadOnly={isReadOnly || isServerResetting}
                 {onEdit}
             />
         {/key}
