@@ -52,6 +52,7 @@ function applyPresenceToOverlay(
     user: { userId: string; name?: string; color?: string; },
     presence:
         | {
+            pageId?: string;
             cursor?: { itemId: string; offset: number; };
             selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
         }
@@ -59,6 +60,18 @@ function applyPresenceToOverlay(
         | undefined,
 ) {
     if (!overlay || !user) return;
+
+    // Filter out presence that belongs to a different page
+    const currentPage = (window as Window & typeof globalThis & {
+        appStore?: { currentPage?: { id?: string; }; };
+    }).appStore?.currentPage;
+
+    if (presence?.pageId && currentPage?.id && presence.pageId !== currentPage.id) {
+        // If presence exists but is for a different page, clear it for the user on this page
+        overlay.clearCursorAndSelection(user.userId, false);
+        return;
+    }
+
     const color = resolveUserColor(user.userId, user.color);
     if (presence?.cursor) {
         overlay.setCursor({
