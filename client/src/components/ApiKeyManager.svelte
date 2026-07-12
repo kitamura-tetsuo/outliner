@@ -102,7 +102,7 @@
         <button type="button"
             onclick={handleCreateKey}
             disabled={isGenerating || !newKeyDescription.trim()}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            class="text-white font-medium py-2 px-4 rounded {isGenerating || !newKeyDescription.trim() ? 'bg-blue-600 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}"
         >
             {isGenerating ? 'Generating...' : 'Generate New Key'}
         </button>

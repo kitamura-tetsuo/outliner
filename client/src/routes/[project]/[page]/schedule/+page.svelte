@@ -614,7 +614,7 @@ function toLocalISOString(timestamp: number): string {
         <a href={resolvePath(`/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`)} class="ml-2 px-2 py-1 bg-gray-300 rounded inline-block" style="text-decoration:none; color:black">Back</a>
         <button type="button"
             onclick={downloadIcs}
-            class="ml-2 px-2 py-1 bg-green-700 text-white rounded disabled:opacity-60"
+            class="ml-2 px-2 py-1 text-white rounded {isDownloading ? 'bg-green-700 opacity-60 cursor-not-allowed' : 'bg-green-700 hover:bg-green-800'}"
             disabled={isDownloading}
             data-testid="download-ics"
         >

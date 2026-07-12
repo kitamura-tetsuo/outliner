@@ -299,7 +299,7 @@ $effect(() => {
             Add Snapshot
         </button>
         <button type="button"
-            class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            class="px-4 py-2 rounded transition-colors text-sm font-medium {!selectedId ? 'bg-blue-500 text-white opacity-50 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}"
             onclick={revert}
             disabled={!selectedId}
             aria-disabled={!selectedId}

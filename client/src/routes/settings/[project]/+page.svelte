@@ -203,7 +203,7 @@
                 <button type="button"
                     onclick={saveTitle}
                     disabled={isSaving || !newTitle.trim()}
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    class="px-4 py-2 text-white rounded flex items-center {isSaving || !newTitle.trim() ? 'bg-blue-600 opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}"
                 >
                     {#if isSaving}
                         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -227,7 +227,7 @@
                 <button type="button"
                     onclick={generateInvitationLink}
                     disabled={isGeneratingLink}
-                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center mb-4"
+                    class="px-4 py-2 text-white rounded flex items-center mb-4 {isGeneratingLink ? 'bg-green-600 opacity-50 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}"
                 >
                     {#if isGeneratingLink}
                         <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
