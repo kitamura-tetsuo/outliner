@@ -58,7 +58,7 @@
     });
 
     let currentProjectName = $derived(
-        $pageStore.params.project || store.project?.title || "Untitled Project",
+        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
     );
 
     function navigateToTable(pageName: string) {
