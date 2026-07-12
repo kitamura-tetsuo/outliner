@@ -31,6 +31,7 @@ vi.mock("../../services", async (importOriginal) => {
 
 vi.mock("../../schema/app-schema", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../../schema/app-schema")>();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const Y = await import("yjs");
     return {
         ...actual,
