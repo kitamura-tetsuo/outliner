@@ -193,6 +193,7 @@ export const yjsService = {
     },
 
     bindProjectPresence(awareness: Awareness) {
+        const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
             const target = resolvePresenceStore();
@@ -205,6 +206,7 @@ export const yjsService = {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
+                clientUserMap.set(id, user);
                 const color = resolveUserColor(user.userId, user.color);
                 // Update synchronously because tests expect immediate reflection.
                 target.setUser({ userId: user.userId, userName: user.name, color });
@@ -215,9 +217,9 @@ export const yjsService = {
             });
 
             removed.forEach((id: number) => {
-                const s = states.get(id);
-                const user = s?.user;
+                const user = clientUserMap.get(id);
                 if (!user) return;
+                clientUserMap.delete(id);
                 target.removeUser(user.userId);
 
                 if (overlay && id !== clientId) {
@@ -231,6 +233,7 @@ export const yjsService = {
     },
 
     bindPagePresence(awareness: Awareness) {
+        const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             const overlay = resolveOverlayStore();
             if (!overlay) return; // no-op when overlay store not present
@@ -241,14 +244,15 @@ export const yjsService = {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
+                clientUserMap.set(id, user);
                 if (id === clientId) return;
                 applyPresenceToOverlay(overlay, user, s?.presence);
             });
 
             removed.forEach((id: number) => {
-                const s = states.get(id);
-                const user = s?.user;
+                const user = clientUserMap.get(id);
                 if (!user) return;
+                clientUserMap.delete(id);
                 if (id === clientId) return;
                 applyPresenceToOverlay(overlay, user, null);
             });
