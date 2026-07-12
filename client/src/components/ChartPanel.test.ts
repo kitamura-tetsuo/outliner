@@ -30,7 +30,7 @@ describe("ChartPanel", () => {
             setOption: mockSetOption,
             dispose: vi.fn(),
             clear: vi.fn(),
-        } as any);
+        } as unknown as echarts.ECharts);
 
         const mockResult = {
             columnsMeta: [
@@ -45,7 +45,7 @@ describe("ChartPanel", () => {
             ],
         };
 
-        vi.mocked(sqlService.runQuery).mockReturnValue(mockResult as any);
+        vi.mocked(sqlService.runQuery).mockReturnValue(mockResult as unknown as ReturnType<typeof sqlService.runQuery>);
 
         const item = new Item({ text: "chart" });
         item.chartQuery = "SELECT month AS sales_month, revenue AS sales_revenue FROM sales";
