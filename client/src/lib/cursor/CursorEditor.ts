@@ -67,8 +67,12 @@ export class CursorEditor {
 
             const updatedNode = cursor.findTarget();
             if (!updatedNode) return;
-            const updatedText = updatedNode.text?.toString?.() ?? "";
-            updatedNode.updateText(updatedText.slice(0, cursor.offset) + ch + updatedText.slice(cursor.offset));
+            if (typeof updatedNode.insertTextAt === 'function') {
+                if (ch) updatedNode.insertTextAt(cursor.offset, ch);
+            } else {
+                const updatedText = updatedNode.text?.toString?.() ?? "";
+                updatedNode.updateText(updatedText.slice(0, cursor.offset) + ch + updatedText.slice(cursor.offset));
+            }
             cursor.offset += ch.length;
             cursor.applyToStore();
             store.triggerOnEdit();
@@ -83,14 +87,23 @@ export class CursorEditor {
 
         if (selection && selection.startOffset !== selection.endOffset) {
             const { startOffset, endOffset } = selection;
-            const txt = currentText.slice(0, startOffset) + ch + currentText.slice(endOffset);
-            node.updateText(txt);
+            if (typeof node.deleteTextAt === 'function' && typeof node.insertTextAt === 'function') {
+                node.deleteTextAt(startOffset, endOffset - startOffset);
+                if (ch) node.insertTextAt(startOffset, ch);
+            } else {
+                const txt = currentText.slice(0, startOffset) + ch + currentText.slice(endOffset);
+                node.updateText(txt);
+            }
 
             cursor.offset = startOffset + ch.length;
             cursor.clearSelection();
         } else {
-            const txt = currentText.slice(0, cursor.offset) + ch + currentText.slice(cursor.offset);
-            node.updateText(txt);
+            if (typeof node.insertTextAt === 'function') {
+                if (ch) node.insertTextAt(cursor.offset, ch);
+            } else {
+                const txt = currentText.slice(0, cursor.offset) + ch + currentText.slice(cursor.offset);
+                node.updateText(txt);
+            }
             cursor.offset += ch.length;
         }
 
@@ -121,19 +134,27 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                let txt = node.text?.toString?.() ?? "";
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                if (typeof node.deleteTextAt === 'function') {
+                    node.deleteTextAt(startOffset, endOffset - startOffset);
+                } else {
+                    let txt = node.text?.toString?.() ?? "";
+                    txt = txt.slice(0, startOffset) + txt.slice(endOffset);
+                    node.updateText(txt);
+                }
 
                 cursor.offset = startOffset;
                 cursor.clearSelection();
             }
         } else {
             if (cursor.offset > 0) {
-                let txt = node.text?.toString?.() ?? "";
                 const pos = cursor.offset - 1;
-                txt = txt.slice(0, pos) + txt.slice(pos + 1);
-                node.updateText(txt);
+                if (typeof node.deleteTextAt === 'function') {
+                    node.deleteTextAt(pos, 1);
+                } else {
+                    let txt = node.text?.toString?.() ?? "";
+                    txt = txt.slice(0, pos) + txt.slice(pos + 1);
+                    node.updateText(txt);
+                }
                 cursor.offset = Math.max(0, cursor.offset - 1);
             } else {
                 this.mergeWithPreviousItem();
@@ -171,9 +192,13 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                let txt = node.text?.toString?.() ?? "";
-                txt = txt.slice(0, startOffset) + txt.slice(endOffset);
-                node.updateText(txt);
+                if (typeof node.deleteTextAt === 'function') {
+                    node.deleteTextAt(startOffset, endOffset - startOffset);
+                } else {
+                    let txt = node.text?.toString?.() ?? "";
+                    txt = txt.slice(0, startOffset) + txt.slice(endOffset);
+                    node.updateText(txt);
+                }
 
                 cursor.offset = startOffset;
                 cursor.clearSelection();
@@ -181,8 +206,12 @@ export class CursorEditor {
         } else {
             let txt = node.text?.toString?.() ?? "";
             if (cursor.offset < txt.length) {
-                txt = txt.slice(0, cursor.offset) + txt.slice(cursor.offset + 1);
-                node.updateText(txt);
+                if (typeof node.deleteTextAt === 'function') {
+                    node.deleteTextAt(cursor.offset, 1);
+                } else {
+                    txt = txt.slice(0, cursor.offset) + txt.slice(cursor.offset + 1);
+                    node.updateText(txt);
+                }
             } else {
                 if (txt.length === 0) {
                     this.deleteEmptyItem();
