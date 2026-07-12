@@ -37,9 +37,9 @@ let isDatabaseSidebarOpen = $state(false);
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser) {
     window.generalStore =
-        window.generalStore || appStore;
+        window?.generalStore || appStore;
     window.appStore =
-        window.appStore || appStore;
+        window?.appStore || appStore;
 }
 
 

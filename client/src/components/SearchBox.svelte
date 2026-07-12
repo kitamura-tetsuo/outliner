@@ -26,7 +26,7 @@ const logger = getLogger("SearchBox");
         if (typeof window !== "undefined") {
             const cur = window.__CURRENT_PROJECT__;
             if (cur) return cur;
-            const gs = typeof window !== 'undefined' ? (window.appStore || window.generalStore) : undefined;
+            const gs = typeof window !== 'undefined' ? (window?.appStore || window?.generalStore) : undefined;
             if (gs?.project) return gs.project;
             const parts = window.location.pathname.split("/").filter(Boolean);
             void parts[0]; // Previously projectTitle
@@ -87,10 +87,10 @@ const logger = getLogger("SearchBox");
                 () => effectiveProject?.items,
                 // Fallback 2: projectToUse.items
                 () => projectToUse?.items,
-                // Fallback 3: (window.appStore || window.generalStore).project.items
+                // Fallback 3: (window?.appStore || window?.generalStore).project.items
                 () =>
                     typeof window !== "undefined"
-                        ? (window.appStore || window.generalStore)?.project?.items
+                        ? (window?.appStore || window?.generalStore)?.project?.items
                         : undefined,
             ];
 
