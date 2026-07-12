@@ -26,6 +26,7 @@
         projectName?: string;
         pageName?: string;
         isReadOnly?: boolean;
+        isEmbedded?: boolean;
         onEdit?: () => void;
     }
 
@@ -34,6 +35,7 @@
         projectName = "",
         pageName = "",
         isReadOnly = false,
+        isEmbedded = false,
         onEdit,
     }: Props = $props();
 
@@ -343,7 +345,7 @@
         const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
 
         for (const file of files) {
-            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
+            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, !!isTestEnv);
         }
 
         if (target) {
@@ -1908,7 +1910,7 @@
             const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__);
 
             for (const file of files) {
-                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv);
+                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, !!isTestEnv);
             }
             __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
         } else {
@@ -1986,13 +1988,15 @@
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
-        <OutlinerToolbar
-            mode="desktop"
-            {projectName}
-            {pageName}
-            onAddItem={handleAddItem}
-            onFileSelect={handleFileSelect}
-        />
+        {#if !isEmbedded}
+            <OutlinerToolbar
+                mode="desktop"
+                {projectName}
+                {pageName}
+                onAddItem={handleAddItem}
+                onFileSelect={handleFileSelect}
+            />
+        {/if}
 
         <div
             class="tree-container"
@@ -2004,7 +2008,7 @@
         >
             <!-- Flat display items (static placement) -->
             <div class="tree-items-wrapper">
-                {#if displayItems.length > 0}
+                {#if displayItems.length > 0 && !isEmbedded}
                     <!-- Page Title (index 0) is rendered outside the tree role to prevent aria-required-children violations -->
                     <div
                         class="item-container"
@@ -2071,7 +2075,7 @@
                 {/if}
             </div>
 
-            {#if displayItems.length <= 1 && !isReadOnly}
+            {#if displayItems.length <= 1 && !isReadOnly && !isEmbedded}
                 <div class="empty-state">
                     <div class="empty-icon" aria-hidden="true">
                          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2117,6 +2121,7 @@
     </div>
 {/key}
 
+{#if !isEmbedded}
 <OutlinerToolbar
     mode="mobile"
     {mobileToolbarBottomOffset}
@@ -2127,6 +2132,7 @@
     onNewChild={handleMobileNewChild}
     onInsertSiblingBelow={handleMobileInsertSiblingBelow}
 />
+{/if}
 
 <style>
     .outliner {
