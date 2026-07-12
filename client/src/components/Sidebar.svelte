@@ -7,8 +7,16 @@
 
 
     import { page as pageStore } from "$app/stores";
+    import { authStore } from "../stores/authStore.svelte";
+
 
     let { isOpen = $bindable(true) } = $props();
+
+    // Determine if we should show dev tools
+    const isDevEnv = import.meta.env.DEV ||
+                     import.meta.env.MODE === "test" ||
+                     (typeof window !== 'undefined' && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+
 
     // Collapsible state for Projects section
     let isProjectsCollapsed = $state(false);
@@ -56,9 +64,7 @@
 <aside class="sidebar" class:open={isOpen} aria-label="Main Sidebar">
     <div class="sidebar-content">
         <h2 class="sidebar-title">Sidebar</h2>
-        <p class="sidebar-description">
-            This is a placeholder sidebar component.
-        </p>
+
 
         <!-- Projects section -->
         <div class="sidebar-section">
@@ -92,7 +98,9 @@
 
             {#if !isProjectsCollapsed}
                 <ul id="sidebar-projects-list" class="project-list">
-                    {#if projectStore.projects.length === 0}
+                    {#if !authStore.isAuthenticated}
+                        <li class="sidebar-placeholder">Sign in to see your projects</li>
+                    {:else if projectStore.projects.length === 0}
                         <li class="sidebar-placeholder">No projects available</li>
                     {:else}
                         {#each projectStore.projects as project (project.id)}
@@ -275,6 +283,7 @@
                     <span class="settings-text">GitHub</span>
                 </span>
             </a>
+            {#if isDevEnv}
             <a
                 class="settings-link"
                 href="https://jules.google.com/repo/github/kitamura-tetsuo/outliner/overview"
@@ -303,6 +312,7 @@
                     <span class="settings-text">Jules</span>
                 </span>
             </a>
+            {/if}
         </div>
     </div>
 </aside>
@@ -340,12 +350,6 @@
         font-weight: bold;
         margin-bottom: 1rem;
         color: #1f2937;
-    }
-
-    .sidebar-description {
-        color: #6b7280;
-        margin-bottom: 2rem;
-        font-size: 0.875rem;
     }
 
     .sidebar-section {
@@ -604,10 +608,6 @@
 
     :global(html.dark) .sidebar-title {
         color: #f9fafb;
-    }
-
-    :global(html.dark) .sidebar-description {
-        color: #9ca3af;
     }
 
     :global(html.dark) .sidebar-section-title {
