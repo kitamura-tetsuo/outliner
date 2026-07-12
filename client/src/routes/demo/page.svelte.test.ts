@@ -10,23 +10,45 @@ vi.mock("../../lib/demoSeed", () => ({
     DEMO_PROJECT_NAME: "demo",
 }));
 
-vi.mock("../../services", () => ({
-    getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
-        getProject: () => ({
-            ydoc: {
-                getMap: vi.fn().mockReturnValue({ observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() }),
+vi.mock("../../services", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../../services")>();
+    const Y = await import("yjs");
+    return {
+        ...actual,
+        getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
+            getProject: () => {
+                const doc = new Y.Doc();
+                doc.getMap("metadata").set("title", "demo");
+                return {
+                    ydoc: doc,
+                };
             },
+            dispose: vi.fn(),
         }),
-        dispose: vi.fn(),
-    }),
-    removeYjsClientByProjectId: vi.fn(),
-}));
+        removeYjsClientByProjectId: vi.fn(),
+    };
+});
 
-vi.mock("../../schema/app-schema", () => ({
-    Project: {
-        fromDoc: vi.fn().mockReturnValue({}),
-    },
-}));
+vi.mock("../../schema/app-schema", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../../schema/app-schema")>();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const Y = await import("yjs");
+    return {
+        ...actual,
+        Project: {
+            fromDoc: vi.fn().mockImplementation((ydoc) => {
+                // Return a basic mock project using the provided ydoc, rather than
+                // creating a completely new Y.Doc, so it matches the instance in the client
+                return {
+                    ydoc,
+                    addPage: vi.fn(),
+                    items: { find: vi.fn() },
+                };
+            }),
+            createInstance: actual.Project.createInstance,
+        },
+    };
+});
 
 describe("Demo Page Reset Button", () => {
     beforeEach(() => {
