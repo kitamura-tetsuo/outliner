@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/svelte";
-import DemoPage from "./+page.svelte";
+import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "../../stores/store.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
+import DemoPage from "./+page.svelte";
 
 // Mock dependencies
 vi.mock("../../lib/demoSeed", () => ({
@@ -14,10 +14,10 @@ vi.mock("../../services", () => ({
     getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
         getProject: () => ({
             ydoc: {
-                getMap: vi.fn().mockReturnValue({ observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() })
-            }
+                getMap: vi.fn().mockReturnValue({ observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() }),
+            },
         }),
-        dispose: vi.fn()
+        dispose: vi.fn(),
     }),
     removeYjsClientByProjectId: vi.fn(),
 }));
@@ -25,7 +25,7 @@ vi.mock("../../services", () => ({
 vi.mock("../../schema/app-schema", () => ({
     Project: {
         fromDoc: vi.fn().mockReturnValue({}),
-    }
+    },
 }));
 
 describe("Demo Page Reset Button", () => {
