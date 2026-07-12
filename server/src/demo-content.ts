@@ -222,6 +222,7 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "SQL Tables: this item renders an editable, query-backed table grid.",
                 componentType: "table",
+                chartQuery: DEMO_CHART_QUERY,
             },
             { text: "Aliases: an item can mirror another item and stay in sync with the original." },
             {

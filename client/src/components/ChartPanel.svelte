@@ -54,7 +54,7 @@ async function runItemQuery() {
     if (item && item.chartQuery && isInitialized) {
         try {
             await initDb();
-            const result = runQuery(item.chartQuery, true);
+            const result = runQuery(item.chartQuery, true, true);
             if (result) update(result as QueryResult);
         } catch (error) {
               logger.error({ error }, "Error running item query");

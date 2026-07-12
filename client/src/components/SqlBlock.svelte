@@ -52,7 +52,7 @@ function toggleEditor() {
 
     <div class="sql-content-container">
         {#if viewMode === "grid"}
-            <EditableQueryGrid />
+            <EditableQueryGrid {item} />
         {:else}
             <ChartPanel {item} />
         {/if}

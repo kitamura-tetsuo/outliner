@@ -1,11 +1,18 @@
 <script lang="ts">
 import EditableQueryGrid from "./EditableQueryGrid.svelte";
-import QueryEditor from "./QueryEditor.svelte";
+import ChartQueryEditor from "./ChartQueryEditor.svelte";
+import type { Item } from "../schema/app-schema";
+
+interface Props {
+    item: Item;
+}
+
+let { item }: Props = $props();
 </script>
 
 <div class="inline-join-table">
-    <QueryEditor />
-    <EditableQueryGrid />
+    <ChartQueryEditor {item} />
+    <EditableQueryGrid {item} />
 </div>
 
 <style>

@@ -1,32 +1,71 @@
 <script lang="ts">
 import { mapEdit } from "../services/editMapper";
-import { applyEdit, queryStore } from "../services/sqlService";
+import { applyEdit, queryStore, dbChangeStore, runQuery, initDb } from "../services/sqlService";
 import { onDestroy, onMount, tick } from "svelte";
 import type { QueryResult } from "../services/sqlService";
+import type { Item } from "../schema/app-schema";
+
+interface Props {
+    item?: Item;
+}
+let { item }: Props = $props();
 
 let data = $state<QueryResult>({ rows: [], columnsMeta: [] });
+let isInitialized = $state(false);
 let editingCell = $state<{ rowIndex: number; columnKey: string; } | null>(null);
 let draggedColumnIndex = $state<number | null>(null);
 let draggedRowIndex = $state<number | null>(null);
 
 // Manage Svelte 5 subscriptions explicitly with onMount/onDestroy
 let __unsubscribe: (() => void) | null = null;
+let __dbChangeUnsubscribe: (() => void) | null = null;
 onMount(() => {
-    try {
-        __unsubscribe = queryStore.subscribe(v => { data = v; });
-    } catch {}
+    if (item) {
+        initDb().then(() => {
+            isInitialized = true;
+            if (item.chartQuery) {
+                const result = runQuery(item.chartQuery, true, true);
+                if (result) data = result as QueryResult;
+            }
+            __dbChangeUnsubscribe = dbChangeStore.subscribe(() => {
+                if (isInitialized && item.chartQuery) {
+                    const result = runQuery(item.chartQuery, true, true);
+                    if (result) data = result as QueryResult;
+                }
+            });
+        }).catch(() => {});
+    } else {
+        try {
+            __unsubscribe = queryStore.subscribe(v => { data = v; });
+        } catch {}
+    }
 });
-onDestroy(() => { try { __unsubscribe?.(); } catch {} });
+onDestroy(() => {
+    try { __unsubscribe?.(); } catch {}
+    try { __dbChangeUnsubscribe?.(); } catch {}
+});
+
+// Run the query when the item changes
+$effect(() => {
+    if (item && item.chartQuery && isInitialized) {
+        try {
+            const result = runQuery(item.chartQuery, true, true);
+            if (result) data = result as QueryResult;
+        } catch {}
+    }
+});
 
 async function handleCellEdit(rowIndex: number, columnKey: string, newValue: unknown) {
     const row = data.rows[rowIndex];
     const info = mapEdit(data.columnsMeta, row, columnKey);
     if (info) {
         row[columnKey] = newValue;
-        queryStore.update(q => {
-            q.rows[rowIndex][columnKey] = newValue;
-            return q;
-        });
+        if (!item) {
+            queryStore.update(q => {
+                q.rows[rowIndex][columnKey] = newValue;
+                return q;
+            });
+        }
         applyEdit(info, newValue);
     }
     editingCell = null;
@@ -47,11 +86,13 @@ function addColumn(index: number) {
     const newName = `col${data.columnsMeta.length + 1}`;
     data.columnsMeta.splice(index + 1, 0, { name: newName });
     data.rows.forEach(r => (r[newName] = ""));
-    queryStore.update(q => {
-        q.columnsMeta = data.columnsMeta;
-        q.rows = data.rows;
-        return q;
-    });
+    if (!item) {
+        queryStore.update(q => {
+            q.columnsMeta = data.columnsMeta;
+            q.rows = data.rows;
+            return q;
+        });
+    }
 }
 
 function handleColumnDragStart(e: DragEvent, index: number) {
@@ -65,10 +106,12 @@ function handleColumnDrop(e: DragEvent, index: number) {
     const [moved] = data.columnsMeta.splice(draggedColumnIndex, 1);
     data.columnsMeta.splice(index, 0, moved);
     draggedColumnIndex = null;
-    queryStore.update(q => {
-        q.columnsMeta = data.columnsMeta;
-        return q;
-    });
+    if (!item) {
+        queryStore.update(q => {
+            q.columnsMeta = data.columnsMeta;
+            return q;
+        });
+    }
 }
 
 function handleColumnDragOver(e: DragEvent) {
@@ -86,10 +129,12 @@ function handleRowDrop(e: DragEvent, index: number) {
     const [row] = data.rows.splice(draggedRowIndex, 1);
     data.rows.splice(index, 0, row);
     draggedRowIndex = null;
-    queryStore.update(q => {
-        q.rows = data.rows;
-        return q;
-    });
+    if (!item) {
+        queryStore.update(q => {
+            q.rows = data.rows;
+            return q;
+        });
+    }
 }
 
 function handleRowDragOver(e: DragEvent) {

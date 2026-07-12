@@ -180,7 +180,7 @@ function extendQuery(
     return { sql: modified, aliases, tableMap, pkAliasMap };
 }
 
-export function runQuery(sql: string, allowMutation = false): QueryResult | void {
+export function runQuery(sql: string, allowMutation = false, isLocal = false): QueryResult | void {
     if (!db) throw new Error("DB not initialized");
 
     const strippedSql = sql
@@ -198,8 +198,11 @@ export function runQuery(sql: string, allowMutation = false): QueryResult | void
     }
 
     const { sql: extended, tableMap, pkAliasMap } = extendQuery(sql);
-    const idx = extended.toUpperCase().lastIndexOf("SELECT");
-    currentSelect = idx >= 0 ? extended.slice(idx) : extended;
+
+    if (!isLocal) {
+        const idx = extended.toUpperCase().lastIndexOf("SELECT");
+        currentSelect = idx >= 0 ? extended.slice(idx) : extended;
+    }
     const results = db.exec(extended);
 
     // Find the last result that has columns (likely the SELECT statement)
@@ -219,7 +222,9 @@ export function runQuery(sql: string, allowMutation = false): QueryResult | void
     }
 
     if (!res) {
-        queryStore.set({ rows: [], columnsMeta: [] });
+        if (!isLocal) {
+            queryStore.set({ rows: [], columnsMeta: [] });
+        }
         return { rows: [], columnsMeta: [] };
     }
 
@@ -250,7 +255,10 @@ export function runQuery(sql: string, allowMutation = false): QueryResult | void
         });
         return obj;
     });
-    queryStore.set({ rows, columnsMeta });
+
+    if (!isLocal) {
+        queryStore.set({ rows, columnsMeta });
+    }
     return { rows, columnsMeta };
 }
 

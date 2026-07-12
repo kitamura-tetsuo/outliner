@@ -19,11 +19,11 @@ onMount(async () => {
         await initDb();
         isInitialized = true;
         dbChangeStore.subscribe(() => {
-            if (item.chartQuery) runQuery(item.chartQuery as string, true);
+            if (item.chartQuery) runQuery(item.chartQuery as string, true, true);
         });
         // If there's already a query, run it
         if (item.chartQuery) {
-            runQuery(item.chartQuery as string, true);
+            runQuery(item.chartQuery as string, true, true);
         }
     } catch (error) {
           logger.error({ error }, "Error initializing database");
@@ -37,7 +37,7 @@ async function run() {
         
         // Run the query
         await initDb();
-        runQuery(sql as string, true);
+        runQuery(sql as string, true, true);
     } catch (error) {
           logger.error({ error }, "Error running query");
     }

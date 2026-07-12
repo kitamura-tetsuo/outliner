@@ -16,7 +16,7 @@ let { componentType, item }: Props = $props();
 
 {#if componentType === "table"}
     <div class="component-wrapper">
-        <InlineJoinTable />
+        <InlineJoinTable {item} />
     </div>
 {:else if componentType === "sqltable"}
     <div class="component-wrapper">
