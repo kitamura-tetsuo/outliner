@@ -49,3 +49,6 @@ export {
 
 // Attachment Service
 export { deleteAttachment, listAttachments, uploadAttachment } from "./attachmentService";
+
+// Attachment Upload
+export { handleFileUploadFromDrop } from "./attachmentUpload";

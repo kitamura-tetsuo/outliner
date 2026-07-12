@@ -52,8 +52,7 @@ try {
 } catch {}
 
 
-import { uploadAttachment } from "../services/attachmentService";
-import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
+import { handleFileUploadFromDrop } from "../services";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 
@@ -515,7 +514,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original, url, IS_TEST);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -1649,108 +1648,19 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
     const dt = hasDataTransfer(event) ? event.dataTransfer : null;
 
-    // File drop (Support both DataTransfer.files and DataTransfer.items(kind=file), or E2E fallback)
-    const hasFileList = !!dt && dt.files && dt.files.length > 0;
-    const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
-    if (hasFileList || hasFileItems) {
-        try {
-            const files: File[] = [];
-            if (hasFileList) {
-                files.push(...Array.from(dt!.files));
-            } else if (hasFileItems) {
-                for (const it of Array.from(dt!.items)) {
-                    if (it.kind === "file") {
-                        const f = it.getAsFile();
-                        if (f) files.push(f);
-                    }
-                }
-            }
-
-            if (files.length > 0) {
-                // Resolve container ID (Priority: FirestoreStore -> localStorage -> Yjs title -> Fallback)
-                let containerId: string | undefined = undefined;
-                try { containerId = await getDefaultContainerId(); } catch {}
-                if (!containerId && typeof window !== "undefined") {
-                    try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                    try { containerId = containerId || window.__CURRENT_PROJECT_TITLE__; } catch {}
-                }
-                containerId = containerId || "test-container";
-
-                for (const file of files) {
-                    try {
-                        const url = await uploadAttachment(containerId, model.id, file);
-                        
-                        if (!dropTargetPosition || dropTargetPosition === "middle") {
-                            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url);
-                        } else {
-                            // Dispatch event for top/bottom insertion
-                            dispatch("drop", {
-                                targetItemId: model.id,
-                                position: dropTargetPosition,
-                                attachmentUrl: url
-                            });
-                        }
-
-                    } catch (e) {
-                        // Fallback with local preview even if upload fails (E2E stabilization)
-                        if (import.meta.env.MODE === 'test' ) {
-                            try {
-                                const localUrl = URL.createObjectURL(file);
-                                if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                    addAttachmentSafely(model.original, localUrl, IS_TEST);
-                                } else {
-                                    dispatch("drop", {
-                                        targetItemId: model.id,
-                                        position: dropTargetPosition,
-                                        attachmentUrl: localUrl
-                                    });
-                                }
-                                // Auxiliary reflection to Doc after connection (via ID map)
-                                try {
-                                    const w = (typeof window !== 'undefined') ? (window as Window & typeof globalThis & { appStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string, addAttachment?: (u: string) => void }, [key: number]: { id?: string, text?: string, addAttachment?: (u: string) => void } } } }, __ITEM_ID_MAP__?: Record<string, string> }) : null;
-                                    const map = w?.__ITEM_ID_MAP__;
-                                    const mappedId = map ? map[String(model.id)] : undefined;
-                                    const curPage = w?.appStore?.currentPage || w?.generalStore?.currentPage;
-                                    if (mappedId && curPage?.items) {
-                                        for (let i = 0; i < (curPage.items.length || 0); i++) {
-                                            const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
-                                            if (cand && String(cand?.id) === String(mappedId)) {
-                                                addAttachmentSafely(cand, localUrl, IS_TEST);
-                                                break;
-                                            }
-                                        }
-                                    }
-                                } catch {}
-                            } catch {}
-                        }
-                        logger.error({ error: e as Error }, "attachment upload failed");
-                    }
-                }
-            } else {
-                // E2E final fallback: Add dummy attachment in test environment if file cannot be obtained from DataTransfer,
-                // to enable UI path (preview display) verification
-                if (import.meta.env.MODE === 'test' ) {
-                    try {
-                        const blob = new Blob(["e2e"], { type: "text/plain" });
-                        const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-
-                    } catch {}
-                }
-            }
-        } finally {
-            dropTargetPosition = null;
-        }
-        return;
-    }
-
-    // E2E final final fallback: Add dummy attachment in test even if DataTransfer is missing/empty
-    if ((import.meta.env.MODE === 'test' ) && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
-        try {
-            const blob = new Blob(["e2e"], { type: "text/plain" });
-            const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-        } catch {}
+    // File drop handling via AttachmentUpload service
+    const fileHandled = await handleFileUploadFromDrop(
+        dt,
+        model.id,
+        dropTargetPosition,
+        import.meta.env.MODE === 'test',
+        dispatch,
+        addAttachmentToDomTargetOrModel,
+        addAttachmentSafely as unknown as (modelOriginal: unknown, url: string, isTest: boolean) => void,
+        model.original,
+        event
+    );
+    if (fileHandled) {
         dropTargetPosition = null;
         return;
     }
