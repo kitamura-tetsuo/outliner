@@ -541,12 +541,9 @@ function handleComponentTypeChange(newType: string) {
 
     const setMapField = (it: unknown , key: string, value: unknown) => {
         try {
-            const anyItem = it as { tree?: { getNodeValueFromKey?: (k: string) => { set?: (k: string, v: unknown) => void } }, key?: string };
-            const tree = anyItem?.tree;
-            const nodeKey = anyItem?.key;
-            const m = nodeKey ? tree?.getNodeValueFromKey?.(nodeKey) : undefined;
+            const m = (it as Item).yMap;
             if (m && typeof m.set === "function") {
-                m.set(key, value);
+                m.set(key, value as import("../types/yjs-types").ItemValueType);
                 if (key !== "lastChanged") m.set("lastChanged", Date.now());
                 return true;
             }
