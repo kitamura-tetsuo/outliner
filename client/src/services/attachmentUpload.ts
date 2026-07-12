@@ -1,8 +1,8 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("AttachmentUpload");
 
-import { uploadAttachment } from "./attachmentService";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
+import { uploadAttachment } from "./attachmentService";
 
 interface DropEventDetail {
     targetItemId?: string;
@@ -22,7 +22,7 @@ export async function handleFileUploadFromDrop(
     addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string) => void,
     addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean) => void,
     modelOriginal: unknown,
-    event: Event | null
+    event: Event | null,
 ): Promise<boolean> {
     const hasFileList = !!dt && dt.files && dt.files.length > 0;
     const hasFileItems = !!dt && dt.items && Array.from(dt.items).some(it => it.kind === "file");
@@ -42,10 +42,16 @@ export async function handleFileUploadFromDrop(
 
         if (files.length > 0) {
             let containerId: string | undefined = undefined;
-            try { containerId = await getDefaultContainerId(); } catch {}
+            try {
+                containerId = await getDefaultContainerId();
+            } catch {}
             if (!containerId && typeof window !== "undefined") {
-                try { containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined; } catch {}
-                try { containerId = containerId || (window as any).__CURRENT_PROJECT_TITLE__; } catch {}
+                try {
+                    containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined;
+                } catch {}
+                try {
+                    containerId = containerId || (window as any).__CURRENT_PROJECT_TITLE__;
+                } catch {}
             }
             containerId = containerId || "test-container";
 
@@ -59,10 +65,9 @@ export async function handleFileUploadFromDrop(
                         dispatch("drop", {
                             targetItemId: modelId,
                             position: dropTargetPosition,
-                            attachmentUrl: url
+                            attachmentUrl: url,
                         });
                     }
-
                 } catch (e) {
                     if (isTestEnv) {
                         try {
@@ -73,11 +78,11 @@ export async function handleFileUploadFromDrop(
                                 dispatch("drop", {
                                     targetItemId: modelId,
                                     position: dropTargetPosition,
-                                    attachmentUrl: localUrl
+                                    attachmentUrl: localUrl,
                                 });
                             }
                             try {
-                                const w = (typeof window !== 'undefined') ? (window as any) : null;
+                                const w = (typeof window !== "undefined") ? (window as any) : null;
                                 const map = w?.__ITEM_ID_MAP__;
                                 const mappedId = map ? map[String(modelId)] : undefined;
                                 const curPage = w?.appStore?.currentPage || w?.generalStore?.currentPage;
@@ -108,7 +113,10 @@ export async function handleFileUploadFromDrop(
         return true;
     }
 
-    if (isTestEnv && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))) {
+    if (
+        isTestEnv
+        && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))
+    ) {
         try {
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
