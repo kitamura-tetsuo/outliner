@@ -13,6 +13,7 @@ const logger = getLogger("GraphView");
     import { getYjsClientByProjectTitle } from "../services";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { page } from "$app/stores";
+    import { get } from "svelte/store";
 
     let graphDiv: HTMLDivElement;
     let chart: echarts.ECharts | undefined;
@@ -228,8 +229,11 @@ const logger = getLogger("GraphView");
                         : "";
                 if (!pageName) return;
 
-                const projectName = store.project?.title;
-                if (projectName) {
+                const pageStore = get(page);
+                const projectName = pageStore.url.pathname.startsWith('/demo') ? "demo" : (pageStore.params.project || store.project?.title);
+                if (projectName === "demo") {
+                    goto(resolvePath(`/demo/${pageName}`));
+                } else if (projectName) {
                     goto(resolvePath(`/${projectName}/${pageName}`));
                 } else {
                     goto(resolvePath(`/${pageName}`));
