@@ -71,10 +71,10 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	                    }
 	                }
 	                if (!project) {
-	                    const pathParts = window.location.pathname.split("/").filter(Boolean);
+	                    const pathParts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
 	                    let projectTitle = "";
 	                    if (pathParts[0]) {
-	                        projectTitle = safeDecodeURIComponent(pathParts[0]);
+	                        projectTitle = pathParts[0];
 	                    }
 	                    const service = globals.__FLUID_SERVICE__;
 	                    if (service && projectTitle) {

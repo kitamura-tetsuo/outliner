@@ -406,9 +406,8 @@ if (typeof window !== "undefined") {
     // This ensures tests and direct navigation work even before Yjs connection is established
     try {
         if (!store.project) {
-            const parts = window.location.pathname.split("/").filter(Boolean);
+            const parts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
             let title = parts[0] || "Untitled Project";
-            title = safeDecodeURIComponent(title);
             const provisional = Project.createInstance(title);
             provisionalDocs.add(provisional.ydoc);
             (store as { project: Project; }).project = provisional;

@@ -28,7 +28,7 @@ const logger = getLogger("SearchBox");
             if (cur) return cur;
             const gs = typeof window !== 'undefined' ? (window?.appStore || window?.generalStore) : undefined;
             if (gs?.project) return gs.project;
-            const parts = window.location.pathname.split("/").filter(Boolean);
+            const parts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
             void parts[0]; // Previously projectTitle
             void window.__YJS_SERVICE__; // Previously service
             void window.__YJS_STORE__; // Previously yjsStoreRef
@@ -265,9 +265,10 @@ const logger = getLogger("SearchBox");
                 if (!projTitle) {
                     const pathParts = window.location.pathname
                         .split("/")
-                        .filter(Boolean);
+                        .filter(Boolean)
+                        .map(safeDecodeURIComponent);
                     if (pathParts[0]) {
-                        projTitle = safeDecodeURIComponent(pathParts[0]);
+                        projTitle = pathParts[0];
                     } else {
                         projTitle = "";
                     }
