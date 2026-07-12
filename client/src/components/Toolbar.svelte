@@ -128,7 +128,8 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     border-bottom: 1px solid #e5e7eb;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     padding: 0.75rem 1rem;
-    height: 4rem; /* Set explicit height */
+    min-height: 4rem;
+    height: auto; /* Replace explicit height for mobile wrap */
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: auto;
