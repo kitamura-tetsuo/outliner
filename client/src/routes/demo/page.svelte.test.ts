@@ -34,10 +34,12 @@ describe("Demo Page Reset Button", () => {
         vi.clearAllMocks();
 
         // Reset stores to default states
-        (store as any).project = undefined;
-        (store as any).currentPage = undefined;
-        (store as any).pages = { current: [] };
-        (store as any).pagesVersion = 0;
+        store.project = undefined;
+        store.currentPage = undefined;
+
+        // Mock internal properties that are expected to be available
+        Object.defineProperty(store, "pages", { value: { current: [] }, configurable: true });
+        Object.defineProperty(store, "pagesVersion", { get: () => 0, set: () => {}, configurable: true });
 
         yjsStore.yjsClient = undefined;
     });
