@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { store } from "../../stores/store.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import DemoPage from "./+page.svelte";
@@ -13,20 +14,28 @@ vi.mock("../../lib/demoSeed", () => ({
 vi.mock("../../services", () => ({
     getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
         getProject: () => ({
-            ydoc: {
-                getMap: vi.fn().mockReturnValue({ observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() }),
-            },
+            ydoc: new Y.Doc(),
         }),
         dispose: vi.fn(),
     }),
     removeYjsClientByProjectId: vi.fn(),
 }));
 
-vi.mock("../../schema/app-schema", () => ({
-    Project: {
-        fromDoc: vi.fn().mockReturnValue({}),
-    },
-}));
+vi.mock("../../schema/app-schema", async () => {
+    const actual = await vi.importActual("../../schema/app-schema");
+    return {
+        ...actual,
+        Project: {
+            fromDoc: vi.fn().mockImplementation((doc: Y.Doc) => {
+                // Actually return a proper object that looks like Project to avoid Yjs warnings
+                return {
+                    ydoc: doc,
+                    tree: {}
+                };
+            }),
+        }
+    };
+});
 
 describe("Demo Page Reset Button", () => {
     beforeEach(() => {
