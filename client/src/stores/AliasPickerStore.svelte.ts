@@ -19,6 +19,13 @@ class AliasPickerStore {
     lastConfirmedItemId: string | null = $state(null);
     lastConfirmedTargetId: string | null = $state(null);
     lastConfirmedAt: number | null = $state(null);
+    private _tick: number = $state(0);
+    get tick(): number {
+        return this._tick;
+    }
+    bumpTick() {
+        this._tick = (this._tick + 1) | 0;
+    }
 
     query = "";
     show(itemId: string) {
@@ -131,6 +138,7 @@ class AliasPickerStore {
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = option.id;
                 this.lastConfirmedAt = Date.now();
+                this.bumpTick();
 
                 // Do not change DOM directly (leave UI update to reactivity system)
             } else {
@@ -225,6 +233,7 @@ class AliasPickerStore {
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = id;
                 this.lastConfirmedAt = Date.now();
+                this.bumpTick();
             } else {
                 logger.warn("AliasPickerStore.confirmById: target item not found for", this.itemId);
             }
@@ -373,6 +382,7 @@ class AliasPickerStore {
         this.lastConfirmedItemId = null;
         this.lastConfirmedTargetId = null;
         this.lastConfirmedAt = null;
+        this.bumpTick();
         this.query = "";
     }
 }

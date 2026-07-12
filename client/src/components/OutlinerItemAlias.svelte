@@ -46,6 +46,7 @@ onMount(() => {
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
+    void aliasPickerStore?.tick;
     const base = aliasTargetId;
     if (base) return base;
 

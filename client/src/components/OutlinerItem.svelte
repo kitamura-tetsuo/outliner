@@ -1948,10 +1948,9 @@ export function setSelectionPosition(start: number, end: number = start) {
     data-active={isItemActive}
     data-alias-target-id={
 
-        [ (aliasTargetIdEffective
-
+        [ aliasPickerStore?.tick,
+          (aliasTargetIdEffective
             || ((aliasPickerStore?.lastConfirmedItemId === model.id)
-
                 && aliasPickerStore?.lastConfirmedTargetId)
             || "") ][1] as string
     }
