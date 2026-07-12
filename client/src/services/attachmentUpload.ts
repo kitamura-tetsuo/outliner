@@ -65,7 +65,9 @@ export async function uploadFileToNewItemAtEnd(
                 const localUrl = URL.createObjectURL(file);
                 addAttachmentWithFallback(newItem, localUrl);
                 try {
-                    window.dispatchEvent(new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }));
+                    window.dispatchEvent(
+                        new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }),
+                    );
                 } catch {}
             }
         }
