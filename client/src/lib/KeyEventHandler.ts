@@ -1430,7 +1430,10 @@ export class KeyEventHandler {
                 if (KeyEventHandler.boxSelectionState.endOffset > 0) {
                     newEndOffset = KeyEventHandler.boxSelectionState.endOffset - 1;
                 } else {
-                    const prevItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "prev");
+                    const prevItem = KeyEventHandler.getAdjacentItem(
+                        KeyEventHandler.boxSelectionState.endItemId,
+                        "prev",
+                    );
                     if (prevItem) {
                         newEndItemId = prevItem.id;
                         newEndOffset = prevItem.text.length;
@@ -1444,7 +1447,10 @@ export class KeyEventHandler {
                 if (KeyEventHandler.boxSelectionState.endOffset < itemText.length) {
                     newEndOffset = KeyEventHandler.boxSelectionState.endOffset + 1;
                 } else {
-                    const nextItem = KeyEventHandler.getAdjacentItem(KeyEventHandler.boxSelectionState.endItemId, "next");
+                    const nextItem = KeyEventHandler.getAdjacentItem(
+                        KeyEventHandler.boxSelectionState.endItemId,
+                        "next",
+                    );
                     if (nextItem) {
                         newEndItemId = nextItem.id;
                         newEndOffset = 0;
