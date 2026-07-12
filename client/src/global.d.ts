@@ -41,6 +41,7 @@ interface Window {
     __KEY_EVENT_HANDLER__?: unknown;
     Items?: unknown;
     generalStore?: typeof import("./stores/store.svelte").store;
+    appStore?: typeof import("./stores/store.svelte").store;
     __ALIAS_FWD__?: (ev: KeyboardEvent) => void;
     __SLASH_FWD__?: (ev: KeyboardEvent) => void;
     __KEYSTREAM__?: string;
