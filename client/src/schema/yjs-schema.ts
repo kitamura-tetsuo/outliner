@@ -150,9 +150,9 @@ export class Item {
 
             let end = 0;
             while (
-                end < current.length - start &&
-                end < text.length - start &&
-                current[current.length - 1 - end] === text[text.length - 1 - end]
+                end < current.length - start
+                && end < text.length - start
+                && current[current.length - 1 - end] === text[text.length - 1 - end]
             ) {
                 end++;
             }

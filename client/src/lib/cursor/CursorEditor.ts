@@ -67,7 +67,7 @@ export class CursorEditor {
 
             const updatedNode = cursor.findTarget();
             if (!updatedNode) return;
-            if (typeof updatedNode.insertTextAt === 'function') {
+            if (typeof updatedNode.insertTextAt === "function") {
                 if (ch) updatedNode.insertTextAt(cursor.offset, ch);
             } else {
                 const updatedText = updatedNode.text?.toString?.() ?? "";
@@ -87,7 +87,7 @@ export class CursorEditor {
 
         if (selection && selection.startOffset !== selection.endOffset) {
             const { startOffset, endOffset } = selection;
-            if (typeof node.deleteTextAt === 'function' && typeof node.insertTextAt === 'function') {
+            if (typeof node.deleteTextAt === "function" && typeof node.insertTextAt === "function") {
                 node.deleteTextAt(startOffset, endOffset - startOffset);
                 if (ch) node.insertTextAt(startOffset, ch);
             } else {
@@ -98,7 +98,7 @@ export class CursorEditor {
             cursor.offset = startOffset + ch.length;
             cursor.clearSelection();
         } else {
-            if (typeof node.insertTextAt === 'function') {
+            if (typeof node.insertTextAt === "function") {
                 if (ch) node.insertTextAt(cursor.offset, ch);
             } else {
                 const txt = currentText.slice(0, cursor.offset) + ch + currentText.slice(cursor.offset);
@@ -134,7 +134,7 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                if (typeof node.deleteTextAt === 'function') {
+                if (typeof node.deleteTextAt === "function") {
                     node.deleteTextAt(startOffset, endOffset - startOffset);
                 } else {
                     let txt = node.text?.toString?.() ?? "";
@@ -148,7 +148,7 @@ export class CursorEditor {
         } else {
             if (cursor.offset > 0) {
                 const pos = cursor.offset - 1;
-                if (typeof node.deleteTextAt === 'function') {
+                if (typeof node.deleteTextAt === "function") {
                     node.deleteTextAt(pos, 1);
                 } else {
                     let txt = node.text?.toString?.() ?? "";
@@ -192,7 +192,7 @@ export class CursorEditor {
             const single = this.getSingleItemSelection(cursor.itemId);
             if (single) {
                 const { startOffset, endOffset } = single;
-                if (typeof node.deleteTextAt === 'function') {
+                if (typeof node.deleteTextAt === "function") {
                     node.deleteTextAt(startOffset, endOffset - startOffset);
                 } else {
                     let txt = node.text?.toString?.() ?? "";
@@ -206,7 +206,7 @@ export class CursorEditor {
         } else {
             let txt = node.text?.toString?.() ?? "";
             if (cursor.offset < txt.length) {
-                if (typeof node.deleteTextAt === 'function') {
+                if (typeof node.deleteTextAt === "function") {
                     node.deleteTextAt(cursor.offset, 1);
                 } else {
                     txt = txt.slice(0, cursor.offset) + txt.slice(cursor.offset + 1);

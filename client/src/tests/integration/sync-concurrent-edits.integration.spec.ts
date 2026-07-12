@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { Project, Item } from "../../schema/yjs-schema";
+import { Item, Project } from "../../schema/yjs-schema";
 
 describe("Concurrent Editing", () => {
     let doc1: Y.Doc;
@@ -9,10 +9,10 @@ describe("Concurrent Editing", () => {
     beforeEach(() => {
         doc1 = new Y.Doc();
         doc2 = new Y.Doc();
-        doc1.on('update', (update) => {
+        doc1.on("update", (update) => {
             Y.applyUpdate(doc2, update);
         });
-        doc2.on('update', (update) => {
+        doc2.on("update", (update) => {
             Y.applyUpdate(doc1, update);
         });
     });
@@ -29,7 +29,7 @@ describe("Concurrent Editing", () => {
         expect(item2?.text.toString()).toBe("hello");
 
         // Disconnect to simulate concurrency
-        doc1.on('update', () => {}); // Just make new docs and apply manually
+        doc1.on("update", () => {}); // Just make new docs and apply manually
 
         const update1 = Y.encodeStateAsUpdate(doc1);
         const d1 = new Y.Doc();
