@@ -449,8 +449,7 @@ export async function queryHabitStats(item: Item, now: string = localDateTime())
         + "FROM habits h LEFT JOIN habits l ON l.kind = 'log' AND l.habit_id = h.id "
         + "WHERE h.kind = 'habit' "
         + "GROUP BY h.id ORDER BY h.rowid";
-    const logsSql =
-        "SELECT habit_id, date FROM habits WHERE kind = 'log' GROUP BY habit_id, date ORDER BY date DESC";
+    const logsSql = "SELECT habit_id, date FROM habits WHERE kind = 'log' GROUP BY habit_id, date ORDER BY date DESC";
 
     const [stats, logs] = await Promise.all([
         runTableSelect(HABIT_TABLE_DDL, HABIT_COLUMNS, rows, statsSql, { now }),

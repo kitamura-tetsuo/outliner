@@ -407,8 +407,7 @@ export const demoPages: DemoPageTemplate[] = [
                     "The Today, Upcoming, Overdue and Completed views — and the habit streaks — are computed with real SQL (SQLite) over the collaborative table rows.",
             },
             {
-                text:
-                    "Every task records its registration time, and completed tasks keep their completion timestamp.",
+                text: "Every task records its registration time, and completed tasks keep their completion timestamp.",
             },
         ],
     },
