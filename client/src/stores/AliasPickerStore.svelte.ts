@@ -16,19 +16,15 @@ class AliasPickerStore {
     // prevent double-confirm
     private isConfirming = false;
     // Most recent confirmed information (for OutlinerItem to refer to tentatively before Yjs reflection)
-    lastConfirmedItemId: string | null = null;
-    lastConfirmedTargetId: string | null = null;
-    private _lastConfirmedAt: number | null = null;
-    private _tick: number = 0;
-    get lastConfirmedAt(): number | null {
-        return this._lastConfirmedAt;
-    }
-    set lastConfirmedAt(v: number | null) {
-        this._lastConfirmedAt = v;
-        this._tick = (this._tick + 1) | 0;
-    }
+    lastConfirmedItemId: string | null = $state(null);
+    lastConfirmedTargetId: string | null = $state(null);
+    lastConfirmedAt: number | null = $state(null);
+    private _tick: number = $state(0);
     get tick(): number {
         return this._tick;
+    }
+    bumpTick() {
+        this._tick = (this._tick + 1) | 0;
     }
 
     query = "";
@@ -142,6 +138,7 @@ class AliasPickerStore {
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = option.id;
                 this.lastConfirmedAt = Date.now();
+                this.bumpTick();
 
                 // Do not change DOM directly (leave UI update to reactivity system)
             } else {
@@ -236,6 +233,7 @@ class AliasPickerStore {
                 this.lastConfirmedItemId = this.itemId;
                 this.lastConfirmedTargetId = id;
                 this.lastConfirmedAt = Date.now();
+                this.bumpTick();
             } else {
                 logger.warn("AliasPickerStore.confirmById: target item not found for", this.itemId);
             }
@@ -384,6 +382,7 @@ class AliasPickerStore {
         this.lastConfirmedItemId = null;
         this.lastConfirmedTargetId = null;
         this.lastConfirmedAt = null;
+        this.bumpTick();
         this.query = "";
     }
 }
