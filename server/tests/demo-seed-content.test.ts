@@ -137,7 +137,7 @@ describe("Demo seed content", () => {
             "This item is already popular (3 votes). Click the vote button to add yours.",
         );
         expect(voted, "voted item exists").to.not.equal(undefined);
-        expect(voted!.votes.toArray()).to.deep.equal(["alice", "bob", "carol"]);
+        expect(voted!.votes.toArray()).to.deep.equal(["Alice", "Bob", "Carol"]);
 
         const commented = findChildByText(
             page!.items,

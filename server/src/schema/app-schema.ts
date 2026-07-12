@@ -165,6 +165,15 @@ export class Item {
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
     }
+
+    // tableSchema stored in Y.Map
+    get tableSchema(): string | undefined {
+        return this.value.get("tableSchema") as string | undefined;
+    }
+    set tableSchema(v: string | undefined) {
+        this.value.set("tableSchema", v);
+        this.value.set("lastChanged", Date.now());
+    }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
         this.value.set("lastChanged", Date.now());

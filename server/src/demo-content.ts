@@ -9,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 8;
+export const DEMO_TEMPLATE_VERSION = 9;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -23,6 +23,7 @@ export const DEMO_LANDING_PAGE_TITLE = "Welcome";
 // double as a deterministic verification surface for coding agents: every
 // non-text feature is seeded with concrete, reproducible data.
 export interface DemoItem {
+    tableSchema?: string;
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
@@ -57,7 +58,7 @@ export interface DemoPageTemplate {
 // A small, self-contained SVG image encoded as a data URI so the seeded
 // attachment renders without any network access (handy for verification).
 const DEMO_ATTACHMENT_IMAGE =
-    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%2740%27%20height%3D%2740%27%3E%3Crect%20width%3D%2740%27%20height%3D%2740%27%20fill%3D%27%233b82f6%27%2F%3E%3Ctext%20x%3D%2720%27%20y%3D%2725%27%20font-size%3D%2710%27%20fill%3D%27white%27%20text-anchor%3D%27middle%27%3EIMG%3C%2Ftext%3E%3C%2Fsvg%3E";
+    "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27100%27%20height%3D%27100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20fill%3D%27%23e2e8f0%27%20rx%3D%278%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2740%27%20r%3D%2715%27%20fill%3D%27%2394a3b8%27%2F%3E%3Cpath%20d%3D%27M20%2080%20L40%2055%20L60%2070%20L80%2045%20L80%2080%20Z%27%20fill%3D%27%2364748b%27%2F%3E%3C%2Fsvg%3E";
 
 // A self-contained SQL query that builds its own data and selects it, so the
 // chart component renders a deterministic bar chart with no external source.
@@ -100,6 +101,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  Formats can be combined, like [[bold with [/ italic]]] inside.",
             "URLs become clickable links: https://github.com/yjs/yjs",
             "Try editing any line above to see the syntax behind it.",
+            "  [Internal Links] feature.",
         ],
     },
     {
@@ -135,7 +137,7 @@ export const demoPages: DemoPageTemplate[] = [
         lines: [
             "Use the Search button at the top of a page to search across the whole project.",
             "Recent searches are remembered for quick access.",
-            "The inline command palette opens when you type [/ inside an item.",
+            "The inline command palette opens when you type / inside an item.",
             "Breadcrumbs at the top of each page let you jump back to the project or home.",
         ],
     },
@@ -192,7 +194,7 @@ export const demoPages: DemoPageTemplate[] = [
             },
             {
                 text: "This item is already popular (3 votes). Click the vote button to add yours.",
-                votes: ["alice", "bob", "carol"],
+                votes: ["Alice", "Bob", "Carol"],
             },
             { text: "Try commenting on or voting for the items above!" },
         ],
@@ -222,6 +224,7 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "SQL Tables: this item renders an editable, query-backed table grid.",
                 componentType: "table",
+                tableSchema: "CREATE TABLE demo_table (id INTEGER PRIMARY KEY, name TEXT)",
                 chartQuery: "SELECT 1 AS value",
             },
             { text: "Aliases: an item can mirror another item and stay in sync with the original." },
@@ -239,6 +242,7 @@ export const demoPages: DemoPageTemplate[] = [
                 attachments: [DEMO_ATTACHMENT_IMAGE],
             },
             { text: "Schedule: the Schedule view shows date-tagged items as a timeline." },
+            { text: "[[2026-07-12]] Date tagged item for the schedule view" },
         ],
     },
 ];
@@ -293,6 +297,7 @@ function addDemoItems(
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
         if (def.chartQuery !== undefined) node.chartQuery = def.chartQuery;
+        if (def.tableSchema !== undefined) node.tableSchema = def.tableSchema;
         if (def.votes) {
             for (const voter of def.votes) node.toggleVote(voter);
         }
