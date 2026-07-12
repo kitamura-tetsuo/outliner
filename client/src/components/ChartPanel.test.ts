@@ -1,16 +1,16 @@
 import { render } from "@testing-library/svelte";
-import { describe, expect, it, vi } from "vitest";
-import ChartPanel from "./ChartPanel.svelte";
 import * as echarts from "echarts";
+import { describe, expect, it, vi } from "vitest";
 import { Item } from "../schema/app-schema";
 import * as sqlService from "../services/sqlService";
+import ChartPanel from "./ChartPanel.svelte";
 
 vi.mock("echarts", () => ({
     init: vi.fn(() => ({
         setOption: vi.fn(),
         dispose: vi.fn(),
         clear: vi.fn(),
-    }))
+    })),
 }));
 
 vi.mock("../services/sqlService", () => {
@@ -18,8 +18,8 @@ vi.mock("../services/sqlService", () => {
         initDb: vi.fn().mockResolvedValue(true),
         runQuery: vi.fn(),
         dbChangeStore: {
-            subscribe: vi.fn(() => () => {})
-        }
+            subscribe: vi.fn(() => () => {}),
+        },
     };
 });
 
@@ -35,14 +35,14 @@ describe("ChartPanel", () => {
         const mockResult = {
             columnsMeta: [
                 { name: "sales_month" },
-                { name: "sales_revenue" }
+                { name: "sales_revenue" },
             ],
             rows: [
                 { sales_month: "Jan", sales_revenue: 120 },
                 { sales_month: "Feb", sales_revenue: 180 },
                 { sales_month: "Mar", sales_revenue: 150 },
-                { sales_month: "Apr", sales_revenue: 210 }
-            ]
+                { sales_month: "Apr", sales_revenue: 210 },
+            ],
         };
 
         vi.mocked(sqlService.runQuery).mockReturnValue(mockResult as any);
@@ -64,7 +64,7 @@ describe("ChartPanel", () => {
         expect(option.series[0]).toEqual({
             name: "sales_revenue",
             type: "bar",
-            data: [120, 180, 150, 210]
+            data: [120, 180, 150, 210],
         });
     });
 });
