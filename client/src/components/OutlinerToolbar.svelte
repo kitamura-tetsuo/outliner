@@ -62,7 +62,7 @@
                 onchange={handleFileInputChange}
                 style="display: none;"
             />
-            <a href={resolvePath(`/${projectName}/${pageName}/diff`)} class="button-style">History / Diff</a>
+            <a href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(pageName)}/diff` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/diff`)} class="button-style">History / Diff</a>
         </div>
         <details class="a11y-help">
             <summary>Keyboard &amp; accessibility help</summary>

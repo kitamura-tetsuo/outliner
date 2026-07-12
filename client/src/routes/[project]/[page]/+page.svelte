@@ -562,8 +562,8 @@
                 >
                     Add Item
                 </button>
-                <a href={resolvePath(`/${projectName}/${pageName}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
-                <a href={resolvePath(`/${projectName}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
+                <a href={resolvePath(`/${encodeURIComponent(projectName)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
     </div>
