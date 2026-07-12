@@ -232,11 +232,11 @@ const logger = getLogger("GraphView");
                 const pageStore = get(page);
                 const projectName = pageStore.url.pathname.startsWith('/demo') ? "demo" : (pageStore.params.project || store.project?.title);
                 if (projectName === "demo") {
-                    goto(resolvePath(`/demo/${pageName}`));
+                    goto(resolvePath(`/demo/${encodeURIComponent(pageName)}`));
                 } else if (projectName) {
-                    goto(resolvePath(`/${projectName}/${pageName}`));
+                    goto(resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`));
                 } else {
-                    goto(resolvePath(`/${pageName}`));
+                    goto(resolvePath(`/${encodeURIComponent(pageName)}`));
                 }
             }
         });

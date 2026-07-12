@@ -230,7 +230,7 @@ function handleAliasNavigation(pageTitle: string, targetId: string, e: Event) {
     isAliasDropdownOpen = false;
     const projectTitle = generalStore.project?.title;
     if (projectTitle && pageTitle) {
-        goto(resolvePath(`/${encodeURIComponent(projectTitle)}/${encodeURIComponent(pageTitle)}`));
+        if (projectTitle === "demo" || window.location.pathname.startsWith("/demo")) { goto(resolvePath(`/demo/${encodeURIComponent(pageTitle)}`)); } else { goto(resolvePath(`/${encodeURIComponent(projectTitle)}/${encodeURIComponent(pageTitle)}`)); }
     }
 }
 

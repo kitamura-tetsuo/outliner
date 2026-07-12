@@ -141,7 +141,7 @@
                                 if (store.pageExists("Untitled")) return;
                                 const newPage = store.project.addPage("Untitled", "tester");
                                 const pageHref = resolvePath(
-                                    `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
+                                    currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
                                 );
                                 goto(pageHref);
                             }
@@ -182,7 +182,7 @@
                     {:else}
                         {#each pages as page (page.id)}
                             {@const pageHref = resolvePath(
-                                `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text)}`,
+                                currentProjectName === "demo" ? `/demo/${encodeURIComponent(page.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text)}`,
                             )}
                             <li>
                                 <a
