@@ -140,7 +140,7 @@ export class Item {
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
+            && import.meta.env.MODE !== "test"
         ) {
             throw new Error("Invalid attachment URL");
         }

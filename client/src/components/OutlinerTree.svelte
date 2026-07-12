@@ -352,7 +352,7 @@
                     } catch (uploadErr) {
                           logger.error({ error: uploadErr }, "Upload failed via file select");
                         // E2E fallback local URL for test environment (mocking network)
-                        if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                        if (import.meta.env.MODE === 'test') {
                             const localUrl = URL.createObjectURL(file);
                             try { newItem.addAttachment(localUrl); } catch {}
                             try { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(newItem.id) } })); } catch {}
@@ -1752,7 +1752,7 @@
             try {
                 targetItem.addAttachment(url);
             } catch {
-                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                if (import.meta.env.MODE === 'test') {
                     try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                 }
             }
@@ -1775,7 +1775,7 @@
                 try {
                     newItem.addAttachment(url);
                 } catch {
-                    if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                    if (import.meta.env.MODE === 'test') {
                         try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
                     }
                 }
@@ -1956,7 +1956,7 @@
                                 }
                             } catch (uploadErr) {
                                 logger.error({ error: uploadErr as Error }, "Upload failed in tree bottom, using local fallback");
-                                if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && window.__E2E__)) {
+                                if (import.meta.env.MODE === 'test') {
                                     const localUrl = URL.createObjectURL(file);
                                     try {
                                         newItem.addAttachment(localUrl);

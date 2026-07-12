@@ -20,14 +20,14 @@ export function projectsFromUserProject(
     }
 
     // Detect test environment (detect more broadly)
-    const isTestEnv = import.meta.env.MODE === "test"
+    const isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
         || (typeof window !== "undefined" && window.location.hostname === "localhost")
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
         || (typeof window !== "undefined"
-            && (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true);
+            && (typeof window !== "undefined" && import.meta.env.MODE === "test"));
 
     // Deduplicate IDs for stabilization
     /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Set for deduplication, not reactive state */
@@ -102,11 +102,11 @@ export class ProjectStore {
 export const projectStore = $state(new ProjectStore());
 
 if (typeof window !== "undefined") {
-    const isTestEnv = import.meta.env.MODE === "test"
+    const isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || window.localStorage?.getItem?.("VITE_IS_TEST") === "true"
-        || (window as Window & typeof globalThis & { __E2E__?: boolean; }).__E2E__ === true;
+        || (typeof window !== "undefined" && import.meta.env.MODE === "test");
     if (isTestEnv) {
         (window as Window & typeof globalThis & { __PROJECT_STORE__?: typeof projectStore; }).__PROJECT_STORE__ =
             projectStore;

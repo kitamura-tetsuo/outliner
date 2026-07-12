@@ -52,7 +52,7 @@ class GeneralStore {
         this.ucVersion = prevVersion + 1;
         // Additional notification (test environment only)
         try {
-            const __isTestEnv = import.meta.env.MODE === "test"
+            const __isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
                 || process.env.NODE_ENV === "test"
                 || import.meta.env.VITE_IS_TEST === "true"
                 || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
@@ -182,7 +182,7 @@ class GeneralStore {
 
                         // Stabilization for E2E tests: If userProject is already seeded by test helper
                         // and incoming is an empty array, suppress overwrite (avoid clearing immediately due to empty initial sync)
-                        const isTestEnv = import.meta.env.MODE === "test"
+                        const isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
                             || process.env.NODE_ENV === "test"
                             || import.meta.env.VITE_IS_TEST === "true"
                             || (typeof window !== "undefined"
@@ -253,7 +253,7 @@ Object.assign(firestoreStore, { __isRealFirestoreStore: true });
 
 // Expose globally in test environment to allow control from E2E
 if (typeof window !== "undefined") {
-    const isTestEnv = import.meta.env.MODE === "test"
+    const isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || window.location.hostname === "localhost"
@@ -277,7 +277,7 @@ try {
     db = getFirestore(app!);
 
     // Detect test environment or emulator environment and connect
-    const isTestEnv = import.meta.env.MODE === "test"
+    const isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.mockFluidClient === false)
@@ -537,7 +537,7 @@ export const saveContainerIdToServer = saveProjectIdToServer;
 
 // Automatically initialize when app starts
 if (typeof window !== "undefined") {
-    const __isTestEnv = import.meta.env.MODE === "test"
+    const __isTestEnv = (typeof window !== "undefined" && import.meta.env.MODE === "test")
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"
         || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
@@ -547,10 +547,10 @@ if (typeof window !== "undefined") {
     // Enable automatic sync if:
     // 1) It's production (always sync in prod)
     // 2) OR it's not a test environment
-    // 3) OR it's a real E2E test (Playwright sets window.__E2E__; unit tests under
+    // 3) OR it's a real E2E test (Playwright checks import.meta.env.MODE === 'test'; unit tests under
     //    vitest do not), which needs live Firestore sync against the emulator
     const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined" && window.__E2E__ === true);
+        || (typeof window !== "undefined" && import.meta.env.MODE === "test");
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
