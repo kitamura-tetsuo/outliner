@@ -2,6 +2,18 @@ import { getLogger } from "../logger";
 
 const logger = getLogger("yjs-connection");
 
+function getSessionAnonId(fallbackId: number): string {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+        let anonId = window.sessionStorage.getItem("yjs_anon_id");
+        if (!anonId) {
+            anonId = "anon-" + fallbackId;
+            window.sessionStorage.setItem("yjs_anon_id", anonId);
+        }
+        return anonId;
+    }
+    return "anon-" + fallbackId;
+}
+
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -311,8 +323,9 @@ async function setupProviderForRoom(
             });
         } else {
             awareness.setLocalStateField("user", {
-                userId: "anon-"
-                    + (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID,
+                userId: getSessionAnonId(
+                    (awareness as import("y-protocols/awareness").Awareness & { clientID: number; }).clientID
+                ),
                 name: "Guest",
                 color: undefined,
             });
