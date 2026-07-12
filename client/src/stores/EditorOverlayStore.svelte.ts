@@ -1,4 +1,3 @@
-import type { Awareness } from "y-protocols/awareness";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
