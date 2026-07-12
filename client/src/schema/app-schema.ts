@@ -248,6 +248,10 @@ export class Item {
         }
     }
 
+    public get yMap(): Y.Map<ItemValueType> {
+        return this.value;
+    }
+
     get id(): string {
         return (this.value.get("id") as string) ?? "";
     }

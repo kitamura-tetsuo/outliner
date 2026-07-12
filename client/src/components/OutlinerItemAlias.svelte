@@ -24,8 +24,7 @@ let aliasTargetId = $state<string | undefined>();
 onMount(() => {
     aliasTargetId = item.aliasTargetId;
     try {
-        const anyItem = item as unknown as { tree?: { getNodeValueFromKey?: (key: unknown) => { observe?: (cb: unknown) => void, unobserve?: (cb: unknown) => void } }, key?: unknown };
-        const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+        const ymap = item.yMap;
         if (ymap && typeof ymap.observe === 'function') {
             const obs = (e?: { keysChanged?: { has?: (key: string) => boolean } }) => {
                 try {

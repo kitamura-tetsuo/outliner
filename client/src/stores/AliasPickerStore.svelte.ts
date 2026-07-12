@@ -221,11 +221,7 @@ class AliasPickerStore {
 
                 // Access Y.Map directly to ensure writing to Yjs model
                 try {
-                    const anyItem = item as unknown as {
-                        tree?: { getNodeValueFromKey?: (key: unknown) => { set?: (k: string, v: string) => void; }; };
-                        key?: unknown;
-                    };
-                    const ymap = anyItem?.tree?.getNodeValueFromKey?.(anyItem?.key);
+                    const ymap = (item as Item).yMap;
                     if (ymap && typeof ymap.set === "function") {
                         ymap.set("aliasTargetId", id);
                     }
