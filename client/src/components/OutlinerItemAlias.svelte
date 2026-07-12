@@ -177,7 +177,7 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
     <div class="alias-subtree" style="width: 100%;">
         {#if !isCollapsed}
             {#if aliasTarget}
-                <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} />
+                <OutlinerTree pageItem={aliasTarget} isReadOnly={isReadOnly} isEmbedded={true} />
             {:else}
                 <div class="alias-subtree-placeholder" style="min-height: 8px;">&nbsp;</div>
             {/if}
