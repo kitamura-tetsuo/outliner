@@ -375,11 +375,59 @@ export class Item {
         else this.value.set("preview", v);
     }
 
+    insertTextAt(offset: number, text: string) {
+        const t = this.value.get("text") as Y.Text;
+        if (t && text) {
+            this.ydoc.transact(() => {
+                t.insert(offset, text);
+                this.value.set("lastChanged", Date.now());
+            });
+        }
+    }
+
+    deleteTextAt(offset: number, length: number) {
+        const t = this.value.get("text") as Y.Text;
+        if (t && length > 0) {
+            this.ydoc.transact(() => {
+                t.delete(offset, length);
+                this.value.set("lastChanged", Date.now());
+            });
+        }
+    }
+
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
-        t.delete(0, t.length);
-        if (text) t.insert(0, text);
-        this.value.set("lastChanged", Date.now());
+        if (t) {
+            const current = String(t);
+            if (current === text) return;
+
+            let start = 0;
+            while (start < current.length && start < text.length && current[start] === text[start]) {
+                start++;
+            }
+
+            let end = 0;
+            while (
+                end < current.length - start
+                && end < text.length - start
+                && current[current.length - 1 - end] === text[text.length - 1 - end]
+            ) {
+                end++;
+            }
+
+            const deleteLen = current.length - start - end;
+            const insertStr = text.slice(start, text.length - end);
+
+            this.ydoc.transact(() => {
+                if (deleteLen > 0) {
+                    t.delete(start, deleteLen);
+                }
+                if (insertStr.length > 0) {
+                    t.insert(start, insertStr);
+                }
+                this.value.set("lastChanged", Date.now());
+            });
+        }
     }
 
     get votes(): Y.Array<string> {
