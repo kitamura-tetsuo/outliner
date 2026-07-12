@@ -128,6 +128,54 @@ describe("Demo seed content", () => {
         expect(String(attached!.attachments.get(0))).to.contain("data:image/svg+xml");
     });
 
+    it("seeds a live task manager with due dates, recurrence, completion and registration times", () => {
+        const page = findChildByText(project.items, "Tasks and Habits");
+        expect(page, "Tasks and Habits page exists").to.not.equal(undefined);
+
+        const tasks = findChildByText(
+            page!.items,
+            "Task manager: add tasks with due dates, priorities and repeat intervals. "
+                + "Completing a repeating task schedules the next occurrence automatically.",
+        );
+        expect(tasks, "task manager item exists").to.not.equal(undefined);
+        expect(tasks!.componentType).to.equal("tasks");
+        expect(tasks!.tableSchema).to.contain("CREATE TABLE tasks");
+        expect(tasks!.tableColumns).to.include.members(["title", "status", "due_at", "repeat_days"]);
+
+        const rows = tasks!.tableRowsToPlain(tasks!.tableColumns);
+        expect(rows.length).to.be.greaterThanOrEqual(5);
+        expect(rows.some((r) => r.repeat_days !== ""), "a recurring task is seeded").to.equal(true);
+        expect(
+            rows.some((r) => r.status === "done" && r.completed_at !== ""),
+            "a completed task with a completion timestamp is seeded",
+        ).to.equal(true);
+        expect(rows.every((r) => r.created_at !== ""), "every task records its registration time").to.equal(true);
+        expect(rows.every((r) => r.status !== "done" || r.due_at !== "")).to.equal(true);
+    });
+
+    it("seeds a live habit tracker with habit definitions and completion logs", () => {
+        const page = findChildByText(project.items, "Tasks and Habits");
+        const habits = findChildByText(
+            page!.items,
+            "Habit tracker: check off each day in the grid and watch your streak grow. "
+                + "Each habit has its own repeat interval.",
+        );
+        expect(habits, "habit tracker item exists").to.not.equal(undefined);
+        expect(habits!.componentType).to.equal("habits");
+        expect(habits!.tableSchema).to.contain("CREATE TABLE habits");
+
+        const rows = habits!.tableRowsToPlain(habits!.tableColumns);
+        const definitions = rows.filter((r) => r.kind === "habit");
+        const logs = rows.filter((r) => r.kind === "log");
+        expect(definitions.length).to.be.greaterThanOrEqual(2);
+        expect(definitions.some((r) => Number(r.interval_days) > 1), "an interval habit is seeded").to.equal(true);
+        expect(logs.length).to.be.greaterThanOrEqual(3);
+        const definitionIds = new Set(definitions.map((r) => r.id));
+        expect(logs.every((r) => definitionIds.has(r.habit_id)), "every log belongs to a seeded habit").to.equal(
+            true,
+        );
+    });
+
     it("seeds votes and a comment thread on the Comments and Votes page", () => {
         const page = findChildByText(project.items, "Comments and Votes");
         expect(page).to.not.equal(undefined);

@@ -1,0 +1,12 @@
+id: FTR-12e0be9e
+title: SQL-backed Task Manager
+title-ja: SQLベースのタスク管理
+description: 'Practical task management embedded in an outliner item (component type "Tasks"), built on the item-embedded SQL table feature. Tasks are stored as collaborative Yjs table rows using a fixed CREATE TABLE schema (id, title, status, priority, due_at, repeat_days, created_at, completed_at), and every list view is computed with real SQL (sql.js / SQLite) over those rows. Covers the common task-app feature set: date/time-scheduled tasks (datetime-local due dates, with date-only dues treated as due at end of day), interval-based recurring tasks (completing a repeating task automatically schedules the next occurrence, advanced past "now"), completion management (checkbox complete/reopen with a recorded completion timestamp), registration-time tracking (created_at is stored and displayed for every task), priorities, per-view SQL filtering (Today / Upcoming / Overdue / Completed / All with live counts), overdue highlighting, and task deletion. An item that already holds a table with a different schema is never clobbered silently; the user must confirm the conversion.
+
+  '
+category: client
+status: implemented
+tests:
+- client/src/services/taskHabitService.test.ts
+- client/src/components/TaskManager.test.ts
+- server/tests/demo-seed-content.test.ts
