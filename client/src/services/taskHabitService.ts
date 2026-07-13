@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import type { Item } from "../schema/app-schema";
+import { Item } from "../schema/app-schema";
 import { getSqlStatic } from "./sqlService";
 
 // Task manager and habit tracker built on top of the item-embedded SQL table
@@ -195,6 +195,16 @@ export async function runTableSelect(
 // Table bootstrap
 // ---------------------------------------------------------------------------
 
+// Outliner items reach components either as app-schema Items or as the leaner
+// yjs-schema Items (which lack the embedded-table accessors). Both expose the
+// same (ydoc, tree, key) triple over the same Yjs node, so wrap non-app-schema
+// instances in an app-schema Item to get the table API.
+function asAppItem(item: Item): Item {
+    if (item instanceof Item) return item;
+    const ref = item as { ydoc: Item["ydoc"]; tree: Item["tree"]; key: string; };
+    return new Item(ref.ydoc, ref.tree, ref.key);
+}
+
 /**
  * Make sure the item's embedded table uses the given schema.
  * Returns true when the table is ready. When the item already holds a table
@@ -202,9 +212,10 @@ export async function runTableSelect(
  * returned so the UI can ask before overwriting (`force` overwrites).
  */
 function ensureTable(item: Item, ddl: string, columns: string[], force: boolean): boolean {
-    if (item.tableSchema === ddl) return true;
-    if (item.tableColumns.length === 0 || force) {
-        item.defineTable(ddl, columns);
+    const it = asAppItem(item);
+    if (it.tableSchema === ddl) return true;
+    if (it.tableColumns.length === 0 || force) {
+        it.defineTable(ddl, columns);
         return true;
     }
     return false;
@@ -231,7 +242,7 @@ export interface NewTask {
 
 export function addTask(item: Item, task: NewTask, now: string = localDateTime()): string {
     const id = uuidv4();
-    item.tableRows.addRow({
+    asAppItem(item).tableRows.addRow({
         id,
         title: task.title,
         status: "open",
@@ -245,7 +256,7 @@ export function addTask(item: Item, task: NewTask, now: string = localDateTime()
 }
 
 function findRowIndex(item: Item, columns: string[], id: string): number {
-    const rows = item.tableRows.toPlain(columns);
+    const rows = asAppItem(item).tableRows.toPlain(columns);
     return rows.findIndex((row) => row.id === id);
 }
 
@@ -256,12 +267,13 @@ function findRowIndex(item: Item, columns: string[], id: string): number {
  * Returns the id of the spawned occurrence, if any.
  */
 export function completeTask(item: Item, taskId: string, now: string = localDateTime()): string | undefined {
-    const index = findRowIndex(item, TASK_COLUMNS, taskId);
+    const it = asAppItem(item);
+    const index = findRowIndex(it, TASK_COLUMNS, taskId);
     if (index < 0) return undefined;
-    const row = item.tableRows.toPlain(TASK_COLUMNS)[index];
+    const row = it.tableRows.toPlain(TASK_COLUMNS)[index];
 
-    item.tableRows.updateCell(index, "status", "done");
-    item.tableRows.updateCell(index, "completed_at", now);
+    it.tableRows.updateCell(index, "status", "done");
+    it.tableRows.updateCell(index, "completed_at", now);
 
     const repeatDays = Number(row.repeat_days);
     if (!Number.isFinite(repeatDays) || repeatDays <= 0 || !row.due_at) return undefined;
@@ -281,15 +293,17 @@ export function completeTask(item: Item, taskId: string, now: string = localDate
 }
 
 export function reopenTask(item: Item, taskId: string): void {
-    const index = findRowIndex(item, TASK_COLUMNS, taskId);
+    const it = asAppItem(item);
+    const index = findRowIndex(it, TASK_COLUMNS, taskId);
     if (index < 0) return;
-    item.tableRows.updateCell(index, "status", "open");
-    item.tableRows.updateCell(index, "completed_at", "");
+    it.tableRows.updateCell(index, "status", "open");
+    it.tableRows.updateCell(index, "completed_at", "");
 }
 
 export function deleteTask(item: Item, taskId: string): void {
-    const index = findRowIndex(item, TASK_COLUMNS, taskId);
-    if (index >= 0) item.tableRows.deleteRow(index);
+    const it = asAppItem(item);
+    const index = findRowIndex(it, TASK_COLUMNS, taskId);
+    if (index >= 0) it.tableRows.deleteRow(index);
 }
 
 // ---------------------------------------------------------------------------
@@ -334,13 +348,13 @@ export async function queryTasks(
     view: TaskView,
     now: string = localDateTime(),
 ): Promise<TaskRecord[]> {
-    const rows = item.tableRows.toPlain(TASK_COLUMNS);
+    const rows = asAppItem(item).tableRows.toPlain(TASK_COLUMNS);
     const result = await runTableSelect(TASK_TABLE_DDL, TASK_COLUMNS, rows, TASK_VIEW_SQL[view], { now });
     return result.map(rowToTask);
 }
 
 export async function queryTaskCounts(item: Item, now: string = localDateTime()): Promise<TaskCounts> {
-    const rows = item.tableRows.toPlain(TASK_COLUMNS);
+    const rows = asAppItem(item).tableRows.toPlain(TASK_COLUMNS);
     const sql = "SELECT "
         + "SUM(CASE WHEN status = 'open' AND due_at <> '' AND date(due_at) = date($now) THEN 1 ELSE 0 END) AS today, "
         + `SUM(CASE WHEN status = 'open' AND (due_at = '' OR ${DUE_TS} >= datetime($now)) THEN 1 ELSE 0 END) AS upcoming, `
@@ -370,7 +384,7 @@ export function addHabit(
     now: string = localDateTime(),
 ): string {
     const id = uuidv4();
-    item.tableRows.addRow({
+    asAppItem(item).tableRows.addRow({
         id,
         kind: "habit",
         habit_id: "",
@@ -389,13 +403,14 @@ export function toggleHabitLog(
     date: string,
     now: string = localDateTime(),
 ): void {
-    const rows = item.tableRows.toPlain(HABIT_COLUMNS);
+    const it = asAppItem(item);
+    const rows = it.tableRows.toPlain(HABIT_COLUMNS);
     const index = rows.findIndex((row) => row.kind === "log" && row.habit_id === habitId && row.date === date);
     if (index >= 0) {
-        item.tableRows.deleteRow(index);
+        it.tableRows.deleteRow(index);
         return;
     }
-    item.tableRows.addRow({
+    it.tableRows.addRow({
         id: uuidv4(),
         kind: "log",
         habit_id: habitId,
@@ -408,11 +423,12 @@ export function toggleHabitLog(
 
 /** Delete a habit definition together with all of its completion logs. */
 export function deleteHabit(item: Item, habitId: string): void {
-    const rows = item.tableRows.toPlain(HABIT_COLUMNS);
+    const it = asAppItem(item);
+    const rows = it.tableRows.toPlain(HABIT_COLUMNS);
     for (let i = rows.length - 1; i >= 0; i--) {
         const row = rows[i];
         if (row.id === habitId || (row.kind === "log" && row.habit_id === habitId)) {
-            item.tableRows.deleteRow(i);
+            it.tableRows.deleteRow(i);
         }
     }
 }
@@ -440,7 +456,7 @@ export function computeStreak(logDatesDesc: string[], intervalDays: number, toda
 }
 
 export async function queryHabitStats(item: Item, now: string = localDateTime()): Promise<HabitStat[]> {
-    const rows = item.tableRows.toPlain(HABIT_COLUMNS);
+    const rows = asAppItem(item).tableRows.toPlain(HABIT_COLUMNS);
     const today = now.split("T")[0];
 
     const statsSql = "SELECT h.id AS id, h.name AS name, h.interval_days AS interval_days, "

@@ -9,4 +9,5 @@ status: implemented
 tests:
 - client/src/services/taskHabitService.test.ts
 - client/src/components/HabitTracker.test.ts
+- client/e2e/new/hbt-habit-tracker-d830e672.spec.ts
 - server/tests/demo-seed-content.test.ts
