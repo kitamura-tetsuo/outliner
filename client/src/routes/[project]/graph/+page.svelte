@@ -14,7 +14,7 @@ const projectName = $derived(data.project);
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: projectName, href: `/${projectName}` },
+            { label: projectName, href: `/${encodeURIComponent(projectName)}` },
             { label: "Graph View" }
         ]} />
 

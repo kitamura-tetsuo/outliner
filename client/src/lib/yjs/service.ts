@@ -4,6 +4,7 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { safeGetNodeParent } from "../../utils/treeUtils";
 import { getLogger } from "../logger";
 
 const logger = getLogger("yjs-service");
@@ -132,7 +133,7 @@ export const yjsService = {
 
     indentItem(project: Project, itemKey: string) {
         const tree = project.tree as unknown as YTreeWithMove;
-        const parent = tree.getNodeParentFromKey(itemKey);
+        const parent = safeGetNodeParent(tree, itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent);
         const idx = siblings.indexOf(itemKey);
@@ -145,9 +146,9 @@ export const yjsService = {
 
     outdentItem(project: Project, itemKey: string) {
         const tree = project.tree as unknown as YTreeWithMove;
-        const parent = tree.getNodeParentFromKey(itemKey);
+        const parent = safeGetNodeParent(tree, itemKey);
         if (!parent) return;
-        const grand = tree.getNodeParentFromKey(parent);
+        const grand = safeGetNodeParent(tree, parent);
         if (!grand) return;
         tree.moveChildToParent(itemKey, grand);
         tree.setNodeAfter(itemKey, parent);
@@ -155,7 +156,7 @@ export const yjsService = {
 
     reorderItem(project: Project, itemKey: string, index: number) {
         const tree = project.tree;
-        const parent = tree.getNodeParentFromKey(itemKey);
+        const parent = safeGetNodeParent(tree, itemKey);
         if (!parent) return;
         const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
         const clamped = Math.max(0, Math.min(index, siblings.length));
@@ -266,7 +267,7 @@ export const yjsService = {
         const children = childrenKeys(tree, itemKey);
         if (children.length === 0) return;
 
-        const parentKey = tree.getNodeParentFromKey(itemKey);
+        const parentKey = safeGetNodeParent(tree, itemKey);
         if (!parentKey) return;
 
         const siblings = childrenKeys(tree, parentKey);
@@ -279,7 +280,7 @@ export const yjsService = {
 
     moveSubtreeUp(project: Project, itemKey: string) {
         const tree = project.tree;
-        const parentKey = tree.getNodeParentFromKey(itemKey);
+        const parentKey = safeGetNodeParent(tree, itemKey);
         if (!parentKey) return;
         const siblings = childrenKeys(tree, parentKey);
         const index = siblings.indexOf(itemKey);
@@ -290,7 +291,7 @@ export const yjsService = {
 
     moveSubtreeDown(project: Project, itemKey: string) {
         const tree = project.tree;
-        const parentKey = tree.getNodeParentFromKey(itemKey);
+        const parentKey = safeGetNodeParent(tree, itemKey);
         if (!parentKey) return;
         const siblings = childrenKeys(tree, parentKey);
         const index = siblings.indexOf(itemKey);

@@ -500,7 +500,7 @@ export class Item {
 
     // Parent's children collection (Items). null directly under root
     get parent(): Items | null {
-        const parentKey = this.tree.getNodeParentFromKey(this.key);
+        const parentKey = safeGetNodeParent(this.tree, this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
