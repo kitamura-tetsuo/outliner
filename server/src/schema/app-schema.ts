@@ -188,6 +188,15 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // Id of the Yjs table (subdoc) embedded by this item (componentType "yjstable")
+    get yjsTableId(): string | undefined {
+        return this.value.get("yjsTableId") as string | undefined;
+    }
+    set yjsTableId(v: string | undefined) {
+        this.value.set("yjsTableId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     // Column names of the item-embedded table, cached as JSON (matches the
     // client-side schema so seeded tables render in the grid components).
     get tableColumns(): string[] {
