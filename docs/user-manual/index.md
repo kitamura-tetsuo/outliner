@@ -11,6 +11,7 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 5. [Selection and Copy & Paste](#selection-and-copy-paste)
 6. [Keyboard Shortcuts](#keyboard-shortcuts)
 7. [Images](#images)
+8. [Habit Management](#habit-management)
 
 ---
 
@@ -104,6 +105,42 @@ You can easily add images to your items.
 ### Uploading Images
 
 You can upload images by dragging and dropping an image file directly onto the editor.
+
+---
+
+## Habit Management
+
+Turn any item into a habit tracker to build and monitor daily or recurring routines, right inside your outline.
+
+### Creating a Habit Tracker
+
+Hover over an item to reveal its component-type dropdown, then choose **Habits**.
+
+- The item turns into a habit tracker with an "Add a habit…" form and a 7-day grid.
+- If the item already contains a table with a different schema, you'll be asked to confirm before it's replaced.
+
+### Adding a Habit
+
+Type a name in the **Add a habit…** field, set how often it repeats in the **every N day(s)** field, and press **Add**.
+
+- Leave the interval at `1` for a daily habit, or use a larger number (e.g. `7`) for a weekly habit.
+
+### Checking Off Days
+
+Click a day's cell in the grid to mark the habit as done, and click again to undo it.
+
+- The current day's column is highlighted so it's easy to find.
+- Each habit shows its total completions and current streak (🔥); the streak keeps counting as long as consecutive check-ins are no further apart than the habit's own interval.
+
+### Deleting a Habit
+
+Click the **×** button next to a habit to remove it.
+
+- This permanently deletes the habit and its entire completion history.
+
+### Collaboration
+
+Habit trackers are stored the same way as other outliner data, so check-ins and new habits sync live to everyone viewing the item.
 
 ---
 
