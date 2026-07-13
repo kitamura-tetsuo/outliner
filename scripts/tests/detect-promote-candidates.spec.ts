@@ -140,13 +140,13 @@ describe("detect-promote-candidates.js unit tests", () => {
             // Set up mocks for all execSync calls (5 patterns x 3 extensions = 15 calls)
             // find command returns full paths, path.relative converts them to relative paths
             const mockResults = [
-                "/workspace/client/src/file1.ts", // client/src .js
-                "/workspace/client/src/file2.js", // client/src .ts
+                path.resolve(__dirname, "..", "..", "client/src/file1.ts"), // client/src .js
+                path.resolve(__dirname, "..", "..", "client/src/file2.js"), // client/src .ts
                 "", // client/src .svelte
-                "/workspace/client/e2e/test.spec.ts", // client/e2e .js
+                path.resolve(__dirname, "..", "..", "client/e2e/test.spec.ts"), // client/e2e .js
                 "", // client/e2e .ts
                 "", // client/e2e .svelte
-                "/workspace/functions/index.ts", // functions .js
+                path.resolve(__dirname, "..", "..", "functions/index.ts"), // functions .js
                 "", // functions .ts
                 "", // server .js
                 "", // server .ts
@@ -180,10 +180,10 @@ describe("detect-promote-candidates.js unit tests", () => {
 
         it("removes duplicate files", () => {
             const mockResults = [
-                "/workspace/client/src/file1.ts", // client/src .js
-                "/workspace/client/src/file1.ts", // client/src .ts (duplicate)
+                path.resolve(__dirname, "..", "..", "client/src/file1.ts"), // client/src .js
+                path.resolve(__dirname, "..", "..", "client/src/file1.ts"), // client/src .ts (duplicate)
                 "", // client/src .svelte
-                "/workspace/client/src/file2.ts", // client/e2e .js
+                path.resolve(__dirname, "..", "..", "client/src/file2.ts"), // client/e2e .js
                 "", // client/e2e .ts
                 "", // client/e2e .svelte
                 "", // functions .js
@@ -211,14 +211,15 @@ describe("detect-promote-candidates.js unit tests", () => {
 
         it("handles different file extensions", () => {
             const mockResults = [
-                "/workspace/client/src/Component.svelte", // client/src .svelte
+                path.resolve(__dirname, "..", "..", "client/src/Component.svelte"), // client/src .svelte
                 "", // client/src .js
                 "", // client/src .ts
                 "", // client/e2e .svelte
                 "", // client/e2e .js
                 "", // client/e2e .ts
                 "", // functions .svelte (not applicable)
-                "/workspace/client/src/app.ts\n/workspace/client/src/types.ts", // functions .ts
+                path.resolve(__dirname, "..", "..", "client/src/app.ts") + "\n"
+                + path.resolve(__dirname, "..", "..", "client/src/types.ts"), // functions .ts
                 "", // functions .js
                 "", // server .svelte
                 "", // server .ts
@@ -240,8 +241,8 @@ describe("detect-promote-candidates.js unit tests", () => {
 
         it("converts Windows paths to Unix format", () => {
             const mockResults = [
-                "/workspace/client\\src\\file1.ts", // client/src .js (Windows path)
-                "/workspace/client/src/file2.ts", // client/src .ts
+                path.resolve(__dirname, "..", "..", "client\\src\\file1.ts"), // client/src .js (Windows path)
+                path.resolve(__dirname, "..", "..", "client/src/file2.ts"), // client/src .ts
                 "", // client/src .svelte
                 "", // client/e2e .js
                 "", // client/e2e .ts
@@ -444,7 +445,7 @@ describe("detect-promote-candidates.js unit tests", () => {
                     // Path must be absolute and include /workspace since baseDir is the scripts/.. directory
                     return JSON.stringify([
                         {
-                            filePath: "/workspace/client/src/app.ts",
+                            filePath: path.resolve(__dirname, "..", "..", "client/src/app.ts"),
                             messages: [
                                 {
                                     ruleId: "no-console",
@@ -465,7 +466,7 @@ describe("detect-promote-candidates.js unit tests", () => {
 
             const results = runESLint(files, rules);
 
-            expect(results.has("client/src/app.ts"));
+            expect(results.has("client/src/app.ts")).toBe(true);
             const data = results.get("client/src/app.ts");
             expect(data?.violations.get("no-console")).toBe(1);
             expect(data?.violations.get("no-unused-vars")).toBe(1);
@@ -480,7 +481,7 @@ describe("detect-promote-candidates.js unit tests", () => {
                 if (typeof command === "string" && command.includes("eslint")) {
                     return JSON.stringify([
                         {
-                            filePath: "/workspace/client/src/clean.ts",
+                            filePath: path.resolve(__dirname, "..", "..", "client/src/clean.ts"),
                             messages: [
                                 {
                                     ruleId: "prefer-const",
@@ -508,7 +509,7 @@ describe("detect-promote-candidates.js unit tests", () => {
             const error = new Error("ESLint failed");
             (error as any).stdout = JSON.stringify([
                 {
-                    filePath: "/workspace/client/src/app.ts",
+                    filePath: path.resolve(__dirname, "..", "..", "client/src/app.ts"),
                     messages: [],
                 },
             ]);
