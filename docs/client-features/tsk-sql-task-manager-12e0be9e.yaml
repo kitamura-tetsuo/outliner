@@ -9,4 +9,6 @@ status: implemented
 tests:
 - client/src/services/taskHabitService.test.ts
 - client/src/components/TaskManager.test.ts
+- client/e2e/new/tsk-task-manager-basic-12e0be9e.spec.ts
+- client/e2e/new/tsk-task-manager-recurring-30cac121.spec.ts
 - server/tests/demo-seed-content.test.ts

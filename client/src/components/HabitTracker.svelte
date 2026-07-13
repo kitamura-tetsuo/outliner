@@ -85,7 +85,17 @@ function dayLabel(date: string): string {
 }
 </script>
 
-<div class="habit-tracker" data-testid="habit-tracker">
+<!-- Stop pointer events from bubbling into outliner cursor/selection handling,
+     matching the SqlBlock controls pattern. -->
+<div
+    class="habit-tracker"
+    data-testid="habit-tracker"
+    onmousedown={(e: Event) => e.stopPropagation()}
+    onclick={(e: Event) => e.stopPropagation()}
+    onpointerdown={(e: Event) => e.stopPropagation()}
+    onmouseup={(e: Event) => e.stopPropagation()}
+    role="presentation"
+>
     {#if !ready}
         <div class="convert-note">
             <p>This item already contains a table with a different schema.</p>

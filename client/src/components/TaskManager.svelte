@@ -121,7 +121,17 @@ function formatDue(due: string): string {
 }
 </script>
 
-<div class="task-manager" data-testid="task-manager">
+<!-- Stop pointer events from bubbling into outliner cursor/selection handling,
+     matching the SqlBlock controls pattern. -->
+<div
+    class="task-manager"
+    data-testid="task-manager"
+    onmousedown={(e: Event) => e.stopPropagation()}
+    onclick={(e: Event) => e.stopPropagation()}
+    onpointerdown={(e: Event) => e.stopPropagation()}
+    onmouseup={(e: Event) => e.stopPropagation()}
+    role="presentation"
+>
     {#if !ready}
         <div class="convert-note">
             <p>This item already contains a table with a different schema.</p>
