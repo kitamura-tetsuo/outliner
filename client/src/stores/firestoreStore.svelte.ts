@@ -550,7 +550,7 @@ if (typeof window !== "undefined") {
     // 3) OR it's a real E2E test (Playwright sets window.__E2E__; unit tests under
     //    vitest do not), which needs live Firestore sync against the emulator
     const shouldAutoSync = isProd || !__isTestEnv
-        || (typeof window !== "undefined" && window.__E2E__ === true);
+        || (typeof window !== "undefined" && !!window.__E2E__);
 
     if (shouldAutoSync) {
         let cleanup: (() => void) | null = null;
