@@ -23,7 +23,10 @@ test("package.json includes github test scripts", () => {
 test("workflow runs tests with annotation reporters", () => {
     const workflowUnit = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-test-unit.yml"), "utf-8");
     const workflowE2e = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-test-e2e.yml"), "utf-8");
-    const workflowIntegration = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-test-integration.yml"), "utf-8");
+    const workflowIntegration = fs.readFileSync(
+        path.join(repoRoot, ".github", "workflows", "ci-test-integration.yml"),
+        "utf-8",
+    );
 
     expect(workflowUnit).toMatch(/Run unit tests/);
     expect(workflowUnit).toMatch(/npm run github:test:unit/);
