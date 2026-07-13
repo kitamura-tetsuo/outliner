@@ -7,16 +7,11 @@
 // record and surfaced to the UI; the failing record is not reflected in
 // PGlite while other records keep syncing. Query re-runs are debounced.
 
-import * as Y from "yjs";
 import type { PGlite } from "@electric-sql/pglite";
+import * as Y from "yjs";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
-import {
-    diffSchemas,
-    type ParsedTableSchema,
-    parseCreateTable,
-    type SchemaDiff,
-} from "./schemaIntrospection";
+import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
 import { deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
 

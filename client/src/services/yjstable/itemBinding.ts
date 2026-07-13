@@ -14,7 +14,9 @@ interface ItemLike {
 
 const TABLE_ID_FIELD = "yjsTableId";
 
-function nodeValue(item: ItemLike): { get?: (k: string) => unknown; set?: (k: string, v: unknown) => void; } | undefined {
+function nodeValue(
+    item: ItemLike,
+): { get?: (k: string) => unknown; set?: (k: string, v: unknown) => void; } | undefined {
     try {
         return item.tree.getNodeValueFromKey(item.key) as {
             get?: (k: string) => unknown;
