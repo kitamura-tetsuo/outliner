@@ -26,7 +26,8 @@ const logger = getLogger("SearchBox");
         if (typeof window !== "undefined") {
             const cur = window.__CURRENT_PROJECT__;
             if (cur) return cur;
-            const gs = typeof window !== 'undefined' ? (window?.appStore || window?.generalStore) : undefined;
+            const w = typeof window !== 'undefined' ? window as Window & typeof globalThis & { appStore?: { project?: import("../schema/app-schema").Project }, generalStore?: { project?: import("../schema/app-schema").Project } } : undefined;
+            const gs = w?.appStore || w?.generalStore;
             if (gs?.project) return gs.project;
             const parts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
             void parts[0]; // Previously projectTitle
@@ -88,10 +89,11 @@ const logger = getLogger("SearchBox");
                 // Fallback 2: projectToUse.items
                 () => projectToUse?.items,
                 // Fallback 3: (window?.appStore || window?.generalStore).project.items
-                () =>
-                    typeof window !== "undefined"
-                        ? (window?.appStore || window?.generalStore)?.project?.items
-                        : undefined,
+                () => {
+                    const w = typeof window !== "undefined" ? window as Window & typeof globalThis & { appStore?: { project?: import("../schema/app-schema").Project }, generalStore?: { project?: import("../schema/app-schema").Project } } : undefined;
+                    const gs = w?.appStore || w?.generalStore;
+                    return gs?.project?.items;
+                },
             ];
 
             for (const getSource of sources) {
@@ -275,9 +277,13 @@ const logger = getLogger("SearchBox");
                 }
             }
             // Encode path segments to ensure correct routing for titles with spaces/special characters
-            goto(
-                resolvePath(`/${encodeURIComponent(projTitle)}/${encodeURIComponent(title)}`),
-            );
+            if (projTitle === "demo" || (typeof window !== "undefined" && window.location.pathname.startsWith("/demo"))) {
+                goto(resolvePath(`/demo/${encodeURIComponent(title)}`));
+            } else {
+                goto(
+                    resolvePath(`/${encodeURIComponent(projTitle)}/${encodeURIComponent(title)}`),
+                );
+            }
         } else if (query) {
             goto(resolvePath(`/search?query=${encodeURIComponent(query)}`));
         }
