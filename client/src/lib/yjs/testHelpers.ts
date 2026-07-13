@@ -471,7 +471,7 @@ export async function prepareTwoFullBrowserPages(
     browser: Browser,
     testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
+    TestHelpers: any,
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();

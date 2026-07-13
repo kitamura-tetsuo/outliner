@@ -95,7 +95,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (globalThis as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
             } catch {}
         });
@@ -344,7 +344,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                         localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                         localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                        (globalThis as Window & Record<string, any>).__E2E__ = true;
+                        (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
 
                         // Test monkey patches that were previously polluting production code
                         const W = window as any;
@@ -583,7 +583,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
                 localStorage.removeItem("VITE_YJS_DISABLE_WS");
-                (globalThis as Window & Record<string, any>).__E2E__ = true;
+                (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
 
                 // Test monkey patches that were previously polluting production code
                 const W = window as any;
@@ -677,8 +677,8 @@ export class TestHelpers {
      */
     public static async getPageTexts(page: Page): Promise<Array<{ id: string; text: string; }>> {
         return await page.evaluate(() => {
-            const store = (globalThis as Window & Record<string, any>).appStore
-                || (globalThis as Window & Record<string, any>).generalStore;
+            const store = (globalThis as unknown as Window & Record<string, any>).appStore
+                || (globalThis as unknown as Window & Record<string, any>).generalStore;
             if (!store || !store.pages) return [] as Array<{ id: string; text: string; }>;
 
             const toArray = (p: unknown) => {
@@ -946,7 +946,6 @@ export class TestHelpers {
                 `Timeout waiting for item count to reach ${expectedCount}: ${
                     e instanceof Error ? e.message : String(e)
                 }`,
-                { cause: e },
             );
         }
     }
@@ -1583,7 +1582,7 @@ export class TestHelpers {
             const mouseEnterEvent = new MouseEvent("mouseenter", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis,
+                view: window,
             });
             element.dispatchEvent(mouseEnterEvent);
 
@@ -1591,7 +1590,7 @@ export class TestHelpers {
             const mouseMoveEvent = new MouseEvent("mousemove", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis,
+                view: window,
             });
             element.dispatchEvent(mouseMoveEvent);
 
@@ -1639,7 +1638,7 @@ export class TestHelpers {
             const mouseLeaveEvent = new MouseEvent("mouseleave", {
                 bubbles: true,
                 cancelable: true,
-                view: globalThis,
+                view: window,
             });
             element.dispatchEvent(mouseLeaveEvent);
 
@@ -2333,7 +2332,7 @@ export class TestHelpers {
                             });
                             if (!retryResponse.ok) {
                                 const retryText = await retryResponse.text();
-                                throw new Error(`Auth retry failed: ${retryText}`, { cause: e });
+                                throw new Error(`Auth retry failed: ${retryText}`);
                             }
                             const retryData: any = await retryResponse.json();
                             return retryData.idToken;
@@ -2343,7 +2342,7 @@ export class TestHelpers {
                     }
                 } else {
                     console.error(`[TestHelpers] Auth failed: ${response.status} ${text}`);
-                    throw new Error(`Auth failed: ${text}`, { cause: new Error(text) });
+                    throw new Error(`Auth failed: ${text}`);
                 }
             }
 
