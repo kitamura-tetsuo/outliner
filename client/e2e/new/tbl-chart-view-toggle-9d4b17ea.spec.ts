@@ -44,8 +44,11 @@ test.describe("FTR-53f59906: chart view toggle", () => {
         await repeatDaysCell.click();
         const repeatDaysInput = row.locator('td[data-col="repeat_days"] input');
         await expect(repeatDaysInput).toBeVisible({ timeout: 5000 });
+        // A number input commits on blur, and Playwright's fill() on
+        // type="number" already triggers that blur -- pressing Enter
+        // afterwards would race against the cell unmounting back to its
+        // read-only ".cell-value" state.
         await repeatDaysInput.fill("7");
-        await repeatDaysInput.press("Enter");
         await expect(
             grid.locator('td[data-col="repeat_days"] .cell-value', { hasText: "7" }),
         ).toBeVisible({ timeout: 15000 });
