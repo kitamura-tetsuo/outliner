@@ -1439,7 +1439,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                         const items = gs?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
-                            const it = items?.at ? items.at(i) : (items as any)?.[i];
+                            const it = items?.at ? items.at(i) : (items as unknown as Record<number, { id?: string; text?: string }>)?.[i];
                             if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
                         }
                     }

@@ -167,8 +167,10 @@ export async function handleFileUploadFromDrop(
                                 const mappedId = map ? map[String(modelId)] : undefined;
                                 const curPage = ((w?.appStore as unknown as Record<string, unknown>)?.currentPage
                                     || (w?.generalStore as unknown as Record<string, unknown>)?.currentPage
-                                    || ((window as any)?.appStore as unknown as Record<string, unknown>)?.currentPage
-                                    || ((window as any)?.generalStore as unknown as Record<string, unknown>)
+                                    || ((window as Window & typeof globalThis & { appStore?: unknown; })
+                                        ?.appStore as unknown as Record<string, unknown>)?.currentPage
+                                    || ((window as Window & typeof globalThis & { generalStore?: unknown; })
+                                        ?.generalStore as unknown as Record<string, unknown>)
                                         ?.currentPage) as {
                                         items?: {
                                             length: number;
