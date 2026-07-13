@@ -77,10 +77,26 @@ const logger = getLogger("SearchPanel");
             if (!el.dataset.origHtml) {
                 el.dataset.origHtml = el.innerHTML;
             }
-            el.innerHTML = el.dataset.origHtml.replace(
-                regex,
-                (match) => `<span class="search-highlight">${match}</span>`,
-            );
+            // Parse HTML and only replace text content to avoid corrupting attributes
+            const html = el.dataset.origHtml;
+            let result = '';
+            let lastIndex = 0;
+            const tagRegex = /<[^>]*>/g;
+            let match;
+
+            while ((match = tagRegex.exec(html)) !== null) {
+                const textBefore = html.substring(lastIndex, match.index);
+                if (textBefore) {
+                    result += textBefore.replace(regex, (m) => `<span class="search-highlight">${m}</span>`);
+                }
+                result += match[0];
+                lastIndex = tagRegex.lastIndex;
+            }
+            const textAfter = html.substring(lastIndex);
+            if (textAfter) {
+                result += textAfter.replace(regex, (m) => `<span class="search-highlight">${m}</span>`);
+            }
+            el.innerHTML = result;
         }
     }
 
