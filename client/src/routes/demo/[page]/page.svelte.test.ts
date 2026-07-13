@@ -1,6 +1,5 @@
 import { cleanup, render, screen } from "@testing-library/svelte";
-import { writable } from "svelte/store";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { store } from "../../../stores/store.svelte";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
 import DemoPageView from "./+page.svelte";
@@ -35,7 +34,7 @@ vi.mock("../../../schema/app-schema", async (importOriginal) => {
     return {
         ...actual,
         Project: {
-            fromDoc: vi.fn().mockImplementation((ydoc) => {
+            fromDoc: vi.fn().mockImplementation((ydoc: import("yjs").Doc) => {
                 return {
                     ydoc,
                     addPage: vi.fn(),
@@ -59,7 +58,7 @@ const mockPageStore = { params: { page: "TestPage" }, url: new URL("http://local
 vi.mock("$app/stores", () => {
     return {
         page: {
-            subscribe: (fn: any) => {
+            subscribe: (fn: (value: { params: Record<string, string>; url: URL; }) => void) => {
                 fn(mockPageStore);
                 return () => {};
             },
@@ -83,7 +82,7 @@ describe("Demo Page View", () => {
     it("should show loading state initially", async () => {
         // We delay the getYjsClient mock to force the loading state to stay active
         const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as any).mockImplementationOnce(() => new Promise(() => {}));
+        (getYjsClientByProjectTitle as Mock).mockImplementationOnce(() => new Promise(() => {}));
 
         render(DemoPageView);
 
@@ -92,7 +91,7 @@ describe("Demo Page View", () => {
 
     it("should render page not found state when page is missing", async () => {
         const { findPageByName } = await import("../../../utils/pageUtils");
-        (findPageByName as any).mockReturnValue(undefined); // Simulate page missing
+        (findPageByName as Mock).mockReturnValue(undefined); // Simulate page missing
 
         render(DemoPageView);
 
@@ -118,7 +117,7 @@ describe("Demo Page View", () => {
         };
 
         const { findPageByName } = await import("../../../utils/pageUtils");
-        (findPageByName as any).mockReturnValue(mockPageItem);
+        (findPageByName as Mock).mockReturnValue(mockPageItem);
 
         render(DemoPageView);
 
