@@ -64,4 +64,29 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 .comment-button:hover {
     background-color: #f0f0f0;
 }
+
+/* On mobile, don't permanently reserve a line of height under every item for a
+   control that's invisible most of the time - collapse it out of the layout
+   until the item is actively focused (or it has comments to show). */
+@media (max-width: 768px) {
+    .comment-button,
+    .comment-count-visual {
+        display: none;
+    }
+
+    /* Editing state is tracked via data-active (the global textarea, not a
+       per-item element, holds real DOM focus, so :focus-within never fires
+       here) - see OutlinerItem.svelte's isItemActive. */
+    :global(.outliner-item:hover) .comment-button,
+    :global(.outliner-item[data-active="true"]) .comment-button,
+    .comment-button.has-count {
+        display: inline-block;
+    }
+
+    :global(.outliner-item:hover) .comment-count-visual,
+    :global(.outliner-item[data-active="true"]) .comment-count-visual,
+    .comment-count-visual.has-count {
+        display: inline;
+    }
+}
 </style>

@@ -1980,6 +1980,33 @@
             document.dispatchEvent(event);
         }
     }
+
+    function handleMobileDelete() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        const itemViewModel = viewModel.getViewModel(activeItemId);
+        if (!itemViewModel) return;
+        if (!confirm("Are you sure you want to delete this item?")) return;
+
+        const original = itemViewModel.original;
+        const parent = original.parent;
+        if (parent) {
+            const idx = parent.indexOf(original);
+            if (idx >= 0) parent.removeAt(idx);
+        } else {
+            const items = pageItem.items as import("../schema/app-schema").Items;
+            const idx = items.indexOf(original);
+            if (idx >= 0) items.removeAt(idx);
+        }
+    }
+
+    function handleMobileVote() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        const itemViewModel = viewModel.getViewModel(activeItemId);
+        if (!itemViewModel) return;
+        itemViewModel.original.toggleVote(currentUser);
+    }
 </script>
 
 {#key outlinerKey}
@@ -2134,6 +2161,8 @@
         onInsertBelow={handleMobileInsertBelow}
         onNewChild={handleMobileNewChild}
         onInsertSiblingBelow={handleMobileInsertSiblingBelow}
+        onDelete={handleMobileDelete}
+        onVote={handleMobileVote}
     />
 {/if}
 

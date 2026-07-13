@@ -2354,6 +2354,25 @@ export function setSelectionPosition(start: number, end: number = start) {
     font-style: italic;
 }
 
+/* Mobile layout: item text always spans the full row instead of shrinking to
+   make room for trailing controls (vote count, comment button, component type
+   selector, etc). Those controls wrap onto their own line, right-aligned. */
+@media (max-width: 768px) {
+    .item-text {
+        flex-basis: 100%;
+    }
+
+    .item-content {
+        justify-content: flex-end;
+    }
+
+    /* Add/Delete/Vote actions move to the mobile bottom toolbar instead of
+       reserving space in every item row. */
+    .item-actions {
+        display: none;
+    }
+}
+
 :global(.item-text.formatted s) {
     text-decoration: line-through;
 }

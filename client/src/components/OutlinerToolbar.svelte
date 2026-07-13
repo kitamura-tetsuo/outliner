@@ -16,6 +16,8 @@
         onInsertBelow?: () => void;
         onNewChild?: () => void;
         onInsertSiblingBelow?: () => void;
+        onDelete?: () => void;
+        onVote?: () => void;
     }
 
     let {
@@ -31,6 +33,8 @@
         onInsertBelow,
         onNewChild,
         onInsertSiblingBelow,
+        onDelete,
+        onVote,
     }: Props = $props();
 
     // File input used by the "Add Image" action. Kept local to this component
@@ -134,6 +138,22 @@
                 <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
             </svg>
         </button>
+        <button type="button"
+            class="mobile-toolbar-btn"
+            aria-label="Vote"
+            title="Vote"
+            onclick={onVote}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </button>
+        <button type="button"
+            class="mobile-toolbar-btn"
+            aria-label="Delete"
+            title="Delete"
+            onclick={onDelete}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
     </div>
 {/if}
 
@@ -202,6 +222,7 @@
         justify-content: space-around;
         align-items: center;
         height: 50px;
+        overflow-x: auto;
     }
 
     @media (max-width: 768px) {
@@ -222,6 +243,7 @@
         justify-content: center;
         width: 40px;
         height: 40px;
+        flex-shrink: 0;
     }
 
     .mobile-toolbar-btn:hover {

@@ -4,8 +4,8 @@ title-ja: モバイルアクションツールバー
 category: mobile
 status: implemented
 components:
-- client/src/components/MobileActionToolbar.svelte
-- client/src/routes/+layout.svelte
+- client/src/components/OutlinerToolbar.svelte
+- client/src/components/OutlinerTree.svelte
 tests:
 - client/e2e/core/MOB-0003.spec.ts
 acceptance:
@@ -13,4 +13,5 @@ acceptance:
 - Indent and Outdent buttons modify item depth
 - Insert Above and Insert Below add sibling items
 - New Child creates a child under current item
+- Delete and Vote buttons act on the active item
 - Toolbar visible only on screens ≤ 768 px
