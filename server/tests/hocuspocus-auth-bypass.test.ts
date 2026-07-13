@@ -74,7 +74,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
     it("should BLOCK connection to non-project path without auth (FIXED)", async () => {
         const provider = new HocuspocusProvider({
-            url: \`ws://127.0.0.1:\${port}/bypassed-document\`,
+            url: `ws://127.0.0.1:${port}/bypassed-document`,
             name: "bypassed-document",
             WebSocketPolyfill: SafeWebSocket as any,
             document: new Y.Doc(),
@@ -98,7 +98,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
     it("should BLOCK connection to project-like path if obscured (e.g. //projects) (FIXED)", async () => {
         const provider = new HocuspocusProvider({
-            url: \`ws://127.0.0.1:\${port}//projects/123\`,
+            url: `ws://127.0.0.1:${port}//projects/123`,
             name: "projects/123",
             WebSocketPolyfill: SafeWebSocket as any,
             connect: false,
@@ -133,7 +133,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
     it("should BLOCK connection to normal /projects path without auth", async () => {
         const provider = new HocuspocusProvider({
-            url: \`ws://127.0.0.1:\${port}/projects/123\`,
+            url: `ws://127.0.0.1:${port}/projects/123`,
             name: "projects/123",
             WebSocketPolyfill: SafeWebSocket as any,
             connect: false,
