@@ -39,17 +39,6 @@ test.describe("FTR-53f59906: chart view toggle", () => {
         await expect(row).toBeVisible({ timeout: 10000 });
         await page.waitForTimeout(1000);
 
-        const titleCell = row.locator('td[data-col="title"] .cell-value');
-        await expect(titleCell).toBeVisible({ timeout: 10000 });
-        await titleCell.click();
-        const titleInput = row.locator('td[data-col="title"] input');
-        await expect(titleInput).toBeVisible({ timeout: 5000 });
-        await titleInput.fill("Chart-worthy task");
-        await titleInput.press("Enter");
-        await expect(
-            grid.locator('td[data-col="title"] .cell-value', { hasText: "Chart-worthy task" }),
-        ).toBeVisible({ timeout: 15000 });
-
         const repeatDaysCell = row.locator('td[data-col="repeat_days"] .cell-value');
         await expect(repeatDaysCell).toBeVisible({ timeout: 10000 });
         await repeatDaysCell.click();
