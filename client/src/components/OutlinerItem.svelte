@@ -1435,7 +1435,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     if (!full) {
                         // Fallback from appStore or generalStore
                         const w = typeof window !== 'undefined' ? (window as Window & typeof globalThis & { appStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } }, generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } }) : undefined;
-                        const gs = w?.appStore || w?.generalStore || (typeof window !== 'undefined' ? window?.appStore || window?.generalStore : undefined);
+                        const gs = w?.appStore || w?.generalStore;
                         const items = gs?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {

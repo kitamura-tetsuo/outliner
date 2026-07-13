@@ -187,8 +187,9 @@ export class KeyEventHandler {
 
                 let textSaysAlias = false;
                 try {
-                    const ta: HTMLTextAreaElement | null | undefined = (window?.appStore || window?.generalStore)
-                        ?.textareaRef;
+                    const w = typeof window !== "undefined" ? window as Window & typeof globalThis & { appStore?: { textareaRef?: HTMLTextAreaElement }, generalStore?: { textareaRef?: HTMLTextAreaElement } } : undefined;
+                    const gs = w?.appStore || w?.generalStore;
+                    const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef;
                     if (ta && typeof ta.value === "string") {
                         const before = ta.value.slice(
                             0,
