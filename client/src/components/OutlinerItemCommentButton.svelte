@@ -64,4 +64,24 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 .comment-button:hover {
     background-color: #f0f0f0;
 }
+
+/* On mobile, don't permanently reserve a line of height under every item for a
+   control that's invisible most of the time - collapse it out of the layout
+   until the item is actively focused (or it has comments to show). */
+@media (max-width: 768px) {
+    .comment-button,
+    .comment-count-visual {
+        display: none;
+    }
+
+    :global(.outliner-item:focus-within) .comment-button,
+    .comment-button.has-count {
+        display: inline-block;
+    }
+
+    :global(.outliner-item:focus-within) .comment-count-visual,
+    .comment-count-visual.has-count {
+        display: inline;
+    }
+}
 </style>

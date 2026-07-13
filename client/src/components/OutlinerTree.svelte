@@ -1980,6 +1980,24 @@
             document.dispatchEvent(event);
         }
     }
+
+    function handleMobileDelete() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        const itemViewModel = viewModel.getViewModel(activeItemId);
+        if (!itemViewModel) return;
+        if (confirm("Are you sure you want to delete this item?")) {
+            itemViewModel.original.delete();
+        }
+    }
+
+    function handleMobileVote() {
+        const activeItemId = resolveActiveItemId();
+        if (!activeItemId) return;
+        const itemViewModel = viewModel.getViewModel(activeItemId);
+        if (!itemViewModel) return;
+        itemViewModel.original.toggleVote(currentUser);
+    }
 </script>
 
 {#key outlinerKey}
@@ -2134,6 +2152,8 @@
         onInsertBelow={handleMobileInsertBelow}
         onNewChild={handleMobileNewChild}
         onInsertSiblingBelow={handleMobileInsertSiblingBelow}
+        onDelete={handleMobileDelete}
+        onVote={handleMobileVote}
     />
 {/if}
 

@@ -1,0 +1,31 @@
+id: MOB-0004
+title: Mobile item row full-width text with toolbar actions
+title-ja: モバイルでの項目テキスト全幅表示とツールバー操作
+description: >-
+  On narrow (phone-width) screens, outliner item text now always spans the
+  full row instead of being squeezed by inline controls (comment button,
+  vote count, component type selector), which previously forced text to wrap
+  one word or character per line. Controls that occupy horizontal space
+  (add/delete/vote) move to the fixed mobile bottom toolbar instead of the
+  per-item row, and any remaining inline badges (comment icon, vote count,
+  aliases, attachments) wrap onto their own line right-aligned at the end of
+  the text.
+category: mobile
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemCommentButton.svelte
+- client/src/components/OutlinerItemComponentTypeSelector.svelte
+- client/src/components/OutlinerToolbar.svelte
+- client/src/components/OutlinerTree.svelte
+acceptance:
+- Item text spans the full row width on screens <= 768px and wraps normally
+  instead of collapsing to a single narrow column
+- Trailing badges (comment button, vote count, aliases, attachments,
+  component type selector) render right-aligned on their own line under the
+  text instead of squeezing it
+- Per-item Add/Delete/Vote buttons are hidden from the item row on mobile
+- The mobile bottom toolbar has working Delete and Vote buttons that act on
+  the active item
+tests:
+- client/e2e/core/mob-item-row-full-width-text-8d3af5cc.spec.ts
