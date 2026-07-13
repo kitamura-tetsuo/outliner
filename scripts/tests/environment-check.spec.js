@@ -3,7 +3,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { checkProductionHealth, detectEmulatorEnvironment } from "../check-production-environment.js";
+import { checkProductionHealth, detectEmulatorEnvironment } from "../check-production-environment.cjs";
 
 describe("Environment Check Function", () => {
     let originalEnv;
