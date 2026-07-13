@@ -7,6 +7,7 @@ const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
+import { safeGetNodeParent } from "../utils/treeUtils";
 import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
 
 export type Comment = {
@@ -618,7 +619,7 @@ export class Item {
 
     // Parent's children collection (Items). null directly under root
     get parent(): Items | null {
-        const parentKey = this.tree.getNodeParentFromKey(this.key);
+        const parentKey = safeGetNodeParent(this.tree, this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }

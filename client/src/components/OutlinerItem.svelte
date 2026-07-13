@@ -1,4 +1,6 @@
 <script module lang="ts">
+    import { safeGetNodeParent } from "../utils/treeUtils";
+
     // Drag start position (shared by all items)
     let dragStartClientX = 0;
     let dragStartClientY = 0;
@@ -968,7 +970,7 @@ function handleContentClick(e: MouseEvent) {
             model.original.updateText(newText);
 
             // Handle parent updates
-            const parentKey = model.original.tree?.getNodeParentFromKey?.(model.original.key);
+            const parentKey = safeGetNodeParent(model.original.tree, model.original.key);
             if (parentKey && parentKey !== "root") {
                 setTimeout(() => {
                     try {

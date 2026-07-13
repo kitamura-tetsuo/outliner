@@ -1,6 +1,7 @@
 import { getLogger } from "../lib/logger";
 import { iterateItems } from "../utils/itemTraversal";
 import { safeDecodeURIComponent } from "../utils/urlUtils";
+import { safeGetNodeParent } from "../utils/treeUtils";
 const logger = getLogger("store");
 import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
@@ -321,7 +322,7 @@ export class GeneralStore {
                             for (const [key, change] of event.changes.keys) {
                                 if (change.action === "add") {
                                     try {
-                                        if (project.tree.getNodeParentFromKey(key) === "root") {
+                                        if (safeGetNodeParent(project.tree, key) === "root") {
                                             shouldRebuild = true;
                                             break;
                                         }
@@ -338,7 +339,7 @@ export class GeneralStore {
                         // path[0] is the node ID
                         const nodeId = String(event.path[0]);
                         try {
-                            if (project.tree.getNodeParentFromKey(nodeId) === "root") {
+                            if (safeGetNodeParent(project.tree, nodeId) === "root") {
                                 // It is a page title change
                                 shouldRebuild = true;
                             }

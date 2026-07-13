@@ -3,6 +3,7 @@ import type { Item } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { getLogger } from "./logger";
+import { safeGetNodeParent } from "../utils/treeUtils";
 
 const logger = getLogger("TreeDnD");
 
@@ -99,8 +100,8 @@ export class TreeDnD {
             const tree: YTree = items.tree;
             const doc = pageItem?.ydoc;
 
-            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
-            const targetParent = tree.getNodeParentFromKey?.(targetKey);
+            const sourceParent = safeGetNodeParent(tree, sourceKey);
+            const targetParent = safeGetNodeParent(tree, targetKey);
 
             const run = () => {
                 // Middle drop should nest under the target item.
