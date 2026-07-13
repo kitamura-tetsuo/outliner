@@ -1,9 +1,9 @@
 import { cleanup, render, screen } from "@testing-library/svelte";
+import { writable } from "svelte/store";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { store } from "../../../stores/store.svelte";
 import { yjsStore } from "../../../stores/yjsStore.svelte";
 import DemoPageView from "./+page.svelte";
-import { writable } from "svelte/store";
 
 // Mock dependencies
 vi.mock("../../../lib/demoSeed", () => ({
@@ -41,7 +41,7 @@ vi.mock("../../../schema/app-schema", async (importOriginal) => {
                     addPage: vi.fn(),
                     items: {
                         find: vi.fn(),
-                        root: { items: { toArray: () => [] } }
+                        root: { items: { toArray: () => [] } },
                     },
                 };
             }),
@@ -62,8 +62,8 @@ vi.mock("$app/stores", () => {
             subscribe: (fn: any) => {
                 fn(mockPageStore);
                 return () => {};
-            }
-        }
+            },
+        },
     };
 });
 
@@ -114,7 +114,7 @@ describe("Demo Page View", () => {
             lastChanged: 0,
             yMap: { observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() },
             isDeleted: false,
-            items: { root: { items: { toArray: () => [] } } }
+            items: { root: { items: { toArray: () => [] } } },
         };
 
         const { findPageByName } = await import("../../../utils/pageUtils");
