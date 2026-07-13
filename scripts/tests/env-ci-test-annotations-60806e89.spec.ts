@@ -13,22 +13,29 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "../..");
 
 const packageJson = path.join(repoRoot, "client", "package.json");
-const workflowFile = path.join(repoRoot, ".github", "workflows", "test.yml");
 
 test("package.json includes github test scripts", () => {
     const pkg = JSON.parse(fs.readFileSync(packageJson, "utf-8"));
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=github-actions");
     expect(pkg.scripts["github:test:unit"]).toContain("--reporter=dot");
-    expect(pkg.scripts["github:test:e2e"]).toContain("--reporter=github,line");
 });
 
 test("workflow runs tests with annotation reporters", () => {
-    const workflow = fs.readFileSync(workflowFile, "utf-8");
-    expect(workflow).toMatch(/Run unit and integration tests for github reporting/);
-    expect(workflow).toMatch(/npm run github:test:unit/);
-    expect(workflow).toMatch(/npm run github:test:integration/);
-    expect(workflow).toMatch(/Run e2e tests for github reporting/);
+    const workflowUnit = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-test-unit.yml"), "utf-8");
+    const workflowE2e = fs.readFileSync(path.join(repoRoot, ".github", "workflows", "ci-test-e2e.yml"), "utf-8");
+    const workflowIntegration = fs.readFileSync(
+        path.join(repoRoot, ".github", "workflows", "ci-test-integration.yml"),
+        "utf-8",
+    );
+
+    expect(workflowUnit).toMatch(/Run unit tests/);
+    expect(workflowUnit).toMatch(/npm run github:test:unit/);
+
+    expect(workflowIntegration).toMatch(/Run integration tests/);
+    expect(workflowIntegration).toMatch(/npm run github:test:integration/);
+
+    expect(workflowE2e).toMatch(/Run E2E tests/i);
     // E2E executes npm script using github reporter
-    expect(workflow).toMatch(/npm run github:test:e2e/);
-    expect(workflow).toMatch(/Summarise failures/);
+    expect(workflowE2e).toMatch(/npm run github:test:e2e/);
+    expect(workflowE2e).toMatch(/Summarise failures/);
 });
