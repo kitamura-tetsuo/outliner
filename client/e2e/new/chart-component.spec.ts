@@ -49,6 +49,6 @@ test.describe("Chart Component E2E", () => {
         await expect(componentSelector).toHaveValue("chart");
 
         // Wait for chart editor to appear (ChartQueryEditor component)
-        await expect(page.locator(".chart-query-editor")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator(".chart-panel")).toBeVisible({ timeout: 15000 });
     });
 });

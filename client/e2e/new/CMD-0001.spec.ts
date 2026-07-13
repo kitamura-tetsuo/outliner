@@ -187,12 +187,12 @@ test.describe("CMD-0001: Inline Command Palette", () => {
             const itemDetails = allItems.map(el => ({
                 id: el.getAttribute("data-item-id"),
                 text: el.querySelector(".item-text")?.textContent || "",
-                hasTable: !!el.querySelector(".inline-join-table"),
+                hasTable: !!el.querySelector(".dynamic-table-block"),
                 innerHTML: el.innerHTML,
             }));
 
             return {
-                inlineTableExists: !!document.querySelector(".inline-join-table"),
+                inlineTableExists: !!document.querySelector(".dynamic-table-block"),
                 itemsWithTable: document.querySelectorAll("[data-item-id]").length,
                 pageContent: document.body.innerHTML.includes("/table"),
                 allItemTexts: Array.from(document.querySelectorAll("[data-item-id] .item-text")).map(el =>
@@ -231,7 +231,7 @@ test.describe("CMD-0001: Inline Command Palette", () => {
         });
         console.log("Component state info:", componentStateInfo);
 
-        await expect(page.locator(".inline-join-table")).toBeVisible();
+        await expect(page.locator(".dynamic-table-block")).toBeVisible();
     });
 
     test("filter and insert chart", async ({ page }) => {
