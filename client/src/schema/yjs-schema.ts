@@ -433,6 +433,10 @@ export class Project {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
+    get tables(): Y.Map<Y.Doc> {
+        return this.ydoc.getMap("tables");
+    }
+
     /**
      * Find a page by ID
      */

@@ -4,8 +4,7 @@ const logger = getLogger("ChartPanel");
 
 import * as echarts from "echarts";
 import { onMount } from "svelte";
-import { dbChangeStore } from "../services/sqlService";
-import { initDb, runQuery } from "../services/sqlService";
+import { executeQuery, getPGlite } from "../services/pgliteService";
 import type { Item } from "../schema/app-schema";
 
 interface ColumnMeta {
@@ -28,23 +27,16 @@ let hasData = $state(false);
 let isInitialized = $state(false);
 
 onMount(() => {
-    let unsub: (() => void) | undefined;
-    initDb().then(() => {
+    getPGlite().then(() => {
         isInitialized = true;
         chart = echarts.init(chartDiv);
         if (item && item.chartQuery) {
             runItemQuery();
         }
-        unsub = dbChangeStore.subscribe(() => {
-            if (isInitialized && item && item.chartQuery) {
-                runItemQuery();
-            }
-        });
     }).catch(error => {
         logger.error({ error }, "Error initializing chart");
     });
     return () => {
-        if (unsub) unsub();
         chart?.dispose();
     };
 });
@@ -53,9 +45,8 @@ onMount(() => {
 async function runItemQuery() {
     if (item && item.chartQuery && isInitialized) {
         try {
-            await initDb();
-            const result = runQuery(item.chartQuery, true);
-            if (result) update(result as QueryResult);
+            const result = await executeQuery(item.chartQuery);
+            if (result) update(result as unknown as QueryResult);
         } catch (error) {
               logger.error({ error }, "Error running item query");
         }

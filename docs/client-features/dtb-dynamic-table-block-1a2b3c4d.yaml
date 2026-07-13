@@ -1,0 +1,14 @@
+id: 1a2b3c4d-dynamic-table-block
+title: Dynamic Table Block (PGlite)
+description: 'Replaces the legacy sql.js database feature, EditableQueryGrid, SqlTableGrid, TaskManager, and HabitTracker. Utilizes PGlite in-memory DB as a robust calculation and querying engine synced unidirectionally from Yjs Map state. Provides a unified Table wrapper under the Project, maintaining schema, UI definitions, and field-level CRDT data. Includes built-in presets for Task and Habit tracking.
+
+  '
+status: implemented
+dependencies:
+- Yjs Core
+- PGlite
+tags:
+- Database
+- Table
+- Collaboration
+title-ja: Dynamic Table Block (PGlite)

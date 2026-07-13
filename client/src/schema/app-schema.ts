@@ -806,6 +806,34 @@ export class Project {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
+    get tables(): Y.Map<Y.Doc> {
+        return this.ydoc.getMap("tables");
+    }
+
+    createTable(tableId: string, name: string): Table {
+        const tableDoc = new Y.Doc();
+        const tablesMap = this.tables;
+
+        // Initialize the sub-doc structure
+        const metadata = tableDoc.getMap("metadata");
+        metadata.set("id", tableId);
+        metadata.set("name", name);
+
+        tableDoc.getText("schema");
+        tableDoc.getMap("ui");
+        tableDoc.getMap("data");
+
+        tablesMap.set(tableId, tableDoc);
+
+        return new Table(tableDoc, tableId);
+    }
+
+    getTable(tableId: string): Table | undefined {
+        const tableDoc = this.tables.get(tableId);
+        if (!tableDoc) return undefined;
+        return new Table(tableDoc, tableId);
+    }
+
     /**
      * Find a page by ID
      */
@@ -873,4 +901,44 @@ function wrapArrayLike(items: Items): Items {
         },
     });
 }
+// Wrapper for Table Sub-documents
+export class Table {
+    public readonly ydoc: Y.Doc;
+    public readonly id: string;
+    public readonly undoManager: Y.UndoManager;
+
+    constructor(ydoc: Y.Doc, id: string) {
+        this.ydoc = ydoc;
+        this.id = id;
+
+        // Scope undo to schema, ui, and data maps
+        this.undoManager = new Y.UndoManager([
+            this.schema,
+            this.ui,
+            this.data,
+        ]);
+    }
+
+    get name(): string {
+        const metadata = this.ydoc.getMap("metadata");
+        return (metadata.get("name") as string) || "Unnamed Table";
+    }
+
+    set name(v: string) {
+        this.ydoc.getMap("metadata").set("name", v);
+    }
+
+    get schema(): Y.Text {
+        return this.ydoc.getText("schema");
+    }
+
+    get ui(): Y.Map<unknown> {
+        return this.ydoc.getMap("ui");
+    }
+
+    get data(): Y.Map<Y.Map<RowValueType>> {
+        return this.ydoc.getMap("data");
+    }
+}
+
 export type { YDocOptions };
