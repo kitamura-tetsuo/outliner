@@ -2,7 +2,6 @@
 interface Props {
     value: unknown;
     editable: boolean;
-    options?: string[];
     onCommit: (value: string | number | boolean | null) => void;
 }
 
