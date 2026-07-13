@@ -11,7 +11,7 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 5. [Selection and Copy & Paste](#selection-and-copy-paste)
 6. [Keyboard Shortcuts](#keyboard-shortcuts)
 7. [Images](#images)
-8. [Habit Management](#habit-management)
+8. [Database](#database)
 
 ---
 
@@ -108,39 +108,31 @@ You can upload images by dragging and dropping an image file directly onto the e
 
 ---
 
-## Habit Management
+## Database
 
-Turn any item into a habit tracker to build and monitor daily or recurring routines, right inside your outline.
+Turn any item into a database table to manage structured data, right inside your outline. You can start with a blank table or use presets like Tasks or Habits.
 
-### Creating a Habit Tracker
+### Creating a Database Table
 
-Hover over an item to reveal its component-type dropdown, then choose **Habits**.
+Hover over an item to reveal its component-type dropdown (which defaults to "Text"), then choose **Database**.
 
-- The item turns into a habit tracker with an "Add a habit…" form and a 7-day grid.
-- If the item already contains a table with a different schema, you'll be asked to confirm before it's replaced.
+- The item will display a "Create a database table" panel.
+- Enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
 
-### Adding a Habit
+### Managing Data
 
-Type a name in the **Add a habit…** field, set how often it repeats in the **every N day(s)** field, and press **Add**.
+Once the table is created, you will see a grid view where you can add, edit, or delete records.
 
-- Leave the interval at `1` for a daily habit, or use a larger number (e.g. `7`) for a weekly habit.
-
-### Checking Off Days
-
-Click a day's cell in the grid to mark the habit as done, and click again to undo it.
-
-- The current day's column is highlighted so it's easy to find.
-- Each habit shows its total completions and current streak (🔥); the streak keeps counting as long as consecutive check-ins are no further apart than the habit's own interval.
-
-### Deleting a Habit
-
-Click the **×** button next to a habit to remove it.
-
-- This permanently deletes the habit and its entire completion history.
+- You can toggle between different views of the table using the buttons at the top:
+  - **Grid:** The default view for adding and editing data rows.
+  - **Chart:** A visual representation of your data.
+  - **Schema:** Allows you to define and edit the SQL schema for your table.
+  - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
+- The table toolbar also provides **Undo** and **Redo** buttons specific to the table's data.
 
 ### Collaboration
 
-Habit trackers are stored the same way as other outliner data, so check-ins and new habits sync live to everyone viewing the item.
+Databases are stored the same way as other outliner data, so data changes and schema updates sync live to everyone viewing the item.
 
 ---
 
