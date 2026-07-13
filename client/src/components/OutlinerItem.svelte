@@ -35,6 +35,7 @@ import {
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
+    import { safeGetNodeParent } from "../utils/treeUtils";
 import { isForeignInput } from "../lib/KeyEventHandler";
 const logger = getLogger("OutlinerItem");
 
@@ -968,7 +969,7 @@ function handleContentClick(e: MouseEvent) {
             model.original.updateText(newText);
 
             // Handle parent updates
-            const parentKey = model.original.tree?.getNodeParentFromKey?.(model.original.key);
+            const parentKey = model.original.tree && model.original.key ? safeGetNodeParent(model.original.tree, model.original.key) : undefined;
             if (parentKey && parentKey !== "root") {
                 setTimeout(() => {
                     try {

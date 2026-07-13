@@ -3,6 +3,7 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { safeGetNodeParent } from "../utils/treeUtils";
 import { getLogger } from "../lib/logger";
 
 const logger = getLogger("yjs-schema");
@@ -275,7 +276,7 @@ export class Item {
     }
 
     get parent(): Items | null {
-        const parentKey = this.tree.getNodeParentFromKey(this.key);
+        const parentKey = safeGetNodeParent(this.tree, this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }

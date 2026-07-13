@@ -7,6 +7,7 @@
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
+    import { safeGetNodeParent } from "../utils/treeUtils";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
     import type { DisplayItem } from "../stores/OutlinerViewModel";
@@ -425,7 +426,7 @@
         }
 
 
-        const parentKey = tree.getNodeParentFromKey(key);
+        const parentKey = safeGetNodeParent(tree, key);
         if (!parentKey) return;
 
 
@@ -489,7 +490,7 @@
             logger.debug({ data: {
                     itemId,
 
-                    newParent: tree.getNodeParentFromKey(key),
+                    newParent: safeGetNodeParent(tree, key),
                 } }, "handleIndent new parent");
         } catch {}
 
@@ -529,11 +530,11 @@
         }
 
 
-        const parentKey = tree.getNodeParentFromKey(key);
+        const parentKey = safeGetNodeParent(tree, key);
         if (!parentKey || parentKey === "root") return;
 
 
-        const grandParentKey = tree.getNodeParentFromKey(parentKey);
+        const grandParentKey = safeGetNodeParent(tree, parentKey);
         if (!grandParentKey) return;
 
         const run = () => {
