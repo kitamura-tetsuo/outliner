@@ -7,6 +7,7 @@ import InlineJoinTable from "./InlineJoinTable.svelte";
 import SqlBlock from "./SqlBlock.svelte";
 import SqlTableGrid from "./SqlTableGrid.svelte";
 import TaskManager from "./TaskManager.svelte";
+import YjsTableBlock from "./yjstable/YjsTableBlock.svelte";
 
 interface Props {
     componentType: string | undefined;
@@ -16,7 +17,11 @@ interface Props {
 let { componentType, item }: Props = $props();
 </script>
 
-{#if componentType === "table"}
+{#if componentType === "yjstable"}
+    <div class="component-wrapper">
+        <YjsTableBlock item={item} />
+    </div>
+{:else if componentType === "table"}
     <div class="component-wrapper">
         <InlineJoinTable />
     </div>
