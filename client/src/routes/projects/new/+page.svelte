@@ -69,7 +69,7 @@ async function createNewContainer() {
 
         // Navigate to the created project page after 1.5 seconds
         setTimeout(() => {
-            goto(resolvePath("/" + containerName));
+            goto(resolvePath("/" + encodeURIComponent(containerName)));
         }, 1500);
     }
     catch (err) {

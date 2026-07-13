@@ -17,7 +17,7 @@
             yjsStore.yjsClient = client;
 
             logger.info(`Navigating to project page: /${projectName}`);
-            goto(resolvePath(`/${projectName}`));
+            goto(resolvePath(`/${encodeURIComponent(projectName)}`));
         } catch (error) {
             logger.error({ error: error as Error }, "Failed to switch project");
         }
