@@ -64,11 +64,14 @@ test.describe("MOB-0004: Mobile item row full-width text", () => {
         await expect(commentButton).toBeVisible();
 
         const contentBox = await contentItem.locator(".item-content").first().boundingBox();
-        const commentBox = await commentButton.boundingBox();
+        // The component type selector renders after the comment button and is
+        // also revealed while active, so it - not the comment button - is the
+        // rightmost trailing control; check the trailing group as a whole
+        // hugs the row's right edge instead of pinning to one control.
+        const selectorBox = await contentItem.locator(".component-selector").first().boundingBox();
         expect(contentBox).not.toBeNull();
-        expect(commentBox).not.toBeNull();
-        // Right-aligned: the button should sit near the right edge of the row.
-        expect(commentBox!.x + commentBox!.width).toBeGreaterThan(contentBox!.x + contentBox!.width - 40);
+        expect(selectorBox).not.toBeNull();
+        expect(selectorBox!.x + selectorBox!.width).toBeGreaterThan(contentBox!.x + contentBox!.width - 40);
     });
 
     test("mobile toolbar Vote and Delete buttons act on the active item", async ({ page }) => {
