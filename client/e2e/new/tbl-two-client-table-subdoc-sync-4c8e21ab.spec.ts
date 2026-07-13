@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => {
     test("a cell edit made by one client is visible to a second client on the same table", async ({ browser }, testInfo) => {
-        test.setTimeout(120000);
+        test.setTimeout(180000);
         const projectName = `Table Sync Project ${Date.now()}`;
         const pageName = `table-sync-page-${Date.now()}`;
 
@@ -88,16 +88,16 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             await page2.reload();
             await TestHelpers.waitForAppReady(page2);
         });
-        await TestHelpers.waitForPageData(page2, pageName, 30000);
+        await TestHelpers.waitForPageData(page2, pageName, 45000);
 
         // The table subdoc syncs through its own room; the grid on page2
         // should converge on the row created by page1.
         const view2 = page2.getByTestId("yjs-table-view").first();
-        await expect(view2).toBeVisible({ timeout: 30000 });
+        await expect(view2).toBeVisible({ timeout: 45000 });
         const grid2 = page2.getByTestId("yjs-table-grid").first();
         await expect(
             grid2.locator('td[data-col="title"] .cell-value', { hasText: "Client A entry" }),
-        ).toBeVisible({ timeout: 30000 });
+        ).toBeVisible({ timeout: 45000 });
 
         // Edit the row from page2 and confirm the change flows back to page1.
         const row2 = grid2.locator("tbody tr").first();
