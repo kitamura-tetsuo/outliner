@@ -1,8 +1,8 @@
 import type { YTree } from "yjs-orderedtree";
+import { safeGetNodeParent } from "../utils/treeUtils";
 import type { Item } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
-import { safeGetNodeParent } from "../utils/treeUtils";
 import { getLogger } from "./logger";
 
 const logger = getLogger("TreeDnD");

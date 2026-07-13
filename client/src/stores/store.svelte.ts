@@ -1,6 +1,6 @@
 import { getLogger } from "../lib/logger";
-import { iterateItems } from "../utils/itemTraversal";
 import { safeGetNodeParent } from "../utils/treeUtils";
+import { iterateItems } from "../utils/itemTraversal";
 import { safeDecodeURIComponent } from "../utils/urlUtils";
 const logger = getLogger("store");
 import { untrack } from "svelte";

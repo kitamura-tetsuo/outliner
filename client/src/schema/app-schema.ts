@@ -7,8 +7,8 @@ const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
 import { safeGetNodeParent } from "../utils/treeUtils";
+import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
 
 export type Comment = {
     id: string;

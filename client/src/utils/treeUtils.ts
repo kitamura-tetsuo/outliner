@@ -1,3 +1,4 @@
+
 import type { YTree } from "yjs-orderedtree";
 
 /**
@@ -6,10 +7,7 @@ import type { YTree } from "yjs-orderedtree";
  * or if it tries to access the parent of a root node (where parent is null).
  * This utility catches those errors and returns undefined instead.
  */
-export function safeGetNodeParent(
-    tree: YTree | { getNodeParentFromKey?: (key: string) => string | undefined; },
-    key: string,
-): string | undefined {
+export function safeGetNodeParent(tree: YTree | { getNodeParentFromKey?: (key: string) => string | undefined }, key: string): string | undefined {
     if (key === "root") return undefined;
     if (!tree || typeof tree.getNodeParentFromKey !== "function") return undefined;
 
