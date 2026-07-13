@@ -3,8 +3,8 @@
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import { safeGetNodeParent } from "../utils/treeUtils";
 import { getLogger } from "../lib/logger";
+import { safeGetNodeParent } from "../utils/treeUtils";
 
 const logger = getLogger("yjs-schema");
 
