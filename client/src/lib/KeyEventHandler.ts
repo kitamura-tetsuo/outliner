@@ -187,7 +187,12 @@ export class KeyEventHandler {
 
                 let textSaysAlias = false;
                 try {
-                    const w = typeof window !== "undefined" ? window as Window & typeof globalThis & { appStore?: { textareaRef?: HTMLTextAreaElement }, generalStore?: { textareaRef?: HTMLTextAreaElement } } : undefined;
+                    const w = typeof window !== "undefined"
+                        ? window as Window & typeof globalThis & {
+                            appStore?: { textareaRef?: HTMLTextAreaElement; };
+                            generalStore?: { textareaRef?: HTMLTextAreaElement; };
+                        }
+                        : undefined;
                     const gs = w?.appStore || w?.generalStore;
                     const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef;
                     if (ta && typeof ta.value === "string") {
