@@ -40,8 +40,7 @@ const commandPaletteStore = (() => {
         _cmdOffset: 0,
         _cmdStart: 0,
         commands: [
-            { label: "Table", type: "table" },
-            { label: "Chart", type: "chart" },
+            { label: "Database", type: "yjstable" },
             { label: "Alias", type: "alias" },
         ],
         get filtered() {
@@ -240,18 +239,18 @@ describe("CommandPaletteStore", () => {
             commandPaletteStore.show({ top: 0, left: 0 });
 
             // All commands are displayed with empty query
-            expect(commandPaletteStore.filtered).toHaveLength(3);
+            expect(commandPaletteStore.filtered).toHaveLength(2);
 
-            // Filter by "ta" (matches only "Table")
-            commandPaletteStore.handleCommandInput("t");
+            // Filter by "da" (matches only "Database")
+            commandPaletteStore.handleCommandInput("d");
             commandPaletteStore.handleCommandInput("a");
             expect(commandPaletteStore.filtered).toHaveLength(1);
-            expect(commandPaletteStore.filtered[0].label).toBe("Table");
+            expect(commandPaletteStore.filtered[0].label).toBe("Database");
 
-            // Filter by "ch"
-            commandPaletteStore.query = "ch";
+            // Filter by "al"
+            commandPaletteStore.query = "al";
             expect(commandPaletteStore.filtered).toHaveLength(1);
-            expect(commandPaletteStore.filtered[0].label).toBe("Chart");
+            expect(commandPaletteStore.filtered[0].label).toBe("Alias");
         });
     });
 });

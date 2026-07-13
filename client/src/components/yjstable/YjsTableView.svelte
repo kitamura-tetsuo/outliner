@@ -96,7 +96,7 @@ onMount(() => {
                 disposeConnection = connection.dispose;
                 // Seed PGlite only after the initial sync so we do not build
                 // the table from a half-loaded document.
-                await connection.waitForInitialSync().catch(() => ({ synced: false }));
+                await connection.waitForInitialSync(10000).catch(() => ({ synced: false }));
             } catch (err) {
                 logger.warn({ err }, "[YjsTableView] table doc connection failed; continuing offline");
             }

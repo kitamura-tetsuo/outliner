@@ -19,12 +19,6 @@ let { value, onChange }: Props = $props();
     >
         <option value="none">Text</option>
         <option value="yjstable">Database</option>
-        <option value="table">Table</option>
-        <option value="sqltable">SQL Table</option>
-        <option value="chart">Chart</option>
-        <option value="sql">SQL Block</option>
-        <option value="tasks">Tasks</option>
-        <option value="habits">Habits</option>
     </select>
 </div>
 

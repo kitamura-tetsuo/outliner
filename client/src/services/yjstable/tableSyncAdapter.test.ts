@@ -22,7 +22,9 @@ afterAll(async () => {
     await resetPgliteForTests();
 });
 
-describe("TableSyncAdapter", () => {
+// The first test pays PGlite's cold-start cost, which can exceed the default
+// 5s timeout when the whole unit suite runs in parallel workers.
+describe("TableSyncAdapter", { timeout: 30000 }, () => {
     it("loads existing records on start and serves the UI query", async () => {
         const { handles } = makeTable();
         setSchemaText(handles, SCHEMA);
