@@ -41,7 +41,9 @@ export class TreeValidator {
             }, { timeout });
         } catch (error) {
             console.error("TreeValidator: project not ready within timeout", error);
-            throw new Error(`Project not ready within ${timeout}ms`, { cause: error });
+            const err = new Error(`Project not ready within ${timeout}ms`);
+            (err as Error & { cause?: unknown; }).cause = error;
+            throw err;
         }
     }
 
