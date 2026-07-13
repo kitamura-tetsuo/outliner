@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, test, vi } from "vitest";
-import OutlinerToolbar from "./OutlinerToolbar.svelte";
 import { resolvePath } from "../utils/pathUtils";
+import OutlinerToolbar from "./OutlinerToolbar.svelte";
 
 vi.mock("../utils/pathUtils", () => ({
     resolvePath: vi.fn((path) => `/resolved${path}`),
@@ -16,7 +16,7 @@ describe("OutlinerToolbar", () => {
                 projectName: "TestProject",
                 pageName: "TestPage",
                 onAddItem,
-            }
+            },
         });
 
         const addItemBtn = getByText("Add Item");
@@ -36,7 +36,7 @@ describe("OutlinerToolbar", () => {
             props: {
                 mode: "desktop",
                 onAddItem,
-            }
+            },
         });
 
         const addItemBtn = getByText("Add Item");
@@ -51,7 +51,7 @@ describe("OutlinerToolbar", () => {
                 mode: "desktop",
                 projectName: "demo",
                 pageName: "TestPage",
-            }
+            },
         });
 
         const historyBtn = getByText("History / Diff");
@@ -63,7 +63,7 @@ describe("OutlinerToolbar", () => {
             props: {
                 mode: "mobile",
                 mobileToolbarBottomOffset: 42,
-            }
+            },
         });
 
         const toolbar = getByTestId("mobile-action-toolbar");
@@ -95,7 +95,7 @@ describe("OutlinerToolbar", () => {
             props: {
                 mode: "mobile",
                 ...handlers,
-            }
+            },
         });
 
         await fireEvent.click(getByLabelText("Indent"));
@@ -129,7 +129,7 @@ describe("OutlinerToolbar", () => {
             props: {
                 mode: "desktop",
                 onFileSelect,
-            }
+            },
         });
 
         const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
