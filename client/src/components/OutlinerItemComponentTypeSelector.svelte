@@ -55,7 +55,11 @@ let { value, onChange }: Props = $props();
         display: none;
     }
 
-    :global(.outliner-item:focus-within) .component-selector {
+    /* Editing state is tracked via data-active (the global textarea, not a
+       per-item element, holds real DOM focus, so :focus-within never fires
+       here) - see OutlinerItem.svelte's isItemActive. */
+    :global(.outliner-item:hover) .component-selector,
+    :global(.outliner-item[data-active="true"]) .component-selector {
         display: inline-block;
     }
 }

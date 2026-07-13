@@ -74,12 +74,17 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
         display: none;
     }
 
-    :global(.outliner-item:focus-within) .comment-button,
+    /* Editing state is tracked via data-active (the global textarea, not a
+       per-item element, holds real DOM focus, so :focus-within never fires
+       here) - see OutlinerItem.svelte's isItemActive. */
+    :global(.outliner-item:hover) .comment-button,
+    :global(.outliner-item[data-active="true"]) .comment-button,
     .comment-button.has-count {
         display: inline-block;
     }
 
-    :global(.outliner-item:focus-within) .comment-count-visual,
+    :global(.outliner-item:hover) .comment-count-visual,
+    :global(.outliner-item[data-active="true"]) .comment-count-visual,
     .comment-count-visual.has-count {
         display: inline;
     }
