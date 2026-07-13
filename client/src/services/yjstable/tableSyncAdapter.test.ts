@@ -173,6 +173,24 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
+    it("does not duplicate rows for schemas without an id column", async () => {
+        const { handles } = makeTable();
+        setSchemaText(handles, "CREATE TABLE notes (body TEXT)");
+        handles.uiDef.set("query", "SELECT body FROM notes");
+        const adapter = new TableSyncAdapter(handles);
+        try {
+            await adapter.start();
+            const recordId = addRecord(handles, { body: "first" });
+            await waitMicrotasks();
+            setRecordValue(handles, recordId, "body", "edited");
+            await waitMicrotasks();
+            const result = await adapter.runQueryNow();
+            expect(result?.rows).toEqual([{ body: "edited" }]);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
     it("reports query errors without breaking the adapter", async () => {
         const { handles } = makeTable();
         setSchemaText(handles, SCHEMA);

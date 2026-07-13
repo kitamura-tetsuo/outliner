@@ -216,7 +216,15 @@ export class TableSyncAdapter {
             const ids = [...this.pendingRecordIds];
             this.pendingRecordIds.clear();
             if (ids.length === 0 || !this.schema) return;
+            // Without an id column rows cannot be addressed individually, so
+            // an incremental delete+insert would duplicate rows: reload all
+            // records instead.
+            const hasIdColumn = this.schema.columns.some((c) => c.name === "id");
             void enqueueWrite(async (db) => {
+                if (!hasIdColumn) {
+                    await this.reloadAllRecords(db);
+                    return;
+                }
                 for (const recordId of ids) {
                     await this.applyRecordToDb(db, recordId);
                 }
@@ -226,6 +234,26 @@ export class TableSyncAdapter {
                 this.scheduleRequery();
             });
         });
+    }
+
+    /** Truncate the table and re-insert every record (id-less schemas). */
+    private async reloadAllRecords(db: PGlite): Promise<void> {
+        const schema = this.schema;
+        if (!schema) return;
+        const table = `${quoteIdent(this.pgSchema)}.${quoteIdent(schema.tableName)}`;
+        try {
+            await db.query(`DELETE FROM ${table}`);
+        } catch {
+            return;
+        }
+        this.recordErrors = new Map();
+        const recordIds: string[] = [];
+        this.handles.data.forEach((_record, recordId) => {
+            recordIds.push(recordId);
+        });
+        for (const recordId of recordIds) {
+            await this.applyRecordToDb(db, recordId);
+        }
     }
 
     /**
