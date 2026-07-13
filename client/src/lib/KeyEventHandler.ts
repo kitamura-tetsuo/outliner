@@ -458,7 +458,12 @@ export class KeyEventHandler {
                         cursor.applyToStore();
 
                         // Add new item to end and show AliasPicker
-                        const w = typeof window !== "undefined" ? (window as Window & typeof globalThis & { appStore?: { currentPage?: { items?: unknown[] } }, generalStore?: { currentPage?: { items?: unknown[] } } }) : undefined;
+                        const w = typeof window !== "undefined"
+                            ? (window as Window & typeof globalThis & {
+                                appStore?: { currentPage?: { items?: unknown[]; }; };
+                                generalStore?: { currentPage?: { items?: unknown[]; }; };
+                            })
+                            : undefined;
                         const gs = w?.appStore || w?.generalStore;
 
                         const items = (gs as {
@@ -574,7 +579,12 @@ export class KeyEventHandler {
                 const lastSlash = before.lastIndexOf("/");
                 const cmd = lastSlash >= 0 ? before.slice(lastSlash + 1) : "";
 
-                const w = typeof window !== "undefined" ? (window as Window & typeof globalThis & { appStore?: { textareaRef?: HTMLTextAreaElement | null }, generalStore?: { textareaRef?: HTMLTextAreaElement | null } }) : undefined;
+                const w = typeof window !== "undefined"
+                    ? (window as Window & typeof globalThis & {
+                        appStore?: { textareaRef?: HTMLTextAreaElement | null; };
+                        generalStore?: { textareaRef?: HTMLTextAreaElement | null; };
+                    })
+                    : undefined;
                 const gs = w?.appStore || w?.generalStore;
                 const ta: HTMLTextAreaElement | null | undefined = gs?.textareaRef;
                 const taValue: string | null = ta?.value ?? null;

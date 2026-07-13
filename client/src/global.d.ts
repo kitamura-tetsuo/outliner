@@ -40,8 +40,8 @@ interface Window {
     KeyEventHandler?: unknown;
     __KEY_EVENT_HANDLER__?: unknown;
     Items?: unknown;
-    generalStore?: typeof import("./stores/store.svelte").store & { textareaRef?: HTMLTextAreaElement | null };
-    appStore?: typeof import("./stores/store.svelte").store & { textareaRef?: HTMLTextAreaElement | null };
+    generalStore?: typeof import("./stores/store.svelte").store & { textareaRef?: HTMLTextAreaElement | null; };
+    appStore?: typeof import("./stores/store.svelte").store & { textareaRef?: HTMLTextAreaElement | null; };
     __ALIAS_FWD__?: (ev: KeyboardEvent) => void;
     __SLASH_FWD__?: (ev: KeyboardEvent) => void;
     __KEYSTREAM__?: string;
