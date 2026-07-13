@@ -2,10 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { yjsService } from "../../lib/yjs/service";
-
-type ParentReadableTree = {
-    getNodeParentFromKey(key: string): string | undefined;
-};
+import { safeGetNodeParent } from "../../utils/treeUtils";
 
 describe("Yjs service basic operations", () => {
     it("performs CRUD and presence updates", () => {
@@ -24,11 +21,11 @@ describe("Yjs service basic operations", () => {
         expect(project.items.at(1)?.id).toBe(second.id);
 
         yjsService.indentItem(project, second.key);
-        const tree = project.tree as unknown as ParentReadableTree;
-        expect(tree.getNodeParentFromKey(second.key)).toBe(first.key);
+        const tree = project.tree;
+        expect(safeGetNodeParent(tree, second.key)).toBe(first.key);
 
         yjsService.outdentItem(project, second.key);
-        expect(tree.getNodeParentFromKey(second.key)).toBe("root");
+        expect(safeGetNodeParent(tree, second.key)).toBe("root");
         expect(project.items.length).toBe(2);
 
         yjsService.removeItem(project, first.key);
