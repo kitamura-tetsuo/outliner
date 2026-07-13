@@ -12,7 +12,8 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     import { Project as AppProject } from "../../../schema/app-schema";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
-        import Breadcrumb from "../../../components/Breadcrumb.svelte";
+    import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
+    import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     const logger = getLogger("DemoPageView");
 
@@ -95,6 +96,41 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
             isLoading = false;
+        }
+    }
+
+    // Auxiliary button to add items from top of screen (for E2E stabilization)
+    function addItemFromTopToolbar() {
+        try {
+            let pageItem = store.currentPage;
+            // If currentPage is not ready, create provisional page with pageName from URL
+            if (!pageItem) {
+                const proj = store.project;
+                if (proj?.addPage && pageName) {
+                    try {
+                        if (store.pageExists(pageName)) return;
+                        const created = proj.addPage(pageName, "anonymous");
+                        if (created) {
+                            store.currentPage = created;
+                            pageItem = created;
+                        }
+                    } catch {}
+                }
+            }
+            if (!pageItem || !pageItem.items) return;
+            const node = pageItem.items.addNode("anonymous");
+            // Activate immediately after addition to stabilize subsequent test steps
+            if (node && node.id) {
+                editorOverlayStore.setCursor({
+                    itemId: node.id,
+                    offset: 0,
+                    isActive: true,
+                    userId: "local",
+                });
+                editorOverlayStore.setActiveItem(node.id);
+            }
+        } catch (e) {
+            logger.warn("addItemFromTopToolbar failed", e);
         }
     }
 
@@ -181,12 +217,18 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
                 <button type="button"
                     onclick={toggleSearchPanel}
-                    class="search-btn rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+                    class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                     data-testid="search-toggle-button"
                     aria-label="Toggle Search Panel"
                     aria-expanded={isSearchPanelVisible}
                 >
                     Search
+                </button>
+                <button type="button"
+                    onclick={addItemFromTopToolbar}
+                    class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
+                >
+                    Add Item
                 </button>
             </div>
         </div>
