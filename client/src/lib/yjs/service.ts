@@ -4,8 +4,8 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
-import { getLogger } from "../logger";
 import { safeGetNodeParent } from "../../utils/treeUtils";
+import { getLogger } from "../logger";
 
 const logger = getLogger("yjs-service");
 
