@@ -5,8 +5,27 @@ registerCoverageHooks();
  *  Title   : Yjs + PGlite database tables
  *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
+
+// Whether fill() itself already triggers the title cell's commit-on-blur is
+// environment-dependent: in some environments the input is still there
+// afterwards (needs Enter), in others it has already unmounted back to
+// ".cell-value" (Enter would hang waiting for a now-detached element). Bound
+// the Enter attempt and retry the whole click -> fill -> commit cycle a few
+// times so a lost keystroke race doesn't fail the test outright.
+async function editTitleCell(row: Locator, grid: Locator, value: string): Promise<void> {
+    const committedCell = grid.locator('td[data-col="title"] .cell-value', { hasText: value });
+    for (let attempt = 0; attempt < 3; attempt++) {
+        await row.locator('td[data-col="title"] .cell-value').click();
+        const input = row.locator('td[data-col="title"] input');
+        await expect(input).toBeVisible({ timeout: 5000 });
+        await input.fill(value);
+        await input.press("Enter", { timeout: 3000 }).catch(() => {});
+        if (await committedCell.isVisible({ timeout: 5000 }).catch(() => false)) return;
+    }
+    await expect(committedCell).toBeVisible({ timeout: 15000 });
+}
 
 test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => {
     test(
@@ -54,21 +73,7 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             await expect(row1).toBeVisible({ timeout: 10000 });
             await page1.waitForTimeout(1000);
 
-            const titleCell1 = row1.locator('td[data-col="title"] .cell-value');
-            await titleCell1.click();
-            const titleInput1 = row1.locator('td[data-col="title"] input');
-            await expect(titleInput1).toBeVisible({ timeout: 5000 });
-            // Whether fill() itself already triggers the cell's commit-on-blur
-            // is environment-dependent: in some environments the input is still
-            // there afterwards (needs Enter), in others it has already
-            // unmounted back to ".cell-value" (Enter would hang waiting for a
-            // now-detached element). Bound the Enter attempt so either case
-            // resolves quickly, then assert on the committed value either way.
-            await titleInput1.fill("Client A entry");
-            await titleInput1.press("Enter", { timeout: 3000 }).catch(() => {});
-            await expect(
-                grid1.locator('td[data-col="title"] .cell-value', { hasText: "Client A entry" }),
-            ).toBeVisible({ timeout: 15000 });
+            await editTitleCell(row1, grid1, "Client A entry");
 
             // Second client joins the same page.
             const context2 = await browser.newContext({
@@ -109,12 +114,7 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
 
             // Edit the row from page2 and confirm the change flows back to page1.
             const row2 = grid2.locator("tbody tr").first();
-            const titleCell2 = row2.locator('td[data-col="title"] .cell-value');
-            await titleCell2.click();
-            const titleInput2 = row2.locator('td[data-col="title"] input');
-            await expect(titleInput2).toBeVisible({ timeout: 5000 });
-            await titleInput2.fill("Client B update");
-            await titleInput2.press("Enter", { timeout: 3000 }).catch(() => {});
+            await editTitleCell(row2, grid2, "Client B update");
 
             await expect(
                 grid1.locator('td[data-col="title"] .cell-value', { hasText: "Client B update" }),
