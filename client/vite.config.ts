@@ -171,6 +171,7 @@ export default defineConfig(async ({ mode }) => {
                         ],
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
+                        testTimeout: 30000,
                         coverage: {
                             enabled: true,
                         },

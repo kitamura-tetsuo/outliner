@@ -17,6 +17,8 @@ interface Props {
 
 let { handles, adapter, schemaError }: Props = $props();
 
+// handles is static within the component lifecycle due to `{#key}` wrapping
+// svelte-ignore state_referenced_locally
 let draft = $state(handles.schemaText.toString());
 let applyError = $state<string | undefined>(undefined);
 let applying = $state(false);
