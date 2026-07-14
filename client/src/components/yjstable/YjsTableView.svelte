@@ -52,6 +52,8 @@ let showChart = $state(false);
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
+// handles is static within the component lifecycle due to `{#key}` wrapping
+// svelte-ignore state_referenced_locally
 const adapter = new TableSyncAdapter(handles, {
     onSchemaChanged: (parsed, error) => {
         schema = parsed;

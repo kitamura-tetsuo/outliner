@@ -91,8 +91,12 @@ export class Comments {
     }
 
     get length() {
-        if (!this.yArray.doc) return 0;
-        return this.yArray.length;
+        try {
+            if (!this.yArray || !this.yArray.doc) return 0;
+            return this.yArray.length;
+        } catch {
+            return 0;
+        }
     }
 
     toArray(): Y.Map<CommentValueType>[] {
@@ -101,8 +105,8 @@ export class Comments {
     }
 
     toPlain(): Comment[] {
-        if (!this.yArray?.doc) return [];
-        if (typeof this.yArray?.toArray !== "function") return [];
+        if (!this.yArray || !this.yArray.doc) return [];
+        if (typeof this.yArray.toArray !== "function") return [];
         return this.yArray.toArray().map((m) => ({
             id: m.get("id") as string,
             author: m.get("author") as string,
@@ -207,6 +211,7 @@ export class Item {
     }
 
     get text(): string {
+        if (!this.value.doc) return "";
         const t = this.value.get("text");
         if (t === undefined || t === null) return "";
 
@@ -318,6 +323,7 @@ export class Item {
     }
 
     get votes(): Y.Array<string> {
+        if (!this.value.doc) return new Y.Array<string>();
         let arr = this.value.get("votes") as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
@@ -331,13 +337,14 @@ export class Item {
             arr = new Y.Array<string>();
             this.value.set("votes", arr);
         }
-        const idx = arr.toArray().indexOf(user);
+        const idx = arr.doc ? arr.toArray().indexOf(user) : -1;
         if (idx >= 0) arr.delete(idx, 1);
         else arr.push([user]);
         this.value.set("lastChanged", Date.now());
     }
 
     get attachments(): Y.Array<string> {
+        if (!this.value.doc) return new Y.Array<string>();
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
@@ -418,7 +425,7 @@ export class Item {
     removeAttachment(url: string) {
         const arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) return;
-        const idx = arr.toArray().indexOf(url);
+        const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
         if (idx >= 0) arr.delete(idx, 1);
         this.value.set("lastChanged", Date.now());
     }
@@ -428,6 +435,10 @@ export class Item {
     }
 
     get comments(): Comments {
+        if (!this.value.doc) {
+            const emptyArr = new Y.Array<Y.Map<CommentValueType>>();
+            return new Comments(emptyArr, () => emptyArr);
+        }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
             arr = new Y.Array<Y.Map<CommentValueType>>();
