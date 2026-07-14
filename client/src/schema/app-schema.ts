@@ -183,7 +183,8 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
         } catch {
-            return new Y.Map<ItemValueType>();
+            const dummyDoc = new Y.Doc();
+            return dummyDoc.getMap<ItemValueType>("dummy");
         }
     }
 

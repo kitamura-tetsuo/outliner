@@ -275,9 +275,9 @@ export function registerDemoTables(projectDoc: Y.Doc): void {
     const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
     for (const template of demoTables) {
         const entry = new Y.Map<unknown>();
+        registry.set(template.tableId, entry);
         entry.set("name", template.name);
         entry.set("doc", new Y.Doc({ guid: `demo--table--${template.tableId}`, autoLoad: true }));
-        registry.set(template.tableId, entry);
     }
 }
 
@@ -294,12 +294,12 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
     const ui = doc.getMap<unknown>("ui");
     ui.set("query", template.query);
     const components = new Y.Map<Y.Map<unknown>>();
+    ui.set("components", components);
     for (const [column, type] of Object.entries(template.components)) {
         const cfg = new Y.Map<unknown>();
-        cfg.set("type", type);
         components.set(column, cfg);
+        cfg.set("type", type);
     }
-    ui.set("components", components);
 
     const data = doc.getMap<Y.Map<string | number | boolean | null>>("data");
     for (const key of Array.from(data.keys())) {
@@ -307,11 +307,11 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
     }
     for (const record of template.records) {
         const map = new Y.Map<string | number | boolean | null>();
+        data.set(record.id, map);
         for (const [column, value] of Object.entries(record.values)) {
             map.set(column, value);
         }
         map.set("id", record.id);
-        data.set(record.id, map);
     }
 }
 
