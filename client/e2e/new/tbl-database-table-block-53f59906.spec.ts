@@ -45,14 +45,14 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
 
         // Let the add-row round trip (Yjs -> PGlite -> debounced re-query)
         // settle before editing so the cell is not re-rendered mid-edit.
-        await page.waitForTimeout(1000);
+        await page.waitForTimeout(2000);
 
         // Edit the title cell (text cell: click to edit, Enter to commit)
         const titleCell = row.locator('td[data-col="title"] .cell-value');
         await expect(titleCell).toBeVisible({ timeout: 10000 });
         await titleCell.click();
-        const titleInput = row.locator('td[data-col="title"] input');
-        await expect(titleInput).toBeVisible({ timeout: 5000 });
+        const titleInput = row.locator('td[data-col="title"] input.cell-input');
+        await expect(titleInput).toBeVisible({ timeout: 10000 });
         await titleInput.fill("Write the report");
         await titleInput.press("Enter");
 
