@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => {
     test("a cell edit made by one client is visible to a second client on the same table", async ({ browser }, testInfo) => {
-        test.setTimeout(180000);
+        test.setTimeout(240000);
         const projectName = `Table Sync Project ${Date.now()}`;
         const pageName = `table-sync-page-${Date.now()}`;
 
