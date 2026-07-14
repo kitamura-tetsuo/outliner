@@ -1,0 +1,3 @@
+test(client): fix yjs#509 warning in demo page unit tests
+
+- Replaces generic `{}` stub with actual `new Y.Doc()` inside `app-schema` and `services` vitest mocks to resolve `[yjs#509] Not same Y.Doc` warnings in `demo/page.svelte.test.ts`. This applies the missing commit from `main` to this PR.
