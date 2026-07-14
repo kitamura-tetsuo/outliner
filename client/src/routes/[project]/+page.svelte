@@ -222,7 +222,7 @@
             </div>
         </div>
     {:else if !isLoading && store.pages.current && store.pages.current.length > 0}
-    <div class="mt-6" {...(projectName === DEMO_PROJECT_NAME ? {"data-testid": "demo-page-list"} : {})}>
+        <div class="mt-6" {...(projectName === DEMO_PROJECT_NAME ? {"data-testid": "demo-page-list"} : {})}>
             <h2 class="mb-4 text-xl font-semibold">Page List</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
                 <PageList
@@ -236,7 +236,7 @@
             </div>
         </div>
     {:else if !isLoading && store.pages.current && store.pages.current.length === 0}
-    <div class="mt-6" {...(projectName === DEMO_PROJECT_NAME ? {"data-testid": "demo-page-list"} : {})}>
+        <div class="mt-6" {...(projectName === DEMO_PROJECT_NAME ? {"data-testid": "demo-page-list"} : {})}>
             <h2 class="mb-4 text-xl font-semibold">Page List</h2>
             <div class="rounded-lg bg-white p-4 shadow-md">
                 <PageList
