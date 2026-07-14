@@ -102,7 +102,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                         // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
                         const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
-for (const key of treeMap.keys()) {
+                        for (const key of treeMap.keys()) {
                             if (key === "root" || key === "deleted") continue;
                             const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
 

@@ -17,7 +17,7 @@ describe("Demo API", () => {
         metadata.set("lastReset", Date.now());
         metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-const orderedTree = mockDoc.getMap("orderedTree");
+        const orderedTree = mockDoc.getMap("orderedTree");
         const { YTree } = await import("yjs-orderedtree");
         const tree = new YTree(orderedTree);
         const { demoPages } = await import("../src/demo-content.js");
