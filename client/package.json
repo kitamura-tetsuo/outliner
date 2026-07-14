@@ -26,7 +26,11 @@
         "find-process": {
             "commander": "^12.1.0"
         },
-        "typescript": "$typescript"
+        "typescript": "$typescript",
+        "@playwright/mcp": {
+            "playwright": "$playwright",
+            "playwright-core": "$playwright-core"
+        }
     },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.75.1",
