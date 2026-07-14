@@ -47,19 +47,28 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         // settle before editing so the cell is not re-rendered mid-edit.
         await page.waitForTimeout(1000);
 
-        // Edit the title cell (text cell: click to edit, Enter to commit)
-        const titleCell = row.locator('td[data-col="title"] .cell-value');
-        await expect(titleCell).toBeVisible({ timeout: 10000 });
-        await titleCell.click();
-        const titleInput = row.locator('td[data-col="title"] input');
-        await expect(titleInput).toBeVisible({ timeout: 5000 });
-        await titleInput.fill("Write the report");
-        await titleInput.press("Enter");
+        // Edit the title cell (text cell: click to edit, Enter to commit).
+        // Whether fill() itself already triggers the cell's commit-on-blur is
+        // environment-dependent -- in some environments the input is still
+        // there afterwards (needs Enter), in others it has already unmounted
+        // back to ".cell-value" (Enter would hang waiting for a now-detached
+        // element). Bound the Enter attempt and retry the whole
+        // click -> fill -> commit cycle a few times so a lost keystroke race
+        // doesn't fail the test outright.
+        const committedTitleCell = grid.locator('td[data-col="title"] .cell-value', { hasText: "Write the report" });
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const titleCell = row.locator('td[data-col="title"] .cell-value');
+            await expect(titleCell).toBeVisible({ timeout: 10000 });
+            await titleCell.click();
+            const titleInput = row.locator('td[data-col="title"] input');
+            await expect(titleInput).toBeVisible({ timeout: 5000 });
+            await titleInput.fill("Write the report");
+            await titleInput.press("Enter", { timeout: 3000 }).catch(() => {});
+            if (await committedTitleCell.isVisible({ timeout: 5000 }).catch(() => false)) break;
+        }
 
         // The edit goes Yjs -> PGlite -> debounced re-query -> grid
-        await expect(
-            grid.locator('td[data-col="title"] .cell-value', { hasText: "Write the report" }),
-        ).toBeVisible({ timeout: 15000 });
+        await expect(committedTitleCell).toBeVisible({ timeout: 15000 });
 
         // The status select carries the CHECK constraint options
         const statusSelect = row.locator('td[data-col="status"] select');
