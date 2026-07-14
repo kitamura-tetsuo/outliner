@@ -29,7 +29,7 @@ interface Props {
 
 let { item }: Props = $props();
 
-let tableId = $state<string | undefined>(getItemTableId(item));
+let tableId = $state<string | undefined>();
 // Bumped by Yjs observers so the $derived lookups below re-evaluate.
 let registryVersion = $state(0);
 
@@ -52,6 +52,7 @@ const registryObserver = () => {
 let unobserveItem: (() => void) | undefined;
 
 onMount(() => {
+    tableId = getItemTableId(item);
     getTableRegistry(item.ydoc).observeDeep(registryObserver);
     unobserveItem = observeItemTableId(item, () => {
         tableId = getItemTableId(item);
