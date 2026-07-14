@@ -166,6 +166,7 @@
                 currentUser="anonymous"
                 project={store.project}
                 rootItems={pages}
+                getPageUrl={(pageName) => `/demo/${encodeURIComponent(pageName)}`}
             />
         </div>
     {:else if !isLoading && !error}

@@ -170,6 +170,7 @@
                     projectName={projectName}
                     rootItems={pages!}
                     onPageSelected={handlePageSelected}
+                    getPageUrl={(pageName) => `/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`}
                 />
             </div>
         </div>

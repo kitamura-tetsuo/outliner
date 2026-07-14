@@ -20,6 +20,7 @@ interface Props {
     rootItems: Items; // Top-level item list (page list)
     currentUser?: string;
     onPageSelected?: (event: CustomEvent<{ pageId: string; pageName: string; }>) => void;
+    getPageUrl?: (pageName: string) => string;
 }
 
 let {
@@ -27,10 +28,17 @@ let {
     rootItems,
     currentUser = "anonymous",
     onPageSelected,
-    projectName = project?.title || "demo"
+    projectName = project?.title || "demo",
+    getPageUrl
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
+
+const resolvePageUrl = (pageName: string) => {
+    if (getPageUrl) return getPageUrl(pageName);
+    const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
+    return resolvePath(`${basePath}/${encodeURIComponent(pageName)}`);
+};
 
 // Suggest a default title in development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
@@ -103,9 +111,7 @@ function handleCreatePage() {
         const existingPage = findPageByName(project.items, pageTitle);
         if (existingPage) {
             selectPage(existingPage);
-            const encodedTitle = encodeURIComponent(existingPage.text);
-            const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
-            goto(resolvePath(`${basePath}/${encodedTitle}`));
+            goto(resolvePageUrl(existingPage.text));
             pageTitle = "";
             return;
         }
@@ -116,9 +122,7 @@ function handleCreatePage() {
     selectPage(newPage);
 
     // Also explicitly route to the new page when created via UI (e.g. hitting Enter)
-    const encodedTitle = encodeURIComponent(newPage.text);
-    const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
-    goto(resolvePath(`${basePath}/${encodedTitle}`));
+    goto(resolvePageUrl(newPage.text));
 
     pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
 }
@@ -222,7 +226,7 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each sortedItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text)}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text)}`)} onPageClick={() => selectPage(page)} />
+            <PageListItem {page} {isGridView} href={resolvePageUrl(page.text)} onPageClick={() => selectPage(page)} />
         {/each}
 
         {#if sortedItems.length === 0}
