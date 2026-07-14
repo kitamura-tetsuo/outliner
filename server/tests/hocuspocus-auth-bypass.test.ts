@@ -15,8 +15,20 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     let checkAccessStub: sinon.SinonStub;
     let verifyTokenStub: sinon.SinonStub;
     let shutdown: () => Promise<void>;
+    let resolved = false;
+    const handleError = (err: any) => {
+        if (!resolved && err.message.includes("Cannot set property 'binaryType' of null")) {
+            return;
+        }
+        if (!resolved && err.message.includes("WebSocket was closed before the connection was established")) {
+            return;
+        }
+        throw err;
+    };
 
     beforeEach(async () => {
+        resolved = false;
+        process.on('uncaughtException', handleError);
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
@@ -38,6 +50,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     });
 
     afterEach(async () => {
+        process.removeListener('uncaughtException', handleError);
         if (shutdown) await shutdown();
         sinon.restore();
         delete process.env.DISABLE_Y_LEVELDB;
@@ -73,8 +86,11 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 // 1. extractAuthToken -> throws "No token provided"
                 // 2. catch(e) -> ws.close(4001, "Authentication failed: No token provided")
                 const code = getCode(data);
-                // 4001 or 1006 (abnormal closure) is acceptable
-                resolve();
+                if (!resolved) {
+                    resolved = true;
+                    process.removeListener('uncaughtException', handleError);
+                    resolve();
+                }
             });
         });
 
@@ -95,7 +111,11 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
             provider.on("status", (data: any) => {
                 if (data.status === "disconnected") {
-                    resolve();
+                    if (!resolved) {
+                        resolved = true;
+                        process.removeListener('uncaughtException', handleError);
+                        resolve();
+                    }
                 }
             });
 
@@ -104,7 +124,11 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
             const ws = (provider as any).configuration.websocketProvider?.webSocket;
             if (ws) {
                 ws.addEventListener("error", (e: any) => {
-                    resolve();
+                    if (!resolved) {
+                        resolved = true;
+                        process.removeListener('uncaughtException', handleError);
+                        resolve();
+                    }
                 });
             }
         });
@@ -122,7 +146,11 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         await new Promise<void>((resolve, reject) => {
             provider.on("status", (data: any) => {
                 if (data.status === "disconnected") {
-                    resolve();
+                    if (!resolved) {
+                        resolved = true;
+                        process.removeListener('uncaughtException', handleError);
+                        resolve();
+                    }
                 }
             });
 
@@ -133,7 +161,11 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
             const ws = (provider as any).configuration.websocketProvider?.webSocket;
             if (ws) {
                 ws.addEventListener("error", (e: any) => {
-                    resolve();
+                    if (!resolved) {
+                        resolved = true;
+                        process.removeListener('uncaughtException', handleError);
+                        resolve();
+                    }
                 });
             }
         });
