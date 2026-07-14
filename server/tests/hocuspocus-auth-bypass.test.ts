@@ -28,7 +28,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
     beforeEach(async () => {
         resolved = false;
-        process.on('uncaughtException', handleError);
+        process.on("uncaughtException", handleError);
         checkAccessStub = sinon.stub();
         verifyTokenStub = sinon.stub();
 
@@ -50,7 +50,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
     });
 
     afterEach(async () => {
-        process.removeListener('uncaughtException', handleError);
+        process.removeListener("uncaughtException", handleError);
         if (shutdown) await shutdown();
         sinon.restore();
         delete process.env.DISABLE_Y_LEVELDB;
@@ -88,7 +88,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 const code = getCode(data);
                 if (!resolved) {
                     resolved = true;
-                    process.removeListener('uncaughtException', handleError);
+                    process.removeListener("uncaughtException", handleError);
                     resolve();
                 }
             });
@@ -113,7 +113,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 if (data.status === "disconnected") {
                     if (!resolved) {
                         resolved = true;
-                        process.removeListener('uncaughtException', handleError);
+                        process.removeListener("uncaughtException", handleError);
                         resolve();
                     }
                 }
@@ -126,7 +126,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 ws.addEventListener("error", (e: any) => {
                     if (!resolved) {
                         resolved = true;
-                        process.removeListener('uncaughtException', handleError);
+                        process.removeListener("uncaughtException", handleError);
                         resolve();
                     }
                 });
@@ -148,7 +148,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 if (data.status === "disconnected") {
                     if (!resolved) {
                         resolved = true;
-                        process.removeListener('uncaughtException', handleError);
+                        process.removeListener("uncaughtException", handleError);
                         resolve();
                     }
                 }
@@ -163,7 +163,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 ws.addEventListener("error", (e: any) => {
                     if (!resolved) {
                         resolved = true;
-                        process.removeListener('uncaughtException', handleError);
+                        process.removeListener("uncaughtException", handleError);
                         resolve();
                     }
                 });
