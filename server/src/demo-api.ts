@@ -102,18 +102,28 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
 
                         // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
                         const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
-                        for (const key of treeMap.keys()) {
+for (const key of treeMap.keys()) {
                             if (key === "root" || key === "deleted") continue;
                             const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
-                            if (
-                                nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
-                                && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
-                            ) {
-                                const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
-                                if (valueMap && valueMap.has("text")) {
-                                    const text = valueMap.get("text") as Y.Text | undefined;
-                                    if (text) {
-                                        existingTitles.add(text.toString().trim().toLowerCase());
+
+                            let isRootChild = false;
+
+                            if (nodeMap) {
+                                if (nodeMap.get("_parentHistory") instanceof Y.Map) {
+                                    isRootChild = (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root");
+                                } else if (nodeMap.get("parentHistory")) {
+                                    isRootChild = true;
+                                } else if (nodeMap.has("value")) {
+                                    isRootChild = true;
+                                }
+
+                                if (isRootChild) {
+                                    const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
+                                    if (valueMap && valueMap.has("text")) {
+                                        const text = valueMap.get("text") as Y.Text | undefined;
+                                        if (text) {
+                                            existingTitles.add(text.toString().trim().toLowerCase());
+                                        }
                                     }
                                 }
                             }

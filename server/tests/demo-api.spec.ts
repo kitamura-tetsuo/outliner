@@ -17,10 +17,16 @@ describe("Demo API", () => {
         metadata.set("lastReset", Date.now());
         metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-        const orderedTree = mockDoc.getMap("orderedTree");
+const orderedTree = mockDoc.getMap("orderedTree");
         const { YTree } = await import("yjs-orderedtree");
         const tree = new YTree(orderedTree);
-        tree.createNode("root", "item1", new Y.Map());
+        const { demoPages } = await import("../src/demo-content.js");
+        const { Project } = await import("../src/schema/app-schema.js");
+
+        const mockProject = Project.fromDoc(mockDoc);
+        for (const page of demoPages) {
+            mockProject.addPage(page.title, "test");
+        }
 
         mockDirectConnection = {
             document: mockDoc,
