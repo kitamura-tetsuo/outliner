@@ -550,7 +550,7 @@
                     Page
                 {/if}
             </h1>
-            <div class="flex items-center space-x-2" data-testid="page-toolbar">
+            <div class="flex items-center space-x-2" data-testid={projectName === DEMO_PROJECT_NAME ? "demo-page-toolbar" : "page-toolbar"}>
                 <button type="button"
                     onclick={toggleSearchPanel}
                     class="search-btn px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
