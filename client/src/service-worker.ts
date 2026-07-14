@@ -9,6 +9,7 @@ const CACHE_NAME = `outliner-cache-${version}`;
 const ASSETS = [
     "/",
     "/favicon.png",
+    "/sql-wasm.wasm",
 ];
 
 // Type definitions to avoid no-undef errors

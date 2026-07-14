@@ -7,7 +7,7 @@ const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
 import { safeGetNodeParent } from "../utils/treeUtils";
 
 export type Comment = {
@@ -118,6 +118,71 @@ export class Comments {
     }
 }
 
+// Wrapper for the editable rows of a SQL-defined table (Y.Array<Y.Map<string>>).
+// Each row is a Y.Map keyed by column name so that concurrent edits to
+// different cells merge cleanly (cell-level CRDT granularity).
+export class TableRows {
+    private yArray: Y.Array<Y.Map<RowValueType>>;
+    private _ensureInitialized?: () => Y.Array<Y.Map<RowValueType>>;
+    constructor(yArray: Y.Array<Y.Map<RowValueType>>, ensureInitialized?: () => Y.Array<Y.Map<RowValueType>>) {
+        this.yArray = yArray;
+        this._ensureInitialized = ensureInitialized;
+    }
+
+    get length() {
+        if (!this.yArray.doc) return 0;
+        return this.yArray.length;
+    }
+
+    /** Append a row, optionally seeded with values keyed by column name. */
+    addRow(values: Record<string, string> = {}): void {
+        const row = new Y.Map<RowValueType>();
+        for (const [key, value] of Object.entries(values)) {
+            row.set(key, value);
+        }
+        if (this._ensureInitialized) {
+            this.yArray = this._ensureInitialized();
+        }
+        this.yArray.push([row]);
+    }
+
+    /** Set a single cell value. No-op when the row index is out of range. */
+    updateCell(rowIndex: number, column: string, value: string): void {
+        if (this._ensureInitialized) {
+            this.yArray = this._ensureInitialized();
+        }
+        const row = this.yArray.get(rowIndex);
+        if (row) row.set(column, value);
+    }
+
+    deleteRow(rowIndex: number): void {
+        if (this._ensureInitialized) {
+            this.yArray = this._ensureInitialized();
+        }
+        if (rowIndex >= 0 && rowIndex < this.yArray.length) {
+            this.yArray.delete(rowIndex, 1);
+        }
+    }
+
+    toArray(): Y.Array<Y.Map<RowValueType>> {
+        return this.yArray;
+    }
+
+    /** Plain snapshot of every row keyed by column name. */
+    toPlain(columns: string[]): Record<string, string>[] {
+        if (!this.yArray?.doc) return [];
+        if (typeof this.yArray?.toArray !== "function") return [];
+        return this.yArray.toArray().map((row) => {
+            const obj: Record<string, string> = {};
+            for (const col of columns) {
+                const v = row.get(col);
+                obj[col] = v === undefined || v === null ? "" : String(v);
+            }
+            return obj;
+        });
+    }
+}
+
 // Wrapper for one node (item)
 export class Item {
     public readonly ydoc: Y.Doc;
@@ -142,6 +207,7 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
+            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -235,13 +301,65 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
-    // Id of the Yjs table (subdoc) embedded by this item (componentType "yjstable")
-    get yjsTableId(): string | undefined {
-        return this.value.get("yjsTableId") as string | undefined;
+    // chart query stored in Y.Map
+    get chartQuery(): string | undefined {
+        return this.value.get("chartQuery") as string | undefined;
     }
-    set yjsTableId(v: string | undefined) {
-        this.value.set("yjsTableId", v);
+    set chartQuery(v: string | undefined) {
+        this.value.set("chartQuery", v);
         this.value.set("lastChanged", Date.now());
+    }
+
+    // SQL CREATE TABLE statement that defines this item's embedded table.
+    get tableSchema(): string | undefined {
+        return this.value.get("tableSchema") as string | undefined;
+    }
+    set tableSchema(v: string | undefined) {
+        this.value.set("tableSchema", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Column names derived from the CREATE TABLE statement, cached as JSON so the
+    // grid keeps a stable column order independent of row contents.
+    get tableColumns(): string[] {
+        const raw = this.value.get("tableColumns") as string | undefined;
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? (parsed as string[]) : [];
+        } catch {
+            return [];
+        }
+    }
+    set tableColumns(v: string[]) {
+        this.value.set("tableColumns", JSON.stringify(v ?? []));
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Editable rows for the embedded SQL table (lazily created Y.Array<Y.Map>).
+    get tableRows(): TableRows {
+        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<RowValueType>>();
+            return new TableRows(arr, () => {
+                let actual = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+                if (!actual) {
+                    actual = new Y.Array<Y.Map<RowValueType>>();
+                    this.value.set("tableRows", actual);
+                }
+                return actual;
+            });
+        }
+        return new TableRows(arr);
+    }
+
+    // Replace the whole table definition: persist the SQL, the derived column
+    // order, and reset the rows so the grid starts empty for the new schema.
+    defineTable(sql: string, columns: string[]): void {
+        this.tableSchema = sql;
+        this.tableColumns = columns;
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (arr && arr.length > 0) arr.delete(0, arr.length);
     }
 
     // alias target id stored in Y.Map
@@ -613,6 +731,7 @@ export class Items implements Iterable<Item> {
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
+        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());

@@ -2,14 +2,7 @@ import { Hocuspocus } from "@hocuspocus/server";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import {
-    DEMO_PROJECT_TITLE,
-    DEMO_TEMPLATE_VERSION,
-    demoPages,
-    demoTables,
-    populateDemoProject,
-    seedDemoTableDoc,
-} from "./demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "./demo-content.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { getClientIp } from "./utils/ip.js";
@@ -180,13 +173,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                     }
                                 });
 
-                                // Clear the table registry so stale
-                                // user-created tables do not accumulate.
-                                const tables = ydoc.getMap("yjsTables");
-                                Array.from(tables.keys()).forEach(key => {
-                                    tables.delete(key);
-                                });
-
                                 // Re-initialize metadata
                                 const meta = ydoc.getMap("metadata");
                                 meta.set("title", DEMO_PROJECT_TITLE);
@@ -199,22 +185,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                             // yjs-orderedtree relies on synchronous observeDeep callbacks
                             // which are suspended during a transaction.
                             populateDemoProject(docProject, "seed-server");
-
-                            // Seed each demo table's own room (the table
-                            // content lives in a subdoc, not the project doc).
-                            for (const template of demoTables) {
-                                const tableRoom = `projects/${DEMO_PROJECT_ID}/tables/${template.tableId}`;
-                                const tableConnection = await hocuspocus.openDirectConnection(tableRoom, {
-                                    isSeeding: true,
-                                });
-                                try {
-                                    await tableConnection.transact((document: unknown) => {
-                                        seedDemoTableDoc(document as unknown as Y.Doc, template);
-                                    });
-                                } finally {
-                                    await tableConnection.disconnect();
-                                }
-                            }
                         } finally {
                             await directConnection.transact((document: unknown) => {
                                 const ydoc = document as unknown as Y.Doc;

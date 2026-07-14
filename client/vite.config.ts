@@ -119,8 +119,7 @@ export default defineConfig(async ({ mode }) => {
             },
         },
         optimizeDeps: {
-            // PGlite ships its own WASM assets and must not be pre-bundled.
-            exclude: ["@electric-sql/pglite"],
+            include: ["sql.js"],
         },
         define: {
             global: "globalThis",

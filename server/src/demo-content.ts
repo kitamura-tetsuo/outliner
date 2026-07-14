@@ -1,4 +1,3 @@
-import * as Y from "yjs";
 import { Item, Items, Project } from "./schema/app-schema.js";
 
 // The public demo project is the living showcase of the product: every
@@ -10,7 +9,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 11;
+export const DEMO_TEMPLATE_VERSION = 10;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -24,13 +23,18 @@ export const DEMO_LANDING_PAGE_TITLE = "Welcome";
 // double as a deterministic verification surface for coding agents: every
 // non-text feature is seeded with concrete, reproducible data.
 export interface DemoItem {
+    tableSchema?: string;
+    // Column names of the item-embedded table (JSON-cached on the item).
+    tableColumns?: string[];
+    // Seed rows for the item-embedded table, keyed by column name.
+    tableRows?: Record<string, string>[];
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "yjstable";
-    // For "yjstable" components: id of the demo table (see demoTables below)
-    // this item embeds.
-    yjsTableId?: string;
+    componentType?: "table" | "chart" | "tasks" | "habits";
+    // For chart components: a self-contained SQL query (CREATE + INSERT +
+    // SELECT) so the chart renders without any external data source.
+    chartQuery?: string;
     // Seed votes from these voter ids.
     votes?: string[];
     // Seed a comment thread.
@@ -60,26 +64,39 @@ export interface DemoPageTemplate {
 const DEMO_ATTACHMENT_IMAGE =
     "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27100%27%20height%3D%27100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20fill%3D%27%23e2e8f0%27%20rx%3D%278%27%2F%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2740%27%20r%3D%2715%27%20fill%3D%27%2394a3b8%27%2F%3E%3Cpath%20d%3D%27M20%2080%20L40%2055%20L60%2070%20L80%2045%20L80%2080%20Z%27%20fill%3D%27%2364748b%27%2F%3E%3C%2Fsvg%3E";
 
-// ---------------------------------------------------------------------------
-// Demo database tables (the consolidated Yjs + PGlite table feature).
-//
-// One table = one Y.Doc subdoc. The project doc holds a registry entry per
-// table (display name + subdoc reference); the table's own content (schema
-// text, UI definition, data records) lives in its subdoc, which syncs through
-// the room `projects/demo/tables/<tableId>` and is seeded by the demo API.
-// ---------------------------------------------------------------------------
+// A self-contained SQL query that builds its own data and selects it, so the
+// chart component renders a deterministic bar chart with no external source.
+const DEMO_CHART_QUERY =
+    "DROP TABLE IF EXISTS sales; CREATE TABLE sales(id TEXT PRIMARY KEY, month TEXT, revenue INTEGER);"
+    + ' INSERT INTO sales VALUES("1","Jan",120),("2","Feb",180),("3","Mar",150),("4","Apr",210);'
+    + " SELECT month AS sales_month, revenue AS sales_revenue FROM sales";
 
-export interface DemoTableTemplate {
-    // Fixed id (also the room segment): [A-Za-z0-9_-] only.
-    tableId: string;
-    name: string;
-    schemaSql: string;
-    query: string;
-    // Cell component type per column (UI Definition).
-    components: Record<string, string>;
-    // Seed records: id -> column values.
-    records: { id: string; values: Record<string, string | number | boolean | null>; }[];
-}
+// Table definitions for the task manager / habit tracker components.
+// These strings must stay byte-identical to TASK_TABLE_DDL / HABIT_TABLE_DDL in
+// client/src/services/taskHabitService.ts so the components recognize the
+// seeded tables as their own schema.
+const DEMO_TASK_TABLE_DDL = "CREATE TABLE tasks (\n"
+    + "  id TEXT PRIMARY KEY,\n"
+    + "  title TEXT,\n"
+    + "  status TEXT,\n"
+    + "  priority TEXT,\n"
+    + "  due_at TEXT,\n"
+    + "  repeat_days TEXT,\n"
+    + "  created_at TEXT,\n"
+    + "  completed_at TEXT\n"
+    + ")";
+const DEMO_TASK_COLUMNS = ["id", "title", "status", "priority", "due_at", "repeat_days", "created_at", "completed_at"];
+
+const DEMO_HABIT_TABLE_DDL = "CREATE TABLE habits (\n"
+    + "  id TEXT PRIMARY KEY,\n"
+    + "  kind TEXT,\n"
+    + "  habit_id TEXT,\n"
+    + "  name TEXT,\n"
+    + "  interval_days TEXT,\n"
+    + "  date TEXT,\n"
+    + "  created_at TEXT\n"
+    + ")";
+const DEMO_HABIT_COLUMNS = ["id", "kind", "habit_id", "name", "interval_days", "date", "created_at"];
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
 // moment (the demo is re-seeded at least daily, so drift stays small).
@@ -90,230 +107,98 @@ function demoDate(daysFromToday: number): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export const DEMO_SALES_TABLE_ID = "demo-table-sales";
-export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
-export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
-
-export const demoTables: DemoTableTemplate[] = [
+const DEMO_TASK_ROWS: Record<string, string>[] = [
     {
-        tableId: DEMO_SALES_TABLE_ID,
-        name: "Sales",
-        schemaSql: "CREATE TABLE sales (\n"
-            + "  id TEXT PRIMARY KEY,\n"
-            + "  month TEXT NOT NULL,\n"
-            + "  revenue INTEGER\n"
-            + ")",
-        query: "SELECT id, month, revenue FROM sales ORDER BY id",
-        components: { month: "text", revenue: "number" },
-        records: [
-            { id: "demo-sales-1", values: { month: "Jan", revenue: 120 } },
-            { id: "demo-sales-2", values: { month: "Feb", revenue: 180 } },
-            { id: "demo-sales-3", values: { month: "Mar", revenue: 150 } },
-            { id: "demo-sales-4", values: { month: "Apr", revenue: 210 } },
-        ],
+        id: "demo-task-overdue",
+        title: "Reply to the design review",
+        status: "open",
+        priority: "high",
+        due_at: demoDate(-1),
+        repeat_days: "",
+        created_at: `${demoDate(-3)}T09:00:00`,
+        completed_at: "",
     },
     {
-        tableId: DEMO_TASKS_TABLE_ID,
-        name: "Tasks",
-        schemaSql: "CREATE TABLE tasks (\n"
-            + "  id TEXT PRIMARY KEY,\n"
-            + "  title TEXT NOT NULL,\n"
-            + "  status TEXT CHECK (status IN ('open', 'done')),\n"
-            + "  priority TEXT CHECK (priority IN ('high', 'medium', 'low')),\n"
-            + "  due_date DATE,\n"
-            + "  repeat_days INTEGER,\n"
-            + "  created_at TIMESTAMP,\n"
-            + "  completed_at TIMESTAMP\n"
-            + ")",
-        query: "SELECT id, title, status, priority, due_date, repeat_days FROM tasks "
-            + "ORDER BY status DESC, due_date NULLS LAST, priority",
-        components: {
-            title: "text",
-            status: "select",
-            priority: "select",
-            due_date: "date",
-            repeat_days: "number",
-        },
-        records: [
-            {
-                id: "demo-task-overdue",
-                values: {
-                    title: "Reply to the design review",
-                    status: "open",
-                    priority: "high",
-                    due_date: demoDate(-1),
-                    repeat_days: null,
-                    created_at: `${demoDate(-3)}T09:00:00`,
-                    completed_at: null,
-                },
-            },
-            {
-                id: "demo-task-today",
-                values: {
-                    title: "Prepare tomorrow's standup notes",
-                    status: "open",
-                    priority: "medium",
-                    due_date: demoDate(0),
-                    repeat_days: null,
-                    created_at: `${demoDate(-1)}T18:30:00`,
-                    completed_at: null,
-                },
-            },
-            {
-                id: "demo-task-recurring",
-                values: {
-                    title: "Water the plants",
-                    status: "open",
-                    priority: "low",
-                    due_date: demoDate(1),
-                    repeat_days: 3,
-                    created_at: `${demoDate(-2)}T08:00:00`,
-                    completed_at: null,
-                },
-            },
-            {
-                id: "demo-task-upcoming",
-                values: {
-                    title: "Book dentist appointment",
-                    status: "open",
-                    priority: "medium",
-                    due_date: demoDate(4),
-                    repeat_days: null,
-                    created_at: `${demoDate(-1)}T12:00:00`,
-                    completed_at: null,
-                },
-            },
-            {
-                id: "demo-task-done",
-                values: {
-                    title: "Send the weekly report",
-                    status: "done",
-                    priority: "high",
-                    due_date: demoDate(-1),
-                    repeat_days: null,
-                    created_at: `${demoDate(-2)}T10:00:00`,
-                    completed_at: `${demoDate(-1)}T16:45:00`,
-                },
-            },
-        ],
+        id: "demo-task-today",
+        title: "Prepare tomorrow's standup notes",
+        status: "open",
+        priority: "medium",
+        due_at: demoDate(0),
+        repeat_days: "",
+        created_at: `${demoDate(-1)}T18:30:00`,
+        completed_at: "",
     },
     {
-        tableId: DEMO_HABITS_TABLE_ID,
-        name: "Habits",
-        schemaSql: "CREATE TABLE habits (\n"
-            + "  id TEXT PRIMARY KEY,\n"
-            + "  kind TEXT CHECK (kind IN ('habit', 'log')),\n"
-            + "  habit_id TEXT,\n"
-            + "  name TEXT,\n"
-            + "  interval_days INTEGER,\n"
-            + "  log_date DATE,\n"
-            + "  created_at TIMESTAMP\n"
-            + ")",
-        query: "SELECT id, kind, name, interval_days, log_date FROM habits ORDER BY kind, name, log_date",
-        components: {
-            kind: "select",
-            name: "text",
-            interval_days: "number",
-            log_date: "date",
-        },
-        records: [
-            {
-                id: "demo-habit-stretch",
-                values: {
-                    kind: "habit",
-                    habit_id: null,
-                    name: "Morning stretch",
-                    interval_days: 1,
-                    log_date: null,
-                    created_at: `${demoDate(-6)}T07:00:00`,
-                },
-            },
-            {
-                id: "demo-habit-review",
-                values: {
-                    kind: "habit",
-                    habit_id: null,
-                    name: "Weekly review",
-                    interval_days: 7,
-                    log_date: null,
-                    created_at: `${demoDate(-6)}T07:00:00`,
-                },
-            },
-            // A three-day streak ending yesterday: log today to extend it.
-            ...[-3, -2, -1].map((offset) => ({
-                id: `demo-habit-stretch-log${offset}`,
-                values: {
-                    kind: "log",
-                    habit_id: "demo-habit-stretch",
-                    name: null,
-                    interval_days: null,
-                    log_date: demoDate(offset),
-                    created_at: `${demoDate(offset)}T07:10:00`,
-                },
-            })),
-            {
-                id: "demo-habit-review-log",
-                values: {
-                    kind: "log",
-                    habit_id: "demo-habit-review",
-                    name: null,
-                    interval_days: null,
-                    log_date: demoDate(-5),
-                    created_at: `${demoDate(-5)}T19:00:00`,
-                },
-            },
-        ],
+        id: "demo-task-recurring",
+        title: "Water the plants",
+        status: "open",
+        priority: "low",
+        due_at: `${demoDate(1)}T09:00`,
+        repeat_days: "3",
+        created_at: `${demoDate(-2)}T08:00:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-upcoming",
+        title: "Book dentist appointment",
+        status: "open",
+        priority: "medium",
+        due_at: demoDate(4),
+        repeat_days: "",
+        created_at: `${demoDate(-1)}T12:00:00`,
+        completed_at: "",
+    },
+    {
+        id: "demo-task-done",
+        title: "Send the weekly report",
+        status: "done",
+        priority: "high",
+        due_at: demoDate(-1),
+        repeat_days: "",
+        created_at: `${demoDate(-2)}T10:00:00`,
+        completed_at: `${demoDate(-1)}T16:45:00`,
     },
 ];
 
-/**
- * Register every demo table in the project doc: a registry entry (display
- * name + subdoc reference) per table. The subdoc guid is deterministic so all
- * clients resolve the same table rooms.
- */
-export function registerDemoTables(projectDoc: Y.Doc): void {
-    const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
-    for (const template of demoTables) {
-        const entry = new Y.Map<unknown>();
-        entry.set("name", template.name);
-        entry.set("doc", new Y.Doc({ guid: `demo--table--${template.tableId}`, autoLoad: true }));
-        registry.set(template.tableId, entry);
-    }
-}
-
-/**
- * Seed one table doc (the live document of `projects/demo/tables/<tableId>`)
- * with the template's three structures: schema text, UI definition and data
- * records (nested Y.Map per record).
- */
-export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
-    const schema = doc.getText("schema");
-    schema.delete(0, schema.length);
-    schema.insert(0, template.schemaSql);
-
-    const ui = doc.getMap<unknown>("ui");
-    ui.set("query", template.query);
-    const components = new Y.Map<Y.Map<unknown>>();
-    for (const [column, type] of Object.entries(template.components)) {
-        const cfg = new Y.Map<unknown>();
-        cfg.set("type", type);
-        components.set(column, cfg);
-    }
-    ui.set("components", components);
-
-    const data = doc.getMap<Y.Map<string | number | boolean | null>>("data");
-    for (const key of Array.from(data.keys())) {
-        data.delete(key);
-    }
-    for (const record of template.records) {
-        const map = new Y.Map<string | number | boolean | null>();
-        for (const [column, value] of Object.entries(record.values)) {
-            map.set(column, value);
-        }
-        map.set("id", record.id);
-        data.set(record.id, map);
-    }
-}
+const DEMO_HABIT_ROWS: Record<string, string>[] = [
+    {
+        id: "demo-habit-stretch",
+        kind: "habit",
+        habit_id: "",
+        name: "Morning stretch",
+        interval_days: "1",
+        date: "",
+        created_at: `${demoDate(-6)}T07:00:00`,
+    },
+    {
+        id: "demo-habit-review",
+        kind: "habit",
+        habit_id: "",
+        name: "Weekly review",
+        interval_days: "7",
+        date: "",
+        created_at: `${demoDate(-6)}T07:00:00`,
+    },
+    // A three-day streak ending yesterday: check today's cell to extend it.
+    ...[-3, -2, -1].map((offset) => ({
+        id: `demo-habit-stretch-log${offset}`,
+        kind: "log",
+        habit_id: "demo-habit-stretch",
+        name: "",
+        interval_days: "",
+        date: demoDate(offset),
+        created_at: `${demoDate(offset)}T07:10:00`,
+    })),
+    {
+        id: "demo-habit-review-log",
+        kind: "log",
+        habit_id: "demo-habit-review",
+        name: "",
+        interval_days: "",
+        date: demoDate(-5),
+        created_at: `${demoDate(-5)}T19:00:00`,
+    },
+];
 
 export const demoPages: DemoPageTemplate[] = [
     {
@@ -332,8 +217,8 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Collaboration]: real-time editing with other users.",
             "  [Comments and Votes]: discussing and voting on items, with live seeded threads and votes.",
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
-            "  [Advanced Features]: live database tables with charts, aliases, and attachments.",
-            "  [Tasks and Habits]: task management and habit tracking built on database tables.",
+            "  [Advanced Features]: live charts, SQL tables, aliases, and attachments.",
+            "  [Tasks and Habits]: SQL-backed task management and habit tracking.",
             "Give it a try! Everything in this project is editable.",
         ],
     },
@@ -466,10 +351,15 @@ export const demoPages: DemoPageTemplate[] = [
                     "A quick tour of the more advanced capabilities. The items below are live components, not just descriptions.",
             },
             {
-                text: "Database tables: this item embeds a live table (Yjs data, SQL queries via PGlite). "
-                    + "Toggle the Chart view to render the query result as a bar chart.",
-                componentType: "yjstable",
-                yjsTableId: DEMO_SALES_TABLE_ID,
+                text: "Charts: this item renders a bar chart from a self-contained SQL query.",
+                componentType: "chart",
+                chartQuery: DEMO_CHART_QUERY,
+            },
+            {
+                text: "SQL Tables: this item renders an editable, query-backed table grid.",
+                componentType: "table",
+                tableSchema: "CREATE TABLE demo_table (id INTEGER PRIMARY KEY, name TEXT)",
+                chartQuery: "SELECT 1 AS value",
             },
             { text: "Aliases: an item can mirror another item and stay in sync with the original." },
             {
@@ -494,23 +384,30 @@ export const demoPages: DemoPageTemplate[] = [
         items: [
             {
                 text:
-                    "Practical task management and habit tracking, built as presets of the database table feature. The items below are live tables.",
+                    "Practical task management and habit tracking, built on the SQL table feature. The items below are live components.",
             },
             {
                 text:
-                    "Task manager: add tasks with due dates, priorities and repeat intervals. Status and priority options come from the schema's CHECK constraints.",
-                componentType: "yjstable",
-                yjsTableId: DEMO_TASKS_TABLE_ID,
+                    "Task manager: add tasks with due dates, priorities and repeat intervals. Completing a repeating task schedules the next occurrence automatically.",
+                componentType: "tasks",
+                tableSchema: DEMO_TASK_TABLE_DDL,
+                tableColumns: DEMO_TASK_COLUMNS,
+                tableRows: DEMO_TASK_ROWS,
             },
             {
                 text:
-                    "Habit tracker: one table holds habit definitions and daily completion logs. Add a log row for today to extend a streak.",
-                componentType: "yjstable",
-                yjsTableId: DEMO_HABITS_TABLE_ID,
+                    "Habit tracker: check off each day in the grid and watch your streak grow. Each habit has its own repeat interval.",
+                componentType: "habits",
+                tableSchema: DEMO_HABIT_TABLE_DDL,
+                tableColumns: DEMO_HABIT_COLUMNS,
+                tableRows: DEMO_HABIT_ROWS,
             },
             {
                 text:
-                    "Every view is computed with real SQL (Postgres via PGlite) over the collaborative table records, and the schema/query/grid are all editable.",
+                    "The Today, Upcoming, Overdue and Completed views — and the habit streaks — are computed with real SQL (SQLite) over the collaborative table rows.",
+            },
+            {
+                text: "Every task records its registration time, and completed tasks keep their completion timestamp.",
             },
         ],
     },
@@ -528,11 +425,6 @@ export function populateDemoProject(project: Project, author = "seed-server"): v
     // targets so that aliases can point to an item declared anywhere.
     const refs = new Map<string, Item>();
     const pendingAliases: { item: Item; aliasTo: string; }[] = [];
-
-    // Register the demo tables (registry entries + subdoc references) in the
-    // project doc. The table contents live in their own rooms and are seeded
-    // separately by the demo API.
-    registerDemoTables(project.ydoc);
 
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
@@ -570,7 +462,12 @@ function addDemoItems(
         const node = parent.addNode(author);
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
-        if (def.yjsTableId !== undefined) node.yjsTableId = def.yjsTableId;
+        if (def.chartQuery !== undefined) node.chartQuery = def.chartQuery;
+        if (def.tableSchema !== undefined) node.tableSchema = def.tableSchema;
+        if (def.tableColumns !== undefined) node.tableColumns = def.tableColumns;
+        if (def.tableRows) {
+            for (const row of def.tableRows) node.addTableRow(row);
+        }
         if (def.votes) {
             for (const voter of def.votes) node.toggleVote(voter);
         }

@@ -25,8 +25,7 @@ test("Toolbar 'Add Database' button inserts a Database (table) component", async
     await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
     await addDatabaseBtn.click();
 
-    // Check for the inserted database table block (create panel shows first)
-    const tableBlock = page.getByTestId("yjs-table-block").first();
-    await expect(tableBlock).toBeVisible({ timeout: 10000 });
-    await expect(page.getByTestId("yjs-table-create-panel").first()).toBeVisible({ timeout: 10000 });
+    // Check for the inserted inline-join-table block
+    const inlineTable = page.locator(".inline-join-table").first();
+    await expect(inlineTable).toBeVisible({ timeout: 10000 });
 });
