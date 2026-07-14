@@ -68,17 +68,16 @@ vi.mock("$app/stores", () => {
 
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
-        getCurrentUser: vi.fn().mockReturnValue({ id: 'user1' }),
+        getCurrentUser: vi.fn().mockReturnValue({ id: "user1" }),
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
-        logout: vi.fn()
-    }
+        logout: vi.fn(),
+    },
 }));
 
 vi.mock("../../lib/logger", () => ({
-    getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })
+    getLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
 }));
-
 
 describe("Demo Page View", () => {
     beforeEach(() => {
