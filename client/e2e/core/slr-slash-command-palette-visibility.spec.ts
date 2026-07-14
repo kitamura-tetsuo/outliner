@@ -34,33 +34,32 @@ test.describe("SlashCommandPalette Visibility", () => {
         await expect(palette).toBeVisible();
         await expect(palette).toHaveAttribute("data-is-visible", "true");
 
-        // Type 'chart' into the palette filter
-        await page.keyboard.type("chart");
+        // Type 'data' into the palette filter (matches the Database command)
+        await page.keyboard.type("data");
 
         await page.waitForTimeout(200);
 
         // Assert query updated
-        await expect(palette).toHaveAttribute("data-query", "chart");
+        await expect(palette).toHaveAttribute("data-query", "data");
 
         // Assert palette is still visible
         await expect(palette).toBeVisible();
 
-        // Check filtering works (should have Chart selected/visible)
-        const chartOption = page.locator('[data-testid="command-item-chart"]');
-        await expect(chartOption).toBeVisible();
+        // Check filtering works (should have Database selected/visible)
+        const databaseOption = page.locator('[data-testid="command-item-yjstable"]');
+        await expect(databaseOption).toBeVisible();
 
-        // Press enter to insert chart component
+        // Press enter to insert the database table component
         await page.keyboard.press("Enter");
 
         // Assert palette is hidden after insertion
         await expect(palette).toBeHidden();
 
-        // Wait a bit for the chart to be added to the item
+        // Wait a bit for the block to be added to the item
         await page.waitForTimeout(500);
 
-        // A chart component should be in the DOM inside an item
-        // Note: Svelte might render the component-wrapper, but it can be visually hidden depending on the specific component state
-        const chartIcon = page.locator(".component-wrapper, .chart-container, [data-component-type='chart']");
-        await expect(chartIcon.first()).toBeAttached();
+        // A database table block should be in the DOM inside an item
+        const tableBlock = page.locator(".component-wrapper, [data-testid='yjs-table-block']");
+        await expect(tableBlock.first()).toBeAttached();
     });
 });
