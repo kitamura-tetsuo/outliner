@@ -24,6 +24,7 @@ test.describe("Demo project feature tour", () => {
                 "Comments and Votes",
                 "Publishing and Sharing",
                 "Advanced Features",
+                "Tasks and Habits",
             ]
         ) {
             await expect(pageList.getByText(title, { exact: true }).first()).toBeVisible({ timeout: 15000 });
@@ -43,5 +44,48 @@ test.describe("Demo project feature tour", () => {
         await expect(
             page.getByText("This page demonstrates text formatting", { exact: false }).first(),
         ).toBeVisible({ timeout: 30000 });
+    });
+
+    test("the Advanced Features page renders the seeded Sales database table", async ({ page }) => {
+        await page.goto("/demo");
+
+        const pageList = page.getByTestId("demo-page-list");
+        await expect(pageList).toBeVisible({ timeout: 30000 });
+        await pageList.getByText("Advanced Features", { exact: true }).first().click();
+
+        await expect(page).toHaveURL(/\/demo\/Advanced%20Features$/, { timeout: 15000 });
+
+        const salesTable = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-name").getByText("Sales", { exact: true }),
+        }).first();
+        await expect(salesTable).toBeVisible({ timeout: 30000 });
+        await expect(salesTable.getByTestId("yjs-table-grid")).toBeVisible({ timeout: 30000 });
+        await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible();
+    });
+
+    test("the Tasks and Habits page renders the seeded Tasks and Habits database tables", async ({ page }) => {
+        await page.goto("/demo");
+
+        const pageList = page.getByTestId("demo-page-list");
+        await expect(pageList).toBeVisible({ timeout: 30000 });
+        await pageList.getByText("Tasks and Habits", { exact: true }).first().click();
+
+        await expect(page).toHaveURL(/\/demo\/Tasks%20and%20Habits$/, { timeout: 15000 });
+
+        const tasksTable = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-name").getByText("Tasks", { exact: true }),
+        }).first();
+        await expect(tasksTable).toBeVisible({ timeout: 30000 });
+        await expect(tasksTable.getByTestId("yjs-table-grid").locator("th", { hasText: "title" })).toBeVisible({
+            timeout: 30000,
+        });
+
+        const habitsTable = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-name").getByText("Habits", { exact: true }),
+        }).first();
+        await expect(habitsTable).toBeVisible({ timeout: 30000 });
+        await expect(habitsTable.getByTestId("yjs-table-grid").locator("th", { hasText: "name" })).toBeVisible({
+            timeout: 30000,
+        });
     });
 });
