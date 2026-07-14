@@ -2,8 +2,10 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^2.1.4",
         "@google-cloud/secret-manager": "^6.2.0",
-        "@hocuspocus/extension-logger": "^4.3.0",
-        "@hocuspocus/extension-sqlite": "^4.3.0",
+        "@hocuspocus/common": "^4.4.0",
+        "@hocuspocus/extension-database": "^4.4.0",
+        "@hocuspocus/extension-logger": "^4.4.0",
+        "@hocuspocus/extension-sqlite": "^4.4.0",
         "@hocuspocus/server": "^4.4.0",
         "@sentry/node": "^10.63.0",
         "better-sqlite3": "^12.11.1",
@@ -25,7 +27,7 @@
     },
     "description": "Authentication server for Fluid Outliner app",
     "devDependencies": {
-        "@hocuspocus/provider": "^4.3.0",
+        "@hocuspocus/provider": "^4.4.0",
         "@jest/globals": "^30.2.0",
         "@types/body-parser": "^1.19.6",
         "@types/chai": "^5.2.3",

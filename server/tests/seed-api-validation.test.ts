@@ -71,7 +71,7 @@ describe("Seed API Validation", () => {
             }),
         };
 
-        app.use("/api", createSeedRouter(mockHocuspocus));
+        app.use("/api", createSeedRouter(mockHocuspocus as any));
     });
 
     afterEach(() => {

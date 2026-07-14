@@ -31,7 +31,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         shutdown = res.shutdown;
 
         await new Promise<void>(resolve => {
-            if (httpServer.listening) resolve();
+            if (httpServer.listening) { resolve(); return; }
             else httpServer.on("listening", resolve);
         });
         port = (httpServer.address() as any).port;
@@ -64,7 +64,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 reject(new Error("Should NOT have synced! Vulnerability exists if this passes."));
             });
 
-            provider.on("disconnect", (data) => {
+            provider.on("disconnect", (data: any) => {
                 // Expected disconnect.
                 // The server closes with 4001 (Unauthorized) or similar.
                 // Or 4003 Forbidden or 1002 Protocol Error if path invalid.
@@ -74,7 +74,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
                 // 2. catch(e) -> ws.close(4001, "Authentication failed: No token provided")
                 const code = getCode(data);
                 // 4001 or 1006 (abnormal closure) is acceptable
-                resolve();
+                resolve(); return;
             });
         });
 
@@ -95,7 +95,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
 
             provider.on("status", (data: any) => {
                 if (data.status === "disconnected") {
-                    resolve();
+                    resolve(); return;
                 }
             });
 
@@ -104,7 +104,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
             const ws = (provider as any).configuration.websocketProvider?.webSocket;
             if (ws) {
                 ws.addEventListener("error", (e: any) => {
-                    resolve();
+                    resolve(); return;
                 });
             }
         });
@@ -122,7 +122,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         await new Promise<void>((resolve, reject) => {
             provider.on("status", (data: any) => {
                 if (data.status === "disconnected") {
-                    resolve();
+                    resolve(); return;
                 }
             });
 
@@ -133,7 +133,7 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
             const ws = (provider as any).configuration.websocketProvider?.webSocket;
             if (ws) {
                 ws.addEventListener("error", (e: any) => {
-                    resolve();
+                    resolve(); return;
                 });
             }
         });

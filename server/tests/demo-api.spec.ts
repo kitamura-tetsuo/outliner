@@ -43,7 +43,7 @@ describe("Demo API", () => {
 
         const app = express();
         app.use(express.json());
-        app.use("/api", createDemoRouter(mockHocuspocus));
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
 
         const response = await request(app).post("/api/seed-demo");
         expect(response.status).toBe(200);
@@ -58,7 +58,7 @@ describe("Demo API", () => {
     it("should not reset if already seeded and not expired", async () => {
         const app = express();
         app.use(express.json());
-        app.use("/api", createDemoRouter(mockHocuspocus));
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
 
         const response = await request(app).post("/api/seed-demo");
         expect(response.status).toBe(200);
@@ -71,7 +71,7 @@ describe("Demo API", () => {
 
         const app = express();
         app.use(express.json());
-        app.use("/api", createDemoRouter(mockHocuspocus));
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
 
         const response = await request(app).post("/api/seed-demo");
         expect(response.status).toBe(200);
