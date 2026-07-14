@@ -45,7 +45,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         return sharedFindPageByName(store.project.items, name) || undefined;
     }
 
-    async function loadDemoPage(name: string) {
+    async function loadDemoPage() {
         try {
             isLoading = true;
             error = undefined;
@@ -146,7 +146,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
             if (name === lastLoaded) return;
             lastLoaded = name;
-            loadDemoPage(name);
+            loadDemoPage();
         });
         return () => unsub();
     });
@@ -242,7 +242,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                     </div>
                     <div class="mt-4">
                         <button type="button"
-                            onclick={() => loadDemoPage(pageName)}
+                            onclick={() => loadDemoPage()}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
                             Retry
