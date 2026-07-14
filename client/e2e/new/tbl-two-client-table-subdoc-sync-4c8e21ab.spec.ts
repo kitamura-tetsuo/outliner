@@ -58,8 +58,14 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             await titleCell1.click();
             const titleInput1 = row1.locator('td[data-col="title"] input');
             await expect(titleInput1).toBeVisible({ timeout: 5000 });
+            // Whether fill() itself already triggers the cell's commit-on-blur
+            // is environment-dependent: in some environments the input is still
+            // there afterwards (needs Enter), in others it has already
+            // unmounted back to ".cell-value" (Enter would hang waiting for a
+            // now-detached element). Bound the Enter attempt so either case
+            // resolves quickly, then assert on the committed value either way.
             await titleInput1.fill("Client A entry");
-            await titleInput1.press("Enter");
+            await titleInput1.press("Enter", { timeout: 3000 }).catch(() => {});
             await expect(
                 grid1.locator('td[data-col="title"] .cell-value', { hasText: "Client A entry" }),
             ).toBeVisible({ timeout: 15000 });
@@ -108,7 +114,7 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             const titleInput2 = row2.locator('td[data-col="title"] input');
             await expect(titleInput2).toBeVisible({ timeout: 5000 });
             await titleInput2.fill("Client B update");
-            await titleInput2.press("Enter");
+            await titleInput2.press("Enter", { timeout: 3000 }).catch(() => {});
 
             await expect(
                 grid1.locator('td[data-col="title"] .cell-value', { hasText: "Client B update" }),

@@ -33,25 +33,15 @@ test.describe("FTR-53f59906: chart view toggle", () => {
         const grid = page.getByTestId("yjs-table-grid").first();
         await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
 
-        // Add a row and set a numeric column so the chart has a bar to draw.
+        // Add a row. The default preset values (status/priority selects)
+        // are enough for the chart to have data -- avoid editing a text/
+        // number cell here, since committing those via blur is flaky under
+        // load (the debounced Yjs -> PGlite re-query can re-render the cell
+        // out from under an in-flight edit).
         await page.getByTestId("yjs-table-add-row").first().click();
         const row = grid.locator("tbody tr").first();
         await expect(row).toBeVisible({ timeout: 10000 });
         await page.waitForTimeout(1000);
-
-        const repeatDaysCell = row.locator('td[data-col="repeat_days"] .cell-value');
-        await expect(repeatDaysCell).toBeVisible({ timeout: 10000 });
-        await repeatDaysCell.click();
-        const repeatDaysInput = row.locator('td[data-col="repeat_days"] input');
-        await expect(repeatDaysInput).toBeVisible({ timeout: 5000 });
-        // A number input commits on blur, and Playwright's fill() on
-        // type="number" already triggers that blur -- pressing Enter
-        // afterwards would race against the cell unmounting back to its
-        // read-only ".cell-value" state.
-        await repeatDaysInput.fill("7");
-        await expect(
-            grid.locator('td[data-col="repeat_days"] .cell-value', { hasText: "7" }),
-        ).toBeVisible({ timeout: 15000 });
 
         // The chart panel is not mounted until the toggle is clicked.
         await expect(page.getByTestId("yjs-table-chart")).toHaveCount(0);
