@@ -14,6 +14,7 @@
         setupLinkPreviewHandlers,
     } from "../../../lib/linkPreviewHandler";
     import { getLogger } from "../../../lib/logger";
+    import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import type { Project as AppProject } from "../../../schema/app-schema";
     import { iterateItems } from "../../../utils/itemTraversal";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
@@ -132,6 +133,9 @@
             logger.info(
                 `loadProjectAndPage: Getting Yjs client for "${projectName}"`,
             );
+            if (projectName === DEMO_PROJECT_NAME) {
+                await seedDemo();
+            }
             let client = await getYjsClientByProjectTitle(projectName);
 
             if (!client) {
@@ -532,7 +536,7 @@
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            ...(projectName ? [{ label: projectName, href: `/${encodeURIComponent(projectName)}` }] : []),
+            ...(projectName ? [{ label: projectName === DEMO_PROJECT_NAME ? "Demo Project" : projectName, href: `/${encodeURIComponent(projectName)}` }] : []),
             ...(pageName ? [{ label: pageName }] : [])
         ]} />
 
@@ -540,7 +544,7 @@
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">
                 {#if projectName && pageName}
-                    <span class="text-gray-600">{projectName} /</span>
+                    <span class="text-gray-600">{projectName === DEMO_PROJECT_NAME ? "Demo" : projectName} /</span>
                     {pageName}
                 {:else}
                     Page
@@ -566,6 +570,11 @@
                 <a href={resolvePath(`/${encodeURIComponent(projectName)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
+        {#if projectName === DEMO_PROJECT_NAME}
+        <p class="mt-1 text-sm text-gray-500">
+            This is a public, collaborative demo space. Content resets every 24 hours.
+        </p>
+        {/if}
     </div>
 
     <!-- Auth Component -->

@@ -6,7 +6,8 @@
     import AuthComponent from "../../components/AuthComponent.svelte";
     import PageList from "../../components/PageList.svelte";
     import { getLogger } from "../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../services";
+    import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
+    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import Breadcrumb from "../../components/Breadcrumb.svelte";
@@ -29,6 +30,10 @@
     let isAuthenticated = $state(false);
     let projectNotFound = $state(false);
     let isLoading = $state(true);
+    let isResetting = $state(false);
+    let resetDone = $state(false);
+    let resetError: string | undefined = $state(undefined);
+    let isDestroyed = false;
 
     // Process on authentication success
     async function handleAuthSuccess() {
@@ -47,6 +52,30 @@
     }
 
     // Load project
+
+
+    async function resetDemo() {
+        if (isResetting) return;
+        try {
+            isResetting = true;
+            resetDone = false;
+            resetError = undefined;
+            await seedDemo({ force: true, throwOnError: true });
+            if (isDestroyed) return;
+            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+            yjsStore.yjsClient = undefined;
+            store.project = undefined;
+            await loadProject();
+            if (isDestroyed) return;
+            resetDone = error === undefined;
+            setTimeout(() => { resetDone = false; }, 3000);
+        } catch (err) {
+            resetError = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
+        } finally {
+            isResetting = false;
+        }
+    }
+
     async function loadProject() {
         if (!projectName || !isAuthenticated) return;
 
@@ -56,6 +85,10 @@
         projectNotFound = false;
 
         try {
+            if (projectName === DEMO_PROJECT_NAME) {
+                await seedDemo();
+                if (isDestroyed) return;
+            }
             let client = await getYjsClientByProjectTitle(projectName);
             if (!client) {
                 logger.warn(`loadProject: Project client not found for "${projectName}"`);
@@ -97,6 +130,7 @@
 
     onDestroy(() => {
         // Cleanup code
+        isDestroyed = true;
     });
 </script>
 
@@ -108,18 +142,46 @@
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: projectName || "Project" }
+            { label: projectName === DEMO_PROJECT_NAME ? 'Demo Project' : projectName || 'Project' }
         ]} />
     </div>
-    <div class="mb-4 flex items-center">
+    <div class="mb-4 flex items-center justify-between">
         <h1 class="text-2xl font-bold">
-            {#if projectName}
+            {#if projectName === DEMO_PROJECT_NAME}
+                Public Demo Project
+            {:else if projectName}
                 {projectName}
             {:else}
                 Project
             {/if}
         </h1>
+        {#if projectName === DEMO_PROJECT_NAME}
+            <button type="button"
+                onclick={resetDemo}
+                disabled={isResetting || isLoading}
+                data-testid="demo-reset-button"
+                aria-label={isResetting ? "Resetting demo content" : "Reset demo content"}
+                class="rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isResetting || isLoading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}"
+            >
+                {isResetting ? "Resetting..." : "Reset demo content"}
+            </button>
+        {/if}
     </div>
+    {#if projectName === DEMO_PROJECT_NAME}
+        <p class="mt-1 text-sm text-gray-500 mb-4">
+            This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours, or immediately with the reset button.
+        </p>
+        {#if resetDone}
+            <p class="mt-1 text-sm text-green-600 mb-4" data-testid="demo-reset-done" role="status" aria-live="polite">
+                Demo content has been reset.
+            </p>
+        {/if}
+        {#if resetError}
+            <p class="mt-1 text-sm text-red-600 mb-4" data-testid="demo-reset-error" role="status" aria-live="assertive">
+                {resetError}
+            </p>
+        {/if}
+    {/if}
 
     <!-- Authentication component -->
     <div class="auth-section mb-6">
