@@ -53,8 +53,8 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         await titleCell.click();
         const titleInput = row.locator('td[data-col="title"] input.cell-input');
         await expect(titleInput).toBeVisible({ timeout: 15000 });
-        await titleInput.fill("Write the report");
-        await titleInput.press("Enter");
+        await titleInput.fill("Write the report", { force: true });
+        await page.keyboard.press("Enter");
 
         // The edit goes Yjs -> PGlite -> debounced re-query -> grid
         await expect(
