@@ -37,7 +37,9 @@ class YjsStore {
             const room = projectRoomPath(v.containerId);
             const initialSyncState = getRoomSyncState(room);
             this.notYetSynced = initialSyncState !== "synced";
-            if (initialSyncState === "too-large" || initialSyncState === "rate-limited" || initialSyncState === "denied") {
+            if (
+                initialSyncState === "too-large" || initialSyncState === "rate-limited" || initialSyncState === "denied"
+            ) {
                 this.syncError = initialSyncState;
             } else {
                 this.syncError = null;
