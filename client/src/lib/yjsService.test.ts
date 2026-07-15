@@ -7,7 +7,7 @@ interface TestWindow extends Window {
     __YJS_CLIENT_REGISTRY__?: {
         map: {
             clear: () => void;
-            set: (key: string, value: any) => void;
+            set: (key: string, value: unknown) => void;
         };
     };
 }
@@ -105,10 +105,8 @@ describe("yjsService", () => {
                 testWindow.__YJS_CLIENT_REGISTRY__.map.clear();
             }
 
-            const client1 = await createNewProject("TitleOne");
-            const id1 = (client1 as unknown as { doc: { guid: string; }; }).doc.guid;
-            const client2 = await createNewProject("TitleTwo");
-            const id2 = (client2 as unknown as { doc: { guid: string; }; }).doc.guid;
+            await createNewProject("TitleOne");
+            await createNewProject("TitleTwo");
 
             // Create a fake collision scenario manually since we can't easily force it through createNewProject
             const registry = testWindow.__YJS_CLIENT_REGISTRY__;
@@ -121,8 +119,9 @@ describe("yjsService", () => {
             const projCollision = { title: "CollisionTitle" } as Project;
             const projTarget = { title: "TargetTitle" } as Project;
 
-            registry?.map.set("container:demo2", [undefined as any, projCollision]);
-            registry?.map.set("container:demo", [undefined as any, projTarget]);
+            type ClientTuple = [unknown, Project];
+            registry?.map.set("container:demo2", [undefined, projCollision] as ClientTuple);
+            registry?.map.set("container:demo", [undefined, projTarget] as ClientTuple);
 
             // For "demo", if we used includes, it would match "demo2" first because it was inserted first
             const title = getProjectTitle("demo");
