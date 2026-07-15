@@ -57,7 +57,7 @@ export class ScrapboxFormatter {
     public static applySearchHighlight(html: string, searchQuery: string, options?: SearchOptions): string {
         if (!searchQuery) return html;
         const regex = buildRegExp(searchQuery, options);
-        let result = '';
+        let result = "";
         let lastIndex = 0;
         const tagRegex = /<[^>]*>/g;
         let match;
@@ -72,7 +72,7 @@ export class ScrapboxFormatter {
                 .replace(/&quot;/g, '"')
                 .replace(/&#039;/g, "'");
 
-            let res = '';
+            let res = "";
             let textLastIndex = 0;
             let textMatch;
             regex.lastIndex = 0;
