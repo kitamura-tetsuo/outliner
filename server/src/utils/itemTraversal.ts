@@ -1,4 +1,4 @@
-import type { Item } from "../schema/app-schema";
+import type { Item } from "../schema/app-schema.js";
 
 /**
  * Iterates over an Item collection efficiently.

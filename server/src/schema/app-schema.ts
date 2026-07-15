@@ -3,7 +3,14 @@ const logger = { info: console.log, warn: console.warn, error: console.error, de
 import { iterateItems } from "../utils/itemTraversal.js";
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
-import { getLogger } from "../lib/logger";
+const getLogger = (name: string) => ({
+    info: console.log,
+    warn: console.warn,
+    error: console.error,
+    debug: console.debug,
+    trace: console.trace,
+    fatal: console.error,
+});
 
 import * as Y from "yjs";
 
@@ -552,8 +559,8 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
-        if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return [];
-        if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return [];
+        if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(this.parentKey)) return [];
+        if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(this.parentKey)) return [];
         try {
             const children = this.tree.getNodeChildrenFromKey(this.parentKey);
             return this.tree.sortChildrenByOrder(children, this.parentKey);
@@ -592,8 +599,8 @@ export class Items implements Iterable<Item> {
      * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
      */
     *iterateUnordered(): IterableIterator<Item> {
-        if (this.tree.computedMap && !this.tree.computedMap.has(this.parentKey)) return;
-        if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(this.parentKey)) return;
+        if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(this.parentKey)) return;
+        if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(this.parentKey)) return;
         let keys: string[];
         try {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
@@ -605,8 +612,8 @@ export class Items implements Iterable<Item> {
         }
         for (const key of keys) {
             // Use hasNode check instead of try-catch around yielding the item
-            if (this.tree.computedMap && !this.tree.computedMap.has(key)) continue;
-            if (typeof this.tree.hasNode === "function" && !this.tree.hasNode(key)) continue;
+            if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(key)) continue;
+            if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(key)) continue;
             yield new Item(this.ydoc, this.tree, key);
         }
     }

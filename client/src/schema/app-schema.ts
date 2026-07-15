@@ -1,9 +1,10 @@
 import { v4 as uuid } from "uuid";
-const logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug };
+
 import { iterateItems } from "../utils/itemTraversal.js";
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
 import { getLogger } from "../lib/logger";
+const logger = getLogger("AppSchema");
 
 import * as Y from "yjs";
 
@@ -427,7 +428,7 @@ export class Item {
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as any).__E2E__)
+            && !(typeof window !== "undefined" && (window as unknown as Record<string, unknown>).__E2E__)
         ) {
             throw new Error("Invalid attachment URL");
         }
@@ -436,9 +437,10 @@ export class Item {
         if (!existing.includes(url)) {
             try {
                 if (typeof window !== "undefined") {
-                    const w = window as any;
-                    w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-                    w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
+                    const w = window as unknown as Record<string, unknown>;
+                    const logs = Array.isArray(w?.E2E_LOGS) ? w.E2E_LOGS : [];
+                    logs.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
+                    w.E2E_LOGS = logs;
                 }
             } catch {}
             arr.push([url]);
@@ -453,7 +455,7 @@ export class Item {
         }
     }
     removeAttachment(url: string) {
-        const arr = this.value.get("attachments") as any;
+        const arr = this.value.get("attachments") as unknown as Y.Array<string> | undefined;
         if (!arr) return;
         const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
         if (idx >= 0) arr.delete(idx, 1);
