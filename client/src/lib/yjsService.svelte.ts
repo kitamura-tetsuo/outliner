@@ -53,7 +53,17 @@ class Registry {
     }
 
     set(k: ClientKey, v: Instances) {
-        this.map.set(this.key(k), v);
+        const keyStr = this.key(k);
+        const existing = this.map.get(keyStr);
+        if (existing && existing[0] && existing[0] !== v[0]) {
+            logger.warn(`[yjsService] Overwriting existing client in registry for ${keyStr}. Disposing loser.`);
+            try {
+                existing[0].dispose();
+            } catch (e) {
+                logger.error({ error: e as Error }, `Failed to dispose overwritten client`);
+            }
+        }
+        this.map.set(keyStr, v);
     }
 
     delete(k: ClientKey) {
@@ -228,7 +238,17 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
 // Debug helper for E2E tests
 
-export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+const inFlight = new Map<string, Promise<YjsClient | undefined>>();
+
+export function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+    const existing = inFlight.get(projectTitle);
+    if (existing) return existing;
+    const p = resolveClientByProjectTitle(projectTitle).finally(() => inFlight.delete(projectTitle));
+    inFlight.set(projectTitle, p);
+    return p;
+}
+
+async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
     // Special bypass for demo project
@@ -298,21 +318,38 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
     if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
         logger.info(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
         await new Promise<void>((resolve, reject) => {
-            const start = Date.now();
-            const check = () => {
-                if (firestoreStore.isLoaded) {
-                    resolve();
-                } else if (Date.now() - start > 3000) {
+            let isResolved = false;
+
+            const cleanupEffect = $effect.root(() => {
+                $effect(() => {
+                    if (firestoreStore.isLoaded && !isResolved) {
+                        isResolved = true;
+                        clearTimeout(timeout);
+                        cleanupEffect();
+                        resolve();
+                    }
+                });
+            });
+
+            const timeout = setTimeout(() => {
+                if (!isResolved) {
+                    isResolved = true;
+                    cleanupEffect();
                     reject(
                         new Error(
                             "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
                         ),
                     );
-                } else {
-                    setTimeout(check, 50);
                 }
-            };
-            check();
+            }, 3000);
+
+            // Check immediately in case it's already loaded
+            if (firestoreStore.isLoaded && !isResolved) {
+                isResolved = true;
+                clearTimeout(timeout);
+                cleanupEffect();
+                resolve();
+            }
         });
         logger.info(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
     }
@@ -451,7 +488,18 @@ export function getProjectTitle(containerId: string): string {
     return "";
 }
 
-export async function createClient(containerId?: string): Promise<YjsClient> {
+const inFlightCreate = new Map<string, Promise<YjsClient>>();
+
+export function createClient(containerId?: string): Promise<YjsClient> {
+    const key = containerId || "new";
+    const existing = inFlightCreate.get(key);
+    if (existing) return existing;
+    const p = resolveCreateClient(containerId).finally(() => inFlightCreate.delete(key));
+    inFlightCreate.set(key, p);
+    return p;
+}
+
+async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();
     let userId = user?.id;
