@@ -434,11 +434,11 @@ export async function getClientByProjectTitle(projectTitle: string): Promise<Yjs
 }
 
 export function getProjectTitle(containerId: string): string {
-    // First, try to get the title from the loaded project in registry
-    for (const [k, [, project]] of registry.entries()) {
-        if (k.includes(containerId) && project?.title) {
-            return project.title;
-        }
+    // First, try to get the title from the loaded project in registry by exact key match
+    const entry = registry.get({ type: "container", id: containerId })
+        ?? registry.get({ type: "user", id: containerId });
+    if (entry?.[1]?.title) {
+        return entry[1].title;
     }
 
     // Fallback: get title from metadata Y.Doc (works for cached containers)
