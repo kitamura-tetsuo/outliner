@@ -48,7 +48,7 @@ test.describe("Inline Checkboxes", () => {
         // Click Bread if it's missing checked attr (for robustness)
         if (!breadHTML.includes("checked")) {
             console.log("Bread is missing checked attr, clicking...");
-            await checkboxes.nth(2).evaluate((node) => node.click());
+            await checkboxes.nth(2).evaluate((node: HTMLInputElement) => node.click());
             await page.waitForTimeout(500);
         }
 
@@ -62,7 +62,7 @@ test.describe("Inline Checkboxes", () => {
         expect(milkChecked).toBe(false);
         expect(breadChecked).toBe(true);
 
-        await checkboxes.nth(1).evaluate((node) => node.click());
+        await checkboxes.nth(1).evaluate((node: HTMLInputElement) => node.click());
 
         await page.waitForFunction(() => {
             const cbs = document.querySelectorAll('input[type="checkbox"].inline-checkbox');
@@ -76,7 +76,7 @@ test.describe("Inline Checkboxes", () => {
             return cbs.length >= 1 && (cbs[0] as HTMLInputElement).checked;
         }, { timeout: 5000 });
 
-        await checkboxes.nth(2).evaluate((node) => node.click());
+        await checkboxes.nth(2).evaluate((node: HTMLInputElement) => node.click());
 
         await page.waitForFunction(() => {
             const cbs = document.querySelectorAll('input[type="checkbox"].inline-checkbox');

@@ -1,4 +1,4 @@
-import { initializeFirebase } from "../firebase-init.js";
+import { initializeFirebase } from "../dist/firebase-init.js";
 
 initializeFirebase().then(() => {
     console.log("Firebase emulator initialization completed");

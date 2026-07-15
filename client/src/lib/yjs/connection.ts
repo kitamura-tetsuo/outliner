@@ -7,7 +7,7 @@ import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
-import { projectRoomPath } from "./roomPath";
+import { projectRoomPath, tableRoomPath } from "./roomPath";
 import { setRoomSyncState } from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
@@ -443,6 +443,29 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         attachTokenRefreshHook: true,
     });
     return { provider, awareness };
+}
+
+/**
+ * Connect a table subdoc (one Y.Doc per table) to its own room. Access is
+ * granted server-side based on the parent project id. Presence binding is
+ * intentionally omitted: the project connection already carries awareness.
+ */
+export async function connectTableDoc(projectId: string, tableId: string, doc: Y.Doc): Promise<{
+    provider: HocuspocusProvider;
+    waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
+    dispose: () => void;
+}> {
+    const room = tableRoomPath(projectId, tableId);
+    await attachIndexedDbPersistence(room, doc);
+
+    const { provider, waitForInitialSync, dispose } = await setupProviderForRoom(
+        projectId,
+        room,
+        doc,
+        "connectTableDoc",
+        { attachTokenRefreshHook: true },
+    );
+    return { provider, waitForInitialSync, dispose };
 }
 
 export async function createMinimalProjectConnection(projectId: string): Promise<{
