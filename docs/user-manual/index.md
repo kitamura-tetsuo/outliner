@@ -75,6 +75,7 @@ Create links to other pages within Outliner or external websites.
 ### Internal Links
 
 Type `[` once, then enter a page name to create a link to another page (e.g., `[page name]`).
+
 - Links to pages that do not exist yet look different, and the page is only created once you edit it.
 - You can also link to a page in another project with `[project/page]` syntax.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
