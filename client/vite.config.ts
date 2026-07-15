@@ -119,7 +119,8 @@ export default defineConfig(async ({ mode }) => {
             },
         },
         optimizeDeps: {
-            include: ["sql.js"],
+            // PGlite ships its own WASM assets and must not be pre-bundled.
+            exclude: ["@electric-sql/pglite"],
         },
         define: {
             global: "globalThis",
@@ -170,6 +171,7 @@ export default defineConfig(async ({ mode }) => {
                         ],
                         setupFiles: ["./vitest-setup-client.ts"],
                         envFile: ".env.test",
+                        testTimeout: 30000,
                         coverage: {
                             enabled: true,
                         },

@@ -88,7 +88,7 @@ describe("CORS Middleware", () => {
         expect(res.status).to.equal(200);
     });
 
-    it("should allow all if allowlist is empty", async () => {
+    it("should allow all if allowlist is empty (non-production)", async () => {
         dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "cors-test-4-"));
         const config = loadConfig({
             PORT: "0",
@@ -106,5 +106,57 @@ describe("CORS Middleware", () => {
 
         expect(res.status).to.equal(200);
         expect(res.header["access-control-allow-origin"]).to.equal("http://random.com");
+    });
+
+    it("should fail to start in production if allowlist is empty", async () => {
+        const originalEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = "production";
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "cors-test-5-"));
+        const config = loadConfig({
+            PORT: "0",
+            LOG_LEVEL: "silent",
+            DATABASE_PATH: dbDir,
+            ORIGIN_ALLOWLIST: "",
+        });
+
+        try {
+            await startServer(config);
+            expect.fail("Should have thrown an error");
+        } catch (err: any) {
+            expect(err.message).to.include("SECURITY CRITICAL: ORIGIN_ALLOWLIST is empty in production");
+        } finally {
+            process.env.NODE_ENV = originalEnv;
+        }
+    });
+
+    it("should start in production with empty allowlist if ALLOW_ALL_ORIGINS=true, and disable credentials", async () => {
+        const originalEnv = process.env.NODE_ENV;
+        process.env.NODE_ENV = "production";
+        process.env.ALLOW_ALL_ORIGINS = "true";
+        dbDir = fs.mkdtempSync(path.join(os.tmpdir(), "cors-test-6-"));
+        const config = loadConfig({
+            PORT: "0",
+            LOG_LEVEL: "silent",
+            DATABASE_PATH: dbDir,
+            ORIGIN_ALLOWLIST: "",
+        });
+
+        try {
+            const instance = await startServer(config);
+            app = instance.server;
+            shutdown = instance.shutdown;
+
+            const res = await request(app)
+                .get("/health")
+                .set("Origin", "http://random.com");
+
+            expect(res.status).to.equal(200);
+            expect(res.header["access-control-allow-origin"]).to.equal("http://random.com");
+            // With credentials: false (the default when we explicitly don't return Access-Control-Allow-Credentials: true)
+            expect(res.header["access-control-allow-credentials"]).to.be.undefined;
+        } finally {
+            process.env.NODE_ENV = originalEnv;
+            delete process.env.ALLOW_ALL_ORIGINS;
+        }
     });
 });

@@ -78,7 +78,7 @@ function startLogService() {
     const app = express();
 
     function getSafeOrigins() {
-        const defaultOrigins = ["http://localhost:7070"];
+        const defaultOrigins = ["http://localhost:7070", "http://localhost:5173", "http://127.0.0.1:5173"];
 
         if (!process.env.CORS_ORIGIN) {
             logger.info("CORS_ORIGIN not set, using default origins");

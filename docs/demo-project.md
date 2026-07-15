@@ -73,10 +73,10 @@ use one of two forms:
 - `lines: string[]` — the text-only form. Two leading spaces per nesting level.
 - `items: DemoItem[]` — the structured form, used when a page seeds non-text
   content. Each `DemoItem` can specify:
-  - `componentType: "table" | "chart"` — render a live component instead of
-    text. For charts, set `chartQuery` to a **self-contained** SQL statement
-    (`CREATE TABLE … INSERT … SELECT …`) so the chart renders deterministically
-    with no external data source.
+  - `componentType: "yjstable"` — render a live database table block instead
+    of text. Set `yjsTableId` to the id of an entry in `demoTables` (in
+    `server/src/demo-content.ts`); the table's schema, UI definition and
+    records are seeded into its own subdoc room by the demo API.
   - `votes: string[]` — seed votes from these voter ids.
   - `comments: { author, text }[]` — seed a comment thread.
   - `attachments: string[]` — seed attachment urls (use `data:` URIs so they
@@ -86,7 +86,7 @@ use one of two forms:
     target on the same page, so keep both items on one page.
   - `children: DemoItem[]` — nested items.
 
-The `Advanced Features` page seeds a live chart, a live table, and an alias;
+The `Advanced Features` page seeds a live database table (with a chart view) and an alias;
 the `Comments and Votes` page seeds a real comment thread and a voted item.
 When you add a feature with a non-text representation, prefer the structured
 form so the demo seeds a working instance of it.

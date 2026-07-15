@@ -2,6 +2,7 @@ import type { YTree } from "yjs-orderedtree";
 import type { Item } from "../schema/app-schema";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
+import { safeGetNodeParent } from "../utils/treeUtils";
 import { getLogger } from "./logger";
 
 const logger = getLogger("TreeDnD");
@@ -99,8 +100,8 @@ export class TreeDnD {
             const tree: YTree = items.tree;
             const doc = pageItem?.ydoc;
 
-            const sourceParent = tree.getNodeParentFromKey?.(sourceKey);
-            const targetParent = tree.getNodeParentFromKey?.(targetKey);
+            const sourceParent = safeGetNodeParent(tree, sourceKey);
+            const targetParent = safeGetNodeParent(tree, targetKey);
 
             const run = () => {
                 // Middle drop should nest under the target item.

@@ -1,0 +1,19 @@
+id: FTR-53f59906
+title: Yjs + PGlite database tables
+title-ja: Yjs + PGlite データベーステーブル
+description: 'A single consolidated table feature that replaces the former Table (/table), SQL Table (/sql, SQL Block), SQL Task Manager and SQL Habit Tracker. Each table is one Y.Doc subdoc registered in the project doc (tableId -> subdoc reference + display name) and holds three structures: a Schema Definition (Y.Text with a single CREATE TABLE statement, applied via an explicit Apply button and validated against a throwaway PGlite schema with a warning dialog for destructive changes), a UI Definition (Y.Map edited through a structured form: query string plus nested per-column cell component settings), and Data Storage (Y.Map of records, each a nested Y.Map keyed by column name for field-level CRDT merges). An in-memory PGlite (Postgres WASM) engine is loaded lazily and acts as the computation engine: a one-way sync adapter observes Data Storage, casts values strictly to the schema types, applies them with parameterized statements (per-record errors are surfaced in the UI without stopping other records) and re-runs the UI query debounced. The grid maps cells to dynamic components (text/number/checkbox/select/date; select options come from CHECK (col IN (...)) constraints), enforces read-only rules (no id column, JOIN/aggregate queries, calculated columns) and writes edits back to Data Storage only. Views (schema editor, UI definition editor, grid, chart) can be toggled in parallel, each table has its own undo scope, and Tasks/Habits presets recreate the former task manager and habit tracker as CREATE TABLE + UI Definition templates. The feature is embedded in outliner items via the "Database" component type (componentType "yjstable").
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/tbl-chart-view-toggle-9d4b17ea.spec.ts
+- client/e2e/new/tbl-database-table-block-53f59906.spec.ts
+- client/e2e/new/tbl-schema-change-warning-dialog-6f2a8c31.spec.ts
+- client/e2e/new/tbl-two-client-table-subdoc-sync-4c8e21ab.spec.ts
+- client/src/services/yjstable/pgliteService.ts
+- client/src/services/yjstable/queryAnalysis.test.ts
+- client/src/services/yjstable/schemaIntrospection.test.ts
+- client/src/services/yjstable/tableDocs.test.ts
+- client/src/services/yjstable/tableSyncAdapter.test.ts
+- client/src/services/yjstable/valueCasting.test.ts

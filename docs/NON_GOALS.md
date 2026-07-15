@@ -42,3 +42,16 @@ exist (see issue #3421). Task/checklist functionality is available instead
 through the standalone `Checklist.svelte` widget (`CHK-0001`,
 `docs/client-features/chk-universal-checklist-7290ab91.yaml`), which is
 unrelated to inline outline-item text syntax.
+
+## Database Tables
+
+### TBL-NON Migration from the legacy SQL table features
+
+The consolidated Yjs + PGlite database table feature
+(`docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml`) replaced
+the former Table (`/table`), SQL Table (`/sql`, SQL Block), SQL Task Manager
+and SQL Habit Tracker. Data stored in the legacy per-item structures
+(`tableSchema` / `tableColumns` / `tableRows` on outliner items, and the
+project-level `yDatabase` map) is NOT migrated to the new subdoc-based
+structure; only newly created tables are supported. The old sql.js (SQLite)
+engine was removed together with those features.

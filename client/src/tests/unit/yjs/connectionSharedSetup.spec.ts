@@ -173,11 +173,15 @@ describe("yjs connection: shared provider setup", () => {
         ] as const,
     )("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
         const provider = await setup();
-        const disconnectSpy = vi.spyOn(provider, "disconnect");
 
-        provider.emit("close", { code: 4003, reason: "FORBIDDEN" } satisfies CloseEvent);
+        const fatalCodes = [4001, 4003, 4004, 4005, 4006, 4008];
 
-        expect(disconnectSpy).toHaveBeenCalled();
+        for (const code of fatalCodes) {
+            const disconnectSpy = vi.spyOn(provider, "disconnect");
+            provider.emit("close", { code, reason: "FATAL" } satisfies CloseEvent);
+            expect(disconnectSpy).toHaveBeenCalled();
+            disconnectSpy.mockRestore();
+        }
     });
 
     it("marks the room as timed-out (not silently synced) when initial sync never completes", async () => {

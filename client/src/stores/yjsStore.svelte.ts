@@ -1,7 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
 import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
-import { initDb, syncYDatabase } from "../services/sqlService";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
 
@@ -36,12 +35,26 @@ class YjsStore {
         this._unsubSyncState = undefined;
         if (v?.containerId) {
             const room = projectRoomPath(v.containerId);
-            this.notYetSynced = getRoomSyncState(room) !== "synced";
+            const initialSyncState = getRoomSyncState(room);
+            this.notYetSynced = initialSyncState !== "synced";
+            if (
+                initialSyncState === "too-large" || initialSyncState === "rate-limited" || initialSyncState === "denied"
+            ) {
+                this.syncError = initialSyncState;
+            } else {
+                this.syncError = null;
+            }
             this._unsubSyncState = onRoomSyncStateChange(room, (state) => {
                 this.notYetSynced = state !== "synced";
+                if (state === "too-large" || state === "rate-limited" || state === "denied") {
+                    this.syncError = state;
+                } else {
+                    this.syncError = null;
+                }
             });
         } else {
             this.notYetSynced = false;
+            this.syncError = null;
         }
 
         if (v) {
@@ -86,18 +99,6 @@ class YjsStore {
 
             globalStore.project = connectedProjectAsAppSchema;
             this._lastProjectGuid = newGuid ?? null;
-
-            // Sync database mappings
-            try {
-                const ydb = connectedProject.ydoc.getMap("yDatabase");
-                if (ydb) {
-                    initDb().then(() => syncYDatabase(ydb)).catch(e => {
-                        logger.error(e instanceof Error ? e : new Error(String(e)), "Failed to init yDatabase");
-                    });
-                }
-            } catch (e) {
-                logger.error(e instanceof Error ? e : new Error(String(e)), "Failed to sync yDatabase");
-            }
 
             // Attach listeners to update isConnected state reactively
             if (v.wsProvider) {
@@ -212,6 +213,8 @@ class YjsStore {
     // True until the current room's initial sync completes, so the UI can indicate that
     // edits may still be applied to a stale/local-only copy of the document.
     notYetSynced: boolean = false;
+    // Set when the server rejects sync with a fatal error
+    syncError: "too-large" | "rate-limited" | "denied" | null = null;
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "Disconnected";
     }
@@ -227,6 +230,7 @@ class YjsStore {
         this._lastProjectGuid = null;
         this.isConnected = false;
         this.notYetSynced = false;
+        this.syncError = null;
         try {
             this._unsubSyncState?.();
         } catch {}
