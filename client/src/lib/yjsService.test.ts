@@ -106,9 +106,9 @@ describe("yjsService", () => {
             }
 
             const client1 = await createNewProject("TitleOne");
-            const id1 = (client1 as unknown as { doc: { guid: string } }).doc.guid;
+            const id1 = (client1 as unknown as { doc: { guid: string; }; }).doc.guid;
             const client2 = await createNewProject("TitleTwo");
-            const id2 = (client2 as unknown as { doc: { guid: string } }).doc.guid;
+            const id2 = (client2 as unknown as { doc: { guid: string; }; }).doc.guid;
 
             // Create a fake collision scenario manually since we can't easily force it through createNewProject
             const registry = testWindow.__YJS_CLIENT_REGISTRY__;
