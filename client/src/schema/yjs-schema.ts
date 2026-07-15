@@ -8,6 +8,9 @@ import { safeGetNodeParent } from "../utils/treeUtils";
 
 const logger = getLogger("yjs-schema");
 
+const DUMMY_DOC = new Y.Doc();
+const DUMMY_MAP = DUMMY_DOC.getMap<unknown>("dummy");
+
 export type Comment = {
     id: string;
     author: string;
@@ -82,7 +85,7 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
         } catch {
-            return new Y.Map<unknown>();
+            return DUMMY_MAP;
         }
     }
 

@@ -10,6 +10,9 @@ import { YTree } from "yjs-orderedtree";
 import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
 import { safeGetNodeParent } from "../utils/treeUtils";
 
+const DUMMY_DOC = new Y.Doc();
+const DUMMY_MAP = DUMMY_DOC.getMap<ItemValueType>("dummy");
+
 export type Comment = {
     id: string;
     author: string;
@@ -183,8 +186,7 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
         } catch {
-            const dummyDoc = new Y.Doc();
-            return dummyDoc.getMap<ItemValueType>("dummy");
+            return DUMMY_MAP;
         }
     }
 
