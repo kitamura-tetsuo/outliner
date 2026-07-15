@@ -72,23 +72,11 @@ export async function startServer(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
 
-    // SECURITY CRITICAL: Refuse to start in production if CORS is overly permissive unless ALLOW_ALL_ORIGINS is explicit
-    let corsCredentials = true;
+    // SECURITY WARNING: Warn if CORS is overly permissive in production
     if (allowedOrigins.size === 0 && process.env.NODE_ENV === "production") {
-        if (process.env.ALLOW_ALL_ORIGINS === "true") {
-            logger.warn(
-                "SECURITY WARNING: CORS is configured to allow ALL origins in production. Set ORIGIN_ALLOWLIST to restrict access. Credentials are disabled.",
-            );
-            corsCredentials = false;
-        } else {
-            throw new Error(
-                "SECURITY CRITICAL: ORIGIN_ALLOWLIST is empty in production. This allows any website to make credentialed requests. Server refusing to start. Set ORIGIN_ALLOWLIST or set ALLOW_ALL_ORIGINS=true.",
-            );
-        }
-    } else if (allowedOrigins.size === 0) {
-        if (process.env.ALLOW_ALL_ORIGINS === "true") {
-            corsCredentials = false;
-        }
+        logger.warn(
+            "SECURITY WARNING: CORS is configured to allow ALL origins in production. Set ORIGIN_ALLOWLIST to restrict access.",
+        );
     }
 
     const corsOptions: cors.CorsOptions = {
@@ -105,7 +93,7 @@ export async function startServer(
                 return callback(null, false);
             }
         },
-        credentials: corsCredentials,
+        credentials: true,
     };
     app.use(cors(corsOptions));
 
@@ -383,15 +371,8 @@ export async function startServer(
 
             // 2. CORS check (synchronous)
             const isLocal = ip === "127.0.0.1" || ip === "::1";
-            if (!isLocal) {
-                if (allowedOrigins.size > 0) {
-                    if (!allowedOrigins.has(origin)) {
-                        return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
-                    }
-                } else if (process.env.NODE_ENV === "production" && process.env.ALLOW_ALL_ORIGINS !== "true") {
-                    // This case should theoretically be caught at startup, but for completeness:
-                    return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
-                }
+            if (!isLocal && allowedOrigins.size && !allowedOrigins.has(origin)) {
+                return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
             }
 
             // 3. Socket limits (synchronous)
@@ -479,32 +460,6 @@ export async function startServer(
                             size: len,
                             documentName,
                         });
-                        // Send a stateless message indicating message too large before closing
-                        // Yjs payload format for stateless message:
-                        // message-type: 5 (Stateless)
-                        // length of custom message
-                        // custom message payload (stringified JSON)
-                        // Since we just want to send a raw JSON to Hocuspocus client,
-                        // HocuspocusProvider handles 'stateless' if message type is 5.
-                        try {
-                            const errorMsg = JSON.stringify({
-                                error: "MESSAGE_TOO_LARGE",
-                                size: len,
-                                limit: config.MAX_MESSAGE_SIZE_BYTES,
-                            });
-                            // The hocuspocus protocol stateless message is: [5, payloadLength, payloadBytes...]
-                            // But maybe it's easier to just let it close with 4005. The issue says:
-                            // "Consider replying with a stateless error message before closing, and document the limit for clients so they can chunk transactions"
-                            // Actually, let's encode it properly for Yjs/Hocuspocus stateless.
-                            // Hocuspocus stateless messages are raw strings when the connection isn't using a specific binary format for stateless, but Hocuspocus expects a specific binary encoding.
-                            // However, we can just send the binary frame.
-                            // Let's use the hocuspocus server instance to send a stateless message if possible, or manually encode.
-                            if (clientConnection) {
-                                clientConnection.sendStateless(errorMsg);
-                            }
-                        } catch (err) {
-                            logger.error({ error: err }, "Failed to send stateless message for 4005");
-                        }
                         ws.close(4005, "MESSAGE_TOO_LARGE");
                         return;
                     }

@@ -7,7 +7,6 @@ interface TestWindow extends Window {
     __YJS_CLIENT_REGISTRY__?: {
         map: {
             clear: () => void;
-            set: (key: string, value: unknown) => void;
         };
     };
 }
@@ -92,41 +91,6 @@ describe("yjsService", () => {
             expect(client).toBeDefined();
             type MockClient = { project: { title: string; }; };
             expect((client as unknown as MockClient).project.title).not.toBe(uuid);
-        });
-    });
-
-    describe("getProjectTitle", () => {
-        it("returns exact match title without substring collision", async () => {
-            const { getProjectTitle } = await import("./yjsService.svelte");
-            const testWindow = window as TestWindow;
-
-            // Clear existing entries just in case
-            if (testWindow.__YJS_CLIENT_REGISTRY__) {
-                testWindow.__YJS_CLIENT_REGISTRY__.map.clear();
-            }
-
-            await createNewProject("TitleOne");
-            await createNewProject("TitleTwo");
-
-            // Create a fake collision scenario manually since we can't easily force it through createNewProject
-            const registry = testWindow.__YJS_CLIENT_REGISTRY__;
-
-            // Register a collision where ID2 is a substring of ID1, e.g. "demo" and "demo2"
-            // Let's set some custom test entries
-            registry?.map.clear(); // remove the createNewProject ones to avoid conflicts
-
-            // Simulate the registry internal array/map order
-            const projCollision = { title: "CollisionTitle" } as Project;
-            const projTarget = { title: "TargetTitle" } as Project;
-
-            type ClientTuple = [unknown, Project];
-            registry?.map.set("container:demo2", [undefined, projCollision] as ClientTuple);
-            registry?.map.set("container:demo", [undefined, projTarget] as ClientTuple);
-
-            // For "demo", if we used includes, it would match "demo2" first because it was inserted first
-            const title = getProjectTitle("demo");
-
-            expect(title).toBe("TargetTitle");
         });
     });
 

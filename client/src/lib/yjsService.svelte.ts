@@ -53,17 +53,7 @@ class Registry {
     }
 
     set(k: ClientKey, v: Instances) {
-        const keyStr = this.key(k);
-        const existing = this.map.get(keyStr);
-        if (existing && existing[0] && existing[0] !== v[0]) {
-            logger.warn(`[yjsService] Overwriting existing client in registry for ${keyStr}. Disposing loser.`);
-            try {
-                existing[0].dispose();
-            } catch (e) {
-                logger.error({ error: e as Error }, `Failed to dispose overwritten client`);
-            }
-        }
-        this.map.set(keyStr, v);
+        this.map.set(this.key(k), v);
     }
 
     delete(k: ClientKey) {
@@ -238,19 +228,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
 // Debug helper for E2E tests
 
-/* eslint-disable svelte/prefer-svelte-reactivity -- Module-level promise cache, not reactive state */
-const inFlight = new Map<string, Promise<YjsClient | undefined>>();
-/* eslint-enable svelte/prefer-svelte-reactivity */
-
-export function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
-    const existing = inFlight.get(projectTitle);
-    if (existing) return existing;
-    const p = resolveClientByProjectTitle(projectTitle).finally(() => inFlight.delete(projectTitle));
-    inFlight.set(projectTitle, p);
-    return p;
-}
-
-async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+export async function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
 
     // Special bypass for demo project
@@ -320,38 +298,21 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
     if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
         logger.info(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
         await new Promise<void>((resolve, reject) => {
-            let isResolved = false;
-
-            const cleanupEffect = $effect.root(() => {
-                $effect(() => {
-                    if (firestoreStore.isLoaded && !isResolved) {
-                        isResolved = true;
-                        clearTimeout(timeout);
-                        cleanupEffect();
-                        resolve();
-                    }
-                });
-            });
-
-            const timeout = setTimeout(() => {
-                if (!isResolved) {
-                    isResolved = true;
-                    cleanupEffect();
+            const start = Date.now();
+            const check = () => {
+                if (firestoreStore.isLoaded) {
+                    resolve();
+                } else if (Date.now() - start > 3000) {
                     reject(
                         new Error(
                             "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
                         ),
                     );
+                } else {
+                    setTimeout(check, 50);
                 }
-            }, 3000);
-
-            // Check immediately in case it's already loaded
-            if (firestoreStore.isLoaded && !isResolved) {
-                isResolved = true;
-                clearTimeout(timeout);
-                cleanupEffect();
-                resolve();
-            }
+            };
+            check();
         });
         logger.info(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
     }
@@ -473,11 +434,11 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
 }
 
 export function getProjectTitle(containerId: string): string {
-    // First, try to get the title from the loaded project in registry by exact key match
-    const entry = registry.get({ type: "container", id: containerId })
-        ?? registry.get({ type: "user", id: containerId });
-    if (entry?.[1]?.title) {
-        return entry[1].title;
+    // First, try to get the title from the loaded project in registry
+    for (const [k, [, project]] of registry.entries()) {
+        if (k.includes(containerId) && project?.title) {
+            return project.title;
+        }
     }
 
     // Fallback: get title from metadata Y.Doc (works for cached containers)
@@ -490,20 +451,7 @@ export function getProjectTitle(containerId: string): string {
     return "";
 }
 
-/* eslint-disable svelte/prefer-svelte-reactivity -- Module-level promise cache, not reactive state */
-const inFlightCreate = new Map<string, Promise<YjsClient>>();
-/* eslint-enable svelte/prefer-svelte-reactivity */
-
-export function createClient(containerId?: string): Promise<YjsClient> {
-    const key = containerId || "new";
-    const existing = inFlightCreate.get(key);
-    if (existing) return existing;
-    const p = resolveCreateClient(containerId).finally(() => inFlightCreate.delete(key));
-    inFlightCreate.set(key, p);
-    return p;
-}
-
-async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
+export async function createClient(containerId?: string): Promise<YjsClient> {
     // In Yjs-only mode, containerId is optional. We create if missing.
     const user = userManager.getCurrentUser();
     let userId = user?.id;

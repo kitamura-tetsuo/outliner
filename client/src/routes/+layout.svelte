@@ -16,8 +16,6 @@ import { setupGlobalDebugFunctions } from "../lib/debug";
 import "../utils/ScrapboxFormatter";
 // Import for global exposure
 import Toolbar from "../components/Toolbar.svelte";
-import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
-import { yjsStore } from "../stores/yjsStore.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
 import DatabaseSidebar from "../components/DatabaseSidebar.svelte";
@@ -341,13 +339,6 @@ onDestroy(async () => {
     <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} class:with-database-sidebar={isDatabaseSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
-
-    {#if yjsStore.syncError === "too-large"}
-        <NetworkErrorAlert error="Changes are too large to sync. Please undo or reduce the size of your edits." />
-    {/if}
-    {#if yjsStore.syncError === "rate-limited"}
-        <NetworkErrorAlert error="Rate limit exceeded. Sync has been paused. Please wait and reconnect." />
-    {/if}
 </div>
 
 <style>

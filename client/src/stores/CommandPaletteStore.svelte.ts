@@ -3,7 +3,7 @@ const logger = getLogger("Store");
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
-export type CommandType = "yjstable" | "alias";
+export type CommandType = "table" | "chart" | "alias";
 
 interface Position {
     top: number;
@@ -22,7 +22,8 @@ class CommandPaletteStore {
     private commandStartOffset: number = 0; // Position of slash
 
     readonly commands = [
-        { label: "Database", type: "yjstable" as const },
+        { label: "Table", type: "table" as const },
+        { label: "Chart", type: "chart" as const },
         { label: "Alias", type: "alias" as const },
     ];
 
@@ -37,12 +38,27 @@ class CommandPaletteStore {
                 );
             }
         } catch {}
+        // Special filtering for chart commands
+        if (q === "ch") {
+            return this.commands.filter(c => c.type === "chart");
+        }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
 
     get filtered() {
         const q = (this.query || "").toLowerCase();
         if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.filtered] q:", q);
+        // Special filtering for chart commands
+        if (q === "ch") {
+            const result = this.commands.filter(c => c.type === "chart");
+            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                logger.debug(
+                    '[CommandPaletteStore.filtered] Special filtering for "ch", result:',
+                    result.map(c => c.label),
+                );
+            }
+            return result;
+        }
         const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(

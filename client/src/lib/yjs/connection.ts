@@ -7,7 +7,7 @@ import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
-import { projectRoomPath, tableRoomPath } from "./roomPath";
+import { projectRoomPath } from "./roomPath";
 import { setRoomSyncState } from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
@@ -190,7 +190,7 @@ function constructWsUrl(wsBase: string, room: string): string {
 
 // Fatal close codes mean the server will never accept this connection: retrying is pointless
 // and, left unchecked, HocuspocusProvider's built-in backoff will retry forever.
-const FATAL_CLOSE_CODES = new Set([4001, 4003, 4004, 4005, 4006, 4008]);
+const FATAL_CLOSE_CODES = new Set([4001, 4003, 4006, 4008]);
 
 async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<void> {
     if (typeof indexedDB === "undefined" || !isIndexedDBEnabled()) return;
@@ -279,10 +279,7 @@ async function setupProviderForRoom(
 
         if (code && FATAL_CLOSE_CODES.has(code)) {
             logger.error(`[yjs-conn] Fatal close ${code} for ${room}: stopping reconnect attempts`);
-            let syncState: import("./roomSyncState").RoomSyncState = "denied";
-            if (code === 4004) syncState = "rate-limited";
-            else if (code === 4005) syncState = "too-large";
-            setRoomSyncState(room, syncState);
+            setRoomSyncState(room, "denied");
             try {
                 provider.disconnect();
             } catch {}
@@ -446,29 +443,6 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
         attachTokenRefreshHook: true,
     });
     return { provider, awareness };
-}
-
-/**
- * Connect a table subdoc (one Y.Doc per table) to its own room. Access is
- * granted server-side based on the parent project id. Presence binding is
- * intentionally omitted: the project connection already carries awareness.
- */
-export async function connectTableDoc(projectId: string, tableId: string, doc: Y.Doc): Promise<{
-    provider: HocuspocusProvider;
-    waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
-    dispose: () => void;
-}> {
-    const room = tableRoomPath(projectId, tableId);
-    await attachIndexedDbPersistence(room, doc);
-
-    const { provider, waitForInitialSync, dispose } = await setupProviderForRoom(
-        projectId,
-        room,
-        doc,
-        "connectTableDoc",
-        { attachTokenRefreshHook: true },
-    );
-    return { provider, waitForInitialSync, dispose };
 }
 
 export async function createMinimalProjectConnection(projectId: string): Promise<{

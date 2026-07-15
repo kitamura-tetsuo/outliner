@@ -10,8 +10,8 @@ tests:
 - client/e2e/core/MOB-0003.spec.ts
 acceptance:
 - Buttons scroll horizontally when overflowed
-- Delete and Vote buttons act on the active item
 - Indent and Outdent buttons modify item depth
 - Insert Above and Insert Below add sibling items
 - New Child creates a child under current item
+- Delete and Vote buttons act on the active item
 - Toolbar visible only on screens ≤ 768 px

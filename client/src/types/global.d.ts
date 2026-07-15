@@ -63,18 +63,12 @@ declare global {
         };
         DEBUG_MODE?: boolean;
         lastCopiedText?: string;
-        lastCopiedIsBoxSelection?: boolean;
-        __KEY_EVENT_HANDLER__?: unknown;
         navigator?: {
             webdriver?: boolean;
         };
         clipboard?: {
             writeText?: (text: string) => Promise<void>;
         };
-    }
-
-    interface Navigator {
-        clipboard?: Clipboard;
     }
 }
 

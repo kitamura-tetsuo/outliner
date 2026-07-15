@@ -45,12 +45,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         return sharedFindPageByName(store.project.items, name) || undefined;
     }
 
-    async function loadDemoPage() {
+    async function loadDemoPage(name: string) {
         try {
             isLoading = true;
             error = undefined;
             pageNotFound = false;
-            store.currentPage = undefined;
 
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
@@ -70,7 +69,28 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 store.project = AppProject.fromDoc(client.getProject().ydoc);
             }
 
-            // Let the $effect block handle page resolution and sync state
+            // Wait for sync until the page is found or until synchronization completes
+            let targetPage = findPage(name);
+            let retries = 0;
+            const maxRetries = import.meta.env.MODE === 'test' ? 150 : 300; // Hard limit for safety
+            while (!targetPage && retries < maxRetries) {
+                await new Promise(r => setTimeout(r, 100));
+                if (isDestroyed) return;
+                targetPage = findPage(name);
+                retries++;
+                // Break once synchronized and page is still not found.
+                if (!targetPage && !yjsStore.notYetSynced) {
+                    break;
+                }
+            }
+
+            if (!targetPage) {
+                logger.warn(`Demo page "${name}" not found after sync wait`);
+                pageNotFound = true;
+                return;
+            }
+
+            store.currentPage = targetPage;
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
@@ -126,6 +146,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             if (existingPage) {
                 store.currentPage = existingPage;
                 pageNotFound = false;
+                loadDemoPage(pageName);
                 return;
             }
         }
@@ -134,6 +155,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         if (created) {
             store.currentPage = created;
             pageNotFound = false;
+            loadDemoPage(pageName);
         }
     }
 
@@ -146,29 +168,20 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
             if (name === lastLoaded) return;
             lastLoaded = name;
-            loadDemoPage();
+            loadDemoPage(name);
         });
         return () => unsub();
     });
 
-    // React to page list changes (e.g., initial sync or demo reset recreating the page)
+    // React to page list changes (e.g., demo reset recreating the page)
     $effect(() => {
         void store.pagesVersion;
-        const isSyncing = yjsStore.notYetSynced;
-
-        if (!isLoading && !error && store.project && pageName) {
-            const targetPage = findPage(pageName);
-
-            if (targetPage) {
-                if (!store.currentPage || targetPage.key !== store.currentPage.key) {
-                    logger.info(`Page instance resolved for "${pageName}", updating currentPage`);
-                    store.currentPage = targetPage;
-                    pageNotFound = false;
-                }
-            } else if (!isSyncing) {
-                // Done syncing and still not found
-                store.currentPage = undefined;
-                pageNotFound = true;
+        if (!isLoading && !error && store.currentPage && store.project) {
+            const latestPage = findPage(pageName);
+            // If the page was recreated (new instance with the same name), update currentPage
+            if (latestPage && latestPage.key !== store.currentPage.key) {
+                logger.info(`Page instance changed for "${pageName}", updating currentPage`);
+                store.currentPage = latestPage;
             }
         }
     });
@@ -224,7 +237,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         </p>
     </div>
 
-    {#if (isLoading || (yjsStore.notYetSynced && !store.currentPage)) && !error && !pageNotFound}
+    {#if isLoading && !store.currentPage}
         <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
             <div class="loader" aria-hidden="true"></div>
             <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
@@ -242,7 +255,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                     </div>
                     <div class="mt-4">
                         <button type="button"
-                            onclick={() => loadDemoPage()}
+                            onclick={() => loadDemoPage(pageName)}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
                             Retry

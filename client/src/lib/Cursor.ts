@@ -386,12 +386,6 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                 case "ArrowDown":
                     this.extendSelectionDown();
                     break;
-                case "PageUp":
-                    this.extendSelectionPageUp();
-                    break;
-                case "PageDown":
-                    this.extendSelectionPageDown();
-                    break;
                 case "Home":
                     this.extendSelectionToLineStart();
                     break;
@@ -453,18 +447,6 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                         this.clearSelection();
                     }
                     this.moveToLineEnd();
-                    break;
-                case "PageUp":
-                    if (hasSelection) {
-                        this.clearSelection();
-                    }
-                    this.pageUp();
-                    break;
-                case "PageDown":
-                    if (hasSelection) {
-                        this.clearSelection();
-                    }
-                    this.pageDown();
                     break;
                 case "Backspace":
                     // If there is a selection, delete it
@@ -1001,14 +983,6 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     pageDown() {
         for (let i = 0; i < 10; i++) this.moveDown();
-    }
-
-    extendSelectionPageUp() {
-        for (let i = 0; i < 10; i++) this.extendSelectionUp();
-    }
-
-    extendSelectionPageDown() {
-        for (let i = 0; i < 10; i++) this.extendSelectionDown();
     }
 
     // Scroll operations

@@ -5,7 +5,6 @@ import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
-import OutlinerItemAliasSegment from "./OutlinerItemAliasSegment.svelte";
 import { getLogger } from "../lib/logger";
 
 const logger = getLogger("OutlinerItemAlias");
@@ -131,15 +130,14 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alias-icon"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg>
         {#if aliasPath.length > 0}
             {#each aliasPath as p, i (p.id)}
-                <OutlinerItemAliasSegment item={p} />{i < aliasPath.length - 1 ? "/" : ""}
+                <span>
+                    {p.text || "Loading..."}
+                </span>{i < aliasPath.length - 1 ? "/" : ""}
             {/each}
         {:else}
-            {@const fallbackItem = findItem(generalStore.currentPage as unknown as Item, aliasTargetIdEffective)}
-            {#if fallbackItem}
-                <OutlinerItemAliasSegment item={fallbackItem} />
-            {:else}
-                <span>Loading...</span>
-            {/if}
+            <span>
+                {findItem(generalStore.currentPage as unknown as Item, aliasTargetIdEffective)?.text || "Loading..."}
+            </span>
         {/if}
     </span>
     <div class="alias-subtree" style="width: 100%;">

@@ -1,45 +1,75 @@
 <script lang="ts">
-// Sidebar listing the project's database tables (the Yjs table registry in
-// the project doc). Reactivity follows the mirror pattern: a registry
-// observer bumps a version counter that the $derived list depends on.
+        import { store } from "../stores/store.svelte";
+    import { iterateItems } from "../utils/itemTraversal";
+    import type { Item } from "../schema/app-schema";
+    import { goto } from "$app/navigation";
+    import { resolvePath } from "../utils/pathUtils";
+    import { page as pageStore } from "$app/stores";
+    import { isArrayLikeItems } from "../utils/typeGuards";
 
-import { onDestroy, onMount } from "svelte";
-import type * as Y from "yjs";
-import { getTableRegistry, listTables, type TableRegistryEntry } from "../services/yjstable/tableDocs";
-import { store } from "../stores/store.svelte";
+    let { isOpen = $bindable(false) } = $props();
 
-let { isOpen = $bindable(false) } = $props();
+    // Find all pages that contain tables
+    let tables = $derived.by(() => {
+        void store.pagesVersion;
+        const current = store.pages?.current;
+        if (!current) return [];
 
-let registryVersion = $state(0);
-const registryObserver = () => {
-    registryVersion++;
-};
+        const result: { pageName: string; tableName: string; schema: string }[] = [];
+        const currentItems = Array.isArray(current) ? current : (() => {
+            const arr: import("../schema/app-schema").Item[] = [];
+            const items = current;
+            if (isArrayLikeItems(items)) {
+                const len = items.length ?? 0;
+                for (let i = 0; i < len; i++) {
+                    const item = items.at(i);
+                    if (item) arr.push(item);
+                }
+            }
+            return arr;
+        })();
 
-let observedDoc: Y.Doc | undefined;
 
-function ensureObserver(doc: Y.Doc | undefined) {
-    if (doc === observedDoc) return;
-    if (observedDoc) getTableRegistry(observedDoc).unobserveDeep(registryObserver);
-    observedDoc = doc;
-    if (doc) getTableRegistry(doc).observeDeep(registryObserver);
-}
 
-onMount(() => {
-    ensureObserver(store.project?.ydoc);
-});
+        const traverse = (item: Item, pageName: string) => {
+            if (item.tableSchema) {
+               const match = item.tableSchema.match(/CREATE TABLE\s+([a-zA-Z0-9_]+)/i);
+               const tableName = match ? match[1] : "Unnamed Table";
+               result.push({
+                   pageName,
+                   tableName,
+                   schema: item.tableSchema
+               });
+            }
+            // item.items gives us access to children
+            if (item.items) {
+                for (const child of iterateItems(item.items)) {
+                    traverse(child, pageName);
+                }
+            }
+        };
 
-onDestroy(() => {
-    ensureObserver(undefined);
-});
+        for (const page of currentItems) {
+            traverse(page, page.text || "Untitled Page");
+        }
 
-const tables: TableRegistryEntry[] = $derived.by(() => {
-    void registryVersion;
-    void isOpen;
-    const doc = store.project?.ydoc;
-    // Re-attach when the project doc changed since mount (e.g. connected later).
-    ensureObserver(doc);
-    return doc ? listTables(doc) : [];
-});
+
+        return result;
+    });
+
+    let currentProjectName = $derived(
+        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
+    );
+
+    function navigateToTable(pageName: string) {
+        if (store.project) {
+            const pageHref = resolvePath(
+                `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(pageName)}`
+            );
+            goto(pageHref);
+            isOpen = false;
+        }
+    }
 </script>
 
 <aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar">
@@ -55,11 +85,12 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
                 {#if tables.length === 0}
                     <li class="sidebar-placeholder">No tables found</li>
                 {:else}
-                    {#each tables as table (table.tableId)}
+                    {#each tables as table (table.tableName + table.pageName)}
                         <li>
-                            <div class="table-item" data-table-id={table.tableId}>
-                                <span class="table-name">{table.name || "Untitled table"}</span>
-                            </div>
+                            <button type="button" class="table-item" onclick={() => navigateToTable(table.pageName)}>
+                                <span class="table-name">{table.tableName}</span>
+                                <span class="page-ref">in {table.pageName}</span>
+                            </button>
                         </li>
                     {/each}
                 {/if}
@@ -142,12 +173,24 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
         flex-direction: column;
         width: 100%;
         text-align: left;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .table-item:hover {
+        background-color: #f3f4f6;
     }
 
     .table-name {
         font-weight: 500;
         color: #111827;
         font-size: 0.875rem;
+    }
+
+    .page-ref {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
     }
 
     .sidebar-placeholder {

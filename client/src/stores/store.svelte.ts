@@ -1,6 +1,5 @@
 import { getLogger } from "../lib/logger";
 import { iterateItems } from "../utils/itemTraversal";
-import { safeGetNodeParent } from "../utils/treeUtils";
 import { safeDecodeURIComponent } from "../utils/urlUtils";
 const logger = getLogger("store");
 import { untrack } from "svelte";
@@ -322,7 +321,7 @@ export class GeneralStore {
                             for (const [key, change] of event.changes.keys) {
                                 if (change.action === "add") {
                                     try {
-                                        if (safeGetNodeParent(project.tree, key) === "root") {
+                                        if (project.tree.getNodeParentFromKey(key) === "root") {
                                             shouldRebuild = true;
                                             break;
                                         }
@@ -339,7 +338,7 @@ export class GeneralStore {
                         // path[0] is the node ID
                         const nodeId = String(event.path[0]);
                         try {
-                            if (safeGetNodeParent(project.tree, nodeId) === "root") {
+                            if (project.tree.getNodeParentFromKey(nodeId) === "root") {
                                 // It is a page title change
                                 shouldRebuild = true;
                             }

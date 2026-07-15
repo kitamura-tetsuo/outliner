@@ -16,7 +16,6 @@
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
-    import { safeGetNodeParent } from "../utils/treeUtils";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
 
@@ -415,7 +414,9 @@
         if (
             !tree ||
             !doc ||
-            !key
+            !key ||
+
+            typeof tree.getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn({ itemId }, "Indent skipped: missing tree context");
@@ -424,7 +425,7 @@
         }
 
 
-        const parentKey = safeGetNodeParent(tree, key);
+        const parentKey = tree.getNodeParentFromKey(key);
         if (!parentKey) return;
 
 
@@ -488,7 +489,7 @@
             logger.debug({ data: {
                     itemId,
 
-                    newParent: safeGetNodeParent(tree, key),
+                    newParent: tree.getNodeParentFromKey(key),
                 } }, "handleIndent new parent");
         } catch {}
 
@@ -514,7 +515,9 @@
         if (
             !tree ||
             !doc ||
-            !key
+            !key ||
+
+            typeof tree.getNodeParentFromKey !== "function"
         ) {
             if (typeof logger.warn === "function") {
                 logger.warn(
@@ -526,11 +529,11 @@
         }
 
 
-        const parentKey = safeGetNodeParent(tree, key);
+        const parentKey = tree.getNodeParentFromKey(key);
         if (!parentKey || parentKey === "root") return;
 
 
-        const grandParentKey = safeGetNodeParent(tree, parentKey);
+        const grandParentKey = tree.getNodeParentFromKey(parentKey);
         if (!grandParentKey) return;
 
         const run = () => {

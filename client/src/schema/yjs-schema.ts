@@ -4,12 +4,8 @@ import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import { getLogger } from "../lib/logger";
-import { safeGetNodeParent } from "../utils/treeUtils";
 
 const logger = getLogger("yjs-schema");
-
-const DUMMY_DOC = new Y.Doc();
-const DUMMY_MAP = DUMMY_DOC.getMap<unknown>("dummy");
 
 export type Comment = {
     id: string;
@@ -85,7 +81,7 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<unknown>;
         } catch {
-            return DUMMY_MAP;
+            return new Y.Map<unknown>();
         }
     }
 
@@ -279,7 +275,7 @@ export class Item {
     }
 
     get parent(): Items | null {
-        const parentKey = safeGetNodeParent(this.tree, this.key);
+        const parentKey = this.tree.getNodeParentFromKey(this.key);
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }

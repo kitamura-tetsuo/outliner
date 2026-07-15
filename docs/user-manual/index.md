@@ -8,12 +8,10 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 2. [Text Editing and Formatting](#text-editing-and-formatting)
 3. [Item Manipulation](#item-manipulation)
 4. [Links](#links)
-5. [Search and Commands](#search-and-commands)
-6. [Selection and Copy & Paste](#selection-and-copy-paste)
-7. [Attachments](#attachments)
-8. [Advanced Features](#advanced-features)
-9. [Database](#database)
-10. [Keyboard Shortcuts](#keyboard-shortcuts)
+5. [Selection and Copy & Paste](#selection-and-copy-paste)
+6. [Keyboard Shortcuts](#keyboard-shortcuts)
+7. [Images](#images)
+8. [Habit Management](#habit-management)
 
 ---
 
@@ -36,16 +34,15 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ## Text Editing and Formatting
 
-Outliner uses Scrapbox-style syntax for text formatting options.
+Outliner supports various text formatting options (e.g., bold, italic, code blocks).
 
 ### Applying Formatting
 
-- Bold: Wrap text in double brackets `[[bold]]`
-- Italic: Wrap text in a slash bracket `[/italic]`
-- Strikethrough: Wrap text in a dash bracket `[-strikethrough]`
-- Code: Wrap inline code in backticks \`code\`
-- URLs: Typed URLs automatically become clickable links
-- Formats can be combined, like bold with italic inside.
+Select text and use keyboard shortcuts to quickly apply formatting.
+
+- Bold: `Ctrl + B` (Mac: `Cmd + B`)
+- Italic: `Ctrl + I` (Mac: `Cmd + I`)
+- Code: Wrap the selection in \`\`\`
 
 ---
 
@@ -74,26 +71,11 @@ Create links to other pages within Outliner or external websites.
 
 ### Internal Links
 
-Type `[` once, then enter a page name to create a link to another page (e.g., `[page name]`).
-
-- Links to pages that do not exist yet look different, and the page is only created once you edit it.
-- You can also link to a page in another project with `[project/page]` syntax.
-- **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected.
+Type `[` twice (`[[`), then enter a page name to create a link to another page.
 
 ### External Links
 
 Paste any URL to automatically create an external link.
-
----
-
-## Search and Commands
-
-Easily find content and execute actions within Outliner.
-
-- **Search:** Use the Search button at the top of a page to search across the whole project. Recent searches are remembered for quick access.
-- **Command Palette:** The inline command palette opens when you type `/` inside an item.
-- **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
 
@@ -103,64 +85,62 @@ Efficiently select and copy multiple items or text ranges.
 
 ### Selecting Text
 
-- `Shift + Arrow keys`: Select character by character or line by line. Selections can span multiple items.
-- `Ctrl + L`: Select the entire line under the cursor.
-- `Shift + Alt + Right`: Expand the selection to the end of the line.
-- `Shift + Alt + Left`: Shrink the selection.
+- `Shift + Arrow keys`: Select character by character or line by line
+- `Shift + Home/End`: Select to the beginning or end of the line
+- `Ctrl + L`: Select the entire current line
 
 ### Box Selection (Rectangle Selection)
 
-Select a rectangular area across items.
+Select a rectangular area spanning multiple lines.
 
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
 
 ---
 
-## Attachments
+## Images
 
-You can easily add attachments to your items.
+You can easily add images to your items.
 
-### Uploading Attachments
+### Uploading Images
 
-You can upload attachments by dragging and dropping an image or file directly onto the editor.
-
----
-
-## Advanced Features
-
-Outliner includes advanced capabilities like aliases and scheduling.
-
-- **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Schedule:** The Schedule view shows date-tagged items as a timeline.
+You can upload images by dragging and dropping an image file directly onto the editor.
 
 ---
 
-## Database
+## Habit Management
 
-Turn any item into a database table to manage structured data, right inside your outline. You can start with a blank table or use presets like Tasks or Habits.
+Turn any item into a habit tracker to build and monitor daily or recurring routines, right inside your outline.
 
-### Creating a Database Table
+### Creating a Habit Tracker
 
-Hover over an item to reveal its component-type dropdown (which defaults to "Text"), then choose **Database**.
+Hover over an item to reveal its component-type dropdown, then choose **Habits**.
 
-- The item will display a "Create a database table" panel.
-- Enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
+- The item turns into a habit tracker with an "Add a habit…" form and a 7-day grid.
+- If the item already contains a table with a different schema, you'll be asked to confirm before it's replaced.
 
-### Managing Data
+### Adding a Habit
 
-Once the table is created, you will see a grid view where you can add, edit, or delete records.
+Type a name in the **Add a habit…** field, set how often it repeats in the **every N day(s)** field, and press **Add**.
 
-- You can toggle between different views of the table using the buttons at the top:
-  - **Grid:** The default view for adding and editing data rows.
-  - **Chart:** A visual representation of your data.
-  - **Schema:** Allows you to define and edit the SQL schema for your table.
-  - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
-- The table toolbar also provides **Undo** and **Redo** buttons specific to the table's data.
+- Leave the interval at `1` for a daily habit, or use a larger number (e.g. `7`) for a weekly habit.
+
+### Checking Off Days
+
+Click a day's cell in the grid to mark the habit as done, and click again to undo it.
+
+- The current day's column is highlighted so it's easy to find.
+- Each habit shows its total completions and current streak (🔥); the streak keeps counting as long as consecutive check-ins are no further apart than the habit's own interval.
+
+### Deleting a Habit
+
+Click the **×** button next to a habit to remove it.
+
+- This permanently deletes the habit and its entire completion history.
 
 ### Collaboration
 
-Databases are stored the same way as other outliner data, so data changes and schema updates sync live to everyone viewing the item.
+Habit trackers are stored the same way as other outliner data, so check-ins and new habits sync live to everyone viewing the item.
 
 ---
 

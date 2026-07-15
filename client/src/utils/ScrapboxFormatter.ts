@@ -1,4 +1,3 @@
-import { buildRegExp, type SearchOptions } from "../lib/search";
 import { iterateItems } from "./itemTraversal";
 /**
  * Interface representing a format token
@@ -53,55 +52,6 @@ export class ScrapboxFormatter {
     // eslint-disable-next-line no-control-regex
     private static readonly RX_PLACEHOLDER = /\x01HTML_\d+\x01/g;
     private static readonly RX_SANITIZED_URL = /^\s*(javascript|vbscript|data):/i;
-
-    public static applySearchHighlight(html: string, searchQuery: string, options?: SearchOptions): string {
-        if (!searchQuery) return html;
-        const regex = buildRegExp(searchQuery, options);
-        let result = "";
-        let lastIndex = 0;
-        const tagRegex = /<[^>]*>/g;
-        let match;
-
-        // Helper to safely apply regex to a text node that contains HTML entities
-        const highlightTextNode = (textNode: string): string => {
-            // Unescape entities so we can search the real text
-            const unescaped = textNode
-                .replace(/&amp;/g, "&")
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, '"')
-                .replace(/&#039;/g, "'");
-
-            let res = "";
-            let textLastIndex = 0;
-            let textMatch;
-            regex.lastIndex = 0;
-
-            while ((textMatch = regex.exec(unescaped)) !== null) {
-                const textBefore = unescaped.substring(textLastIndex, textMatch.index);
-                res += ScrapboxFormatter.escapeHtml(textBefore);
-                res += `<span class="search-highlight">${ScrapboxFormatter.escapeHtml(textMatch[0])}</span>`;
-                textLastIndex = regex.lastIndex;
-                if (textMatch[0].length === 0) regex.lastIndex++;
-            }
-            res += ScrapboxFormatter.escapeHtml(unescaped.substring(textLastIndex));
-            return res;
-        };
-
-        while ((match = tagRegex.exec(html)) !== null) {
-            const textBefore = html.substring(lastIndex, match.index);
-            if (textBefore) {
-                result += highlightTextNode(textBefore);
-            }
-            result += match[0];
-            lastIndex = tagRegex.lastIndex;
-        }
-        const textAfter = html.substring(lastIndex);
-        if (textAfter) {
-            result += highlightTextNode(textAfter);
-        }
-        return result;
-    }
 
     public static escapeHtml(str: string): string {
         // Fast path: if no special characters, return original string
@@ -490,7 +440,7 @@ export class ScrapboxFormatter {
      * @param text Text to convert
      * @returns Text converted to HTML
      */
-    static formatToHtml(text: string, searchQuery?: string, options?: SearchOptions): string {
+    static formatToHtml(text: string): string {
         if (!text) return "";
 
         if (!this.hasFormatting(text)) {
@@ -498,7 +448,7 @@ export class ScrapboxFormatter {
         }
 
         // Use implementation supporting nested formatting
-        return this.formatToHtmlAdvanced(text, searchQuery, options);
+        return this.formatToHtmlAdvanced(text);
     }
 
     // Regex patterns for formatToHtmlAdvanced
@@ -574,7 +524,7 @@ export class ScrapboxFormatter {
      * @param text Text to convert
      * @returns Text converted to HTML
      */
-    static formatToHtmlAdvanced(text: string, searchQuery?: string, options?: SearchOptions): string {
+    static formatToHtmlAdvanced(text: string): string {
         if (!text) return "";
 
         // Strip control characters that are used for internal processing
@@ -865,9 +815,6 @@ export class ScrapboxFormatter {
             result = result.replace(placeholder, `<u>${this.escapeHtml(processFormat(content))}</u>`);
         });
 
-        if (searchQuery) {
-            result = this.applySearchHighlight(result, searchQuery, options);
-        }
         return result;
     }
 
@@ -886,7 +833,7 @@ export class ScrapboxFormatter {
      * @param text Text to convert
      * @returns Text converted to HTML
      */
-    static formatWithControlChars(text: string, searchQuery?: string, options?: SearchOptions): string {
+    static formatWithControlChars(text: string): string {
         if (!text) return "";
 
         let html = this.escapeHtml(text);
@@ -980,9 +927,6 @@ export class ScrapboxFormatter {
             '<span class="control-char">$1</span>$2',
         );
 
-        if (searchQuery) {
-            html = this.applySearchHighlight(html, searchQuery, options);
-        }
         return html;
     }
 
