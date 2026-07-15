@@ -10,7 +10,6 @@ const logger = getLogger("SearchPanel");
     import {
         buildRegExp,
         findMatches,
-        type ItemMatch,
         replaceAll,
         replaceFirst,
         searchItems,
