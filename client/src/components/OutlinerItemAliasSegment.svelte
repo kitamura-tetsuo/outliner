@@ -1,5 +1,4 @@
 <script lang="ts">
-import { onMount } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
 
@@ -13,8 +12,8 @@ let { item }: Props = $props();
 
 let textString = $state<string>("");
 
-function hasTreeKey(i: unknown): i is { tree: any; key: string } {
-    return !!i && typeof (i as any).key === 'string' && !!(i as any).tree;
+function hasTreeKey(i: unknown): i is { tree: unknown; key: string } {
+    return !!i && typeof (i as Record<string, unknown>).key === 'string' && !!(i as Record<string, unknown>).tree;
 }
 
 let unsubs: Array<() => void> = [];
@@ -25,7 +24,7 @@ function setupSubscription(currentItem: Item) {
 
     try {
         if (hasTreeKey(currentItem)) {
-            const tree = currentItem.tree;
+            const tree = currentItem.tree as { getNodeValueFromKey?: (key: string) => unknown };
             const key = currentItem.key;
             const m = tree?.getNodeValueFromKey?.(key) as { get?: (k: string) => unknown } | undefined;
             const t = m?.get?.("text") as { observe?: (f: () => void) => void, unobserve?: (f: () => void) => void, toString?: () => string } | undefined;
