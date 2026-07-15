@@ -16,6 +16,7 @@ let { initial }: Props = $props();
 let chartDiv: HTMLDivElement;
 let chart: echarts.ECharts | undefined;
 let hasData = $state(false);
+let ariaLabel = $state("");
 
 export function update(result: TableQueryResult) {
     if (!chart) return;
@@ -34,7 +35,16 @@ export function update(result: TableQueryResult) {
             labelColumn = column;
         }
     }
+
+    ariaLabel = `Bar chart of ${numericColumns.join(", ")} by ${labelColumn || "index"}: ${result.rows.map((r, i) => `${labelColumn ? r[labelColumn] : i} (${numericColumns.map((c) => r[c]).join(", ")})`).join(", ")}`;
+
     chart.setOption({
+        aria: {
+            enabled: true,
+            decal: {
+                show: true,
+            },
+        },
         xAxis: {
             type: "category",
             data: labelColumn
@@ -61,7 +71,13 @@ onDestroy(() => {
 });
 </script>
 
-<div class="table-chart-panel" data-testid="yjs-table-chart" bind:this={chartDiv}>
+<div
+    class="table-chart-panel"
+    data-testid="yjs-table-chart"
+    bind:this={chartDiv}
+    role="img"
+    aria-label={ariaLabel}
+>
     {#if !hasData}
         <p class="no-data">No data</p>
     {/if}
