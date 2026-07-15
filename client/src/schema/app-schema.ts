@@ -3,7 +3,6 @@ const logger = { info: console.log, warn: console.warn, error: console.error, de
 import { iterateItems } from "../utils/itemTraversal.js";
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
-
 import { getLogger } from "../lib/logger";
 
 import * as Y from "yjs";
@@ -151,7 +150,7 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
-        value.set("chartQuery", undefined);
+            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -167,7 +166,7 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
-        value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
+            value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -425,7 +424,6 @@ export class Item {
         return arr;
     }
 
-
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
@@ -454,7 +452,7 @@ export class Item {
             } catch {}
         }
     }
-removeAttachment(url: string) {
+    removeAttachment(url: string) {
         const arr = this.value.get("attachments") as any;
         if (!arr) return;
         const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
