@@ -460,6 +460,32 @@ export async function startServer(
                             size: len,
                             documentName,
                         });
+                        // Send a stateless message indicating message too large before closing
+                        // Yjs payload format for stateless message:
+                        // message-type: 5 (Stateless)
+                        // length of custom message
+                        // custom message payload (stringified JSON)
+                        // Since we just want to send a raw JSON to Hocuspocus client,
+                        // HocuspocusProvider handles 'stateless' if message type is 5.
+                        try {
+                            const errorMsg = JSON.stringify({
+                                error: "MESSAGE_TOO_LARGE",
+                                size: len,
+                                limit: config.MAX_MESSAGE_SIZE_BYTES,
+                            });
+                            // The hocuspocus protocol stateless message is: [5, payloadLength, payloadBytes...]
+                            // But maybe it's easier to just let it close with 4005. The issue says:
+                            // "Consider replying with a stateless error message before closing, and document the limit for clients so they can chunk transactions"
+                            // Actually, let's encode it properly for Yjs/Hocuspocus stateless.
+                            // Hocuspocus stateless messages are raw strings when the connection isn't using a specific binary format for stateless, but Hocuspocus expects a specific binary encoding.
+                            // However, we can just send the binary frame.
+                            // Let's use the hocuspocus server instance to send a stateless message if possible, or manually encode.
+                            if (clientConnection) {
+                                clientConnection.sendStateless(errorMsg);
+                            }
+                        } catch (err) {
+                            logger.error({ error: err }, "Failed to send stateless message for 4005");
+                        }
                         ws.close(4005, "MESSAGE_TOO_LARGE");
                         return;
                     }
