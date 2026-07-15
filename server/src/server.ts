@@ -72,11 +72,23 @@ export async function startServer(
         config.ORIGIN_ALLOWLIST.split(",").map(o => o.trim()).filter(Boolean),
     );
 
-    // SECURITY WARNING: Warn if CORS is overly permissive in production
+    // SECURITY CRITICAL: Refuse to start in production if CORS is overly permissive unless ALLOW_ALL_ORIGINS is explicit
+    let corsCredentials = true;
     if (allowedOrigins.size === 0 && process.env.NODE_ENV === "production") {
-        logger.warn(
-            "SECURITY WARNING: CORS is configured to allow ALL origins in production. Set ORIGIN_ALLOWLIST to restrict access.",
-        );
+        if (process.env.ALLOW_ALL_ORIGINS === "true") {
+            logger.warn(
+                "SECURITY WARNING: CORS is configured to allow ALL origins in production. Set ORIGIN_ALLOWLIST to restrict access. Credentials are disabled.",
+            );
+            corsCredentials = false;
+        } else {
+            throw new Error(
+                "SECURITY CRITICAL: ORIGIN_ALLOWLIST is empty in production. This allows any website to make credentialed requests. Server refusing to start. Set ORIGIN_ALLOWLIST or set ALLOW_ALL_ORIGINS=true.",
+            );
+        }
+    } else if (allowedOrigins.size === 0) {
+        if (process.env.ALLOW_ALL_ORIGINS === "true") {
+            corsCredentials = false;
+        }
     }
 
     const corsOptions: cors.CorsOptions = {
@@ -93,7 +105,7 @@ export async function startServer(
                 return callback(null, false);
             }
         },
-        credentials: true,
+        credentials: corsCredentials,
     };
     app.use(cors(corsOptions));
 
@@ -371,8 +383,15 @@ export async function startServer(
 
             // 2. CORS check (synchronous)
             const isLocal = ip === "127.0.0.1" || ip === "::1";
-            if (!isLocal && allowedOrigins.size && !allowedOrigins.has(origin)) {
-                return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
+            if (!isLocal) {
+                if (allowedOrigins.size > 0) {
+                    if (!allowedOrigins.has(origin)) {
+                        return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
+                    }
+                } else if (process.env.NODE_ENV === "production" && process.env.ALLOW_ALL_ORIGINS !== "true") {
+                    // This case should theoretically be caught at startup, but for completeness:
+                    return rejectSync(4003, "ORIGIN_NOT_ALLOWED");
+                }
             }
 
             // 3. Socket limits (synchronous)
