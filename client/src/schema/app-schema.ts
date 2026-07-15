@@ -1,14 +1,16 @@
-import { iterateItems } from "../utils/itemTraversal";
+import { v4 as uuid } from "uuid";
+const logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug };
+import { iterateItems } from "../utils/itemTraversal.js";
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
-import { v4 as uuid } from "uuid";
+
 import { getLogger } from "../lib/logger";
-const logger = getLogger("AppSchema");
+
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
-import { safeGetNodeParent } from "../utils/treeUtils";
+import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
+import { safeGetNodeParent } from "../utils/treeUtils.js";
 
 const DUMMY_DOC = new Y.Doc();
 const DUMMY_MAP = DUMMY_DOC.getMap<ItemValueType>("dummy");
@@ -149,6 +151,7 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
+        value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -164,6 +167,7 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+        value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -244,6 +248,20 @@ export class Item {
     }
 
     // Id of the Yjs table (subdoc) embedded by this item (componentType "yjstable")
+
+    get yjsTableColumns(): string[] {
+        const v = this.value.get("yjsTableColumns") as string;
+        try {
+            return v ? JSON.parse(v) : [];
+        } catch {
+            return [];
+        }
+    }
+    set yjsTableColumns(v: string[]) {
+        this.value.set("yjsTableColumns", JSON.stringify(v));
+        this.value.set("lastChanged", Date.now());
+    }
+
     get yjsTableId(): string | undefined {
         return this.value.get("yjsTableId") as string | undefined;
     }
@@ -253,6 +271,58 @@ export class Item {
     }
 
     // alias target id stored in Y.Map
+
+    get tableRows(): Y.Array<Y.Map<RowValueType>> {
+        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<RowValueType>>();
+            this.value.set("tableRows", arr);
+        }
+        return arr;
+    }
+
+    addRow(cells: Record<string, RowValueType>) {
+        const row = new Y.Map<RowValueType>();
+        for (const [k, v] of Object.entries(cells)) {
+            row.set(k, v);
+        }
+        this.tableRows.push([row]);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    updateRow(index: number, cells: Record<string, RowValueType>) {
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr || index < 0 || index >= arr.length) return;
+        const row = arr.get(index);
+        for (const [k, v] of Object.entries(cells)) {
+            row.set(k, v);
+        }
+        this.value.set("lastChanged", Date.now());
+    }
+
+    deleteRow(index: number) {
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr || index < 0 || index >= arr.length) return;
+        arr.delete(index, 1);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    get tableSchema(): string | undefined {
+        return this.value.get("tableSchema") as string | undefined;
+    }
+    set tableSchema(v: string | undefined) {
+        this.value.set("tableSchema", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    get chartQuery(): string | undefined {
+        return this.value.get("chartQuery") as string | undefined;
+    }
+    set chartQuery(v: string | undefined) {
+        this.value.set("chartQuery", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     get aliasTargetId(): string | undefined {
         return this.value.get("aliasTargetId") as string | undefined;
     }
@@ -355,78 +425,37 @@ export class Item {
         return arr;
     }
 
+
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
+            && !(typeof window !== "undefined" && (window as any).__E2E__)
         ) {
             throw new Error("Invalid attachment URL");
         }
-        // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
-        try {
-            const w = (typeof window !== "undefined") ? window : null;
-            const currentPage = w?.generalStore?.currentPage;
-            const thisDoc = this.ydoc;
-            const targetDoc = currentPage?.ydoc;
-            if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
-                const items = currentPage.items;
-                // 1) Search for the corresponding destination via ID map
-                try {
-                    const map = w?.__ITEM_ID_MAP__;
-                    const mappedId = map ? map[String(this.id)] : undefined;
-                    if (mappedId) {
-                        for (const cand of iterateItems(items)) {
-                            if (cand && String(cand.id) === String(mappedId)) {
-                                try {
-                                    cand.addAttachment(url);
-                                } catch {}
-                                throw new Error("__DONE__");
-                            }
-                        }
-                    }
-                } catch (e) {
-                    if (e instanceof Error && String(e.message) !== "__DONE__") {
-                        // 2) Fallback: text match
-                        const text = this.text;
-                        for (const cand of iterateItems(items)) {
-                            if (cand) {
-                                const ct = cand.text;
-                                if (ct === text) {
-                                    try {
-                                        cand.addAttachment(url);
-                                    } catch {}
-                                    break;
-                                }
-                            }
-                        }
-                    }
+        const arr = this.attachments;
+        const existing = arr.toArray();
+        if (!existing.includes(url)) {
+            try {
+                if (typeof window !== "undefined") {
+                    const w = window as any;
+                    w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
+                    w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
                 }
-            }
-        } catch {}
-
-        // 2) Add to this node itself as usual
-        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
-        if (!arr) {
-            arr = new Y.Array<string>();
-            this.value.set("attachments", arr);
+            } catch {}
+            arr.push([url]);
+            this.value.set("lastChanged", Date.now());
+            try {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                    );
+                }
+            } catch {}
         }
-        try {
-            logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
-        } catch {}
-
-        arr.push([url]);
-        this.value.set("lastChanged", Date.now());
-        try {
-            if (typeof window !== "undefined") {
-                window.dispatchEvent(
-                    new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
-                );
-            }
-        } catch {}
     }
-
-    removeAttachment(url: string) {
-        const arr = this.value.get("attachments") as Y.Array<string> | undefined;
+removeAttachment(url: string) {
+        const arr = this.value.get("attachments") as any;
         if (!arr) return;
         const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
         if (idx >= 0) arr.delete(idx, 1);
@@ -627,11 +656,13 @@ export class Items implements Iterable<Item> {
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
+        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+        value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 

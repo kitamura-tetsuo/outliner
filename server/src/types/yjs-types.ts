@@ -10,20 +10,17 @@ import type { YTree } from "yjs-orderedtree";
  * Type for the value stored in a Y.Map representing an Item node
  * Y.Map stores values as a union type, not as an interface
  */
+export type RowValueType = string;
+
 export type ItemValueType =
     | string
     | number
     | Y.Text
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>
+    | { lines: string[]; image: string | null; }
     | Y.Array<Y.Map<RowValueType>>
     | undefined;
-
-/**
- * Type for a single editable cell value in a SQL-defined table row.
- * Cells are stored as strings and coerced for display/persistence.
- */
-export type RowValueType = string;
 
 /**
  * Type for the value stored in a Y.Map representing a Comment
@@ -50,7 +47,10 @@ export interface TreeNode {
 /**
  * Type for item-like objects that have tree and key properties
  */
+import type { Comments } from "../schema/app-schema.js";
 export interface ItemLike extends TreeNode {
+    comments?: Comments;
+    ensureComments?: () => Comments;
     ydoc: Y.Doc;
     id: string;
     text: string;
@@ -67,7 +67,6 @@ export interface PlainItemData {
     lastChanged?: number;
     votes?: string[];
     componentType?: string;
-    chartQuery?: string;
     aliasTargetId?: string;
 }
 

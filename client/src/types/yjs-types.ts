@@ -10,6 +10,8 @@ import type { YTree } from "yjs-orderedtree";
  * Type for the value stored in a Y.Map representing an Item node
  * Y.Map stores values as a union type, not as an interface
  */
+export type RowValueType = string;
+
 export type ItemValueType =
     | string
     | number
@@ -17,6 +19,7 @@ export type ItemValueType =
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>
     | { lines: string[]; image: string | null; }
+    | Y.Array<Y.Map<RowValueType>>
     | undefined;
 
 /**
