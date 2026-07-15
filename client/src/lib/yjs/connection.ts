@@ -190,7 +190,7 @@ function constructWsUrl(wsBase: string, room: string): string {
 
 // Fatal close codes mean the server will never accept this connection: retrying is pointless
 // and, left unchecked, HocuspocusProvider's built-in backoff will retry forever.
-const FATAL_CLOSE_CODES = new Set([4001, 4003, 4006, 4008]);
+const FATAL_CLOSE_CODES = new Set([4001, 4003, 4004, 4005, 4006, 4008]);
 
 async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<void> {
     if (typeof indexedDB === "undefined" || !isIndexedDBEnabled()) return;
@@ -279,7 +279,10 @@ async function setupProviderForRoom(
 
         if (code && FATAL_CLOSE_CODES.has(code)) {
             logger.error(`[yjs-conn] Fatal close ${code} for ${room}: stopping reconnect attempts`);
-            setRoomSyncState(room, "denied");
+            let syncState: import("./roomSyncState").RoomSyncState = "denied";
+            if (code === 4004) syncState = "rate-limited";
+            else if (code === 4005) syncState = "too-large";
+            setRoomSyncState(room, syncState);
             try {
                 provider.disconnect();
             } catch {}

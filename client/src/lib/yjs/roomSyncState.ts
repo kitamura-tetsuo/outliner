@@ -3,7 +3,7 @@
 // offline copy" apart from "fully synced", instead of the previous behavior
 // where a silent 30s timeout made both states indistinguishable.
 
-export type RoomSyncState = "pending" | "synced" | "timed-out" | "denied";
+export type RoomSyncState = "pending" | "synced" | "timed-out" | "denied" | "too-large" | "rate-limited";
 
 const states = new Map<string, RoomSyncState>();
 const listeners = new Map<string, Set<(state: RoomSyncState) => void>>();
