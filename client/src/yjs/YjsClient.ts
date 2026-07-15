@@ -177,11 +177,11 @@ export class YjsClient {
 
     public async createPage(pageName: string, lines: string[]): Promise<void> {
         const pageItem = (this.project.items as Items).addNode("user");
-        (pageItem.text as import("yjs").Text).insert?.(0, pageName);
+        pageItem.yText.insert(0, pageName);
         const pageChildren = pageItem.items as Items;
         for (const line of lines) {
             const item = pageChildren.addNode("user");
-            (item.text as import("yjs").Text).insert?.(0, line);
+            item.yText.insert(0, line);
         }
     }
 

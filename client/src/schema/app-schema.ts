@@ -196,6 +196,7 @@ export class Item {
         return (this.value.get("id") as string) ?? "";
     }
     set id(v: string) {
+        this.value.set("lastChanged", Date.now());
         this.value.set("id", v ?? "");
     }
 
@@ -209,6 +210,20 @@ export class Item {
 
     get lastChanged(): number {
         return (this.value.get("lastChanged") as number) ?? 0;
+    }
+
+    get yText(): Y.Text {
+        let t = this.value.get("text");
+        if (!(t instanceof Y.Text)) {
+            if (this.value.doc) {
+                t = new Y.Text();
+                this.value.set("text", t);
+            } else {
+                const tempDoc = new Y.Doc();
+                t = tempDoc.getText("detachedText");
+            }
+        }
+        return t as Y.Text;
     }
 
     get text(): string {
@@ -229,6 +244,7 @@ export class Item {
     }
 
     set text(v: string) {
+        this.value.set("lastChanged", Date.now());
         this.updateText(v ?? "");
     }
 
@@ -356,7 +372,7 @@ export class Item {
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
+            && (typeof window !== "undefined" && !(window as Window & { __E2E__?: boolean; }).__E2E__)
         ) {
             throw new Error("Invalid attachment URL");
         }
@@ -437,13 +453,15 @@ export class Item {
 
     get comments(): Comments {
         if (!this.value.doc) {
-            const emptyArr = new Y.Array<Y.Map<CommentValueType>>();
+            const tempDoc = new Y.Doc();
+            const emptyArr = tempDoc.getArray<Y.Map<CommentValueType>>("detachedComments");
             return new Comments(emptyArr, () => emptyArr);
         }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
-            arr = new Y.Array<Y.Map<CommentValueType>>();
-            return new Comments(arr, () => {
+            const tempDoc = new Y.Doc();
+            const emptyArr = tempDoc.getArray<Y.Map<CommentValueType>>("detachedComments");
+            return new Comments(emptyArr, () => {
                 let actual = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
                 if (!actual) {
                     actual = new Y.Array<Y.Map<CommentValueType>>();
@@ -466,7 +484,12 @@ export class Item {
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
             arr = new Y.Array<Y.Map<CommentValueType>>();
-            this.value.set("comments", arr);
+            if (this.value.doc) {
+                this.value.set("comments", arr);
+            } else {
+                const tempDoc = new Y.Doc();
+                tempDoc.getMap("temp").set("comments", arr);
+            }
         }
         return new Comments(arr);
     }
@@ -692,6 +715,7 @@ export class Project {
     }
 
     set title(v: string) {
+        this.ydoc.getMap("metadata").set("lastChanged", Date.now());
         this.ydoc.getMap("metadata").set("title", v);
     }
 
@@ -768,3 +792,5 @@ function wrapArrayLike(items: Items): Items {
     });
 }
 export type { YDocOptions };
+
+export { Y };

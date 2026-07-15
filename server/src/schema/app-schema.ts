@@ -1,9 +1,13 @@
-// NOTE: Fluid Framework implementation has been removed. Only Yjs + yjs-orderedtree version is provided.
+//
+// NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
 import { v4 as uuid } from "uuid";
+//
 import * as Y from "yjs";
+
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions } from "../types/yjs-types.js";
+import type { CommentValueType, ItemValueType, PlainItemData, YDocOptions } from "../types/yjs-types.js";
+//
 
 export type Comment = {
     id: string;
@@ -15,9 +19,29 @@ export type Comment = {
 
 // Wrapper for comment collection (Y.Array<Y.Map>)
 export class Comments {
-    private readonly yArray: Y.Array<Y.Map<CommentValueType>>;
-    constructor(yArray: Y.Array<Y.Map<CommentValueType>>) {
+    private yArray: Y.Array<Y.Map<CommentValueType>>;
+    private _ensureInitialized?: () => Y.Array<Y.Map<CommentValueType>>;
+    constructor(yArray: Y.Array<Y.Map<CommentValueType>>, ensureInitialized?: () => Y.Array<Y.Map<CommentValueType>>) {
         this.yArray = yArray;
+        this._ensureInitialized = ensureInitialized;
+    }
+
+    observe(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.observe(f);
+    }
+
+    unobserve(
+        f: (
+            event: import("yjs").YArrayEvent<import("yjs").Map<import("../types/yjs-types.js").CommentValueType>>,
+            transaction: import("yjs").Transaction,
+        ) => void,
+    ) {
+        this.yArray.unobserve(f);
     }
 
     addComment(author: string, text: string) {
@@ -28,34 +52,60 @@ export class Comments {
         c.set("text", text);
         c.set("created", time);
         c.set("lastChanged", time);
+        try {
+            console.info("[Comments.addComment] pushing comment to Y.Array");
+        } catch {}
+        if (this._ensureInitialized) {
+            this.yArray = this._ensureInitialized();
+        }
         this.yArray.push([c]);
+        try {
+            console.info("[Comments.addComment] pushed. current length=", this.yArray.length);
+        } catch {}
         return { id: c.get("id") as string };
     }
 
     deleteComment(commentId: string) {
-        const idx = this.yArray.toArray().findIndex((m) => m.get("id") === commentId);
-        if (idx >= 0) {
-            this.yArray.delete(idx, 1);
+        if (this._ensureInitialized) {
+            this.yArray = this._ensureInitialized();
+        }
+        let idx = 0;
+        for (const m of this.yArray) {
+            if (m.get("id") === commentId) {
+                this.yArray.delete(idx, 1);
+                return;
+            }
+            idx++;
         }
     }
 
     updateComment(commentId: string, text: string) {
-        const m = this.yArray.toArray().find((m) => m.get("id") === commentId);
-        if (m) {
-            m.set("text", text);
-            m.set("lastChanged", Date.now());
+        for (const m of this.yArray) {
+            if (m.get("id") === commentId) {
+                m.set("text", text);
+                m.set("lastChanged", Date.now());
+                return;
+            }
         }
     }
 
     get length() {
-        return this.yArray.length;
+        try {
+            if (!this.yArray || !this.yArray.doc) return 0;
+            return this.yArray.length;
+        } catch {
+            return 0;
+        }
     }
 
     toArray(): Y.Map<CommentValueType>[] {
+        if (!this.yArray.doc) return [];
         return this.yArray.toArray();
     }
 
     toPlain(): Comment[] {
+        if (!this.yArray || !this.yArray.doc) return [];
+        if (typeof this.yArray.toArray !== "function") return [];
         return this.yArray.toArray().map((m) => ({
             id: m.get("id") as string,
             author: m.get("author") as string,
@@ -71,7 +121,7 @@ export class Comments {
     }
 }
 
-// Wrapper for a single node (item)
+// Wrapper for one node (item)
 export class Item {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -95,7 +145,6 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
-            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -130,13 +179,23 @@ export class Item {
     }
 
     private get value(): Y.Map<ItemValueType> {
-        return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
+        try {
+            return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
+        } catch {
+            const dummyDoc = new Y.Doc();
+            return dummyDoc.getMap<ItemValueType>("dummy");
+        }
+    }
+
+    public get yMap(): Y.Map<ItemValueType> {
+        return this.value;
     }
 
     get id(): string {
         return (this.value.get("id") as string) ?? "";
     }
     set id(v: string) {
+        this.value.set("lastChanged", Date.now());
         this.value.set("id", v ?? "");
     }
 
@@ -152,12 +211,39 @@ export class Item {
         return (this.value.get("lastChanged") as number) ?? 0;
     }
 
+    get yText(): Y.Text {
+        let t = this.value.get("text");
+        if (!(t instanceof Y.Text)) {
+            if (this.value.doc) {
+                t = new Y.Text();
+                this.value.set("text", t);
+            } else {
+                const tempDoc = new Y.Doc();
+                t = tempDoc.getText("detachedText");
+            }
+        }
+        return t as Y.Text;
+    }
+
     get text(): string {
-        const t = this.value.get("text") as Y.Text;
-        return t ? t.toString() : "";
+        if (!this.value.doc) return "";
+        const t = this.value.get("text");
+        if (t === undefined || t === null) return "";
+
+        try {
+            if (t && typeof (t as { toString?: () => string; }).toString === "function") {
+                return (t as { toString: () => string; }).toString();
+            }
+        } catch (e) {
+            console.warn({ err: e }, "[app-schema] get text() caught error");
+            // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
+            return "";
+        }
+        return String(t);
     }
 
     set text(v: string) {
+        this.value.set("lastChanged", Date.now());
         this.updateText(v ?? "");
     }
 
@@ -165,26 +251,8 @@ export class Item {
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
     }
-
-    // tableSchema stored in Y.Map
-    get tableSchema(): string | undefined {
-        return this.value.get("tableSchema") as string | undefined;
-    }
-    set tableSchema(v: string | undefined) {
-        this.value.set("tableSchema", v);
-        this.value.set("lastChanged", Date.now());
-    }
     set componentType(v: string | undefined) {
         this.value.set("componentType", v);
-        this.value.set("lastChanged", Date.now());
-    }
-
-    // chart query stored in Y.Map
-    get chartQuery(): string | undefined {
-        return this.value.get("chartQuery") as string | undefined;
-    }
-    set chartQuery(v: string | undefined) {
-        this.value.set("chartQuery", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -197,52 +265,6 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
-    // Column names of the item-embedded table, cached as JSON (matches the
-    // client-side schema so seeded tables render in the grid components).
-    get tableColumns(): string[] {
-        const raw = this.value.get("tableColumns") as string | undefined;
-        if (!raw) return [];
-        try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? (parsed as string[]) : [];
-        } catch {
-            return [];
-        }
-    }
-    set tableColumns(v: string[]) {
-        this.value.set("tableColumns", JSON.stringify(v ?? []));
-        this.value.set("lastChanged", Date.now());
-    }
-
-    /** Append a row (cell values keyed by column name) to the item-embedded table. */
-    addTableRow(values: Record<string, string>): void {
-        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
-        if (!arr) {
-            arr = new Y.Array<Y.Map<RowValueType>>();
-            this.value.set("tableRows", arr);
-        }
-        const row = new Y.Map<RowValueType>();
-        for (const [key, value] of Object.entries(values)) {
-            row.set(key, value);
-        }
-        arr.push([row]);
-        this.value.set("lastChanged", Date.now());
-    }
-
-    /** Plain snapshot of the item-embedded table rows keyed by column name. */
-    tableRowsToPlain(columns: string[]): Record<string, string>[] {
-        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
-        if (!arr) return [];
-        return arr.toArray().map((row) => {
-            const obj: Record<string, string> = {};
-            for (const col of columns) {
-                const v = row.get(col);
-                obj[col] = v === undefined || v === null ? "" : String(v);
-            }
-            return obj;
-        });
-    }
-
     // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
         return this.value.get("aliasTargetId") as string | undefined;
@@ -252,63 +274,121 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // cached page preview stored in Y.Map
+    get preview(): { lines: string[]; image: string | null; } | undefined {
+        return this.value.get("preview") as { lines: string[]; image: string | null; } | undefined;
+    }
+    set preview(v: { lines: string[]; image: string | null; } | undefined) {
+        if (v === undefined) this.value.delete("preview");
+        else this.value.set("preview", v as any);
+    }
+
+    insertTextAt(offset: number, text: string) {
+        const t = this.value.get("text") as Y.Text;
+        if (t && text) {
+            this.ydoc.transact(() => {
+                t.insert(offset, text);
+                this.value.set("lastChanged", Date.now());
+            });
+        }
+    }
+
+    deleteTextAt(offset: number, length: number) {
+        const t = this.value.get("text") as Y.Text;
+        if (t && length > 0) {
+            this.ydoc.transact(() => {
+                t.delete(offset, length);
+                this.value.set("lastChanged", Date.now());
+            });
+        }
+    }
+
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
-        t.delete(0, t.length);
-        if (text) t.insert(0, text);
-        this.value.set("lastChanged", Date.now());
+        if (t) {
+            const current = String(t);
+            if (current === text) return;
+
+            let start = 0;
+            while (start < current.length && start < text.length && current[start] === text[start]) {
+                start++;
+            }
+
+            let end = 0;
+            while (
+                end < current.length - start
+                && end < text.length - start
+                && current[current.length - 1 - end] === text[text.length - 1 - end]
+            ) {
+                end++;
+            }
+
+            const deleteLen = current.length - start - end;
+            const insertStr = text.slice(start, text.length - end);
+
+            this.ydoc.transact(() => {
+                if (deleteLen > 0) {
+                    t.delete(start, deleteLen);
+                }
+                if (insertStr.length > 0) {
+                    t.insert(start, insertStr);
+                }
+                this.value.set("lastChanged", Date.now());
+            });
+        }
     }
 
     get votes(): Y.Array<string> {
+        if (!this.value.doc) return new Y.Array<string>();
         let arr = this.value.get("votes") as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
-            this.value.set("votes", arr);
         }
         return arr;
     }
 
     toggleVote(user: string) {
-        const arr = this.votes;
-        const idx = arr.toArray().indexOf(user);
+        let arr = this.value.get("votes") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("votes", arr);
+        }
+        const idx = arr.doc ? arr.toArray().indexOf(user) : -1;
         if (idx >= 0) arr.delete(idx, 1);
         else arr.push([user]);
         this.value.set("lastChanged", Date.now());
     }
 
     get attachments(): Y.Array<string> {
+        if (!this.value.doc) return new Y.Array<string>();
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) {
             arr = new Y.Array<string>();
-            this.value.set("attachments", arr);
         }
         return arr;
     }
 
     addAttachment(url: string) {
+        if (
+            (url.startsWith("blob:") || url.startsWith("data:"))
+            && (typeof window !== "undefined" && !(window as Window & { __E2E__?: boolean; }).__E2E__)
+        ) {
+            throw new Error("Invalid attachment URL");
+        }
         // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
         try {
-            interface WindowWithStore extends Window {
-                generalStore?: {
-                    currentPage?: Item;
-                };
-                __ITEM_ID_MAP__?: Record<string, string>;
-                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
-            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithStore) : null;
+            const w = (typeof window !== "undefined") ? (window as any) : null;
             const currentPage = w?.generalStore?.currentPage;
             const thisDoc = this.ydoc;
             const targetDoc = currentPage?.ydoc;
             if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
                 const items = currentPage.items;
-                // 1) Search for the destination via ID map
+                // 1) Search for the corresponding destination via ID map
                 try {
                     const map = w?.__ITEM_ID_MAP__;
                     const mappedId = map ? map[String(this.id)] : undefined;
                     if (mappedId) {
-                        const len = items?.length ?? 0;
-                        for (let i = 0; i < len; i++) {
-                            const cand = items.at(i);
+                        for (const cand of (Array.from(items) as Item[])) {
                             if (cand && String(cand.id) === String(mappedId)) {
                                 try {
                                     cand.addAttachment(url);
@@ -319,11 +399,9 @@ export class Item {
                     }
                 } catch (e) {
                     if (e instanceof Error && String(e.message) !== "__DONE__") {
-                        // 2) Fallback: Text match
+                        // 2) Fallback: text match
                         const text = this.text;
-                        const len2 = items?.length ?? 0;
-                        for (let i = 0; i < len2; i++) {
-                            const cand = items.at(i);
+                        for (const cand of (Array.from(items) as Item[])) {
                             if (cand) {
                                 const ct = cand.text;
                                 if (ct === text) {
@@ -340,17 +418,15 @@ export class Item {
         } catch {}
 
         // 2) Add to this node itself as usual
-        const arr = this.attachments; // ensure exists
+        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("attachments", arr);
+        }
         try {
-            interface WindowWithLogs extends Window {
-                E2E_LOGS?: Array<{ tag: string; id: string; url: string; t: number; }>;
-            }
-            const w = (typeof window !== "undefined") ? (window as unknown as WindowWithLogs) : null;
-            if (w) {
-                w.E2E_LOGS = Array.isArray(w.E2E_LOGS) ? w.E2E_LOGS : [];
-                w.E2E_LOGS.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
-            }
+            console.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
         } catch {}
+
         arr.push([url]);
         this.value.set("lastChanged", Date.now());
         try {
@@ -363,79 +439,110 @@ export class Item {
     }
 
     removeAttachment(url: string) {
-        const arr = this.attachments;
-        const idx = arr.toArray().indexOf(url);
+        const arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
         if (idx >= 0) arr.delete(idx, 1);
         this.value.set("lastChanged", Date.now());
     }
 
     removeComment(commentId: string) {
-        this.comments.deleteComment(commentId);
+        this.deleteComment(commentId);
     }
 
     get comments(): Comments {
+        if (!this.value.doc) {
+            const tempDoc = new Y.Doc();
+            const emptyArr = tempDoc.getArray<Y.Map<CommentValueType>>("detachedComments");
+            return new Comments(emptyArr, () => emptyArr);
+        }
+        let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) {
+            const tempDoc = new Y.Doc();
+            const emptyArr = tempDoc.getArray<Y.Map<CommentValueType>>("detachedComments");
+            return new Comments(emptyArr, () => {
+                let actual = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+                if (!actual) {
+                    actual = new Y.Array<Y.Map<CommentValueType>>();
+                    this.value.set("comments", actual);
+                }
+                return actual;
+            });
+        }
+        return new Comments(arr);
+    }
+
+    /**
+     * Force creation of the real backing Y.Array for comments (as opposed to
+     * the lazy EMPTY_Y_ARRAY stub returned by `comments` when none exists
+     * yet). Callers that need to observe comments before any comment is
+     * added (e.g. opening a comment thread UI) should call this first so
+     * their observer attaches to the actual array rather than the stub.
+     */
+    ensureComments(): Comments {
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
             arr = new Y.Array<Y.Map<CommentValueType>>();
-            this.value.set("comments", arr);
+            if (this.value.doc) {
+                this.value.set("comments", arr);
+            } else {
+                const tempDoc = new Y.Doc();
+                tempDoc.getMap("temp").set("comments", arr);
+            }
         }
         return new Comments(arr);
     }
 
     addComment(author: string, text: string) {
-        const res = this.comments.addComment(author, text);
         try {
-            const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
-            const len = arr?.length ?? 0;
-            // Cache the primitive number in Y.Map to ensure reflection
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            // Window broadcast (for immediate reflection to UI, deterministic)
-            try {
-                if (typeof window !== "undefined") {
-                    window.dispatchEvent(
-                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
-                    );
-                }
-            } catch {}
+            console.info("[Item.addComment] id=", this.id);
         } catch {}
+        let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<CommentValueType>>();
+            this.value.set("comments", arr);
+        }
+        const comments = new Comments(arr);
+        const res = comments.addComment(author, text);
+        const len = arr?.length ?? 0;
+        // Cache primitive numeric value in Y.Map to ensure reflection
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 
     deleteComment(commentId: string) {
-        const res = this.comments.deleteComment(commentId);
-        try {
-            const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
-            const len = arr?.length ?? 0;
-            this.value.set("commentCountCache", len);
-            this.value.set("lastChanged", Date.now());
-            try {
-                if (typeof window !== "undefined") {
-                    window.dispatchEvent(
-                        new CustomEvent("item-comment-count", { detail: { id: this.id, count: len } }),
-                    );
-                }
-            } catch {}
-        } catch {}
+        const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) return;
+        const comments = new Comments(arr);
+        const res = comments.deleteComment(commentId);
+        const len = arr?.length ?? 0;
+        this.value.set("commentCountCache", len);
+        this.value.set("lastChanged", Date.now());
         return res;
     }
 
     updateComment(commentId: string, text: string) {
-        return this.comments.updateComment(commentId, text);
+        const arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
+        if (!arr) return;
+        const comments = new Comments(arr);
+        return comments.updateComment(commentId, text);
     }
 
     get items(): Items {
         return wrapArrayLike(new Items(this.ydoc, this.tree, this.key));
     }
 
-    // Parent's child set (Items). null directly under the root
+    // Parent's children collection (Items). null directly under root
     get parent(): Items | null {
-        const parentKey = this.tree.getNodeParentFromKey(this.key);
+        const parentKey = (this.tree as any).getNodeParentFromKey
+            ? (this.tree as any).getNodeParentFromKey(this.tree, this.key)
+            : undefined;
         if (!parentKey) return null;
         return new Items(this.ydoc, this.tree, parentKey);
     }
 
-    // Index within the parent (-1 if there is no parent)
+    // Index within parent (-1 if no parent)
     indexInParent(): number {
         const p = this.parent;
         if (!p) return -1;
@@ -447,7 +554,7 @@ export class Item {
     }
 }
 
-// Wrapper for child node collection
+// Child node collection wrapper
 export class Items implements Iterable<Item> {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -463,8 +570,16 @@ export class Items implements Iterable<Item> {
     }
 
     private childrenKeys(): string[] {
-        const children = this.tree.getNodeChildrenFromKey(this.parentKey);
-        return this.tree.sortChildrenByOrder(children, this.parentKey);
+        if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(this.parentKey)) return [];
+        if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(this.parentKey)) return [];
+        try {
+            const children = this.tree.getNodeChildrenFromKey(this.parentKey);
+            return this.tree.sortChildrenByOrder(children, this.parentKey);
+        } catch (e) {
+            if (e instanceof Error && e.message.includes("does not exist")) return [];
+            console.warn({ err: e }, "[app-schema] Items.childrenKeys error");
+            return [];
+        }
     }
 
     get length(): number {
@@ -490,6 +605,30 @@ export class Items implements Iterable<Item> {
         };
     }
 
+    /**
+     * Iterate over items without sorting.
+     * Use this when order doesn't matter for better performance (O(N) vs O(N log N)).
+     */
+    *iterateUnordered(): IterableIterator<Item> {
+        if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(this.parentKey)) return;
+        if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(this.parentKey)) return;
+        let keys: string[];
+        try {
+            keys = this.tree.getNodeChildrenFromKey(this.parentKey);
+        } catch (e) {
+            if (!(e instanceof Error && e.message.includes("does not exist"))) {
+                console.warn({ err: e }, "[app-schema] Items.iterateUnordered error fetching children");
+            }
+            return;
+        }
+        for (const key of keys) {
+            // Use hasNode check instead of try-catch around yielding the item
+            if ((this.tree as any).computedMap && !(this.tree as any).computedMap.has(key)) continue;
+            if (typeof (this.tree as any).hasNode === "function" && !(this.tree as any).hasNode(key)) continue;
+            yield new Item(this.ydoc, this.tree, key);
+        }
+    }
+
     indexOf(item: Item): number {
         return this.childrenKeys().indexOf(item.key!);
     }
@@ -499,7 +638,7 @@ export class Items implements Iterable<Item> {
         if (key) this.tree.deleteNodeAndDescendants(key);
     }
 
-    // Create a new node. Adjust the order if index is specified
+    // Create new node. Adjust order when index is specified
     addNode(author: string, index?: number): Item {
         const nodeKey = this.tree.generateNodeKey();
         const now = Date.now();
@@ -510,7 +649,6 @@ export class Items implements Iterable<Item> {
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
-        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
@@ -578,15 +716,28 @@ export class Project {
     }
 
     set title(v: string) {
+        this.ydoc.getMap("metadata").set("lastChanged", Date.now());
         this.ydoc.getMap("metadata").set("title", v);
     }
 
-    // Items directly under the root (parent key 'root')
+    // Items directly under root (parent key 'root')
     get items(): Items {
         return wrapArrayLike(new Items(this.ydoc, this.tree, "root"));
     }
 
-    // Add a page (top-level item) and set the title to text
+    /**
+     * Find a page by ID
+     */
+    findPage(pageId: string): Item | undefined {
+        for (const item of ((Array.from(this.items) as Item[]) as Item[])) {
+            if (item && item.id === pageId) {
+                return item;
+            }
+        }
+        return undefined;
+    }
+
+    // Add page (top-level item) and set title in text
     addPage(title: string, author: string) {
         const page = (this.items as Items).addNode(author);
         page.updateText(title);
@@ -642,3 +793,5 @@ function wrapArrayLike(items: Items): Items {
     });
 }
 export type { YDocOptions };
+
+export { Y };
