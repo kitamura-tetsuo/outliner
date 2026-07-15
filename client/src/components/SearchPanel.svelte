@@ -18,6 +18,7 @@ const logger = getLogger("SearchPanel");
     } from "../lib/search";
     import { type PageItemMatch } from "../lib/search/projectSearch";
     import { iterateItems } from "../utils/itemTraversal";
+    import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
 
     interface HasText {
@@ -53,6 +54,12 @@ const logger = getLogger("SearchPanel");
     let replaceText = $state("");
     let isRegexMode = $state(false);
     let isCaseSensitive = $state(false);
+
+    $effect(() => {
+        searchHighlightStore.searchQuery = searchQuery;
+        searchHighlightStore.isRegexMode = isRegexMode;
+        searchHighlightStore.isCaseSensitive = isCaseSensitive;
+    });
     let matchCount = $state(0);
     let inputEl: HTMLInputElement | undefined = $state();
 
@@ -62,53 +69,6 @@ const logger = getLogger("SearchPanel");
         }
     });
 
-    function highlight(
-        results: Array<ItemMatch<Item>>,
-        options: SearchOptions,
-    ) {
-        if (typeof document === "undefined") return; // SSR guard
-        removeHighlights();
-        const regex = buildRegExp(searchQuery, options);
-        for (const { item } of results) {
-            const el = document.querySelector<HTMLDivElement>(
-                `[data-item-id="${item.id}"] .item-text`,
-            );
-            if (!el) continue;
-            if (!el.dataset.origHtml) {
-                el.dataset.origHtml = el.innerHTML;
-            }
-            // Parse HTML and only replace text content to avoid corrupting attributes
-            const html = el.dataset.origHtml;
-            let result = '';
-            let lastIndex = 0;
-            const tagRegex = /<[^>]*>/g;
-            let match;
-
-            while ((match = tagRegex.exec(html)) !== null) {
-                const textBefore = html.substring(lastIndex, match.index);
-                if (textBefore) {
-                    result += textBefore.replace(regex, (m) => `<span class="search-highlight">${m}</span>`);
-                }
-                result += match[0];
-                lastIndex = tagRegex.lastIndex;
-            }
-            const textAfter = html.substring(lastIndex);
-            if (textAfter) {
-                result += textAfter.replace(regex, (m) => `<span class="search-highlight">${m}</span>`);
-            }
-            el.innerHTML = result;
-        }
-    }
-
-    function removeHighlights() {
-        if (typeof document === "undefined") return; // SSR guard
-        document
-            .querySelectorAll<HTMLElement>(".item-text[data-orig-html]")
-            .forEach((el) => {
-                el.innerHTML = el.dataset.origHtml ?? "";
-                el.removeAttribute("data-orig-html");
-            });
-    }
 
     function getPagesToSearch(): Item[] {
         // 1) Prioritize project.items
@@ -272,7 +232,7 @@ const logger = getLogger("SearchPanel");
             }
         }
 
-        highlight(matches, options);
+
     }
 
     function handleReplace() {
@@ -350,7 +310,7 @@ const logger = getLogger("SearchPanel");
     }
 
     onDestroy(() => {
-        removeHighlights();
+        searchHighlightStore.searchQuery = "";
     });
 
     $effect(() => {

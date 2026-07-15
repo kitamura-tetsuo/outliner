@@ -74,6 +74,7 @@ import { calculateGlobalOffset } from "../utils/domCursorUtils";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";
+import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 import { getMeasurementSpan } from '../utils/domUtils';
@@ -628,9 +629,16 @@ onMount(() => {
 // Memoize formatting operations to avoid unnecessary recalculations during render
 let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
 let formattedHtml = $derived(
-    hasFormatting
-        ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString) : ScrapboxFormatter.formatToHtml(textString))
-        : ScrapboxFormatter.escapeHtml(textString)
+    (() => {
+        let html = hasFormatting
+            ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive }) : ScrapboxFormatter.formatToHtml(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive }))
+            : ScrapboxFormatter.escapeHtml(textString);
+
+        if (!hasFormatting && searchHighlightStore.searchQuery) {
+            html = ScrapboxFormatter.applySearchHighlight(html, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive });
+        }
+        return html;
+    })()
 );
 
 // Display area ref
