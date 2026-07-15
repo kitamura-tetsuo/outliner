@@ -8,10 +8,12 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 2. [Text Editing and Formatting](#text-editing-and-formatting)
 3. [Item Manipulation](#item-manipulation)
 4. [Links](#links)
-5. [Selection and Copy & Paste](#selection-and-copy-paste)
-6. [Keyboard Shortcuts](#keyboard-shortcuts)
-7. [Images](#images)
-8. [Database](#database)
+5. [Search and Commands](#search-and-commands)
+6. [Selection and Copy & Paste](#selection-and-copy-paste)
+7. [Attachments](#attachments)
+8. [Advanced Features](#advanced-features)
+9. [Database](#database)
+10. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -34,15 +36,16 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ## Text Editing and Formatting
 
-Outliner supports various text formatting options (e.g., bold, italic, code blocks).
+Outliner uses Scrapbox-style syntax for text formatting options.
 
 ### Applying Formatting
 
-Select text and use keyboard shortcuts to quickly apply formatting.
-
-- Bold: `Ctrl + B` (Mac: `Cmd + B`)
-- Italic: `Ctrl + I` (Mac: `Cmd + I`)
-- Code: Wrap the selection in \`\`\`
+- Bold: Wrap text in double brackets `[[bold]]`
+- Italic: Wrap text in a slash bracket `[/italic]`
+- Strikethrough: Wrap text in a dash bracket `[-strikethrough]`
+- Code: Wrap inline code in backticks \`code\`
+- URLs: Typed URLs automatically become clickable links
+- Formats can be combined, like bold with italic inside.
 
 ---
 
@@ -71,11 +74,26 @@ Create links to other pages within Outliner or external websites.
 
 ### Internal Links
 
-Type `[` twice (`[[`), then enter a page name to create a link to another page.
+Type `[` once, then enter a page name to create a link to another page (e.g., `[page name]`).
+
+- Links to pages that do not exist yet look different, and the page is only created once you edit it.
+- You can also link to a page in another project with `[project/page]` syntax.
+- **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
+- **Graph view:** The graph view visualizes how the pages of a project are connected.
 
 ### External Links
 
 Paste any URL to automatically create an external link.
+
+---
+
+## Search and Commands
+
+Easily find content and execute actions within Outliner.
+
+- **Search:** Use the Search button at the top of a page to search across the whole project. Recent searches are remembered for quick access.
+- **Command Palette:** The inline command palette opens when you type `/` inside an item.
+- **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
 
@@ -85,26 +103,36 @@ Efficiently select and copy multiple items or text ranges.
 
 ### Selecting Text
 
-- `Shift + Arrow keys`: Select character by character or line by line
-- `Shift + Home/End`: Select to the beginning or end of the line
-- `Ctrl + L`: Select the entire current line
+- `Shift + Arrow keys`: Select character by character or line by line. Selections can span multiple items.
+- `Ctrl + L`: Select the entire line under the cursor.
+- `Shift + Alt + Right`: Expand the selection to the end of the line.
+- `Shift + Alt + Left`: Shrink the selection.
 
 ### Box Selection (Rectangle Selection)
 
-Select a rectangular area spanning multiple lines.
+Select a rectangular area across items.
 
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
 
 ---
 
-## Images
+## Attachments
 
-You can easily add images to your items.
+You can easily add attachments to your items.
 
-### Uploading Images
+### Uploading Attachments
 
-You can upload images by dragging and dropping an image file directly onto the editor.
+You can upload attachments by dragging and dropping an image or file directly onto the editor.
+
+---
+
+## Advanced Features
+
+Outliner includes advanced capabilities like aliases and scheduling.
+
+- **Aliases:** An item can mirror another item and stay in sync with the original.
+- **Schedule:** The Schedule view shows date-tagged items as a timeline.
 
 ---
 
