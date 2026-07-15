@@ -238,7 +238,9 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 
 // Debug helper for E2E tests
 
+/* eslint-disable svelte/prefer-svelte-reactivity -- Module-level promise cache, not reactive state */
 const inFlight = new Map<string, Promise<YjsClient | undefined>>();
+/* eslint-enable svelte/prefer-svelte-reactivity */
 
 export function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
     const existing = inFlight.get(projectTitle);
@@ -488,7 +490,9 @@ export function getProjectTitle(containerId: string): string {
     return "";
 }
 
+/* eslint-disable svelte/prefer-svelte-reactivity -- Module-level promise cache, not reactive state */
 const inFlightCreate = new Map<string, Promise<YjsClient>>();
+/* eslint-enable svelte/prefer-svelte-reactivity */
 
 export function createClient(containerId?: string): Promise<YjsClient> {
     const key = containerId || "new";
