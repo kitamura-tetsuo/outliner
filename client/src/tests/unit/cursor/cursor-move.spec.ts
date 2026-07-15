@@ -124,4 +124,26 @@ describe("Cursor moveToDocumentStart and End", () => {
         expect(cursor.offset).toBe(lastItem.text?.length);
         expect((cursor as unknown as CursorMocks).updateSelectionAfterMove).toHaveBeenCalledWith(firstItem.id, 2);
     });
+
+    test("pageUp and pageDown call moveUp and moveDown 10 times", () => {
+        cursor.moveUp = vi.fn();
+        cursor.moveDown = vi.fn();
+
+        cursor.pageUp();
+        expect(cursor.moveUp).toHaveBeenCalledTimes(10);
+
+        cursor.pageDown();
+        expect(cursor.moveDown).toHaveBeenCalledTimes(10);
+    });
+
+    test("extendSelectionPageUp and extendSelectionPageDown call extendSelectionUp and extendSelectionDown 10 times", () => {
+        cursor.extendSelectionUp = vi.fn();
+        cursor.extendSelectionDown = vi.fn();
+
+        cursor.extendSelectionPageUp();
+        expect(cursor.extendSelectionUp).toHaveBeenCalledTimes(10);
+
+        cursor.extendSelectionPageDown();
+        expect(cursor.extendSelectionDown).toHaveBeenCalledTimes(10);
+    });
 });
