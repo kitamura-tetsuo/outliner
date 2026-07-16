@@ -13,6 +13,7 @@ export function isForeignInput(target: EventTarget | null): boolean {
     const tagName = el.tagName?.toUpperCase();
     if (
         tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || tagName === "OPTION"
+        || tagName === "BUTTON" || el.getAttribute?.("role") === "gridcell"
         || el.isContentEditable || el.hasAttribute?.("contenteditable")
     ) {
         if (el.classList && el.classList.contains("global-textarea")) {

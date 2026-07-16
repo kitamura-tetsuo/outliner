@@ -960,6 +960,10 @@ function toggleComments() {
 }
 
 function handleContentClick(e: MouseEvent) {
+    // Ignore clicks inside embedded components (treated as foreign UI)
+    if ((e.target as HTMLElement)?.closest?.('.component-wrapper')) {
+        return;
+    }
     const el = e.target as HTMLElement | null;
     if (!el) return;
 
@@ -1026,6 +1030,10 @@ function handleContentClick(e: MouseEvent) {
  * @param event Mouse event
  */
 function handleClick(event: MouseEvent) {
+    // Ignore clicks inside embedded components (treated as foreign UI)
+    if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
+        return;
+    }
     // Clicks on foreign inputs (e.g. the comment thread's "Add comment" input) must not
     // steal focus back to the global textarea or move the editor cursor.
     if (isForeignInput(event.target)) {
@@ -1105,6 +1113,10 @@ function handleClick(event: MouseEvent) {
  * @param event Mouse event
  */
 function handleMouseDown(event: MouseEvent) {
+    // Ignore clicks inside embedded components (treated as foreign UI)
+    if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
+        return;
+    }
     // Ignore right click
     if (event.button !== 0) return;
 

@@ -94,7 +94,7 @@ function createFromPreset() {
 }
 </script>
 
-<div class="yjs-table-block" data-testid="yjs-table-block">
+<div class="yjs-table-block" data-testid="yjs-table-block" onclick={e => e.stopPropagation()} onmousedown={e => e.stopPropagation()} role="presentation">
     {#if handles}
         {#key handles.doc.guid}
             <YjsTableView {handles} {projectId} {tableName} />
