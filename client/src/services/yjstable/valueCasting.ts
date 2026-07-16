@@ -17,7 +17,7 @@ function castError(column: TableColumnSchema, value: unknown, expected: string):
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+const TIMESTAMP_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z?$/;
 
 function isValidTimeOfDay(timePart: string): boolean {
     const [hh, mm, ss = "0"] = timePart.split(":");

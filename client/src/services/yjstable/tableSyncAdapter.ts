@@ -353,9 +353,37 @@ export class TableSyncAdapter {
                     await db.exec(`BEGIN; SET LOCAL search_path TO ${quoteIdent(this.pgSchema)};`);
                     const res = await db.query<Record<string, unknown>>(selectSql);
                     await db.exec("COMMIT");
+
+                    const DATE_OID = 1082;
+                    const TIMESTAMP_OID = 1114;
+                    const TIMESTAMPTZ_OID = 1184;
+                    const dateFields = new Set(res.fields.filter(f => f.dataTypeID === DATE_OID).map(f => f.name));
+                    const tsFields = new Set(
+                        res.fields.filter(f => f.dataTypeID === TIMESTAMP_OID || f.dataTypeID === TIMESTAMPTZ_OID).map(
+                            f => f.name,
+                        ),
+                    );
+                    const pad = (n: number) => String(n).padStart(2, "0");
+
+                    const rows = res.rows.map((row) => {
+                        const newRow = { ...row };
+                        for (const [key, value] of Object.entries(newRow)) {
+                            if (value instanceof Date) {
+                                if (dateFields.has(key)) {
+                                    newRow[key] = `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${
+                                        pad(value.getUTCDate())
+                                    }`;
+                                } else if (tsFields.has(key)) {
+                                    newRow[key] = value.toISOString();
+                                }
+                            }
+                        }
+                        return newRow;
+                    });
+
                     return {
                         columns: res.fields.map((f) => f.name),
-                        rows: res.rows,
+                        rows,
                     };
                 } catch (err) {
                     try {

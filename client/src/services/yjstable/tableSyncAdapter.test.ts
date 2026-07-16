@@ -191,6 +191,34 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
+    it("returns correctly formatted date strings from queries (regression)", async () => {
+        const { handles } = makeTable();
+        setSchemaText(
+            handles,
+            "CREATE TABLE events (id TEXT PRIMARY KEY, due_date DATE, start_time TIMESTAMP, other_time TIMESTAMPTZ)",
+        );
+        handles.uiDef.set("query", "SELECT due_date, start_time, other_time FROM events");
+
+        const adapter = new TableSyncAdapter(handles);
+        try {
+            await adapter.start();
+            addRecord(handles, {
+                due_date: "2026-07-15",
+                start_time: "2026-07-15T12:30:00",
+                other_time: "2026-07-15T15:45:00Z",
+            }, "r1");
+            await waitMicrotasks();
+            await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert
+            const result = await adapter.runQueryNow();
+            expect(result?.rows).toHaveLength(1);
+            expect(result?.rows[0].due_date).toBe("2026-07-15");
+            expect(result?.rows[0].start_time).toBe("2026-07-15T12:30:00.000Z");
+            expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
+        } finally {
+            adapter.dispose();
+        }
+    });
+
     it("reports query errors without breaking the adapter", async () => {
         const { handles } = makeTable();
         setSchemaText(handles, SCHEMA);
