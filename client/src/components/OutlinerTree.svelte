@@ -21,6 +21,7 @@
     import { safeGetNodeParent } from "../utils/treeUtils";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
+    import ConfirmDialog from "./ConfirmDialog.svelte";
 
     const logger = getLogger("OutlinerTree");
 
@@ -87,6 +88,8 @@
     let treeContainer = $state<HTMLDivElement | null>(null);
     let showScrollTop = $state(false);
     let mobileToolbarBottomOffset = $state(0);
+    let showDeleteConfirm = $state(false);
+    let deleteConfirmItemId = $state<string | null>(null);
 
     // Throttle scroll event to improve performance
     let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -1999,9 +2002,14 @@
     function handleMobileDelete() {
         const activeItemId = resolveActiveItemId();
         if (!activeItemId) return;
-        const itemViewModel = viewModel.getViewModel(activeItemId);
+        deleteConfirmItemId = activeItemId;
+        showDeleteConfirm = true;
+    }
+
+    function confirmDelete() {
+        if (!deleteConfirmItemId) return;
+        const itemViewModel = viewModel.getViewModel(deleteConfirmItemId);
         if (!itemViewModel) return;
-        if (!confirm("Are you sure you want to delete this item?")) return;
 
         const original = itemViewModel.original;
         const parent = original.parent;
@@ -2013,6 +2021,7 @@
             const idx = items.indexOf(original);
             if (idx >= 0) items.removeAt(idx);
         }
+        deleteConfirmItemId = null;
     }
 
     function handleMobileVote() {
@@ -2178,6 +2187,18 @@
         onInsertSiblingBelow={handleMobileInsertSiblingBelow}
         onDelete={handleMobileDelete}
         onVote={handleMobileVote}
+    />
+{/if}
+
+{#if showDeleteConfirm}
+    <ConfirmDialog
+        bind:isOpen={showDeleteConfirm}
+        title="Delete Item"
+        message="Are you sure you want to delete this item? This action will also delete all of its children."
+        confirmText="Delete"
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={() => deleteConfirmItemId = null}
     />
 {/if}
 
