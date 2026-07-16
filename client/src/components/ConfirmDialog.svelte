@@ -40,22 +40,11 @@ function handleCancel() {
     isOpen = false;
     if (onCancel) onCancel();
 }
-
-function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-        e.preventDefault();
-        handleCancel();
-    } else if (e.key === "Enter") {
-        e.preventDefault();
-        handleConfirm();
-    }
-}
 </script>
 
 <dialog
     bind:this={dialogElement}
     onclose={handleCancel}
-    onkeydown={handleKeyDown}
     class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
     role="alertdialog"
     aria-modal="true"
