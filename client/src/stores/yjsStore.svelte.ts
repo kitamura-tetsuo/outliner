@@ -110,101 +110,6 @@ class YjsStore {
                 // Initial check
                 updateConnected();
             }
-            // In headless E2E runs, pages can be created on a provisional project
-            // before the live Yjs project is connected. When the connection arrives,
-            // the store switches to the connected project, which would otherwise
-            // appear empty. To keep test flows stable, merge page titles from the
-            // previous project into the newly connected one if the latter has none.
-            try {
-                /*
-                if (isTestEnv && prevCount > 0) {
-                    // Case A: Connected project is empty -> Port the entire previous page (maintain ID)
-                    if (newCount === 0) {
-                        for (let i = 0; i < prevCount; i++) {
-                            const prevPage: unknown = prevItems.at ? prevItems.at(i) : prevItems[i];
-                            const title = prevPage?.text?.toString?.() ?? String(prevPage?.text ?? "");
-                            if (!title) continue;
-                            const cp = connectedProject as unknown;
-                            try {
-                                const newPage = (typeof cp.addPage === "function")
-                                    ? cp.addPage(title, "tester")
-                                    : (cp.items?.addNode ? cp.items.addNode("tester") : null);
-                                if (!newPage) continue;
-                                // Inherit page ID
-                                try {
-                                    (newPage as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevPage.id));
-                                } catch {}
-                                try {
-                                    newPage.updateText?.(title);
-                                } catch {}
-                                // Inherit ID/text for child rows as well
-                                try {
-                                    const prevLines = prevPage?.items as unknown;
-                                    const len = prevLines?.length ?? 0;
-                                    for (let j = 0; j < len; j++) {
-                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
-                                        if (!prevLine) continue;
-                                        const txt = prevLine.text?.toString?.() ?? String(prevLine.text ?? "");
-                                        const newLine = newPage.items?.addNode
-                                            ? newPage.items.addNode("tester")
-                                            : null;
-                                        if (!newLine) continue;
-                                        try {
-                                            (newLine as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevLine.id));
-                                        } catch {}
-                                        try {
-                                            newLine.updateText?.(txt);
-                                        } catch {}
-                                    }
-                                } catch {}
-                            } catch {}
-                        }
-                    } else {
-                        // Case B: Existing page in connected project -> Overwrite ID with matching title (overwrite row with matching index as well)
-                        try {
-                            const newPages: unknown = newItems;
-                            const getTitle = (p: { text?: { toString?: () => string } | string }) => p?.text?.toString?.() ?? String(p?.text ?? "");
-                            const newLen = newPages?.length ?? 0;
-                            for (let i = 0; i < newLen; i++) {
-                                const curPage: unknown = newPages.at ? newPages.at(i) : newPages[i];
-                                if (!curPage) continue;
-                                const title = getTitle(curPage);
-                                // Search for a page with the same name from the previous project
-                                let matchPrev: unknown = null;
-                                for (let k = 0; k < prevCount; k++) {
-                                    const pp = prevItems.at ? prevItems.at(k) : prevItems[k];
-                                    if (getTitle(pp) === title) {
-                                        matchPrev = pp;
-                                        break;
-                                    }
-                                }
-                                if (!matchPrev) continue;
-                                // Overwrite page ID
-                                try {
-                                    (curPage as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(matchPrev.id));
-                                } catch {}
-                                // Overwrite ID of child rows with corresponding index
-                                try {
-                                    const prevLines = matchPrev?.items as unknown;
-                                    const newLines = curPage?.items as unknown;
-                                    const len = Math.min(prevLines?.length ?? 0, newLines?.length ?? 0);
-                                    for (let j = 0; j < len; j++) {
-                                        const prevLine: unknown = prevLines.at ? prevLines.at(j) : prevLines[j];
-                                        const curLine = newLines.at ? newLines.at(j) : newLines[j];
-                                        if (!prevLine || !curLine) continue;
-                                        try {
-                                            (curLine as { value?: { set?: (k: string, v: string) => void } }).value?.set?.("id", String(prevLine.id));
-                                        } catch {}
-                                    }
-                                } catch {}
-                            }
-                        } catch {}
-                    }
-                }
-                */
-            } catch {
-                // best-effort merge only; ignore failures in non-test environments
-            }
         }
     }
 
@@ -220,9 +125,6 @@ class YjsStore {
     }
     get currentProjectId() {
         return this._client?.containerId ?? null;
-    }
-    get currentUser() {
-        return null;
     }
 
     reset() {
@@ -245,9 +147,6 @@ class YjsStore {
     }
     getCurrentProjectId() {
         return this.currentProjectId;
-    }
-    getCurrentUser() {
-        return this.currentUser;
     }
 }
 
