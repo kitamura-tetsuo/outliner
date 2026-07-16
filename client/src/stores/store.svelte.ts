@@ -246,7 +246,13 @@ export class GeneralStore {
         try {
             // Rely on SvelteSet fine-grained reactivity instead of global pagesVersion
             if (!name) return false;
-            return this._pageNamesCache.has(name.trim().toLowerCase());
+            const normalizedName = name.trim().toLowerCase();
+            if (this._pageNamesCache.has(normalizedName)) return true;
+            try {
+                return this._pageNamesCache.has(decodeURIComponent(normalizedName));
+            } catch {
+                return false;
+            }
         } catch {
             return false;
         }
