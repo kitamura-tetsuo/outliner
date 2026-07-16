@@ -184,6 +184,11 @@ export default ts.config(
                     selector: "CallExpression[callee.type='Identifier'][callee.name=/^x(it|describe)$/]",
                     message: "Do not use x-prefixed helpers to skip tests.",
                 },
+                {
+                    selector: "Literal[value='networkidle']",
+                    message:
+                        "Do not use 'networkidle' as it is flaky with WebSockets. Use deterministic assertions instead.",
+                },
             ],
             "no-restricted-globals": [
                 "error",
