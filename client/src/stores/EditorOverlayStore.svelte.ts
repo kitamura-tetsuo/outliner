@@ -1133,6 +1133,13 @@ export class EditorOverlayStore {
         return Array.from(this.cursorInstances.values());
     }
 
+    // Get registered local Cursor instances
+    getLocalCursorInstances(): import("../lib/Cursor").Cursor[] {
+        return Array.from(this.cursorInstances.values()).filter(
+            c => (c.userId ?? "local") === "local",
+        );
+    }
+
     /**
      * Get text within selection range
      * @param userId User ID (default is "local")
