@@ -67,8 +67,11 @@ function applyPresenceToOverlay(
         appStore?: { currentPage?: { id?: string; }; };
     }).appStore?.currentPage;
 
-    if (presence?.pageId && currentPage?.id && presence.pageId !== currentPage.id) {
-        // If presence exists but is for a different page, clear it for the user on this page
+    // If we're not on any page, or the presence doesn't match the current page, clear it
+    // NOTE: in tests, currentPage may not exist. Allow when presence.pageId is missing
+    if (
+        (currentPage?.id === undefined && presence?.pageId) || (presence?.pageId && presence.pageId !== currentPage?.id)
+    ) {
         overlay.clearCursorAndSelection(user.userId, false);
         return;
     }
@@ -264,6 +267,20 @@ export const yjsService = {
         awareness.on("change", update);
         update({ added: Array.from(awareness.getStates().keys()), updated: [], removed: [] });
         return () => awareness.off("change", update);
+    },
+
+    reapplyAllPresences(awareness: Awareness) {
+        const overlay = resolveOverlayStore();
+        if (!overlay) return;
+        const states = awareness.getStates();
+        const clientId = (awareness as Awareness & { clientID: number; }).clientID;
+
+        states.forEach((s, id) => {
+            const user = s?.user;
+            if (!user) return;
+            if (id === clientId) return;
+            applyPresenceToOverlay(overlay, user, s?.presence);
+        });
     },
 
     bindPagePresence(awareness: Awareness) {
