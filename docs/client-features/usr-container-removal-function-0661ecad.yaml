@@ -2,7 +2,7 @@ id: USR-0661ecad
 title: Container removal function
 description: Function to delete a container and its related data
 category: container-management
-status: implemented
+status: experimental
 acceptance:
 - Appropriate error message is displayed if the container does not exist
 - Appropriate error message is displayed if there is no access right to the container

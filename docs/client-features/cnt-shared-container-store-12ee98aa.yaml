@@ -1,7 +1,9 @@
 id: CNT-12ee98aa
 title: Shared Container Store
 title-ja: 共有コンテナストア
-description: Expose accessible containers via a global store for reuse across components. The dropdown list is populated after user login and updated when new containers are created.
+description: Expose accessible containers via a global store for reuse across components.
+  The dropdown list is populated after user login and updated when new containers
+  are created.
 category: project
 status: implemented
 components:
@@ -13,8 +15,6 @@ services:
 - src/stores/firestoreStore.svelte.ts
 tests:
 - client/e2e/new/cnt-container-selector-updates-after-new-container-cb2f94a1.spec.ts
-- client/e2e/new/cnt-shared-container-store-12ee98aa.spec.ts
-- client/src/stores/ContainerStore.test.ts
 - client/src/tests/integration/cnt-shared-container-store-12ee98aa.integration.spec.ts
 acceptance:
 - ContainerSelector lists containers from the shared store
