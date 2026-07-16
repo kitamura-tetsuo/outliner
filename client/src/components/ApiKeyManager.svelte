@@ -1,6 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from "../services/apiKeyService";
+    import { formatDateTime } from "../utils/dateUtils";
 
     let apiKeys: ApiKey[] = $state([]);
     let loading = $state(true);
@@ -58,7 +59,7 @@
     }
 
     function formatDate(ts: number) {
-        return new Date(ts).toLocaleString();
+        return formatDateTime(ts);
     }
 </script>
 

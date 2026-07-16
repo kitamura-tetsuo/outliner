@@ -1,6 +1,7 @@
 <script lang="ts">
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
+    import { formatDate } from "../utils/dateUtils";
     import { resolvePath } from "../utils/pathUtils";
     import { isArrayLikeItems } from "../utils/typeGuards";
     import { goto } from "$app/navigation";
@@ -52,13 +53,6 @@
     let currentProjectName = $derived(
         $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
     );
-
-    function formatDate(ts: number | undefined): string {
-        if (!ts) return "";
-        const date = new Date(ts);
-        if (isNaN(date.getTime())) return "";
-        return date.toLocaleDateString();
-    }
 
 </script>
 
