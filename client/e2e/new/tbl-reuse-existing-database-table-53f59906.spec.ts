@@ -52,7 +52,9 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - reuse existing 
         await titleInput1.fill("Important Task", { force: true });
         await page.keyboard.press("Enter");
 
-        await expect(grid1.locator('td[data-col="title"] .cell-value', { hasText: "Important Task" })).toBeVisible({ timeout: 15000 });
+        await expect(grid1.locator('td[data-col="title"] .cell-value', { hasText: "Important Task" })).toBeVisible({
+            timeout: 15000,
+        });
 
         // Focus the second item and add a Database block
         await page.locator(".outliner-item").nth(1).click();
@@ -81,6 +83,8 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - reuse existing 
         await expect(grid2.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
 
         // Wait for data to sync (we should see the same row in the new block)
-        await expect(grid2.locator('td[data-col="title"] .cell-value', { hasText: "Important Task" })).toBeVisible({ timeout: 15000 });
+        await expect(grid2.locator('td[data-col="title"] .cell-value', { hasText: "Important Task" })).toBeVisible({
+            timeout: 15000,
+        });
     });
 });
