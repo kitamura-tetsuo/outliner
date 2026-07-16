@@ -3,6 +3,7 @@ import { getLogger } from "../logger";
 const logger = getLogger("yjs-connection");
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
+import { IndexeddbPersistence } from "y-indexeddb";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
@@ -52,15 +53,11 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
     }
 }
 
-function isIndexedDBEnabled(): boolean {
-    return true; // Enable IndexedDB for offline support and reload persistence
-}
-
 export type ProjectConnection = {
     doc: Y.Doc;
     provider: HocuspocusProvider;
     awareness: Awareness | null;
-    dispose: () => void;
+    dispose: () => Promise<void>;
 };
 
 function getWsBase(): string {
@@ -192,12 +189,15 @@ function constructWsUrl(wsBase: string, room: string): string {
 // and, left unchecked, HocuspocusProvider's built-in backoff will retry forever.
 const FATAL_CLOSE_CODES = new Set([4001, 4003, 4004, 4005, 4006, 4008]);
 
-async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<void> {
-    if (typeof indexedDB === "undefined" || !isIndexedDBEnabled()) return;
+async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<IndexeddbPersistence | undefined> {
+    if (typeof indexedDB === "undefined") return undefined;
     try {
         const persistence = createPersistence(room, doc);
         await waitForSync(persistence);
-    } catch { /* no-op in Node */ }
+        return persistence;
+    } catch {
+        return undefined;
+    }
 }
 
 interface ProviderSetup {
@@ -205,7 +205,7 @@ interface ProviderSetup {
     awareness: Awareness | null;
     /** Waits for the room's initial sync, rejecting on fatal close codes and resolving `{ synced: false }` on timeout. */
     waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
-    dispose: () => void;
+    dispose: () => Promise<void>;
 }
 
 interface SetupProviderOptions {
@@ -215,6 +215,8 @@ interface SetupProviderOptions {
     bindPresence?: boolean;
     /** Re-send the auth token / reconnect when the Firebase auth state changes. */
     attachTokenRefreshHook?: boolean;
+    /** Persistence instance to dispose along with the provider. */
+    persistence?: IndexeddbPersistence;
 }
 
 /**
@@ -389,7 +391,7 @@ async function setupProviderForRoom(
         });
     };
 
-    const dispose = () => {
+    const dispose = async () => {
         try {
             unbindPresence?.();
         } catch {}
@@ -399,6 +401,11 @@ async function setupProviderForRoom(
         try {
             provider.destroy();
         } catch {}
+        if (options.persistence) {
+            try {
+                await options.persistence.destroy();
+            } catch {}
+        }
     };
 
     return { provider, awareness, waitForInitialSync, dispose };
@@ -409,14 +416,14 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     const doc = new Y.Doc({ guid: projectId });
     const room = projectRoomPath(projectId);
 
-    await attachIndexedDbPersistence(room, doc);
+    const persistence = await attachIndexedDbPersistence(room, doc);
 
     const { provider, awareness, waitForInitialSync, dispose: disposeProvider } = await setupProviderForRoom(
         projectId,
         room,
         doc,
         "createProjectConnection",
-        { setAwarenessUser: true, bindPresence: true, attachTokenRefreshHook: true },
+        { setAwarenessUser: true, bindPresence: true, attachTokenRefreshHook: true, persistence },
     );
 
     // Wait for initial project sync to complete (or time out) before connecting pages.
@@ -424,8 +431,8 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // room as "timed-out" so callers (see yjsStore) can surface a not-yet-synced state to the UI.
     await waitForInitialSync();
 
-    const dispose = () => {
-        disposeProvider();
+    const dispose = async () => {
+        await disposeProvider();
         try {
             doc.destroy();
         } catch {}
@@ -437,15 +444,17 @@ export async function createProjectConnection(projectId: string): Promise<Projec
 export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<{
     provider: HocuspocusProvider;
     awareness: Awareness | null;
+    dispose: () => Promise<void>;
 }> {
     const room = projectRoomPath(projectId);
-    await attachIndexedDbPersistence(room, doc);
+    const persistence = await attachIndexedDbPersistence(room, doc);
 
-    const { provider, awareness } = await setupProviderForRoom(projectId, room, doc, "connectProjectDoc", {
+    const { provider, awareness, dispose } = await setupProviderForRoom(projectId, room, doc, "connectProjectDoc", {
         setAwarenessUser: true,
         attachTokenRefreshHook: true,
+        persistence,
     });
-    return { provider, awareness };
+    return { provider, awareness, dispose };
 }
 
 /**
@@ -456,17 +465,17 @@ export async function connectProjectDoc(doc: Y.Doc, projectId: string): Promise<
 export async function connectTableDoc(projectId: string, tableId: string, doc: Y.Doc): Promise<{
     provider: HocuspocusProvider;
     waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
-    dispose: () => void;
+    dispose: () => Promise<void>;
 }> {
     const room = tableRoomPath(projectId, tableId);
-    await attachIndexedDbPersistence(room, doc);
+    const persistence = await attachIndexedDbPersistence(room, doc);
 
     const { provider, waitForInitialSync, dispose } = await setupProviderForRoom(
         projectId,
         room,
         doc,
         "connectTableDoc",
-        { attachTokenRefreshHook: true },
+        { attachTokenRefreshHook: true, persistence },
     );
     return { provider, waitForInitialSync, dispose };
 }
@@ -474,22 +483,23 @@ export async function connectTableDoc(projectId: string, tableId: string, doc: Y
 export async function createMinimalProjectConnection(projectId: string): Promise<{
     doc: Y.Doc;
     provider: HocuspocusProvider;
-    dispose: () => void;
+    dispose: () => Promise<void>;
 }> {
     const doc = new Y.Doc({ guid: projectId });
     const room = projectRoomPath(projectId);
 
-    await attachIndexedDbPersistence(room, doc);
+    const persistence = await attachIndexedDbPersistence(room, doc);
 
     const { provider, dispose: disposeProvider } = await setupProviderForRoom(
         projectId,
         room,
         doc,
         "createMinimalProjectConnection",
+        { persistence },
     );
 
-    const dispose = () => {
-        disposeProvider();
+    const dispose = async () => {
+        await disposeProvider();
         try {
             doc.destroy();
         } catch {}
