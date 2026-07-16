@@ -141,3 +141,36 @@ describe("Hocuspocus Auth Bypass Reproduction", () => {
         provider.destroy();
     });
 });
+
+it("should NOT bypass check when only FUNCTIONS_EMULATOR is true", async () => {
+    process.env.FUNCTIONS_EMULATOR = "true";
+    delete process.env.ALLOW_TEST_ACCESS;
+
+    const provider = new HocuspocusProvider({
+        url: `ws://127.0.0.1:${port}/projects/123`,
+        name: "projects/123",
+        document: new Y.Doc(),
+    });
+
+    await new Promise<void>((resolve, reject) => {
+        provider.on("status", (data: any) => {
+            if (data.status === "disconnected") {
+                resolve();
+            }
+        });
+
+        provider.on("synced", () => {
+            reject(new Error("Should not have synced!"));
+        });
+
+        const ws = (provider as any).configuration.websocketProvider?.webSocket;
+        if (ws) {
+            ws.addEventListener("error", (e: any) => {
+                resolve();
+            });
+        }
+    });
+
+    provider.destroy();
+    delete process.env.FUNCTIONS_EMULATOR;
+});
