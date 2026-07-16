@@ -91,13 +91,14 @@ export function tableDocGuid(projectGuid: string, tableId: string): string {
 export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandles | undefined {
     const entry = getTableRegistry(projectDoc).get(tableId);
     const doc = entry?.get("doc");
-    if (!(doc instanceof Y.Doc)) return undefined;
-    doc.load();
-    const schemaText = doc.getText(TABLE_SCHEMA_KEY);
-    const uiDef = doc.getMap<unknown>(TABLE_UI_KEY);
-    const data = doc.getMap<TableRecord>(TABLE_DATA_KEY);
+    if (!doc || typeof doc !== "object" || !("load" in doc)) return undefined;
+    const ydoc = doc as Y.Doc;
+    ydoc.load();
+    const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
+    const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
+    const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
     const undo = new Y.UndoManager([schemaText, uiDef, data]);
-    return { tableId, doc, schemaText, uiDef, data, undo };
+    return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
 }
 
 /** Replace the schema text with a new statement in a single transaction. */
