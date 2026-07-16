@@ -18,7 +18,7 @@ const cursor = {
 // Define hoisted mocks to avoid top-level evaluation order issues
 const { mockStore } = vi.hoisted(() => {
     const store = {
-        getCursorInstances: vi.fn(() => [cursor]),
+        getLocalCursorInstances: vi.fn(() => [cursor]),
         addCursorRelativeToActive: vi.fn(),
         undoLastCursor: vi.fn(),
         clearSelections: vi.fn(),
@@ -52,7 +52,7 @@ describe("KeyEventHandler key map", () => {
     });
 
     it("formats bold with Ctrl+B", () => {
-        const cursors = mockStore.getCursorInstances();
+        const cursors = mockStore.getLocalCursorInstances();
         const event = new KeyboardEvent("keydown", { key: "b", ctrlKey: true });
         KeyEventHandler.handleKeyDown(event);
         expect(cursors[0].formatBold).toHaveBeenCalled();
