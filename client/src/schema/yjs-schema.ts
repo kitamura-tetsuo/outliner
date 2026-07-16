@@ -336,11 +336,18 @@ export class Items {
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
+        if (
+            typeof (this.tree as unknown as { recomputeParentsAndChildren?: () => void; }).recomputeParentsAndChildren
+                === "function"
+        ) {
+            (this.tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
+        }
+
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
         } else {
             const keys = this.childrenKeys();
-            const clamped = Math.max(0, Math.min(index, keys.length - 1));
+            const clamped = Math.max(0, Math.min(index, keys.length));
             const target = keys[clamped];
             if (!target) this.tree.setNodeOrderToEnd(nodeKey);
             else if (clamped === 0) this.tree.setNodeBefore(nodeKey, target);
