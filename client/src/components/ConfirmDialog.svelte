@@ -1,6 +1,4 @@
 <script lang="ts">
-import { onMount } from "svelte";
-
 let {
     isOpen = $bindable(false),
     title = "Confirm",
@@ -54,7 +52,6 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <dialog
     bind:this={dialogElement}
     onclose={handleCancel}
