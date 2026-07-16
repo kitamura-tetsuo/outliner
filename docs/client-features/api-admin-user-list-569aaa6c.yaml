@@ -8,7 +8,7 @@ acceptance:
 - Returns 403 error for requests other than from admins
 tests:
 - client/e2e/core/api-admin-user-list-569aaa6c.spec.ts
-- server/tests/log-service.test.js
+- server/tests/log-service.test.ts
 components:
 - server/log-service.js
 title-ja: 管理者ユーザーリスト

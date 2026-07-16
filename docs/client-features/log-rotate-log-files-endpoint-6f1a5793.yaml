@@ -9,5 +9,5 @@ components:
 - server/utils/logger.js
 tests:
 - client/e2e/core/log-rotate-log-files-endpoint-6f1a5793.spec.ts
-- server/tests/logger-rotate-logfile.test.js
-- server/tests/rotate-logs-endpoint.test.js
+- server/tests/logger-rotate-logfile.test.ts
+- server/tests/rotate-logs-endpoint.test.ts
