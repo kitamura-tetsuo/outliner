@@ -81,8 +81,8 @@ export class Item {
     constructor(ydoc: Y.Doc, tree: YTree, key: string);
     constructor(docOrPlain: Y.Doc | PlainItemData, tree?: YTree, key?: string) {
         // Backward-compatible constructor: allow `new Item({ id, text, ... })` in tests
-        if (!(docOrPlain instanceof Y.Doc)) {
-            const plain = docOrPlain;
+        if (!docOrPlain || typeof docOrPlain !== 'object' || !('load' in docOrPlain)) {
+            const plain = docOrPlain as PlainItemData;
             const doc = new Y.Doc();
             const ymap = doc.getMap("orderedTree");
             const nextTree = new YTree(ymap);
