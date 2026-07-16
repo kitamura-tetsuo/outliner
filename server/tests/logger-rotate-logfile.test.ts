@@ -3,7 +3,6 @@ import fs from "fs-extra";
 import { afterEach, beforeEach, describe, it } from "mocha";
 import os from "os";
 import path from "path";
-// @ts-expect-error
 import { rotateLogFile } from "../src/utils/log-manager.js";
 
 describe("rotateLogFile utility (LOG-0002)", function() {
