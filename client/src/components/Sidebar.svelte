@@ -47,6 +47,12 @@ import type * as Y from "yjs";
         ensureObserver(undefined);
     });
 
+    function closeSidebarIfMobile() {
+        if (window.innerWidth < 768) {
+            isOpen = false;
+        }
+    }
+
     const tables: TableRegistryEntry[] = $derived.by(() => {
         void registryVersion;
         void isOpen;
@@ -295,7 +301,14 @@ import type * as Y from "yjs";
                     {:else}
                         {#each tables as table (table.tableId)}
                             <li>
-                                <div class="page-item" data-table-id={table.tableId}>
+                                <a
+                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
+                                    class="page-item table-link"
+                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
+                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}` ? 'page' : undefined}
+                                    data-table-id={table.tableId}
+                                    onclick={closeSidebarIfMobile}
+                                >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
                                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -306,7 +319,7 @@ import type * as Y from "yjs";
                                         </svg>
                                         <span class="page-title">{table.name || "Untitled table"}</span>
                                     </span>
-                                </div>
+                                </a>
                             </li>
                         {/each}
                     {/if}

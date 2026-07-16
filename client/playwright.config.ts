@@ -121,6 +121,12 @@ export default defineConfig({
 
     projects: [
         {
+            // Tables tests
+            name: "tables",
+            testDir: "./e2e/tables",
+        },
+
+        {
             // Basic tests: For environment check and minimal configuration verification
             name: "basic",
             testDir: "./e2e/basic",
