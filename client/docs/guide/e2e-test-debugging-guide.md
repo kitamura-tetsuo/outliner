@@ -457,11 +457,11 @@ if (!page.isClosed()) {
 
 **Root Cause**: The global store (`window.generalStore`) may not be initialized yet when the test script resumes execution after navigation.
 
-**Solution**: Wait for `networkidle` or check store existence before accessing properties.
+**Solution**: Wait for a deterministic application state, such as checking store existence or waiting for a specific DOM element before accessing properties. Avoid `networkidle` due to WebSocket connections.
 
 ```typescript
-// ✅ Ensure hydration before store access
-await page.waitForLoadState("networkidle").catch(() => {});
+// ✅ Ensure hydration before store access by checking store initialization or a deterministic UI element
+await page.waitForFunction(() => (window as any).generalStore !== undefined, null, { timeout: 15000 }).catch(() => {});
 await TestHelpers.waitForPagesList(page);
 ```
 
