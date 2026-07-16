@@ -9,6 +9,7 @@
     import { page as pageStore } from "$app/stores";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
+    import { formatDate } from "../utils/dateUtils";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -52,13 +53,6 @@
     let currentProjectName = $derived(
         $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
     );
-
-    function formatDate(ts: number | undefined): string {
-        if (!ts) return "";
-        const date = new Date(ts);
-        if (isNaN(date.getTime())) return "";
-        return date.toLocaleDateString();
-    }
 
 </script>
 

@@ -3,6 +3,7 @@
     const logger = getLogger("Route");
 import { goto } from "$app/navigation";
 import { resolvePath } from "../../../../utils/pathUtils";
+import { formatDateTime } from "../../../../utils/dateUtils";
 
 
 import { page } from "$app/stores";
@@ -584,16 +585,6 @@ async function downloadIcs() {
     }
 }
 
-function formatDate(timestamp: number): string {
-    const d = new Date(timestamp);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const hours = String(d.getHours()).padStart(2, "0");
-    const minutes = String(d.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-}
-
 function toLocalISOString(timestamp: number): string {
     const d = new Date(timestamp);
     const year = d.getFullYear();
@@ -639,7 +630,7 @@ function toLocalISOString(timestamp: number): string {
                     <input type="datetime-local" bind:value={editingTime} class="border p-1" />
                     <button type="button" onclick={saveEdit} class="ml-2 px-2 py-1 bg-green-600 text-white rounded">Save</button>
                 {:else}
-                    {formatDate(sch.nextRunAt)}
+                    {formatDateTime(sch.nextRunAt)}
                     <button type="button" onclick={() => startEdit(sch)} class="ml-2 px-2 py-1 bg-yellow-500 text-white rounded">
                         Edit
                     </button>

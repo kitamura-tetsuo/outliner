@@ -8,6 +8,7 @@ import {
     replaceWithSnapshot,
     type Snapshot,
 } from "../services";
+import { formatDateTime } from "../utils/dateUtils";
 
 interface Props {
     project: string;
@@ -43,7 +44,7 @@ function showDiff(id: string) {
 
     let targetContent = currentContent;
     let targetTitle = "Current";
-    let baseTitle = new Date(snapshot.timestamp).toLocaleString();
+    let baseTitle = formatDateTime(snapshot.timestamp);
 
     let isReversed = false;
 
@@ -56,7 +57,7 @@ function showDiff(id: string) {
         if (idx > 0) {
             const prev = sorted[idx - 1];
             targetContent = prev.content;
-            targetTitle = new Date(prev.timestamp).toLocaleString();
+            targetTitle = formatDateTime(prev.timestamp);
         } else {
             // No previous snapshot, compare with empty
             targetContent = "";
@@ -66,7 +67,7 @@ function showDiff(id: string) {
         const targetSnap = getSnapshot(project, page, compareTargetId);
         if (targetSnap) {
             targetContent = targetSnap.content;
-            targetTitle = new Date(targetSnap.timestamp).toLocaleString();
+            targetTitle = formatDateTime(targetSnap.timestamp);
 
             // If target snapshot is older than selected snapshot, swap to make left older, right newer
             if (targetSnap.timestamp < snapshot.timestamp) {
@@ -175,7 +176,7 @@ $effect(() => {
                             onclick={() => showDiff(s.id)}
                         >
                             <span class="block font-medium">
-                                {new Date(s.timestamp).toLocaleString()}
+                                {formatDateTime(s.timestamp)}
                             </span>
                             <span class="block text-xs text-gray-500">
                                 {s.author}
@@ -208,7 +209,7 @@ $effect(() => {
                         <optgroup label="Specific Snapshot">
                             {#each snapshots as s (s.id)}
                                 {#if s.id !== selectedId}
-                                    <option value={s.id}>{new Date(s.timestamp).toLocaleString()}</option>
+                                    <option value={s.id}>{formatDateTime(s.timestamp)}</option>
                                 {/if}
                             {/each}
                         </optgroup>
