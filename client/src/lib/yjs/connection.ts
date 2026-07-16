@@ -9,7 +9,7 @@ import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, waitForSync } from "../yjsPersistence";
 import { projectRoomPath, tableRoomPath } from "./roomPath";
-import { setRoomSyncState } from "./roomSyncState";
+import { deleteRoomSyncState, setRoomSyncState } from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
@@ -263,6 +263,7 @@ async function setupProviderForRoom(
         token: tokenProvider,
     });
     logger.debug(`[${label}] Provider created for ${room}, wsBase=${wsBase}`);
+    setRoomSyncState(room, "pending");
 
     provider.on("status", (event: { status: string; }) => {
         logger.debug(`[yjs-conn] ${room} status: ${event.status}`);
@@ -352,8 +353,6 @@ async function setupProviderForRoom(
                 return;
             }
 
-            setRoomSyncState(room, "pending");
-
             const cleanup = () => {
                 clearTimeout(timer);
                 provider.off("synced", syncHandler);
@@ -406,6 +405,7 @@ async function setupProviderForRoom(
                 await options.persistence.destroy();
             } catch {}
         }
+        deleteRoomSyncState(room);
     };
 
     return { provider, awareness, waitForInitialSync, dispose };
