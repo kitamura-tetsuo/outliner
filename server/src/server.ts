@@ -1,12 +1,12 @@
 import { serverLogger as logger } from "./utils/log-manager.js";
 
 import { Logger } from "@hocuspocus/extension-logger";
-import { Hocuspocus, Server } from "@hocuspocus/server";
+import { Hocuspocus, Server, type onConnectPayload, type onAuthenticatePayload, type onLoadDocumentPayload, type onDisconnectPayload, type Extension, type Configuration } from "@hocuspocus/server";
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import http from "http";
-import { WebSocketServer } from "ws";
+import { WebSocketServer, type WebSocket } from "ws";
 import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
@@ -185,8 +185,8 @@ export async function startServer(
     app.use(rateLimiterMiddleware);
 
     // Detailed Health/Debug endpoint
-    app.get("/health", (req: any, res: any) => {
-        const response: any = {
+    app.get("/health", (req: Request, res: Response) => {
+        const response: Record<string, unknown> = {
             status: "ok",
             timestamp: new Date().toISOString(),
         };
@@ -219,12 +219,12 @@ export async function startServer(
             name: "hocuspocus-fluid-outliner",
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
-            async onConnect(data: any) {
-                const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
-                    || data.request.socket?.remoteAddress || "unknown";
+            async onConnect(data: onConnectPayload) {
+                const ip = data.context?.ip || (typeof data.requestHeaders.get === "function" ? data.requestHeaders.get("x-forwarded-for") : (data.requestHeaders as any)["x-forwarded-for"])
+                    || (data.request as unknown as { socket?: { remoteAddress?: string } })?.socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
-            async onAuthenticate(data: any) {
+            async onAuthenticate(data: onAuthenticatePayload) {
                 // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
                 // We cannot do this before handleConnection because the client immediately sends the Auth message
                 // after the WS handshake, and if we await async operations first the message would be lost
@@ -259,7 +259,7 @@ export async function startServer(
                 let decoded;
                 try {
                     decoded = await verifyIdTokenCached(token);
-                } catch (err: any) {
+                } catch (err: unknown) {
                     // Re-throw so Hocuspocus sends 4001 Unauthorized to client
                     throw err;
                 }
@@ -278,14 +278,14 @@ export async function startServer(
                     room,
                 };
             },
-            async onAfterAuthenticate(data: any) {
+            async onAfterAuthenticate(data: { documentName: string }) {
                 logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
             },
-            async onLoadDocument(data: any) {
+            async onLoadDocument(data: onLoadDocumentPayload) {
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
             },
-            async onDisconnect(data: any) {
+            async onDisconnect(data: onDisconnectPayload) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
             },
         } as unknown as import("@hocuspocus/server").Configuration,
@@ -309,7 +309,7 @@ export async function startServer(
     app.use("/api", createDemoRouter(hocuspocus));
 
     // Log rotation endpoint
-    app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
+    app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
@@ -341,21 +341,22 @@ export async function startServer(
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : "Unknown error";
             logger.error(
-                { error: new Error(`Log rotation error: ${error.message}`) },
-                `Log rotation error: ${error.message}`,
+                { error: new Error(`Log rotation error: ${msg}`) },
+                `Log rotation error: ${msg}`,
             );
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: msg,
             });
         }
     });
 
     // Explicitly handle upgrade requests to ensure Hocuspocus receives them
-    server.on("upgrade", (request: any, socket: any, head: any) => {
-        wss.handleUpgrade(request, socket, head, (ws: any) => {
+    server.on("upgrade", (request: http.IncomingMessage, socket: import("net").Socket, head: Buffer) => {
+        wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
             // --- Synchronous pre-checks only ---
             // IMPORTANT: Do NOT await async operations here before calling handleConnection!
             // The client immediately sends a Hocuspocus Auth message after the WS handshake.
