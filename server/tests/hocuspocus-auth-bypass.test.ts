@@ -6,8 +6,7 @@ import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
-// @ts-expect-error
-global.WebSocket = WebSocket;
+global.WebSocket = WebSocket as any;
 
 describe("Hocuspocus Auth Bypass Reproduction", () => {
     let httpServer: any;

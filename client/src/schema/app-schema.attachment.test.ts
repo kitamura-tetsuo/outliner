@@ -6,8 +6,8 @@ describe("Item Attachment URL Validation", () => {
     it("should allow https URLs", () => {
         const doc = new Y.Doc();
         const map = doc.getMap();
-        // @ts-expect-error: We use Y.Map directly for tests
-        const item = new Item(map);
+
+        const item = new Item(map as unknown as import("../types/yjs-types").PlainItemData);
         expect(() => {
             item.addAttachment("https://example.com/image.png");
         }).not.toThrow();
@@ -18,8 +18,8 @@ describe("Item Attachment URL Validation", () => {
         import.meta.env.MODE = "production";
         const doc = new Y.Doc();
         const map = doc.getMap();
-        // @ts-expect-error: We use Y.Map directly for tests
-        const item = new Item(map);
+
+        const item = new Item(map as unknown as import("../types/yjs-types").PlainItemData);
         expect(() => {
             item.addAttachment("blob:http://localhost/uuid-1234");
         }).toThrow("Invalid attachment URL");
@@ -29,8 +29,8 @@ describe("Item Attachment URL Validation", () => {
         import.meta.env.MODE = "production";
         const doc = new Y.Doc();
         const map = doc.getMap();
-        // @ts-expect-error: We use Y.Map directly for tests
-        const item = new Item(map);
+
+        const item = new Item(map as unknown as import("../types/yjs-types").PlainItemData);
         expect(() => {
             item.addAttachment("data:image/png;base64,iVBORw0KGgo");
         }).toThrow("Invalid attachment URL");
@@ -40,8 +40,8 @@ describe("Item Attachment URL Validation", () => {
         import.meta.env.MODE = "test";
         const doc = new Y.Doc();
         const map = doc.getMap();
-        // @ts-expect-error: We use Y.Map directly for tests
-        const item = new Item(map);
+
+        const item = new Item(map as unknown as import("../types/yjs-types").PlainItemData);
 
         // Mock E2E mode
         globalThis.window = { __E2E__: true } as Window & typeof globalThis & { __E2E__?: boolean; };
