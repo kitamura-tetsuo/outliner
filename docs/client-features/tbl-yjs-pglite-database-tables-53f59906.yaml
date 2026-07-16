@@ -8,8 +8,8 @@ category: client
 status: implemented
 tests:
 - client/e2e/new/tbl-chart-view-toggle-9d4b17ea.spec.ts
-- client/e2e/new/tbl-database-table-block-53f59906.spec.ts
 - client/e2e/new/tbl-reuse-existing-database-table-53f59906.spec.ts
+- client/e2e/new/tbl-database-table-block-53f59906.spec.ts
 - client/e2e/new/tbl-schema-change-warning-dialog-6f2a8c31.spec.ts
 - client/e2e/new/tbl-two-client-table-subdoc-sync-4c8e21ab.spec.ts
 - client/src/services/yjstable/pgliteService.ts

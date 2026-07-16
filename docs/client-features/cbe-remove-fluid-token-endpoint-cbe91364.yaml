@@ -8,11 +8,14 @@ acceptance:
 - /api/fluidToken returns 404
 - UserManager exposes no Fluid token methods
 tests: []
-validation: 'This legacy endpoint remains disabled via hosting/Vite middleware and production configuration.
+validation: 'This legacy endpoint remains disabled via hosting/Vite middleware and
+  production configuration.
 
-  During the Yjs migration, all Fluid Token tests were retired because there is no Yjs equivalent.
+  During the Yjs migration, all Fluid Token tests were retired because there is no
+  Yjs equivalent.
 
-  Behavior is validated by server routing and manual verification in production-like environments.
+  Behavior is validated by server routing and manual verification in production-like
+  environments.
 
   '
 components:

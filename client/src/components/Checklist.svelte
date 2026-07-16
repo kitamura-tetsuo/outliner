@@ -56,8 +56,8 @@ function add(e?: Event) {
             {:else}
                 {#each list.items as item (item.id)}
                     <li>
-                        <label class="item-label" for="checklist-item-{item.id}">
-                            <input id="checklist-item-{item.id}" type="checkbox" checked={item.state === "checked" || item.state === "archived"} onchange={() => toggleItem(list!.id, item.id)} />
+                        <label class="item-label">
+                            <input type="checkbox" checked={item.state === "checked" || item.state === "archived"} onchange={() => toggleItem(list!.id, item.id)} />
                             <span class="item-text" class:completed={item.state === "checked" || item.state === "archived"}>{item.label}</span>
                         </label>
                     </li>

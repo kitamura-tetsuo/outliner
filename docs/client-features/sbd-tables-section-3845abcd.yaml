@@ -1,8 +1,8 @@
 id: SBD-3845abcd
 title: Sidebar Tables Section
 title-ja: サイドバーテーブルセクション
-description: A new section in the main sidebar to list the current project's database tables. It reads from the Yjs table registry (`listTables`) and updates reactively as tables are added or renamed. It matches the Pages section styling, includes a collapsible header, placeholder text, and dark-mode support.
+description: 'A new section in the main sidebar to list the current project''s database tables. It reads from the Yjs table registry (`listTables`) and updates reactively as tables are added or renamed. It matches the Pages section styling, includes a collapsible header, placeholder text, and dark-mode support.'
 category: client
 status: implemented
 tests:
-- client/e2e/new/sbd-sidebar-tables-section-3845abcd.spec.ts
+  - client/e2e/new/sbd-sidebar-tables-section-3845abcd.spec.ts

@@ -1,6 +1,7 @@
 id: API-0002
 title: Firebase emulator startup standby function
-description: Retry function to wait for Firebase emulator startup to avoid ECONNREFUSED errors.
+description: Retry function to wait for Firebase emulator startup to avoid ECONNREFUSED
+  errors.
 category: api-server
 status: implemented
 acceptance:

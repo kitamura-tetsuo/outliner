@@ -1,6 +1,7 @@
 id: YRR-b4e2c1d0
 title: YJS token refresh reconnect
-description: Ensures YJS connections refresh auth tokens and reconnect without manual reload.
+description: Ensures YJS connections refresh auth tokens and reconnect without manual
+  reload.
 category: yjs
 status: implemented
 acceptance:
