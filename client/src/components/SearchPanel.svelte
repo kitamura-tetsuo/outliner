@@ -8,9 +8,7 @@ const logger = getLogger("SearchPanel");
     import { get } from "svelte/store";
     import { store } from "../stores/store.svelte";
     import {
-        buildRegExp,
-        findMatches,
-        replaceAll,
+                replaceAll,
         replaceFirst,
         searchItems,
         type SearchOptions,
@@ -107,65 +105,22 @@ const logger = getLogger("SearchPanel");
             });
         } catch {}
 
-        if (pageItem && pages.length === 0) {
-            // Prioritize page (when project page is absent)
-            matches = searchItems(pageItem, searchQuery, options).map((m) => ({
-                ...m,
-                page: pageItem!,
-            }));
-        } else if (pages.length) {
-            const collected: Array<PageItemMatch<Item>> = [];
+        let newMatches: Array<PageItemMatch<Item>> = [];
+        if (pages.length) {
             for (const p of pages) {
-                // First search page title
-                const pageTitle = (p.text?.toString?.() ?? String(p.text ?? "")) as string;
-                const titleMatches = findMatches(
-                    pageTitle,
-                    searchQuery,
-                    options,
-                );
-                if (titleMatches.length)
-                    collected.push({
-                        item: p,
-                        page: p,
-                        matches: titleMatches,
-                    });
-
-                // Explicitly scan child items
-                const children = p.items;
-                if (children) {
-                    try {
-                        for (const child of iterateItems(children)) {
-                            if (!child) continue;
-                            const text = ((
-                                child
-                            ).text?.toString?.() ??
-                                String(
-                                    (child).text ?? "",
-                                )) as string;
-                            const m = findMatches(
-                                text,
-                                searchQuery,
-                                options,
-                            );
-                            if (m.length)
-                                collected.push({
-                                    item: child,
-                                    page: p,
-                                    matches: m,
-                                });
-                        }
-                    } catch {}
+                const pageMatches = searchItems(p, searchQuery, options);
+                for (const m of pageMatches) {
+                    newMatches.push({ ...m, page: p });
                 }
             }
-            matches = collected;
         } else if (pageItem) {
-            matches = searchItems(pageItem, searchQuery, options).map((m) => ({
+            newMatches = searchItems(pageItem, searchQuery, options).map((m) => ({
                 ...m,
                 page: pageItem!,
             }));
-        } else {
-            matches = [];
         }
+
+        matches = newMatches;
         matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
         try {
             window.__E2E_LAST_MATCH_COUNT__ = matchCount;
@@ -179,58 +134,6 @@ const logger = getLogger("SearchPanel");
                 })),
             });
         } catch {}
-
-        // Page unit fallback: If 0 results in project search, search current page only
-        if (matchCount === 0 && pageItem) {
-            const localMatches = searchItems(
-                pageItem,
-                searchQuery,
-                options,
-            ).map((m) => ({ ...m, page: pageItem! }));
-            if (localMatches.length) {
-                matches = localMatches;
-                matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
-                try {
-                    window.__E2E_LAST_MATCH_COUNT__ = matchCount;
-                    logger.debug(
-                        "SearchPanel.handleSearch page fallback matches",
-                        { matchCount },
-                    );
-                } catch {}
-            }
-        }
-
-        // Fallback: If 0 results, search page titles only (E2E stabilization)
-        if (matchCount === 0 && (isTestEnv || true)) {
-            const fallback: Array<PageItemMatch<Item>> = [];
-            for (const p of pages.length ? pages : pageItem ? [pageItem] : []) {
-                const text = (p.text?.toString?.() ?? String(p.text ?? "")) as string;
-                const m = findMatches(text, searchQuery, options);
-                if (m.length)
-                    fallback.push({
-                        item: p,
-                        page: p,
-                        matches: m,
-                    });
-            }
-            if (fallback.length) {
-                matches = fallback;
-                matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
-                try {
-                    window.__E2E_LAST_MATCH_COUNT__ = matchCount;
-                    logger.debug("SearchPanel.handleSearch fallback matches", {
-                        matchCount,
-                        items: matches.map((m) => ({
-                            page:
-                                m.page?.text?.toString?.() ?? String(m.page?.text ?? ""),
-                            item:
-                                m.item?.text?.toString?.() ?? String(m.item?.text ?? ""),
-                        })),
-                    });
-                } catch {}
-            }
-        }
-
 
     }
 
@@ -266,27 +169,15 @@ const logger = getLogger("SearchPanel");
         };
         const pages = getPagesToSearch();
         if (pages.length) {
-            let total = 0;
             for (const p of pages) {
-                const replaced = replaceAll(
+                replaceAll(
                     p,
                     searchQuery,
                     replaceText,
                     options,
                 );
-                total += replaced;
             }
-            // Fallback: Title replacement
-            if (total === 0) {
-                for (const p of pages) {
-                    const text = (p.text?.toString?.() ?? String(p.text ?? "")) as string;
-                    const regex = buildRegExp(searchQuery, options);
-                    const newText = text.replace(regex, replaceText);
-                    if (newText !== text && "updateText" in p && typeof p.updateText === "function") {
-                        p.updateText(newText);
-                    }
-                }
-            }
+
             handleSearch();
         } else if (pageItem) {
             replaceAll(pageItem, searchQuery, replaceText, options);
