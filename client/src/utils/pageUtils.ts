@@ -2,6 +2,14 @@ import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
 import { safeDecodeURIComponent } from "./urlUtils";
 
+export function generateDefaultPageTitle(): string {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const timeStr = `${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+    return `New Page ${dateStr} ${timeStr}`;
+}
+
 export function findPageByName(items: Iterable<Item> | undefined | null, name: string): Item | null {
     if (!items) return null;
 
