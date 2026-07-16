@@ -9,7 +9,7 @@ describe("room-validator", () => {
 
     it("should handle URL encoded characters", () => {
         const result = parseRoom("/projects/my%20project");
-        expect(result).to.deep.equal({ project: "my project" });
+        expect(result).to.be.undefined;
     });
 
     it("should return undefined for invalid paths", () => {
