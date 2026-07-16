@@ -18,7 +18,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     const logger = getLogger("DemoPageView");
 
     let pageName: string = $derived.by(() => {
-        return $page.params.page;
+        try {
+            return decodeURIComponent($page.params.page || "");
+        } catch {
+            return $page.params.page || "";
+        }
     });
 
     let isLoading = $state(true);

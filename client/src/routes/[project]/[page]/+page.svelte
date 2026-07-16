@@ -31,10 +31,18 @@
     // NOTE: Must reference the value of $page (not the store object).
     // Previously used page.params.page, which caused TypeError by referencing property while page was unresolved.
     let projectName: string = $derived.by(() => {
-        return $page.params.project;
+        try {
+            return decodeURIComponent($page.params.project || "");
+        } catch {
+            return $page.params.project || "";
+        }
     });
     let pageName: string = $derived.by(() => {
-        return $page.params.page;
+        try {
+            return decodeURIComponent($page.params.page || "");
+        } catch {
+            return $page.params.page || "";
+        }
     });
 
     // Debug log

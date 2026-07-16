@@ -17,6 +17,10 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
 
     const targetNameRaw = String(name).trim().toLowerCase();
     const targetNameDecoded = String(decodedName).trim().toLowerCase();
+    let targetNameDecoded2 = targetNameRaw;
+    try {
+        targetNameDecoded2 = decodeURIComponent(String(name).trim()).toLowerCase();
+    } catch {}
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;
@@ -33,7 +37,7 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
 
         const currentName = textString.trim().toLowerCase();
 
-        if (currentName === targetNameRaw || currentName === targetNameDecoded) {
+        if (currentName === targetNameRaw || currentName === targetNameDecoded || currentName === targetNameDecoded2) {
             return p;
         }
     }
