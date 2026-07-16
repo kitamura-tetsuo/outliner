@@ -5,7 +5,7 @@ export function safeGetNodeParent(tree: YTree | undefined | null, key: string | 
         return undefined;
     }
     try {
-        return tree.getNodeParentFromKey(key);
+        return tree.getNodeParentFromKey(key) || undefined;
     } catch (_e) {
         return undefined;
     }

@@ -33,8 +33,8 @@ test.describe("SRE-001: Advanced Search & Replace", () => {
         expect(hits).toBe(2);
 
         await page.getByTestId("replace-input").fill("PAGE");
-        page.once("dialog", dialog => dialog.accept());
         await page.getByTestId("replace-all-button").click();
+        await page.getByRole("alertdialog").locator("button:has-text('Replace All')").click();
         await page.waitForTimeout(500); // Allow time for replace operation
         await page.getByTestId("search-button").click();
         const hitsTextAfter = await page.getByTestId("search-results-hits").textContent();

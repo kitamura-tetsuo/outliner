@@ -86,6 +86,7 @@ import { resolvePath } from "../utils/pathUtils";
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
+import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemComponentTypeSelector from "./OutlinerItemComponentTypeSelector.svelte";
 import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
@@ -627,6 +628,8 @@ onMount(() => {
 });
 
 // Memoize formatting operations to avoid unnecessary recalculations during render
+let showDeleteConfirm = $state(false);
+
 let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
 let formattedHtml = $derived(
     (() => {
@@ -933,9 +936,11 @@ function addNewItem() {
 
 function handleDelete() {
     if (isReadOnly) return;
-    if (confirm("Are you sure you want to delete this item?")) {
-        model.original.delete();
-    }
+    showDeleteConfirm = true;
+}
+
+function confirmDelete() {
+    model.original.delete();
 }
 
 function toggleVote() {
@@ -2180,6 +2185,17 @@ export function setSelectionPosition(start: number, end: number = start) {
             item={item}
             onCountChanged={applyCommentCount}
             currentUser={currentUser}
+        />
+    {/if}
+
+    {#if showDeleteConfirm}
+        <ConfirmDialog
+            bind:isOpen={showDeleteConfirm}
+            title="Delete Item"
+            message="Are you sure you want to delete this item? This action will also delete all of its children."
+            confirmText="Delete"
+            isDestructive={true}
+            onConfirm={confirmDelete}
         />
     {/if}
 </div>
