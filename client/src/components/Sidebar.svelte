@@ -8,6 +8,7 @@
 
     import { page as pageStore } from "$app/stores";
     import { authStore } from "../stores/authStore.svelte";
+    import { userManager } from "../auth/UserManager";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -146,8 +147,14 @@
                         onclick={(e) => {
                             e.stopPropagation();
                             if (store.project) {
-                                if (store.pageExists("Untitled")) return;
-                                const newPage = store.project.addPage("Untitled", "tester");
+                                let title = "Untitled";
+                                let counter = 2;
+                                while (store.pageExists(title)) {
+                                    title = `Untitled ${counter}`;
+                                    counter++;
+                                }
+                                const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
+                                const newPage = store.project.addPage(title, authorId);
                                 const pageHref = resolvePath(
                                     currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
                                 );
