@@ -340,7 +340,7 @@ const logger = getLogger("SearchPanel");
     <div
         class="search-panel"
         data-testid="search-panel"
-        role="region"
+        role="search"
         aria-label="Search and Replace"
     >
         <div class="search-panel-header">
@@ -389,18 +389,18 @@ const logger = getLogger("SearchPanel");
             </div>
 
             <div class="search-options">
-                <label class="option-checkbox">
-                    <input type="checkbox" bind:checked={isRegexMode} />
+                <label class="option-checkbox" for="regex-checkbox">
+                    <input id="regex-checkbox" type="checkbox" bind:checked={isRegexMode} />
                     Regex
                 </label>
-                <label class="option-checkbox">
-                    <input type="checkbox" bind:checked={isCaseSensitive} />
+                <label class="option-checkbox" for="case-sensitive-checkbox">
+                    <input id="case-sensitive-checkbox" type="checkbox" bind:checked={isCaseSensitive} />
                     Case Sensitive
                 </label>
             </div>
 
             <div class="search-results" data-testid="search-results">
-                <p data-testid="search-results-hits">Hits: {matchCount}</p>
+                <p data-testid="search-results-hits" aria-live="polite">Hits: {matchCount}</p>
                 <ul data-testid="search-results-list">
                     {#each matches as m (`${m.page.id}-${m.item.id}`)}
                         <li
