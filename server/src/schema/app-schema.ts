@@ -154,7 +154,7 @@ export class Item {
 
     get text(): string {
         const t = this.value.get("text") as Y.Text;
-        return t ? t.toString() : "";
+        return t ? t.toString().trimEnd() : "";
     }
 
     set text(v: string) {
