@@ -1,3 +1,4 @@
+
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 import "../utils/registerAfterEachSnapshot";
@@ -28,9 +29,7 @@ test.describe("Sidebar Tables Section (SBD-3845abcd)", () => {
         }
 
         // We check for the placeholder "No tables available"
-        const tablesList = sidebar.locator("#sidebar-tables-list");
-        await expect(tablesList.locator("li.sidebar-placeholder", { hasText: "No tables available" })).toBeVisible({
-            timeout: 10000,
-        });
+        const tablesList = sidebar.locator('#sidebar-tables-list');
+        await expect(tablesList.locator('li.sidebar-placeholder', { hasText: 'No tables available' })).toBeVisible({ timeout: 10000 });
     });
 });

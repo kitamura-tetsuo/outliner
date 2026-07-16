@@ -295,7 +295,7 @@ import type * as Y from "yjs";
             </button>
 
             {#if !isTablesCollapsed}
-                <ul id="sidebar-tables-list" class="page-list">
+                <ul id="sidebar-tables-list" class="table-list">
                     {#if tables.length === 0}
                         <li class="sidebar-placeholder">No tables available</li>
                     {:else}
