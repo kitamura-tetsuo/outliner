@@ -3,6 +3,7 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("PageListItem");
 import type { Item } from "../schema/app-schema";
 import { extractPagePreview } from "../lib/pagePreview";
+import { formatDate } from "../utils/dateUtils";
 
 interface Props {
     href?: string;
@@ -50,13 +51,6 @@ $effect(() => {
         };
     }
 });
-
-    function formatDate(ts: number | undefined): string {
-        if (!ts) return "";
-        const date = new Date(ts);
-        if (isNaN(date.getTime())) return "";
-        return date.toLocaleDateString();
-    }
 
 </script>
 

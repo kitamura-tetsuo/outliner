@@ -12,6 +12,7 @@ import { onDestroy, onMount } from "svelte";
 import type * as Y from "yjs";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
+    import { formatDate } from "../utils/dateUtils";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -87,13 +88,6 @@ import type * as Y from "yjs";
     let currentProjectName = $derived(
         $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
     );
-
-    function formatDate(ts: number | undefined): string {
-        if (!ts) return "";
-        const date = new Date(ts);
-        if (isNaN(date.getTime())) return "";
-        return date.toLocaleDateString();
-    }
 
 </script>
 
