@@ -17,6 +17,7 @@ const logger = getLogger("SearchPanel");
     import { iterateItems } from "../utils/itemTraversal";
     import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
+    import ConfirmDialog from "./ConfirmDialog.svelte";
 
     interface HasText {
         text?: string | { toString(): string };
@@ -59,6 +60,7 @@ const logger = getLogger("SearchPanel");
     });
     let matchCount = $state(0);
     let inputEl: HTMLInputElement | undefined = $state();
+    let showReplaceAllConfirm = $state(false);
 
     $effect(() => {
         if (isVisible && inputEl) {
@@ -162,7 +164,10 @@ const logger = getLogger("SearchPanel");
     }
 
     function handleReplaceAll() {
-        if (!confirm("Are you sure you want to replace all occurrences? This action cannot be undone.")) return;
+        showReplaceAllConfirm = true;
+    }
+
+    function confirmReplaceAll() {
         const options: SearchOptions = {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
@@ -327,6 +332,17 @@ const logger = getLogger("SearchPanel");
             </div>
         </section>
     </div>
+{/if}
+
+{#if showReplaceAllConfirm}
+    <ConfirmDialog
+        bind:isOpen={showReplaceAllConfirm}
+        title="Replace All"
+        message="Are you sure you want to replace all occurrences? This action cannot be undone."
+        confirmText="Replace All"
+        isDestructive={true}
+        onConfirm={confirmReplaceAll}
+    />
 {/if}
 
 <style>

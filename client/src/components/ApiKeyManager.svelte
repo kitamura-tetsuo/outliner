@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from "../services/apiKeyService";
     import { formatDateTime } from "../utils/dateUtils";
+    import ConfirmDialog from "./ConfirmDialog.svelte";
 
     let apiKeys: ApiKey[] = $state([]);
     let loading = $state(true);
@@ -10,6 +11,9 @@
     let newKeyDescription = $state("");
     let newlyGeneratedKey = $state<string | null>(null);
     let isGenerating = $state(false);
+
+    let showRevokeConfirm = $state(false);
+    let keyIdToRevoke = $state<string | null>(null);
 
     onMount(async () => {
         await loadKeys();
@@ -48,13 +52,21 @@
     }
 
     async function handleRevoke(id: string) {
-        if (!confirm("Are you sure you want to revoke this API key? This action cannot be undone.")) return;
+        keyIdToRevoke = id;
+        showRevokeConfirm = true;
+    }
+
+    async function confirmRevoke() {
+        if (!keyIdToRevoke) return;
 
         try {
+            const id = keyIdToRevoke;
             await revokeApiKey(id);
             apiKeys = apiKeys.filter(key => key.id !== id);
         } catch (err: unknown) {
             error = err instanceof Error ? err.message : "Failed to revoke API key";
+        } finally {
+            keyIdToRevoke = null;
         }
     }
 
@@ -147,3 +159,15 @@
         </div>
     {/if}
 </div>
+
+{#if showRevokeConfirm}
+    <ConfirmDialog
+        bind:isOpen={showRevokeConfirm}
+        title="Revoke API Key"
+        message="Are you sure you want to revoke this API key? This action cannot be undone."
+        confirmText="Revoke"
+        isDestructive={true}
+        onConfirm={confirmRevoke}
+        onCancel={() => keyIdToRevoke = null}
+    />
+{/if}
