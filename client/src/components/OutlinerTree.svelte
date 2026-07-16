@@ -1,4 +1,9 @@
 <script lang="ts">
+    let isDeleteDialogOpen = $state(false);
+    let itemToDelete = $state<{ original: unknown; parent: unknown; items: unknown } | null>(null);
+
+    import ConfirmDialog from "./ui/ConfirmDialog.svelte";
+
 
 
 
@@ -1983,18 +1988,17 @@
         if (!activeItemId) return;
         const itemViewModel = viewModel.getViewModel(activeItemId);
         if (!itemViewModel) return;
-        if (!confirm("Are you sure you want to delete this item?")) return;
-
         const original = itemViewModel.original;
         const parent = original.parent;
-        if (parent) {
-            const idx = parent.indexOf(original);
-            if (idx >= 0) parent.removeAt(idx);
-        } else {
-            const items = pageItem.items as import("../schema/app-schema").Items;
-            const idx = items.indexOf(original);
-            if (idx >= 0) items.removeAt(idx);
+        let items: unknown = null;
+        if (!parent) {
+            items = pageItem.items;
         }
+
+        itemToDelete = { original, parent, items };
+        isDeleteDialogOpen = true;
+        return;
+        // Logic moved to dialog
     }
 
     function handleMobileVote() {
@@ -2285,3 +2289,29 @@
         outline-offset: 2px;
     }
 </style>
+
+
+{#if isDeleteDialogOpen}
+<ConfirmDialog
+    bind:isOpen={isDeleteDialogOpen}
+    title="Delete Item"
+    message="Are you sure you want to delete this item?"
+    confirmText="Delete"
+    danger={true}
+    onConfirm={() => {
+        if (!itemToDelete) return;
+        const { original, parent, items } = itemToDelete;
+        if (parent) {
+            const currentIdx = (parent as import("../schema/app-schema").Items).indexOf(original as import("../schema/app-schema").Item);
+            if (currentIdx >= 0) (parent as import("../schema/app-schema").Items).removeAt(currentIdx);
+        } else {
+            const currentIdx = (items as import("../schema/app-schema").Items).indexOf(original as import("../schema/app-schema").Item);
+            if (currentIdx >= 0) (items as import("../schema/app-schema").Items).removeAt(currentIdx);
+        }
+        itemToDelete = null;
+    }}
+    onCancel={() => {
+        itemToDelete = null;
+    }}
+/>
+{/if}

@@ -1,4 +1,9 @@
 <script lang="ts">
+    let isRevokeDialogOpen = $state(false);
+    let keyToRevoke = $state("");
+
+    import ConfirmDialog from "./ui/ConfirmDialog.svelte";
+
     import { onMount } from "svelte";
     import { listApiKeys, createApiKey, revokeApiKey, type ApiKey } from "../services/apiKeyService";
 
@@ -46,15 +51,9 @@
         }
     }
 
-    async function handleRevoke(id: string) {
-        if (!confirm("Are you sure you want to revoke this API key? This action cannot be undone.")) return;
-
-        try {
-            await revokeApiKey(id);
-            apiKeys = apiKeys.filter(key => key.id !== id);
-        } catch (err: unknown) {
-            error = err instanceof Error ? err.message : "Failed to revoke API key";
-        }
+    function handleRevoke(id: string) {
+        keyToRevoke = id;
+        isRevokeDialogOpen = true;
     }
 
     function formatDate(ts: number) {
@@ -146,3 +145,23 @@
         </div>
     {/if}
 </div>
+
+
+{#if isRevokeDialogOpen}
+<ConfirmDialog
+    bind:isOpen={isRevokeDialogOpen}
+    title="Revoke API Key"
+    message="Are you sure you want to revoke this API key? This action cannot be undone."
+    confirmText="Revoke"
+    danger={true}
+    onConfirm={async () => {
+        try {
+            await revokeApiKey(keyToRevoke);
+            apiKeys = apiKeys.filter(key => key.id !== keyToRevoke);
+        } catch (err: unknown) {
+            error = err instanceof Error ? err.message : "Failed to revoke API key";
+        }
+    }}
+    onCancel={() => {}}
+/>
+{/if}

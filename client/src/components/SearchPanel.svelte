@@ -1,4 +1,8 @@
 <script lang="ts">
+    let isReplaceAllDialogOpen = $state(false);
+
+    import ConfirmDialog from "./ui/ConfirmDialog.svelte";
+
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
@@ -259,39 +263,7 @@ const logger = getLogger("SearchPanel");
     }
 
     function handleReplaceAll() {
-        if (!confirm("Are you sure you want to replace all occurrences? This action cannot be undone.")) return;
-        const options: SearchOptions = {
-            regex: isRegexMode,
-            caseSensitive: isCaseSensitive,
-        };
-        const pages = getPagesToSearch();
-        if (pages.length) {
-            let total = 0;
-            for (const p of pages) {
-                const replaced = replaceAll(
-                    p,
-                    searchQuery,
-                    replaceText,
-                    options,
-                );
-                total += replaced;
-            }
-            // Fallback: Title replacement
-            if (total === 0) {
-                for (const p of pages) {
-                    const text = (p.text?.toString?.() ?? String(p.text ?? "")) as string;
-                    const regex = buildRegExp(searchQuery, options);
-                    const newText = text.replace(regex, replaceText);
-                    if (newText !== text && "updateText" in p && typeof p.updateText === "function") {
-                        p.updateText(newText);
-                    }
-                }
-            }
-            handleSearch();
-        } else if (pageItem) {
-            replaceAll(pageItem, searchQuery, replaceText, options);
-            handleSearch();
-        }
+        isReplaceAllDialogOpen = true;
     }
 
     function jumpTo(match: PageItemMatch<Item>) {
@@ -589,3 +561,50 @@ const logger = getLogger("SearchPanel");
         font-weight: bold;
     }
 </style>
+
+
+{#if isReplaceAllDialogOpen}
+<ConfirmDialog
+    bind:isOpen={isReplaceAllDialogOpen}
+    title="Replace All"
+    message="Are you sure you want to replace all occurrences? This action cannot be undone."
+    confirmText="Replace All"
+    danger={true}
+    onConfirm={() => {
+        const options: SearchOptions = {
+            regex: isRegexMode,
+            caseSensitive: isCaseSensitive,
+        };
+        const pages = getPagesToSearch();
+        if (pages.length) {
+            let total = 0;
+            for (const p of pages) {
+                const nonNullPageItem = p as unknown as import("../schema/app-schema").Item;
+                const replaced = replaceAll(
+                    nonNullPageItem,
+                    searchQuery,
+                    replaceText,
+                    options,
+                );
+                total += replaced;
+            }
+            // Fallback: Title replacement
+            if (total === 0) {
+                for (const p of pages) {
+                    const text = (p.text?.toString?.() ?? String(p.text ?? "")) as string;
+                    const regex = buildRegExp(searchQuery, options);
+                    const newText = text.replace(regex, replaceText);
+                    if (newText !== text && "updateText" in p && typeof p.updateText === "function") {
+                        p.updateText(newText);
+                    }
+                }
+            }
+            handleSearch();
+        } else if (pageItem) {
+            replaceAll(pageItem as unknown as import("../schema/app-schema").Item, searchQuery, replaceText, options);
+            handleSearch();
+        }
+    }}
+    onCancel={() => {}}
+/>
+{/if}

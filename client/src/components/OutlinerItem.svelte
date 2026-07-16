@@ -7,6 +7,10 @@
 </script>
 
 <script lang="ts">
+    let isDeleteDialogOpen = $state(false);
+
+    import ConfirmDialog from "./ui/ConfirmDialog.svelte";
+
 
 interface HasDebug { debug: (...args: unknown[]) => void; }
 interface HasComments { comments?: unknown[]; setComments?: (arr: unknown[]) => void; }
@@ -933,9 +937,7 @@ function addNewItem() {
 
 function handleDelete() {
     if (isReadOnly) return;
-    if (confirm("Are you sure you want to delete this item?")) {
-        model.original.delete();
-    }
+    isDeleteDialogOpen = true;
 }
 
 function toggleVote() {
@@ -2593,3 +2595,18 @@ export function setSelectionPosition(start: number, end: number = start) {
     color: #e2e8f0;
 }
 </style>
+
+
+{#if isDeleteDialogOpen}
+<ConfirmDialog
+    bind:isOpen={isDeleteDialogOpen}
+    title="Delete Item"
+    message="Are you sure you want to delete this item?"
+    confirmText="Delete"
+    danger={true}
+    onConfirm={() => {
+        model.original.delete();
+    }}
+    onCancel={() => {}}
+/>
+{/if}
