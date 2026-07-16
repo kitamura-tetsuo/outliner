@@ -7,6 +7,8 @@
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
+    import { yjsStore } from "../stores/yjsStore.svelte";
+    import { yjsService } from "../lib/yjs/service";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
     import type { DisplayItem } from "../stores/OutlinerViewModel";
@@ -58,6 +60,22 @@
                 pageName,
                 isReadOnly,
             } }, "OutlinerTree props:");
+
+            // Clear remote cursors from other pages
+            if (typeof window !== "undefined") {
+                const cursors = editorOverlayStore.getCursorInstances();
+                for (const userId in cursors) {
+                    if (userId !== "local") {
+                        editorOverlayStore.clearCursorAndSelection(userId, false);
+                    }
+                }
+
+                // Re-apply presences for this new page
+                const awareness = yjsStore.yjsClient?.getAwareness();
+                if (awareness) {
+                    yjsService.reapplyAllPresences(awareness);
+                }
+            }
         } catch {}
     });
 
