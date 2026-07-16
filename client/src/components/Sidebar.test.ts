@@ -226,7 +226,6 @@ describe("Sidebar", () => {
             expect(screen.getByText("Pages")).toBeInTheDocument();
         });
 
-
         it("should render the Tables section", () => {
             render(Sidebar, { isOpen: true });
             expect(screen.getByText("Tables")).toBeInTheDocument();
@@ -241,7 +240,11 @@ describe("Sidebar", () => {
         it("should render 'No tables available' when project has no tables", () => {
             const originalProject = store.project;
             const emptyProject = Project.createInstance("Empty Project");
-            Object.defineProperty(emptyProject, "ydoc", { value: { title: "Empty Project" }, configurable: true, writable: true });
+            Object.defineProperty(emptyProject, "ydoc", {
+                value: { title: "Empty Project" },
+                configurable: true,
+                writable: true,
+            });
             store.project = emptyProject;
             const { rerender } = render(Sidebar, { isOpen: true });
             expect(screen.getByText("No tables available")).toBeInTheDocument();
