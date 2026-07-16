@@ -138,14 +138,15 @@ Outliner includes advanced capabilities like aliases and scheduling.
 
 ## Database
 
-Turn any item into a database table to manage structured data, right inside your outline. You can start with a blank table or use presets like Tasks or Habits.
+Create database tables to manage structured data within your project. You can start with a blank table or use presets like Tasks or Habits.
 
 ### Creating a Database Table
 
-Hover over an item to reveal its component-type dropdown (which defaults to "Text"), then choose **Database**.
+Click the **Add Database** button in the top left toolbar.
 
-- The item will display a "Create a database table" panel.
+- A "Create a database table" modal will appear.
 - Enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
+- You can view and manage all your existing databases by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
 
 ### Managing Data
 
@@ -160,7 +161,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
 
 ### Collaboration
 
-Databases are stored the same way as other outliner data, so data changes and schema updates sync live to everyone viewing the item.
+Databases are stored the same way as other outliner data, so data changes and schema updates sync live to everyone in the project.
 
 ---
 
