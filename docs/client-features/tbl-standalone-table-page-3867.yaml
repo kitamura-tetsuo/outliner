@@ -1,0 +1,7 @@
+id: TBL-3867
+title: Standalone Table Page
+description: 'A standalone page to view and interact with database tables, accessible via /tables/[project-name]/[table-name]. Navigation is supported from the new Tables section in the sidebar.'
+category: client
+status: implemented
+tests:
+  - client/e2e/tables/table-standalone-page-3867.spec.ts
