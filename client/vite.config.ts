@@ -50,6 +50,19 @@ export default defineConfig(async ({ mode }) => {
                 strategy: ["url", "cookie", "baseLocale"],
             }),
         ],
+        resolve: {
+            // The framework-neutral schema in ../shared/src is compiled into this
+            // bundle. Force a single instance of Yjs (and yjs-orderedtree, which
+            // imports Yjs) so the shared code and app code share one Y.Doc runtime
+            // and never trip the "Yjs was already imported" dual-package hazard.
+            // NOTE: dedupe is the right tool here; an absolute-path resolve.alias
+            // was tried and broke unit/integration (vitest resolves node-module
+            // deps separately from inlined shared/src, so the alias produced two
+            // Yjs copies -> "Unexpected content type"). Physical single-instance
+            // is instead guaranteed by pointing shared/node_modules at the client
+            // (scripts/common-functions.sh) so shared/src's yjs IS the client's.
+            dedupe: ["yjs", "yjs-orderedtree", "uuid"],
+        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,
@@ -121,6 +134,12 @@ export default defineConfig(async ({ mode }) => {
         optimizeDeps: {
             // PGlite ships its own WASM assets and must not be pre-bundled.
             exclude: ["@electric-sql/pglite"],
+            // The framework-neutral schema in ../shared/src imports these three.
+            // Pre-bundle them at dev-server startup so Vite never discovers them
+            // as "new" dependencies mid-run: a late discovery triggers a dep
+            // re-optimization + full page reload, which tears the app out from
+            // under an in-flight e2e seed (outliner-base disappears -> timeout).
+            include: ["yjs", "yjs-orderedtree", "uuid"],
         },
         define: {
             global: "globalThis",

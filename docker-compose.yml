@@ -3,7 +3,9 @@ version: '3.8'
 services:
   yjs-server:
     build:
-      context: ./server
+      # Build from the repo root so the shared schema (../shared) is in context.
+      context: .
+      dockerfile: server/Dockerfile
     container_name: yjs-server
     networks:
       - yjs-net

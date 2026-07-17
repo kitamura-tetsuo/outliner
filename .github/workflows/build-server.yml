@@ -33,7 +33,10 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./server/
+          # Build from the repo root: the server compiles the framework-neutral
+          # schema from ../shared into its build, so shared/ must be in context.
+          context: .
+          file: ./server/Dockerfile
           push: true
           tags: |
             ghcr.io/${{ env.REPO }}/yjs-ws-server:${{ github.sha }}

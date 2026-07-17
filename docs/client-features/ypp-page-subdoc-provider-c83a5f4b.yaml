@@ -1,7 +1,6 @@
 id: YPP-c83a5f4b
 title: Page subdoc per-page provider
-description: Each project page uses a YJS subdocument connected to its own WebSocket
-  room.
+description: Each project page uses a YJS subdocument connected to its own WebSocket room.
 category: yjs
 status: experimental
 acceptance:

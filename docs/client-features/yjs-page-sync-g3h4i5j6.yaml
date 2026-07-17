@@ -1,8 +1,7 @@
 id: YJS-g3h4i5j6
 title: Yjs page data sync
 title-ja: Yjsページデータ同期
-description: Verify that two browser contexts can connect to the same page and see
-  the same page data.
+description: Verify that two browser contexts can connect to the same page and see the same page data.
 category: data
 status: experimental
 acceptance:

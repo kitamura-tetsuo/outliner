@@ -23,8 +23,10 @@ test("backup script creates archive", async () => {
     process.env.BACKUP_DIR = backupDir;
     process.env.BACKUP_SOURCE = sourceDir;
     process.env.RCLONE_REMOTE = "";
-    // Compiled file will be in dist/scripts/rclone-backup.js
-    await execFileAsync("node", ["server/dist/scripts/rclone-backup.js"], { cwd: root });
+    // Compiled file will be in dist/server/src/scripts/rclone-backup.js
+    // (the server tsconfig uses rootDir ".." so the shared schema compiles
+    // alongside the server, which nests emitted output under dist/server/src).
+    await execFileAsync("node", ["server/dist/server/src/scripts/rclone-backup.js"], { cwd: root });
     const files = await fs.promises.readdir(backupDir);
     expect(files.length).toBe(1);
 });
