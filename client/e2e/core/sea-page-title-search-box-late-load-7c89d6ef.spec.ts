@@ -34,21 +34,18 @@ test.describe("SEA-0001: page title search box", () => {
 
         // Explicitly wait for project items to be loaded from Yjs BEFORE typing
         // This ensures the SearchBox has data to search against
-        // Explicitly wait for project items to be loaded from Yjs BEFORE typing
-        // This ensures the SearchBox has data to search against
         await page.waitForFunction(() => {
             const gs = (globalThis as any).generalStore || (globalThis as any).appStore;
             const items = gs?.project?.items;
+            if (!items) return false;
+
             // Handle Proxy/AppSchema items - verify using iterator or Array.from
             const itemsArray = Array.from(items as any);
 
             // Check specifically for the second page
             const hasSecondPage = itemsArray.some((item: any) => item.text && item.text.includes("second-page"));
 
-            if (!hasSecondPage) {
-                // Return false to keep waiting
-                return false;
-            }
+            return hasSecondPage;
         }, { timeout: 30000 }).catch(async () => {
             console.log(
                 "[Test] Warning: Timeout waiting for 'second-page' in live sync. Attempting reload to verify persistence...",

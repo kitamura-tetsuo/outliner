@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Standalone Table Page (#3867)", () => {
     test.beforeEach(async ({ page }) => {
