@@ -51,13 +51,16 @@ This repo is **not** an npm-workspaces monorepo — `client/`, `server/`, and
 `functions/` install independently and CI runs `cd <pkg> && npm ci` per package.
 Because `shared/` is a sibling directory, `tsc` cannot resolve `shared/src`'s
 bare `import "yjs"` / `import "uuid"` by walking up into a consumer's
-`node_modules`. So `shared/package.json` declares those deps and the client and
-server `postinstall` scripts install `../shared` (creating `shared/node_modules`)
-so the type-checkers resolve them.
+`node_modules`. So `shared/node_modules` is created as a **symlink** to an
+already-installed consumer's `node_modules` (which has `yjs`, `uuid` and
+`yjs-orderedtree`): the client/server `postinstall` scripts and
+`scripts/common-functions.sh` create it. A symlink is used deliberately — it
+needs no registry access, so it works in the offline/baked CI test container
+where a fresh `npm install` would fail (and abort `set -e` setup).
 
-That extra copy of Yjs is **only** used by the type-checker and is never loaded at
-runtime: the client bundles + dedupes to one instance, and the compiled server
-resolves `yjs` from `server/node_modules` (its emitted files live under
+The symlink is **only** used by the type-checker and is never loaded at runtime:
+the client bundles + dedupes to one Yjs instance, and the compiled server
+resolves `yjs` from its own `server/node_modules` (its emitted files live under
 `server/dist`). This keeps a single Yjs instance per runtime.
 
 ## Docker / deploy

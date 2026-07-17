@@ -405,18 +405,24 @@ install_all_dependencies() {
     echo "Skipping permission fixes in CI environment."
   fi
 
-  # Shared schema dependencies: the client and server both compile ../shared/src,
-  # whose bare yjs/uuid imports resolve via shared/node_modules. Install it
-  # explicitly (and before the server build) so it is present even when
-  # npm_ci_if_needed skips a package that already has baked node_modules.
-  if [ -f "${ROOT_DIR}/shared/package.json" ]; then
-    cd "${ROOT_DIR}/shared"
-    npm install --no-audit --no-fund --no-package-lock
-  fi
-
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed
+
+  # The client and server both compile ../shared/src, whose bare yjs/uuid/
+  # yjs-orderedtree imports must resolve. Point shared/node_modules at the
+  # server's already-installed node_modules via a symlink — offline-safe (no
+  # registry access) and never a build-time dependency install. Runtime stays
+  # single-instance: the client bundles+dedupes, the server compiles shared into
+  # its own dist (which resolves server/node_modules).
+  if [ -f "${ROOT_DIR}/shared/package.json" ] \
+    && [ ! -d "${ROOT_DIR}/shared/node_modules" ] && [ ! -L "${ROOT_DIR}/shared/node_modules" ] \
+    && [ -d "${ROOT_DIR}/server/node_modules" ]; then
+    echo "Linking shared/node_modules -> server/node_modules"
+    ln -s ../server/node_modules "${ROOT_DIR}/shared/node_modules" || echo "shared link skipped"
+  fi
+
+  cd "${ROOT_DIR}/server"
   if [ "${SKIP_BUILD:-0}" -ne 1 ]; then
     echo "Building server..."
     npm run build
