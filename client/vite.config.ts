@@ -3,16 +3,7 @@ import { sentrySvelteKit } from "@sentry/sveltekit";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-
-// Absolute path to a package inside THIS client's node_modules. Used to pin the
-// Yjs family so that ../shared/src (served as source by the dev server) resolves
-// the exact same physical package the client bundles — regardless of where the
-// shared/node_modules symlink happens to point in a given (possibly baked-image,
-// npm-ci-skipped) environment. Without this, a divergent resolution makes Vite
-// re-optimize deps mid-run and reload the page under in-flight e2e seeds.
-const clientDep = (name: string): string => fileURLToPath(new URL(`./node_modules/${name}`, import.meta.url));
 
 export default defineConfig(async ({ mode }) => {
     // Load environment variables with dotenvx (ES module support)
@@ -64,16 +55,12 @@ export default defineConfig(async ({ mode }) => {
             // bundle. Force a single instance of Yjs (and yjs-orderedtree, which
             // imports Yjs) so the shared code and app code share one Y.Doc runtime
             // and never trip the "Yjs was already imported" dual-package hazard.
-            //
-            // The alias is authoritative (evaluated at config load, before node
-            // resolution) so shared/src's bare `import "yjs"` resolves to this
-            // client's copy no matter what shared/node_modules links to. Exact
-            // `^name$` regexes avoid catching subpath imports (e.g. "uuid/...").
-            alias: [
-                { find: /^yjs$/, replacement: clientDep("yjs") },
-                { find: /^yjs-orderedtree$/, replacement: clientDep("yjs-orderedtree") },
-                { find: /^uuid$/, replacement: clientDep("uuid") },
-            ],
+            // NOTE: dedupe is the right tool here; an absolute-path resolve.alias
+            // was tried and broke unit/integration (vitest resolves node-module
+            // deps separately from inlined shared/src, so the alias produced two
+            // Yjs copies -> "Unexpected content type"). Physical single-instance
+            // is instead guaranteed by pointing shared/node_modules at the client
+            // (scripts/common-functions.sh) so shared/src's yjs IS the client's.
             dedupe: ["yjs", "yjs-orderedtree", "uuid"],
         },
         server: {
