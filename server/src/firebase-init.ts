@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { secretManager } from "./secret-manager.js";
-import { serverLogger as logger } from "./utils/log-manager.js";
+import { serverLogger as logger, serverRoot } from "./utils/log-manager.js";
 
 // Define __dirname for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -67,6 +67,7 @@ export function getServiceAccount() {
         // 3. Relative to project root (parent of dist/)
         const candidates = [
             path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(serverRoot, process.env.FIREBASE_ADMIN_SDK_PATH),
             path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
             path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
         ];
@@ -239,6 +240,7 @@ function hasAdminSdkFile(): boolean {
     if (process.env.FIREBASE_ADMIN_SDK_PATH) {
         const candidates = [
             path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
+            path.resolve(serverRoot, process.env.FIREBASE_ADMIN_SDK_PATH),
             path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
             path.resolve(__dirname, "..", process.env.FIREBASE_ADMIN_SDK_PATH),
         ];

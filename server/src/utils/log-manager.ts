@@ -26,7 +26,7 @@ function findServerRoot(start: string): string {
     if (path.basename(fallback) === "dist") fallback = path.resolve(fallback, "..");
     return fallback;
 }
-const serverRoot = findServerRoot(__dirname);
+export const serverRoot = findServerRoot(__dirname);
 
 // Log directory path
 // server/logs

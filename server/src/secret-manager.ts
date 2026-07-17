@@ -2,7 +2,7 @@ import { SecretManagerServiceClient } from "@google-cloud/secret-manager";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { serverLogger as logger } from "./utils/log-manager.js";
+import { serverLogger as logger, serverRoot } from "./utils/log-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,11 +16,13 @@ export class SecretManager {
         let keyFilename: string | undefined;
 
         if (process.env.FIREBASE_ADMIN_SDK_PATH) {
-            // Replicate logic from firebase-init.ts to find the SDK file relative to src
-            const sdkPath = path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH);
-            if (fs.existsSync(sdkPath)) {
-                keyFilename = sdkPath;
-            }
+            // Replicate logic from firebase-init.ts to find the SDK file.
+            const candidates = [
+                path.resolve(process.env.FIREBASE_ADMIN_SDK_PATH),
+                path.resolve(serverRoot, process.env.FIREBASE_ADMIN_SDK_PATH),
+                path.resolve(__dirname, process.env.FIREBASE_ADMIN_SDK_PATH),
+            ];
+            keyFilename = candidates.find(candidate => fs.existsSync(candidate));
         }
 
         this.client = new SecretManagerServiceClient({
