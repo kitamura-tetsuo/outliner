@@ -421,9 +421,13 @@ export class Item {
     }
 
     addAttachment(url: string) {
+        // Reject ephemeral blob:/data: URLs only in a real browser (outside E2E).
+        // On the server (window === undefined) this is legitimate demo/seed content,
+        // so it must be allowed — the pre-unification server schema had no guard.
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
+            && typeof window !== "undefined"
+            && !(window as Window & { __E2E__?: boolean; }).__E2E__
         ) {
             throw new Error("Invalid attachment URL");
         }
