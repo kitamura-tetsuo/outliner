@@ -57,7 +57,7 @@
         "typescript": "^6.0.3",
         "y-websocket": "^3.0.0"
     },
-    "main": "dist/index.js",
+    "main": "dist/server/src/index.js",
     "name": "fluid-outliner-server",
     "type": "module",
     "scripts": {
@@ -65,13 +65,13 @@
         "build": "tsc",
         "create-test-user": "node utils/create-test-user.js",
         "dev": "nodemon --watch 'src/**/*.ts' --exec 'ts-node' src/log-service.ts",
-        "start": "node dist/index.js",
-        "start:log-service": "node dist/log-service.js",
+        "start": "node dist/server/src/index.js",
+        "start:log-service": "node dist/server/src/log-service.js",
         "test": "bash ../scripts/run-server-tests.sh",
         "test:jest": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
         "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
-        "postinstall": "patch-package",
+        "postinstall": "patch-package && (npm --prefix ../shared install --no-audit --no-fund --no-package-lock || echo 'shared install skipped')",
         "postbuild": "ls -la dist"
     },
     "version": "1.0.0",

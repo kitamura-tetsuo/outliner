@@ -31,6 +31,9 @@ const config = {
         }),
         alias: {
             $stores: "src/stores",
+            // Single source of truth for the SharedTree/Yjs schema, shared with
+            // the server workspace. See ../shared/src.
+            $shared: "../shared/src",
         },
         serviceWorker: {
             register: false, // Disabled to register Service Worker manually

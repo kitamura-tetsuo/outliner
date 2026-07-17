@@ -50,6 +50,13 @@ export default defineConfig(async ({ mode }) => {
                 strategy: ["url", "cookie", "baseLocale"],
             }),
         ],
+        resolve: {
+            // The framework-neutral schema in ../shared/src is compiled into this
+            // bundle. Force a single instance of Yjs (and yjs-orderedtree, which
+            // imports Yjs) so the shared code and app code share one Y.Doc runtime
+            // and never trip the "Yjs was already imported" dual-package hazard.
+            dedupe: ["yjs", "yjs-orderedtree", "uuid"],
+        },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
             strictPort: true,

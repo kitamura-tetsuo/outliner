@@ -1,0 +1,12 @@
+{
+    "name": "@outliner/shared",
+    "version": "1.0.0",
+    "description": "Framework-neutral SharedTree/Yjs schema wrappers shared by the client and server workspaces.",
+    "private": true,
+    "type": "module",
+    "dependencies": {
+        "uuid": "^14.0.1",
+        "yjs": "^13.6.31",
+        "yjs-orderedtree": "^1.0.1-beta.3"
+    }
+}
