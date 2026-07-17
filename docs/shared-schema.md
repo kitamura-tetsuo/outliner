@@ -58,6 +58,17 @@ already-installed consumer's `node_modules` (which has `yjs`, `uuid` and
 needs no registry access, so it works in the offline/baked CI test container
 where a fresh `npm install` would fail (and abort `set -e` setup).
 
+The **client** wins the symlink deterministically: `client`'s `postinstall`
+uses `ln -sfn ../client/node_modules` (force), while `server`'s `postinstall`
+and `common-functions.sh` only create the link when it is absent. So whenever
+the client is present (every e2e shard and every client build) the link points
+at `client/node_modules`, and `shared/src`'s `import "yjs"` resolves to the
+exact same physical package the client bundles — guaranteeing a single Yjs
+instance in `vite dev`'s dep-optimizer graph as well as the production bundle.
+Only a server-only image (no client checked out) points the link at
+`server/node_modules`, which is all the server's `tsc` type-check needs; the
+compiled server always loads `yjs` from `server/node_modules` at runtime.
+
 The symlink is **only** used by the type-checker and is never loaded at runtime:
 the client bundles + dedupes to one Yjs instance, and the compiled server
 resolves `yjs` from its own `server/node_modules` (its emitted files live under
