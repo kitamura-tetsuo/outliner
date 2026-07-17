@@ -6,8 +6,7 @@ import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { startServer } from "../src/server.js";
 
-// @ts-expect-error
-global.WebSocket = WebSocket;
+global.WebSocket = WebSocket as any;
 
 // Regression coverage for the public demo room (`projects/demo`).
 // The demo page is served to signed-out users, so the websocket server must

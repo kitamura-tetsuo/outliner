@@ -13,7 +13,6 @@ import { expect, test } from "@playwright/test";
  */
 test("Tailwind classes are applied correctly", async ({ page }) => {
     await page.goto("/settings");
-    await page.waitForLoadState("networkidle");
 
     // Testing the h1 element with classes: "text-3xl font-bold mb-8"
     const element = page.locator("h1", { hasText: "Settings" });

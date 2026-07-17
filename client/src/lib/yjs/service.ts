@@ -67,8 +67,11 @@ function applyPresenceToOverlay(
         appStore?: { currentPage?: { id?: string; }; };
     }).appStore?.currentPage;
 
-    if (presence?.pageId && currentPage?.id && presence.pageId !== currentPage.id) {
-        // If presence exists but is for a different page, clear it for the user on this page
+    // If we're not on any page, or the presence doesn't match the current page, clear it
+    // NOTE: in tests, currentPage may not exist. Allow when presence.pageId is missing
+    if (
+        (currentPage?.id === undefined && presence?.pageId) || (presence?.pageId && presence.pageId !== currentPage?.id)
+    ) {
         overlay.clearCursorAndSelection(user.userId, false);
         return;
     }
@@ -111,58 +114,91 @@ export const yjsService = {
     },
 
     addItem(project: Project, parentKey: string, author: string, index?: number): Item {
-        const items = new Items(project.ydoc, project.tree, parentKey);
-        return items.addNode(author, index);
+        return project.ydoc.transact(() => {
+            const items = new Items(project.ydoc, project.tree, parentKey);
+            return items.addNode(author, index);
+        }, null);
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
-        const tree = project.tree as unknown as YTreeWithMove;
-        tree.moveChildToParent(itemKey, newParentKey);
-        if (index !== undefined) {
-            const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
+        project.ydoc.transact(() => {
+            const tree = project.tree as unknown as YTreeWithMove;
+            tree.moveChildToParent(itemKey, newParentKey);
+
+            // Recompute virtual tree mid-transaction to allow ordering methods to work
+            if (
+                typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; }).recomputeParentsAndChildren
+                    === "function"
+            ) {
+                (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
+            }
+
+            if (index !== undefined) {
+                const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
+                const clamped = Math.max(0, Math.min(index, siblings.length));
+                if (clamped === 0 && siblings[0]) tree.setNodeBefore(itemKey, siblings[0]);
+                else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
+                else tree.setNodeAfter(itemKey, siblings[clamped - 1]);
+            }
+        }, null);
+    },
+
+    removeItem(project: Project, itemKey: string) {
+        project.ydoc.transact(() => {
+            project.tree.deleteNodeAndDescendants(itemKey);
+        }, null);
+    },
+
+    indentItem(project: Project, itemKey: string) {
+        project.ydoc.transact(() => {
+            const tree = project.tree as unknown as YTreeWithMove;
+            const parent = safeGetNodeParent(tree, itemKey);
+            if (!parent) return;
+            const siblings = childrenKeys(tree, parent);
+            const idx = siblings.indexOf(itemKey);
+            if (idx > 0) {
+                const newParent = siblings[idx - 1];
+                tree.moveChildToParent(itemKey, newParent);
+                if (
+                    typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; })
+                        .recomputeParentsAndChildren === "function"
+                ) {
+                    (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
+                }
+                tree.setNodeOrderToEnd(itemKey);
+            }
+        }, null);
+    },
+
+    outdentItem(project: Project, itemKey: string) {
+        project.ydoc.transact(() => {
+            const tree = project.tree as unknown as YTreeWithMove;
+            const parent = safeGetNodeParent(tree, itemKey);
+            if (!parent) return;
+            const grand = safeGetNodeParent(tree, parent);
+            if (!grand) return;
+            tree.moveChildToParent(itemKey, grand);
+            if (
+                typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; }).recomputeParentsAndChildren
+                    === "function"
+            ) {
+                (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
+            }
+            tree.setNodeAfter(itemKey, parent);
+        }, null);
+    },
+
+    reorderItem(project: Project, itemKey: string, index: number) {
+        project.ydoc.transact(() => {
+            const tree = project.tree;
+            const parent = safeGetNodeParent(tree, itemKey);
+            if (!parent) return;
+            const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
             const clamped = Math.max(0, Math.min(index, siblings.length));
             if (clamped === 0 && siblings[0]) tree.setNodeBefore(itemKey, siblings[0]);
             else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
             else tree.setNodeAfter(itemKey, siblings[clamped - 1]);
-        }
-    },
-
-    removeItem(project: Project, itemKey: string) {
-        project.tree.deleteNodeAndDescendants(itemKey);
-    },
-
-    indentItem(project: Project, itemKey: string) {
-        const tree = project.tree as unknown as YTreeWithMove;
-        const parent = safeGetNodeParent(tree, itemKey);
-        if (!parent) return;
-        const siblings = childrenKeys(tree, parent);
-        const idx = siblings.indexOf(itemKey);
-        if (idx > 0) {
-            const newParent = siblings[idx - 1];
-            tree.moveChildToParent(itemKey, newParent);
-            tree.setNodeOrderToEnd(itemKey);
-        }
-    },
-
-    outdentItem(project: Project, itemKey: string) {
-        const tree = project.tree as unknown as YTreeWithMove;
-        const parent = safeGetNodeParent(tree, itemKey);
-        if (!parent) return;
-        const grand = safeGetNodeParent(tree, parent);
-        if (!grand) return;
-        tree.moveChildToParent(itemKey, grand);
-        tree.setNodeAfter(itemKey, parent);
-    },
-
-    reorderItem(project: Project, itemKey: string, index: number) {
-        const tree = project.tree;
-        const parent = safeGetNodeParent(tree, itemKey);
-        if (!parent) return;
-        const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
-        const clamped = Math.max(0, Math.min(index, siblings.length));
-        if (clamped === 0 && siblings[0]) tree.setNodeBefore(itemKey, siblings[0]);
-        else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
-        else tree.setNodeAfter(itemKey, siblings[clamped - 1]);
+        }, null);
     },
 
     updateText(project: Project, itemKey: string, text: string) {
@@ -233,6 +269,20 @@ export const yjsService = {
         return () => awareness.off("change", update);
     },
 
+    reapplyAllPresences(awareness: Awareness) {
+        const overlay = resolveOverlayStore();
+        if (!overlay) return;
+        const states = awareness.getStates();
+        const clientId = (awareness as Awareness & { clientID: number; }).clientID;
+
+        states.forEach((s, id) => {
+            const user = s?.user;
+            if (!user) return;
+            if (id === clientId) return;
+            applyPresenceToOverlay(overlay, user, s?.presence);
+        });
+    },
+
     bindPagePresence(awareness: Awareness) {
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
@@ -263,51 +313,61 @@ export const yjsService = {
     },
 
     promoteChildren(project: Project, itemKey: string) {
-        const tree = project.tree;
-        const children = childrenKeys(tree, itemKey);
-        if (children.length === 0) return;
+        project.ydoc.transact(() => {
+            const tree = project.tree;
+            const children = childrenKeys(tree, itemKey);
+            if (children.length === 0) return;
 
-        const parentKey = safeGetNodeParent(tree, itemKey);
-        if (!parentKey) return;
+            const parentKey = safeGetNodeParent(tree, itemKey);
+            if (!parentKey) return;
 
-        const siblings = childrenKeys(tree, parentKey);
-        const itemIndex = siblings.indexOf(itemKey);
+            const siblings = childrenKeys(tree, parentKey);
+            const itemIndex = siblings.indexOf(itemKey);
 
-        children.forEach((childKey, i) => {
-            yjsService.moveItem(project, childKey, parentKey, itemIndex + 1 + i);
-        });
+            children.forEach((childKey, i) => {
+                yjsService.moveItem(project, childKey, parentKey, itemIndex + 1 + i);
+            });
+        }, null);
     },
 
     moveSubtreeUp(project: Project, itemKey: string) {
-        const tree = project.tree;
-        const parentKey = safeGetNodeParent(tree, itemKey);
-        if (!parentKey) return;
-        const siblings = childrenKeys(tree, parentKey);
-        const index = siblings.indexOf(itemKey);
-        if (index > 0) {
-            yjsService.moveItem(project, itemKey, parentKey, index - 1);
-        }
+        project.ydoc.transact(() => {
+            const tree = project.tree;
+            const parentKey = safeGetNodeParent(tree, itemKey);
+            if (!parentKey) return;
+            const siblings = childrenKeys(tree, parentKey);
+            const index = siblings.indexOf(itemKey);
+            if (index > 0) {
+                yjsService.moveItem(project, itemKey, parentKey, index - 1);
+            }
+        }, null);
     },
 
     moveSubtreeDown(project: Project, itemKey: string) {
-        const tree = project.tree;
-        const parentKey = safeGetNodeParent(tree, itemKey);
-        if (!parentKey) return;
-        const siblings = childrenKeys(tree, parentKey);
-        const index = siblings.indexOf(itemKey);
-        if (index !== -1 && index < siblings.length - 1) {
-            yjsService.moveItem(project, itemKey, parentKey, index + 1);
-        }
+        project.ydoc.transact(() => {
+            const tree = project.tree;
+            const parentKey = safeGetNodeParent(tree, itemKey);
+            if (!parentKey) return;
+            const siblings = childrenKeys(tree, parentKey);
+            const index = siblings.indexOf(itemKey);
+            if (index !== -1 && index < siblings.length - 1) {
+                yjsService.moveItem(project, itemKey, parentKey, index + 1);
+            }
+        }, null);
     },
 
     moveItemUp(project: Project, itemKey: string) {
-        yjsService.promoteChildren(project, itemKey);
-        yjsService.moveSubtreeUp(project, itemKey);
+        project.ydoc.transact(() => {
+            yjsService.promoteChildren(project, itemKey);
+            yjsService.moveSubtreeUp(project, itemKey);
+        }, null);
     },
 
     moveItemDown(project: Project, itemKey: string) {
-        yjsService.promoteChildren(project, itemKey);
-        yjsService.moveSubtreeDown(project, itemKey);
+        project.ydoc.transact(() => {
+            yjsService.promoteChildren(project, itemKey);
+            yjsService.moveSubtreeDown(project, itemKey);
+        }, null);
     },
 };
 

@@ -967,7 +967,7 @@ function handleCopy(event: ClipboardEvent) {
       }
 
       // Add VS Code specific metadata for multi-cursor selection
-      const cursorInstances = store.getCursorInstances();
+      const cursorInstances = store.getLocalCursorInstances();
       if (cursorInstances.length > 1) {
         // Get selected text for each cursor
         const multicursorText: string[] = [];
@@ -1272,7 +1272,7 @@ function handleCut(event: ClipboardEvent) {
   handleCopy(event);
 
   // Delete selection range
-  const cursors = store.getCursorInstances();
+  const cursors = store.getLocalCursorInstances();
   if (cursors.length > 0) {
     // Delete selection using the first cursor
     cursors[0].deleteSelection();

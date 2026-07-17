@@ -1,11 +1,9 @@
-import { v4 as uuid } from "uuid";
-
 import { iterateItems } from "./utils/itemTraversal.js";
 // NOTE: Fluid Framework implementation removed. Providing only Yjs + yjs-orderedtree version.
 
+import { v4 as uuid } from "uuid";
 import { getLogger } from "./logger.js";
 const logger = getLogger("AppSchema");
-
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
@@ -137,8 +135,8 @@ export class Item {
     constructor(ydoc: Y.Doc, tree: YTree, key: string);
     constructor(docOrPlain: Y.Doc | PlainItemData, tree?: YTree, key?: string) {
         // Backward-compatible constructor: allow `new Item({ id, text, ... })` in tests
-        if (!(docOrPlain instanceof Y.Doc)) {
-            const plain = docOrPlain;
+        if (!docOrPlain || typeof docOrPlain !== "object" || !("load" in docOrPlain)) {
+            const plain = docOrPlain as PlainItemData;
             const doc = new Y.Doc();
             const ymap = doc.getMap("orderedTree");
             const nextTree = new YTree(ymap);
@@ -151,7 +149,6 @@ export class Item {
             value.set("created", plain?.created ?? 0);
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
-            value.set("chartQuery", undefined);
             value.set("aliasTargetId", undefined);
 
             const text = new Y.Text();
@@ -167,7 +164,6 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
-            value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -224,14 +220,15 @@ export class Item {
 
         try {
             if (t && typeof (t as { toString?: () => string; }).toString === "function") {
-                return (t as { toString: () => string; }).toString();
+                // Remove trailing whitespace (like the newline issue during server seeding)
+                return (t as { toString: () => string; }).toString().trimEnd();
             }
         } catch (e) {
             logger.warn({ err: e }, "[app-schema] get text() caught error");
             // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
             return "";
         }
-        return String(t);
+        return String(t).trimEnd();
     }
 
     set text(v: string) {
@@ -248,20 +245,6 @@ export class Item {
     }
 
     // Id of the Yjs table (subdoc) embedded by this item (componentType "yjstable")
-
-    get yjsTableColumns(): string[] {
-        const v = this.value.get("yjsTableColumns") as string;
-        try {
-            return v ? JSON.parse(v) : [];
-        } catch {
-            return [];
-        }
-    }
-    set yjsTableColumns(v: string[]) {
-        this.value.set("yjsTableColumns", JSON.stringify(v));
-        this.value.set("lastChanged", Date.now());
-    }
-
     get yjsTableId(): string | undefined {
         return this.value.get("yjsTableId") as string | undefined;
     }
@@ -270,43 +253,7 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
-    // alias target id stored in Y.Map
-
-    get tableRows(): Y.Array<Y.Map<RowValueType>> {
-        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
-        if (!arr) {
-            arr = new Y.Array<Y.Map<RowValueType>>();
-            this.value.set("tableRows", arr);
-        }
-        return arr;
-    }
-
-    addRow(cells: Record<string, RowValueType>) {
-        const row = new Y.Map<RowValueType>();
-        for (const [k, v] of Object.entries(cells)) {
-            row.set(k, v);
-        }
-        this.tableRows.push([row]);
-        this.value.set("lastChanged", Date.now());
-    }
-
-    updateRow(index: number, cells: Record<string, RowValueType>) {
-        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
-        if (!arr || index < 0 || index >= arr.length) return;
-        const row = arr.get(index);
-        for (const [k, v] of Object.entries(cells)) {
-            row.set(k, v);
-        }
-        this.value.set("lastChanged", Date.now());
-    }
-
-    deleteRow(index: number) {
-        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
-        if (!arr || index < 0 || index >= arr.length) return;
-        arr.delete(index, 1);
-        this.value.set("lastChanged", Date.now());
-    }
-
+    // tableSchema stored in Y.Map
     get tableSchema(): string | undefined {
         return this.value.get("tableSchema") as string | undefined;
     }
@@ -315,6 +262,7 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // chart query stored in Y.Map
     get chartQuery(): string | undefined {
         return this.value.get("chartQuery") as string | undefined;
     }
@@ -323,6 +271,53 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // Column names of the item-embedded table, cached as JSON (matches the
+    // client-side schema so seeded tables render in the grid components).
+    get tableColumns(): string[] {
+        const raw = this.value.get("tableColumns") as string | undefined;
+        if (!raw) return [];
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? (parsed as string[]) : [];
+        } catch {
+            return [];
+        }
+    }
+    set tableColumns(v: string[]) {
+        this.value.set("tableColumns", JSON.stringify(v ?? []));
+        this.value.set("lastChanged", Date.now());
+    }
+
+    /** Append a row (cell values keyed by column name) to the item-embedded table. */
+    addTableRow(values: Record<string, string>): void {
+        let arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) {
+            arr = new Y.Array<Y.Map<RowValueType>>();
+            this.value.set("tableRows", arr);
+        }
+        const row = new Y.Map<RowValueType>();
+        for (const [key, value] of Object.entries(values)) {
+            row.set(key, value);
+        }
+        arr.push([row]);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    /** Plain snapshot of the item-embedded table rows keyed by column name. */
+    tableRowsToPlain(columns: string[]): Record<string, string>[] {
+        const arr = this.value.get("tableRows") as Y.Array<Y.Map<RowValueType>> | undefined;
+        if (!arr) return [];
+        return arr.toArray().map((row) => {
+            const obj: Record<string, string> = {};
+            for (const col of columns) {
+                const v = row.get(col);
+                obj[col] = v === undefined || v === null ? "" : String(v);
+            }
+            return obj;
+        });
+    }
+
+    // alias target id stored in Y.Map
     get aliasTargetId(): string | undefined {
         return this.value.get("aliasTargetId") as string | undefined;
     }
@@ -428,34 +423,83 @@ export class Item {
     addAttachment(url: string) {
         if (
             (url.startsWith("blob:") || url.startsWith("data:"))
-            && !(typeof window !== "undefined" && (window as unknown as Record<string, unknown>).__E2E__)
+            && !(typeof window !== "undefined" && (window as Window & { __E2E__?: boolean; }).__E2E__)
         ) {
             throw new Error("Invalid attachment URL");
         }
-        const arr = this.attachments;
-        const existing = arr.toArray();
-        if (!existing.includes(url)) {
-            try {
-                if (typeof window !== "undefined") {
-                    const w = window as unknown as Record<string, unknown>;
-                    const logs = Array.isArray(w?.E2E_LOGS) ? w.E2E_LOGS : [];
-                    logs.push({ tag: "add-attachment", id: this.id, url, t: Date.now() });
-                    w.E2E_LOGS = logs;
+        // 1) If the current Item is a temporary Doc (before connection) and a connected Doc exists, reflect it in the corresponding node as well
+        try {
+            // Cast window to a permissive shape: generalStore / __ITEM_ID_MAP__ are
+            // client-only globals, so this stays framework-neutral (and is a no-op on
+            // the server, where `window` is undefined).
+            const w = (typeof window !== "undefined")
+                ? (window as unknown as {
+                    generalStore?: { currentPage?: { ydoc?: Y.Doc; items?: unknown; }; };
+                    __ITEM_ID_MAP__?: Record<string, string>;
+                })
+                : undefined;
+            const currentPage = w?.generalStore?.currentPage;
+            const thisDoc = this.ydoc;
+            const targetDoc = currentPage?.ydoc;
+            if (currentPage && thisDoc && targetDoc && thisDoc !== targetDoc) {
+                const items = currentPage.items;
+                // 1) Search for the corresponding destination via ID map
+                try {
+                    const map = w?.__ITEM_ID_MAP__;
+                    const mappedId = map ? map[String(this.id)] : undefined;
+                    if (mappedId) {
+                        for (const cand of iterateItems(items)) {
+                            if (cand && String(cand.id) === String(mappedId)) {
+                                try {
+                                    cand.addAttachment(url);
+                                } catch {}
+                                throw new Error("__DONE__");
+                            }
+                        }
+                    }
+                } catch (e) {
+                    if (e instanceof Error && String(e.message) !== "__DONE__") {
+                        // 2) Fallback: text match
+                        const text = this.text;
+                        for (const cand of iterateItems(items)) {
+                            if (cand) {
+                                const ct = cand.text;
+                                if (ct === text) {
+                                    try {
+                                        cand.addAttachment(url);
+                                    } catch {}
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
-            } catch {}
-            arr.push([url]);
-            this.value.set("lastChanged", Date.now());
-            try {
-                if (typeof window !== "undefined") {
-                    window.dispatchEvent(
-                        new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
-                    );
-                }
-            } catch {}
+            }
+        } catch {}
+
+        // 2) Add to this node itself as usual
+        let arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("attachments", arr);
         }
+        try {
+            logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
+        } catch {}
+
+        arr.push([url]);
+        this.value.set("lastChanged", Date.now());
+        try {
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(
+                    new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
+                );
+            }
+        } catch {}
     }
+
     removeAttachment(url: string) {
-        const arr = this.value.get("attachments") as unknown as Y.Array<string> | undefined;
+        const arr = this.value.get("attachments") as Y.Array<string> | undefined;
         if (!arr) return;
         const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
         if (idx >= 0) arr.delete(idx, 1);
@@ -656,13 +700,11 @@ export class Items implements Iterable<Item> {
         value.set("created", now);
         value.set("lastChanged", now);
         value.set("componentType", undefined);
-        value.set("chartQuery", undefined);
         value.set("aliasTargetId", undefined);
         value.set("text", new Y.Text());
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
-        value.set("tableRows", new Y.Array<Y.Map<RowValueType>>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 

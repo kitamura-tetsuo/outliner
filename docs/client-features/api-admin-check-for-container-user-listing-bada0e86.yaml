@@ -7,8 +7,7 @@ acceptance:
 - Admins can retrieve the container user list
 - Returns 403 error if accessed by non-admin
 tests:
-- client/e2e/core/api-admin-check-for-container-user-listing-bada0e86.spec.ts
-- server/tests/get-container-users.test.js
+- server/tests/get-container-users.test.ts
 components:
 - server/log-service.js
 title-ja: コンテナユーザーリストの管理者チェック

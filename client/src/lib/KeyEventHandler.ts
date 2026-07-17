@@ -13,6 +13,7 @@ export function isForeignInput(target: EventTarget | null): boolean {
     const tagName = el.tagName?.toUpperCase();
     if (
         tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || tagName === "OPTION"
+        || tagName === "BUTTON" || el.getAttribute?.("role") === "gridcell"
         || el.isContentEditable || el.hasAttribute?.("contenteditable")
     ) {
         if (el.classList && el.classList.contains("global-textarea")) {
@@ -50,7 +51,7 @@ export class KeyEventHandler {
 
     private static keyHandlers = new CustomKeyMap<
         { key: string; ctrl: boolean; alt: boolean; shift: boolean; },
-        (event: KeyboardEvent, cursors: ReturnType<typeof store.getCursorInstances>) => void
+        (event: KeyboardEvent, cursors: ReturnType<typeof store.getLocalCursorInstances>) => void
     >();
 
     private static initKeyHandlers() {
@@ -63,7 +64,7 @@ export class KeyEventHandler {
             ctrl: boolean,
             alt: boolean,
             shift: boolean,
-            handler: (event: KeyboardEvent, cursors: ReturnType<typeof store.getCursorInstances>) => void,
+            handler: (event: KeyboardEvent, cursors: ReturnType<typeof store.getLocalCursorInstances>) => void,
         ) => {
             map.set({ key, ctrl, alt, shift }, handler);
         };
@@ -249,7 +250,7 @@ export class KeyEventHandler {
             // Context verification: prevent opening immediately after [ or inside internal links
             let shouldShow = true;
             try {
-                const cursors = store.getCursorInstances();
+                const cursors = store.getLocalCursorInstances();
                 if (cursors.length > 0) {
                     const cursor = cursors[0];
                     const node = cursor.findTarget();
@@ -277,7 +278,7 @@ export class KeyEventHandler {
             }
         }
 
-        const cursorInstances = store.getCursorInstances();
+        const cursorInstances = store.getLocalCursorInstances();
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -915,7 +916,7 @@ export class KeyEventHandler {
         }
 
         // Get cursor instances from the store
-        const cursorInstances = store.getCursorInstances();
+        const cursorInstances = store.getLocalCursorInstances();
 
         if (inputEvent.data === "/") {
             // Check character before cursor position to determine if it's part of an internal link
@@ -1080,7 +1081,7 @@ export class KeyEventHandler {
         }
 
         // Check state of cursor instances
-        const cursorInstancesAfter = store.getCursorInstances();
+        const cursorInstancesAfter = store.getLocalCursorInstances();
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Number of cursor instances: ${cursorInstancesAfter.length}`);
         }
@@ -1106,7 +1107,7 @@ export class KeyEventHandler {
      */
     static handleCompositionUpdate(event: CompositionEvent) {
         const data = event.data || "";
-        const cursorInstances = store.getCursorInstances();
+        const cursorInstances = store.getLocalCursorInstances();
         // Remove previous intermediate characters
         if (KeyEventHandler.lastCompositionLength > 0) {
             cursorInstances.forEach(cursor => {
@@ -1128,7 +1129,7 @@ export class KeyEventHandler {
      */
     static handleCompositionEnd(event: CompositionEvent) {
         const data = event.data || "";
-        const cursorInstances = store.getCursorInstances();
+        const cursorInstances = store.getLocalCursorInstances();
         // Remove intermediate characters
         if (KeyEventHandler.lastCompositionLength > 0) {
             cursorInstances.forEach(cursor => {
@@ -1320,7 +1321,7 @@ export class KeyEventHandler {
         }
 
         // Get current cursor position
-        const cursorInstances = store.getCursorInstances();
+        const cursorInstances = store.getLocalCursorInstances();
         if (cursorInstances.length === 0) {
             if (
                 typeof window !== "undefined"
@@ -2120,7 +2121,7 @@ export class KeyEventHandler {
                 }
 
                 const multicursorText = (vscodeMetadata as { multicursorText?: string[]; }).multicursorText!;
-                const cursorInstances = store.getCursorInstances();
+                const cursorInstances = store.getLocalCursorInstances();
 
                 const pasteMode = (vscodeMetadata as { pasteMode?: string; }).pasteMode || "spread"; // Default is spread
 
@@ -2334,7 +2335,7 @@ export class KeyEventHandler {
                 }
 
                 // Insert lines corresponding to each cursor
-                const cursorInstances = store.getCursorInstances();
+                const cursorInstances = store.getLocalCursorInstances();
                 cursorInstances.forEach((cursor, index) => {
                     if (index < lines.length) {
                         cursor.insertText(lines[index]);
@@ -2364,13 +2365,13 @@ export class KeyEventHandler {
                 // If multiple cursors, insert first line to each cursor
                 // If single cursor, insert only first line
                 const firstLine = lines[0] || "";
-                const cursorInstances = store.getCursorInstances();
+                const cursorInstances = store.getLocalCursorInstances();
                 cursorInstances.forEach(cursor => cursor.insertText(firstLine));
                 return;
             }
 
             // If single line text, insert at cursor position
-            const cursorInstances = store.getCursorInstances();
+            const cursorInstances = store.getLocalCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
         } catch (error) {
             // Log error and notify UI if error occurs
@@ -2548,7 +2549,7 @@ export class KeyEventHandler {
 
         // Delete text of selection range (essence of cut action)
         if (selectedText) {
-            const cursorInstances = store.getCursorInstances();
+            const cursorInstances = store.getLocalCursorInstances();
             cursorInstances.forEach(cursor => {
                 // Delete selection (cut action)
                 cursor.cutSelectedText();

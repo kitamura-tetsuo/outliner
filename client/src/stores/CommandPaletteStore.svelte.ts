@@ -269,11 +269,10 @@ class CommandPaletteStore {
 
     insert(type: CommandType) {
         const cursors = editorOverlayStore.getCursorInstances();
-        if (cursors.length === 0) return;
-        const cursor = cursors[0];
+        const cursor = cursors.length > 0 ? cursors[0] : null;
 
         // Delete entire command string (including slash)
-        if (this.commandCursorItemId) {
+        if (cursor && this.commandCursorItemId) {
             const node = cursor.findTarget();
             if (node) {
                 const raw = (node as unknown as { text?: unknown; }).text ?? "";
@@ -303,7 +302,8 @@ class CommandPaletteStore {
 
         const items = generalStore.currentPage.items;
         const insertIndex = items.length;
-        const newItem = items.addNode(cursor.userId, insertIndex);
+        const userId = cursor ? cursor.userId : "local";
+        const newItem = items.addNode(userId, insertIndex);
         if (!newItem) {
             return;
         }
@@ -352,11 +352,23 @@ class CommandPaletteStore {
                 n.componentType = type;
             }
         }
-        editorOverlayStore.clearCursorAndSelection(cursor.userId);
-        cursor.itemId = newItem.id;
-        cursor.offset = 0;
-        editorOverlayStore.setActiveItem(newItem.id);
-        cursor.applyToStore();
+        editorOverlayStore.clearCursorAndSelection(userId);
+        if (cursor) {
+            cursor.itemId = newItem.id;
+            cursor.offset = 0;
+            cursor.applyToStore();
+        } else if (newItem.id) {
+            editorOverlayStore.setCursor({
+                itemId: newItem.id,
+                offset: 0,
+                userId: userId,
+                isActive: true,
+            });
+        }
+
+        if (newItem.id) {
+            editorOverlayStore.setActiveItem(newItem.id);
+        }
         editorOverlayStore.startCursorBlink();
 
         // Prompt immediate rendering immediately after addition (E2E stabilization)

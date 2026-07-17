@@ -9,6 +9,14 @@ const states = new Map<string, RoomSyncState>();
 const listeners = new Map<string, Set<(state: RoomSyncState) => void>>();
 
 export function setRoomSyncState(room: string, state: RoomSyncState): void {
+    if (states.size >= 100 && !states.has(room)) {
+        const oldestRoom = states.keys().next().value;
+        if (oldestRoom) {
+            states.delete(oldestRoom);
+            listeners.delete(oldestRoom);
+        }
+    }
+
     states.set(room, state);
     const set = listeners.get(room);
     if (!set) return;
@@ -35,6 +43,11 @@ export function onRoomSyncStateChange(room: string, listener: (state: RoomSyncSt
     return () => {
         set?.delete(listener);
     };
+}
+
+export function deleteRoomSyncState(room: string): void {
+    states.delete(room);
+    listeners.delete(room);
 }
 
 // Exposed for tests only

@@ -7,7 +7,12 @@
 
 
     import { page as pageStore } from "$app/stores";
+    import { getTableRegistry, listTables, type TableRegistryEntry } from "../services/yjstable/tableDocs";
+import { onDestroy, onMount } from "svelte";
+import type * as Y from "yjs";
     import { authStore } from "../stores/authStore.svelte";
+    import { userManager } from "../auth/UserManager";
+    import { formatDate } from "../utils/dateUtils";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -17,6 +22,44 @@
                      import.meta.env.MODE === "test" ||
                      (typeof window !== 'undefined' && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
+
+        // Tables reactivity
+    let isTablesCollapsed = $state(false);
+    let registryVersion = $state(0);
+    const registryObserver = () => {
+        registryVersion++;
+    };
+
+    let observedDoc: Y.Doc | undefined;
+
+    function ensureObserver(doc: Y.Doc | undefined) {
+        if (doc === observedDoc) return;
+        if (observedDoc) getTableRegistry(observedDoc).unobserveDeep(registryObserver);
+        observedDoc = doc;
+        if (doc) getTableRegistry(doc).observeDeep(registryObserver);
+    }
+
+    onMount(() => {
+        ensureObserver(store.project?.ydoc);
+    });
+
+    onDestroy(() => {
+        ensureObserver(undefined);
+    });
+
+    function closeSidebarIfMobile() {
+        if (window.innerWidth < 768) {
+            isOpen = false;
+        }
+    }
+
+    const tables: TableRegistryEntry[] = $derived.by(() => {
+        void registryVersion;
+        void isOpen;
+        const doc = store.project?.ydoc;
+        ensureObserver(doc);
+        return doc ? listTables(doc) : [];
+    });
 
     // Collapsible state for Projects section
     let isProjectsCollapsed = $state(false);
@@ -51,13 +94,6 @@
     let currentProjectName = $derived(
         $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
     );
-
-    function formatDate(ts: number | undefined): string {
-        if (!ts) return "";
-        const date = new Date(ts);
-        if (isNaN(date.getTime())) return "";
-        return date.toLocaleDateString();
-    }
 
 </script>
 
@@ -146,8 +182,14 @@
                         onclick={(e) => {
                             e.stopPropagation();
                             if (store.project) {
-                                if (store.pageExists("Untitled")) return;
-                                const newPage = store.project.addPage("Untitled", "tester");
+                                let title = "Untitled";
+                                let counter = 2;
+                                while (store.pageExists(title)) {
+                                    title = `Untitled ${counter}`;
+                                    counter++;
+                                }
+                                const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
+                                const newPage = store.project.addPage(title, authorId);
                                 const pageHref = resolvePath(
                                     currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
                                 );
@@ -214,6 +256,69 @@
                                     <span class="page-date"
                                         >{formatDate(page.lastChanged)}</span
                                     >
+                                </a>
+                            </li>
+                        {/each}
+                    {/if}
+                </ul>
+            {/if}
+        </div>
+
+        <!-- Tables section -->
+        <div class="sidebar-section">
+            <button type="button"
+                class="section-header"
+                onclick={() => (isTablesCollapsed = !isTablesCollapsed)}
+                aria-expanded={!isTablesCollapsed}
+                aria-controls="sidebar-tables-list"
+                aria-label="Toggle tables section"
+            >
+                <h3 class="sidebar-section-title">Tables</h3>
+                <svg
+                    class="chevron-icon"
+                    class:rotated={isTablesCollapsed}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M4 6L8 10L12 6"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </button>
+
+            {#if !isTablesCollapsed}
+                <ul id="sidebar-tables-list" class="table-list">
+                    {#if tables.length === 0}
+                        <li class="sidebar-placeholder">No tables available</li>
+                    {:else}
+                        {#each tables as table (table.tableId)}
+                            <li>
+                                <a
+                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
+                                    class="page-item table-link"
+                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
+                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}` ? 'page' : undefined}
+                                    data-table-id={table.tableId}
+                                    onclick={closeSidebarIfMobile}
+                                >
+                                    <span class="item-content-wrapper">
+                                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
+                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                            <line x1="3" y1="9" x2="21" y2="9"/>
+                                            <line x1="3" y1="15" x2="21" y2="15"/>
+                                            <line x1="9" y1="9" x2="9" y2="21"/>
+                                            <line x1="15" y1="9" x2="15" y2="21"/>
+                                        </svg>
+                                        <span class="page-title">{table.name || "Untitled table"}</span>
+                                    </span>
                                 </a>
                             </li>
                         {/each}

@@ -1,0 +1,43 @@
+name: YAML Test Coverage Check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  check-yaml-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Check YAML test references
+        run: |
+          python3 - <<'PYEOF'
+          import glob, os, yaml, sys
+          missing=[]
+          for f in sorted(glob.glob('docs/client-features/*.yaml')):
+              with open(f) as fp:
+                  d=yaml.safe_load(fp)
+              if not isinstance(d,dict): continue
+              specs=d.get('tests') or []
+              if isinstance(specs,str): specs=[specs]
+              for s in specs:
+                  if isinstance(s,str) and not os.path.exists(s) and not glob.glob(s) and not glob.glob('**/'+os.path.basename(s), recursive=True):
+                      missing.append((d.get('id'), os.path.basename(f), s))
+          if missing:
+              print("Error: Found dangling test references in feature YAML files:")
+              for r in missing: print(r)
+              sys.exit(1)
+          else:
+              print("All test references in feature YAML files are valid.")
+              sys.exit(0)
+          PYEOF

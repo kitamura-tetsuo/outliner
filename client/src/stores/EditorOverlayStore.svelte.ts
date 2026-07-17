@@ -243,9 +243,93 @@ export class EditorOverlayStore {
                 isActive: true,
             });
 
-            // Start cursor blinking
-            this.startCursorBlink();
+            if ((omitProps.userId ?? "local") === "local") {
+                // Start cursor blinking
+                this.startCursorBlink();
 
+                // Ensure focus on global textarea
+                const textarea = this.getTextareaRef();
+                if (textarea) {
+                    // Multiple attempts to ensure focus is set
+                    textarea.focus();
+
+                    // Set focus using requestAnimationFrame
+                    requestAnimationFrame(() => {
+                        textarea.focus();
+
+                        // Use setTimeout as well for extra certainty
+                        setTimeout(() => {
+                            textarea.focus();
+
+                            // Debug info
+                            if (
+                                typeof window !== "undefined"
+                                && (window as Window & typeof globalThis & {
+                                    DEBUG_MODE?: boolean;
+                                    generalStore?: {
+                                        currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                                    };
+
+                                    itemsStore?: {
+                                        allItems?: { id: string; text?: unknown; [key: string]: unknown; }[];
+                                    };
+                                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                                    appStore?: { currentPage?: { id?: string; }; };
+                                    editorOverlayStore?: unknown;
+                                }).DEBUG_MODE
+                            ) {
+                                logger.debug(
+                                    `Focus set after finding existing cursor. Active element is textarea: ${
+                                        document.activeElement === textarea
+                                    }`,
+                                );
+                            }
+                        }, 10);
+                    });
+                } else {
+                    // Log error if textarea is not found
+                    if (
+                        typeof window !== "undefined"
+                        && (window as Window & typeof globalThis & {
+                            DEBUG_MODE?: boolean;
+                            generalStore?: {
+                                currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                            };
+
+                            itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
+                            editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                            appStore?: { currentPage?: { id?: string; }; };
+                            editorOverlayStore?: unknown;
+                        }).DEBUG_MODE
+                    ) {
+                        logger.warn({}, "Global textarea not found in addCursor (existing cursor)");
+                    }
+                }
+            }
+
+            return existingCursor.cursorId;
+        }
+
+        // Create and hold Cursor instance
+        const cursorInst = new Cursor(newId, {
+            itemId: omitProps.itemId,
+            offset: omitProps.offset,
+            isActive: omitProps.isActive,
+            userId: omitProps.userId ?? "local",
+        });
+        this.cursorInstances.set(newId, cursorInst);
+
+        // Create new cursor
+        const newCursor: CursorPosition = {
+            cursorId: newId,
+            ...omitProps,
+            userId: omitProps.userId ?? "local", // Set "local" if userId is undefined
+        };
+
+        // Update cursor (update reactive state)
+        this.updateCursor(newCursor);
+
+        if ((omitProps.userId ?? "local") === "local") {
             // Ensure focus on global textarea
             const textarea = this.getTextareaRef();
             if (textarea) {
@@ -276,7 +360,7 @@ export class EditorOverlayStore {
                             }).DEBUG_MODE
                         ) {
                             logger.debug(
-                                `Focus set after finding existing cursor. Active element is textarea: ${
+                                `Focus set after adding new cursor. Active element is textarea: ${
                                     document.activeElement === textarea
                                 }`,
                             );
@@ -297,89 +381,13 @@ export class EditorOverlayStore {
                         editorOverlayStore?: unknown;
                     }).DEBUG_MODE
                 ) {
-                    logger.warn({}, "Global textarea not found in addCursor (existing cursor)");
+                    logger.warn({}, "Global textarea not found in addCursor (new cursor)");
                 }
             }
 
-            return existingCursor.cursorId;
+            // Start cursor blinking
+            this.startCursorBlink();
         }
-
-        // Create and hold Cursor instance
-        const cursorInst = new Cursor(newId, {
-            itemId: omitProps.itemId,
-            offset: omitProps.offset,
-            isActive: omitProps.isActive,
-            userId: omitProps.userId ?? "local",
-        });
-        this.cursorInstances.set(newId, cursorInst);
-
-        // Create new cursor
-        const newCursor: CursorPosition = {
-            cursorId: newId,
-            ...omitProps,
-            userId: omitProps.userId ?? "local", // Set "local" if userId is undefined
-        };
-
-        // Update cursor (update reactive state)
-        this.updateCursor(newCursor);
-
-        // Ensure focus on global textarea
-        const textarea = this.getTextareaRef();
-        if (textarea) {
-            // Multiple attempts to ensure focus is set
-            textarea.focus();
-
-            // Set focus using requestAnimationFrame
-            requestAnimationFrame(() => {
-                textarea.focus();
-
-                // Use setTimeout as well for extra certainty
-                setTimeout(() => {
-                    textarea.focus();
-
-                    // Debug info
-                    if (
-                        typeof window !== "undefined"
-                        && (window as Window & typeof globalThis & {
-                            DEBUG_MODE?: boolean;
-                            generalStore?: {
-                                currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
-                            };
-
-                            itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                            editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                            appStore?: { currentPage?: { id?: string; }; };
-                            editorOverlayStore?: unknown;
-                        }).DEBUG_MODE
-                    ) {
-                        logger.debug(
-                            `Focus set after adding new cursor. Active element is textarea: ${
-                                document.activeElement === textarea
-                            }`,
-                        );
-                    }
-                }, 10);
-            });
-        } else {
-            // Log error if textarea is not found
-            if (
-                typeof window !== "undefined"
-                && (window as Window & typeof globalThis & {
-                    DEBUG_MODE?: boolean;
-                    generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-
-                    itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                    appStore?: { currentPage?: { id?: string; }; };
-                    editorOverlayStore?: unknown;
-                }).DEBUG_MODE
-            ) {
-                logger.warn({}, "Global textarea not found in addCursor (new cursor)");
-            }
-        }
-
-        // Start cursor blinking
-        this.startCursorBlink();
 
         // Debug info
         if (
@@ -1055,17 +1063,19 @@ export class EditorOverlayStore {
         // Update cursor history
         this.cursorHistory = [...this.cursorHistory, id];
 
-        // Ensure reliable focus on global textarea to receive input
-        const textarea = this.getTextareaRef();
-        if (textarea) {
-            try {
-                textarea.focus();
-                requestAnimationFrame(() => textarea.focus());
-                setTimeout(() => textarea.focus(), 10);
-            } catch {}
+        if (userId === "local") {
+            // Ensure reliable focus on global textarea to receive input
+            const textarea = this.getTextareaRef();
+            if (textarea) {
+                try {
+                    textarea.focus();
+                    requestAnimationFrame(() => textarea.focus());
+                    setTimeout(() => textarea.focus(), 10);
+                } catch {}
+            }
+            // Start cursor blinking as well
+            this.startCursorBlink();
         }
-        // Start cursor blinking as well
-        this.startCursorBlink();
 
         // Debug info
         if (
@@ -1131,6 +1141,13 @@ export class EditorOverlayStore {
     // Get registered Cursor instances
     getCursorInstances(): import("../lib/Cursor").Cursor[] {
         return Array.from(this.cursorInstances.values());
+    }
+
+    // Get registered local Cursor instances
+    getLocalCursorInstances(): import("../lib/Cursor").Cursor[] {
+        return Array.from(this.cursorInstances.values()).filter(
+            c => (c.userId ?? "local") === "local",
+        );
     }
 
     /**

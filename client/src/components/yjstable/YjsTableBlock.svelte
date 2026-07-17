@@ -12,7 +12,7 @@ import {
     observeItemTableId,
     setItemTableId,
 } from "../../services/yjstable/itemBinding";
-import { getTableHandles, getTableName, getTableRegistry } from "../../services/yjstable/tableDocs";
+import { getTableHandles, getTableName, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
 import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
@@ -35,6 +35,20 @@ let registryVersion = $state(0);
 
 let presetKey = $state("tasks");
 let newTableName = $state("");
+
+let creationMode = $state<"new" | "existing">("new");
+let selectedExistingTableId = $state<string | undefined>(undefined);
+
+const existingTables = $derived.by(() => {
+    void registryVersion;
+    return item.ydoc ? listTables(item.ydoc) : [];
+});
+
+$effect(() => {
+    if (creationMode === "existing" && existingTables.length > 0 && !selectedExistingTableId) {
+        selectedExistingTableId = existingTables[0].tableId;
+    }
+});
 
 const handles = $derived.by(() => {
     void registryVersion;
@@ -64,6 +78,13 @@ onDestroy(() => {
     unobserveItem?.();
 });
 
+function selectExistingTable() {
+    if (selectedExistingTableId) {
+        setItemTableId(item, selectedExistingTableId);
+        tableId = selectedExistingTableId;
+    }
+}
+
 function createFromPreset() {
     const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
     const name = newTableName.trim() || preset.name;
@@ -73,7 +94,7 @@ function createFromPreset() {
 }
 </script>
 
-<div class="yjs-table-block" data-testid="yjs-table-block">
+<div class="yjs-table-block" data-testid="yjs-table-block" onclick={e => e.stopPropagation()} onmousedown={e => e.stopPropagation()} role="presentation">
     {#if handles}
         {#key handles.doc.guid}
             <YjsTableView {handles} {projectId} {tableName} />
@@ -82,33 +103,59 @@ function createFromPreset() {
         <p class="loading" data-testid="yjs-table-waiting">Loading table...</p>
     {:else}
         <div class="create-panel" data-testid="yjs-table-create-panel">
-            <p class="create-title">Create a database table</p>
-            <div class="create-form">
-                <input
-                    type="text"
-                    placeholder="Table name"
-                    data-testid="yjs-table-name-input"
-                    value={newTableName}
-                    oninput={(e) => {
-                        newTableName = (e.target as HTMLInputElement).value;
-                    }}
-                />
-                <select
-                    aria-label="Preset"
-                    data-testid="yjs-table-preset-select"
-                    value={presetKey}
-                    onchange={(e) => {
-                        presetKey = (e.target as HTMLSelectElement).value;
-                    }}
-                >
-                    {#each TABLE_PRESETS as preset (preset.key)}
-                        <option value={preset.key}>{preset.name}</option>
-                    {/each}
-                </select>
-                <button type="button" data-testid="yjs-table-create" onclick={createFromPreset}>
-                    Create
-                </button>
+            <div class="mode-tabs">
+                <button type="button" class="mode-tab" class:active={creationMode === "new"} onclick={() => creationMode = "new"}>New Table</button>
+                {#if existingTables.length > 0}
+                    <button type="button" class="mode-tab" class:active={creationMode === "existing"} onclick={() => creationMode = "existing"}>Existing Table</button>
+                {/if}
             </div>
+
+            {#if creationMode === "new"}
+                <div class="create-form">
+                    <input
+                        type="text"
+                        placeholder="Table name"
+                        data-testid="yjs-table-name-input"
+                        value={newTableName}
+                        oninput={(e) => {
+                            newTableName = (e.target as HTMLInputElement).value;
+                        }}
+                    />
+                    <select
+                        aria-label="Preset"
+                        data-testid="yjs-table-preset-select"
+                        value={presetKey}
+                        onchange={(e) => {
+                            presetKey = (e.target as HTMLSelectElement).value;
+                        }}
+                    >
+                        {#each TABLE_PRESETS as preset (preset.key)}
+                            <option value={preset.key}>{preset.name}</option>
+                        {/each}
+                    </select>
+                    <button type="button" data-testid="yjs-table-create" onclick={createFromPreset}>
+                        Create
+                    </button>
+                </div>
+            {:else}
+                <div class="create-form">
+                    <select
+                        aria-label="Existing Table"
+                        data-testid="yjs-table-existing-select"
+                        value={selectedExistingTableId}
+                        onchange={(e) => {
+                            selectedExistingTableId = (e.target as HTMLSelectElement).value;
+                        }}
+                    >
+                        {#each existingTables as table (table.tableId)}
+                            <option value={table.tableId}>{table.name || "Untitled table"}</option>
+                        {/each}
+                    </select>
+                    <button type="button" data-testid="yjs-table-select-existing" onclick={selectExistingTable}>
+                        Select
+                    </button>
+                </div>
+            {/if}
         </div>
     {/if}
 </div>
@@ -128,10 +175,32 @@ function createFromPreset() {
     gap: 6px;
 }
 
-.create-title {
+.mode-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 4px;
+}
+
+.mode-tab {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    color: #6b7280;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.mode-tab:hover {
+    background: #f3f4f6;
+}
+
+.mode-tab.active {
+    color: #111827;
     font-weight: 600;
-    margin: 0;
-    font-size: 0.9rem;
+    background: #e5e7eb;
 }
 
 .create-form {

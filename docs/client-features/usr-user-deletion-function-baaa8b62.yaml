@@ -2,7 +2,7 @@ id: USR-baaa8b62
 title: User deletion function
 description: Function to delete a user account and its related data
 category: user-management
-status: implemented
+status: experimental
 acceptance:
 - Can delete the user account
 - Container information related to the user is deleted

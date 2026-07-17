@@ -5,13 +5,13 @@ on:
   push:
     branches: [main, develop]
     paths-ignore:
-      - 'docs/**'
+      - 'docs/architecture/**'
       - '*.md'
       - '.gitignore'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
-      - 'docs/**'
+      - 'docs/architecture/**'
       - '*.md'
       - '.gitignore'
 
@@ -63,6 +63,12 @@ jobs:
   eslint-client:
     name: Lint Code with ESLint
     uses: ./.github/workflows/ci-eslint.yml
+    secrets: inherit
+
+  yaml-tests-check:
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-yaml-tests.yml
     secrets: inherit
 
   lint-diff-lines:

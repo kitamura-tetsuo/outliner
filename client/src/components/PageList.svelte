@@ -12,7 +12,7 @@ import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
 import { pageViewStore } from "../stores/PageViewStore.svelte";
 import { getBacklinkCount } from "../lib/backlinkCollector";
 import { store } from "../stores/store.svelte";
-import { findPageByName } from "../utils/pageUtils";
+import { findPageByName, generateDefaultPageTitle } from "../utils/pageUtils";
 
 interface Props {
     projectName?: string;
@@ -34,7 +34,7 @@ const dispatch = createEventDispatcher();
 
 // Suggest a default title in development environment
 const isDev = typeof import.meta !== "undefined" && import.meta.env?.DEV === true;
-let pageTitle = $state(isDev ? `New Page ${new Date().toLocaleTimeString()}` : "");
+let pageTitle = $state(isDev ? generateDefaultPageTitle() : "");
 let inputEl: HTMLInputElement | undefined = $state();
 let isGridView = $state(true); // Default to grid view
 let sortBy = $state("modified");
@@ -96,7 +96,7 @@ let sortedItems = $derived.by(() => {
 
 function handleCreatePage() {
     if (!pageTitle.trim() && !isDev) {
-        pageTitle = "New Page " + new Date().toLocaleString();
+        pageTitle = generateDefaultPageTitle();
     }
 
     if (store.pageExists(pageTitle)) {
@@ -120,7 +120,7 @@ function handleCreatePage() {
     const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
     goto(resolvePath(`${basePath}/${encodedTitle}`));
 
-    pageTitle = isDev ? `New Page ${new Date().toLocaleTimeString()}` : "";
+    pageTitle = isDev ? generateDefaultPageTitle() : "";
 }
 
 function handleKeyDown(e: KeyboardEvent) {

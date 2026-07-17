@@ -1,8 +1,7 @@
 import { expect } from "chai";
 import fs from "fs-extra";
-import path from "path";
-// @ts-expect-error
 import { afterEach, beforeEach, describe, it } from "mocha";
+import path from "path";
 import { fileURLToPath } from "url";
 import { getConfig, pruneOldBackups } from "../src/scripts/rclone-backup.js";
 

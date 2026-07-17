@@ -40,7 +40,7 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => {
 
     return {
         editorOverlayStore: {
-            getCursorInstances: () => [{ insertText: mockInsertText }],
+            getLocalCursorInstances: () => [{ insertText: mockInsertText }],
             get selections() {
                 return selections;
             },

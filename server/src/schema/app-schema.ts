@@ -5,7 +5,7 @@
  * `./schema/app-schema` imports keep working.
  *
  * Schema-sharing note: the server compiles ../shared/src into its own build (see
- * ../../tsconfig.json rootDir/paths), so the shared code resolves this
- * workspace's single copy of Yjs — no separate package, no dual-package hazard.
+ * ../../tsconfig.json rootDir), so the shared code resolves this workspace's
+ * single copy of Yjs — no separate package, no dual-package hazard.
  */
 export * from "../../../shared/src/app-schema.js";

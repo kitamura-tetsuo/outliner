@@ -299,7 +299,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         // Enter replacement string and replace all
         await page.getByTestId("replace-input").fill("UPDATED");
-        page.once("dialog", dialog => dialog.accept());
+
         try {
             await page.getByTestId("replace-all-button").click({ timeout: 2000 });
         } catch (e) {
@@ -309,6 +309,7 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
                 btn?.click();
             });
         }
+        await page.getByRole("alertdialog").locator("button:has-text('Replace All')").click();
         await page.waitForTimeout(1500);
 
         // Search again and confirm replacement is complete

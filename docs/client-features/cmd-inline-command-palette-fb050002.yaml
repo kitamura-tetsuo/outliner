@@ -3,13 +3,12 @@ title: Inline Command Palette
 title-ja: インラインコマンドパレット
 description: Type '/' within an item to open a palette for inserting tables or charts.
 category: editing
-status: implemented
+status: experimental
 components:
 - src/components/ChartPanel.svelte
 - src/components/InlineJoinTable.svelte
 - src/components/SlashCommandPalette.svelte
-tests:
-- client/e2e/new/CMD-0001.spec.ts
+tests: []
 acceptance:
 - Arrow keys move the selection within the palette
 - Pressing Enter on 'table' inserts an inline table

@@ -10,7 +10,7 @@ import { expect, test } from "@playwright/test";
 test.describe("counter", () => {
     test.beforeEach(async ({ page }) => {
         // Navigate directly to counter page (doesn't need project/page context)
-        await page.goto("/counter", { waitUntil: "networkidle" });
+        await page.goto("/counter");
     });
 
     test("increments and decrements", async ({ page }) => {
