@@ -708,6 +708,15 @@ export class Items implements Iterable<Item> {
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
+        // Refresh the tree's computed parent/child map synchronously. createNode's
+        // observer only recomputes it at transaction end, so callers that wrap
+        // addNode in an outer ydoc.transact (e.g. yjsService.addItem) would
+        // otherwise hit an undefined computedMap entry in setNodeOrderToEnd.
+        const treeWithRecompute = this.tree as unknown as { recomputeParentsAndChildren?: () => void; };
+        if (typeof treeWithRecompute.recomputeParentsAndChildren === "function") {
+            treeWithRecompute.recomputeParentsAndChildren();
+        }
+
         if (index === undefined) {
             this.tree.setNodeOrderToEnd(nodeKey);
         } else {
