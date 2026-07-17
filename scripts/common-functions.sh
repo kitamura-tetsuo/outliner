@@ -410,16 +410,28 @@ install_all_dependencies() {
   npm_ci_if_needed
 
   # The client and server both compile ../shared/src, whose bare yjs/uuid/
-  # yjs-orderedtree imports must resolve. Point shared/node_modules at the
-  # server's already-installed node_modules via a symlink — offline-safe (no
-  # registry access) and never a build-time dependency install. Runtime stays
-  # single-instance: the client bundles+dedupes, the server compiles shared into
-  # its own dist (which resolves server/node_modules).
-  if [ -f "${ROOT_DIR}/shared/package.json" ] \
-    && [ ! -d "${ROOT_DIR}/shared/node_modules" ] && [ ! -L "${ROOT_DIR}/shared/node_modules" ] \
-    && [ -d "${ROOT_DIR}/server/node_modules" ]; then
-    echo "Linking shared/node_modules -> server/node_modules"
-    ln -s ../server/node_modules "${ROOT_DIR}/shared/node_modules" || echo "shared link skipped"
+  # yjs-orderedtree imports must resolve. Point shared/node_modules at a
+  # consumer's already-installed node_modules via a symlink — offline-safe (no
+  # registry access) and never a build-time dependency install.
+  #
+  # Prefer the CLIENT: `vite dev` serves shared/src as source and resolves its
+  # bare imports through this link, so it MUST land on the exact yjs the client
+  # already pre-bundled — otherwise Vite treats shared/src's yjs as a new dep,
+  # re-optimizes mid-run and reloads the live page (tearing out outliner-base
+  # under an in-flight e2e seed). This is forced (ln -sfn) rather than
+  # create-if-absent because the CI container bakes the link at image-build time
+  # and skips npm ci at runtime, so a create-if-absent guard would never correct
+  # a stale/ server-pointing link. Fall back to the server only when the client
+  # is not installed (server-only image), which is all the server's tsc needs.
+  if [ -f "${ROOT_DIR}/shared/package.json" ]; then
+    if [ -d "${ROOT_DIR}/client/node_modules" ]; then
+      echo "Linking shared/node_modules -> client/node_modules"
+      ln -sfn ../client/node_modules "${ROOT_DIR}/shared/node_modules" || echo "shared link skipped"
+    elif [ -d "${ROOT_DIR}/server/node_modules" ] \
+      && [ ! -e "${ROOT_DIR}/shared/node_modules" ]; then
+      echo "Linking shared/node_modules -> server/node_modules"
+      ln -s ../server/node_modules "${ROOT_DIR}/shared/node_modules" || echo "shared link skipped"
+    fi
   fi
 
   cd "${ROOT_DIR}/server"
