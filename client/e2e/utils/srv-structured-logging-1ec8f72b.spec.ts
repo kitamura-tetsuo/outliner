@@ -9,7 +9,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 test("srv-structured-logging redacts sensitive data", async () => {
     const serverDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../server");
-    const distPath = path.join(serverDir, "dist/logger.js");
+    const distPath = path.join(serverDir, "dist/server/src/logger.js");
     if (!existsSync(distPath)) {
         execSync("npm run build", { cwd: serverDir, stdio: "inherit" });
     }

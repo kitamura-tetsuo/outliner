@@ -405,6 +405,15 @@ install_all_dependencies() {
     echo "Skipping permission fixes in CI environment."
   fi
 
+  # Shared schema dependencies: the client and server both compile ../shared/src,
+  # whose bare yjs/uuid imports resolve via shared/node_modules. Install it
+  # explicitly (and before the server build) so it is present even when
+  # npm_ci_if_needed skips a package that already has baked node_modules.
+  if [ -f "${ROOT_DIR}/shared/package.json" ]; then
+    cd "${ROOT_DIR}/shared"
+    npm install --no-audit --no-fund --no-package-lock
+  fi
+
   # Server dependencies
   cd "${ROOT_DIR}/server"
   npm_ci_if_needed

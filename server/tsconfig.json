@@ -26,10 +26,11 @@
         // rootDir spans the repo root so the framework-neutral schema in
         // ../shared/src compiles together with the server (emitted under
         // dist/server/src and dist/shared/src). See the schema-sharing note in
-        // src/schema/app-schema.ts. The shared workspace installs its own copy
-        // of yjs/uuid (../shared/node_modules) so its bare imports resolve;
-        // yjs-orderedtree is satisfied by the ambient shim in
-        // src/types/yjs-orderedtree.d.ts.
+        // src/schema/app-schema.ts.
+        // The shared schema (../shared/src) is compiled together with the server;
+        // its bare yjs/uuid imports resolve via ../shared/node_modules, which the
+        // client/server postinstall and scripts/setup.sh install. yjs-orderedtree
+        // is satisfied by the ambient shim in src/types/yjs-orderedtree.d.ts.
         "rootDir": ".."
     },
     "include": [
