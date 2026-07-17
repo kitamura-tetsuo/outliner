@@ -220,7 +220,7 @@ export async function startServer(
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
             async onConnect(data: any) {
-                const ip = data.context?.ip || data.requestHeaders.get("x-forwarded-for")
+                const ip = data.context?.ip || data.requestHeaders["x-forwarded-for"]
                     || data.request.socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
