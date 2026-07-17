@@ -128,6 +128,12 @@ export default defineConfig(async ({ mode }) => {
         optimizeDeps: {
             // PGlite ships its own WASM assets and must not be pre-bundled.
             exclude: ["@electric-sql/pglite"],
+            // The framework-neutral schema in ../shared/src imports these three.
+            // Pre-bundle them at dev-server startup so Vite never discovers them
+            // as "new" dependencies mid-run: a late discovery triggers a dep
+            // re-optimization + full page reload, which tears the app out from
+            // under an in-flight e2e seed (outliner-base disappears -> timeout).
+            include: ["yjs", "yjs-orderedtree", "uuid"],
         },
         define: {
             global: "globalThis",
