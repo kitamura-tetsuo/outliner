@@ -89,7 +89,7 @@
     >
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Indent"
+
             title="Indent"
             onclick={onIndent}
         >
@@ -97,7 +97,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Outdent"
+
             title="Outdent"
             onclick={onOutdent}
         >
@@ -105,7 +105,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Insert Above"
+
             title="Insert Above"
             onclick={onInsertAbove}
         >
@@ -113,7 +113,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Insert Below"
+
             title="Insert Below"
             onclick={onInsertBelow}
         >
@@ -121,7 +121,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="New Child"
+
             title="New Child"
             onclick={onNewChild}
         >
@@ -129,7 +129,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Insert Sibling Below"
+
             title="Insert Sibling Below"
             onclick={onInsertSiblingBelow}
         >
@@ -140,7 +140,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Vote"
+
             title="Vote"
             onclick={onVote}
         >
@@ -148,7 +148,7 @@
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
-            aria-label="Delete"
+
             title="Delete"
             onclick={onDelete}
         >
