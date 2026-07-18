@@ -571,7 +571,7 @@ let textString = $state<string>("");
 let compTypeValue = $state<string | undefined>(undefined);
 let truncatedText = $derived(textString.length > 50 ? textString.substring(0, 50) + "..." : textString);
 
-onMount(() => {
+$effect(() => {
     let unsubs: Array<() => void> = [];
     try {
         if (hasTreeKey(item)) {
