@@ -9,7 +9,7 @@ vi.mock("../utils/pathUtils", () => ({
 describe("OutlinerToolbar", () => {
     test("renders desktop toolbar with expected buttons", () => {
         const onAddItem = vi.fn();
-        const { getByText, getByLabelText } = render(OutlinerToolbar, {
+        const { getByText } = render(OutlinerToolbar, {
             props: {
                 mode: "desktop",
                 projectName: "TestProject",
