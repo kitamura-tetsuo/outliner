@@ -1,6 +1,5 @@
 import assert from "assert";
 import fs from "fs";
-import { describe, it } from "mocha";
 import path from "path";
 import { fileURLToPath } from "url";
 
