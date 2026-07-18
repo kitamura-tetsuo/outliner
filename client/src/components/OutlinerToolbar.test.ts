@@ -21,7 +21,7 @@ describe("OutlinerToolbar", () => {
         const addItemBtn = getByText("Add Item");
         expect(addItemBtn).toBeTruthy();
 
-        const addImageBtn = getByLabelText("Add Image");
+        const addImageBtn = getByText("Add Image");
         expect(addImageBtn).toBeTruthy();
 
         const historyBtn = getByText("History / Diff");

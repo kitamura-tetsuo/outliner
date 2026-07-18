@@ -67,11 +67,11 @@ function add(e?: Event) {
     </ul>
     <form onsubmit={add} class="add-form">
         <input data-testid="add-input" type="text" placeholder="Add new item..." aria-label="Add new item" bind:value={newItem} />
-        <button type="submit" data-testid="add-button" disabled={!newItem.trim()} aria-label="Add item">Add</button>
+        <button type="submit" data-testid="add-button" disabled={!newItem.trim()}>Add</button>
     </form>
     {#if list && list.items.length > 0}
         <div class="footer">
-            <button type="button" data-testid="reset-button" onclick={() => resetChecklist(list!.id)} class="reset-btn" aria-label="Reset checklist">Reset</button>
+            <button type="button" data-testid="reset-button" onclick={() => resetChecklist(list!.id)} class="reset-btn">Reset</button>
         </div>
     {/if}
 </div>

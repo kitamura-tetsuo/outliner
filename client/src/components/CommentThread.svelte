@@ -350,8 +350,8 @@ function saveEdit(id: string) {
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
                 <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
-                <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" aria-label="Save edit" title="Save">Save</button>
-                <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" aria-label="Cancel edit" title="Cancel">Cancel</button>
+                <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" title="Save">Save</button>
+                <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" title="Cancel">Cancel</button>
             {:else}
                 <span class="author">{c.author}:</span>
                 <span class="text">{c.text}</span>
@@ -365,7 +365,7 @@ function saveEdit(id: string) {
         data-testid="comment-form"
     >
         <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
-        <button type="submit" data-testid="add-comment-btn" aria-label="Add comment">Add</button>
+        <button type="submit" data-testid="add-comment-btn">Add</button>
     </form>
 </div>
 
