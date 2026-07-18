@@ -26,6 +26,7 @@ export class YjsClient {
     private _awareness?: Awareness | null;
 
     public onAccessDenied?: () => void;
+    public isDestroyed = false;
 
     constructor(params: YjsClientParams) {
         this.clientId = params.clientId;
@@ -224,6 +225,7 @@ export class YjsClient {
     }
 
     public dispose() {
+        this.isDestroyed = true;
         try {
             (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
         } catch {}
