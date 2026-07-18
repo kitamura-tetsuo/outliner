@@ -491,10 +491,10 @@ export function setupConsoleSanitizer(): void {
                 return `${arg.name}: ${arg.message}\n${top}`;
             }
             if (arg && typeof arg === "object") {
-                const name = typeof (arg as Record<string, unknown>).name === "string"
+                const name = "name" in arg && typeof (arg as Record<string, unknown>).name === "string"
                     ? (arg as Record<string, unknown>).name as string
                     : undefined;
-                const msg = typeof (arg as Record<string, unknown>).message === "string"
+                const msg = "message" in arg && typeof (arg as Record<string, unknown>).message === "string"
                     ? (arg as Record<string, unknown>).message as string
                     : undefined;
                 if (name || msg) return `${name || "Object"}: ${msg || ""}`;
