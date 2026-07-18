@@ -2198,7 +2198,7 @@
         confirmText="Delete"
         isDestructive={true}
         onConfirm={confirmDelete}
-        onCancel={() => deleteConfirmItemId = null}
+        onCancel={() => { showDeleteConfirm = false; deleteConfirmItemId = null; }}
     />
 {/if}
 

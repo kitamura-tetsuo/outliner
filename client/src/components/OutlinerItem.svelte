@@ -2195,7 +2195,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             message="Are you sure you want to delete this item? This action will also delete all of its children."
             confirmText="Delete"
             isDestructive={true}
-            onConfirm={confirmDelete}
+            onConfirm={confirmDelete} onCancel={() => showDeleteConfirm = false}
         />
     {/if}
 </div>
