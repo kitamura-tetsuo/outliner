@@ -87,7 +87,7 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            yjsStore.yjsClient?.dispose();
+            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             store.currentPage = undefined;

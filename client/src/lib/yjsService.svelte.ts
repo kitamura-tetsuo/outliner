@@ -260,7 +260,12 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
 
         if (registry.has(keyFor(userId, projectId))) {
             const [c] = registry.get(keyFor(userId, projectId))!;
-            if (c) return c;
+            if (c && !c.isDestroyed) {
+                return c;
+            } else if (c && c.isDestroyed) {
+                logger.info(`[getClientByProjectTitle] found disposed demo client in registry; evicting it`);
+                registry.delete(keyFor(userId, projectId));
+            }
         }
 
         const project = Project.createInstance("Demo");
@@ -270,10 +275,16 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
     }
 
     // First, check the registry for a matching client
-    for (const [, [client, project]] of registry.entries()) {
+    for (const [key, [client, project]] of registry.entries()) {
         if (project?.title === projectTitle && client) {
-            logger.info(`[getClientByProjectTitle] Found existing client in registry`);
-            return client;
+            if (!client.isDestroyed) {
+                logger.info(`[getClientByProjectTitle] Found existing client in registry`);
+                return client;
+            } else {
+                logger.info(`[getClientByProjectTitle] Found disposed client in registry; evicting it`);
+                const [type, id] = key.split(":");
+                registry.delete({ type: type as "container" | "user", id });
+            }
         }
     }
 
