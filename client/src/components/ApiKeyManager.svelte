@@ -66,6 +66,7 @@
         } catch (err: unknown) {
             error = err instanceof Error ? err.message : "Failed to revoke API key";
         } finally {
+            showRevokeConfirm = false;
             keyIdToRevoke = null;
         }
     }
@@ -168,6 +169,6 @@
         confirmText="Revoke"
         isDestructive={true}
         onConfirm={confirmRevoke}
-        onCancel={() => keyIdToRevoke = null}
+        onCancel={() => { showRevokeConfirm = false; keyIdToRevoke = null; }}
     />
 {/if}

@@ -20,6 +20,7 @@ let {
 }>();
 
 let dialogElement: HTMLDialogElement;
+const dialogId = Math.random().toString(36).substring(2, 9);
 
 $effect(() => {
     if (dialogElement) {
@@ -48,13 +49,13 @@ function handleCancel() {
     class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
     role="alertdialog"
     aria-modal="true"
-    aria-labelledby="confirm-dialog-title"
-    aria-describedby="confirm-dialog-message"
+    aria-labelledby={`confirm-dialog-title-${dialogId}`}
+    aria-describedby={`confirm-dialog-message-${dialogId}`}
 >
     <div class="bg-white rounded-lg max-w-sm w-full" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()} role="presentation">
         <div class="p-4 sm:p-6">
-            <h3 id="confirm-dialog-title" class="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-            <p id="confirm-dialog-message" class="text-sm text-gray-600 mb-6">{message}</p>
+            <h3 id={`confirm-dialog-title-${dialogId}`} class="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+            <p id={`confirm-dialog-message-${dialogId}`} class="text-sm text-gray-600 mb-6">{message}</p>
 
             <div class="flex justify-end gap-3">
                 <button
