@@ -7,7 +7,7 @@ export default {
 
         "^jose$": "jose",
         "^jose$": "<rootDir>/node_modules/jose/dist/node/cjs/index.js",
-        "^jose/(.*)$": "<rootDir>/node_modules/jose/dist/node/cjs/$1"
+        "^jose/(.*)$": "<rootDir>/node_modules/jose/dist/node/cjs/$1",
     },
     transform: {
         "^.+\\.tsx?$": [
