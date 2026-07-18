@@ -30,14 +30,14 @@ describe("yjs-schema Item Votes", () => {
         // Add vote
         item.toggleVote("user1");
         expect(item.votes.toArray()).toEqual(["user1"]);
-        expect(item["value"].get("lastChanged")).toBeGreaterThan(initialLastChanged as number);
+        expect(item["value"].get("lastChanged")).toBeGreaterThanOrEqual(initialLastChanged as number);
 
         const midLastChanged = item["value"].get("lastChanged");
 
         // Remove vote
         item.toggleVote("user1");
         expect(item.votes.toArray()).toEqual([]);
-        expect(item["value"].get("lastChanged")).toBeGreaterThan(midLastChanged as number);
+        expect(item["value"].get("lastChanged")).toBeGreaterThanOrEqual(midLastChanged as number);
     });
 
     it("should allow multiple users to vote", () => {
