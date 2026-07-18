@@ -26,4 +26,4 @@ ENV NODE_ENV=production
 
 # Run the app when the container launches. The working directory stays at the app
 # root so cwd-relative data paths (see docker-compose volume) are preserved.
-CMD ["node", "server/dist/server/src/log-service.js"]
+CMD ["node", "server/dist/server/src/index.js"]
