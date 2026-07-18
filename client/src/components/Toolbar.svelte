@@ -98,6 +98,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
         <div class="toolbar-left">
             <button type="button"
                 class="add-database-btn"
+                aria-label="Add Database"
                 onclick={() => commandPaletteStore.insert("yjstable")}
             >
                 Add Database
