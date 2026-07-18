@@ -107,7 +107,14 @@ export async function startServer(
         },
         credentials: corsCredentials,
     };
-    app.use(cors(corsOptions));
+
+    const globalCors = cors(corsOptions);
+    app.use((req, res, next) => {
+        if (req.path === "/api/seed-demo") {
+            return next();
+        }
+        return globalCors(req, res, next);
+    });
 
     // Add security headers
     app.use(helmet());
