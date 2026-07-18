@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { describe, it } from "mocha";
 import { sanitizeUrl } from "../src/utils/sanitize.js";
 
 describe("sanitizeUrl", () => {

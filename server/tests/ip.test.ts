@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { describe, it } from "mocha";
 import { getClientIp } from "../src/utils/ip.js";
 
 describe("getClientIp", () => {
