@@ -1,5 +1,5 @@
-import cors from "cors";
 import { Hocuspocus } from "@hocuspocus/server";
+import cors from "cors";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
