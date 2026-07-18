@@ -20,6 +20,10 @@ let { title = "My Checklist", mode = "custom", rrule }: Props = $props();
 let list: Checklist | undefined = $state(undefined);
 let newItem = $state("");
 
+// Generate a unique ID for this instance of the Checklist component
+// This prevents duplicate DOM ID collisions when multiple checklists are rendered.
+const componentId = Math.random().toString(36).substring(2, 9);
+
 onMount(() => {
     const id = createChecklist(title, mode, rrule);
     const unsubscribe = checklists.subscribe(arr => {
@@ -56,8 +60,8 @@ function add(e?: Event) {
             {:else}
                 {#each list.items as item (item.id)}
                     <li>
-                        <label class="item-label" for="checklist-item-{item.id}">
-                            <input id="checklist-item-{item.id}" type="checkbox" checked={item.state === "checked" || item.state === "archived"} onchange={() => toggleItem(list!.id, item.id)} />
+                        <label class="item-label" for="checklist-{componentId}-item-{item.id}">
+                            <input id="checklist-{componentId}-item-{item.id}" type="checkbox" checked={item.state === "checked" || item.state === "archived"} onchange={() => toggleItem(list!.id, item.id)} />
                             <span class="item-text" class:completed={item.state === "checked" || item.state === "archived"}>{item.label}</span>
                         </label>
                     </li>
