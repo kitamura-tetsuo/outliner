@@ -34,29 +34,24 @@ test.describe("Authentication Functionality Test", () => {
      * @check Authentication completes upon clicking login button
      * @check Logout button is displayed after login
      */
-    test("Developer mode login flow works correctly", async ({ page }) => {
+    test("Email login flow works correctly", async ({ page }) => {
         // Logout if already logged in
         const logoutButton = page.locator("button.logout-btn");
         if (await logoutButton.isVisible()) {
             await logoutButton.click();
             // Wait for logout process to complete
-            await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
+            await page.waitForSelector(".email-login-form", { timeout: 10000 });
         }
 
-        // Click developer login button
-        const devToggleButton = page.locator("button.dev-toggle");
-        await expect(devToggleButton).toBeVisible();
-        await devToggleButton.click();
-
-        // Wait for developer login form to be displayed
-        await page.waitForSelector(".dev-login-form", { timeout: 5000 });
+        // Wait for email login form to be displayed
+        await page.waitForSelector(".email-login-form", { timeout: 5000 });
 
         // Input authentication information
         await page.locator("#email").fill("test@example.com");
         await page.locator("#password").fill("password");
 
         // Execute login
-        await page.locator("button.dev-login-btn").click();
+        await page.locator("button.email-login-btn").click();
 
         // Confirm login success (logout button is displayed)
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
@@ -75,17 +70,15 @@ test.describe("Authentication Functionality Test", () => {
         if (await logoutButton.isVisible()) {
             await logoutButton.click();
             // Wait for logout process to complete
-            await page.waitForSelector("button.dev-toggle", { timeout: 10000 });
+            await page.waitForSelector(".email-login-form", { timeout: 10000 });
         }
 
-        // Execute developer login
-        const devToggleButton = page.locator("button.dev-toggle");
-        await devToggleButton.click();
-        await page.waitForSelector(".dev-login-form", { timeout: 5000 });
+        // Wait for email login form
+        await page.waitForSelector(".email-login-form", { timeout: 5000 });
 
         await page.locator("#email").fill("test@example.com");
         await page.locator("#password").fill("password");
-        await page.locator("button.dev-login-btn").click();
+        await page.locator("button.email-login-btn").click();
 
         // Confirm login success
         await expect(page.locator("button.logout-btn")).toBeVisible({ timeout: 10000 });
