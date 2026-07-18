@@ -348,6 +348,9 @@ onDestroy(async () => {
     {#if yjsStore.syncError === "rate-limited"}
         <NetworkErrorAlert error="Rate limit exceeded. Sync has been paused. Please wait and reconnect." />
     {/if}
+    {#if yjsStore.syncError === "timed-out"}
+        <NetworkErrorAlert error="Could not connect to the server. Showing offline/incomplete data." />
+    {/if}
 </div>
 
 <style>
