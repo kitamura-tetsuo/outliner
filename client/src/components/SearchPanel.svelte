@@ -341,7 +341,7 @@ const logger = getLogger("SearchPanel");
         message="Are you sure you want to replace all occurrences? This action cannot be undone."
         confirmText="Replace All"
         isDestructive={true}
-        onConfirm={confirmReplaceAll}
+        onConfirm={confirmReplaceAll} onCancel={() => showReplaceAllConfirm = false}
     />
 {/if}
 
