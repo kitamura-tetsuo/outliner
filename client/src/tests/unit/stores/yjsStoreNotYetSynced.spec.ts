@@ -36,6 +36,7 @@ describe("yjsStore.notYetSynced", () => {
 
         setRoomSyncState(ROOM, "timed-out");
         expect(yjsStore.notYetSynced).toBe(true);
+        expect(yjsStore.syncError).toBe("timed-out");
     });
 
     it("stops listening to the previous room's sync state after reset", () => {

@@ -168,7 +168,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !error && store.project && pages}
+    {:else if !isLoading && !error && !yjsStore.notYetSynced && store.project && pages}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList
                 currentUser="anonymous"
