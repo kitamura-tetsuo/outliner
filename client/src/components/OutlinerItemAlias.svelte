@@ -22,8 +22,9 @@ let { modelId, item, isReadOnly = false, isCollapsed = false }: Props = $props()
 // Subscription to aliasTargetId via Yjs observe
 let aliasTargetId = $state<string | undefined>();
 
-onMount(() => {
+$effect(() => {
     aliasTargetId = item.aliasTargetId;
+    let cleanup = () => {};
     try {
         const ymap = item.yMap;
         if (ymap && typeof ymap.observe === 'function') {
@@ -40,9 +41,10 @@ onMount(() => {
             };
             ymap.observe(obs);
             obs(); // Initial reflection
-            onDestroy(() => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch {} });
+            cleanup = () => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch {} };
         }
     } catch {}
+    return cleanup;
 });
 
 const aliasTargetIdEffective = $derived.by(() => {
