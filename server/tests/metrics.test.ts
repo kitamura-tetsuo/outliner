@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { afterEach, describe, it } from "mocha";
 import { getMetrics, recordMessage, resetMetrics } from "../src/metrics.js";
 
 function createServer(size = 0) {
