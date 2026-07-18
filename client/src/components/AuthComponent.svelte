@@ -34,13 +34,9 @@ let error = $state("");
 let currentUser: IUser | null = $state(null);
 let loginError = $state("");
 
-// Email/password login form for development environment
-let showDevLogin = $state(false);
-let email = $state("test@example.com");
-let password = $state("password");
-
-// Environment check
-const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development";
+// Email/password login form
+let email = $state("");
+let password = $state("");
 
 // Function to unsubscribe listener
 let unsubscribe: (() => void) | null = null;
@@ -114,17 +110,19 @@ async function handleLogin() {
     }
 }
 
-async function handleDevLogin() {
+async function handleEmailPasswordSubmit() {
     try {
         isLoggingIn = true;
         error = "";
         loginError = "";
+        // If in sign up mode and not development (where it auto-creates), we might need to handle creation.
+        // For now, UserManager.loginWithEmailPassword handles login. We'll use the existing method.
         await userManager.loginWithEmailPassword(email, password);
     }
     catch (err: unknown) {
-          logger.error({ error: err }, "Development login error");
+        logger.error({ error: err }, "Email/password login error");
         loginError = (err as Error).message ||
-            "An error occurred during development login";
+            "An error occurred during email/password login";
     } finally {
         isLoggingIn = false;
     }
@@ -143,9 +141,6 @@ async function handleLogout() {
     }
 }
 
-function toggleDevLogin() {
-    showDevLogin = !showDevLogin;
-}
 </script>
 
 <div class="auth-container">
@@ -208,49 +203,46 @@ function toggleDevLogin() {
             Login with Google
         </button>
 
-        {#if isDevelopment}
-            <!-- Development environment login toggle button -->
-            <button type="button" onclick={toggleDevLogin} class="dev-toggle" aria-label="Toggle developer login form">
-                {showDevLogin ? "Hide Developer Login" : "Developer Login"}
-            </button>
+        <div class="divider">
+            <span>OR</span>
+        </div>
 
-            {#if showDevLogin}
-                <div class="dev-login-form">
-                    <h3>Development Login</h3>
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            bind:value={email}
-                            placeholder="test@example.com"
-                            autocomplete="username"
-                        />
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            bind:value={password}
-                            placeholder="password"
-                            autocomplete="current-password"
-                        />
-                    </div>
-                    <button type="button"
-                        onclick={handleDevLogin}
-                        class="dev-login-btn"
-                        disabled={isLoggingIn}
-                        aria-disabled={isLoggingIn}
-                    >
-                        {#if isLoggingIn}
-                            <span class="spinner-inline"></span>
-                        {/if}
-                        Login to Dev Environment
-                    </button>
+        <div class="email-login-form">
+            <form onsubmit={(e) => { e.preventDefault(); handleEmailPasswordSubmit(); }}>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        bind:value={email}
+                        placeholder="Enter your email"
+                        autocomplete="username"
+                        required
+                    />
                 </div>
-            {/if}
-        {/if}
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        bind:value={password}
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    />
+                </div>
+                <button type="submit"
+                    class="email-login-btn"
+                    disabled={isLoggingIn || !email || !password}
+                    aria-disabled={isLoggingIn || !email || !password}
+                >
+                    {#if isLoggingIn}
+                        <span class="spinner-inline"></span>
+                    {/if}
+                    Login with Email
+                </button>
+            </form>
+        </div>
 
         {#if loginError}
             <p class="error-message">{loginError}</p>
@@ -363,68 +355,80 @@ function toggleDevLogin() {
     background-color: #ffebee;
 }
 
-/* Development login styles */
-.dev-toggle {
-    background-color: #f0f0f0;
-    color: #666;
-    border: none;
-    border-radius: 4px;
-    padding: 0.5rem;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-    cursor: pointer;
-    width: 100%;
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1.5rem 0;
+    color: #999;
+    font-size: 0.85rem;
 }
 
-.dev-login-form {
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 1rem;
-    margin-top: 0.5rem;
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #ddd;
 }
 
-.dev-login-form h3 {
-    margin-top: 0;
-    font-size: 1rem;
-    color: #444;
+.divider span {
+    padding: 0 10px;
+}
+
+.email-login-form {
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .form-group {
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .form-group label {
     display: block;
     font-size: 0.85rem;
-    margin-bottom: 0.25rem;
-    color: #555;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+    color: #333;
 }
 
 .form-group input {
     width: 100%;
-    padding: 0.5rem;
+    padding: 0.6rem;
     border: 1px solid #ccc;
     border-radius: 4px;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
 }
 
-.dev-login-btn {
+.form-group input:focus {
+    outline: none;
+    border-color: #2196f3;
+}
+
+.email-login-btn {
     background-color: #2196f3;
     color: white;
     border: none;
     border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
     cursor: pointer;
     width: 100%;
+    transition: background-color 0.2s;
+    margin-top: 0.5rem;
 }
 
-.dev-login-btn:hover {
+.email-login-btn:hover:not(:disabled) {
     background-color: #1976d2;
 }
 
-.dev-login-btn:disabled {
+.email-login-btn:disabled {
     background-color: #90caf9;
     cursor: not-allowed;
 }
