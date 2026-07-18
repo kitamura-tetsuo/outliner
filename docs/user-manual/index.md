@@ -9,7 +9,7 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 3. [Item Manipulation](#item-manipulation)
 4. [Links](#links)
 5. [Search and Commands](#search-and-commands)
-6. [Selection and Copy & Paste](#selection-and-copy-paste)
+6. [Selection and Copy & Paste](#selection-and-copy--paste)
 7. [Attachments](#attachments)
 8. [Advanced Features](#advanced-features)
 9. [Database](#database)
@@ -145,7 +145,8 @@ Create database tables to manage structured data within your project. You can st
 Click the **Add Database** button in the top left toolbar.
 
 - A new database block will be inserted at the bottom of the current page.
-- Enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
+- To create a new table, enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
+- To use an existing table, switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 - You can access your existing databases under the **Tables** section in the left sidebar, or view and manage them by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
 
 ### Managing Data
