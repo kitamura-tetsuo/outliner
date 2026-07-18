@@ -163,8 +163,8 @@ onDestroy(() => {
             >UI</button>
         </div>
         <div class="undo-controls">
-            <button type="button" aria-label="Undo" onclick={() => handles.undo.undo()}>Undo</button>
-            <button type="button" aria-label="Redo" onclick={() => handles.undo.redo()}>Redo</button>
+            <button type="button" onclick={() => handles.undo.undo()}>Undo</button>
+            <button type="button" onclick={() => handles.undo.redo()}>Redo</button>
         </div>
     </div>
 

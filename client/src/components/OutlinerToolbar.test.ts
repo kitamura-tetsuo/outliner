@@ -9,7 +9,7 @@ vi.mock("../utils/pathUtils", () => ({
 describe("OutlinerToolbar", () => {
     test("renders desktop toolbar with expected buttons", () => {
         const onAddItem = vi.fn();
-        const { getByText, getByLabelText } = render(OutlinerToolbar, {
+        const { getByText } = render(OutlinerToolbar, {
             props: {
                 mode: "desktop",
                 projectName: "TestProject",
@@ -21,7 +21,7 @@ describe("OutlinerToolbar", () => {
         const addItemBtn = getByText("Add Item");
         expect(addItemBtn).toBeTruthy();
 
-        const addImageBtn = getByLabelText("Add Image");
+        const addImageBtn = getByText("Add Image");
         expect(addImageBtn).toBeTruthy();
 
         const historyBtn = getByText("History / Diff");
