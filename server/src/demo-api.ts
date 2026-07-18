@@ -1,4 +1,5 @@
 import { Hocuspocus } from "@hocuspocus/server";
+import cors from "cors";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
@@ -45,6 +46,8 @@ export function shouldResetDemo(state: DemoResetState): boolean {
 
 export function createDemoRouter(hocuspocus: HocuspocusInstance) {
     const router = express.Router();
+
+    router.use(cors({ origin: true, credentials: true }));
 
     router.post("/seed-demo", async (req, res): Promise<void> => {
         try {
