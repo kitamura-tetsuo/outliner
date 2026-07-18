@@ -37,10 +37,6 @@ let loginError = $state("");
 // Email/password login form
 let email = $state("");
 let password = $state("");
-let isSignUpMode = $state(false);
-
-// Environment check
-const isDevelopment = import.meta.env.DEV || import.meta.env.MODE === "development";
 
 // Function to unsubscribe listener
 let unsubscribe: (() => void) | null = null;
