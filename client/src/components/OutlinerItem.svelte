@@ -33,7 +33,6 @@ function hasDataTransfer(obj: unknown): obj is HasDataTransfer { return !!obj &&
 import {
     createEventDispatcher,
     onMount,
-    onDestroy,
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
@@ -1826,13 +1825,13 @@ onMount(() => {
             }
         }
 
-        onDestroy(() => {
+        return () => {
             try {
                 const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
                 const i = arr.indexOf(fn);
                 if (i >= 0) arr.splice(i, 1);
             } catch {}
-        });
+        };
     } catch {}
 });
 

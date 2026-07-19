@@ -283,6 +283,21 @@
                 }
             }, 100);
 
+            return () => { try { clearInterval(iv); } catch {} };
+        } catch {}
+
+        // Monitor route parameter changes
+        const unsub = page.subscribe(($p) => {
+            const pj = $p.params?.project ?? projectName;
+            const pg = $p.params?.page ?? pageName;
+            scheduleLoadIfNeeded({ project: pj, page: pg });
+        });
+
+        return () => {
+            unsub();
+        };
+    });
+
     // React to page list changes to ensure we stay on the same instance
     $effect(() => {
         void store.pagesVersion;
@@ -298,22 +313,6 @@
                 store.currentPage = latestPage;
             }
         }
-    });
-
-            onDestroy(() => {
-                try {
-                    clearInterval(iv);
-                } catch {}
-            });
-        } catch {}
-
-        // Monitor route parameter changes
-        const unsub = page.subscribe(($p) => {
-            const pj = $p.params?.project ?? projectName;
-            const pg = $p.params?.page ?? pageName;
-            scheduleLoadIfNeeded({ project: pj, page: pg });
-        });
-        onDestroy(unsub);
     });
     // For schedule integration: Save pageId candidate from current page to session
     function capturePageIdForSchedule() {
