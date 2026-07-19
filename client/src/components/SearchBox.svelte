@@ -346,7 +346,6 @@ const logger = getLogger("SearchBox");
         aria-activedescendant={selected >= 0 ? `search-result-item-${componentId}-${selected}` : undefined}
         aria-hidden="false"
         aria-label="Search pages"
-        aria-labelledby={`search-pages-label-${componentId}`}
         placeholder="Search pages"
         data-testid="search-pages-input"
         id={`search-pages-input-${componentId}`}
