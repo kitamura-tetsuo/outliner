@@ -334,6 +334,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
             "  [Advanced Features]: live database tables with charts, aliases, and attachments.",
             "  [Tasks and Habits]: task management and habit tracking built on database tables.",
+            "  [Schedule Rules]: automate database operations",
             "Give it a try! Everything in this project is editable.",
         ],
     },
@@ -379,6 +380,20 @@ export const demoPages: DemoPageTemplate[] = [
             "Backlinks: pages that link to the current page are listed in the backlink panel at the bottom.",
             "The graph view visualizes how the pages of a project are connected.",
             "More links to explore: [Outliner Basics], [Collaboration]",
+        ],
+    },
+    {
+        title: "Schedule Rules",
+        items: [
+            {
+                text: "Tables can run background jobs on a repeating schedule using SQL.",
+            },
+            {
+                text:
+                    "This table computes a daily summary of task progress. Open its [Schedule](/demo/Tasks%20and%20Habits/schedule) to see the rule in action.",
+                componentType: "yjstable",
+                yjsTableId: DEMO_TASKS_TABLE_ID,
+            },
         ],
     },
     {
