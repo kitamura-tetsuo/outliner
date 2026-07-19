@@ -74,7 +74,11 @@
             resetDone = error === undefined;
             setTimeout(() => { resetDone = false; }, 3000);
         } catch (err) {
-            resetError = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
+            if (err instanceof Error && err.message.includes("rate limited")) {
+                resetError = "You can only reset the demo content once per hour. Please try again later.";
+            } else {
+                resetError = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
+            }
         } finally {
             isResetting = false;
         }
@@ -112,7 +116,7 @@
                 onclick={resetDemo}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
-                aria-label={isResetting ? "Resetting demo content" : "Reset demo content"}
+                aria-busy={isResetting || isLoading}
                 class="inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 {isResetting || isLoading ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}"
             >
                 {#if isResetting}
