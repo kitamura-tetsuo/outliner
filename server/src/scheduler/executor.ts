@@ -1,6 +1,6 @@
-import { Worker } from "node:worker_threads";
-import { resolve, dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
 export class JobExecutor {

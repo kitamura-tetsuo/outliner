@@ -23,7 +23,7 @@ describe("Job executor", () => {
                 { id: 2, name: "Bob" },
             ],
             timezone: "UTC",
-            occurrenceUtcIso: "2023-01-01T00:00:00Z"
+            occurrenceUtcIso: "2023-01-01T00:00:00Z",
         });
 
         expect(result.success).to.be.true;

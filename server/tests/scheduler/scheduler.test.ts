@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { JobScheduler } from "../../src/scheduler/Scheduler.js";
 import { DateTime } from "luxon";
+import { JobScheduler } from "../../src/scheduler/Scheduler.js";
 
 describe("Job Scheduler", () => {
     let scheduler: JobScheduler;
@@ -12,11 +12,11 @@ describe("Job Scheduler", () => {
             configuration: { extensions: [] },
             openDirectConnection: async () => ({
                 document: null,
-                disconnect: () => {}
-            })
+                disconnect: () => {},
+            }),
         };
         sqliteDb = {
-            prepare: () => ({ all: () => [], run: () => {} })
+            prepare: () => ({ all: () => [], run: () => {} }),
         };
         scheduler = new JobScheduler(hocuspocus);
         scheduler.setDb(sqliteDb);

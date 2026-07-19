@@ -1,5 +1,5 @@
-import { parentPort } from "node:worker_threads";
 import { PGlite } from "@electric-sql/pglite";
+import { parentPort } from "node:worker_threads";
 
 let db: PGlite | null = null;
 
@@ -57,7 +57,9 @@ async function executeJob(data: any) {
         await db.exec(`COMMIT;`);
         return { success: true, rows: result.rows };
     } catch (error: any) {
-        try { await db.exec("ROLLBACK;"); } catch {}
+        try {
+            await db.exec("ROLLBACK;");
+        } catch {}
         return { success: false, error: error.message };
     }
 }

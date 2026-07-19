@@ -1,9 +1,9 @@
-import { JobExecutor } from "./executor.js";
 import { Hocuspocus } from "@hocuspocus/server";
-import { serverLogger as logger } from "../utils/log-manager.js";
 import { DateTime } from "luxon";
 import { rrulestr } from "rrule";
 import * as Y from "yjs";
+import { serverLogger as logger } from "../utils/log-manager.js";
+import { JobExecutor } from "./executor.js";
 // Simple mock for parseSchemaString and castValueForColumn so tests pass
 // In real implementation we'd probably want a shared utility or duplicate parsing logic for server.
 
@@ -16,7 +16,7 @@ export function parseSchemaString(sql: string): any {
         columns: defs.map(d => {
             const parts = d.trim().split(" ");
             return { name: parts[0], type: parts[1] };
-        })
+        }),
     };
 }
 
@@ -62,7 +62,9 @@ export class JobScheduler {
 
     async tick() {
         if (!this.sqliteDb) {
-            const sqliteExtension = this.hocuspocus.configuration.extensions.find(ext => ext.extensionName === "sqlite");
+            const sqliteExtension = this.hocuspocus.configuration.extensions.find(ext =>
+                ext.extensionName === "sqlite"
+            );
             if (sqliteExtension && (sqliteExtension as any).db) {
                 this.sqliteDb = (sqliteExtension as any).db;
             } else {
@@ -213,7 +215,7 @@ export class JobScheduler {
                 ruleSql: ruleSql,
                 records: records,
                 timezone: rule.timezone,
-                occurrenceUtcIso: occurrenceIso
+                occurrenceUtcIso: occurrenceIso,
             };
 
             const result = await this.executor.executeJob(jobData);
@@ -232,7 +234,10 @@ export class JobScheduler {
                                 try {
                                     validRow[col.name] = castValueForColumn(validRow[col.name], col.type);
                                 } catch (err) {
-                                    logger.warn({ err, ruleId: rule.rule_id, id, col: col.name }, "Cast failed for returning row");
+                                    logger.warn(
+                                        { err, ruleId: rule.rule_id, id, col: col.name },
+                                        "Cast failed for returning row",
+                                    );
                                 }
                             }
                         }
@@ -253,7 +258,6 @@ export class JobScheduler {
                 }
             }
             mainRoomConn2.disconnect();
-
         } finally {
             directConnection.disconnect();
         }
