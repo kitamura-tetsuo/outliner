@@ -28,6 +28,7 @@ import {
 } from "./utils/log-manager.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
+import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;
@@ -291,6 +292,11 @@ export async function startServer(
             async onLoadDocument(data: any) {
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
+            },
+            async onStoreDocument(data: any) {
+                if (persistence) {
+                    await handleStoreDocumentForSchedules(data, (persistence as any).db);
+                }
             },
             async onDisconnect(data: any) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
