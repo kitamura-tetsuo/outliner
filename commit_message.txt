@@ -1,0 +1,9 @@
+feat: server job executor worker-thread PGlite write-back
+
+This commit implements the Job Executor for scheduled jobs as requested in #3923. It includes:
+- `JobExecutor` class utilizing Node.js `worker_threads` to avoid blocking the main thread.
+- `JobScheduler` to serve as a tick loop dispatcher inside the Hocuspocus server process.
+- PGlite in-memory instantiation in the worker thread to execute arbitrary SQL securely.
+- Proper job timeout handling logic with forced worker termination.
+- Connects `schedule_index` fetch and write-back functionality via `directConnection` effectively transacting rows back into the Document.
+- Test coverage ensuring the worker handles execution, timeouts, and batch SQL loading.

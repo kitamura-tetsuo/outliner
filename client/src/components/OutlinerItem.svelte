@@ -940,6 +940,7 @@ function handleDelete() {
 
 function confirmDelete() {
     model.original.delete();
+    showDeleteConfirm = false;
 }
 
 function toggleVote() {

@@ -188,6 +188,7 @@ const logger = getLogger("SearchPanel");
             replaceAll(pageItem, searchQuery, replaceText, options);
             handleSearch();
         }
+        showReplaceAllConfirm = false;
     }
 
     function jumpTo(match: PageItemMatch<Item>) {
