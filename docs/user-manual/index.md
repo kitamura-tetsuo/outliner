@@ -142,12 +142,14 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the top header next to the hamburger menu.
+Click the **Add Database** button in the top header.
 
-- A new database block will be inserted at the bottom of the current page.
-- To create a new table, enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
-- To use an existing table, switch to the **Existing Table** tab, select a table from the list, and click **Select**.
-- You can access your existing databases under the **Tables** section in the left sidebar, or view and manage them by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
+A new database block will be inserted at the bottom of the current page. Within this block, you can:
+
+- **Create a new table:** enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
+- **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
+
+Additionally, you can access your existing databases under the **Tables** section in the left sidebar, or view and manage them by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
 
 ### Managing Data
 
