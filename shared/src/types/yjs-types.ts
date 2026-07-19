@@ -29,6 +29,12 @@ export type ItemValueType =
 export type CommentValueType = string | number;
 
 /**
+ * Type for Schedule Rule Y.Map values
+ */
+export type ScheduleRuleValueType = string | boolean | undefined;
+
+
+/**
  * Type for Y.Doc options
  */
 export interface YDocOptions {

@@ -5,6 +5,7 @@
     "private": true,
     "type": "module",
     "dependencies": {
+        "rrule": "^2.8.1",
         "uuid": "^14.0.1",
         "yjs": "^13.6.31",
         "yjs-orderedtree": "^1.0.1-beta.3"
