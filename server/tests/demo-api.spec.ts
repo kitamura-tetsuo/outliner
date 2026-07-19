@@ -56,6 +56,14 @@ describe("Demo API", () => {
     });
 
     it("should not reset if already seeded and not expired", async () => {
+        const { Project } = await import("../src/schema/app-schema.js");
+        const { populateDemoProject } = await import("../src/demo-content.js");
+
+        mockDoc.transact(() => {
+            const project = Project.fromDoc(mockDoc);
+            populateDemoProject(project);
+        });
+
         const app = express();
         app.use(express.json());
         app.use("/api", createDemoRouter(mockHocuspocus));
