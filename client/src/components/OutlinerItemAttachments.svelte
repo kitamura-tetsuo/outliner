@@ -2,7 +2,7 @@
 import { safeDecodeURIComponent } from "../utils/urlUtils";
 
 
-import { onMount, onDestroy } from "svelte";
+import { onMount } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
 
@@ -40,7 +40,7 @@ onMount(() => {
             read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
-            onDestroy(() => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch {} });
+            return () => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch {} };
         } else {
             // Fallback: Reflect once even if observe is unavailable
             attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
@@ -66,7 +66,7 @@ onMount(() => {
     try {
         if (IS_TEST) window.addEventListener('item-attachments-changed', onAtt as EventListener, { passive: true });
     } catch {}
-    onDestroy(() => { try { window.removeEventListener('item-attachments-changed', onAtt as EventListener); } catch {} });
+    return () => { try { window.removeEventListener('item-attachments-changed', onAtt as EventListener); } catch {} };
 });
 
 const attachments = $derived.by(() => {
