@@ -169,6 +169,10 @@ export default defineConfig({
             testMatch: ["**/sbd*.spec.ts", "**/sch*.spec.ts"],
         },
         {
+            name: "schedule",
+            testDir: "./e2e/schedule",
+        },
+        {
             // Core tests 7: sea, sec, server, snapshot
             name: "core-7",
             testDir: "./e2e/core",
