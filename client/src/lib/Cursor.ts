@@ -605,6 +605,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
                 // Reset selection if not displayed
                 if (selectionElements.length === 0) {
+                    store.clearSelectionForUser(this.userId);
                     store.setSelection({
                         startItemId,
                         startOffset,
