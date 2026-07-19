@@ -85,12 +85,12 @@ test.describe("MOB-0004: Mobile item row full-width text", () => {
         }, itemId);
         await page.waitForTimeout(300);
 
-        await toolbar.locator("button[aria-label='Vote']").click();
+        await toolbar.locator("button[title='Vote']").click();
         await page.waitForTimeout(300);
         await expect(contentItem.locator(".vote-count")).toHaveText("1");
 
         const countBefore = await page.locator(".outliner-item").count();
-        await toolbar.locator("button[aria-label='Delete']").click();
+        await toolbar.locator("button[title='Delete']").click();
         await page.getByRole("alertdialog").locator("button:has-text('Delete')").click();
         await expect(page.locator(".outliner-item")).toHaveCount(countBefore - 1);
     });
