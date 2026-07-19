@@ -1,4 +1,10 @@
+<script module>
+    export let searchBoxCounter = 0;
+</script>
+
 <script lang="ts">
+    const componentId = `search-box-${searchBoxCounter++}`;
+
 import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
@@ -313,8 +319,8 @@ const logger = getLogger("SearchBox");
 
 <div class="page-search-box">
     <label
-        id="search-pages-label"
-        for="search-pages-input"
+        id={`search-pages-label-${componentId}`}
+        for={`search-pages-input-${componentId}`}
         class="visually-hidden">Search pages</label
     >
     <svg
@@ -336,14 +342,14 @@ const logger = getLogger("SearchBox");
         role="combobox"
         aria-autocomplete="list"
         aria-expanded={query.length > 0 && results.length > 0}
-        aria-controls="search-results-listbox"
-        aria-activedescendant={selected >= 0 ? `search-result-item-${selected}` : undefined}
+        aria-controls={`search-results-listbox-${componentId}`}
+        aria-activedescendant={selected >= 0 ? `search-result-item-${componentId}-${selected}` : undefined}
         aria-hidden="false"
         aria-label="Search pages"
-        aria-labelledby="search-pages-label"
+        aria-labelledby={`search-pages-label-${componentId}`}
         placeholder="Search pages"
         data-testid="search-pages-input"
-        id="search-pages-input"
+        id={`search-pages-input-${componentId}`}
         bind:this={inputEl}
         bind:value={query}
         onkeydown={handleKeydown}
@@ -392,10 +398,10 @@ const logger = getLogger("SearchBox");
         <div class="no-results" role="status">No results found</div>
     {/if}
     {#if isFocused && results.length && query.length > 0}
-        <ul id="search-results-listbox" role="listbox">
+        <ul id={`search-results-listbox-${componentId}`} role="listbox">
             {#each results as page, i (page.id)}
                 <li
-                    id="search-result-item-{i}"
+                    id={`search-result-item-${componentId}-${i}`}
                     role="option"
                     aria-selected={i === selected}
                     class:selected={i === selected}
