@@ -16,6 +16,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
+import { tickJobExecutor } from "./scheduler/job-executor.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
@@ -138,6 +139,21 @@ export async function startServer(
     }
 
     const intervals: NodeJS.Timeout[] = [];
+
+    if (persistence) {
+        let isJobExecutorTicking = false;
+        intervals.push(
+            setInterval(() => {
+                if (isJobExecutorTicking) return;
+                isJobExecutorTicking = true;
+                tickJobExecutor(hocuspocus, (persistence as any).db).catch((err) => {
+                    logger.error({ err }, "Error running scheduler tick");
+                }).finally(() => {
+                    isJobExecutorTicking = false;
+                });
+            }, 60000),
+        );
+    }
 
     // Rate limiting state
     const ipCounts = new Map<string, number>();
