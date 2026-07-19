@@ -3,6 +3,7 @@
     import { goto } from "$app/navigation";
     import { userManager } from "../../auth/UserManager";
     import { getLogger } from "../../lib/logger";
+    import { resolvePath } from "../../utils/pathUtils";
 
     const logger = getLogger();
 
@@ -10,7 +11,7 @@
         try {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             logger.info("[debug-test] Logged in successfully, redirecting to /test");
-            await goto("/test");
+            await goto(resolvePath("/test"));
         } catch (error) {
             logger.error({ error }, "[debug-test] Login failed");
         }
