@@ -9,10 +9,10 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 3. [Item Manipulation](#item-manipulation)
 4. [Links](#links)
 5. [Search and Commands](#search-and-commands)
-6. [Selection and Copy & Paste](#selection-and-copy--paste)
+6. [Selection and Clipboard](#selection-and-clipboard)
 7. [Attachments](#attachments)
 8. [Advanced Features](#advanced-features)
-9. [Database](#database)
+9. [Database Tables](#database-tables)
 10. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
@@ -91,13 +91,13 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the Search button at the top of a page to search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the Search pages input field in the top navigation bar to search across the whole project. Recent searches are remembered for quick access.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
 ---
 
-## Selection and Copy & Paste
+## Selection and Clipboard
 
 Efficiently select and copy multiple items or text ranges.
 
@@ -136,13 +136,13 @@ Outliner includes advanced capabilities like aliases and scheduling.
 
 ---
 
-## Database
+## Database Tables
 
 Create database tables to manage structured data within your project. You can start with a blank table or use presets like Tasks or Habits.
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the top left toolbar.
+Click the **Add Database** button in the top header next to the hamburger menu.
 
 - A new database block will be inserted at the bottom of the current page.
 - To create a new table, enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
