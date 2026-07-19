@@ -295,7 +295,10 @@ export async function startServer(
             },
             async onStoreDocument(data: any) {
                 if (persistence) {
-                    await handleStoreDocumentForSchedules(data, (persistence as any).db);
+                    await handleStoreDocumentForSchedules(
+                        data,
+                        (persistence as unknown as { db: import("better-sqlite3").Database; }).db,
+                    );
                 }
             },
             async onDisconnect(data: any) {
