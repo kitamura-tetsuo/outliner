@@ -1,0 +1,8 @@
+featureId: FTR-a1b2c3d4
+title: "Schedule Rules Editor"
+title-ja: "スケジュールルールエディタ"
+description: >
+  UI components to create, edit, and list schedule rules attached to Yjs tables.
+  Allows setting RRULE strings (via preset form or raw text) and SQL statements.
+e2e:
+  - "client/e2e/core/sch-schedule-editor-a1b2c3d4.spec.ts"

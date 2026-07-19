@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 14;
+export const DEMO_TEMPLATE_VERSION = 15;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -79,6 +79,7 @@ export interface DemoTableTemplate {
     components: Record<string, string>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
+    rules?: Array<{ name: string; statement: string; rrule: string; enabled: boolean }>;
 }
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
@@ -288,8 +289,8 @@ export function registerDemoTables(projectDoc: Y.Doc): void {
  */
 export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
     const schema = doc.getText("schema");
-    schema.delete(0, schema.length);
-    schema.insert(0, template.schemaSql);
+    if (schema && schema.length > 0) schema.delete(0, schema.length);
+    schema.insert(0, template.schemaSql || (template as any).schema || "");
 
     const ui = doc.getMap<unknown>("ui");
     ui.set("query", template.query);
@@ -305,6 +306,7 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
     for (const key of Array.from(data.keys())) {
         data.delete(key);
     }
+    if (template.records) {
     for (const record of template.records) {
         const map = new Y.Map<string | number | boolean | null>();
         data.set(record.id, map);
@@ -312,6 +314,24 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
             map.set(column, value);
         }
         map.set("id", record.id);
+    }
+    }
+
+    const rules = doc.getMap<Y.Map<unknown>>("rules");
+    for (const key of Array.from(rules.keys())) {
+        rules.delete(key);
+    }
+    if (template.rules) {
+        let i = 0;
+        for (const r of template.rules) {
+            const ruleMap = new Y.Map<string | number | boolean>();
+            ruleMap.set("id", `rule-${i++}`);
+            ruleMap.set("name", r.name);
+            ruleMap.set("statement", r.statement);
+            ruleMap.set("rrule", r.rrule);
+            ruleMap.set("enabled", r.enabled);
+            rules.set(`rule-${i-1}`, ruleMap);
+        }
     }
 }
 
@@ -334,6 +354,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
             "  [Advanced Features]: live database tables with charts, aliases, and attachments.",
             "  [Tasks and Habits]: task management and habit tracking built on database tables.",
+            "  [Schedule Rules]: automated schedule rules on tables.",
             "Give it a try! Everything in this project is editable.",
         ],
     },
@@ -511,6 +532,17 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text:
                     "Every view is computed with real SQL (Postgres via PGlite) over the collaborative table records, and the schema/query/grid are all editable.",
+            },
+        ],
+    },
+    {
+        title: "Schedule Rules",
+        items: [
+            { text: "This page demonstrates schedule rules automated on database tables." },
+            {
+                text: "Habits table with schedule rules for demonstration:",
+                componentType: "yjstable",
+                yjsTableId: DEMO_HABITS_TABLE_ID,
             },
         ],
     },

@@ -18,10 +18,14 @@ export const TABLE_REGISTRY_KEY = "yjsTables";
 export const TABLE_SCHEMA_KEY = "schema";
 export const TABLE_UI_KEY = "ui";
 export const TABLE_DATA_KEY = "data";
+export const TABLE_RULES_KEY = "rules";
 
 export type TableRecordValue = string | number | boolean | null;
 export type TableRecord = Y.Map<TableRecordValue>;
 export type TableData = Y.Map<TableRecord>;
+
+export type TableRule = Y.Map<string | boolean | number>;
+export type TableRules = Y.Map<TableRule>;
 
 export interface TableRegistryEntry {
     tableId: string;
@@ -34,6 +38,7 @@ export interface TableHandles {
     schemaText: Y.Text;
     uiDef: Y.Map<unknown>;
     data: TableData;
+    rules: TableRules;
     /** Undo scope spans all three structures of the table. */
     undo: Y.UndoManager;
 }
@@ -97,8 +102,9 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
     const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
     const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
     const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
-    const undo = new Y.UndoManager([schemaText, uiDef, data]);
-    return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
+    const rules = ydoc.getMap<TableRule>(TABLE_RULES_KEY);
+    const undo = new Y.UndoManager([schemaText, uiDef, data, rules]);
+    return { tableId, doc: ydoc, schemaText, uiDef, data, rules, undo };
 }
 
 /** Replace the schema text with a new statement in a single transaction. */
@@ -153,4 +159,36 @@ export function deleteColumnData(handles: TableHandles, columns: string[], origi
             }
         });
     }, origin);
+}
+
+
+/** Add a schedule rule to the table. */
+export function addRule(
+    handles: TableHandles,
+    ruleId: string = uuidv4(),
+    initial: { name: string; statement: string; rrule: string; enabled: boolean }
+): string {
+    handles.doc.transact(() => {
+        const rule = new Y.Map<string | boolean | number>();
+        rule.set("id", ruleId);
+        rule.set("name", initial.name);
+        rule.set("statement", initial.statement);
+        rule.set("rrule", initial.rrule);
+        rule.set("enabled", initial.enabled);
+        handles.rules.set(ruleId, rule);
+    });
+    return ruleId;
+}
+
+export function setRuleValue(
+    handles: TableHandles,
+    ruleId: string,
+    key: string,
+    value: string | boolean | number
+): void {
+    handles.rules.get(ruleId)?.set(key, value);
+}
+
+export function deleteRule(handles: TableHandles, ruleId: string): void {
+    handles.rules.delete(ruleId);
 }
