@@ -1,0 +1,8 @@
+id: FTR-8f9d0c2b
+title: Schedule rule editor UI
+title-ja: スケジュールルールエディタUI
+description: End-user surface for viewing, creating, and editing schedule rules for a table.
+demo:
+  - page: Schedule Rules
+tests:
+  - client/e2e/schedule/sch-schedule-rule-editor-8f9d0c2b.spec.ts

@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
-import { YTree } from "yjs-orderedtree";
 import { createDemoRouter } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject, demoPages } from "../src/demo-content.js";
+import { Project } from "../src/schema/app-schema.js";
 
 describe("Demo API", () => {
     let mockHocuspocus: any;
@@ -17,10 +17,9 @@ describe("Demo API", () => {
         metadata.set("lastReset", Date.now());
         metadata.set("templateVersion", DEMO_TEMPLATE_VERSION);
 
-        const orderedTree = mockDoc.getMap("orderedTree");
-        const { YTree } = await import("yjs-orderedtree");
-        const tree = new YTree(orderedTree);
-        tree.createNode("root", "item1", new Y.Map());
+        // Populate tree using app-schema logic so it passes "missingTemplatePages" check
+        const project = Project.fromDoc(mockDoc as any);
+        populateDemoProject(project, "test-user");
 
         mockDirectConnection = {
             document: mockDoc,
