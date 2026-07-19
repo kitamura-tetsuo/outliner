@@ -161,11 +161,12 @@ export function deleteColumnData(handles: TableHandles, columns: string[], origi
     }, origin);
 }
 
+
 /** Add a schedule rule to the table. */
 export function addRule(
     handles: TableHandles,
     ruleId: string = uuidv4(),
-    initial: { name: string; statement: string; rrule: string; enabled: boolean; },
+    initial: { name: string; statement: string; rrule: string; enabled: boolean }
 ): string {
     handles.doc.transact(() => {
         const rule = new Y.Map<string | boolean | number>();
@@ -183,7 +184,7 @@ export function setRuleValue(
     handles: TableHandles,
     ruleId: string,
     key: string,
-    value: string | boolean | number,
+    value: string | boolean | number
 ): void {
     handles.rules.get(ruleId)?.set(key, value);
 }
