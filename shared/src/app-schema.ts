@@ -7,7 +7,14 @@ const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
-import type { CommentValueType, ItemValueType, PlainItemData, RowValueType, YDocOptions, ScheduleRuleValueType } from "./types/yjs-types.js";
+import type {
+    CommentValueType,
+    ItemValueType,
+    PlainItemData,
+    RowValueType,
+    ScheduleRuleValueType,
+    YDocOptions,
+} from "./types/yjs-types.js";
 import { safeGetNodeParent } from "./utils/treeUtils.js";
 
 const DUMMY_DOC = new Y.Doc();
@@ -782,7 +789,6 @@ export class Project {
     set title(v: string) {
         this.ydoc.getMap("metadata").set("title", v);
     }
-
 
     // Schedules directly under project root
     get schedules(): Y.Map<Y.Map<ScheduleRuleValueType>> {

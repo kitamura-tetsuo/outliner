@@ -1,19 +1,25 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-    validateScheduleRuleSql,
+    validateScheduleRuleDtstart,
     validateScheduleRuleRRule,
+    validateScheduleRuleSql,
     validateScheduleRuleTimezone,
-    validateScheduleRuleDtstart
 } from "../../src/services/scheduleRuleValidation";
 
 describe("scheduleRuleValidation", () => {
     describe("validateScheduleRuleSql", () => {
         it("should accept valid INSERT ... RETURNING *", () => {
-            expect(validateScheduleRuleSql("INSERT INTO my_table (id, val) VALUES (1, 2) RETURNING *").valid).toBe(true);
+            expect(validateScheduleRuleSql("INSERT INTO my_table (id, val) VALUES (1, 2) RETURNING *").valid).toBe(
+                true,
+            );
         });
 
         it("should accept valid WITH ... INSERT ... RETURNING *", () => {
-            expect(validateScheduleRuleSql("WITH vars AS (SELECT 1 AS id) INSERT INTO my_table (id) SELECT id FROM vars RETURNING *").valid).toBe(true);
+            expect(
+                validateScheduleRuleSql(
+                    "WITH vars AS (SELECT 1 AS id) INSERT INTO my_table (id) SELECT id FROM vars RETURNING *",
+                ).valid,
+            ).toBe(true);
         });
 
         it("should reject SELECT", () => {
@@ -23,7 +29,9 @@ describe("scheduleRuleValidation", () => {
         });
 
         it("should reject multiple statements", () => {
-            const res = validateScheduleRuleSql("INSERT INTO t VALUES (1) RETURNING *; INSERT INTO t VALUES (2) RETURNING *;");
+            const res = validateScheduleRuleSql(
+                "INSERT INTO t VALUES (1) RETURNING *; INSERT INTO t VALUES (2) RETURNING *;",
+            );
             expect(res.valid).toBe(false);
             expect(res.error).toMatch(/exactly one statement/i);
         });

@@ -7,7 +7,7 @@ import { RRule } from "rrule";
  * - Must be a single statement.
  * - Must be exactly an `INSERT ... RETURNING *` or `WITH ... INSERT ... RETURNING *` statement.
  */
-export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: string } {
+export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: string; } {
     const trimmed = (sql ?? "").trim();
     if (!trimmed) {
         return { valid: false, error: "SQL is empty" };
@@ -47,7 +47,7 @@ export function validateScheduleRuleSql(sql: string): { valid: boolean; error?: 
  * - Must parse successfully.
  * - FREQ must be HOURLY or coarser (MINUTELY / SECONDLY rejected).
  */
-export function validateScheduleRuleRRule(rruleStr: string): { valid: boolean; error?: string } {
+export function validateScheduleRuleRRule(rruleStr: string): { valid: boolean; error?: string; } {
     if (!rruleStr) {
         return { valid: false, error: "RRULE is empty" };
     }
@@ -72,7 +72,7 @@ export function validateScheduleRuleRRule(rruleStr: string): { valid: boolean; e
 /**
  * Validates a timezone is a valid IANA timezone.
  */
-export function validateScheduleRuleTimezone(timezone: string): { valid: boolean; error?: string } {
+export function validateScheduleRuleTimezone(timezone: string): { valid: boolean; error?: string; } {
     if (!timezone) {
         return { valid: false, error: "Timezone is required" };
     }
@@ -89,7 +89,7 @@ export function validateScheduleRuleTimezone(timezone: string): { valid: boolean
  * Validates that dtstart parses as a local wall-clock datetime.
  * Format expected: YYYY-MM-DDTHH:MM:SS (without timezone offset)
  */
-export function validateScheduleRuleDtstart(dtstart: string): { valid: boolean; error?: string } {
+export function validateScheduleRuleDtstart(dtstart: string): { valid: boolean; error?: string; } {
     if (!dtstart) {
         return { valid: false, error: "dtstart is required" };
     }

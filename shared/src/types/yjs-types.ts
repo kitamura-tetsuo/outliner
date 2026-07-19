@@ -33,7 +33,6 @@ export type CommentValueType = string | number;
  */
 export type ScheduleRuleValueType = string | boolean | undefined;
 
-
 /**
  * Type for Y.Doc options
  */
