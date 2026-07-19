@@ -471,7 +471,7 @@ export async function prepareTwoFullBrowserPages(
     browser: Browser,
     testInfo: { title: string; },
     initialItems: string[],
-    TestHelpers: { expectEmptyOutliner: (page: Page) => Promise<void>; },
+    TestHelpers: unknown,
 ): Promise<TwoFullBrowserPagesResult> {
     // Create first browser context
     const context1 = await browser.newContext();
@@ -492,9 +492,9 @@ export async function prepareTwoFullBrowserPages(
     // Prepare test environment for page1
     const testHelpersObj = TestHelpers as unknown as {
         seedProjectAndNavigate: (
-            p1: unknown,
-            p2: unknown,
-            p3: unknown,
+            p1: Page,
+            p2: { title: string; },
+            p3: string[],
         ) => Promise<{ projectName: string; pageName: string; }>;
     };
     const { projectName, pageName } = await testHelpersObj.seedProjectAndNavigate(
