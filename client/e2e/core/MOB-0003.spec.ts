@@ -82,7 +82,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         console.log("MOB-0003: root items before indent", countBefore, JSON.stringify(rootItemsBefore));
 
         // Debug: Check if button is clickable
-        const indentButton = toolbar.locator("button[aria-label='Indent']");
+        const indentButton = toolbar.locator("button[title='Indent']");
         await expect(indentButton).toBeVisible();
         console.log("MOB-0003: Indent button is visible");
 
@@ -125,7 +125,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         }, indentedItemId);
         await page.waitForTimeout(300);
 
-        await toolbar.locator("button[aria-label='Outdent']").click();
+        await toolbar.locator("button[title='Outdent']").click();
         await page.waitForTimeout(300);
 
         await expect.poll(async () => {
@@ -148,7 +148,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         await page.waitForTimeout(300);
 
         const siblingCountBefore = await items.count();
-        await toolbar.locator("button[aria-label='Insert Above']").click();
+        await toolbar.locator("button[title='Insert Above']").click();
 
         await expect(items).toHaveCount(siblingCountBefore + 1);
 
@@ -168,7 +168,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         }, lastItemIdAfterAbove);
         await page.waitForTimeout(300);
 
-        await toolbar.locator("button[aria-label='Insert Below']").click();
+        await toolbar.locator("button[title='Insert Below']").click();
 
         await expect(items).toHaveCount(siblingCountBefore + 2);
 
@@ -186,7 +186,7 @@ test.describe("MOB-0003: Mobile action toolbar", () => {
         }, firstChildItemId);
         await page.waitForTimeout(300);
 
-        await toolbar.locator("button[aria-label='New Child']").click();
+        await toolbar.locator("button[title='New Child']").click();
         await page.waitForTimeout(300);
 
         // Verify from the data structure that there are child elements

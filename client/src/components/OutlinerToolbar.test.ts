@@ -58,7 +58,7 @@ describe("OutlinerToolbar", () => {
     });
 
     test("renders mobile toolbar with expected buttons and offset", () => {
-        const { getByLabelText, getByTestId } = render(OutlinerToolbar, {
+        const { getByTitle, getByTestId } = render(OutlinerToolbar, {
             props: {
                 mode: "mobile",
                 mobileToolbarBottomOffset: 42,
@@ -68,14 +68,14 @@ describe("OutlinerToolbar", () => {
         const toolbar = getByTestId("mobile-action-toolbar");
         expect(toolbar.style.bottom).toBe("42px");
 
-        expect(getByLabelText("Indent")).toBeTruthy();
-        expect(getByLabelText("Outdent")).toBeTruthy();
-        expect(getByLabelText("Insert Above")).toBeTruthy();
-        expect(getByLabelText("Insert Below")).toBeTruthy();
-        expect(getByLabelText("New Child")).toBeTruthy();
-        expect(getByLabelText("Insert Sibling Below")).toBeTruthy();
-        expect(getByLabelText("Vote")).toBeTruthy();
-        expect(getByLabelText("Delete")).toBeTruthy();
+        expect(getByTitle("Indent")).toBeTruthy();
+        expect(getByTitle("Outdent")).toBeTruthy();
+        expect(getByTitle("Insert Above")).toBeTruthy();
+        expect(getByTitle("Insert Below")).toBeTruthy();
+        expect(getByTitle("New Child")).toBeTruthy();
+        expect(getByTitle("Insert Sibling Below")).toBeTruthy();
+        expect(getByTitle("Vote")).toBeTruthy();
+        expect(getByTitle("Delete")).toBeTruthy();
     });
 
     test("mobile toolbar buttons call corresponding handlers", async () => {
@@ -90,35 +90,35 @@ describe("OutlinerToolbar", () => {
             onDelete: vi.fn(),
         };
 
-        const { getByLabelText } = render(OutlinerToolbar, {
+        const { getByTitle } = render(OutlinerToolbar, {
             props: {
                 mode: "mobile",
                 ...handlers,
             },
         });
 
-        await fireEvent.click(getByLabelText("Indent"));
+        await fireEvent.click(getByTitle("Indent"));
         expect(handlers.onIndent).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Outdent"));
+        await fireEvent.click(getByTitle("Outdent"));
         expect(handlers.onOutdent).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Insert Above"));
+        await fireEvent.click(getByTitle("Insert Above"));
         expect(handlers.onInsertAbove).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Insert Below"));
+        await fireEvent.click(getByTitle("Insert Below"));
         expect(handlers.onInsertBelow).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("New Child"));
+        await fireEvent.click(getByTitle("New Child"));
         expect(handlers.onNewChild).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Insert Sibling Below"));
+        await fireEvent.click(getByTitle("Insert Sibling Below"));
         expect(handlers.onInsertSiblingBelow).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Vote"));
+        await fireEvent.click(getByTitle("Vote"));
         expect(handlers.onVote).toHaveBeenCalledTimes(1);
 
-        await fireEvent.click(getByLabelText("Delete"));
+        await fireEvent.click(getByTitle("Delete"));
         expect(handlers.onDelete).toHaveBeenCalledTimes(1);
     });
 
