@@ -3,7 +3,7 @@ import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
 import { createDemoRouter } from "../src/demo-api.js";
-import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, populateDemoProject, demoPages } from "../src/demo-content.js";
+import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
 describe("Demo API", () => {
