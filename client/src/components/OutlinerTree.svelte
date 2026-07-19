@@ -2022,6 +2022,7 @@
             if (idx >= 0) items.removeAt(idx);
         }
         deleteConfirmItemId = null;
+        showDeleteConfirm = false;
     }
 
     function handleMobileVote() {
