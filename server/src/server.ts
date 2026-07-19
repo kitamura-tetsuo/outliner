@@ -16,6 +16,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
+import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
@@ -291,6 +292,11 @@ export async function startServer(
             async onLoadDocument(data: any) {
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
+            },
+            async onStoreDocument(data: any) {
+                if (persistence) {
+                    await handleStoreDocumentForSchedules(data, (persistence as any).db);
+                }
             },
             async onDisconnect(data: any) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
