@@ -1,0 +1,49 @@
+It seems that `SQLite` actually has `db?: BetterSqlite3.Database`!
+Wait, `import BetterSqlite3 from "better-sqlite3"`.
+
+Let's check `server/src/scheduler/Scheduler.ts`:
+```typescript
+import { SQLite } from "@hocuspocus/extension-sqlite";
+
+// ...
+            const sqliteExtension = this.hocuspocus.configuration.extensions.find(ext =>
+                ext.extensionName === "sqlite"
+            ) as SQLite | undefined;
+
+            if (sqliteExtension && sqliteExtension.db) {
+                this.sqliteDb = sqliteExtension.db;
+            } else {
+// ...
+```
+
+In `server/src/persistence.ts`:
+```typescript
+    if (persistence.db) {
+        initializeScheduleIndex(persistence.db);
+    }
+```
+If we remove `as unknown as import("better-sqlite3").Database`, it might just work if TS resolves it!
+Wait, `import("better-sqlite3").Database` was there. Does `initializeScheduleIndex` accept `BetterSqlite3.Database`?
+In `server/src/scheduler/schedule-indexer.ts`:
+```typescript
+export function initializeScheduleIndex(db: any) { ... }
+```
+If it's just typed properly or `db: import("better-sqlite3").Database`, we don't need any cast.
+
+Let's see `server/src/server.ts`:
+```typescript
+            async onStoreDocument(data: any) {
+                if (persistence) {
+                    await handleStoreDocumentForSchedules(
+                        data,
+                        persistence.db
+                    );
+                }
+            },
+```
+Wait, the `persistence` instance in `server.ts` is typed as `any` because `createPersistence` returns `Promise<any>`!
+In `server/src/persistence.ts`:
+```typescript
+export async function createPersistence(config: Config): Promise<any> {
+```
+If we change it to return `Promise<SQLite | undefined>`, then `persistence.db` will be properly typed!

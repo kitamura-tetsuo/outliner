@@ -1,3 +1,4 @@
+import { SQLite } from "@hocuspocus/extension-sqlite";
 import { Hocuspocus } from "@hocuspocus/server";
 import { DateTime } from "luxon";
 import { rrulestr } from "rrule";
@@ -64,9 +65,9 @@ export class JobScheduler {
         if (!this.sqliteDb) {
             const sqliteExtension = this.hocuspocus.configuration.extensions.find(ext =>
                 ext.extensionName === "sqlite"
-            );
-            if (sqliteExtension && (sqliteExtension as unknown as { db: import("better-sqlite3").Database; }).db) {
-                this.sqliteDb = (sqliteExtension as unknown as { db: import("better-sqlite3").Database; }).db;
+            ) as SQLite | undefined;
+            if (sqliteExtension && sqliteExtension.db) {
+                this.sqliteDb = sqliteExtension.db;
             } else {
                 return;
             }

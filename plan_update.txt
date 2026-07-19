@@ -1,0 +1,24 @@
+Ah, I see. My understanding of the memory instruction was slightly flawed. The goal is to remove explicit `any` casts (or perhaps remove the verbose casting by using proper typing). The review points out that "replacing specific type definitions with `any` degrades code health". I should properly define the extension type or define an interface that has the `db: import("better-sqlite3").Database` property so we avoid the `as unknown as` entirely.
+
+Wait, if I look at `server/src/scheduler/Scheduler.ts`:
+```typescript
+if (sqliteExtension && (sqliteExtension as unknown as { db: import("better-sqlite3").Database; }).db) {
+    this.sqliteDb = (sqliteExtension as unknown as { db: import("better-sqlite3").Database; }).db;
+}
+```
+If we can define a type guard or an interface for the SQLite extension, we can avoid this.
+
+In `@hocuspocus/extension-sqlite`, `SQLite` extends `Extension`. Let's see if we can import `SQLite` from `@hocuspocus/extension-sqlite` and check if it has the `db` property.
+Actually, in `server/src/persistence.ts`:
+```typescript
+import { SQLite } from "@hocuspocus/extension-sqlite";
+
+const persistence = new SQLite({ ... });
+```
+Here, `persistence` is an instance of `SQLite`. The problem is that `@hocuspocus/extension-sqlite`'s `SQLite` class might not expose `db` in its TypeScript definitions natively, or it is typed in a way that requires casting. Wait, in `server/src/persistence.ts`, why does it say:
+```typescript
+initializeScheduleIndex(persistence.db as unknown as import("better-sqlite3").Database);
+```
+If `persistence` is an instance of `SQLite`, maybe `persistence.db` is of type `unknown` or `any`?
+
+Let's check `node_modules/@hocuspocus/extension-sqlite/dist/index.d.ts` if it exists.
