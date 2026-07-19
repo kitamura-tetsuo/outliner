@@ -10,7 +10,7 @@
         try {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             logger.info("[debug-test] Logged in successfully, redirecting to /test");
-            goto("/test");
+            await goto("/test");
         } catch (error) {
             logger.error({ error }, "[debug-test] Login failed");
         }
