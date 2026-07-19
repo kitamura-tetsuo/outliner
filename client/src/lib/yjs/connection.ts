@@ -272,7 +272,13 @@ async function setupProviderForRoom(
     provider.on("close", (event: { code?: number; reason?: string; }) => {
         const code = event.code;
         const reason = event.reason;
-        logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
+        // code=undefined means a client-side close (page navigation, intentional
+        // disconnect) rather than a server-side error: keep it out of the console.
+        if (code === undefined) {
+            logger.debug(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
+        } else {
+            logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
+        }
 
         if (code === 4001 || code === 4003) {
             logger.debug(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
