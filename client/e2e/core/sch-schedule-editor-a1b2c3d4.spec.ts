@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 
 registerCoverageHooks();
@@ -19,7 +19,9 @@ test.describe("Schedule Editor UI [FTR-a1b2c3d4]", () => {
         await expect(schedulePanel).toBeVisible({ timeout: 15000 });
 
         await schedulePanel.locator('[data-testid="rule-name-input"]').first().fill("Test Preset Rule");
-        await schedulePanel.locator('[data-testid="rule-sql-input"]').first().fill("INSERT INTO test_table (id) VALUES (gen_random_uuid());");
+        await schedulePanel.locator('[data-testid="rule-sql-input"]').first().fill(
+            "INSERT INTO test_table (id) VALUES (gen_random_uuid());",
+        );
 
         await schedulePanel.locator('[data-testid="rule-freq-select"]').first().selectOption("WEEKLY");
         await schedulePanel.locator('input[type="checkbox"][value="2"]').first().check();
@@ -33,10 +35,18 @@ test.describe("Schedule Editor UI [FTR-a1b2c3d4]", () => {
 
         await schedulePanel.locator('[data-testid="create-preset-rule-btn"]').first().click();
 
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first()).toBeVisible();
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first()).toContainText("FREQ=WEEKLY");
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first()).toContainText("BYDAY=TU,TH");
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first()).toContainText("COUNT=10");
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first(),
+        ).toBeVisible();
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first(),
+        ).toContainText("FREQ=WEEKLY");
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first(),
+        ).toContainText("BYDAY=TU,TH");
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Test Preset Rule" }).first(),
+        ).toContainText("COUNT=10");
 
         await schedulePanel.locator('input[type="radio"][value="true"]').first().check();
         await schedulePanel.locator('[data-testid="rule-name-input"]').first().fill("Minutely Rule");
@@ -49,8 +59,12 @@ test.describe("Schedule Editor UI [FTR-a1b2c3d4]", () => {
         await expect(schedulePanel.locator('[data-testid="rule-sql-error"]')).not.toBeVisible();
         await schedulePanel.locator('[data-testid="create-raw-rule-btn"]').first().click();
 
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Minutely Rule" }).first()).toBeVisible();
-        await expect(schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Minutely Rule" }).first()).toContainText("FREQ=MINUTELY;INTERVAL=15");
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Minutely Rule" }).first(),
+        ).toBeVisible();
+        await expect(
+            schedulePanel.locator('[data-testid="schedule-rule-item"]').filter({ hasText: "Minutely Rule" }).first(),
+        ).toContainText("FREQ=MINUTELY;INTERVAL=15");
 
         await page.evaluate(() => {
             const btns = document.querySelectorAll('button[data-testid="yjs-table-toggle-grid"]');
@@ -58,6 +72,9 @@ test.describe("Schedule Editor UI [FTR-a1b2c3d4]", () => {
                 (btns[1] as HTMLElement).click();
             }
         });
-        await expect(tableBlock.locator('button[data-testid="yjs-table-toggle-grid"]').first()).toHaveAttribute('aria-pressed', 'true');
+        await expect(tableBlock.locator('button[data-testid="yjs-table-toggle-grid"]').first()).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
     });
 });

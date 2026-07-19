@@ -79,7 +79,7 @@ export interface DemoTableTemplate {
     components: Record<string, string>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
-    rules?: Array<{ name: string; statement: string; rrule: string; enabled: boolean }>;
+    rules?: Array<{ name: string; statement: string; rrule: string; enabled: boolean; }>;
 }
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
@@ -307,14 +307,14 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
         data.delete(key);
     }
     if (template.records) {
-    for (const record of template.records) {
-        const map = new Y.Map<string | number | boolean | null>();
-        data.set(record.id, map);
-        for (const [column, value] of Object.entries(record.values)) {
-            map.set(column, value);
+        for (const record of template.records) {
+            const map = new Y.Map<string | number | boolean | null>();
+            data.set(record.id, map);
+            for (const [column, value] of Object.entries(record.values)) {
+                map.set(column, value);
+            }
+            map.set("id", record.id);
         }
-        map.set("id", record.id);
-    }
     }
 
     const rules = doc.getMap<Y.Map<unknown>>("rules");
@@ -330,7 +330,7 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
             ruleMap.set("statement", r.statement);
             ruleMap.set("rrule", r.rrule);
             ruleMap.set("enabled", r.enabled);
-            rules.set(`rule-${i-1}`, ruleMap);
+            rules.set(`rule-${i - 1}`, ruleMap);
         }
     }
 }
