@@ -57,15 +57,17 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
             }
             logger.debug(`[tokenRefresh] Provider status: ${status}`);
 
-            if (status === "disconnected" || status === "connecting") {
-                logger.debug(`[tokenRefresh] Provider ${status}, ensuring connection with fresh token`);
-                if (status === "connecting") {
-                    logger.debug("[tokenRefresh] Aborting stale connection attempt to use new token");
-                    try {
-                        provider.disconnect();
-                    } catch {}
-                }
+            if (status === "connecting") {
+                // The in-flight attempt fetches its token via the token function when the
+                // socket opens, so it already picks up the fresh token. Aborting here kills
+                // the WebSocket mid-handshake, which the browser reports as a console error
+                // ("Firefox can't establish a connection ...") on every page load.
+                logger.debug("[tokenRefresh] Provider connecting; in-flight attempt picks up the fresh token");
+                return;
+            }
 
+            if (status === "disconnected") {
+                logger.debug("[tokenRefresh] Provider disconnected, ensuring connection with fresh token");
                 try {
                     await provider.connect();
                     logger.debug("[tokenRefresh] connect() called");
