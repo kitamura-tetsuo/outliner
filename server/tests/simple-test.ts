@@ -1,5 +1,4 @@
 import { expect } from "chai";
-import { describe, it } from "mocha";
 
 describe("Simple Test", function() {
     it("should pass", function() {

@@ -2,7 +2,6 @@ import { expect } from "chai";
 import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
-import { afterEach, beforeEach, describe, it } from "mocha";
 import sinon from "sinon";
 import request from "supertest";
 
