@@ -16,6 +16,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
+import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
@@ -28,7 +29,6 @@ import {
 } from "./utils/log-manager.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
-import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;

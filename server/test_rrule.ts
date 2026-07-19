@@ -1,5 +1,5 @@
-import { default as rruleImport } from "rrule";
 import { DateTime } from "luxon";
+import { default as rruleImport } from "rrule";
 
 const { RRule, rrulestr } = rruleImport;
 
@@ -12,5 +12,9 @@ if (!dtstart.isValid) {
     console.log("invalid reason:", dtstart.invalidReason);
 }
 
-const rule = rrulestr("FREQ=DAILY;COUNT=1", { dtstart: new Date(Date.UTC(dtstart.year, dtstart.month - 1, dtstart.day, dtstart.hour, dtstart.minute, dtstart.second)) });
+const rule = rrulestr("FREQ=DAILY;COUNT=1", {
+    dtstart: new Date(
+        Date.UTC(dtstart.year, dtstart.month - 1, dtstart.day, dtstart.hour, dtstart.minute, dtstart.second),
+    ),
+});
 console.log(rule.all());

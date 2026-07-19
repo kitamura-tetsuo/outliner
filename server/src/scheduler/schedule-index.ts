@@ -1,6 +1,6 @@
 import { SQLite } from "@hocuspocus/extension-sqlite";
-import { RRule, RRuleSet, rrulestr } from "rrule";
 import { DateTime } from "luxon";
+import { RRule, RRuleSet, rrulestr } from "rrule";
 import * as Y from "yjs";
 
 export function initializeScheduleIndex(db: any) {

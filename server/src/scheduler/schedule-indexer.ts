@@ -1,8 +1,8 @@
-import * as Y from "yjs";
 import { onStoreDocumentPayload } from "@hocuspocus/server";
-import { default as rruleImport } from "rrule";
-import { DateTime } from "luxon";
 import type BetterSqlite3 from "better-sqlite3";
+import { DateTime } from "luxon";
+import { default as rruleImport } from "rrule";
+import * as Y from "yjs";
 
 const { rrulestr } = rruleImport;
 
@@ -27,8 +27,13 @@ export function computeNextRunAt(
     rruleStr: string,
     dtstartStr: string,
     timezoneStr: string,
-    cursorSeq: number = 0
-): { next_run_at: string | null; state: "active" | "disabled" | "exhausted" | "invalid"; nextSeq: number; error?: string } {
+    cursorSeq: number = 0,
+): {
+    next_run_at: string | null;
+    state: "active" | "disabled" | "exhausted" | "invalid";
+    nextSeq: number;
+    error?: string;
+} {
     try {
         const dtstart = DateTime.fromISO(dtstartStr, { zone: timezoneStr });
         if (!dtstart.isValid) {
@@ -39,11 +44,18 @@ export function computeNextRunAt(
         const resolvedLocal = dtstart.toFormat("yyyy-MM-dd'T'HH:mm:ss");
 
         if (originalLocal !== resolvedLocal) {
-             return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: "Invalid dtstart (nonexistent time in timezone)" };
+            return {
+                next_run_at: null,
+                state: "invalid",
+                nextSeq: cursorSeq,
+                error: "Invalid dtstart (nonexistent time in timezone)",
+            };
         }
 
         // rrule expects floating time; we give it local time (treating it as UTC for rrule's purposes)
-        const rruleDtstart = new Date(Date.UTC(dtstart.year, dtstart.month - 1, dtstart.day, dtstart.hour, dtstart.minute, dtstart.second));
+        const rruleDtstart = new Date(
+            Date.UTC(dtstart.year, dtstart.month - 1, dtstart.day, dtstart.hour, dtstart.minute, dtstart.second),
+        );
 
         let rule: any;
         try {
@@ -63,11 +75,15 @@ export function computeNextRunAt(
             const minute = date.getUTCMinutes();
             const second = date.getUTCSeconds();
 
-            const localDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`;
+            const localDateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T${
+                String(hour).padStart(2, "0")
+            }:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
 
             // Check if nonexistent local time
             const inZone = DateTime.fromISO(localDateStr, { zone: timezoneStr });
-            const resolvedLocalDateStr = inZone.setZone(timezoneStr, { keepLocalTime: true }).toFormat("yyyy-MM-dd'T'HH:mm:ss");
+            const resolvedLocalDateStr = inZone.setZone(timezoneStr, { keepLocalTime: true }).toFormat(
+                "yyyy-MM-dd'T'HH:mm:ss",
+            );
             if (localDateStr !== resolvedLocalDateStr) {
                 // Nonexistent local time! Skip to next valid occurrence.
                 return true; // continue iterating
@@ -96,7 +112,7 @@ export function computeNextRunAt(
 
         return { next_run_at: dt.toUTC().toISO(), state: "active", nextSeq: cursorSeq };
     } catch (err: any) {
-         return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: err.message };
+        return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: err.message };
     }
 }
 
@@ -130,7 +146,7 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
     db.transaction(() => {
         // Find existing schedules in DB to determine what to delete
         const currentSchedulesInDbStmt = db.prepare(`SELECT rule_id FROM schedule_index WHERE room = ?`);
-        const currentSchedulesInDb = currentSchedulesInDbStmt.all(documentName) as { rule_id: string }[];
+        const currentSchedulesInDb = currentSchedulesInDbStmt.all(documentName) as { rule_id: string; }[];
         const dbRuleIds = new Set(currentSchedulesInDb.map(r => r.rule_id));
 
         schedulesMap.forEach((ruleObj: any, ruleId: string) => {
@@ -144,7 +160,7 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             const enabled = ruleObj.get("enabled") as boolean ?? true;
 
             if (!rruleStr || !dtstartStr || !timezoneStr) {
-                 return;
+                return;
             }
 
             const existingRow = getRow.get(documentName, ruleId) as any;
@@ -152,28 +168,61 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             let seq = 0;
             if (existingRow) {
                 // Check if we need to recompute
-                if (existingRow.rrule === rruleStr && existingRow.dtstart === dtstartStr && existingRow.timezone === timezoneStr) {
+                if (
+                    existingRow.rrule === rruleStr && existingRow.dtstart === dtstartStr
+                    && existingRow.timezone === timezoneStr
+                ) {
                     const targetTableChanged = existingRow.target_table_id !== (targetTableId || null);
                     seq = existingRow.occurrence_seq;
                     if (!enabled && existingRow.state !== "disabled") {
-                        upsertRow.run(documentName, ruleId, targetTableId || null, timezoneStr, rruleStr, dtstartStr, existingRow.next_run_at, seq, "disabled");
+                        upsertRow.run(
+                            documentName,
+                            ruleId,
+                            targetTableId || null,
+                            timezoneStr,
+                            rruleStr,
+                            dtstartStr,
+                            existingRow.next_run_at,
+                            seq,
+                            "disabled",
+                        );
                         return;
                     } else if (enabled && existingRow.state === "disabled") {
-                         // Fall through to recompute/update state to active
+                        // Fall through to recompute/update state to active
                     } else if (enabled) {
                         if (targetTableChanged) {
-                             upsertRow.run(documentName, ruleId, targetTableId || null, timezoneStr, rruleStr, dtstartStr, existingRow.next_run_at, seq, existingRow.state);
-                             return;
-                         }
+                            upsertRow.run(
+                                documentName,
+                                ruleId,
+                                targetTableId || null,
+                                timezoneStr,
+                                rruleStr,
+                                dtstartStr,
+                                existingRow.next_run_at,
+                                seq,
+                                existingRow.state,
+                            );
+                            return;
+                        }
                         return; // Nothing changed, active -> active
                     }
                 } else {
-                     seq = 0; // Reset on change
+                    seq = 0; // Reset on change
                 }
             }
 
             if (!enabled) {
-                upsertRow.run(documentName, ruleId, targetTableId || null, timezoneStr, rruleStr, dtstartStr, existingRow?.next_run_at || null, seq, "disabled");
+                upsertRow.run(
+                    documentName,
+                    ruleId,
+                    targetTableId || null,
+                    timezoneStr,
+                    rruleStr,
+                    dtstartStr,
+                    existingRow?.next_run_at || null,
+                    seq,
+                    "disabled",
+                );
                 return;
             }
 
@@ -185,17 +234,17 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             document.transact(() => {
                 // Write back validation error if invalid
                 if (computed.state === "invalid" && computed.error) {
-                     if (ruleObj.get("validationError") !== computed.error) {
-                          ruleObj.set("validationError", computed.error);
-                     }
+                    if (ruleObj.get("validationError") !== computed.error) {
+                        ruleObj.set("validationError", computed.error);
+                    }
                 } else if (ruleObj.get("validationError") !== undefined) {
-                     ruleObj.delete("validationError");
+                    ruleObj.delete("validationError");
                 }
 
                 if (computed.state === "exhausted") {
-                     if (!ruleObj.get("completedAt")) {
-                         ruleObj.set("completedAt", new Date().toISOString());
-                     }
+                    if (!ruleObj.get("completedAt")) {
+                        ruleObj.set("completedAt", new Date().toISOString());
+                    }
                 }
             }, "server-scheduler");
 
@@ -208,14 +257,14 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
                 dtstartStr,
                 computed.next_run_at,
                 computed.nextSeq,
-                finalState
+                finalState,
             );
         });
 
         // Delete deleted schedules
         for (const dbRuleId of dbRuleIds) {
             if (!currentRuleIds.has(dbRuleId)) {
-                 deleteRow.run(documentName, dbRuleId);
+                deleteRow.run(documentName, dbRuleId);
             }
         }
     })();
