@@ -32,6 +32,7 @@ let publishTime = $state("");
 let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
+let loadError = $state<string | null>(null);
 
 // Function to trigger parent page load
 async function triggerParentPageLoad() {
@@ -59,7 +60,10 @@ let navState = $state({
     pageIdResolved: false,
 });
 
-onMount(async () => {
+onMount(() => {
+    let destroyed = false;
+
+    const init = async () => {
     navState.onMountCount++;
     logger.debug("Schedule page: onMount started", {
         count: navState.onMountCount,
@@ -110,6 +114,8 @@ onMount(async () => {
 
         // Wait for store.project to be populated after navigation
         for (let i = 0; i < 50; i++) {
+            // Do NOT check destroyed here, because goto(mainPageUrl) unmounted this component,
+            // but we need this async execution to continue and navigate us back!
             if ((store.project?.items?.length ?? 0) > 0) {
                 logger.debug("Schedule page: store.project populated after", i * 100, "ms");
                 break;
@@ -132,6 +138,7 @@ onMount(async () => {
     let parentLoadWaitAttempts = 0;
     const maxParentLoadWaitAttempts = 200; // 20 seconds
     while (parentLoadWaitAttempts < maxParentLoadWaitAttempts) {
+        if (destroyed) return;
         // Check if yjsStore.yjsClient is set (indicates main page loadProjectAndPage has completed)
         // We check both the global window reference and the imported yjsStore
         const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
@@ -290,6 +297,7 @@ onMount(async () => {
     let foundPageRef: Item | undefined;
 
     while (waitAttempts < maxWaitAttempts) {
+        if (destroyed) return;
         // Check if we already found the page
         if (foundPageRef) {
             break;
@@ -416,6 +424,7 @@ onMount(async () => {
             const yjsClient = yjsStore.yjsClient;
             if (yjsClient) {
                 for (let waitIter = 0; waitIter < 50; waitIter++) {
+                    if (destroyed) return;
                     // Check if items are synced in the main doc
                     const currentItems = store.pages?.current;
                     const len = currentItems?.length ?? 0;
@@ -467,9 +476,16 @@ onMount(async () => {
             if (pid) {
                 pageId = pid;
             }
-            await refresh();
+            if (!destroyed) await refresh();
         };
     }
+    };
+
+    init();
+
+    return () => {
+        destroyed = true;
+    };
 });
 
 // E2E stability: Re-call refresh when pageId changes (handles race conditions during navigation)
@@ -477,9 +493,10 @@ $effect(() => {
     if (pageId) {
         logger.debug("Schedule page: $effect triggered with pageId:", pageId, "schedules.length:", schedules.length);
         // Small delay to ensure DOM is ready
-        setTimeout(() => {
+        const timer = setTimeout(() => {
             refresh();
         }, 100);
+        return () => clearTimeout(timer);
     }
 });
 
@@ -490,11 +507,13 @@ async function refresh() {
     }
     logger.debug("Schedule page: Refreshing schedules for pageId:", pageId);
     try {
+        loadError = null;
         schedules = await listSchedules(pageId);
         logger.debug("Schedule page: Loaded schedules:", schedules);
     }
     catch (err) {
         logger.error({ error: err }, "Schedule page: Error loading schedules:");
+        loadError = err instanceof Error ? err.message : String(err);
     }
 }
 
@@ -624,6 +643,11 @@ function toLocalISOString(timestamp: number): string {
         pageTitle={pageTitle}
     </div>
     <ul data-testid="schedule-list">
+        {#if loadError}
+            <li class="mb-2 text-red-600 bg-red-50 p-2 rounded border border-red-200" data-testid="schedule-error">
+                Failed to load schedules: {loadError}
+            </li>
+        {/if}
         {#each schedules as sch (sch.id)}
             <li class="mb-2" data-testid="schedule-item">
                 {#if editingId === sch.id}
