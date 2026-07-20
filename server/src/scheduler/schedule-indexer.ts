@@ -4,6 +4,18 @@ import { DateTime } from "luxon";
 import { default as rruleImport } from "rrule";
 import * as Y from "yjs";
 
+export interface ScheduleIndexRow {
+    room: string;
+    rule_id: string;
+    target_table_id: string | null;
+    timezone: string;
+    rrule: string;
+    dtstart: string;
+    next_run_at: string | null;
+    occurrence_seq: number;
+    state: "active" | "disabled" | "exhausted" | "invalid";
+}
+
 const { rrulestr } = rruleImport;
 
 export function initializeScheduleIndex(db: BetterSqlite3.Database) {
@@ -60,8 +72,13 @@ export function computeNextRunAt(
         let rule: any;
         try {
             rule = rrulestr(rruleStr, { dtstart: rruleDtstart });
-        } catch (e: any) {
-            return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: e.message };
+        } catch (e: unknown) {
+            return {
+                next_run_at: null,
+                state: "invalid",
+                nextSeq: cursorSeq,
+                error: e instanceof Error ? e.message : String(e),
+            };
         }
 
         let nextDate: Date | null = null;
@@ -111,8 +128,13 @@ export function computeNextRunAt(
         }, { zone: timezoneStr });
 
         return { next_run_at: dt.toUTC().toISO(), state: "active", nextSeq: cursorSeq };
-    } catch (err: any) {
-        return { next_run_at: null, state: "invalid", nextSeq: cursorSeq, error: err.message };
+    } catch (err: unknown) {
+        return {
+            next_run_at: null,
+            state: "invalid",
+            nextSeq: cursorSeq,
+            error: err instanceof Error ? err.message : String(err),
+        };
     }
 }
 
@@ -149,7 +171,7 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
         const currentSchedulesInDb = currentSchedulesInDbStmt.all(documentName) as { rule_id: string; }[];
         const dbRuleIds = new Set(currentSchedulesInDb.map(r => r.rule_id));
 
-        schedulesMap.forEach((ruleObj: any, ruleId: string) => {
+        schedulesMap.forEach((ruleObj: unknown, ruleId: string) => {
             currentRuleIds.add(ruleId);
             if (!(ruleObj instanceof Y.Map)) return;
 
@@ -163,7 +185,7 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
                 return;
             }
 
-            const existingRow = getRow.get(documentName, ruleId) as any;
+            const existingRow = getRow.get(documentName, ruleId) as ScheduleIndexRow | undefined;
 
             let seq = 0;
             if (existingRow) {
