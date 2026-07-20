@@ -14,6 +14,7 @@ export interface YjsClientParams {
     doc?: Y.Doc;
     provider?: HocuspocusProvider;
     awareness?: Awareness | null;
+    dispose?: () => Promise<void> | void;
 }
 
 export class YjsClient {
@@ -24,6 +25,7 @@ export class YjsClient {
     private _doc?: Y.Doc;
     private _provider?: HocuspocusProvider;
     private _awareness?: Awareness | null;
+    private _disposeFunc?: () => Promise<void> | void;
 
     public onAccessDenied?: () => void;
     public isDestroyed = false;
@@ -35,6 +37,7 @@ export class YjsClient {
         this._doc = params.doc;
         this._provider = params.provider;
         this._awareness = params.awareness;
+        this._disposeFunc = params.dispose;
 
         // Attach presence binding when awareness exists
         try {
@@ -54,7 +57,7 @@ export class YjsClient {
 
     // Build a client with active provider/awareness
     static async connect(projectId: string, project: Project): Promise<YjsClient> {
-        const { doc, provider, awareness } = await createProjectConnection(projectId);
+        const { doc, provider, awareness, dispose } = await createProjectConnection(projectId);
         // Build a Project bound to the provider's doc to ensure schema/awareness consistency
         let connectedProject: Project = project;
         try {
@@ -77,6 +80,7 @@ export class YjsClient {
             doc,
             provider,
             awareness,
+            dispose,
         });
     }
 
@@ -226,12 +230,18 @@ export class YjsClient {
 
     public dispose() {
         this.isDestroyed = true;
-        try {
-            (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
-        } catch {}
-        try {
-            (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
-        } catch {}
+        if (this._disposeFunc) {
+            try {
+                void this._disposeFunc();
+            } catch {}
+        } else {
+            try {
+                (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
+            } catch {}
+            try {
+                (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
+            } catch {}
+        }
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
         } catch {}
