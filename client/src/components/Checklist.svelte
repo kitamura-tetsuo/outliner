@@ -22,9 +22,10 @@ let newItem = $state("");
 
 // Generate a unique ID for this instance of the Checklist component
 // This prevents duplicate DOM ID collisions when multiple checklists are rendered.
-const componentId = Math.random().toString(36).substring(2, 9);
+let componentId = $state("");
 
 onMount(() => {
+    componentId = Math.random().toString(36).substring(2, 9);
     const id = createChecklist(title, mode, rrule);
     const unsubscribe = checklists.subscribe(arr => {
         list = arr.find(l => l.id === id);

@@ -1,4 +1,6 @@
 <script lang="ts">
+import { onMount } from "svelte";
+
 let {
     isOpen = $bindable(false),
     title = "Confirm",
@@ -20,7 +22,11 @@ let {
 }>();
 
 let dialogElement: HTMLDialogElement;
-const dialogId = Math.random().toString(36).substring(2, 9);
+let dialogId = $state("");
+
+onMount(() => {
+    dialogId = Math.random().toString(36).substring(2, 9);
+});
 
 $effect(() => {
     if (dialogElement) {
