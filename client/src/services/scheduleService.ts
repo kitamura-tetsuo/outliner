@@ -38,7 +38,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
                 strategy: sched.strategy || "one_shot",
                 params: sched.params || {},
                 nextRunAt: sched.nextRunAt || Date.now(),
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             };
             if (!mockSchedules[pageId]) mockSchedules[pageId] = [];
             mockSchedules[pageId].push(newSchedule);
@@ -60,7 +60,7 @@ async function fetchApi(path: string, body: ApiRequestBody) {
                     mockSchedules[pageId][idx] = {
                         ...mockSchedules[pageId][idx],
                         ...sched,
-                        nextRunAt: sched.nextRunAt ?? mockSchedules[pageId][idx].nextRunAt
+                        nextRunAt: sched.nextRunAt ?? mockSchedules[pageId][idx].nextRunAt,
                     };
                 }
             }
