@@ -151,7 +151,7 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
     }
 
     .sidebar-placeholder {
-        color: #9ca3af;
+        color: #6b7280;
         font-size: 0.875rem;
         font-style: italic;
     }
