@@ -28,13 +28,6 @@ export async function createPersistence(config: Config): Promise<InstanceType<ty
     const persistence = new SQLite({
         database: dbPath,
     });
-
-    // @hocuspocus/extension-sqlite doesn't create the DB immediately until onConfigure
-    // But we can initialize it after we're sure it's created. We will do this via a small hack or
-    // waiting for its onConfigure, or since SQLite is synchronous, we can just do it.
-    // Let's check when persistence.db is available.
-
-    // Actually, persistence.db is created immediately in constructor for SQLite extension in hocuspocus.
     if (persistence.db) {
         initializeScheduleIndex(persistence.db);
     }
