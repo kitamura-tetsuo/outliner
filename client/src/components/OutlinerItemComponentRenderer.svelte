@@ -1,6 +1,5 @@
 <script lang="ts">
 import type { Item } from "../schema/app-schema";
-import YjsTableBlock from "./yjstable/YjsTableBlock.svelte";
 
 interface Props {
     componentType: string | undefined;
@@ -11,9 +10,11 @@ let { componentType, item }: Props = $props();
 </script>
 
 {#if componentType === "yjstable"}
-    <div class="component-wrapper">
-        <YjsTableBlock item={item} />
-    </div>
+    {#await import("./yjstable/YjsTableBlock.svelte") then { default: YjsTableBlock }}
+        <div class="component-wrapper">
+            <YjsTableBlock item={item} />
+        </div>
+    {/await}
 {/if}
 
 <style>
