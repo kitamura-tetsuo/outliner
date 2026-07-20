@@ -1,5 +1,5 @@
 <script lang="ts">
-
+    import Loader from "../../components/Loader.svelte";
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
@@ -146,10 +146,7 @@
     </div>
 
     {#if isLoading && !store.project}
-        <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
-            <div class="loader" aria-hidden="true"></div>
-            <div class="text-gray-600 text-sm font-medium">Loading Demo...</div>
-        </div>
+        <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
@@ -189,19 +186,4 @@
     {/if}
 </main>
 
-<style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Loader from "./Loader.svelte";
 import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";
 import {
@@ -106,7 +107,7 @@ onDestroy(() => {
 
             {#if !hasLoaded}
                 <div class="backlink-loading">
-                    <div class="loader"></div>
+                    <Loader />
                     <p>Loading...</p>
                 </div>
             {:else if backlinks.length === 0}
@@ -228,24 +229,9 @@ onDestroy(() => {
 }
 
 
-.loader {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #0078d7;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    animation: spin 1s linear infinite;
-    margin-bottom: 10px;
-}
 
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
-    }
-    100% {
-        transform: rotate(360deg);
-    }
-}
+
+
 
 .backlink-list {
     list-style: none;
