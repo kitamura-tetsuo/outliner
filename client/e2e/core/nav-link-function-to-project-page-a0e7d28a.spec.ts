@@ -83,6 +83,6 @@ test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
         await expect(separators).toHaveCount(2); // Home / Project / Page
 
         // Verify that separator character style is correct
-        await expect(separators.first()).toHaveClass(/text-gray-400/);
+        await expect(separators.first()).toHaveClass(/text-gray-500/);
     });
 });
