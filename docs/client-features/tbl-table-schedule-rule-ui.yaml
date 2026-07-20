@@ -1,0 +1,12 @@
+name: tbl-table-schedule-rule-ui
+title: Table Schedule Rule UI Feature
+description: Implements the client-side UI for viewing, creating, editing, and deleting schedule rules for tables using Yjs.
+dependencies: ["#3950"]
+testInstructions: |
+  1. Open a project and navigate to a page containing a Yjs table block.
+  2. Click the "Schedule" toggle in the table views toolbar.
+  3. Verify the schedule panel appears and shows "Schedule Rules" list (initially empty or showing existing rules).
+  4. Click "+ New Rule" and verify the rule editor appears.
+  5. Fill out the rule form with valid schedule and SQL (e.g. `INSERT INTO...`).
+  6. Save the rule and verify it appears in the list.
+  7. Verify the rule can be edited and deleted.
