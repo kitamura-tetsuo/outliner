@@ -1,5 +1,5 @@
 <script lang="ts">
-
+    import Loader from "../../components/Loader.svelte";
         import { page } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import { userManager } from "../../auth/UserManager";
@@ -131,7 +131,7 @@
 
     {#if isLoading}
         <div class="flex justify-center py-8">
-            <div class="flex flex-col items-center justify-center space-y-4" aria-busy="true" aria-live="polite" role="status"><div class="loader" aria-hidden="true"></div><div class="text-gray-600 text-sm font-medium">Loading...</div></div>
+            <Loader message="Loading..." />
         </div>
     {/if}
 
@@ -232,24 +232,4 @@
     {/if}
 </main>
 
-<style>
-    .loader {
 
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-    }
-
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-</style>

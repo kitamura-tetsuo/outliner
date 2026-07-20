@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Loader from "../../../components/Loader.svelte";
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
     import { goto } from "$app/navigation";
@@ -168,7 +169,7 @@
 
     {#if isLoading}
          <div class="flex justify-center py-8">
-            <div class="loader">Loading...</div>
+            <Loader message="Loading..." />
         </div>
     {:else if !project}
         <div class="p-4 bg-yellow-50 text-yellow-800 rounded">
@@ -281,18 +282,4 @@
     {/if}
 </div>
 
-<style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-    }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>

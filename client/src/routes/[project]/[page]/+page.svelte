@@ -1,4 +1,5 @@
 <script lang="ts">
+    import Loader from "../../../components/Loader.svelte";
     import { resolvePath } from "../../../utils/pathUtils";
     // Use SvelteKit page store from $app/stores (not $app/state)
     import { page } from "$app/stores";
@@ -572,10 +573,7 @@
     </div>
 
     {#if _isLoading && !store.currentPage}
-        <div class="flex flex-col items-center justify-center py-8 space-y-4" aria-busy="true" aria-live="polite" role="status">
-            <div class="loader" aria-hidden="true"></div>
-            <div class="text-gray-600 text-sm font-medium">Loading Page...</div>
-        </div>
+        <div class="py-8"><Loader message="Loading Page..." /></div>
     {:else if !error}
         <!-- Always mount OutlinerBase, switch display internally based on pageItem presence -->
         {#key lastReset}
@@ -676,19 +674,4 @@
     {/if}
 </main>
 
-<style>
-    .loader {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto;
-    }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-</style>
