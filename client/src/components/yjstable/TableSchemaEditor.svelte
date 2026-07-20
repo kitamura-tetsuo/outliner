@@ -1,4 +1,5 @@
 <script lang="ts">
+import { untrack } from "svelte";
 // Schema Definition editor: a plain textarea with an explicit Apply button.
 // Nothing is parsed while typing; on Apply the draft is validated in a
 // throwaway PGlite schema and, when the diff would drop columns or change
@@ -18,8 +19,7 @@ interface Props {
 let { handles, adapter, schemaError }: Props = $props();
 
 // handles is static within the component lifecycle due to `{#key}` wrapping
-// svelte-ignore state_referenced_locally
-let draft = $state(handles.schemaText.toString());
+let draft = $state(untrack(() => handles.schemaText.toString()));
 let applyError = $state<string | undefined>(undefined);
 let applying = $state(false);
 let pendingChange = $state<{ parsed: ParsedTableSchema; diff: SchemaDiff; } | undefined>(undefined);
