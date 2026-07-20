@@ -65,7 +65,7 @@ export class JobScheduler {
         if (!this.sqliteDb) {
             const sqliteExtension = this.hocuspocus.configuration.extensions.find(ext =>
                 ext.extensionName === "sqlite"
-            ) as SQLite | undefined;
+            ) as InstanceType<typeof SQLite> | undefined;
             if (sqliteExtension && sqliteExtension.db) {
                 this.sqliteDb = sqliteExtension.db;
             } else {

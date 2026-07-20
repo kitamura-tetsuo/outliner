@@ -3,7 +3,7 @@ import type { Logger } from "pino";
 import { Config } from "./config.js";
 import { initializeScheduleIndex } from "./scheduler/schedule-indexer.js";
 
-export async function createPersistence(config: Config): Promise<SQLite | undefined> {
+export async function createPersistence(config: Config): Promise<InstanceType<typeof SQLite> | undefined> {
     if (process.env.DISABLE_PERSISTENCE === "true") {
         return undefined;
     }
