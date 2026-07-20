@@ -29,7 +29,7 @@
                 {/if}
             </li>
             {#if i < items.length - 1}
-                <li class="text-gray-400" aria-hidden="true">/</li>
+                <li class="text-gray-500" aria-hidden="true">/</li>
             {/if}
         {/each}
     </ol>

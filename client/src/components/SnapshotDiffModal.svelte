@@ -240,7 +240,7 @@ $effect(() => {
 
             <div class="flex-1 overflow-hidden flex flex-col diff-container min-h-0">
                 {#if !selectedId}
-                    <div class="flex items-center justify-center h-full text-gray-400 italic bg-gray-50 rounded border border-gray-200">
+                    <div class="flex items-center justify-center h-full text-gray-500 italic bg-gray-50 rounded border border-gray-200">
                         Select a snapshot to view differences
                     </div>
                 {:else if viewMode === 'inline'}

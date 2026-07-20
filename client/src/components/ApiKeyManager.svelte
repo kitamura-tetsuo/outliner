@@ -79,7 +79,7 @@
 <div class="api-key-manager bg-white dark:bg-gray-800 rounded shadow p-6">
     <h3 class="text-xl font-semibold mb-4 text-gray-800 dark:text-gray-100">API Keys</h3>
 
-    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+    <p class="text-sm text-gray-600 dark:text-gray-500 mb-6">
         Manage your API keys for programmatic access. <strong>Never share your API keys</strong> or commit them to version control.
     </p>
 
@@ -130,7 +130,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
-                    <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
+                    <tr class="border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-500">
                         <th class="py-3 px-2 font-medium">Description</th>
                         <th class="py-3 px-2 font-medium">Created</th>
                         <th class="py-3 px-2 font-medium">Last Used</th>
@@ -141,8 +141,8 @@
                     {#each apiKeys as key (key.id)}
                         <tr class="border-b border-gray-100 dark:border-gray-700 last:border-0">
                             <td class="py-3 px-2 text-gray-800 dark:text-gray-200">{key.description}</td>
-                            <td class="py-3 px-2 text-gray-500 dark:text-gray-400">{formatDate(key.createdAt)}</td>
-                            <td class="py-3 px-2 text-gray-500 dark:text-gray-400">
+                            <td class="py-3 px-2 text-gray-500 dark:text-gray-500">{formatDate(key.createdAt)}</td>
+                            <td class="py-3 px-2 text-gray-500 dark:text-gray-500">
                                 {key.lastUsedAt ? formatDate(key.lastUsedAt) : 'Never'}
                             </td>
                             <td class="py-3 px-2 text-right">
