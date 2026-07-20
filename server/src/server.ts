@@ -17,6 +17,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
+import { runScheduleTick } from "./scheduler/tick-loop.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
@@ -164,6 +165,10 @@ export async function startServer(
     };
 
     // Rate limiter cleanup interval
+    intervals.push(setInterval(() => {
+        if (persistence && persistence.db) runScheduleTick(persistence.db, hocuspocus as unknown as Hocuspocus);
+    }, 60000));
+
     intervals.push(setInterval(() => {
         const now = Date.now();
         const windowStart = now - config.RATE_LIMIT_WINDOW_MS;

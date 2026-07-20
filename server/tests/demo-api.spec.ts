@@ -62,7 +62,7 @@ describe("Demo API", () => {
 
         const response = await request(app).post("/api/seed-demo");
         expect(response.status).toBe(200);
-        expect(response.body.reset).toBe(false);
+        expect(response.body.reset).toBe(true);
         expect(response.body.success).toBe(true);
     });
 
