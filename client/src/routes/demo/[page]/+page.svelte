@@ -1,5 +1,6 @@
 <script lang="ts">
     import { page } from "$app/stores";
+    import { resolvePath } from "../../../utils/pathUtils";
     import { onDestroy, onMount } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
@@ -215,6 +216,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 >
                     Add Item
                 </button>
+                <a href={resolvePath(`/demo/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">
