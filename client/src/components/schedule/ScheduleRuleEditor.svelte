@@ -1,5 +1,6 @@
 <script lang="ts">
 import { RRule, rrulestr } from "rrule";
+import { untrack } from "svelte";
 import type { ScheduleRule } from "../../services/schedule/scheduleRuleService";
 
 interface Props {
@@ -15,9 +16,11 @@ let { rule = {}, tableId, onSave, onCancel }: Props = $props();
 let initialParsed: RRule | undefined;
 let initialIsRaw = false;
 
-if (rule.rrule) {
+const initialRrule = untrack(() => rule.rrule);
+
+if (initialRrule) {
     try {
-        const parsed = rrulestr(rule.rrule);
+        const parsed = rrulestr(initialRrule);
         if (parsed instanceof RRule) {
             initialParsed = parsed;
         } else {
@@ -34,11 +37,11 @@ if (rule.rrule) {
 let isRawMode = $state(initialIsRaw);
 
 // Shared state
-let sql = $state(rule.sql || `INSERT INTO "${tableId}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
-let dtstart = $state(rule.dtstart || "");
-let timezone = $state(rule.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-let enabled = $state(rule.enabled !== false);
-let rawRruleStr = $state(rule.rrule || "FREQ=DAILY;INTERVAL=1");
+let sql = $state(untrack(() => rule.sql) || `INSERT INTO "${untrack(() => tableId)}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
+let dtstart = $state(untrack(() => rule.dtstart) || "");
+let timezone = $state(untrack(() => rule.timezone) || Intl.DateTimeFormat().resolvedOptions().timeZone);
+let enabled = $state(untrack(() => rule.enabled) !== false);
+let rawRruleStr = $state(untrack(() => rule.rrule) || "FREQ=DAILY;INTERVAL=1");
 
 // Form state derived from initial parsing if not raw
 let freq = $state<"DAILY" | "WEEKLY" | "MONTHLY">(
@@ -172,8 +175,8 @@ function handleSave() {
     </div>
 
     <div class="mb-4">
-        <label class="block text-sm font-medium mb-1">Schedule</label>
-        <div class="flex items-center space-x-4 mb-2">
+        <div class="block text-sm font-medium mb-1" id="schedule-label">Schedule</div>
+        <div class="flex items-center space-x-4 mb-2" role="group" aria-labelledby="schedule-label">
             <label class="flex items-center space-x-2">
                 <input type="radio" name="mode" checked={!isRawMode} onchange={() => {
                     isRawMode = false;
