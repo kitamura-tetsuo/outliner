@@ -50,9 +50,12 @@ let interval = $state(initialParsed?.options.interval || 1);
 // Weekday checkboxes (0=Mon, 1=Tue, ..., 6=Sun)
 let byweekday = $state<number[]>((initialParsed?.options.byweekday || []).map((w: unknown) => {
     // RRule Weekday is an object or number. Let's normalize to number.
-    if (typeof w === 'number') return w;
-    return w.weekday;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wObj = w as any;
+    if (typeof wObj === 'number') return wObj;
+    return wObj.weekday;
 }));
+
 
 let bymonthday = $state<number>((initialParsed?.options.bymonthday && initialParsed.options.bymonthday[0]) || 1);
 
@@ -172,8 +175,8 @@ function handleSave() {
     </div>
 
     <div class="mb-4">
-        <label class="block text-sm font-medium mb-1">Schedule</label>
-        <div class="flex items-center space-x-4 mb-2">
+        <span class="block text-sm font-medium mb-1" id="schedule-label">Schedule</span>
+        <div class="flex items-center space-x-4 mb-2" role="group" aria-labelledby="schedule-label">
             <label class="flex items-center space-x-2">
                 <input type="radio" name="mode" checked={!isRawMode} onchange={() => {
                     isRawMode = false;
