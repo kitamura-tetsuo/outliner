@@ -1,0 +1,14 @@
+[Issues]
+The `text-gray-400` Tailwind utility class used in several UI components fails to meet the WCAG 2 AA minimum color contrast ratio (4.5:1) when placed against white or light gray backgrounds (`bg-white` or `bg-gray-50`), leading to potential accessibility violations (e.g., axe-core errors).
+
+[Changes]
+- Updated `text-gray-400` to `text-gray-500` in `client/src/components/SnapshotDiffModal.svelte`.
+- Updated `text-gray-400` to `text-gray-500` in `client/src/components/ApiKeyManager.svelte`.
+- Updated `text-gray-400` to `text-gray-500` in `client/src/components/PageList.svelte`.
+- Updated `text-gray-400` to `text-gray-500` in `client/src/components/Breadcrumb.svelte`.
+- Updated `text-gray-400` to `text-gray-500` in `client/src/routes/[project]/[page]/schedule/+page.svelte`.
+
+[Verification Results]
+- Ran `npx svelte-check` in the `client/` directory which returned 0 errors.
+- Ran `npm run test:unit` in the `client/` directory and confirmed unit tests passed.
+- Ran `cd scripts && ./test.sh client/e2e/basic` which executed 26 basic Playwright E2E tests and verified they all pass cleanly, ensuring no unintended side-effects or regressions in the UI.
