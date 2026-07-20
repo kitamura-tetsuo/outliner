@@ -8,7 +8,8 @@
 
     const logger = getLogger();
 
-    onMount(async () => {
+    onMount(() => {
+        const init = async () => {
         try {
             await userManager.loginWithEmailPassword("test@example.com", "password");
             logger.info("[debug-test] Logged in successfully, redirecting to /test");
@@ -16,6 +17,8 @@
         } catch (error) {
             logger.error({ error }, "[debug-test] Login failed");
         }
+        };
+        init();
     });
 </script>
 

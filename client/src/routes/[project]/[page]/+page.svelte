@@ -405,7 +405,8 @@
         );
     }
 
-    onMount(async () => {
+    onMount(() => {
+        const init = async () => {
         // Check UserManager auth state (async support)
         logger.info(
             `onMount: Starting for project="${projectName}", page="${pageName}"`,
@@ -508,6 +509,8 @@
             searchHistoryStore.add(pageName);
             pageViewStore.increment(pageName);
         }
+        };
+        init();
     });
 
     onDestroy(() => {
