@@ -1,5 +1,6 @@
 <script lang="ts">
 import { RRule, rrulestr } from "rrule";
+import { untrack } from "svelte";
 import type { ScheduleRule } from "../../services/schedule/scheduleRuleService";
 
 interface Props {
@@ -9,15 +10,19 @@ interface Props {
     onCancel: () => void;
 }
 
+
 let { rule = {}, tableId, onSave, onCancel }: Props = $props();
+
+const initRule = untrack(() => rule);
+const initTableId = untrack(() => tableId);
 
 // We need an initial parsing to populate the preset form fields if possible
 let initialParsed: RRule | undefined;
 let initialIsRaw = false;
 
-if (rule.rrule) {
+if (initRule.rrule) {
     try {
-        const parsed = rrulestr(rule.rrule);
+        const parsed = rrulestr(initRule.rrule);
         if (parsed instanceof RRule) {
             initialParsed = parsed;
         } else {
@@ -34,11 +39,11 @@ if (rule.rrule) {
 let isRawMode = $state(initialIsRaw);
 
 // Shared state
-let sql = $state(rule.sql || `INSERT INTO "${tableId}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
-let dtstart = $state(rule.dtstart || "");
-let timezone = $state(rule.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
-let enabled = $state(rule.enabled !== false);
-let rawRruleStr = $state(rule.rrule || "FREQ=DAILY;INTERVAL=1");
+let sql = $state(initRule.sql || `INSERT INTO "${initTableId}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
+let dtstart = $state(initRule.dtstart || "");
+let timezone = $state(initRule.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone);
+let enabled = $state(initRule.enabled !== false);
+let rawRruleStr = $state(initRule.rrule || "FREQ=DAILY;INTERVAL=1");
 
 // Form state derived from initial parsing if not raw
 let freq = $state<"DAILY" | "WEEKLY" | "MONTHLY">(
@@ -172,7 +177,7 @@ function handleSave() {
     </div>
 
     <div class="mb-4">
-        <label class="block text-sm font-medium mb-1">Schedule</label>
+        <div class="block text-sm font-medium mb-1">Schedule</div>
         <div class="flex items-center space-x-4 mb-2">
             <label class="flex items-center space-x-2">
                 <input type="radio" name="mode" checked={!isRawMode} onchange={() => {
