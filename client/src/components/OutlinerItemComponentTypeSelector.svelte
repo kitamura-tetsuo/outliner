@@ -12,9 +12,14 @@ let { value, onChange }: Props = $props();
         {value}
         onchange={(e: Event) => onChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
         onpointerdown={(e: Event) => e.stopPropagation()}
-        onmousedown={(e: Event) => e.stopPropagation()}
+        onmousedown={(e: Event) => {
+            e.stopPropagation();
+        }}
         onmouseup={(e: Event) => e.stopPropagation()}
-        onclick={(e: Event) => e.stopPropagation()}
+        onclick={(e: Event) => {
+            e.stopPropagation();
+            (e.target as HTMLElement).focus();
+        }}
         aria-label="Item component type"
     >
         <option value="none">Text</option>
