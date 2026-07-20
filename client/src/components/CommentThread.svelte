@@ -4,10 +4,9 @@ import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
 import type { ItemLike } from "../types/yjs-types";
 import { getLogger } from "../lib/logger";
-import { createEventDispatcher, onMount } from "svelte";
+import { onMount } from "svelte";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 const logger = getLogger("CommentThread");
-const dispatch = createEventDispatcher();
 
 
 interface Props {
@@ -29,8 +28,6 @@ let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
 
 
-// 
-//  
 let lastNotifiedCount = $state(-1);
 
 
@@ -96,27 +93,11 @@ onMount(() => {
 });
 
 
-// Yjs automatic synchronization is temporarily paused (limited to immediate notification on add/remove for CMT-0001 stabilization)
-// $effect(() => {
-//     try {
-
-//         const list = (commentsSubscriber.current as unknown as Comment[]) ?? [];
-//         commentsList = list as Comment[];
-//         recompute();
-//         onCountChanged?.(commentsList.length);
-//     } catch {}
-// });
-
-// Click delegation (safety net): Ensure add() is called even in environments where button onclick doesn't work
-// Lightweight auto-sync: toPlain -> recompute -> onCountChanged (only when length changes) on Y.Doc update
 
 
-// Count notification is delegated to the parent (OutlinerItem) Yjs-derived subscription.
-// Do not perform direct DOM manipulation or side effects here ($effect removed).
 
-    // try { logger.debug('[CommentThread] mount props', { hasComments: !!props?.comments, hasDoc: !!props?.doc }); } catch {}
 
-// Fallback removal: Remove onMount click delegation/auto-add/global delegation
+
 
 
 
@@ -168,16 +149,6 @@ function add() {
         id = `local-${time}-${Math.random().toString(36).slice(2)}`;
     }
 
-    // Predictive immediate reflection: Estimate +1 from current DOM and update badge immediately (run before normal path)
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const predicted = 1;
-        const id = props.item?.id || container?.getAttribute('data-item-id');
-        if (id) {
-            const nodes = document.querySelectorAll(`[data-item-id="${id}"] .comment-count`);
-            nodes.forEach(el => { (el as HTMLElement).textContent = String(predicted); });
-        }
-    } catch {}
     // Reflect to DOM immediately with optimistic local addition
     try {
         const optimistic: Comment = { id, author: user, text: newText, created: time, lastChanged: time };
@@ -188,8 +159,6 @@ function add() {
 
     // Normal path: Sync state after Yjs addition and notify parent with exact count
     try {
-        // Yjs debaeadf1c8ecb7f4b7L
-        // Yjs  
 
         // Calculate the count directly from the Yjs array which should be updated immediately after add
         let countNow = 0;
@@ -209,25 +178,14 @@ function add() {
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
-            // Notify parent (OutlinerItem) via props + bubbling event
+            // Notify parent (OutlinerItem) via props callback only
             try { onCountChanged?.(countNow); } catch {}
-            try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
-            try { dispatch('comment-count-changed', { count: countNow }); } catch {}
         }
-        // DOM fallback - only update text content, visibility is handled by parent OutlinerItem
-        try {
-            const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-            const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-            if (badge) { 
-                badge.textContent = String(countNow); 
-            }
-        } catch {}
     } catch (e) {
         logger.error({ error: e as Error }, '[CommentThread] failed to sync after add');
     }
 
 
-                    //  onCountChanged 
 
 
 
@@ -262,15 +220,7 @@ function remove(id: string) {
     if (countNow !== lastNotifiedCount) {
         lastNotifiedCount = countNow;
         try { onCountChanged?.(countNow); } catch {}
-        try { threadRef?.dispatchEvent(new CustomEvent('comment-count-changed', { bubbles: true, detail: { count: countNow } })); } catch {}
-        try { dispatch('comment-count-changed', { count: countNow }); } catch {}
     }
-    // DOM fallback:
-    try {
-        const container = threadRef?.closest('.outliner-item') as HTMLElement | null;
-        const badge = container?.querySelector('.comment-button .comment-count') as HTMLElement | null;
-        if (badge) { badge.textContent = String(renderCommentsState.length); (badge as HTMLElement).style.display = (renderCommentsState.length > 0) ? 'inline-block' : 'none'; }
-    } catch {}
 }
 
 function startEdit(c: Comment) {
