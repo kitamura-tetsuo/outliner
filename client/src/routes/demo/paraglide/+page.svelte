@@ -7,10 +7,11 @@ import {
     locales,
     localizeHref,
 } from "$lib/paraglide/runtime";
+import { resolvePath } from "../../../utils/pathUtils";
 
 function switchToLanguage(newLanguage: "en" | "ja") {
     const localisedPath = localizeHref($page.url.pathname, { locale: newLanguage });
-    goto(localisedPath);
+    goto(resolvePath(localisedPath));
 }
 </script>
 

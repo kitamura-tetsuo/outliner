@@ -109,7 +109,7 @@ onMount(() => {
         // Navigate to main page to trigger loadProjectAndPage
         const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
         logger.debug("Schedule page: Navigating to main page:", mainPageUrl);
-        await goto(mainPageUrl);
+        await goto(resolvePath(mainPageUrl));
         logger.debug("Schedule page: Back from main page, waiting for store.project to be populated...");
 
         // Wait for store.project to be populated after navigation
@@ -127,7 +127,7 @@ onMount(() => {
         // Navigate back to schedule page
         const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
         logger.debug("Schedule page: Navigating back to schedule:", scheduleUrl);
-        await goto(scheduleUrl);
+        await goto(resolvePath(scheduleUrl));
         logger.debug("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
     } else {
         logger.debug("Schedule page: Using saved pageId, no navigation needed");
