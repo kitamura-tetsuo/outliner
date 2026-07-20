@@ -297,7 +297,7 @@ export async function startServer(
                 if (persistence) {
                     await handleStoreDocumentForSchedules(
                         data,
-                        (persistence as unknown as { db: import("better-sqlite3").Database; }).db,
+                        persistence.db,
                     );
                 }
             },
