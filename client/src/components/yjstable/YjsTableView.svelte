@@ -22,6 +22,7 @@ import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
+import TableSchedulePanel from "./TableSchedulePanel.svelte";
 
 const logger = getLogger("YjsTableView");
 
@@ -49,6 +50,7 @@ let showSchema = $state(false);
 let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
+let showSchedule = $state(false);
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
@@ -145,6 +147,16 @@ onDestroy(() => {
             >Chart</button>
             <button
                 type="button"
+                class:active={showSchedule}
+                aria-pressed={showSchedule}
+                data-testid="yjs-table-toggle-schedule"
+                onclick={() => {
+                    showSchedule = !showSchedule;
+                }}
+            >Schedule</button>
+
+            <button
+                type="button"
                 class:active={showSchema}
                 aria-pressed={showSchema}
                 data-testid="yjs-table-toggle-schema"
@@ -208,6 +220,12 @@ onDestroy(() => {
         </section>
     {/if}
 
+
+    {#if showSchedule}
+        <section class="panel">
+            <TableSchedulePanel tableId={handles.tableId} />
+        </section>
+    {/if}
     {#if showChart}
         <section class="panel">
             <TableChartPanel bind:this={chartPanel} initial={result} />

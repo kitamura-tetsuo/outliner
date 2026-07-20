@@ -1,0 +1,8 @@
+id: FTR-a1b2c3d4
+title: Table-level Schedule Rule UI
+title-ja: テーブルレベルスケジュールルールUI
+description: End-user surface for viewing, creating, and editing schedule rules directly from the table view tabs.
+demo:
+  - page: Schedule Rules
+tests:
+  - client/e2e/schedule/sch-schedule-rule-editor-8f9d0c2b.spec.ts

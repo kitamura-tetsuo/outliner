@@ -24,21 +24,24 @@ test.describe("Schedule Rule Editor UI", () => {
         await page.getByTestId("yjs-table-create").first().click();
 
         await page.waitForSelector("[data-testid=yjs-table-view]");
-        const tableNameText = await page.textContent("[data-testid=yjs-table-name]");
-        const tableName = tableNameText?.trim() || "";
+        // tableNameText not needed
+        // tableName parsed but unused in local UI flow
 
-        const url = new URL(page.url());
-        const pathname = url.pathname;
-        const projectSegment = pathname.split("/")[1];
+        // Open the schedule panel from the table view
+        const scheduleToggle = page.getByTestId("yjs-table-toggle-schedule");
+        await expect(scheduleToggle).toBeVisible({ timeout: 10000 });
+        await scheduleToggle.click();
 
-        // Navigate to the table schedule page
-        await page.goto(`/tables/${projectSegment}/${encodeURIComponent(tableName)}/schedule`);
+        // Verify the schedule panel is visible
+        const schedulePanel = page.getByTestId("yjs-table-schedule-panel");
+        await expect(schedulePanel).toBeVisible({ timeout: 10000 });
 
-        await page.waitForTimeout(3000);
-        await expect(page.locator("h1")).toBeVisible({ timeout: 15000 });
+        // Click "+ New Rule"
+        const addBtn = page.getByTestId("schedule-rule-add");
+        await expect(addBtn).toBeVisible({ timeout: 10000 });
+        await addBtn.click();
 
-        // Open the editor
-        // Note: The UI for the table schedule seems to have issues locating "+ New Rule" in some headless envs
-        // bypassing full form execution in E2E since the unit tests verify the store/service logic well.
+        // Verify the editor opened by checking for the Save button
+        await expect(page.locator("button:has-text('Save')")).toBeVisible({ timeout: 10000 });
     });
 });
