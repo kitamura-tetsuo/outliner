@@ -1,4 +1,4 @@
-import type { Item, Items, Project } from "../schema/app-schema";
+import type { Item, Items } from "../schema/app-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
