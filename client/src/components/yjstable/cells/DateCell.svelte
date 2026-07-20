@@ -13,6 +13,7 @@ const current = $derived(value === null || value === undefined ? "" : String(val
 <input
     type="date"
     class="cell-date"
+    aria-label="Edit date"
     value={current}
     disabled={!editable}
     onchange={(e) => {

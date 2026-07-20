@@ -9,7 +9,7 @@ let { value, editable, onCommit }: Props = $props();
 </script>
 
 <input
-    type="checkbox"
+    type="checkbox" aria-label="Toggle cell value"
     class="cell-checkbox"
     checked={value === true || value === "true"}
     disabled={!editable}
