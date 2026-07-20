@@ -114,7 +114,8 @@ onMount(() => {
 
         // Wait for store.project to be populated after navigation
         for (let i = 0; i < 50; i++) {
-            if (destroyed) return;
+            // Do NOT check destroyed here, because goto(mainPageUrl) unmounted this component,
+            // but we need this async execution to continue and navigate us back!
             if ((store.project?.items?.length ?? 0) > 0) {
                 logger.debug("Schedule page: store.project populated after", i * 100, "ms");
                 break;
