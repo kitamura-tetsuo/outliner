@@ -14,6 +14,7 @@ const current = $derived(value === null || value === undefined ? "" : String(val
 
 <select
     class="cell-select"
+    aria-label="Select value"
     value={current}
     disabled={!editable}
     onchange={(e) => {

@@ -26,6 +26,7 @@ function commit(e: Event) {
     <!-- svelte-ignore a11y_autofocus -->
     <input
         class="cell-input"
+        aria-label="Edit cell value"
         type="number"
         step="any"
         value={value === null || value === undefined ? "" : String(value)}
@@ -40,6 +41,7 @@ function commit(e: Event) {
     <button
         type="button"
         class="cell-value"
+        aria-label={value === null || value === undefined || String(value) === "" ? "Empty cell" : String(value)}
         class:readonly={!editable}
         disabled={!editable}
         onclick={() => {

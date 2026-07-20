@@ -72,7 +72,7 @@ function deleteRow(recordId: string) {
                         </th>
                     {/each}
                     {#if editability.editable}
-                        <th class="actions-col"></th>
+                        <th class="actions-col"><span class="sr-only">Actions</span></th>
                     {/if}
                 </tr>
             </thead>

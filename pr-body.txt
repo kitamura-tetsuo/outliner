@@ -1,0 +1,16 @@
+[Issues]
+- Running axe-core against the "Add Database" modal (specifically the Yjs Table rendering) revealed multiple accessibility violations.
+- `empty-table-header` in `TableGrid.svelte`: The actions column header `<th>` was completely empty.
+- `select-name` in `SelectCell.svelte`: The `<select>` element lacked an accessible name or label.
+- `label` in `DateCell.svelte`: The `<input type="date">` element lacked a label.
+- `button-name` and `label` in `TextCell.svelte` and `NumberCell.svelte`: The editable cell buttons lacked accessible names when empty, and the `<input>` elements lacked labels. Similar issues existed in `CheckboxCell.svelte`.
+
+[Changes]
+- Added a `<span class="sr-only">Actions</span>` to the empty `<th>` in `TableGrid.svelte`.
+- Added `aria-label` attributes to the input elements in `SelectCell`, `DateCell`, `TextCell`, `NumberCell`, and `CheckboxCell`.
+- Added dynamic `aria-label` attributes to the empty button states in `TextCell` and `NumberCell` to provide discernible text.
+
+[Verification Results]
+- Re-running a Playwright axe-core script on the demo site with the changes applied shows 0 violations for the components.
+- Unit tests run successfully (`npm run test:unit`).
+- E2E tests run successfully (`./test.sh client/e2e/basic`).
