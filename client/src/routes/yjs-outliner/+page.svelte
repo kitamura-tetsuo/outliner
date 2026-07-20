@@ -12,7 +12,8 @@ let pageItem = $state<Item | undefined>(undefined);
 
 const PROJECT_ID = "yjs-outliner-test";
 
-onMount(async () => {
+onMount(() => {
+  const init = async () => {
   // 1) Create local doc immediately for UI rendering (server optional)
   const doc = new Y.Doc({ guid: PROJECT_ID });
   const p = Project.fromDoc(doc);
@@ -33,6 +34,8 @@ onMount(async () => {
   } catch (e) {
     logger.warn("/yjs-outliner: connectProjectDoc failed (continuing offline)", e);
   }
+  };
+  init();
 });
 </script>
 

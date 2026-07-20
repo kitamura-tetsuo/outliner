@@ -153,7 +153,8 @@ function handleVisibilityChange() {
 }
 
 // Processing at application initialization
-onMount(async () => {
+onMount(() => {
+    const init = async () => {
     // Execute only in browser environment
     if (browser) {
         // E2E: Hydration detection flag for stable waits
@@ -230,6 +231,8 @@ onMount(async () => {
 
 
     }
+    };
+    init();
 });
 
 // Processing at component destruction

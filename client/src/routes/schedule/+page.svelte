@@ -26,7 +26,8 @@ function formatLastRun(timestamp: string | undefined): string {
     return iso.replace("T", " ").replace(/\.\d{3}Z$/, "Z");
 }
 
-onMount(async () => {
+onMount(() => {
+    const init = async () => {
     const params = new URLSearchParams(window.location.search);
     const pageId = params.get("pageId");
     const idToken = localStorage.getItem("firebase:authUser:*:idToken");
@@ -47,6 +48,8 @@ onMount(async () => {
     catch (e) {
         logger.error({ error: e }, "failed to fetch schedules");
     }
+    };
+    init();
 });
 </script>
 

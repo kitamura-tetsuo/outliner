@@ -15,8 +15,11 @@
     let showRevokeConfirm = $state(false);
     let keyIdToRevoke = $state<string | null>(null);
 
-    onMount(async () => {
-        await loadKeys();
+    onMount(() => {
+        const init = async () => {
+            await loadKeys();
+        };
+        init();
     });
 
     async function loadKeys() {

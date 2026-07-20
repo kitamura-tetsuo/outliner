@@ -10,7 +10,8 @@ const logger = getLogger("Layout");
 // even when accessed directly from child routes such as 'schedule'.
 let { children } = $props();
 
-onMount(async () => {
+onMount(() => {
+    const init = async () => {
     // E2E stability: If store.project is still the provisional project (empty),
     // and we're on a child route like /schedule, trigger the project loading
     // The main page's +page.svelte might not be mounted for child routes
@@ -40,6 +41,8 @@ onMount(async () => {
             }
         }
     }
+    };
+    init();
 });
 </script>
 

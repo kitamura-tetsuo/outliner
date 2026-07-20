@@ -81,7 +81,8 @@
         return true;
     }
 
-    onMount(async () => {
+    onMount(() => {
+        const init = async () => {
         // Ensure Yjs connection for the current project
         const projectName = $page.params.project;
         if (projectName) {
@@ -102,6 +103,8 @@
                 store.project);
         }
         hydrateFromSnapshotIfNeeded();
+        };
+        init();
     });
 
     async function doExport(format: "opml" | "markdown") {

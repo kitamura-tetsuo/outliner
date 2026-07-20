@@ -50,7 +50,8 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	}
 
 	// As a last resort, resolve from service by URL param to support tests
-	onMount(async () => {
+	onMount(() => {
+	    const init = async () => {
 	    try {
 	        if (!effectiveProject && typeof window !== "undefined") {
 	            const globals = window as unknown as ToolbarDebugGlobals;
@@ -88,6 +89,8 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	    } catch (e) {
 	        logger.warn("Toolbar: failed to resolve project by title", e);
     }
+    };
+    init();
 });
 
 
