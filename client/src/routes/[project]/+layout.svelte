@@ -67,13 +67,14 @@ async function loadProject(projectNameFromParam?: string) {
 onMount(() => {
     // Keep auth state in sync
     try {
-        userManager.addEventListener(() => {
+        const unsub = userManager.addEventListener(() => {
             // If project not yet loaded but param exists, try again when auth flips
             const projectParam = (data as { project?: string })?.project;
             if (projectParam && !yjsStore.yjsClient) {
                 loadProject(projectParam);
             }
         });
+        return unsub;
     } catch {}
 });
 </script>
