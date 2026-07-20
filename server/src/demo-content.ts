@@ -386,13 +386,11 @@ export const demoPages: DemoPageTemplate[] = [
         title: "Schedule Rules",
         items: [
             {
-                text: "Tables can run background jobs on a repeating schedule using SQL.",
+                text: "Pages can be scheduled to be published at a later time.",
             },
             {
                 text:
-                    "This table computes a daily summary of task progress. Open its [Schedule](/demo/Tasks%20and%20Habits/schedule) to see the rule in action.",
-                componentType: "yjstable",
-                yjsTableId: DEMO_TASKS_TABLE_ID,
+                    "You can manage page-publish schedules from the [Schedule](/demo/Tasks%20and%20Habits/schedule) page.",
             },
         ],
     },
