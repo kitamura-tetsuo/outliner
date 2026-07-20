@@ -244,8 +244,8 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
         // Wait for comment count to disappear
         await expect(
-            page.locator(`[data-item-id="${firstId}"] .comment-count`),
-        ).not.toBeVisible();
+            page.locator(`[data-item-id="${firstId}"] .comment-count-visual`),
+        ).toHaveText("0", { timeout: 10000 });
     });
 
     test.afterEach(async ({ page }) => {
