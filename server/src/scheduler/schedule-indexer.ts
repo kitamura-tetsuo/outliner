@@ -5,8 +5,6 @@ import rrulePkg from "rrule";
 const { rrulestr } = rrulePkg;
 import * as Y from "yjs";
 
-
-
 export function initializeScheduleIndex(db: BetterSqlite3.Database) {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS schedule_index (
