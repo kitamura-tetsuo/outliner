@@ -1,5 +1,4 @@
 import type { Item, Items } from "../schema/app-schema";
-import type { Item as YjsItem, Project as YjsProject } from "../schema/yjs-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -16,11 +15,8 @@ import {
     selectionSpansMultipleItems,
 } from "./cursor";
 import { collectAllItemIds, CursorNavigation, type CursorNavigationContext } from "./cursor/CursorNavigation";
-import { searchItem as searchYjsItem } from "./cursor/CursorNavigationUtils";
+import { searchItem } from "./cursor/CursorNavigationUtils";
 
-function searchAppItem(root: Item, id: string): Item | undefined {
-    return searchYjsItem(root as unknown as YjsItem, id) as Item | undefined;
-}
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { getLogger } from "./logger";
 import { yjsService } from "./yjs/service";
@@ -86,15 +82,13 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     private _findTarget(): Item | undefined {
         const root = generalStore.currentPage as Item | undefined;
         if (root) {
-            const found = searchAppItem(root, this.itemId);
+            const found = searchItem(root, this.itemId);
             if (found) return found;
         }
 
         // Fallback: search across all pages in the current project
         try {
-            const proj: { items?: { length: number; at: (i: number) => Item; }; } | undefined =
-                (generalStore as unknown as { project?: { items?: { length: number; at: (i: number) => Item; }; }; })
-                    .project;
+            const proj = generalStore.project;
             const pages = proj?.items;
             if (pages && typeof pages.length === "number") {
                 const len = pages.length;
@@ -102,7 +96,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     const p = pages.at(i);
                     if (!p) continue;
 
-                    const f = searchAppItem(p, this.itemId);
+                    const f = searchItem(p, this.itemId);
                     if (f) return f;
                 }
             }
@@ -114,8 +108,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     }
 
     // Recursive search for Item on SharedTree (CursorEditingContext interface implementation)
-    findTarget(): YjsItem | undefined {
-        return this._findTarget() as unknown as YjsItem | undefined;
+    findTarget(): Item | undefined {
+        return this._findTarget();
     }
 
     private getTargetText(target: { text?: unknown; } | undefined): string {
@@ -988,7 +982,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (!root) return;
 
         // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
-        const deepest = getDeepestDescendant(root as unknown as Parameters<typeof getDeepestDescendant>[0]);
+        const deepest = getDeepestDescendant(root);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
         this.applyToStore();
@@ -1032,42 +1026,42 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     moveItemUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemUp(project as unknown as YjsProject, this.itemId);
+            yjsService.moveItemUp(project, this.itemId);
         }
     }
 
     moveItemDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveItemDown(project as unknown as YjsProject, this.itemId);
+            yjsService.moveItemDown(project, this.itemId);
         }
     }
 
     moveSubtreeUp() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeUp(project as unknown as YjsProject, this.itemId);
+            yjsService.moveSubtreeUp(project, this.itemId);
         }
     }
 
     moveSubtreeDown() {
         const project = generalStore.project;
         if (project) {
-            yjsService.moveSubtreeDown(project as unknown as YjsProject, this.itemId);
+            yjsService.moveSubtreeDown(project, this.itemId);
         }
     }
 
     indent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.indentItem(project as unknown as YjsProject, this.itemId);
+            yjsService.indentItem(project, this.itemId);
         }
     }
 
     outdent() {
         const project = generalStore.project;
         if (project) {
-            yjsService.outdentItem(project as unknown as YjsProject, this.itemId);
+            yjsService.outdentItem(project, this.itemId);
         }
     }
 
