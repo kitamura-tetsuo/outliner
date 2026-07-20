@@ -31,14 +31,18 @@ test.describe("Schedule Rule Editor UI", () => {
         const pathname = url.pathname;
         const projectSegment = pathname.split("/")[1];
 
-        // Navigate to the table schedule page
-        await page.goto(`/tables/${projectSegment}/${encodeURIComponent(tableName)}/schedule`);
+        // Navigate to the schedule panel inside the table view
+        await page.getByTestId("yjs-table-toggle-schedule").click();
+        await expect(page.getByTestId("table-schedule-panel")).toBeVisible();
 
-        await page.waitForTimeout(3000);
-        await expect(page.locator("h1")).toBeVisible({ timeout: 15000 });
+        // Create a new rule
+        await page.getByText("+ New Rule").click();
+        await expect(page.getByText("Edit Schedule Rule")).toBeVisible();
 
-        // Open the editor
-        // Note: The UI for the table schedule seems to have issues locating "+ New Rule" in some headless envs
-        // bypassing full form execution in E2E since the unit tests verify the store/service logic well.
+        // Save the rule (defaults to daily)
+        await page.getByRole("button", { name: "Save" }).click();
+
+        // Verify rule is listed
+        await expect(page.getByText("every day")).toBeVisible();
     });
 });

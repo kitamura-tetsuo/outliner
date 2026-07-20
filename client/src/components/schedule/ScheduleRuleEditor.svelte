@@ -51,7 +51,7 @@ let interval = $state(initialParsed?.options.interval || 1);
 let byweekday = $state<number[]>((initialParsed?.options.byweekday || []).map((w: unknown) => {
     // RRule Weekday is an object or number. Let's normalize to number.
     if (typeof w === 'number') return w;
-    return w.weekday;
+    return (w as any).weekday;
 }));
 
 let bymonthday = $state<number>((initialParsed?.options.bymonthday && initialParsed.options.bymonthday[0]) || 1);
