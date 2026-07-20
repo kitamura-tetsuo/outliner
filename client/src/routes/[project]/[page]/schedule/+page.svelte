@@ -635,7 +635,7 @@ function toLocalISOString(timestamp: number): string {
         ScheduleDebug:{pageId}:{schedules.length}
     </div>
     <!-- Debug info for E2E troubleshooting -->
-    <div class="text-xs text-gray-400 mb-2" data-testid="schedule-debug-info">
+    <div class="text-xs text-gray-500 mb-2" data-testid="schedule-debug-info">
         Debug: currentPage={store.currentPage?.text?.toString?.() ?? "null"},
         pages={store.pages?.current?.length ?? 0},
         project={store.project?.title ?? "null"},
