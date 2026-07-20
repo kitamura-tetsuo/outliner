@@ -1,10 +1,11 @@
 import { onStoreDocumentPayload } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
-import { default as rruleImport } from "rrule";
+import rrulePkg from "rrule";
+const { rrulestr } = rrulePkg;
 import * as Y from "yjs";
 
-const { rrulestr } = rruleImport;
+
 
 export function initializeScheduleIndex(db: BetterSqlite3.Database) {
     db.prepare(`

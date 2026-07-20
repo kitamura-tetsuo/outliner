@@ -1,7 +1,8 @@
 import { SQLite } from "@hocuspocus/extension-sqlite";
 import { Hocuspocus } from "@hocuspocus/server";
 import { DateTime } from "luxon";
-import { rrulestr } from "rrule";
+import rrulePkg from "rrule";
+const { rrulestr } = rrulePkg;
 import * as Y from "yjs";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
