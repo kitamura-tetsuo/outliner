@@ -11,6 +11,7 @@ class YjsStore {
     // Record the Y.Doc GUID of the most recently set Project to prevent resetting with the same document
     private _lastProjectGuid: string | null = null;
     private _unsubSyncState: (() => void) | undefined;
+    private _unsubWsProvider: (() => void) | undefined;
 
     get yjsClient(): YjsClient | undefined {
         return this._client;
@@ -28,6 +29,11 @@ class YjsStore {
         } catch {}
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
+
+        try {
+            this._unsubWsProvider?.();
+        } catch {}
+        this._unsubWsProvider = undefined;
 
         try {
             this._unsubSyncState?.();
@@ -108,6 +114,10 @@ class YjsStore {
                 };
                 v.wsProvider.on("status", updateConnected);
                 v.wsProvider.on("synced", updateConnected);
+                this._unsubWsProvider = () => {
+                    v.wsProvider?.off("status", updateConnected);
+                    v.wsProvider?.off("synced", updateConnected);
+                };
                 // Initial check
                 updateConnected();
             }
@@ -134,6 +144,10 @@ class YjsStore {
         this.isConnected = false;
         this.notYetSynced = false;
         this.syncError = null;
+        try {
+            this._unsubWsProvider?.();
+        } catch {}
+        this._unsubWsProvider = undefined;
         try {
             this._unsubSyncState?.();
         } catch {}
