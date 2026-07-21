@@ -2,7 +2,7 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^2.14.0",
         "@electric-sql/pglite": "^0.5.4",
-        "@hocuspocus/provider": "^4.0.0",
+        "@hocuspocus/provider": "^4.4.0",
         "@sentry/sveltekit": "^10.67.0",
         "@sinclair/typebox": "^0.34.52",
         "diff-match-patch": "^1.0.5",
