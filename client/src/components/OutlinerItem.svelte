@@ -207,19 +207,28 @@ let ensuredComments = $derived.by(() => item.comments);
 
 let openCommentItemId = $derived.by(() => generalStore.openCommentItemId);
 
-let referringAliases = $state<{ item: Item, pageTitle: string }[]>([]);
 let isAliasDropdownOpen = $state(false);
 
-onMount(() => {
-    // Only check if it's not a page title, or adjust as needed
-    const updateAliases = () => {
-        try {
-            referringAliases = generalStore.findReferringAliases(model.id);
-        } catch {}
-    };
-    updateAliases();
-    const iv = setInterval(updateAliases, 5000);
-    return () => clearInterval(iv);
+// Improve code health by avoiding a raw 5-second setInterval on every OutlinerItem instance.
+// Using a debounced tree version reacting to global store changes ensures we only evaluate
+// findReferringAliases when there is actual activity, significantly reducing idle CPU usage.
+let debouncedTreeVersion = $state(0);
+$effect(() => {
+    // Using pagesVersion to track global structure changes
+    const v = generalStore.pagesVersion;
+    const t = setTimeout(() => {
+        debouncedTreeVersion = v;
+    }, 500);
+    return () => clearTimeout(t);
+});
+
+let referringAliases = $derived.by(() => {
+    void debouncedTreeVersion;
+    try {
+        return generalStore.findReferringAliases(model.id) || [];
+    } catch {
+        return [];
+    }
 });
 
 function toggleAliasDropdown(e: Event) {
