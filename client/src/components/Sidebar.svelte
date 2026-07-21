@@ -432,7 +432,7 @@ import type * as Y from "yjs";
             </div>
 
             {#if !isSchedulesCollapsed}
-                <ul id="sidebar-schedules-list" class="page-list">
+                <ul id="sidebar-schedules-list" class="schedule-list">
                     {#if schedules.length === 0}
                         <li class="sidebar-placeholder">No scheduled SQL</li>
                     {:else}
@@ -695,7 +695,8 @@ import type * as Y from "yjs";
         white-space: nowrap;
     }
 
-    .page-list {
+    .page-list,
+    .schedule-list {
         margin-top: 0.5rem;
         list-style: none; /* Remove bullets */
         padding: 0;
@@ -726,7 +727,8 @@ import type * as Y from "yjs";
         font-weight: 500;
     }
 
-    .page-list li:last-child .page-item {
+    .page-list li:last-child .page-item,
+    .schedule-list li:last-child .page-item {
         margin-bottom: 0;
     }
 
