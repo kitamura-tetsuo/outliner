@@ -303,6 +303,13 @@
         if (typeof window !== "undefined") {
             window.addEventListener("scroll", handleScroll);
         }
+
+        return () => {
+            if (unsubscribeUser) {
+                unsubscribeUser();
+                unsubscribeUser = null;
+            }
+        };
     });
 
     // Remeasure height in response to changes in visible item count ($effect is unused)
@@ -318,10 +325,6 @@
 
         // Release resources
         viewModel.dispose();
-        if (unsubscribeUser) {
-            unsubscribeUser();
-            unsubscribeUser = null;
-        }
     });
 
     function handleAddItem() {

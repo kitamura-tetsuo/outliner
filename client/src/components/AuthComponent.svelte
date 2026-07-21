@@ -1,6 +1,5 @@
 <script lang="ts">
 import {
-    onDestroy,
     onMount,
 } from "svelte";
 import {
@@ -89,12 +88,13 @@ onMount(() => {
             }
         }) as EventListener);
     }
-});
 
-onDestroy(() => {
-    if (unsubscribe) {
-        unsubscribe();
-    }
+    return () => {
+        if (unsubscribe) {
+            unsubscribe();
+            unsubscribe = null;
+        }
+    };
 });
 
 async function handleLogin() {
