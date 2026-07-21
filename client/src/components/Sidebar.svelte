@@ -8,6 +8,7 @@
 
     import { page as pageStore } from "$app/stores";
     import { getTableRegistry, listTables, type TableRegistryEntry } from "../services/yjstable/tableDocs";
+    import { createScheduleRule } from "../services/schedule/scheduleRuleService";
 import { onDestroy, onMount } from "svelte";
 import type * as Y from "yjs";
     import { authStore } from "../stores/authStore.svelte";
@@ -34,9 +35,15 @@ import type * as Y from "yjs";
 
     function ensureObserver(doc: Y.Doc | undefined) {
         if (doc === observedDoc) return;
-        if (observedDoc) getTableRegistry(observedDoc).unobserveDeep(registryObserver);
+        if (observedDoc) {
+            getTableRegistry(observedDoc).unobserveDeep(registryObserver);
+            observedDoc.getMap("schedules").unobserveDeep(registryObserver);
+        }
         observedDoc = doc;
-        if (doc) getTableRegistry(doc).observeDeep(registryObserver);
+        if (doc) {
+            getTableRegistry(doc).observeDeep(registryObserver);
+            doc.getMap("schedules").observeDeep(registryObserver);
+        }
     }
 
     onMount(() => {
@@ -60,6 +67,59 @@ import type * as Y from "yjs";
         ensureObserver(doc);
         return doc ? listTables(doc) : [];
     });
+
+    // Scheduled SQL reactivity
+    let isSchedulesCollapsed = $state(false);
+
+    interface ScheduleEntry {
+        id: string;
+        targetTableId: string;
+        rrule: string;
+        enabled: boolean;
+    }
+
+    const schedules: ScheduleEntry[] = $derived.by(() => {
+        void registryVersion;
+        void isOpen;
+        const project = store.project;
+        if (!project?.ydoc) return [];
+        ensureObserver(project.ydoc);
+        const result: ScheduleEntry[] = [];
+        project.schedules.forEach((ruleMap, ruleId) => {
+            result.push({
+                id: ruleId,
+                targetTableId: (ruleMap.get("targetTableId") as string) ?? "",
+                rrule: (ruleMap.get("rrule") as string) ?? "",
+                enabled: ruleMap.get("enabled") !== false,
+            });
+        });
+        return result;
+    });
+
+    function scheduleLabel(entry: ScheduleEntry): string {
+        const table = tables.find((t) => t.tableId === entry.targetTableId);
+        return table?.name || "Scheduled SQL";
+    }
+
+    // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes
+    let projectTitleForPath = $derived(store.project?.title || "");
+
+    function addSchedule(e: MouseEvent) {
+        e.stopPropagation();
+        const project = store.project;
+        if (!project?.ydoc) return;
+        const projectTables = listTables(project.ydoc);
+        const targetTableId = projectTables[0]?.tableId ?? "";
+        const defaultSql = targetTableId
+            ? `INSERT INTO "${targetTableId}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`
+            : "";
+        const ruleId = createScheduleRule(project, {
+            targetTableId,
+            sql: defaultSql,
+            rrule: "FREQ=DAILY;INTERVAL=1",
+        });
+        goto(`/schedules/${encodeURIComponent(projectTitleForPath)}/${encodeURIComponent(ruleId)}`);
+    }
 
     // Collapsible state for Projects section
     let isProjectsCollapsed = $state(false);
@@ -326,6 +386,85 @@ import type * as Y from "yjs";
             {/if}
         </div>
 
+        <!-- Scheduled SQL section -->
+        <div class="sidebar-section">
+            <div class="section-header">
+                <div class="section-header-content">
+                    <button type="button"
+                        class="pages-toggle-btn"
+                        onclick={() => (isSchedulesCollapsed = !isSchedulesCollapsed)}
+                        aria-expanded={!isSchedulesCollapsed}
+                        aria-controls="sidebar-schedules-list"
+                        aria-label="Toggle scheduled SQL section"
+                    >
+                        <h3 class="sidebar-section-title">Scheduled SQL</h3>
+                    </button>
+                    <button type="button"
+                        class="add-page-btn"
+                        onclick={addSchedule}
+                        title="Add new scheduled SQL"
+                        aria-label="Add new scheduled SQL"
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <svg
+                    class="chevron-icon"
+                    class:rotated={isSchedulesCollapsed}
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                >
+                    <path
+                        d="M4 6L8 10L12 6"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </div>
+
+            {#if !isSchedulesCollapsed}
+                <ul id="sidebar-schedules-list" class="schedule-list">
+                    {#if schedules.length === 0}
+                        <li class="sidebar-placeholder">No scheduled SQL</li>
+                    {:else}
+                        {#each schedules as schedule (schedule.id)}
+                            {@const scheduleHref = `/schedules/${encodeURIComponent(projectTitleForPath)}/${encodeURIComponent(schedule.id)}`}
+                            <li>
+                                <a
+                                    class="page-item schedule-link"
+                                    href={scheduleHref}
+                                    data-schedule-id={schedule.id}
+                                    aria-current={$pageStore.url.pathname === scheduleHref ? "page" : undefined}
+                                    class:active={$pageStore.url.pathname === scheduleHref}
+                                    onclick={closeSidebarIfMobile}
+                                >
+                                    <span class="item-content-wrapper">
+                                        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
+                                            <circle cx="12" cy="12" r="10"/>
+                                            <polyline points="12 6 12 12 16 14"/>
+                                        </svg>
+                                        <span class="page-title">{scheduleLabel(schedule)}</span>
+                                    </span>
+                                    {#if !schedule.enabled}
+                                        <span class="page-date">Off</span>
+                                    {/if}
+                                </a>
+                            </li>
+                        {/each}
+                    {/if}
+                </ul>
+            {/if}
+        </div>
+
         <div class="sidebar-section">
             <h3 class="sidebar-section-title">Settings</h3>
             <a
@@ -556,7 +695,8 @@ import type * as Y from "yjs";
         white-space: nowrap;
     }
 
-    .page-list {
+    .page-list,
+    .schedule-list {
         margin-top: 0.5rem;
         list-style: none; /* Remove bullets */
         padding: 0;
@@ -587,7 +727,8 @@ import type * as Y from "yjs";
         font-weight: 500;
     }
 
-    .page-list li:last-child .page-item {
+    .page-list li:last-child .page-item,
+    .schedule-list li:last-child .page-item {
         margin-bottom: 0;
     }
 

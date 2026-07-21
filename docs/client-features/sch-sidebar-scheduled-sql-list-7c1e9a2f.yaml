@@ -1,0 +1,13 @@
+id: SCH-7c1e9a2f
+title: Sidebar Scheduled SQL Section
+title-ja: サイドバー定期実行SQLセクション
+description: A new section in the main sidebar, placed between the Tables and Settings sections, that lists the current project's scheduled SQL rules. It reads from the project's Yjs `schedules` map and updates reactively as rules are added, edited, or removed. Each entry links to a dedicated editor screen (`/schedules/[project]/[ruleId]`) where the target table, RRULE schedule, and SQL statement can be edited or the rule deleted. Like the Pages section, a "+" icon in the header creates a new scheduled SQL rule and navigates straight to its editor. The section is collapsible, shows a placeholder when empty, and supports dark mode.
+category: client
+status: implemented
+components:
+- client/src/components/Sidebar.svelte
+- client/src/components/schedule/ScheduleRuleEditor.svelte
+- client/src/routes/schedules/[project]/[ruleId]/+page.svelte
+- client/src/services/schedule/scheduleRuleService.ts
+tests:
+- client/e2e/new/sbd-sidebar-scheduled-sql-7c1e9a2f.spec.ts
