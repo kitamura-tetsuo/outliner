@@ -33,11 +33,6 @@ const logger = getLogger("GraphView");
         data?: GraphNodeWithLayout[];
     };
 
-    type YMapLike = {
-        observeDeep?: (fn: () => void) => void;
-        unobserveDeep?: (fn: () => void) => void;
-    };
-
     const toArray = <T,>(value: unknown): T[] => {
         if (Array.isArray(value)) return value as T[];
         if (
@@ -181,6 +176,12 @@ const logger = getLogger("GraphView");
         }
     }
 
+    $effect(() => {
+        void store.pagesVersion;
+        void store.project;
+        update();
+    });
+
     function update() {
         if (!chart) return;
 
@@ -271,30 +272,6 @@ const logger = getLogger("GraphView");
                 );
         }
 
-        // React to project structure changes via minimal-granularity Yjs observeDeep on orderedTree
-
-        let detachDocListener: (() => void) | undefined;
-        try {
-            const ymap = (
-                store.project as {
-                    ydoc?: { getMap?: (key: string) => unknown };
-                }
-            )?.ydoc?.getMap?.("orderedTree") as YMapLike | undefined;
-            if (ymap && typeof ymap.observeDeep === "function") {
-                const handler = () => {
-                    try {
-                        update();
-                    } catch {}
-                };
-                ymap.observeDeep(handler);
-                detachDocListener = () => {
-                    try {
-                        ymap?.unobserveDeep?.(handler);
-                    } catch {}
-                };
-            }
-        } catch {}
-
         // Keep chart sized correctly on container resizes
         const onResize = () => {
             try {
@@ -304,7 +281,6 @@ const logger = getLogger("GraphView");
         window.addEventListener("resize", onResize);
 
         return () => {
-            detachDocListener?.();
             window.removeEventListener("resize", onResize);
             chart?.dispose();
         };
