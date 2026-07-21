@@ -70,7 +70,7 @@ const DEMO_ATTACHMENT_IMAGE =
 // ---------------------------------------------------------------------------
 
 export interface DemoTableTemplate {
-  rules?: any[];
+    rules?: any[];
     // Fixed id (also the room segment): [A-Za-z0-9_-] only.
     tableId: string;
     name: string;
