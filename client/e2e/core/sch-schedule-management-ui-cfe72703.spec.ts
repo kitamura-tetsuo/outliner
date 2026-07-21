@@ -14,7 +14,7 @@ test.describe("Schedule Management UI", () => {
     });
 
     test("open schedule screen", async ({ page }) => {
-        await page.locator("text=Schedule").click();
+        await page.getByRole("link", { name: "Schedule", exact: true }).click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
     });
 
@@ -26,7 +26,7 @@ test.describe("Schedule Management UI", () => {
             }
         });
 
-        await page.locator("text=Schedule").click();
+        await page.getByRole("link", { name: "Schedule", exact: true }).click();
         await expect(page.locator("text=Schedule Management")).toBeVisible();
 
         // Wait a moment until the page is fully loaded
