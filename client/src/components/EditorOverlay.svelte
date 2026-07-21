@@ -278,7 +278,7 @@ onMount(() => {
             try {
                 measureCanvas = document.createElement('canvas');
                 // Use fallback if Canvas context is not available
-                measureCtx = measureCanvas.getContext('2d');
+                measureCtx = measureCanvas.getContext ? measureCanvas.getContext('2d') : null;
                 if (!measureCtx) {
                     logger.warn('Canvas 2D context not available, using fallback text measurement');
                 }
