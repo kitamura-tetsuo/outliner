@@ -61,6 +61,17 @@ updates:
           - "@typescript-eslint/*"
           - "prettier"
           - "*prettier*"
+    ignore:
+      # Hold TypeScript on the 6.x line for the server package.
+      # ts-jest (used by jest.config.js for the scheduler jest tests) declares a
+      # peer dependency of `typescript@">=4.3 <7"`, so bumping to TypeScript 7
+      # breaks `npm ci` with ERESOLVE before any test runs. TypeScript 7 also
+      # ships the native (tsgo) compiler without the classic JS compiler API that
+      # ts-jest relies on. Remove this ignore once ts-jest publishes a release
+      # that supports TypeScript 7 (expected around the TS 7.1 API).
+      - dependency-name: "typescript"
+        update-types:
+          - "version-update:semver-major"
 
   - package-ecosystem: 'npm'
     directory: '/functions'
