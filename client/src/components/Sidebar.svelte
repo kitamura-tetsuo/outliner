@@ -607,7 +607,7 @@ import type * as Y from "yjs";
     }
 
     .sidebar-placeholder {
-        color: #9ca3af;
+        color: #6b7280;
         font-size: 0.875rem;
         font-style: italic;
         list-style: none; /* Ensure no bullet for placeholder li */
@@ -743,7 +743,7 @@ import type * as Y from "yjs";
 
     .page-date {
         font-size: 0.75rem;
-        color: #9ca3af;
+        color: #6b7280;
         flex-shrink: 0;
     }
 
@@ -838,7 +838,7 @@ import type * as Y from "yjs";
     }
 
     :global(html.dark) .page-date {
-        color: #9ca3af;
+        color: #6b7280;
     }
 
     :global(html.dark) .section-header:hover .sidebar-section-title {
@@ -881,7 +881,7 @@ import type * as Y from "yjs";
     }
 
     :global(html.dark) .item-icon {
-        color: #9ca3af;
+        color: #6b7280;
     }
 
     :global(html.dark) .project-item:hover .item-icon,
@@ -917,7 +917,7 @@ import type * as Y from "yjs";
     }
 
     :global(html.dark) .add-page-btn {
-        color: #9ca3af;
+        color: #6b7280;
     }
 
     :global(html.dark) .add-page-btn:hover {

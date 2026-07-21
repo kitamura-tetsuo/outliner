@@ -169,7 +169,7 @@ th {
 .delete-row {
     border: none;
     background: transparent;
-    color: #9ca3af;
+    color: #6b7280;
     cursor: pointer;
     padding: 0 4px;
 }

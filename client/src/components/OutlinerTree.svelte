@@ -2250,7 +2250,7 @@
         justify-content: center;
         padding: 40px 20px;
         text-align: center;
-        color: #9ca3af;
+        color: #6b7280;
     }
 
     .empty-icon {
