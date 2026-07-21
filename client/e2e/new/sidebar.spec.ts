@@ -188,7 +188,7 @@ test.describe("Sidebar Navigation", () => {
         await expect(pagesHeader).toHaveAttribute("aria-expanded", "true");
 
         // Verify page list is visible
-        const pageList = page.locator(".page-list");
+        const pageList = page.locator("#sidebar-pages-list");
         await expect(pageList).toBeVisible();
 
         // Pages section should be visible (either with items or with "No pages available" message)
