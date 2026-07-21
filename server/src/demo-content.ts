@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 14;
+export const DEMO_TEMPLATE_VERSION = 15;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -70,6 +70,7 @@ const DEMO_ATTACHMENT_IMAGE =
 // ---------------------------------------------------------------------------
 
 export interface DemoTableTemplate {
+  rules?: any[];
     // Fixed id (also the room segment): [A-Za-z0-9_-] only.
     tableId: string;
     name: string;
@@ -390,7 +391,7 @@ export const demoPages: DemoPageTemplate[] = [
             },
             {
                 text:
-                    "You can manage page-publish schedules from the [Schedule](/demo/Tasks%20and%20Habits/schedule) page.",
+                    "Open the [Tasks and Habits] page and click the Schedule tab on the Tasks table to see rules in action.",
             },
         ],
     },
