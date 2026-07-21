@@ -105,3 +105,8 @@ try {
 }
 
 // add more mocks here if you need them
+
+// Mock HTMLCanvasElement.getContext to avoid jsdom warnings
+if (typeof HTMLCanvasElement !== "undefined") {
+    HTMLCanvasElement.prototype.getContext = (() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+}
