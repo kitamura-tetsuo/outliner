@@ -22,12 +22,6 @@
         "yjs": "^13.6.31",
         "yjs-orderedtree": "^1.0.1-beta.3"
     },
-    "overrides": {
-        "find-process": {
-            "commander": "^12.1.0"
-        },
-        "typescript": "$typescript"
-    },
     "devDependencies": {
         "@dotenvx/dotenvx": "^1.75.1",
         "@eslint/compat": "^2.1.0",
@@ -144,5 +138,28 @@
         "coverage:cleanup": "node scripts/cleanup-coverage.js"
     },
     "type": "module",
-    "version": "0.0.1"
+    "version": "0.0.1",
+    "overrides": {
+        "@typescript-eslint/typescript-estree": {
+            "typescript": "^6.0.3"
+        },
+        "ts-api-utils": {
+            "typescript": "^6.0.3"
+        },
+        "@typescript-eslint/utils": {
+            "typescript": "^6.0.3"
+        },
+        "@typescript-eslint/type-utils": {
+            "typescript": "^6.0.3"
+        },
+        "@typescript-eslint/parser": {
+            "typescript": "^6.0.3"
+        },
+        "@typescript-eslint/eslint-plugin": {
+            "typescript": "^6.0.3"
+        },
+        "typescript-eslint": {
+            "typescript": "^6.0.3"
+        }
+    }
 }

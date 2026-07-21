@@ -81,7 +81,7 @@ export default ts.config(
         ignores: ["eslint.config.js", "svelte.config.js"],
         languageOptions: {
             parserOptions: {
-                projectService: true,
+                // projectService: true,
                 extraFileExtensions: [".svelte"],
                 parser: ts.parser,
                 svelteConfig,
