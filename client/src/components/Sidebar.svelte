@@ -96,15 +96,9 @@ import type * as Y from "yjs";
         return result;
     });
 
-    // Map tableId -> table name for labelling schedules
-    const tableNameById = $derived.by(() => {
-        const map = new Map<string, string>();
-        for (const t of tables) map.set(t.tableId, t.name || "Untitled table");
-        return map;
-    });
-
     function scheduleLabel(entry: ScheduleEntry): string {
-        return tableNameById.get(entry.targetTableId) || "Scheduled SQL";
+        const table = tables.find((t) => t.tableId === entry.targetTableId);
+        return table?.name || "Scheduled SQL";
     }
 
     // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes
