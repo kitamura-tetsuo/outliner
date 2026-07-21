@@ -63,11 +63,11 @@ function subscribeToManager(next: UserManager | undefined) {
 
 onMount(() => {
     subscribeToManager(manager);
-});
 
-onDestroy(() => {
-    unsubscribe?.();
-    unsubscribe = undefined;
+    return () => {
+        unsubscribe?.();
+        unsubscribe = undefined;
+    };
 });
 
 // Dropdown menu state and handlers
