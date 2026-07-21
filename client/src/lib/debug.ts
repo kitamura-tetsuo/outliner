@@ -26,9 +26,7 @@ export function setupGlobalDebugFunctions() {
             ) => {
                 await Promise.resolve();
                 return new Promise<void>((resolve, reject) => {
-                    /* eslint-disable svelte/no-navigation-without-resolve */
                     goto(resolvePath(url), opts).then(() => resolve()).catch(reject);
-                    /* eslint-enable svelte/no-navigation-without-resolve */
                 });
             };
         } else {
