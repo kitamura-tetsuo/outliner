@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { SvelteMap } from "svelte/reactivity";
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolvePath } from "../utils/pathUtils";
@@ -98,7 +99,7 @@ import type * as Y from "yjs";
 
     // Map tableId -> table name for labelling schedules
     const tableNameById = $derived.by(() => {
-        const map = new Map<string, string>();
+        const map = new SvelteMap<string, string>();
         for (const t of tables) map.set(t.tableId, t.name || "Untitled table");
         return map;
     });
