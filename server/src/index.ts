@@ -29,8 +29,11 @@ if (config.SENTRY_DSN) {
 
 (async () => {
     try {
-        await initializeFirebase();
         const { shutdown } = await startServer(config);
+
+        initializeFirebase().catch(err => {
+            logger.error({ err }, "Firebase init failed");
+        });
 
         process.on("SIGINT", () => shutdown().then(() => process.exit(0)));
         process.on("SIGTERM", () => shutdown().then(() => process.exit(0)));

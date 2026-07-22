@@ -132,7 +132,7 @@ function getIsEmulatorEnvironment() {
         || !!process.env.FIREBASE_EMULATOR_HOST;
 }
 
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(maxRetries = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" ? 15 : 30, initialDelay = 1000, maxDelay = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" ? 2000 : 10000) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;
@@ -254,7 +254,13 @@ function hasAdminSdkFile(): boolean {
     return false;
 }
 
-export async function initializeFirebase() {
+export type FirebaseState = "connecting" | "ready" | "failed";
+export let firebaseState: FirebaseState = "connecting";
+export let firebaseReadyPromise: Promise<void> | null = null;
+
+export function initializeFirebase(): Promise<void> {
+    firebaseState = "connecting";
+    firebaseReadyPromise = (async () => {
     try {
         // Load secrets from GCP Secret Manager if not in emulator environment and SDK file doesn't exist
         if (!getIsEmulatorEnvironment() && !hasAdminSdkFile()) {
@@ -356,6 +362,14 @@ export async function initializeFirebase() {
             { error: new Error(`Firebase initialization error: ${error.message}`) },
             `Firebase initialization error: ${error.message}`,
         );
+        firebaseState = "failed";
         throw error;
     }
+    })();
+    firebaseReadyPromise.then(() => {
+        firebaseState = "ready";
+    }).catch(() => {
+        firebaseState = "failed";
+    });
+    return firebaseReadyPromise;
 }
