@@ -2,6 +2,7 @@
 import {
     onDestroy,
     onMount,
+    tick,
 } from "svelte";
 import {
     type IUser,
@@ -115,7 +116,7 @@ function openMenu() {
     if (!isAuthenticated) return;
     isMenuOpen = true;
     updateMenuPosition();
-    setTimeout(() => signOutBtn?.focus(), 0);
+    tick().then(() => signOutBtn?.focus());
     attachGlobalHandlers();
 }
 

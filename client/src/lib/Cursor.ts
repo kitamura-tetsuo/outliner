@@ -1,3 +1,4 @@
+import { tick } from "svelte";
 import type { Item, Items } from "../schema/app-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
@@ -158,12 +159,11 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                 // Multiple attempts to ensure focus is set
                 textarea.focus();
 
-                // Set focus using requestAnimationFrame
+                // Set focus using requestAnimationFrame and tick
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // Use setTimeout as well for extra reliability
-                    setTimeout(() => {
+                    tick().then(() => {
                         textarea.focus();
 
                         // Debug information
@@ -177,7 +177,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                                 }`,
                             );
                         }
-                    }, 10);
+                    });
                 });
             } else {
                 // Log error if textarea is not found
@@ -593,7 +593,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
-            setTimeout(() => {
+            tick().then(() => {
                 if (typeof document === "undefined") return;
                 const selectionElements = document.querySelectorAll(".editor-overlay .selection");
 
