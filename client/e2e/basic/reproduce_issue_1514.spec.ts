@@ -14,14 +14,14 @@ test.describe("Item Component Type Selector Test", () => {
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
         // Right click the item to open context menu
-        await item.click({ button: 'right' });
+        await item.click({ button: "right" });
 
         // The context menu should be visible
-        const contextMenu = page.locator('.context-menu');
+        const contextMenu = page.locator(".context-menu");
         await expect(contextMenu).toBeVisible();
 
         // Click the toggle type button
-        const toggleBtn = contextMenu.locator('button', { hasText: 'Change to Database' });
+        const toggleBtn = contextMenu.locator("button", { hasText: "Change to Database" });
         await toggleBtn.click();
 
         // Context menu should disappear

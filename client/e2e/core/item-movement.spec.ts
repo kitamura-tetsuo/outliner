@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Item Movement and Focus", () => {
@@ -18,7 +18,8 @@ test.describe("Item Movement and Focus", () => {
         await expect(firstItem).toHaveAttribute("tabindex", "0");
 
         const focusableClasses = await page.evaluate(() => {
-            const sel = 'a[href], button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex="0"]';
+            const sel =
+                'a[href], button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex="0"]';
             const elements = document.querySelector('[role="tree"]')?.querySelectorAll(sel);
             return Array.from(elements || []).map(el => el.className || el.tagName);
         });
