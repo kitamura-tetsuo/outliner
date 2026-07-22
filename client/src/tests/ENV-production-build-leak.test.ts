@@ -39,7 +39,7 @@ describe("ENV-* Production Build Security Guard", () => {
         const jsFiles = findJsFiles(buildDir);
         expect(jsFiles.length).toBeGreaterThan(0); // Ensure we actually found files
 
-        const leaks = [];
+        const leaks: string[] = [];
         for (const file of jsFiles) {
             const content = fs.readFileSync(file, "utf8");
             for (const rule of forbiddenStrings) {
