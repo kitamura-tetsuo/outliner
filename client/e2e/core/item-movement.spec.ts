@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Item Movement and Focus", () => {
@@ -11,14 +11,19 @@ test.describe("Item Movement and Focus", () => {
     });
 
     test("pressing Tab from tree container focuses past the tree", async ({ page }) => {
-        await page.locator('[role="tree"]').focus();
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+        await firstItem.click();
 
-        const focusableCount = await page.evaluate(() => {
-            const sel =
-                'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-            return document.querySelector('[role="tree"]').querySelectorAll(sel).length;
+        await expect(firstItem).toHaveAttribute("tabindex", "0");
+
+        const focusableClasses = await page.evaluate(() => {
+            const sel = 'a[href], button:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), [tabindex="0"]';
+            const elements = document.querySelector('[role="tree"]')?.querySelectorAll(sel);
+            return Array.from(elements || []).map(el => el.className || el.tagName);
         });
 
-        console.log(`Focusable elements inside tree: ${focusableCount}`);
+        const newFocusableCount = focusableClasses.length;
+        expect(newFocusableCount).toBeLessThan(3);
     });
 });

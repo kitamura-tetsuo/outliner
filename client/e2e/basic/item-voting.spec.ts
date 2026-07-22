@@ -10,7 +10,7 @@ test.describe("Item Voting", () => {
 
     test("should render vote count and allow toggling votes via context menu", async ({ page }) => {
         // Focus the editor to ensure we can see action buttons on hover/focus if needed
-        await page.locator(".global-textarea").focus();
+        await page.locator('.global-textarea').focus();
 
         const items = page.locator(".outliner-item");
 
@@ -18,12 +18,12 @@ test.describe("Item Voting", () => {
         const secondItem = items.nth(1);
 
         // Right click to open context menu
-        await secondItem.click({ button: "right" });
+        await secondItem.click({ button: 'right' });
 
-        const contextMenu = page.locator(".context-menu");
+        const contextMenu = page.locator('.context-menu');
         await expect(contextMenu).toBeVisible();
 
-        const voteBtn = contextMenu.locator("button", { hasText: "Vote for item" });
+        const voteBtn = contextMenu.locator('button', { hasText: 'Vote for item' });
         await expect(voteBtn).toBeVisible();
 
         // Initially no vote count
@@ -41,8 +41,8 @@ test.describe("Item Voting", () => {
         await expect(voteCountBadge).toHaveText("1");
 
         // Verify vote button state reflects voted status
-        await secondItem.click({ button: "right" });
-        const removeVoteBtn = contextMenu.locator("button", { hasText: "Remove vote" });
+        await secondItem.click({ button: 'right' });
+        const removeVoteBtn = contextMenu.locator('button', { hasText: 'Remove vote' });
         await expect(removeVoteBtn).toBeVisible();
 
         // Click again to unvote
