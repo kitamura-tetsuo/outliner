@@ -3,7 +3,7 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("AliasPicker");
 
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
-import { onMount } from "svelte";
+import { onMount, tick } from "svelte";
 
 type Option = { id: string; path: string; };
 
@@ -99,9 +99,9 @@ $effect(() => {
             // First, the picker body
             pickerElement?.focus();
             // Next, the search input (if it exists)
-            setTimeout(() => {
+            tick().then(() => {
                 inputElement?.focus();
-            }, 0);
+            });
             // Sync selected index to external store
             try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
         } catch {}
