@@ -11,6 +11,7 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 
 <span class="comment-count-visual" class:has-count={commentCount > 0} aria-hidden="true">{commentCount}</span>
 <button type="button"
+    tabindex="-1"
     class="comment-button" class:has-count={commentCount > 0}
     data-testid="comment-button-{modelId}"
     draggable="false"

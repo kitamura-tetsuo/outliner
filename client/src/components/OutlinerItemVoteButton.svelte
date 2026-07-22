@@ -10,6 +10,7 @@ let { voted, count, truncatedText, onVote }: Props = $props();
 </script>
 
 <button type="button"
+    tabindex="-1"
     onclick={(e) => { e.stopPropagation(); onVote(); }}
     onpointerdown={(e) => { e.stopPropagation(); }}
     onmousedown={(e) => { e.stopPropagation(); }}

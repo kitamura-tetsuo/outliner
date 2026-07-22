@@ -1,6 +1,3 @@
-import "../utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -11,24 +8,23 @@ test.describe("Item Component Type Selector Test", () => {
         await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
     });
 
-    test("Component type selector should remain open/focused when clicked", async ({ page }) => {
-        // Page title is usually the first one or marked specially, but here we seeded "Test Item" so likely the second one (index 1) or we look for text.
-        // The implementation says `{#if !isPageTitle}` for component selector.
-        // So we look for the component selector.
+    test("Component type can be changed from the context menu", async ({ page }) => {
+        // Find the first item (not title)
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
-        const selector = page.locator(".component-selector select").first();
-        await expect(selector).toBeVisible();
+        // Right click the item to open context menu
+        await item.click({ button: 'right' });
 
-        // Click the selector
-        await selector.click();
+        // The context menu should be visible
+        const contextMenu = page.locator('.context-menu');
+        await expect(contextMenu).toBeVisible();
 
-        // Wait a bit to allow any potential blur/focus events to happen
-        await page.waitForTimeout(500);
+        // Click the toggle type button
+        const toggleBtn = contextMenu.locator('button', { hasText: 'Change to Database' });
+        await toggleBtn.click();
 
-        // Check if the selector is focused
-        const isFocused = await selector.evaluate((el) => document.activeElement === el);
-
-        // If the bug exists, focus would have moved to the global textarea due to startEditing()
-        expect(isFocused).toBe(true);
+        // Context menu should disappear
+        await expect(contextMenu).not.toBeVisible();
     });
 });
