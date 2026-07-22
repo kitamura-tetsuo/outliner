@@ -269,9 +269,10 @@
         }
 
         // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
+        let iv: ReturnType<typeof setInterval> | undefined;
         try {
             let tries = 0;
-            const iv = setInterval(() => {
+            iv = setInterval(() => {
                 try {
                     capturePageIdForSchedule();
                     const pg = store.currentPage;
@@ -283,20 +284,18 @@
                     if (++tries > 50) clearInterval(iv);
                 }
             }, 100);
-
-            return () => { try { clearInterval(iv); } catch {} };
         } catch {}
 
-        // Monitor route parameter changes
-        const unsub = page.subscribe(($p) => {
-            const pj = $p.params?.project ?? projectName;
-            const pg = $p.params?.page ?? pageName;
-            scheduleLoadIfNeeded({ project: pj, page: pg });
-        });
-
         return () => {
-            unsub();
+            try { if (iv) clearInterval(iv); } catch {}
         };
+    });
+
+
+    // Monitor route parameter changes reactively
+    $effect(() => {
+        // Track projectName and pageName changes
+        scheduleLoadIfNeeded({ project: projectName, page: pageName });
     });
 
     // React to page list changes to ensure we stay on the same instance
