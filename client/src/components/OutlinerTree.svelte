@@ -227,25 +227,7 @@
         } catch {}
     });
 
-    // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
-
-    // Fallback for E2E environment: Ensure DOM updates in environments where observe rarely arrives
-    onMount(() => {
-        try {
-            if (import.meta.env.MODE === "test") {
-                const timer = setInterval(() => {
-                    __lastUpdateInfo = {
-                        tick: Date.now(),
-                        changedKeys: new SvelteSet(),
-                        structureChanged: true
-                    };
-                }, 200);
-                return () => clearInterval(timer);
-            }
-        } catch {}
-    });
-
-    let displayItems = $derived.by<DisplayItem[]>(() => {
+    // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this componentlet displayItems = $derived.by<DisplayItem[]>(() => {
         // Dependency: Recalculate whenever __lastUpdateInfo updates
         const info = __lastUpdateInfo;
         // Update view model from latest model

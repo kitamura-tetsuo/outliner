@@ -88,7 +88,7 @@ if (
         || window.__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
         window.__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
         window.__FLUID_CLIENT_REGISTRY__ = registry;
@@ -637,20 +637,17 @@ export async function processPendingRegistrations(): Promise<void> {
 }
 
 if (typeof window !== "undefined") {
-    // Process on startup (wait a bit for auth to initialize)
-    setTimeout(() => {
-        void processPendingRegistrations();
-    }, 5000);
+    // Process on successful sign-in
+    userManager.addEventListener((event) => {
+        if (event?.user) {
+            void processPendingRegistrations();
+        }
+    });
 
     // Process on network recovery
     window.addEventListener("online", () => {
         void processPendingRegistrations();
     });
-
-    // Try periodically just in case (every 5 minutes)
-    setInterval(() => {
-        void processPendingRegistrations();
-    }, 5 * 60 * 1000);
 }
 
 // Testing hooks
