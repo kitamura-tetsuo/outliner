@@ -435,7 +435,15 @@ export async function createProjectConnection(projectId: string): Promise<Projec
     // Wait for initial project sync to complete (or time out) before connecting pages.
     // A timeout no longer means "pretend everything is fine": setRoomSyncState marks the
     // room as "timed-out" so callers (see yjsStore) can surface a not-yet-synced state to the UI.
-    await waitForInitialSync();
+    try {
+        await waitForInitialSync();
+    } catch (e) {
+        await disposeProvider();
+        try {
+            doc.destroy();
+        } catch {}
+        throw e;
+    }
 
     const dispose = async () => {
         await disposeProvider();
@@ -476,13 +484,23 @@ export async function connectTableDoc(projectId: string, tableId: string, doc: Y
     const room = tableRoomPath(projectId, tableId);
     const persistence = await attachIndexedDbPersistence(room, doc);
 
-    const { provider, waitForInitialSync, dispose } = await setupProviderForRoom(
+    const { provider, waitForInitialSync: originalWaitForInitialSync, dispose } = await setupProviderForRoom(
         projectId,
         room,
         doc,
         "connectTableDoc",
         { attachTokenRefreshHook: true, persistence },
     );
+
+    const waitForInitialSync = async (timeoutMs?: number) => {
+        try {
+            return await originalWaitForInitialSync(timeoutMs);
+        } catch (e) {
+            await dispose();
+            throw e;
+        }
+    };
+
     return { provider, waitForInitialSync, dispose };
 }
 

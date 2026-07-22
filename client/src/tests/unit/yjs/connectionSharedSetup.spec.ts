@@ -69,8 +69,9 @@ const { MockHocuspocusProvider, getIdToken, refreshToken } = vi.hoisted(() => {
 const getIdTokenSpy = vi.fn(getIdToken);
 const refreshTokenSpy = vi.fn(refreshToken);
 
+const { mockPersistenceDestroy } = vi.hoisted(() => ({ mockPersistenceDestroy: vi.fn() }));
 vi.mock("../../../lib/yjsPersistence", () => ({
-    createPersistence: vi.fn(),
+    createPersistence: vi.fn().mockResolvedValue({ destroy: mockPersistenceDestroy }),
     waitForSync: vi.fn().mockResolvedValue(undefined),
 }));
 
@@ -108,6 +109,7 @@ describe("yjs connection: shared provider setup", () => {
         MockHocuspocusProvider.instances = [];
         getIdTokenSpy.mockClear();
         refreshTokenSpy.mockClear();
+        mockPersistenceDestroy.mockClear();
         clearRoomSyncStates();
     });
 
@@ -182,6 +184,21 @@ describe("yjs connection: shared provider setup", () => {
             expect(disconnectSpy).toHaveBeenCalled();
             disconnectSpy.mockRestore();
         }
+    });
+
+    it("destroys provider, doc, and persistence on fatal close code during initial sync", async () => {
+        const promise = createProjectConnection("proj-fatal-rejection");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+
+        const providerDestroySpy = vi.spyOn(provider, "destroy");
+
+        provider.emit("close", { code: 4003, reason: "Forbidden" } satisfies CloseEvent);
+
+        await expect(promise).rejects.toThrow("Access Denied: 4003");
+
+        expect(providerDestroySpy).toHaveBeenCalled();
+        expect(mockPersistenceDestroy).toHaveBeenCalled();
     });
 
     it("marks the room as timed-out (not silently synced) when initial sync never completes", async () => {
