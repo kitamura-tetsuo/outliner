@@ -7,7 +7,7 @@ const logger = getLogger("OutlinerBase");
     import { Item } from "../schema/app-schema";
         import { store as generalStore } from "../stores/store.svelte";
     import { onMount } from "svelte";
-    import { extractPagePreview } from "../lib/pagePreview";
+
     import GlobalTextArea from "./GlobalTextArea.svelte";
     import OutlinerTree from "./OutlinerTree.svelte";
     import PresenceAvatars from "./PresenceAvatars.svelte";
@@ -38,6 +38,12 @@ const logger = getLogger("OutlinerBase");
     // Automatically adopt currentPage from the global store while props.pageItem is missing
     let isServerResetting = $state(false);
 
+    let effectivePageItem: Item | undefined = $derived.by(() => {
+        const byProp = pageItem as Item | undefined;
+        if (byProp) return byProp;
+        return (generalStore.currentPage as Item | undefined) ?? undefined;
+    });
+
     $effect(() => {
         if (!effectivePageItem) return;
         const currentDoc = effectivePageItem.ydoc;
@@ -50,43 +56,6 @@ const logger = getLogger("OutlinerBase");
         updateResetting();
         meta.observe(updateResetting);
         return () => meta.unobserve(updateResetting);
-    });
-
-    let effectivePageItem: Item | undefined = $derived.by(() => {
-        const byProp = pageItem as Item | undefined;
-        if (byProp) return byProp;
-        return (generalStore.currentPage as Item | undefined) ?? undefined;
-    });
-
-    let previewUpdateTimeout: ReturnType<typeof setTimeout>;
-
-    $effect(() => {
-        if (!effectivePageItem) return;
-
-        const currentDoc = effectivePageItem.ydoc;
-        if (!currentDoc) return;
-
-        const updatePreviewDebounced = () => {
-            clearTimeout(previewUpdateTimeout);
-            previewUpdateTimeout = setTimeout(() => {
-                if (!effectivePageItem) return;
-                try {
-                    const newPreview = extractPagePreview(effectivePageItem);
-                    const oldPreview = effectivePageItem.preview;
-                    if (JSON.stringify(newPreview) !== JSON.stringify(oldPreview)) {
-                        effectivePageItem.preview = newPreview;
-                    }
-                } catch (e) {
-                    logger.warn("Failed to update page preview:", e);
-                }
-            }, 1000);
-        };
-
-        currentDoc.on("update", updatePreviewDebounced);
-        return () => {
-            clearTimeout(previewUpdateTimeout);
-            currentDoc.off("update", updatePreviewDebounced);
-        };
     });
 
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
