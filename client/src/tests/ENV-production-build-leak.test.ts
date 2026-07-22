@@ -23,7 +23,7 @@ describe("ENV-* Production Build Security Guard", () => {
             { pattern: "localhost:57000", readable: "Localhost Firebase hosting URL" },
         ];
 
-        function findJsFiles(dir, fileList = []) {
+        function findJsFiles(dir: string, fileList: string[] = []): string[] {
             const files = fs.readdirSync(dir);
             for (const file of files) {
                 const filePath = path.join(dir, file);
@@ -39,7 +39,7 @@ describe("ENV-* Production Build Security Guard", () => {
         const jsFiles = findJsFiles(buildDir);
         expect(jsFiles.length).toBeGreaterThan(0); // Ensure we actually found files
 
-        let leaks = [];
+        const leaks = [];
         for (const file of jsFiles) {
             const content = fs.readFileSync(file, "utf8");
             for (const rule of forbiddenStrings) {
