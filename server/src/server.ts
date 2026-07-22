@@ -12,6 +12,7 @@ import { checkContainerAccess as defaultCheckAccess } from "./access-control.js"
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
+import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
@@ -29,7 +30,6 @@ import {
 } from "./utils/log-manager.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
 import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
-import { firebaseState, firebaseReadyPromise } from "./firebase-init.js";
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;
@@ -260,19 +260,33 @@ export async function startServer(
 
                 if (firebaseState !== "ready") {
                     if (firebaseState === "failed") {
-                        throw Object.assign(new Error("Authentication failed: Firebase initialization failed"), { code: 4001, reason: "FIREBASE_INIT_FAILED" });
+                        throw Object.assign(new Error("Authentication failed: Firebase initialization failed"), {
+                            code: 4001,
+                            reason: "FIREBASE_INIT_FAILED",
+                        });
                     }
                     if (firebaseReadyPromise) {
                         try {
                             await Promise.race([
                                 firebaseReadyPromise,
-                                new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout waiting for Firebase")), 5000))
+                                new Promise((_, reject) =>
+                                    setTimeout(() => reject(new Error("Timeout waiting for Firebase")), 5000)
+                                ),
                             ]);
                         } catch (err) {
-                            throw Object.assign(new Error(`Authentication failed: Firebase not ready (${err instanceof Error ? err.message : String(err)})`), { code: 4001, reason: "FIREBASE_NOT_READY" });
+                            throw Object.assign(
+                                new Error(
+                                    `Authentication failed: Firebase not ready (${
+                                        err instanceof Error ? err.message : String(err)
+                                    })`,
+                                ),
+                                { code: 4001, reason: "FIREBASE_NOT_READY" },
+                            );
                         }
                     } else {
-                        throw Object.assign(new Error("Authentication failed: Firebase not initialized"), { code: 4001 });
+                        throw Object.assign(new Error("Authentication failed: Firebase not initialized"), {
+                            code: 4001,
+                        });
                     }
                 }
 
