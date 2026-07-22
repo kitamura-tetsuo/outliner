@@ -109,6 +109,9 @@ function applyPresenceToOverlay(
 }
 
 export const yjsService = {
+    // Store weak references to bound awareness instances and their unbind functions
+    _boundAwareness: new WeakMap<Awareness, () => void>(),
+
     createProject(title: string): Project {
         return Project.createInstance(title);
     },
@@ -230,6 +233,12 @@ export const yjsService = {
     },
 
     bindProjectPresence(awareness: Awareness) {
+        // If already bound, return the existing unbind function
+        const existingUnbind = this._boundAwareness.get(awareness);
+        if (existingUnbind) {
+            return existingUnbind;
+        }
+
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
@@ -266,7 +275,14 @@ export const yjsService = {
         };
         awareness.on("change", update);
         update({ added: Array.from(awareness.getStates().keys()), updated: [], removed: [] });
-        return () => awareness.off("change", update);
+
+        const unbind = () => {
+            awareness.off("change", update);
+            this._boundAwareness.delete(awareness);
+        };
+
+        this._boundAwareness.set(awareness, unbind);
+        return unbind;
     },
 
     reapplyAllPresences(awareness: Awareness) {
