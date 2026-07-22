@@ -1,9 +1,9 @@
-import { fileURLToPath } from "node:url";
 import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { sentrySvelteKit } from "@sentry/sveltekit";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 export default defineConfig(async ({ mode }) => {
@@ -64,9 +64,8 @@ export default defineConfig(async ({ mode }) => {
             // (scripts/common-functions.sh) so shared/src's yjs IS the client's.
             dedupe: ["yjs", "yjs-orderedtree", "uuid"],
             alias: (mode === "test" || process.env.NODE_ENV === "test") ? {} : {
-                "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url))
+                "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
             },
-
         },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
@@ -145,7 +144,6 @@ export default defineConfig(async ({ mode }) => {
             // re-optimization + full page reload, which tears the app out from
             // under an in-flight e2e seed (outliner-base disappears -> timeout).
             include: ["yjs", "yjs-orderedtree", "uuid"],
-
         },
         define: {
             global: "globalThis",
