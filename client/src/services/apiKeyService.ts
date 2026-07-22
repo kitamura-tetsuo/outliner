@@ -21,7 +21,7 @@ async function callApi(path: string, options: RequestInit = {}) {
 
     // We assume api Base URL is on standard dev port 57070 or relative in prod
     // Standard from other services:
-    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:57070/api";
+    const apiBaseUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? "http://localhost:57070/api" : "/api");
 
     const headers = new Headers(options.headers || {});
     headers.set("Authorization", `Bearer ${idToken}`);

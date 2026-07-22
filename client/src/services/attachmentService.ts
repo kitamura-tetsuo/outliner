@@ -7,7 +7,7 @@ interface ApiRequestBody {
 async function callApi(path: string, body: ApiRequestBody) {
     const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!idToken) throw new Error("No auth token");
-    const apiBaseUrl = "http://localhost:57000";
+    const apiBaseUrl = import.meta.env.DEV ? "http://localhost:57000" : "";
     const res = await fetch(`${apiBaseUrl}/${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
