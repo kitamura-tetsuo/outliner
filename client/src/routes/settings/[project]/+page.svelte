@@ -81,21 +81,44 @@
 
                 // However, `saveProjectIdToServer` doesn't return the new state.
 
-                // Poll until the store reflects the new project name before redirecting.
-                const checkInterval = setInterval(() => {
-                   const updated = projectStore.projects.find(p => p.name === newTitle);
-                   if (updated) {
-                       clearInterval(checkInterval);
-                       goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                   }
-                }, 100);
+                // Wait for the store to reflect the new project name before redirecting.
+                const isUpdated = await new Promise<boolean>((resolve) => {
+                    let isResolved = false;
 
-                // Safety timeout
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    // Fallback redirect
+                    const cleanupEffect = $effect.root(() => {
+                        $effect(() => {
+                            if (projectStore.projects.some((p) => p.name === newTitle) && !isResolved) {
+                                isResolved = true;
+                                clearTimeout(timeout);
+                                cleanupEffect();
+                                resolve(true);
+                            }
+                        });
+                    });
+
+                    const timeout = setTimeout(() => {
+                        if (!isResolved) {
+                            isResolved = true;
+                            cleanupEffect();
+                            resolve(false);
+                        }
+                    }, 5000);
+
+                    // Check immediately in case it's already updated
+                    if (projectStore.projects.some((p) => p.name === newTitle) && !isResolved) {
+                        isResolved = true;
+                        clearTimeout(timeout);
+                        cleanupEffect();
+                        resolve(true);
+                    }
+                });
+
+                if (isUpdated) {
                     goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                }, 5000);
+                } else {
+                    error = "Could not confirm the rename — please retry";
+                    isSaving = false;
+                }
 
             } else {
                 error = "Failed to save project title to server.";
