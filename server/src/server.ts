@@ -12,6 +12,7 @@ import { checkContainerAccess as defaultCheckAccess } from "./access-control.js"
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
+import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
@@ -195,7 +196,8 @@ export async function startServer(
     // Detailed Health/Debug endpoint
     app.get("/health", (req: any, res: any) => {
         const response: any = {
-            status: "ok",
+            status: firebaseState === "failed" ? "degraded" : "ok",
+            firebase: firebaseState,
             timestamp: new Date().toISOString(),
         };
 
@@ -254,6 +256,38 @@ export async function startServer(
                         user: { uid: "anonymous-demo" },
                         room,
                     };
+                }
+
+                if (firebaseState !== "ready") {
+                    if (firebaseState === "failed") {
+                        throw Object.assign(new Error("Authentication failed: Firebase initialization failed"), {
+                            code: 4001,
+                            reason: "FIREBASE_INIT_FAILED",
+                        });
+                    }
+                    if (firebaseReadyPromise) {
+                        try {
+                            await Promise.race([
+                                firebaseReadyPromise,
+                                new Promise((_, reject) =>
+                                    setTimeout(() => reject(new Error("Timeout waiting for Firebase")), 5000)
+                                ),
+                            ]);
+                        } catch (err) {
+                            throw Object.assign(
+                                new Error(
+                                    `Authentication failed: Firebase not ready (${
+                                        err instanceof Error ? err.message : String(err)
+                                    })`,
+                                ),
+                                { code: 4001, reason: "FIREBASE_NOT_READY" },
+                            );
+                        }
+                    } else {
+                        throw Object.assign(new Error("Authentication failed: Firebase not initialized"), {
+                            code: 4001,
+                        });
+                    }
                 }
 
                 if (!room?.project) {

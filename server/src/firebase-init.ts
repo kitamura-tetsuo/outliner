@@ -132,7 +132,11 @@ function getIsEmulatorEnvironment() {
         || !!process.env.FIREBASE_EMULATOR_HOST;
 }
 
-async function waitForFirebaseEmulator(maxRetries = 30, initialDelay = 1000, maxDelay = 10000) {
+async function waitForFirebaseEmulator(
+    maxRetries = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" ? 15 : 30,
+    initialDelay = 1000,
+    maxDelay = process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development" ? 2000 : 10000,
+) {
     const isEmulator = process.env.FIREBASE_AUTH_EMULATOR_HOST
         || process.env.FIRESTORE_EMULATOR_HOST
         || process.env.FIREBASE_EMULATOR_HOST;
@@ -254,108 +258,124 @@ function hasAdminSdkFile(): boolean {
     return false;
 }
 
-export async function initializeFirebase() {
-    try {
-        // Load secrets from GCP Secret Manager if not in emulator environment and SDK file doesn't exist
-        if (!getIsEmulatorEnvironment() && !hasAdminSdkFile()) {
-            await secretManager.loadSecrets([
-                "FIREBASE_PRIVATE_KEY",
-                "FIREBASE_PRIVATE_KEY_ID",
-                "FIREBASE_CLIENT_EMAIL",
-                "FIREBASE_CLIENT_ID",
-                "FIREBASE_CLIENT_CERT_URL",
-            ]);
-        }
+export type FirebaseState = "connecting" | "ready" | "failed";
+export let firebaseState: FirebaseState = "connecting";
+export let firebaseReadyPromise: Promise<void> | null = null;
 
-        const serviceAccount = getServiceAccount();
-
-        if (!serviceAccount.project_id && !getIsEmulatorEnvironment()) {
-            logger.error(
-                "Firebase service account environment variables are not properly configured.",
-            );
-            process.exit(1);
-        }
-
+export function initializeFirebase(): Promise<void> {
+    firebaseState = "connecting";
+    firebaseReadyPromise = (async () => {
         try {
-            const apps = getApps();
-            if (apps.length) {
-                logger.info("Firebase Admin SDK instance already exists, deleting...");
-                await deleteApp(getApp());
-                logger.info("Previous Firebase Admin SDK instance deleted");
+            // Load secrets from GCP Secret Manager if not in emulator environment and SDK file doesn't exist
+            if (!getIsEmulatorEnvironment() && !hasAdminSdkFile()) {
+                await secretManager.loadSecrets([
+                    "FIREBASE_PRIVATE_KEY",
+                    "FIREBASE_PRIVATE_KEY_ID",
+                    "FIREBASE_CLIENT_EMAIL",
+                    "FIREBASE_CLIENT_ID",
+                    "FIREBASE_CLIENT_CERT_URL",
+                ]);
             }
-        } catch (e: unknown) {
-            const deleteError = e instanceof Error ? e : new Error(String(e));
-            logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
-        }
-        const emulatorVariables = {
-            FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
-            FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
-            FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
-        };
-        const configuredEmulators = Object.entries(emulatorVariables)
-            .filter(([_, value]) => value)
-            .map(([name, value]) => `${name}=${value}`);
-        if (configuredEmulators.length > 0) {
-            logger.warn("⚠️ Firebase Emulator environment variables are set. This may be an issue in production!");
-            logger.warn(`Configured Emulator environment variables: ${configuredEmulators.join(", ")}`);
-            logger.warn("These environment variables should be set in .env.test and should not be set in production.");
-        }
-        if (
-            getIsEmulatorEnvironment()
-            && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
-        ) {
-            initializeApp({ projectId: serviceAccount.project_id });
-        } else {
-            initializeApp({ credential: cert(serviceAccount) });
-        }
-        logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
-        if (isDevelopment) {
-            try {
-                await waitForFirebaseEmulator();
-                logger.info("Firebase emulator connection established successfully");
-            } catch (e: unknown) {
-                const error = e instanceof Error ? e : new Error(String(e));
-                logger.error({
-                    error: new Error(`Firebase emulator connection failed after retries: ${error.message}`),
-                }, `Firebase emulator connection failed after retries: ${error.message}`);
+
+            const serviceAccount = getServiceAccount();
+
+            if (!serviceAccount.project_id && !getIsEmulatorEnvironment()) {
+                logger.error(
+                    "Firebase service account environment variables are not properly configured.",
+                );
+                process.exit(1);
             }
-        }
-        if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
-            logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
-        }
-        if (isDevelopment && devAuthHelper) {
+
             try {
-                const user = await devAuthHelper.setupTestUser();
-                logger.info(`Setup development test user: ${user.email} (${user.uid})`);
-                const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
-                if (isEmulator) {
-                    try {
-                        // Execute Firestore data clearing (improved version)
-                        const cleared = await clearFirestoreEmulatorData();
-                        if (cleared) {
-                            logger.info("Cleared development Firestore emulator data");
-                        }
-                    } catch (e: unknown) {
-                        const error = e instanceof Error ? e : new Error(String(e));
-                        logger.error(
-                            { error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) },
-                            `Failed to clear Firestore emulator data: ${error.message}`,
-                        );
-                        // Continue process even if an error occurs
-                        logger.info("Firestore data clearing failed, but continuing process");
-                    }
+                const apps = getApps();
+                if (apps.length) {
+                    logger.info("Firebase Admin SDK instance already exists, deleting...");
+                    await deleteApp(getApp());
+                    logger.info("Previous Firebase Admin SDK instance deleted");
                 }
             } catch (e: unknown) {
-                const error = e instanceof Error ? e : new Error(String(e));
-                logger.warn(`Failed to setup test user: ${error.message}`);
+                const deleteError = e instanceof Error ? e : new Error(String(e));
+                logger.warn(`Previous Firebase Admin SDK instance deletion failed: ${deleteError.message}`);
             }
+            const emulatorVariables = {
+                FIREBASE_EMULATOR_HOST: process.env.FIREBASE_EMULATOR_HOST,
+                FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST,
+                FIREBASE_AUTH_EMULATOR_HOST: process.env.FIREBASE_AUTH_EMULATOR_HOST,
+            };
+            const configuredEmulators = Object.entries(emulatorVariables)
+                .filter(([_, value]) => value)
+                .map(([name, value]) => `${name}=${value}`);
+            if (configuredEmulators.length > 0) {
+                logger.warn("⚠️ Firebase Emulator environment variables are set. This may be an issue in production!");
+                logger.warn(`Configured Emulator environment variables: ${configuredEmulators.join(", ")}`);
+                logger.warn(
+                    "These environment variables should be set in .env.test and should not be set in production.",
+                );
+            }
+            if (
+                getIsEmulatorEnvironment()
+                && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
+            ) {
+                initializeApp({ projectId: serviceAccount.project_id });
+            } else {
+                initializeApp({ credential: cert(serviceAccount) });
+            }
+            logger.info(`Firebase Admin SDK initialized successfully. Project ID: ${serviceAccount.project_id}`);
+            if (isDevelopment) {
+                try {
+                    await waitForFirebaseEmulator();
+                    logger.info("Firebase emulator connection established successfully");
+                } catch (e: unknown) {
+                    const error = e instanceof Error ? e : new Error(String(e));
+                    logger.error({
+                        error: new Error(`Firebase emulator connection failed after retries: ${error.message}`),
+                    }, `Firebase emulator connection failed after retries: ${error.message}`);
+                }
+            }
+            if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+                logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
+            }
+            if (isDevelopment && devAuthHelper) {
+                try {
+                    const user = await devAuthHelper.setupTestUser();
+                    logger.info(`Setup development test user: ${user.email} (${user.uid})`);
+                    const isEmulator = process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_EMULATOR_HOST;
+                    if (isEmulator) {
+                        try {
+                            // Execute Firestore data clearing (improved version)
+                            const cleared = await clearFirestoreEmulatorData();
+                            if (cleared) {
+                                logger.info("Cleared development Firestore emulator data");
+                            }
+                        } catch (e: unknown) {
+                            const error = e instanceof Error ? e : new Error(String(e));
+                            logger.error(
+                                { error: new Error(`Failed to clear Firestore emulator data: ${error.message}`) },
+                                `Failed to clear Firestore emulator data: ${error.message}`,
+                            );
+                            // Continue process even if an error occurs
+                            logger.info("Firestore data clearing failed, but continuing process");
+                        }
+                    }
+                } catch (e: unknown) {
+                    const error = e instanceof Error ? e : new Error(String(e));
+                    logger.warn(`Failed to setup test user: ${error.message}`);
+                }
+            }
+        } catch (e: unknown) {
+            const error = e instanceof Error ? e : new Error(String(e));
+            logger.error(
+                { error: new Error(`Firebase initialization error: ${error.message}`) },
+                `Firebase initialization error: ${error.message}`,
+            );
+            firebaseState = "failed";
+            throw error;
         }
-    } catch (e: unknown) {
-        const error = e instanceof Error ? e : new Error(String(e));
-        logger.error(
-            { error: new Error(`Firebase initialization error: ${error.message}`) },
-            `Firebase initialization error: ${error.message}`,
-        );
-        throw error;
-    }
+    })();
+    firebaseReadyPromise.then(() => {
+        firebaseState = "ready";
+    }).catch(() => {
+        firebaseState = "failed";
+    });
+    return firebaseReadyPromise;
 }
