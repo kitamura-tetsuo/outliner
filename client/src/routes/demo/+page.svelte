@@ -2,7 +2,7 @@
     import Loader from "../../components/Loader.svelte";
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
-    import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
+    import { DEMO_PROJECT_NAME, seedDemo } from "../../lib/demoSeed";
     import { getLogger } from "../../lib/logger";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
 
@@ -74,11 +74,8 @@
             resetDone = error === undefined;
             setTimeout(() => { resetDone = false; }, 3000);
         } catch (err) {
-            if (err instanceof SeedDemoError && err.rateLimitMs !== undefined) {
-                const minutes = Math.ceil(err.rateLimitMs / 60000);
-                resetError = `You can only reset the demo content once every ${minutes} minutes. Please try again later.`;
-            } else if (err instanceof Error && err.message.includes("rate limited")) {
-                resetError = "You can only reset the demo content once every 5 minutes. Please try again later.";
+            if (err instanceof Error && err.message.includes("rate limited")) {
+                resetError = "You can only reset the demo content once per hour. Please try again later.";
             } else {
                 resetError = err instanceof Error ? err.message : "An error occurred while resetting the demo.";
             }

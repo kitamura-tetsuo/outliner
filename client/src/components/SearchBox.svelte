@@ -431,7 +431,7 @@ const logger = getLogger("SearchBox");
         transform: translateY(-50%);
         width: 1rem;
         height: 1rem;
-        color: #6b7280;
+        color: #9ca3af;
         pointer-events: none;
         z-index: 10;
     }
@@ -522,7 +522,7 @@ const logger = getLogger("SearchBox");
         background: none;
         border: none;
         cursor: pointer;
-        color: #6b7280;
+        color: #9ca3af;
         padding: 0.25rem;
         border-radius: 9999px;
         display: flex;

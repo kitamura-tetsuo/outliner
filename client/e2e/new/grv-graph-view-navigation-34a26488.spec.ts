@@ -31,6 +31,30 @@ test.describe("GRV-0001: Graph View navigation", () => {
             return typeof (globalThis as any).__GRAPH_CHART__ !== "undefined";
         }, { timeout: 5000 });
 
+        // Initialize the graph with mock data (similar to other tests)
+        await page.evaluate(() => {
+            const chart = (globalThis as any).__GRAPH_CHART__;
+            if (chart) {
+                const mockNodes = [
+                    { id: "page1", name: "Page1" },
+                    { id: "page2", name: "Page2" },
+                ];
+                const mockLinks = [{ source: "page1", target: "page2" }];
+
+                chart.setOption({
+                    tooltip: {},
+                    series: [{
+                        type: "graph",
+                        layout: "force",
+                        roam: true,
+                        data: mockNodes,
+                        links: mockLinks,
+                        label: { position: "right" },
+                    }],
+                });
+            }
+        });
+
         // Wait until data is set on the graph
         await page.waitForFunction(() => {
             const chart = (globalThis as any).__GRAPH_CHART__;
@@ -42,12 +66,12 @@ test.describe("GRV-0001: Graph View navigation", () => {
             } catch {
                 return false;
             }
-        }, { timeout: 10000 });
+        }, { timeout: 5000 });
 
         // Wait until the canvas element is generated
         await expect(page.locator(".graph-view canvas")).toBeVisible();
 
-        // Get the first page name and project name from graph data
+        // Get the first page name and project name from mock data
         const { firstPageName, projectName } = await page.evaluate(() => {
             const chart = (globalThis as any).__GRAPH_CHART__;
             if (!chart) throw new Error("Chart not available");
@@ -61,7 +85,7 @@ test.describe("GRV-0001: Graph View navigation", () => {
             const projectName = appStore?.project?.title;
 
             return {
-                firstPageName: nodes[0].name,
+                firstPageName: nodes[0].name, // "Page1"
                 projectName: projectName,
             };
         });

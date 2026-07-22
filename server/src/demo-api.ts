@@ -67,11 +67,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 }
                 if (now - lastForce < FORCE_RESET_RATE_LIMIT_MS) {
                     logger.warn({ event: "seed_demo_rate_limit_exceeded", ip: clientIp });
-                    res.status(429).json({
-                        error: "Too Many Requests",
-                        message: "Force reset is rate limited",
-                        rateLimitMs: FORCE_RESET_RATE_LIMIT_MS,
-                    });
+                    res.status(429).json({ error: "Too Many Requests", message: "Force reset is rate limited" });
                     return;
                 }
                 forceRateLimits.set(clientIp, now);

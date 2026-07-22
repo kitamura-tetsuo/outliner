@@ -29,7 +29,7 @@ onMount(() => {
         try {
             measureCanvas = document.createElement("canvas");
             // In test environments, getContext may not be implemented, so handle with try-catch
-            measureCtx = measureCanvas.getContext ? measureCanvas.getContext("2d") : null;
+            measureCtx = measureCanvas.getContext("2d");
             if (!measureCtx) {
                 logger.warn('GlobalTextArea: Canvas 2D context not available, text measurement may be affected');
             }

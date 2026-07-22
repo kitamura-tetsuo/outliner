@@ -97,8 +97,8 @@ li { margin-bottom: 0.5rem; }
 input[type="checkbox"] { width: 1.25rem; height: 1.25rem; margin-right: 0.75rem; cursor: pointer; }
 .item-text { color: #374151; transition: color 0.2s; }
 :global(html.dark) .item-text { color: #e5e7eb; }
-.item-text.completed { text-decoration: line-through; color: #6b7280; }
-:global(html.dark) .item-text.completed { color: #9ca3af; }
+.item-text.completed { text-decoration: line-through; color: #9ca3af; }
+:global(html.dark) .item-text.completed { color: #6b7280; }
 .add-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 input[type="text"] { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem; }
 :global(html.dark) input[type="text"] { background: #374151; border-color: #4b5563; color: white; }
