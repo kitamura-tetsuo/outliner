@@ -178,7 +178,7 @@ const logger = getLogger("GraphView");
 
     $effect(() => {
         void store.pagesVersion;
-        void store.project;
+        void store.projectVersion;
         update();
     });
 
