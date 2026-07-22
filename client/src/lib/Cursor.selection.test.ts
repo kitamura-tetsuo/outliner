@@ -201,7 +201,7 @@ describe("Cursor Selection Reproduction", () => {
             }));
             // The logic:
             // reversed -> modify start (which is logically the left side, but visually the "end" of reversed selection?)
-            // Wait, in reversed selection (start > end), start is anchor, end is focus.
+            // In reversed selection (start > end), start is anchor, end is focus.
             // If we move right, we increase endOffset.
             // 1 -> 2. So start=2, end=2.
 
@@ -321,7 +321,7 @@ describe("Cursor Selection Reproduction", () => {
             // Initial selection: 1->1 (collapsed/empty but exists as selection context)
             // Or assume we had 0->1 and shrank to 0->0.
 
-            // Let's start with 0->1
+            // Start with 0->1
             mockSelection = ({
                 startItemId: "item1",
                 startOffset: 1, // Anchor at 1

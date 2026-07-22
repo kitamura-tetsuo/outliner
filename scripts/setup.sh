@@ -133,8 +133,7 @@ echo "ROOT_DIR: ${ROOT_DIR}"
 # In CI/self-hosted environments, always run full setup to ensure clean state
 if ([ "${CI:-}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]) && [ "${PREINSTALLED_ENV:-}" != "true" ]; then
   echo "CI environment detected. RETRY_COUNT: $RETRY_COUNT"
-  # Only remove sentinel if this is the first run (SETUP_RETRY is 0 or unset)
-  # Actually RETRY_COUNT is set at top.
+  # Only remove sentinel to force full setup if this is the first run (RETRY_COUNT=0).
   if [ "$RETRY_COUNT" -eq 0 ]; then
      echo "Removing setup sentinel to ensure full setup..."
      rm -f "$SETUP_SENTINEL"

@@ -112,7 +112,7 @@ describe("yjsService", () => {
             const registry = testWindow.__YJS_CLIENT_REGISTRY__;
 
             // Register a collision where ID2 is a substring of ID1, e.g. "demo" and "demo2"
-            // Let's set some custom test entries
+            // Set some custom test entries
             registry?.map.clear(); // remove the createNewProject ones to avoid conflicts
 
             // Simulate the registry internal array/map order

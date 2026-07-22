@@ -304,7 +304,23 @@ async function setupProviderForRoom(
         "authenticationFailed",
         (data: unknown) => logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`),
     );
-    provider.on("stateless", (data: unknown) => logger.debug({ data }, `[yjs-conn] ${room} stateless event`));
+    provider.on("stateless", (data: unknown) => {
+        if (typeof data === "string") {
+            try {
+                const parsed = JSON.parse(data);
+                if (parsed && parsed.error === "MESSAGE_TOO_LARGE") {
+                    logger.error(
+                        { data: parsed },
+                        `[yjs-conn] ${room} stateless error: MESSAGE_TOO_LARGE limit=${parsed.limit}`,
+                    );
+                    return;
+                }
+            } catch {
+                // Not JSON or parse failed
+            }
+        }
+        logger.debug({ data }, `[yjs-conn] ${room} stateless event`);
+    });
     provider.on("reconnect", () => logger.debug(`[yjs-conn] ${room} reconnecting...`));
     provider.on("disconnect", (event: { code: number; reason: string; }) => {
         logger.debug(`[yjs-conn] ${room} disconnect code=${event.code} reason=${event.reason}`);

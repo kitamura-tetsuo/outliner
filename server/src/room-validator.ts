@@ -13,10 +13,7 @@ export function parseRoom(path: string): RoomInfo | undefined {
     try {
         if (parts.length === 2 && parts[0] === "projects") {
             const project = decodeURIComponent(parts[1]);
-            // Replaced length check with regex test. Note that SEGMENT_RE requires characters like 'my project' (with space) to fail.
-            // Oh wait, if `my project` should pass, we should modify the test.
-            // Wait, the issue says:
-            // Apply `SEGMENT_RE` to the **decoded** segment in `parseRoom` and drop the raw `..` string check.
+            // Room segments are opaque IDs (like [A-Za-z0-9_-]{1,128}). Human-readable titles (with spaces) never appear in room paths, so the regex rejects them as designed.
             if (SEGMENT_RE.test(project)) {
                 return { project };
             }

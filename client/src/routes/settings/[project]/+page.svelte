@@ -81,10 +81,7 @@
 
                 // However, `saveProjectIdToServer` doesn't return the new state.
 
-                // Maybe I should stay on the page and show "Saved!" until the store updates?
-                // Or just redirect and hope? Or show a spinner "Updating...".
-
-                // Let's implement a wait loop for the store to reflect the change before redirecting.
+                // Poll until the store reflects the new project name before redirecting.
                 const checkInterval = setInterval(() => {
                    const updated = projectStore.projects.find(p => p.name === newTitle);
                    if (updated) {

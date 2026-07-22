@@ -172,3 +172,7 @@ The Outliner project is a real-time collaborative application built with the fol
 - [**Production Setup / PRODUCTION_SETUP.md**](PRODUCTION_SETUP.md): Instructions and configurations for the production cloud backend.
 - [**Documentation / Documentation.md**](Documentation.md): Instructions for the documentation.
 - [**Demo Project / demo-project.md**](demo-project.md): How the public `/demo` feature tour is seeded, and the policy that every new end-user feature must also be added to the demo template.
+
+### Server Configuration Limits
+
+- **MAX_MESSAGE_SIZE_BYTES**: Limits the size of incoming WebSocket messages. If a message exceeds this limit, the server responds with a stateless `MESSAGE_TOO_LARGE` error. Clients should chunk transactions to stay within this limit.

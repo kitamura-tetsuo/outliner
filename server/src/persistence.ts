@@ -10,9 +10,7 @@ export async function createPersistence(config: Config): Promise<InstanceType<ty
 
     let dbPath = config.DATABASE_PATH;
 
-    // SQLite extension expects a file path, usually ending in .sqlite or .db
-    // If DATABASE_PATH was a directory, we should probably append a filename.
-    // Assuming the user will update the config or we handle it here.
+    // Append default database.sqlite filename if DATABASE_PATH does not specify a .sqlite or .db file.
     if (!dbPath.endsWith(".sqlite") && !dbPath.endsWith(".db")) {
         dbPath = `${dbPath}/database.sqlite`;
     }

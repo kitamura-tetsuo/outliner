@@ -154,6 +154,31 @@ for (const fileRes of results) {
     }
 }
 
+// 4.5) Check for stream of consciousness comments
+const badCommentRe = /^\s*\/\/\s*(Oh wait|Wait,|Actually,|Hmm|Maybe I should|Let's |But maybe|The issue says)/;
+for (const file of Object.keys(fileRanges)) {
+    if (!fs.existsSync(file)) continue;
+    const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);
+    const ranges = fileRanges[file];
+    for (let i = 0; i < lines.length; i++) {
+        const lineNum = i + 1;
+        if (inRanges(lineNum, ranges) && badCommentRe.test(lines[i])) {
+            let fileRes = filtered.find(f => f.filePath === file || f.filePath.endsWith(file));
+            if (!fileRes) {
+                fileRes = { filePath: file, messages: [] };
+                filtered.push(fileRes);
+            }
+            fileRes.messages.push({
+                line: lineNum,
+                column: 1,
+                severity: 2,
+                ruleId: "no-stream-of-consciousness",
+                message: "Stream of consciousness comments are not allowed."
+            });
+        }
+    }
+}
+
 // 5) Output (human-readable) and exit code
 if (filtered.length === 0) {
     console.log("No lint issues in changed lines. ✅");

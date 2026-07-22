@@ -71,7 +71,7 @@ describe("PageList", () => {
         // Wait for effects to run
         await tick();
 
-        // Let's toggle back to grid to verify the initial state was list and could be changed
+        // Toggle back to grid to verify the initial state was list and could be changed
         const gridBtn = container.querySelector('[aria-label="Grid view"]');
         expect(gridBtn).toBeTruthy();
         if (gridBtn) {
