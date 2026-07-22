@@ -148,9 +148,9 @@
         {/if}
     </div>
 
-    {#if isLoading && !store.project}
+    {#if isLoading || (yjsStore.notYetSynced && !yjsStore.syncError)}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
-    {:else if error}
+    {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -159,7 +159,7 @@
                 <div class="ml-3">
                     <h3 class="text-sm font-medium text-red-800">An error occurred</h3>
                     <div class="mt-2 text-sm text-red-700">
-                        <p>{error}</p>
+                        <p>{error || "Connection to the real-time server failed or timed out."}</p>
                     </div>
                     <div class="mt-4">
                         <button type="button"
@@ -172,7 +172,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !error && !yjsStore.notYetSynced && store.project && pages}
+    {:else if !isLoading && !error && !yjsStore.syncError && !yjsStore.notYetSynced && store.project && pages}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList
                 currentUser="anonymous"
