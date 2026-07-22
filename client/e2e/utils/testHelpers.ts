@@ -92,9 +92,7 @@ export class TestHelpers {
                 localStorage.setItem("VITE_E2E_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                 localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
-                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
-                localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
                 console.log("[E2E] Test environment flags set in localStorage");
             } catch {}
@@ -341,9 +339,7 @@ export class TestHelpers {
                         localStorage.setItem("VITE_E2E_TEST", "true");
                         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
                         localStorage.setItem("VITE_FIREBASE_PROJECT_ID", "outliner-d57b0");
-                        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                         localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
-                        localStorage.removeItem("VITE_YJS_DISABLE_WS");
                         (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
 
                         // Test monkey patches that were previously polluting production code
@@ -580,9 +576,7 @@ export class TestHelpers {
         // Set WebSocket flag and E2E flag before navigation (consistency with seedProjectAndNavigate)
         await page.addInitScript(() => {
             try {
-                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 localStorage.setItem("VITE_YJS_DEBUG", "true"); // ENABLE DEBUG
-                localStorage.removeItem("VITE_YJS_DISABLE_WS");
                 (globalThis as unknown as Window & Record<string, any>).__E2E__ = true;
 
                 // Test monkey patches that were previously polluting production code
@@ -2260,7 +2254,6 @@ export class TestHelpers {
                         { name: "VITE_IS_TEST", value: "true" },
                         { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
-                        { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],
                 },
                 {
@@ -2269,7 +2262,6 @@ export class TestHelpers {
                         { name: "VITE_IS_TEST", value: "true" },
                         { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
-                        { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],
                 },
                 {
@@ -2278,7 +2270,6 @@ export class TestHelpers {
                         { name: "VITE_IS_TEST", value: "true" },
                         { name: "VITE_E2E_TEST", value: "true" },
                         { name: "VITE_USE_FIREBASE_EMULATOR", value: "true" },
-                        { name: "VITE_YJS_FORCE_WS", value: "true" },
                     ],
                 },
             ],

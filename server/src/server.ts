@@ -28,7 +28,7 @@ import {
     rotateTelemetryLogs,
 } from "./utils/log-manager.js";
 import { sanitizeUrl } from "./utils/sanitize.js";
-import { extractAuthToken, verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
+import { verifyIdTokenCached as defaultVerifyToken } from "./websocket-auth.js";
 
 interface ServerOverrides {
     checkContainerAccess?: typeof defaultCheckAccess;
@@ -239,7 +239,7 @@ export async function startServer(
                 // (no listener registered yet), causing a 30-second timeout.
                 const request = data.request;
                 const requestHeaders = data.requestHeaders;
-                const token = data.token || extractAuthToken(request);
+                const token = data.token;
                 logger.debug(
                     `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
                         token ? "FOUND" : "MISSING"
@@ -432,11 +432,11 @@ export async function startServer(
 
             // 4. Validate token presence (synchronous, no network calls)
             // Note: We bypass strict HTTP Upgrade token presence validation because the client
-            // only sends the token in the initial HTTP upgrade URL for backwards compatibility.
-            // When reconnecting or using the HocuspocusProvider's native token refresh, the token
-            // is often sent exclusively inside the payload of the first WebSocket `MessageType.Auth` frame,
-            // which happens AFTER the upgrade. We enforce token presence during `onAuthenticate` instead.
-            // We just ensure we don't immediately reject.
+            // never sends the token in the initial HTTP upgrade URL, as doing so could leak
+            // it into proxy/access logs. When connecting or using the HocuspocusProvider's native
+            // token refresh, the token is sent exclusively inside the payload of the first WebSocket
+            // `MessageType.Auth` frame, which happens AFTER the upgrade. We enforce token presence
+            // during `onAuthenticate` instead. We just ensure we don't immediately reject.
 
             // 5. Check room connection limit (synchronous)
             const currentRoomCount = roomCounts.get(documentName) ?? 0;

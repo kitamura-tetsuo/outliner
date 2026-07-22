@@ -83,7 +83,6 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             await page2.addInitScript(() => {
                 localStorage.setItem("VITE_IS_TEST", "true");
                 localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-                localStorage.setItem("VITE_YJS_FORCE_WS", "true");
                 (globalThis as any).__E2E__ = true;
             });
             await page2.goto(page1.url(), { waitUntil: "domcontentloaded" });

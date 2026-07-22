@@ -17,7 +17,6 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     await page1.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
         localStorage.setItem("VITE_E2E_TEST", "true");
-        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
         // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure
@@ -68,7 +67,6 @@ test("typing sync between two browsers", async ({ browser }, testInfo) => {
     await page2.addInitScript(() => {
         localStorage.setItem("VITE_IS_TEST", "true");
         localStorage.setItem("VITE_E2E_TEST", "true");
-        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("VITE_YJS_REQUIRE_AUTH", "true");
         // Note: We intentionally do NOT set VITE_DISABLE_YJS_INDEXEDDB to ensure

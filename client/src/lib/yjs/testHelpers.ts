@@ -134,9 +134,7 @@ export async function initializeBrowserPage(
         ({ requireAuth, disableIDB }) => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
-            localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
             // Force-enable WS in tests even if env disables it
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             if (disableIDB) {
                 localStorage.setItem("VITE_DISABLE_YJS_INDEXEDDB", "true");
             }
@@ -482,13 +480,6 @@ export async function prepareTwoFullBrowserPages(
         console.info(`[page1 console.${msg.type()}]`, msg.text().slice(0, 100));
     });
 
-    // Ensure WS is forced for Yjs E2E on page1 (TestHelpers defaults to WS disabled)
-    await page1.addInitScript(() => {
-        try {
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
-        } catch {}
-    });
-
     // Prepare test environment for page1
     const testHelpersObj = TestHelpers as unknown as {
         seedProjectAndNavigate: (
@@ -549,8 +540,6 @@ export async function prepareTwoFullBrowserPages(
         localStorage.setItem("VITE_E2E_TEST", "true"); // Additional flag for robust detection
         localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
         localStorage.setItem("SKIP_TEST_CONTAINER_SEED", "true");
-        localStorage.setItem("VITE_YJS_ENABLE_WS", "true");
-        localStorage.setItem("VITE_YJS_FORCE_WS", "true");
         (window as Window & typeof globalThis & Record<string, unknown>).__E2E__ = true;
     });
 

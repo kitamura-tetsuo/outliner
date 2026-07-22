@@ -57,7 +57,6 @@ test.describe("Cursor sync between tabs", () => {
         await page2.addInitScript(() => {
             localStorage.setItem("VITE_IS_TEST", "true");
             localStorage.setItem("VITE_USE_FIREBASE_EMULATOR", "true");
-            localStorage.setItem("VITE_YJS_FORCE_WS", "true");
             (globalThis as any).__E2E__ = true;
         });
 

@@ -80,21 +80,6 @@ function getWsBase(): string {
     return url as string;
 }
 
-/**
- * WebSocket Enable/Disable Priority (Common for Production/Dev/Test)
- * 1) Force Enable: localStorage.VITE_YJS_FORCE_WS === "true" → Always true (Exception for Test/E2E. Overrides disablement)
- * 2) Disable: VITE_YJS_DISABLE_WS → false (Disabled if "true" in either env or localStorage)
- * 3) Explicit Enable: localStorage.VITE_YJS_ENABLE_WS === "true" → true (Valid only if not disabled by 2))
- * 4) Test Default: MODE==="test" or VITE_IS_TEST==="true" (env or localStorage) → true (Subject to disablement by 2))
- * 5) Default: true if none of the above apply
- *
- * Operational Guidelines:
- * - Logic is identical for Production/Development. Avoid using localStorage overrides in production.
- * - .env.test sets VITE_YJS_DISABLE_WS=true by default to suppress WS handshake noise.
- *   E2E tests requiring WS should force connection by setting VITE_YJS_FORCE_WS=true in localStorage (e.g., via addInitScript).
- * - This function is the single source of truth. Callers should rely solely on this return value.
- */
-
 function isAuthRequired(): boolean {
     try {
         const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
