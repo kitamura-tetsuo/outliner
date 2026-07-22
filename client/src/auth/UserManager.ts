@@ -58,7 +58,7 @@ export class UserManager {
             || "G-XXXXXXXXXX",
     };
 
-    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
+    private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57000" : "");
     private _app: FirebaseApp | null = null;
     private _auth: Auth | null = null;
 

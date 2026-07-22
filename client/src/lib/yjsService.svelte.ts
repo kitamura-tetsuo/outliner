@@ -112,25 +112,7 @@ function isTestEnvironment(): boolean {
         return true;
     }
 
-    // Fallback to runtime checks (for E2E tests where MODE might not be "test")
-    if (typeof window !== "undefined") {
-        const win = window;
-        const ls = win.localStorage;
-
-        const isTestLs = ls?.getItem?.("VITE_IS_TEST");
-        const isE2eLs = ls?.getItem?.("VITE_E2E_TEST");
-        const isE2eWin = win.__E2E__;
-
-        // Robust check via URL params to avoid localStorage race conditions
-        const urlParams = new URL(win.location.href).searchParams;
-        const isTestUrl = urlParams.get("isTest") === "true";
-
-        if (isTestLs === "true") return true;
-        if (isE2eLs === "true") return true;
-        if (isE2eWin === true) return true;
-        if (isTestUrl === true) return true;
-    }
-
+    // Explicitly removed fallback to runtime checks for security.
     return false;
 }
 

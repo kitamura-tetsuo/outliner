@@ -23,7 +23,7 @@ describe("API-0005: Functions URL defaults to hosting", () => {
 
     it("uses http://localhost:57000 when env var not set", () => {
         // Directly test the getEnv function to ensure it returns the default value
-        const result = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57000");
+        const result = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57000" : "");
         expect(result).toBe("http://localhost:57000");
     });
 });

@@ -8,10 +8,9 @@ import { log } from "./logger"; // Import logger
  * @returns The value of the environment variable, or the default value if undefined
  */
 export function getEnv(key: string, defaultValue: string = ""): string {
-    // Detection of execution environment - VITE_IS_TEST is not available in client runtime for security
+    // Detection of execution environment - relies strictly on build-time configuration
     const isTestEnv = (typeof import.meta !== "undefined" && import.meta.env?.MODE === "test")
-        || (typeof process !== "undefined" && process.env?.NODE_ENV === "test")
-        || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
+        || (typeof process !== "undefined" && process.env?.NODE_ENV === "test");
 
     // Processing specific to the test environment
     if (isTestEnv) {

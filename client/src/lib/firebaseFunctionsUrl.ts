@@ -14,8 +14,8 @@ import { getEnv } from "./env";
  * @returns The appropriate URL
  */
 export function getFirebaseFunctionUrl(functionName: string): string {
-    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
-    const isTest = getEnv("VITE_IS_TEST", "false") === "true";
+    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57070" : "");
+    const isTest = import.meta.env.MODE === "test";
 
     // Access via Firebase Hosting Emulator in test environment
     if (isTest) {
@@ -25,7 +25,7 @@ export function getFirebaseFunctionUrl(functionName: string): string {
     }
 
     // When using Firebase Hosting Emulator (localhost:57000)
-    if (apiBaseUrl === "http://localhost:57000") {
+    if (import.meta.env.DEV && apiBaseUrl === "http://localhost:57000") {
         // Access via Firebase Hosting Emulator rewrite rules
         return `${apiBaseUrl}/api/${functionName}`;
     }
@@ -57,8 +57,8 @@ export function getSvelteKitApiUrl(apiPath: string): string {
  * Environment check helper
  */
 export function isLocalDevelopment(): boolean {
-    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
-    const isTest = getEnv("VITE_IS_TEST", "false") === "true";
+    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57070" : "");
+    const isTest = import.meta.env.MODE === "test";
 
     // Always return false in test environment (treat as production)
     if (isTest) {
@@ -72,8 +72,8 @@ export function isLocalDevelopment(): boolean {
  * For debugging: Display current configuration
  */
 export function debugFirebaseFunctionsConfig(): void {
-    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", "http://localhost:57070");
-    const isTest = getEnv("VITE_IS_TEST", "false") === "true";
+    const apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57070" : "");
+    const isTest = import.meta.env.MODE === "test";
     logger.debug("Firebase Functions URL Config:", {
         apiBaseUrl,
         isTest,

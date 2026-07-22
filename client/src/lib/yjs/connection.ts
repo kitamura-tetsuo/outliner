@@ -110,9 +110,7 @@ function isAuthRequired(): boolean {
 async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     // Wait for auth and fetch an ID token, using Firebase's cache unless a refresh is requested
     const auth = userManager.auth;
-    const isTestEnv = import.meta.env.MODE === "test"
-        || (typeof window !== "undefined"
-            && (window.localStorage?.getItem?.("VITE_IS_TEST") === "true"));
+    const isTestEnv = import.meta.env.MODE === "test";
     logger.debug(
         `[getFreshIdToken] isTestEnv=${isTestEnv}, auth.currentUser=${!!auth
             .currentUser}, forceRefresh=${forceRefresh}`,
