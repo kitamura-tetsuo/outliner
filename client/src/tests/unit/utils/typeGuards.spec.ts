@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-    isArrayLikeItems,
-    isArrayLikeUnknown,
-    isYjsObservableDeep,
-    isYjsObservable,
-} from "../../../utils/typeGuards";
+import { isArrayLikeItems, isArrayLikeUnknown, isYjsObservable, isYjsObservableDeep } from "../../../utils/typeGuards";
 
 describe("typeGuards", () => {
     describe("isArrayLikeItems", () => {
