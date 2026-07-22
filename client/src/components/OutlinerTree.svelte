@@ -227,7 +227,9 @@
         } catch {}
     });
 
-    // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this componentlet displayItems = $derived.by<DisplayItem[]>(() => {
+    // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
+
+    let displayItems = $derived.by<DisplayItem[]>(() => {
         // Dependency: Recalculate whenever __lastUpdateInfo updates
         const info = __lastUpdateInfo;
         // Update view model from latest model
