@@ -39,13 +39,6 @@ export class YjsClient {
         this._awareness = params.awareness;
         this._disposeFunc = params.dispose;
 
-        // Attach presence binding when awareness exists
-        try {
-            if (this._awareness) {
-                yjsService.bindProjectPresence(this._awareness);
-            }
-        } catch {}
-
         if (this._provider) {
             this._provider.on("close", (event: { code: number; reason: string; }) => {
                 if (event.code === 4003) {
