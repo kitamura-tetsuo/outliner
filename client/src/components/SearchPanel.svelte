@@ -123,7 +123,7 @@ const logger = getLogger("SearchPanel");
         }
 
         matches = newMatches;
-        matchCount = matches.reduce((c, m) => c + m.matches.length, 0);
+        matchCount = matches.length;
         try {
             window.__E2E_LAST_MATCH_COUNT__ = matchCount;
             logger.debug("SearchPanel.handleSearch matches", {
