@@ -73,6 +73,7 @@ export interface PlainItemData {
     votes?: string[];
     componentType?: string;
     aliasTargetId?: string;
+    templatePageId?: string;
 }
 
 /**

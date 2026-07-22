@@ -157,6 +157,9 @@ export class Item {
             value.set("lastChanged", plain?.lastChanged ?? 0);
             value.set("componentType", undefined);
             value.set("aliasTargetId", undefined);
+            if (plain?.templatePageId) {
+                value.set("templatePageId", plain.templatePageId);
+            }
 
             const text = new Y.Text();
             const srcText = typeof plain?.text === "string" ? plain.text : "";
@@ -330,6 +333,19 @@ export class Item {
     }
     set aliasTargetId(v: string | undefined) {
         this.value.set("aliasTargetId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // templatePageId stored in Y.Map (string | undefined)
+    get templatePageId(): string | undefined {
+        return this.value.get("templatePageId") as string | undefined;
+    }
+    set templatePageId(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("templatePageId");
+        } else {
+            this.value.set("templatePageId", v);
+        }
         this.value.set("lastChanged", Date.now());
     }
 
