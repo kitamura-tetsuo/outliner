@@ -7,7 +7,7 @@ components:
 - client/src/components/OutlinerToolbar.svelte
 - client/src/components/OutlinerTree.svelte
 tests:
-- client/e2e/core/MOB-0003.spec.ts
+- client/e2e/core/mob-mobile-action-toolbar-2738d410.spec.ts
 acceptance:
 - Buttons scroll horizontally when overflowed
 - Delete and Vote buttons act on the active item

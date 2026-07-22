@@ -6,5 +6,5 @@ status: implemented
 components:
 - scripts/run-e2e-progress.sh
 tests:
-- scripts/tests/env-e2e-script-fallback-f97b273a.spec.ts
+- scripts/tests/env-e2e-script-fallback-cloud-f97b273a.spec.ts
 title-ja: E2E script fallback when not in cloud environment

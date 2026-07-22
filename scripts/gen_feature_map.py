@@ -94,6 +94,31 @@ def load_features():
             )
             raise SystemExit(1)
 
+
+        specs = data.get('test_specs') or data.get('tests') or data.get('specs') or []
+        if isinstance(specs, str):
+            specs = [specs]
+        for s in specs:
+            name = s if isinstance(s, str) else (s.get('file') or s.get('path') or '')
+            if not name: continue
+
+            # 1. Existence check
+            resolved = False
+            for c in (name, ROOT / name, ROOT / "client" / name, ROOT / "server" / name):
+                if Path(c).exists():
+                    resolved = True
+                    break
+            if not resolved:
+                logger.error(f"Missing spec file referenced in {path.relative_to(ROOT)}: {name}")
+                sys.exit(1)
+
+            # 2. Naming convention check for .spec.ts files
+            basename = Path(name).name
+            if basename.endswith('.spec.ts'):
+                if not re.match(r"^[a-z0-9]+-[a-z0-9\-]+-[a-f0-9]{8}(\.integration)?\.spec\.ts$", basename):
+                    logger.error(f"Spec file violates naming convention in {path.relative_to(ROOT)}: {name}")
+                    sys.exit(1)
+
         data["__source__"] = str(path.relative_to(ROOT))
         features[fid] = data
 

@@ -7,5 +7,5 @@ acceptance:
 - After clicking the create button, the URL should change to the new page's URL.
 - The page content (Outliner) should be visible.
 tests:
-- client/e2e/basic/new-page-navigation.spec.ts
+- client/e2e/basic/nav-new-page-navigation-c8da7a47.spec.ts
 title-ja: 新規ページ作成後に遷移

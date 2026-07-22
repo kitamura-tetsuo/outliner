@@ -6,5 +6,5 @@ status: implemented
 acceptance:
 - Clicking the button adds a new item to the list
 tests:
-- client/e2e/basic/itm-add-item-button-a4430f1e.spec.ts
+- client/e2e/core/itm-add-item-button-a4430f1e.spec.ts
 title-ja: ボタンでアイテム追加

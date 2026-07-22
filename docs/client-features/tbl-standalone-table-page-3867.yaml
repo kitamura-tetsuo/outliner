@@ -4,5 +4,5 @@ description: A standalone page to view and interact with database tables, access
 category: client
 status: implemented
 tests:
-- client/e2e/tables/table-standalone-page-3867.spec.ts
+- client/e2e/tables/tbl-standalone-table-page-c8da7a47.spec.ts
 title-ja: Standalone Table Page

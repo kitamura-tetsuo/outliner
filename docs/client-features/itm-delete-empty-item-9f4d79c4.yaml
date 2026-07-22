@@ -7,5 +7,5 @@ acceptance:
 - After deletion, the cursor moves to the beginning of the next item
 - Pressing Delete on an empty item deletes that item
 tests:
-- client/e2e/core/itm-delete-empty-item-9f4d79c4.spec.ts
+- client/e2e/disabled/itm-delete-empty-item-9f4d79c4.spec.ts
 title-ja: Deleteキーで空のアイテムを削除

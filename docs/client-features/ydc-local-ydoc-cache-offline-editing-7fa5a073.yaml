@@ -13,7 +13,7 @@ components:
 services:
 - y-indexeddb (IndexedDB persistence)
 tests:
-- client/e2e/ydoc-persistence.spec.ts
+- client/e2e/ydc-local-ydoc-cache-offline-editing-7fa5a073.spec.ts
 - client/src/lib/yjsPersistence.test.ts
 acceptance:
 - Changes merge correctly when connectivity is restored (via Yjs CRDT)

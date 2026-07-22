@@ -12,7 +12,7 @@ acceptance:
 - Verify data at a specific path
 - Verify number of cursors
 tests:
-- client/e2e/utils/cursor-validation.spec.ts
+- client/e2e/utils/tst-cursor-validation-ac18596f.spec.ts
 examples:
 - client/e2e/utils/cursor-validator-examples.ts
 - client/e2e/utils/cursor-validator-usage.md

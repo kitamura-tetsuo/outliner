@@ -4,7 +4,7 @@ description: Use Tab and Shift+Tab to create nested structures and copy them via
 category: editing
 status: implemented
 tests:
-- client/e2e/new/IND-0001.spec.ts
+- client/e2e/new/ind-advanced-indentation-and-selection-8923d2b5.spec.ts
 - client/e2e/new/ind-indent-variations-1ef547d8.spec.ts
 acceptance:
 - Items can be indented with Tab to create nested structure

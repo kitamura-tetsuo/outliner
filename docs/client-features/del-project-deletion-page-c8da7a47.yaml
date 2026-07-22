@@ -10,7 +10,7 @@ services:
 - src/lib/fluidService.svelte
 - src/stores/firestoreStore.svelte.ts
 tests:
-- client/e2e/new/DEL-0001.spec.ts
+- client/e2e/new/del-project-deletion-page-c8da7a47.spec.ts
 acceptance:
 - Clicking Delete removes the selected projects
 - Multiple projects can be selected via checkboxes

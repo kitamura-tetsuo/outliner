@@ -5,5 +5,5 @@ category: environment
 status: implemented
 components: []
 tests:
-- scripts/tests/env-e2e-progress-fallback-717fb3c8.spec.ts
+- scripts/tests/env-cloud-e2e-progress-fallback-717fb3c8.spec.ts
 title-ja: Cloud e2e progress script fallback
