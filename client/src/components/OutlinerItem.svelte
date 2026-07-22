@@ -87,8 +87,7 @@ import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
 import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
-import OutlinerItemComponentTypeSelector from "./OutlinerItemComponentTypeSelector.svelte";
-import OutlinerItemVoteButton from "./OutlinerItemVoteButton.svelte";
+import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
@@ -208,6 +207,47 @@ let ensuredComments = $derived.by(() => item.comments);
 let openCommentItemId = $derived.by(() => generalStore.openCommentItemId);
 
 let isAliasDropdownOpen = $state(false);
+let isContextMenuOpen = $state(false);
+let contextMenuX = $state(0);
+let contextMenuY = $state(0);
+
+function handleContextMenu(e: MouseEvent) {
+    if (isPageTitle || isReadOnly) return;
+    e.preventDefault();
+    e.stopPropagation();
+    isContextMenuOpen = true;
+    contextMenuX = e.clientX;
+    contextMenuY = e.clientY;
+}
+
+function handleMenuKeyDown(e: KeyboardEvent) {
+    if (isPageTitle || isReadOnly) return;
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const rect = itemRef?.getBoundingClientRect();
+        if (rect) {
+            isContextMenuOpen = true;
+            contextMenuX = rect.left + 20;
+            contextMenuY = rect.bottom;
+        }
+    }
+}
+
+function handleContextMenuAction(action: string) {
+    switch(action) {
+        case 'add-item': addNewItem(); break;
+        case 'delete-item': handleDelete(); break;
+        case 'toggle-vote': toggleVote(); break;
+        case 'toggle-comments': toggleComments(); break;
+        case 'toggle-type': {
+            const newType = (componentType ?? compTypeValue) === 'yjstable' ? 'none' : 'yjstable';
+            handleComponentTypeChange(newType);
+            break;
+        }
+    }
+}
 
 // Improve code health by avoiding a raw 5-second setInterval on every OutlinerItem instance.
 // Using a debounced tree version reacting to global store changes ensures we only evaluate
@@ -1969,12 +2009,16 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmouseup={handleMouseUp}
 
     role={isPageTitle ? "presentation" : "treeitem"}
+    tabindex={isPageTitle ? undefined : (isItemActive ? 0 : -1)}
     aria-level={isPageTitle ? undefined : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
     aria-selected={isPageTitle ? undefined : isItemActive}
     aria-setsize={isPageTitle ? undefined : ariaSetSize}
     aria-posinset={isPageTitle ? undefined : ariaPosInSet}
     aria-label={isPageTitle ? undefined : truncatedText}
+
+    oncontextmenu={handleContextMenu}
+    onkeydown={handleMenuKeyDown}
 
     bind:this={itemRef}
     data-item-id={model.id}
@@ -1993,6 +2037,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         {#if !isPageTitle}
             {#if hasChildren}
                 <button type="button"
+                    tabindex="-1"
                     class="collapse-btn drag-handle"
                     onclick={(e) => { e.stopPropagation(); toggleCollapse(); }}
                     title={isCollapsed ? "Expand" : "Collapse"}
@@ -2091,6 +2136,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 {#if referringAliases.length > 0}
                     <div class="referring-aliases-container" class:has-count={referringAliases.length > 0}>
                         <button type="button"
+                            tabindex="-1"
                             class="referring-aliases-button"
                             title="View referring aliases"
                             onclick={(e) => { e.stopPropagation(); toggleAliasDropdown(e); }}
@@ -2112,6 +2158,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                                     {#each referringAliases as ref (ref.item.id)}
                                         <li>
                                             <button type="button"
+                                                tabindex="-1"
                                                 onclick={(e) => { e.stopPropagation(); handleAliasNavigation(ref.pageTitle, ref.item.id, e); }}
                                                 onpointerdown={(e) => { e.stopPropagation(); }}
                                                 onmousedown={(e) => { e.stopPropagation(); }}
@@ -2133,52 +2180,12 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <!-- Attachment display -->
                 <OutlinerItemAttachments modelId={model.id} item={item} />
 
-                <!-- Component type selector -->
-                {#if !isPageTitle}
-                    <OutlinerItemComponentTypeSelector
-                        value={(componentType ?? compTypeValue) || "none"}
-                        onChange={handleComponentTypeChange}
-                    />
-                {/if}
-
             </div>
 
             <!-- Component display -->
             <OutlinerItemComponentRenderer componentType={componentType ?? compTypeValue} item={model.original} />
         </div>
 
-        {#if !isPageTitle}
-            <div class="item-actions">
-                <button type="button"
-                    onclick={(e) => { e.stopPropagation(); addNewItem(); }}
-                    onmousedown={(e) => { e.stopPropagation(); }}
-                    onpointerdown={(e) => { e.stopPropagation(); }}
-                    onmouseup={(e) => { e.stopPropagation(); }}
-                    title="Add new item" aria-label={"Add new item below: " + truncatedText}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
-                <button type="button"
-                    onclick={(e) => { e.stopPropagation(); handleDelete(); }}
-                    onmousedown={(e) => { e.stopPropagation(); }}
-                    onpointerdown={(e) => { e.stopPropagation(); }}
-                    onmouseup={(e) => { e.stopPropagation(); }}
-                    title="Delete" aria-label={"Delete item: " + truncatedText}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    </svg>
-                </button>
-                <OutlinerItemVoteButton
-                    voted={model.votes.includes(currentUser)}
-                    count={model.votes.length}
-                    truncatedText={truncatedText}
-                    onVote={toggleVote}
-                />
-            </div>
-        {/if}
         </div>
     </div>
 
@@ -2194,6 +2201,18 @@ export function setSelectionPosition(start: number, end: number = start) {
             item={item}
             onCountChanged={applyCommentCount}
             currentUser={currentUser}
+        />
+    {/if}
+
+    {#if isContextMenuOpen}
+        <OutlinerItemContextMenu
+            x={contextMenuX}
+            y={contextMenuY}
+            voted={model.votes.includes(currentUser)}
+            isCommentsVisible={isCommentsVisible}
+            componentType={(componentType ?? compTypeValue) || "none"}
+            onClose={() => { isContextMenuOpen = false; }}
+            onAction={handleContextMenuAction}
         />
     {/if}
 
@@ -2317,43 +2336,6 @@ export function setSelectionPosition(start: number, end: number = start) {
     min-width: 1px;
 }
 
-.item-actions {
-    display: flex;
-    gap: 4px;
-    opacity: 0;
-    transition: opacity 0.2s;
-    flex-shrink: 0;
-    pointer-events: none;
-    visibility: hidden;
-}
-
-.outliner-item:hover .item-actions,
-.outliner-item:focus-within .item-actions {
-    opacity: 1;
-    pointer-events: auto;
-    visibility: visible;
-}
-
-.item-actions button {
-    background: none;
-    border: none;
-    padding: 2px 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    color: #666;
-    border-radius: 3px;
-}
-
-.item-actions button:hover {
-    background-color: #f0f0f0;
-}
-
-.item-actions button:focus-visible {
-    background-color: #f0f0f0;
-    outline: 2px solid #0078d7;
-    outline-offset: -2px;
-}
-
 .referring-aliases-container {
     opacity: 0;
     transition: opacity 0.2s;
@@ -2413,11 +2395,6 @@ export function setSelectionPosition(start: number, end: number = start) {
         justify-content: flex-end;
     }
 
-    /* Add/Delete/Vote actions move to the mobile bottom toolbar instead of
-       reserving space in every item row. */
-    .item-actions {
-        display: none;
-    }
 }
 
 :global(.item-text.formatted s) {

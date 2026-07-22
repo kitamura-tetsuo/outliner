@@ -1,68 +1,57 @@
 import { expect, test } from "@playwright/test";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
-registerCoverageHooks();
 
 test.describe("Item Voting", () => {
-    test("should render vote count and allow toggling votes", async ({ page }, testInfo) => {
-        const projectName = `Test Project ${Date.now()}`;
-        const pageName = "voting-test";
+    test.beforeEach(async ({ page }, testInfo) => {
+        const seedLines = ["Item to vote on"];
+        const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, seedLines);
+        await TestHelpers.navigateToProjectPage(page, projectName, pageName, seedLines);
+    });
 
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, {
-            projectName,
-            pageName,
-        });
+    test("should render vote count and allow toggling votes via context menu", async ({ page }) => {
+        // Focus the editor to ensure we can see action buttons on hover/focus if needed
+        await page.locator(".global-textarea").focus();
 
-        // Wait for page to initialize and outliner tree to appear
-        await page.waitForSelector(".outliner-item", { state: "visible" });
+        const items = page.locator(".outliner-item");
 
-        // Create an item
-        // Hover the page title to show actions
-        await page.locator(".outliner-item").first().hover();
+        // We know from test data that the 2nd item is the non-title item.
+        const secondItem = items.nth(1);
 
-        // Fallback: click and press Enter
-        await page.locator(".outliner-item").first().click();
-        await page.keyboard.press("Enter");
-        await page.waitForTimeout(500); // Give it a bit to create item
+        // Right click to open context menu
+        await secondItem.click({ button: "right" });
 
-        // Find all outliner items and verify there are at least 2
-        await expect(page.locator(".outliner-item")).toHaveCount(2);
+        const contextMenu = page.locator(".context-menu");
+        await expect(contextMenu).toBeVisible();
 
-        // Wait for the new item to be created
-        await page.keyboard.type("Test item for voting");
-
-        // Ensure actions are visible by hovering over the second item
-        const secondItem = page.locator(".outliner-item").nth(1);
-        await secondItem.hover();
-
-        // Wait for it to become visible
-        const itemActionBtn = secondItem.locator(".vote-btn");
-
-        await expect(itemActionBtn).toBeVisible();
+        const voteBtn = contextMenu.locator("button", { hasText: "Vote for item" });
+        await expect(voteBtn).toBeVisible();
 
         // Initially no vote count
         await expect(page.locator(".vote-count")).toHaveCount(0);
 
-        // Click vote
-        await itemActionBtn.click();
-        await page.waitForTimeout(500); // Wait for reactivity
+        // Click the vote button
+        await voteBtn.click();
 
-        // Ensure voted class is added
-        await expect(itemActionBtn).toHaveClass(/voted/);
+        // Menu should close
+        await expect(contextMenu).not.toBeVisible();
 
-        // Wait for vote count badge to appear
-        const voteCount = page.locator(".vote-count").first();
-        await expect(voteCount).toBeVisible();
-        await expect(voteCount).toHaveText("1");
-        await expect(secondItem.locator(".vote-count")).toHaveCount(1);
+        // Vote count should now be 1
+        const voteCountBadge = page.locator(".vote-count");
+        await expect(voteCountBadge).toBeVisible();
+        await expect(voteCountBadge).toHaveText("1");
 
-        // Click to remove vote
-        await itemActionBtn.click();
+        // Verify vote button state reflects voted status
+        await secondItem.click({ button: "right" });
+        const removeVoteBtn = contextMenu.locator("button", { hasText: "Remove vote" });
+        await expect(removeVoteBtn).toBeVisible();
 
-        // Ensure voted class is removed
-        await expect(itemActionBtn).not.toHaveClass(/voted/);
+        // Click again to unvote
+        await removeVoteBtn.click();
 
-        // Ensure vote count is removed again (since count is 0, length > 0 condition fails)
+        // Menu should close
+        await expect(contextMenu).not.toBeVisible();
+
+        // Vote count should be removed
         await expect(page.locator(".vote-count")).toHaveCount(0);
     });
 });

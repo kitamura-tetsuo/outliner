@@ -71,10 +71,11 @@
         <details class="a11y-help">
             <summary>Keyboard &amp; accessibility help</summary>
             <ul>
-                <li><strong>Tab</strong> / <strong>Shift+Tab</strong>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
-                <li><strong>Alt+↑</strong> / <strong>Alt+↓</strong>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
-                <li><strong>↑</strong> / <strong>↓</strong>: move the cursor between items</li>
-                <li><strong>Enter</strong>: add a new item below the current one</li>
+                <li><kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>: indent / outdent the current item (alternative to dragging into or out of a parent)</li>
+                <li><kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>: move the current item (and its children) up or down among its siblings (alternative to drag-and-drop reordering)</li>
+                <li><kbd>↑</kbd> / <kbd>↓</kbd>: move the cursor between items</li>
+                <li><kbd>Enter</kbd>: add a new item below the current one</li>
+                <li><kbd>Shift+F10</kbd> or <kbd>Menu</kbd>: open context menu for per-item actions (delete, vote, comments, database). <em>Note: The tree itself is a single tab stop; navigate items with arrow keys.</em></li>
             </ul>
         </details>
     </div>

@@ -9,6 +9,7 @@ let { value, onChange }: Props = $props();
 
 <div class="component-selector">
     <select
+        tabindex="-1"
         {value}
         onchange={(e: Event) => onChange(String((e.target as HTMLSelectElement)?.value ?? "none"))}
         onpointerdown={(e: Event) => e.stopPropagation()}
