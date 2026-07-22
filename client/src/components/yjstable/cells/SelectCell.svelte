@@ -17,6 +17,13 @@ const current = $derived(value === null || value === undefined ? "" : String(val
     aria-label="Select value"
     value={current}
     disabled={!editable}
+    onpointerdown={(e: Event) => e.stopPropagation()}
+    onmousedown={(e: Event) => e.stopPropagation()}
+    onmouseup={(e: Event) => e.stopPropagation()}
+    onclick={(e: Event) => {
+        e.stopPropagation();
+        (e.target as HTMLElement).focus();
+    }}
     onchange={(e) => {
         const v = (e.target as HTMLSelectElement).value;
         onCommit(v === "" ? null : v);

@@ -125,6 +125,13 @@ function createFromPreset() {
                         aria-label="Preset"
                         data-testid="yjs-table-preset-select"
                         value={presetKey}
+                        onpointerdown={(e: Event) => e.stopPropagation()}
+                        onmousedown={(e: Event) => e.stopPropagation()}
+                        onmouseup={(e: Event) => e.stopPropagation()}
+                        onclick={(e: Event) => {
+                            e.stopPropagation();
+                            (e.target as HTMLElement).focus();
+                        }}
                         onchange={(e) => {
                             presetKey = (e.target as HTMLSelectElement).value;
                         }}
@@ -143,6 +150,13 @@ function createFromPreset() {
                         aria-label="Existing Table"
                         data-testid="yjs-table-existing-select"
                         value={selectedExistingTableId}
+                        onpointerdown={(e: Event) => e.stopPropagation()}
+                        onmousedown={(e: Event) => e.stopPropagation()}
+                        onmouseup={(e: Event) => e.stopPropagation()}
+                        onclick={(e: Event) => {
+                            e.stopPropagation();
+                            (e.target as HTMLElement).focus();
+                        }}
                         onchange={(e) => {
                             selectedExistingTableId = (e.target as HTMLSelectElement).value;
                         }}
