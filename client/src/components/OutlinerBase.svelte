@@ -7,7 +7,7 @@ const logger = getLogger("OutlinerBase");
     import { Item } from "../schema/app-schema";
         import { store as generalStore } from "../stores/store.svelte";
     import { onMount } from "svelte";
-    import { extractPagePreview } from "../lib/pagePreview";
+
     import GlobalTextArea from "./GlobalTextArea.svelte";
     import OutlinerTree from "./OutlinerTree.svelte";
     import PresenceAvatars from "./PresenceAvatars.svelte";
