@@ -16,7 +16,7 @@ const logger = getLogger("GraphView");
     import { get } from "svelte/store";
 
     let graphDiv: HTMLDivElement;
-    let chart: echarts.ECharts | undefined;
+    let chart: echarts.ECharts | undefined = $state(undefined);
 
     type GraphNodeWithLayout = {
         id: string;
@@ -183,12 +183,13 @@ const logger = getLogger("GraphView");
     });
 
     function update() {
-        if (!chart) return;
-
+        // Read reactively BEFORE the guard so dependencies are registered
         const pages = toArray<{ id: string; text?: unknown; items?: unknown }>(
             store.pages?.current || [],
         );
         const project = store.project?.title || "";
+
+        if (!chart) return;
 
         const { nodes, links } = buildGraph(pages, project);
 
@@ -255,8 +256,7 @@ const logger = getLogger("GraphView");
             saveLayout();
         });
 
-        // Initial render
-        update();
+        // Initial render handled by $effect
 
         // Ensure Yjs connection for the current project
         const projectName = $page.params.project;
