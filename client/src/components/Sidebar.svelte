@@ -63,6 +63,7 @@ import type * as Y from "yjs";
     const tables: TableRegistryEntry[] = $derived.by(() => {
         void registryVersion;
         void isOpen;
+        void store.projectVersion;
         const doc = store.project?.ydoc;
         ensureObserver(doc);
         return doc ? listTables(doc) : [];
@@ -81,6 +82,7 @@ import type * as Y from "yjs";
     const schedules: ScheduleEntry[] = $derived.by(() => {
         void registryVersion;
         void isOpen;
+        void store.projectVersion;
         const project = store.project;
         if (!project?.ydoc) return [];
         ensureObserver(project.ydoc);

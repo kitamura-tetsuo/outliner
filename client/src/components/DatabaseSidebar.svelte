@@ -35,6 +35,7 @@ onDestroy(() => {
 const tables: TableRegistryEntry[] = $derived.by(() => {
     void registryVersion;
     void isOpen;
+    void store.projectVersion;
     const doc = store.project?.ydoc;
     // Re-attach when the project doc changed since mount (e.g. connected later).
     ensureObserver(doc);
