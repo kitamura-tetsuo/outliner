@@ -108,11 +108,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     const keys = Array.from(orderedTree.keys());
                     const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
 
-                    // Check if any required template page title is missing or renamed
+                    // Check if any required template page is missing
                     let missingTemplatePages = false;
                     if (!isEmpty) {
-                        const expectedTitles = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
-                        const existingTitles = new Set<string>();
+                        const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
+                        const existingTemplateIds = new Set<string>();
 
                         // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
                         const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
@@ -124,17 +124,17 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                 && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
                             ) {
                                 const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
-                                if (valueMap && valueMap.has("text")) {
-                                    const text = valueMap.get("text") as Y.Text | undefined;
-                                    if (text) {
-                                        existingTitles.add(text.toString().trim().toLowerCase());
+                                if (valueMap && valueMap.has("templatePageId")) {
+                                    const templatePageId = valueMap.get("templatePageId") as string | undefined;
+                                    if (templatePageId) {
+                                        existingTemplateIds.add(templatePageId);
                                     }
                                 }
                             }
                         }
 
-                        for (const expected of expectedTitles) {
-                            if (!existingTitles.has(expected)) {
+                        for (const expected of expectedTemplateIds) {
+                            if (!existingTemplateIds.has(expected)) {
                                 missingTemplatePages = true;
                                 break;
                             }

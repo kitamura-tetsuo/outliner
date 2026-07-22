@@ -550,6 +550,7 @@ export function populateDemoProject(project: Project, author = "seed-server"): v
 
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
+        page.templatePageId = pageTemplate.title.trim().toLowerCase();
         if (pageTemplate.items) {
             addDemoItems(page.items, pageTemplate.items, author, refs, pendingAliases);
         } else if (pageTemplate.lines) {
