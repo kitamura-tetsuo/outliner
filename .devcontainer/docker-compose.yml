@@ -36,7 +36,14 @@ services:
         volume:
           nocopy: true
 
-      # 4️⃣  Remaining bind-mounts
+      # 4️⃣  Mask host .venv to avoid Python version mismatch
+      - type: volume
+        source: python_venv
+        target: /workspace/.venv
+        volume:
+          nocopy: true
+
+      # 5️⃣  Remaining bind-mounts
       - type: bind
         source: /home/ubuntu/.ssh
         target: /home/node/.ssh
@@ -61,3 +68,4 @@ services:
 volumes:
   node_modules_client:
   node_modules_server:
+  python_venv:
