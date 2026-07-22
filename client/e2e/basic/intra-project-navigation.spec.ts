@@ -39,9 +39,9 @@ test.describe("Intra-project Client-side Navigation", () => {
         // This simulates typing in a non-existent page directly via SvelteKit router
         await page.evaluate(async (url) => {
             // Using SvelteKit's router to navigate to trigger param changes
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = url;
-            a.dataset.sveltekitNoscroll = '';
+            a.dataset.sveltekitNoscroll = "";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -60,9 +60,9 @@ test.describe("Intra-project Client-side Navigation", () => {
 
         // Navigate client-side back to the first page (PageA) using the same technique
         await page.evaluate(async (url) => {
-            const a = document.createElement('a');
+            const a = document.createElement("a");
             a.href = url;
-            a.dataset.sveltekitNoscroll = '';
+            a.dataset.sveltekitNoscroll = "";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
