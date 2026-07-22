@@ -242,95 +242,50 @@ export async function createNewProject(projectName: string, existingProjectId?: 
 const inFlight = new Map<string, Promise<YjsClient | undefined>>();
 /* eslint-enable svelte/prefer-svelte-reactivity */
 
-export function getClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
+export function getClientByProjectTitle(projectTitle: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
     const existing = inFlight.get(projectTitle);
     if (existing) return existing;
-    const p = resolveClientByProjectTitle(projectTitle).finally(() => inFlight.delete(projectTitle));
+    const p = resolveClientByProjectTitle(projectTitle, signal).finally(() => inFlight.delete(projectTitle));
     inFlight.set(projectTitle, p);
     return p;
 }
 
-async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsClient | undefined> {
-    logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
+async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
+    const project = Project.createInstance(title);
+    logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
+    const client = await YjsClient.connect(projectId, project);
+    logger.info(`[connectAndRegister] YjsClient.connect completed`);
+    registry.set(keyFor(userId, projectId), [client, project]);
 
-    // Special bypass for demo project
-    if (projectTitle === "demo") {
-        const userId = userManager.getCurrentUser()?.id || "anonymous-demo";
-        const projectId = "demo";
+    // Also save title to persistence so next time it might appear
+    setContainerTitleInMetaDoc(projectId, title);
+    return client;
+}
 
-        if (registry.has(keyFor(userId, projectId))) {
-            const [c] = registry.get(keyFor(userId, projectId))!;
-            if (c && !c.isDestroyed) {
-                return c;
-            } else if (c && c.isDestroyed) {
-                logger.info(`[getClientByProjectTitle] found disposed demo client in registry; evicting it`);
-                registry.delete(keyFor(userId, projectId));
-            }
-        }
-
-        const project = Project.createInstance("Demo");
-        const client = await YjsClient.connect(projectId, project);
-        registry.set(keyFor(userId, projectId), [client, project]);
-        return client;
-    }
-
-    // First, check the registry for a matching client
-    for (const [key, [client, project]] of registry.entries()) {
-        if (project?.title === projectTitle && client) {
-            if (!client.isDestroyed) {
-                logger.info(`[getClientByProjectTitle] Found existing client in registry`);
-                return client;
-            } else {
-                logger.info(`[getClientByProjectTitle] Found disposed client in registry; evicting it`);
-                const [type, id] = key.split(":");
-                registry.delete({ type: type as "container" | "user", id });
-            }
-        }
-    }
-
-    // If not in registry, try to find the projectId by title in metaDoc
-    logger.info(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
-
+async function resolveProjectId(projectTitle: string): Promise<string | undefined> {
     // 1. Check local memory cache first (fastest, handles redirect immediately after creation)
     let projectId = localTitleMap.get(projectTitle);
     if (projectId) {
-        logger.info(`[getClientByProjectTitle] Found in localTitleMap: ${projectId}`);
-    } else {
-        // 2. Wait for IndexedDB to load (handles reload)
-        // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
-        const timeout = new Promise<void>(r => setTimeout(r, 1000));
-        await Promise.race([metaDocLoaded, timeout]);
-        // 3. Check persistent storage
-        projectId = getProjectIdByTitle(projectTitle);
+        logger.info(`[resolveProjectId] Found in localTitleMap: ${projectId}`);
+        return projectId;
     }
 
-    logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
+    // 2. Wait for IndexedDB to load (handles reload)
+    // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
+    const timeoutPromise = new Promise<void>(r => setTimeout(r, 1000));
+    await Promise.race([metaDocLoaded, timeoutPromise]);
+    // 3. Check persistent storage
+    projectId = getProjectIdByTitle(projectTitle);
 
     if (projectId) {
-        const user = userManager.getCurrentUser();
-        let userId = user?.id;
-        const isTest = isTestEnvironment();
-        logger.info(`[getClientByProjectTitle] userId=${userId}, isTest=${isTest}`);
-
-        if (!userId && isTest) userId = "test-user-id";
-        if (!userId) {
-            // Cannot create a new client without a user ID
-            logger.info(`[getClientByProjectTitle] No userId, returning undefined`);
-            return undefined;
-        }
-
-        const project = Project.createInstance(projectTitle);
-        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for projectId=${projectId}`);
-        const client = await YjsClient.connect(projectId, project);
-        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
-        registry.set(keyFor(userId, projectId), [client, project]);
-        return client;
+        logger.info(`[resolveProjectId] Found in persistent storage: ${projectId}`);
+        return projectId;
     }
 
     // 4. Check Firestore Store for Name -> ID mapping (robust cross-device resolution)
     if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
-        logger.info(`[getClientByProjectTitle] Waiting for firestoreStore to load...`);
-        await new Promise<void>((resolve, reject) => {
+        logger.info(`[resolveProjectId] Waiting for firestoreStore to load...`);
+        await new Promise<void>((resolve) => {
             let isResolved = false;
 
             const cleanupEffect = $effect.root(() => {
@@ -348,11 +303,9 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
                 if (!isResolved) {
                     isResolved = true;
                     cleanupEffect();
-                    reject(
-                        new Error(
-                            "Timeout waiting for project data from the server. Please check your network connection and reload the page.",
-                        ),
-                    );
+                    // Resolve with undefined instead of rejecting
+                    logger.warn(`[resolveProjectId] Timeout waiting for project data from the server.`);
+                    resolve();
                 }
             }, 3000);
 
@@ -364,7 +317,7 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
                 resolve();
             }
         });
-        logger.info(`[getClientByProjectTitle] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
+        logger.info(`[resolveProjectId] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
     }
 
     if (firestoreStore.userProject?.projectTitles) {
@@ -378,7 +331,7 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
         if (matches.length > 0) {
             if (matches.length > 1) {
                 logger.warn(
-                    `[getClientByProjectTitle] Multiple IDs found for title "${projectTitle}": ${matches.join(", ")}`,
+                    `[resolveProjectId] Multiple IDs found for title "${projectTitle}": ${matches.join(", ")}`,
                 );
             }
 
@@ -391,92 +344,123 @@ async function resolveClientByProjectTitle(projectTitle: string): Promise<YjsCli
             });
 
             projectId = registryMatch || matches[0];
-            logger.info(`[getClientByProjectTitle] Selected ID: ${projectId}`);
+            logger.info(`[resolveProjectId] Selected ID: ${projectId}`);
+            return projectId;
         }
     }
 
-    logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
-
-    if (projectId) {
-        const user = userManager.getCurrentUser();
-        const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
-
-        if (userId) {
-            const project = Project.createInstance(projectTitle);
-            logger.info(`[getClientByProjectTitle] Connecting to found Firestore ID: ${projectId}`);
-            const client = await YjsClient.connect(projectId, project);
-            registry.set(keyFor(userId, projectId), [client, project]);
-            return client;
-        }
-    }
+    // 5. Treat UUID as projectId directly
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(projectTitle)) {
-        logger.info(`[getClientByProjectTitle] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
-        const projectId = projectTitle; // Treat title as ID
-        const user = userManager.getCurrentUser();
-        const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
-
-        if (userId) {
-            // Do not seed the placeholder title with the raw UUID: YjsClient.connect()
-            // persists a non-empty title into the real document's metadata when none
-            // is set yet, which would permanently bake the UUID in as the project title.
-            const project = Project.createInstance("");
-            const client = await YjsClient.connect(projectId, project);
-            registry.set(keyFor(userId, projectId), [client, project]);
-            return client;
-        }
+        logger.info(`[resolveProjectId] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
+        return projectTitle; // Treat title as ID
     }
 
     // In test environment, attempt to auto-connect if we can derive the ID
     const isTest = isTestEnvironment();
-    logger.info(`[getClientByProjectTitle] projectId not found, isTest=${isTest}`);
+    logger.info(`[resolveProjectId] projectId not found, isTest=${isTest}`);
 
-    // Check if the title is actually a test ID format (e.g. "pa4cc30c")
-    // This handles the case where we navigate to /projectId directly in tests
-    if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
-        logger.info(`[getClientByProjectTitle] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
-        const projectId = projectTitle;
-        const userId = userManager.getCurrentUser()?.id || "test-user-id";
-
-        // Try to resolve the real title from Firestore if available
-        let realTitle = projectId;
-        if (firestoreStore.userProject?.projectTitles && firestoreStore.userProject.projectTitles[projectId]) {
-            realTitle = firestoreStore.userProject.projectTitles[projectId];
-            logger.info(`[getClientByProjectTitle] Resolved real title from Firestore: "${realTitle}"`);
+    if (import.meta.env.MODE === "test" || isTest) {
+        // Check if the title is actually a test ID format (e.g. "pa4cc30c")
+        // This handles the case where we navigate to /projectId directly in tests
+        if (/^p[0-9a-f]+$/i.test(projectTitle)) {
+            logger.info(`[resolveProjectId] projectTitle looks like a test ID, using as projectId: ${projectTitle}`);
+            return projectTitle;
         }
 
-        const project = Project.createInstance(realTitle);
-        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for test projectId=${projectId}`);
-        const client = await YjsClient.connect(projectId, project);
-        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
-
-        registry.set(keyFor(userId, projectId), [client, project]);
-        return client;
+        const stableId = stableIdFromTitle(projectTitle);
+        logger.info(`[resolveProjectId] Using stableIdFromTitle, projectId=${stableId}`);
+        return stableId;
     }
 
-    if (isTest) {
-        const userId = userManager.getCurrentUser()?.id || "test-user-id";
-        const projectId = stableIdFromTitle(projectTitle);
-        logger.info(`[getClientByProjectTitle] Using stableIdFromTitle, projectId=${projectId}`);
+    return undefined;
+}
 
-        // Check if already connected by ID (but title mismatch? unlikely for stable ID)
+async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
+    logger.info(`[getClientByProjectTitle] projectTitle=${projectTitle}, registry.map.size=${registry.map.size}`);
+
+    if (signal?.aborted) return undefined;
+
+    // Special bypass for demo project
+    if (projectTitle === "demo") {
+        const userId = userManager.getCurrentUser()?.id || "anonymous-demo";
+        const projectId = "demo";
+
         if (registry.has(keyFor(userId, projectId))) {
             const [c] = registry.get(keyFor(userId, projectId))!;
-            if (c) {
-                logger.info(`[getClientByProjectTitle] Found client by stable ID`);
+            if (c && !c.isDestroyed) {
                 return c;
+            } else if (c && c.isDestroyed) {
+                logger.info(`[getClientByProjectTitle] found disposed demo client in registry; evicting it`);
+                registry.delete(keyFor(userId, projectId));
+            }
+        }
+        if (signal?.aborted) return undefined;
+
+        return await connectAndRegister(projectId, "Demo", userId);
+    }
+
+    // First, check the registry for a matching client
+    for (const [key, [client, project]] of registry.entries()) {
+        if (project?.title === projectTitle && client) {
+            if (!client.isDestroyed) {
+                logger.info(`[getClientByProjectTitle] Found existing client in registry`);
+                return client;
+            } else {
+                logger.info(`[getClientByProjectTitle] Found disposed client in registry; evicting it`);
+                const [type, id] = key.split(":");
+                registry.delete({ type: type as "container" | "user", id });
+            }
+        }
+    }
+
+    if (signal?.aborted) return undefined;
+
+    // If not in registry, try to find the projectId by title
+    logger.info(`[getClientByProjectTitle] Called for title="${projectTitle}"`);
+
+    const projectId = await resolveProjectId(projectTitle);
+
+    logger.info(`[getClientByProjectTitle] projectId from resolution=${projectId}`);
+    if (signal?.aborted) return undefined;
+
+    if (projectId) {
+        let userId = userManager.getCurrentUser()?.id;
+        const isTest = isTestEnvironment();
+
+        if (!userId && isTest) userId = "test-user-id";
+        if (!userId) {
+            // Cannot create a new client without a user ID
+            logger.info(`[getClientByProjectTitle] No userId, returning undefined`);
+            return undefined;
+        }
+
+        // Handle placeholder title for test ids or UUIDs so they don't get saved as title
+        let resolvedTitle = projectTitle;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(projectTitle)) {
+            // Do not seed the placeholder title with the raw UUID: YjsClient.connect()
+            // persists a non-empty title into the real document's metadata when none
+            // is set yet, which would permanently bake the UUID in as the project title.
+            resolvedTitle = "";
+        } else if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
+            // Try to resolve the real title from Firestore if available
+            if (firestoreStore.userProject?.projectTitles && firestoreStore.userProject.projectTitles[projectId]) {
+                resolvedTitle = firestoreStore.userProject.projectTitles[projectId];
+                logger.info(`[getClientByProjectTitle] Resolved real title from Firestore: "${resolvedTitle}"`);
+            }
+        } else if (isTest) {
+            // Check if already connected by ID (but title mismatch? unlikely for stable ID)
+            if (registry.has(keyFor(userId, projectId))) {
+                const [c] = registry.get(keyFor(userId, projectId))!;
+                if (c && !c.isDestroyed) {
+                    logger.info(`[getClientByProjectTitle] Found client by stable ID`);
+                    return c;
+                }
             }
         }
 
-        const project = Project.createInstance(projectTitle);
-        logger.info(`[getClientByProjectTitle] Calling YjsClient.connect for derived projectId=${projectId}`);
-        const client = await YjsClient.connect(projectId, project);
-        logger.info(`[getClientByProjectTitle] YjsClient.connect completed`);
-
-        registry.set(keyFor(userId, projectId), [client, project]);
-        // Also save title to persistence so next time it might appear
-        setContainerTitleInMetaDoc(projectId, projectTitle);
-        return client;
+        return await connectAndRegister(projectId, resolvedTitle, userId);
     }
 
     logger.info(`[getClientByProjectTitle] Returning undefined`);
