@@ -7,5 +7,5 @@ status: implemented
 components:
 - client/src/components/OutlinerTree.svelte
 tests:
-- client/e2e/basic/txt-add-text-functionality-8c8218a3.spec.ts
-- client/src/tests/integration/txt-add-text-functionality-8c8218a3.integration.spec.ts
+- client/e2e/basic/add-text-functionality.spec.ts
+- client/src/tests/integration/add-text-functionality.integration.spec.ts

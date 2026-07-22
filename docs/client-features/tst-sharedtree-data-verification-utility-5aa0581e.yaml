@@ -12,7 +12,7 @@ acceptance:
 - Take snapshots and compare later
 - Verify data at a specific path
 tests:
-- client/e2e/utils/tst-sharedtree-data-verification-utility-5aa0581e.spec.ts
+- client/e2e/utils/tree-validation.spec.ts
 examples:
 - client/e2e/utils/tree-validator-examples.ts
 - client/e2e/utils/tree-validator-usage.md

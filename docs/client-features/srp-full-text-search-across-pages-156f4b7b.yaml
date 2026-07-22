@@ -10,4 +10,4 @@ components:
 - client/src/lib/search/projectSearch.ts
 - client/src/routes/[project]/[page]/+page.svelte
 tests:
-- client/e2e/new/srp-full-text-search-across-pages-156f4b7b.spec.ts
+- client/e2e/new/SRP-0001.spec.ts

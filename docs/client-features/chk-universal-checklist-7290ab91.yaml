@@ -8,8 +8,8 @@ components:
 services:
 - src/services/checklistService.ts
 tests:
-- client/e2e/new/chk-universal-checklist-7290ab91.spec.ts
-- client/src/tests/integration/chk-universal-checklist-7290ab91.integration.spec.ts
+- client/e2e/new/CHK-0001.spec.ts
+- client/src/tests/integration/CHK-0001.integration.spec.ts
 - src/tests/checklistService.test.ts
 acceptance:
 - Habit lists auto reset based on RRule

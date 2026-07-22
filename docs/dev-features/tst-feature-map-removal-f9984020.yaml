@@ -7,5 +7,5 @@ acceptance:
 - Automatically deleted even if added to the index
 - docs/feature-map.md is deleted before commit even if it exists
 tests:
-- scripts/tests/tst-feature-map-removal-f9984020.spec.ts
+- client/e2e/utils/tst-feature-map-removal-f9984020.spec.ts
 title-ja: feature-map deletion script

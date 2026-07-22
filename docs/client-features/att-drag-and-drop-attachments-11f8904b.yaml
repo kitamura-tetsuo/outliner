@@ -10,7 +10,7 @@ components:
 - src/services/attachmentService.ts
 - storage.rules
 tests:
-- client/e2e/disabled/att-drag-and-drop-attachments-11f8904b.spec.ts
+- client/e2e/core/att-drag-and-drop-attachments-11f8904b.spec.ts
 - client/src/tests/attachmentService.test.ts
 - functions/test/attachments.test.js
 acceptance:

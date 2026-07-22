@@ -14,5 +14,5 @@ acceptance:
 - Selecting a snapshot shows diff within one second for pages up to 50KB.
 - Snapshot list shows timestamp and author.
 tests:
-- client/e2e/new/hdv-page-diff-d3e5ac75.spec.ts
-- client/src/tests/hdv-page-diff-d3e5ac75.spec.ts
+- client/e2e/new/diff-view.spec.ts
+- client/src/tests/snapshotService.spec.ts

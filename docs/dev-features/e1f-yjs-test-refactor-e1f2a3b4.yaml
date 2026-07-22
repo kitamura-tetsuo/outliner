@@ -17,8 +17,11 @@ changes:
 - Removed Fluid-only tests (Fluid Token endpoint and presence via Fluid)
 - Ensured unit/integration suites pass using Yjs-backed services
 tests:
+- client/src/stores/ContainerStore.test.ts
 - client/src/stores/OutlinerViewModel.test.ts
-- client/src/tests/integration/gbs-global-store-7dd8407f.integration.spec.ts
+- client/src/tests/integration/containerStore.integration.spec.ts
+- client/src/tests/integration/globalStore.integration.spec.ts
+- client/src/tests/integration/yjs-service.integration.spec.ts
 notes: 'Fluid Token endpoint tests were intentionally deleted because the feature has
 
   no Yjs equivalent. Endpoint disabling is enforced via hosting/Vite middleware

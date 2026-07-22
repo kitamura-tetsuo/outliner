@@ -10,11 +10,11 @@ acceptance:
 - Provide improved helper functions to solve DOM element detection issues
 - Reduce dependencies between tests so that each test can run independently
 tests:
-- client/e2e/tst-initializing-and-preparing-the-test-environment-b55298f7.spec.ts
+- client/e2e/basic.spec.ts
 - client/e2e/helpers.ts
 - client/e2e/utils/linkTestHelpers.ts
 - client/e2e/utils/testHelpers.ts
-- client/src/tests/integration/tst-homepage-auth-b55298f7.integration.spec.ts
+- client/src/tests/integration/homepage-auth.integration.spec.ts
 - client/src/tests/integration/tst-initializing-and-preparing-the-test-environment-b55298f7.integration.spec.ts
 notes:
 - Use helper functions with retry capability to stabilize tests as element detection may be unstable in the test environment

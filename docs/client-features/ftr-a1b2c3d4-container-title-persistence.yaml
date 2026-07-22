@@ -25,7 +25,7 @@ services:
 - client/src/lib/projectTitleProvider
 - client/src/lib/yjsService.svelte
 tests:
-- client/e2e/ftr-container-title-persistence-a1b2c3d4.spec.ts
+- client/e2e/container-title-persistence.spec.ts
 acceptance:
 - Container titles are persisted in a local-only Y.Doc (metaDoc)
 - Containers remain visible in home dropdown after page reload

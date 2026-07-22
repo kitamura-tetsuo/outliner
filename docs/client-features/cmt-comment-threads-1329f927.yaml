@@ -16,6 +16,6 @@ components:
 - client/src/stores/OutlinerViewModel.ts
 tests:
 - client/e2e/new/cmt-comment-input-focus-4a01c3ee.spec.ts
-- client/e2e/new/cmt-comment-threads-1329f927.spec.ts
+- client/e2e/new/cmt-comment-thread-basic.spec.ts
 - client/src/stores/OutlinerViewModel.test.ts
 - client/src/tests/integration/cmt-derived-renders-9ab3c1d2.integration.spec.ts

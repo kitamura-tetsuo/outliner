@@ -16,7 +16,7 @@ acceptance:
 - Verify cursor state instead of class:editing selector
 - Wait until cursor is visible (waitForCursorVisible)
 tests:
-- client/e2e/auth/tst-auth-2020b233.spec.ts
+- client/e2e/auth/auth.spec.ts
 - client/e2e/core/clm-cursor-duplication-and-input-distribution-problems-when-moving-between-items-be4c0ba6.spec.ts
 - client/e2e/core/clm-cursor-manipulation-with-format-strings-86f0d787.spec.ts
 - client/e2e/core/clm-go-to-the-beginning-of-the-line-d39d158b.spec.ts
