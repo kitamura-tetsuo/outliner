@@ -117,13 +117,16 @@ fi
 
 ensure_python_env() {
   echo "Ensuring Python virtual environment..."
-  if [ ! -d "${ROOT_DIR}/.venv" ]; then
-    python3 -m venv "${ROOT_DIR}/.venv"
+  local VENV="${ROOT_DIR}/.venv"
+  if [ ! -x "${VENV}/bin/python" ] || ! "${VENV}/bin/python" -c 'import sys' >/dev/null 2>&1; then
+    echo "Recreating Python virtual environment (missing or unusable)..."
+    rm -rf "${VENV}"
+    python3 -m venv "${VENV}"
   fi
   # shellcheck disable=SC1090
-  source "${ROOT_DIR}/.venv/bin/activate"
+  source "${VENV}/bin/activate"
   if [ -f "${ROOT_DIR}/scripts/requirements.txt" ]; then
-    python3 -m pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
+    "${VENV}/bin/python" -m pip install --no-cache-dir -r "${ROOT_DIR}/scripts/requirements.txt"
   fi
 }
 
