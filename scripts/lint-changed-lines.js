@@ -173,7 +173,7 @@ for (const file of Object.keys(fileRanges)) {
                 column: 1,
                 severity: 2,
                 ruleId: "no-stream-of-consciousness",
-                message: "Stream of consciousness comments are not allowed."
+                message: "Stream of consciousness comments are not allowed.",
             });
         }
     }
