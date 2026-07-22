@@ -55,7 +55,7 @@ Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
 
-Press `Enter` to insert a new item below the current one. Alternatively, click the **Add Item** button in the top header.
+Press `Enter` to insert a new item below the current one. Alternatively, click the **Add Item** button in the document toolbar.
 
 ### Indenting Items
 
@@ -79,7 +79,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - Links to pages that do not exist yet look different, and the page is only created once you edit it.
 - You can also link to a page in another project with `[project/page]` syntax.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the top header to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the document toolbar to access it.
 
 ### External Links
 
@@ -91,7 +91,7 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the Search pages input field or the **Search** button in the top navigation bar to search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the Search pages input field in the top navigation bar or the **Search** button in the document toolbar to search across the whole project. Recent searches are remembered for quick access.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -123,7 +123,7 @@ You can easily add attachments to your items.
 
 ### Uploading Attachments
 
-You can upload attachments by dragging and dropping an image or file directly onto the editor. You can also click the **Add Image** button in the top header.
+You can upload attachments by dragging and dropping an image or file directly onto the editor. You can also click the **Add Image** button in the document toolbar.
 
 ---
 
@@ -133,7 +133,7 @@ Outliner includes advanced capabilities like aliases and scheduling.
 
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule:** The Schedule view shows date-tagged items as a timeline.
-- **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the top header.
+- **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
 - **Comments and Votes:** Discuss and vote on items, with live seeded threads and votes.
 - **Publishing and Sharing:** Read-only sharing, scheduled publishing, and snapshots.
 - **Collaboration:** Real-time editing with other users.
@@ -146,7 +146,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the top header.
+Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
@@ -164,6 +164,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **Chart:** A visual representation of your data.
   - **Schema:** Allows you to define and edit the SQL schema for your table.
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
+  - **Schedule:** A calendar-like view for date-tagged data.
 - The table toolbar also provides **Undo** and **Redo** buttons specific to the table's data.
 
 ### Collaboration
@@ -174,7 +175,7 @@ Databases are stored the same way as other outliner data, so data changes and sc
 
 ## Keyboard Shortcuts
 
-You can also access a complete list of shortcuts by clicking the **Keyboard & accessibility help** link in the top header.
+You can also access a complete list of shortcuts by clicking the **Keyboard & accessibility help** link in the document toolbar.
 
 | Action                  | Windows/Linux         | Mac                      |
 | ----------------------- | --------------------- | ------------------------ |
