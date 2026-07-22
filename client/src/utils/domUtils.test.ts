@@ -1,7 +1,67 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { escapeId } from "./domUtils";
+import { escapeId, getMeasurementSpan } from "./domUtils";
 
 describe("domUtils", () => {
+    describe("getMeasurementSpan", () => {
+        beforeEach(() => {
+            // Clean up the body to start fresh, but the singleton `_measurementSpan`
+            // variable inside the module will persist between tests.
+            if (typeof document !== "undefined" && document.body) {
+                document.body.innerHTML = "";
+            }
+        });
+
+        afterEach(() => {
+            if (typeof document !== "undefined" && document.body) {
+                document.body.innerHTML = "";
+            }
+            vi.unstubAllGlobals();
+        });
+
+        it("should return null if document is undefined", () => {
+            vi.stubGlobal("document", undefined);
+            const span = getMeasurementSpan();
+            expect(span).toBeNull();
+        });
+
+        it("should create, initialize, and append the span on the first call", () => {
+            const span = getMeasurementSpan();
+
+            expect(span).toBeInstanceOf(HTMLSpanElement);
+            expect(span.id).toBe("outliner-measurement-span");
+            expect(span.style.whiteSpace).toBe("pre");
+            expect(span.style.visibility).toBe("hidden");
+            expect(span.style.position).toBe("absolute");
+            expect(span.style.top).toBe("-9999px");
+            expect(span.style.left).toBe("-9999px");
+
+            // Verify it was appended to the document body
+            expect(document.body.contains(span)).toBe(true);
+        });
+
+        it("should return the exact same instance on subsequent calls", () => {
+            const span1 = getMeasurementSpan();
+            const span2 = getMeasurementSpan();
+
+            expect(span1).toBe(span2);
+        });
+
+        it("should re-append the span to document.body if it was removed", () => {
+            const span1 = getMeasurementSpan();
+
+            // Remove the span from the DOM
+            span1.remove();
+            expect(document.body.contains(span1)).toBe(false);
+            expect(span1.isConnected).toBe(false);
+
+            // Fetch again, which should trigger the !isConnected branch
+            const span2 = getMeasurementSpan();
+
+            expect(span1).toBe(span2);
+            expect(document.body.contains(span2)).toBe(true);
+        });
+    });
+
     describe("escapeId", () => {
         let originalCSS: typeof CSS;
 
