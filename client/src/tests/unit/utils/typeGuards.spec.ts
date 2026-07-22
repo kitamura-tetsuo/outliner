@@ -7,7 +7,7 @@ describe("typeGuards", () => {
             expect(
                 isArrayLikeItems({
                     length: 2,
-                    at: (idx: number) => undefined,
+                    at: (_idx: number) => undefined,
                 }),
             ).toBe(true);
         });
@@ -19,7 +19,7 @@ describe("typeGuards", () => {
         it("returns false for object missing length", () => {
             expect(
                 isArrayLikeItems({
-                    at: (idx: number) => undefined,
+                    at: (_idx: number) => undefined,
                 }),
             ).toBe(false);
         });
@@ -28,7 +28,7 @@ describe("typeGuards", () => {
             expect(
                 isArrayLikeItems({
                     length: "2",
-                    at: (idx: number) => undefined,
+                    at: (_idx: number) => undefined,
                 }),
             ).toBe(false);
         });
