@@ -3,7 +3,7 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import sinon from "sinon";
-import { clearTokenCache, extractAuthToken, getTokenCacheSize, verifyIdTokenCached } from "../src/websocket-auth.js";
+import { clearTokenCache, getTokenCacheSize, verifyIdTokenCached } from "../src/websocket-auth.js";
 
 describe("websocket auth helpers", () => {
     let originalNodeEnv: string | undefined;
@@ -37,16 +37,6 @@ describe("websocket auth helpers", () => {
         delete process.env.ALLOW_TEST_ACCESS;
         sinon.restore();
         clearTokenCache();
-    });
-
-    it("extracts auth token from url", () => {
-        const req: any = { url: "/?auth=test-token" };
-        expect(extractAuthToken(req)).to.equal("test-token");
-    });
-
-    it("returns undefined when token missing", () => {
-        const req: any = { url: "/" };
-        expect(extractAuthToken(req)).to.be.undefined;
     });
 
     const createDummyToken = () => {

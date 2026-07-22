@@ -27,7 +27,7 @@ retry_apt_get() {
   local attempts=0
   local max_attempts=3
   while true; do
-    if sudo apt-get "$@"; then
+    if sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true "$@"; then
       break
     fi
     attempts=$((attempts+1))

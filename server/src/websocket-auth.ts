@@ -3,8 +3,8 @@ import { serverLogger as logger } from "./utils/log-manager.js";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { DecodedIdToken, getAuth } from "firebase-admin/auth";
 import type { IncomingMessage } from "http";
+import { LRUCache } from "lru-cache";
 import { getServiceAccount } from "./firebase-init.js";
-import { sanitizeUrl } from "./utils/sanitize.js";
 
 if (!getApps().length) {
     const serviceAccount = getServiceAccount();
@@ -17,13 +17,13 @@ if (!getApps().length) {
     }
 }
 
-interface CacheEntry {
-    decoded: DecodedIdToken;
-    exp: number;
-}
-
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const tokenCache = new Map<string, CacheEntry>();
+const CACHE_MAX_ENTRIES = 5000;
+
+const tokenCache = new LRUCache<string, DecodedIdToken>({
+    max: CACHE_MAX_ENTRIES,
+    ttl: CACHE_TTL_MS,
+});
 
 export function clearTokenCache() {
     tokenCache.clear();
@@ -34,35 +34,13 @@ export function getTokenCacheSize() {
     return tokenCache.size;
 }
 
-function pruneExpiredTokens(now: number) {
-    for (const [t, entry] of tokenCache) {
-        if (entry.exp <= now) {
-            tokenCache.delete(t);
-        }
-    }
-}
-
-export function extractAuthToken(req: IncomingMessage | Request): string | undefined {
-    try {
-        const urlString = "url" in req ? (req as Request).url : (req as IncomingMessage).url;
-        const url = new URL(urlString ?? "", "http://localhost");
-        // Check for 'token' parameter (used by y-websocket when token option is provided)
-        const token = url.searchParams.get("token") || url.searchParams.get("auth");
-        logger.debug(`[Auth] req.url=${sanitizeUrl(urlString)}, token=${token ? "FOUND" : "MISSING"}`);
-        return token || undefined;
-    } catch {
-        logger.error({ error: new Error("URL parse error") }, "[Auth] URL parse error");
-        return undefined;
-    }
-}
-
 export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken> {
-    const now = Date.now();
-    pruneExpiredTokens(now);
     const cached = tokenCache.get(token);
-    if (cached && cached.exp > now) {
-        return cached.decoded;
+    if (cached) {
+        return cached;
     }
+
+    const now = Date.now();
 
     // [Test Mode] Allow alg:none tokens (emulator/mock)
     // We try to parse as alg:none first
@@ -97,8 +75,10 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
                 firebase: payload.firebase || { identities: {}, sign_in_provider: "custom" },
             };
             logger.debug({ uid: decoded.uid }, "[Auth] Test mode: allowing alg:none token");
-            const expKey = Math.min(decoded.exp * 1000, now + CACHE_TTL_MS);
-            tokenCache.set(token, { decoded, exp: expKey });
+            const ttlMs = Math.max(0, Math.min(decoded.exp * 1000 - now, CACHE_TTL_MS));
+            if (ttlMs > 0) {
+                tokenCache.set(token, decoded, { ttl: ttlMs });
+            }
             return decoded;
         }
     } catch (e: any) {
@@ -111,8 +91,13 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
     try {
         const decoded = await getAuth().verifyIdToken(token);
         logger.debug(`[Auth] Verified token for uid=${decoded.uid}`);
-        const exp = Math.min(decoded.exp ? decoded.exp * 1000 : now + CACHE_TTL_MS, now + CACHE_TTL_MS);
-        tokenCache.set(token, { decoded, exp });
+        let ttlMs = CACHE_TTL_MS;
+        if (decoded.exp) {
+            ttlMs = Math.max(0, Math.min(decoded.exp * 1000 - now, CACHE_TTL_MS));
+        }
+        if (ttlMs > 0) {
+            tokenCache.set(token, decoded, { ttl: ttlMs });
+        }
         return decoded;
     } catch (e: any) {
         // Debug: Decode token to see why it failed
