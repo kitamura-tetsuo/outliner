@@ -84,21 +84,47 @@
                 // Maybe I should stay on the page and show "Saved!" until the store updates?
                 // Or just redirect and hope? Or show a spinner "Updating...".
 
-                // Let's implement a wait loop for the store to reflect the change before redirecting.
-                const checkInterval = setInterval(() => {
-                   const updated = projectStore.projects.find(p => p.name === newTitle);
-                   if (updated) {
-                       clearInterval(checkInterval);
-                       goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                   }
-                }, 100);
+                // Wait for the store to reflect the change before redirecting.
+                try {
+                    await new Promise<void>((resolve, reject) => {
+                        let isResolved = false;
 
-                // Safety timeout
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    // Fallback redirect
+                        const cleanupEffect = $effect.root(() => {
+                            $effect(() => {
+                                const updated = projectStore.projects.find(p => p.name === newTitle);
+                                if (updated && !isResolved) {
+                                    isResolved = true;
+                                    clearTimeout(timeout);
+                                    cleanupEffect();
+                                    resolve();
+                                }
+                            });
+                        });
+
+                        const timeout = setTimeout(() => {
+                            if (!isResolved) {
+                                isResolved = true;
+                                cleanupEffect();
+                                reject(new Error("Could not confirm the rename — please retry"));
+                            }
+                        }, 5000);
+
+                        // Check immediately
+                        const updated = projectStore.projects.find(p => p.name === newTitle);
+                        if (updated && !isResolved) {
+                            isResolved = true;
+                            clearTimeout(timeout);
+                            cleanupEffect();
+                            resolve();
+                        }
+                    });
+
+                    // Redirect on success
                     goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                }, 5000);
+                } catch (e) {
+                    error = e instanceof Error ? e.message : "Could not confirm the rename — please retry";
+                    isSaving = false;
+                }
 
             } else {
                 error = "Failed to save project title to server.";
