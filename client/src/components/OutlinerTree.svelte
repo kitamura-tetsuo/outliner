@@ -3,7 +3,7 @@
 
 
 
-    import { onDestroy, onMount } from "svelte";
+    import { onDestroy, onMount, tick } from "svelte";
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
@@ -897,14 +897,14 @@
                 }
 
                 // Delay slightly before focusing new item to ensure processing order
-                setTimeout(focusNewItem, 10);
+                tick().then(focusNewItem);
             } else {
                 // Focus immediately if active element not found
-                focusNewItem();
+                tick().then(focusNewItem);
             }
         } else {
             // Focus directly if no active item or same item
-            focusNewItem();
+            tick().then(focusNewItem);
         }
     }
 

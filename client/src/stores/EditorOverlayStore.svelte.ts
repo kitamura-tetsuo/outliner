@@ -1,3 +1,4 @@
+import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
@@ -253,12 +254,11 @@ export class EditorOverlayStore {
                     // Multiple attempts to ensure focus is set
                     textarea.focus();
 
-                    // Set focus using requestAnimationFrame
+                    // Set focus using requestAnimationFrame and tick
                     requestAnimationFrame(() => {
                         textarea.focus();
 
-                        // Use setTimeout as well for extra certainty
-                        setTimeout(() => {
+                        tick().then(() => {
                             textarea.focus();
 
                             // Debug info
@@ -336,12 +336,11 @@ export class EditorOverlayStore {
                 // Multiple attempts to ensure focus is set
                 textarea.focus();
 
-                // Set focus using requestAnimationFrame
+                // Set focus using requestAnimationFrame and tick
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // Use setTimeout as well for extra certainty
-                    setTimeout(() => {
+                    tick().then(() => {
                         textarea.focus();
 
                         // Debug info
@@ -557,6 +556,7 @@ export class EditorOverlayStore {
         }
 
         // Set isUpdating to false after 300ms
+        // Note: Using setTimeout here is correct for intentional delayed execution, not macro-task hacking.
         setTimeout(() => {
             const currentSelection = this.selections[key];
             if (currentSelection && currentSelection.isUpdating) {
@@ -1070,7 +1070,7 @@ export class EditorOverlayStore {
                 try {
                     textarea.focus();
                     requestAnimationFrame(() => textarea.focus());
-                    setTimeout(() => textarea.focus(), 10);
+                    tick().then(() => textarea.focus());
                 } catch {}
             }
             // Start cursor blinking as well
