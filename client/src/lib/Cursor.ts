@@ -935,6 +935,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
         this.itemId = item.id;
         this.offset = 0;
+        // This clears existing selection when moving without shift
+        this.clearSelection();
         this.applyToStore();
         store.startCursorBlink();
     }
@@ -987,6 +989,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const deepest = getDeepestDescendant(root);
         this.itemId = deepest.id;
         this.offset = (deepest.text || "").length;
+        // This clears existing selection when moving without shift
+        this.clearSelection();
         this.applyToStore();
         store.startCursorBlink();
     }
