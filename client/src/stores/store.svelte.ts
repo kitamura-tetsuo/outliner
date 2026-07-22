@@ -31,7 +31,7 @@ export class GeneralStore {
     // Item ID of the currently open comment thread (only one is displayed at a time)
     openCommentItemId: string | null = $state(null);
     // Fallback: Also keep the index in case the ID changes, such as when switching connections
-    private _project: Project | undefined;
+    private _project: Project | undefined = $state(undefined);
     public undoManager: Y.UndoManager | undefined;
     textareaRef: HTMLTextAreaElement | null = null;
 
