@@ -123,7 +123,7 @@ export class JobScheduler {
         // 2. For each rule, determine the occurrence(s) to run.
         // Catch-up policy: if multiple occurrences were missed (downtime), run only the most recent one when catchUp is true, none otherwise;
 
-        // Let's get catchUp flag from rule document
+        // Extract the catchUp flag from the rule document to determine if we should run missed occurrences.
         const mainRoomConn = await this.hocuspocus.openDirectConnection(rule.room);
         let catchUp = false;
         let ruleSql = "";
