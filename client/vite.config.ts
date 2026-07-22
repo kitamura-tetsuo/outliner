@@ -3,6 +3,7 @@ import { sentrySvelteKit } from "@sentry/sveltekit";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { svelteTesting } from "@testing-library/svelte/vite";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 export default defineConfig(async ({ mode }) => {
@@ -62,6 +63,9 @@ export default defineConfig(async ({ mode }) => {
             // is instead guaranteed by pointing shared/node_modules at the client
             // (scripts/common-functions.sh) so shared/src's yjs IS the client's.
             dedupe: ["yjs", "yjs-orderedtree", "uuid"],
+            alias: (mode === "test" || process.env.NODE_ENV === "test") ? {} : {
+                "yjs": fileURLToPath(new URL("./node_modules/yjs", import.meta.url)),
+            },
         },
         server: {
             port: parseInt(process.env.VITE_PORT || "7070"),
