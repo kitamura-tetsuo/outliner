@@ -594,28 +594,30 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
             tick().then(() => {
-                if (typeof document === "undefined") return;
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+                setTimeout(() => {
+                    if (typeof document === "undefined") return;
+                    const selectionElements = document.querySelectorAll(".editor-overlay .selection");
 
-                // Reset selection if not displayed
-                if (selectionElements.length === 0) {
-                    store.clearSelectionForUser(this.userId);
-                    store.setSelection({
-                        startItemId,
-                        startOffset,
-                        endItemId,
-                        endOffset,
-                        userId: this.userId,
-                        isReversed,
-                    });
+                    // Reset selection if not displayed
+                    if (selectionElements.length === 0) {
+                        store.clearSelectionForUser(this.userId);
+                        store.setSelection({
+                            startItemId,
+                            startOffset,
+                            endItemId,
+                            endOffset,
+                            userId: this.userId,
+                            isReversed,
+                        });
 
-                    // Force update selection display
+                        // Force update selection display
 
-                    if (typeof (store as { forceUpdate?: () => void; }).forceUpdate === "function") {
-                        (store as { forceUpdate?: () => void; }).forceUpdate?.();
+                        if (typeof (store as { forceUpdate?: () => void; }).forceUpdate === "function") {
+                            (store as { forceUpdate?: () => void; }).forceUpdate?.();
+                        }
                     }
-                }
-            }, 150); // Increase timeout to 150ms to allow more time for DOM updates
+                }, 150); // Increase timeout to 150ms to allow more time for DOM updates
+            });
         }
     }
 

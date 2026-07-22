@@ -259,32 +259,34 @@ export class EditorOverlayStore {
                         textarea.focus();
 
                         tick().then(() => {
-                            textarea.focus();
+                            setTimeout(() => {
+                                textarea.focus();
 
-                            // Debug info
-                            if (
-                                typeof window !== "undefined"
-                                && (window as Window & typeof globalThis & {
-                                    DEBUG_MODE?: boolean;
-                                    generalStore?: {
-                                        currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
-                                    };
+                                // Debug info
+                                if (
+                                    typeof window !== "undefined"
+                                    && (window as Window & typeof globalThis & {
+                                        DEBUG_MODE?: boolean;
+                                        generalStore?: {
+                                            currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                                        };
 
-                                    itemsStore?: {
-                                        allItems?: { id: string; text?: unknown; [key: string]: unknown; }[];
-                                    };
-                                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                                    appStore?: { currentPage?: { id?: string; }; };
-                                    editorOverlayStore?: unknown;
-                                }).DEBUG_MODE
-                            ) {
-                                logger.debug(
-                                    `Focus set after finding existing cursor. Active element is textarea: ${
-                                        document.activeElement === textarea
-                                    }`,
-                                );
-                            }
-                        }, 10);
+                                        itemsStore?: {
+                                            allItems?: { id: string; text?: unknown; [key: string]: unknown; }[];
+                                        };
+                                        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                                        appStore?: { currentPage?: { id?: string; }; };
+                                        editorOverlayStore?: unknown;
+                                    }).DEBUG_MODE
+                                ) {
+                                    logger.debug(
+                                        `Focus set after finding existing cursor. Active element is textarea: ${
+                                            document.activeElement === textarea
+                                        }`,
+                                    );
+                                }
+                            }, 10);
+                        });
                     });
                 } else {
                     // Log error if textarea is not found
@@ -341,30 +343,34 @@ export class EditorOverlayStore {
                     textarea.focus();
 
                     tick().then(() => {
-                        textarea.focus();
+                        setTimeout(() => {
+                            textarea.focus();
 
-                        // Debug info
-                        if (
-                            typeof window !== "undefined"
-                            && (window as Window & typeof globalThis & {
-                                DEBUG_MODE?: boolean;
-                                generalStore?: {
-                                    currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
-                                };
+                            // Debug info
+                            if (
+                                typeof window !== "undefined"
+                                && (window as Window & typeof globalThis & {
+                                    DEBUG_MODE?: boolean;
+                                    generalStore?: {
+                                        currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; };
+                                    };
 
-                                itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                                appStore?: { currentPage?: { id?: string; }; };
-                                editorOverlayStore?: unknown;
-                            }).DEBUG_MODE
-                        ) {
-                            logger.debug(
-                                `Focus set after adding new cursor. Active element is textarea: ${
-                                    document.activeElement === textarea
-                                }`,
-                            );
-                        }
-                    }, 10);
+                                    itemsStore?: {
+                                        allItems?: { id: string; text?: unknown; [key: string]: unknown; }[];
+                                    };
+                                    editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+                                    appStore?: { currentPage?: { id?: string; }; };
+                                    editorOverlayStore?: unknown;
+                                }).DEBUG_MODE
+                            ) {
+                                logger.debug(
+                                    `Focus set after adding new cursor. Active element is textarea: ${
+                                        document.activeElement === textarea
+                                    }`,
+                                );
+                            }
+                        }, 10);
+                    });
                 });
             } else {
                 // Log error if textarea is not found
