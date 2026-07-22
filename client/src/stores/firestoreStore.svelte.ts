@@ -498,7 +498,8 @@ export async function saveProjectIdToServer(projectId: string, title?: string): 
         }
 
         // Get Firebase Functions endpoint
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL || (import.meta.env.DEV ? "http://localhost:57000" : "");
+        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
+            || (import.meta.env.DEV ? "http://localhost:57000" : "");
         logger.debug(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
 
         // Call Firebase Functions to save container ID
