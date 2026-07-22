@@ -143,6 +143,9 @@ export class GeneralStore {
     public get project(): Project | undefined {
         return this._project;
     }
+    // Explicit signal for project updates to ensure Svelte 5 reactivity
+    projectVersion = $state(0);
+
     // Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
 
@@ -266,6 +269,7 @@ export class GeneralStore {
         // Guard against setting null/undefined - just clear state without observers
         if (!v) {
             this._project = undefined;
+            this.projectVersion++;
             if (this.undoManager) {
                 this.undoManager.destroy();
                 this.undoManager = undefined;
@@ -275,6 +279,7 @@ export class GeneralStore {
         }
 
         this._project = v;
+        this.projectVersion++;
 
         if (this.undoManager) {
             this.undoManager.destroy();
