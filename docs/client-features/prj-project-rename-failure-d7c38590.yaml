@@ -1,4 +1,11 @@
+id: PRJ-d7c38590
 title: Project Rename Failure Handling
+title-ja: プロジェクト名変更失敗時のハンドリング
 slug: prj-project-rename-failure
+status: implemented
 uuid: d7c38590
 description: When a project rename fails to propagate to the local store within a reasonable timeframe (e.g., due to offline status or functions cold-start), the user is shown an error message on the settings page rather than being redirected to a non-existent URL. The settings page relies on a reactive wait using Svelte's `$effect.root` rather than polling the store.
+acceptance:
+- When a project rename fails to propagate to the local store within a reasonable timeframe (e.g., due to offline status or functions cold-start), the user is shown an error message on the settings page rather than being redirected to a non-existent URL. The settings page relies on a reactive wait using Svelte's `$effect.root` rather than polling the store.
+tests:
+- client/e2e/basic/prj-project-rename-failure-d7c38590.spec.ts

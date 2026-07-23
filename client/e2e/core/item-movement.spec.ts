@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Item Movement and Focus", () => {
     test.beforeEach(async ({ page }, testInfo) => {

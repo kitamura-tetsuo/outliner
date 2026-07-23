@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+
+registerCoverageHooks();
 
 test.describe("Dev Server Environment", () => {
     test("loads only one instance of Yjs", async ({ page }) => {

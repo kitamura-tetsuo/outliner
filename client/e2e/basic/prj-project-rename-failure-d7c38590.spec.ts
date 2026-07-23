@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.describe("Project Rename Failure Handling", () => {
     test("shows error on rename timeout instead of redirecting", async ({ page }, testInfo) => {
