@@ -59,8 +59,8 @@ Press `Enter` to insert a new item below the current one. Alternatively, click t
 
 ### Indenting Items
 
-- Decrease indent: `Tab` at the beginning of a line
-- Increase indent: `Shift + Tab` at the beginning of a line
+- Increase indent: `Tab` at the beginning of a line
+- Decrease indent: `Shift + Tab` at the beginning of a line
 
 ### Moving Items
 
@@ -79,7 +79,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - Links to pages that do not exist yet look different, and the page is only created once you edit it.
 - You can also link to a page in another project with `[project/page]` syntax.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the document toolbar to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button next to the page title to access it.
 
 ### External Links
 
@@ -91,7 +91,7 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the Search pages input field in the top navigation bar or the **Search** button in the document toolbar to search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the Search pages input field in the top navigation bar or the **Search** button next to the page title to search across the whole project. Recent searches are remembered for quick access.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
