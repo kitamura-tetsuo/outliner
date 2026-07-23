@@ -125,7 +125,9 @@ const logger = getLogger("SearchPanel");
         matches = newMatches;
         matchCount = matches.length;
         try {
-            window.__E2E_LAST_MATCH_COUNT__ = matchCount;
+            if (import.meta.env.MODE === "test" || window.__E2E__) {
+                window.__E2E_LAST_MATCH_COUNT__ = matchCount;
+            }
             logger.debug("SearchPanel.handleSearch matches", {
                 matchCount,
                 items: matches.map((m) => ({

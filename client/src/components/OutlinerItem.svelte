@@ -1827,7 +1827,9 @@ onMount(() => {
     try {
         const anyWin = (typeof window !== 'undefined') ? window : undefined;
         if (!anyWin) return;
-        if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
+        if (import.meta.env.MODE === "test" || anyWin.__E2E__) {
+            if (!anyWin.__E2E_DROP_HANDLERS__) anyWin.__E2E_DROP_HANDLERS__ = [] as ((el: Element, ev: DragEvent) => void)[];
+        }
         const fn = (el: Element, ev: DragEvent) => {
             try {
                 if (displayRef && (el === displayRef || displayRef.contains(el))) {
@@ -1835,7 +1837,9 @@ onMount(() => {
                 }
             } catch {}
         };
-        anyWin.__E2E_DROP_HANDLERS__.push(fn);
+        if (import.meta.env.MODE === "test" || anyWin.__E2E__) {
+            anyWin.__E2E_DROP_HANDLERS__?.push(fn);
+        }
 
         // E2E: Global function to forcibly trigger handleDrop (test only). If element is under self, synthesize drop and process.
         if (import.meta.env.MODE === "test") {
@@ -1877,9 +1881,13 @@ onMount(() => {
 
         return () => {
             try {
-                const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
-                const i = arr.indexOf(fn);
-                if (i >= 0) arr.splice(i, 1);
+                if (import.meta.env.MODE === "test" || anyWin.__E2E__) {
+                    const arr = anyWin.__E2E_DROP_HANDLERS__ as ((el: Element, ev: DragEvent) => void)[];
+                    if (arr) {
+                        const i = arr.indexOf(fn);
+                        if (i >= 0) arr.splice(i, 1);
+                    }
+                }
             } catch {}
         };
     } catch {}

@@ -159,7 +159,9 @@ onMount(() => {
     if (browser) {
         // E2E: Hydration detection flag for stable waits
         try {
-            window.__E2E_LAYOUT_MOUNTED__ = true;
+            if (import.meta.env.MODE === "test" || window.__E2E__) {
+                window.__E2E_LAYOUT_MOUNTED__ = true;
+            }
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
         } catch {}
         // Dynamically import browser-only modules
