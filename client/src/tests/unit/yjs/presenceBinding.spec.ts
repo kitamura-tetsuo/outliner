@@ -19,15 +19,14 @@ describe("Presence Binding Leak", () => {
 
         expect(unbind1).toBe(unbind2);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const observers = (awareness as any)._observers;
+        const observers = (awareness as unknown as { _observers: Map<string, unknown>; })._observers;
 
         // One listener from the initial bind
-        expect(observers.get("change")?.size ?? 0).toBe(1);
+        expect((observers.get("change") as unknown as Set<() => void>)?.size ?? 0).toBe(1);
 
         unbind1();
 
         // Listener should be removed
-        expect(observers.get("change")?.size ?? 0).toBe(0);
+        expect((observers.get("change") as unknown as Set<() => void>)?.size ?? 0).toBe(0);
     });
 });
