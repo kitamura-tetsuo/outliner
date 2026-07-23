@@ -267,28 +267,6 @@
         } catch (e) {
             logger.error({ error: e }, "[DEBUG] onMount error:");
         }
-
-        // E2E Stabilization: Track initial generation of currentPage.items and capture pageId as needed
-        let iv: ReturnType<typeof setInterval> | undefined;
-        try {
-            let tries = 0;
-            iv = setInterval(() => {
-                try {
-                    capturePageIdForSchedule();
-                    const pg = store.currentPage;
-                    const len = pg?.items?.length ?? 0;
-                    if (len > 0 || ++tries > 50) {
-                        clearInterval(iv);
-                    }
-                } catch {
-                    if (++tries > 50) clearInterval(iv);
-                }
-            }, 100);
-        } catch {}
-
-        return () => {
-            try { if (iv) clearInterval(iv); } catch {}
-        };
     });
 
 
@@ -301,6 +279,10 @@
     // React to page list changes to ensure we stay on the same instance
     $effect(() => {
         void store.pagesVersion;
+
+        // E2E Stabilization: capture pageId as needed when page list changes
+        try { capturePageIdForSchedule(); } catch {}
+
         if (!__loadingInProgress && !error && store.currentPage && store.project) {
             const findPageEffect = () => {
                 const items = store.project?.items;
