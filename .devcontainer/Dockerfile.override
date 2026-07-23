@@ -16,6 +16,14 @@ RUN apt-get update && \
     gh \
     pre-commit \
     openssh-server \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    fluxbox \
+    dbus-x11 \
+    x11-utils \
+    x11-apps \
     # docker-compose-plugin \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/* && mkdir -p /var/run/sshd \
     && echo "PermitRootLogin yes" >> /etc/ssh/sshd_config

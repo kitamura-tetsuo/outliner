@@ -10,9 +10,11 @@ services:
 
     ports:
       - "${SSH_PORT:-2222}:2222"
+      - "6080:6080"
 
     environment:
       - DOCKER_NETWORK_NAME="graphrag-network"
+      - DISPLAY=${DISPLAY:-:99}
 
     volumes:
       - type: bind

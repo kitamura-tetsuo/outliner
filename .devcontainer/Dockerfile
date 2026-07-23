@@ -13,6 +13,15 @@ RUN apt-get update && \
     default-jre \
     python3.11-venv \
     python3-pip \
+    pre-commit \
+    xvfb \
+    x11vnc \
+    novnc \
+    websockify \
+    fluxbox \
+    dbus-x11 \
+    x11-utils \
+    x11-apps \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI

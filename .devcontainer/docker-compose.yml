@@ -10,10 +10,13 @@ services:
     environment:
       - GIT_MERGE_AUTOEDIT=no
       - TZ=Asia/Tokyo
+      - DISPLAY=${DISPLAY:-:99}
 
     ipc: 'host'
     shm_size: '1gb'
     init: true
+    cap_add:
+      - SYS_ADMIN
 
     volumes:
       # 1️⃣  Project source as a bind-mount
@@ -52,8 +55,13 @@ services:
         source: /var/run/docker.sock
         target: /var/run/docker.sock
         consistency: cached
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+        consistency: cached
 
-    # ports:
+    ports:
+      - '6080:6080'
     #   - '7070-7072:7070-7072'
     #   - '7080-7082:7080-7082'
     #   - '7090-7092:7090-7092'
