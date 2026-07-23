@@ -24,13 +24,9 @@
     let isLoading = $state(false);
     let error = $state<string | null>(null);
 
-    // Redraw trigger (backstop for test environment)
-    let redraw = $state(0);
-
-    // Calculate projects stably (Eventless: ucVersion, Test fallback: redraw)
+    // Calculate projects stably (Eventless: ucVersion)
     let projects = $derived.by(() => {
         void firestoreStore.ucVersion; // Dependency only
-        void redraw; // Provisional dependency (event-driven compatibility)
         void metaDocState.version; // Re-calculate when metadata loads/changes
         return projectsFromUserProject(firestoreStore.userProject);
     });
@@ -51,52 +47,8 @@
             selectedProjectId = currentProjectId;
         }
 
-        // Initial sync: Force recalculation once immediately after mount to reflect pre-loaded userProject
-        // (Reflect to DOM even if ucVersion change occurred before mount)
-        try {
-            redraw = (redraw + 1) | 0;
-        } catch {}
-
         // Check authentication status and attempt login if necessary (async execution)
         ensureUserLoggedIn();
-
-        if (typeof window !== "undefined") {
-            const isTestEnv =
-                import.meta.env.MODE === "test" ||
-                import.meta.env.VITE_IS_TEST === "true" ||
-                window.location.hostname === "localhost" ||
-                window.localStorage?.getItem?.("VITE_IS_TEST") === "true" ||
-                import.meta.env.MODE === "test";
-
-            if (isTestEnv) {
-                // In test environment, provide a backstop to follow ucVersion changes
-                let lastVersion = firestoreStore.ucVersion;
-                const intervalId = window.setInterval(() => {
-                    const currentVersion = firestoreStore.ucVersion;
-                    if (currentVersion !== lastVersion) {
-                        lastVersion = currentVersion;
-                        redraw = (redraw + 1) | 0;
-                    }
-                }, 150);
-                cleanupTasks.push(() => {
-                    window.clearInterval(intervalId);
-                });
-
-                // Added: Immediate recalculation with test-specific sync event (avoid initialization race condition immediately after seed)
-                const onUcChanged = () => {
-                    try {
-                        redraw = (redraw + 1) | 0;
-                    } catch {}
-                };
-                window.addEventListener("firestore-uc-changed", onUcChanged);
-                cleanupTasks.push(() =>
-                    window.removeEventListener(
-                        "firestore-uc-changed",
-                        onUcChanged,
-                    ),
-                );
-            }
-        }
 
         // Monitor authentication state changes
         const userManagerInstance = (
