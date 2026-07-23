@@ -19,7 +19,7 @@ function dismiss() {
     >
         <div class="error-icon" aria-hidden="true">⚠️</div>
         <div class="error-content">
-            <h3>Server Connection Error</h3>
+            <h2>Server Connection Error</h2>
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}
@@ -67,7 +67,7 @@ function dismiss() {
     flex: 1;
 }
 
-h3 {
+h2 {
     margin: 0 0 8px 0;
     color: #d32f2f;
     font-size: 18px;

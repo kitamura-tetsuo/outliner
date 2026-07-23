@@ -610,9 +610,9 @@
                     <span class="text-red-400">⚠️</span>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800">
+                    <h2 class="text-sm font-medium text-red-800">
                         An error occurred
-                    </h3>
+                    </h2>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
                     </div>
@@ -634,9 +634,9 @@
                     <span class="text-yellow-400">⚠️</span>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-yellow-800">
+                    <h2 class="text-sm font-medium text-yellow-800">
                         Page not found
-                    </h3>
+                    </h2>
                     <div class="mt-2 text-sm text-yellow-700">
                         <p>
                             The specified page "{pageName}" does not exist in project "{projectName}".
@@ -662,9 +662,9 @@
                     <span class="text-blue-400">ℹ️</span>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-blue-800">
+                    <h2 class="text-sm font-medium text-blue-800">
                         Login required
-                    </h3>
+                    </h2>
                     <div class="mt-2 text-sm text-blue-700">
                         <p>Please login to view this page.</p>
                     </div>
