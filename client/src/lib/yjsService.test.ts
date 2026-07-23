@@ -42,6 +42,7 @@ vi.mock("../auth/UserManager", () => ({
             },
         },
         getCurrentUser: vi.fn().mockReturnValue({ id: "test-user-id" }),
+        addEventListener: vi.fn().mockReturnValue(() => {}),
     },
 }));
 

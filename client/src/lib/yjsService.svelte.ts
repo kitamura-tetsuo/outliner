@@ -602,21 +602,32 @@ export async function processPendingRegistrations(): Promise<void> {
     }
 }
 
+let cleanupRegistrations: (() => void) | undefined;
+
 if (typeof window !== "undefined") {
-    // Process on startup (wait a bit for auth to initialize)
-    setTimeout(() => {
+    const handleOnline = () => {
         void processPendingRegistrations();
-    }, 5000);
+    };
 
     // Process on network recovery
-    window.addEventListener("online", () => {
+    window.addEventListener("online", handleOnline);
+
+    // Process on successful sign-in
+    const unsubAuth = userManager.addEventListener(() => {
         void processPendingRegistrations();
     });
 
-    // Try periodically just in case (every 5 minutes)
-    setInterval(() => {
-        void processPendingRegistrations();
-    }, 5 * 60 * 1000);
+    cleanupRegistrations = () => {
+        window.removeEventListener("online", handleOnline);
+        unsubAuth();
+    };
+}
+
+export function cleanupPendingRegistrationsListeners() {
+    if (cleanupRegistrations) {
+        cleanupRegistrations();
+        cleanupRegistrations = undefined;
+    }
 }
 
 // Testing hooks
