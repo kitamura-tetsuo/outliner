@@ -1,4 +1,5 @@
 import { expect } from "chai";
+import { describe, it } from "vitest";
 
 describe("Image Upload API Dummy", () => {
     it("should pass", () => {
