@@ -396,6 +396,9 @@
 
         // Change collapse state
         viewModel.toggleCollapsed(itemId);
+
+        // Force UI update to reflect collapsed state changes
+        __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
     }
 
     function handleIndent(itemId: string | undefined) {
