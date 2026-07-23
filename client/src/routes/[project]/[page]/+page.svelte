@@ -245,15 +245,17 @@
             _isLoading = false;
             __loadingInProgress = false;
             if (typeof window !== "undefined") {
-                window.__PAGE_STATE__ = {
-                    loaded: true,
-                    projectName,
-                    pageName,
-                    hasProject: !!store.project,
-                    hasCurrentPage: !!store.currentPage,
-                    pageNotFound,
-                    error,
-                };
+                if (import.meta.env.MODE === "test" || window.__E2E__) {
+                    window.__PAGE_STATE__ = {
+                        loaded: true,
+                        projectName,
+                        pageName,
+                        hasProject: !!store.project,
+                        hasCurrentPage: !!store.currentPage,
+                        pageNotFound,
+                        error,
+                    };
+                }
             }
             try {
                 capturePageIdForSchedule();
@@ -467,35 +469,37 @@
 
         // For E2E Debug: Expose function to forcibly open search panel
         if (typeof window !== "undefined") {
-            window.__OPEN_SEARCH__ = async () => {
-                // Click toggle button to open only when currently hidden (prevent double toggle)
-                if (!isSearchPanelVisible) {
-                    const btn =
-                        document.querySelector<HTMLButtonElement>(
-                            ".search-btn",
-                        );
-                    btn?.click();
-                }
-                // Wait for search-panel DOM appearance
-                let tries = 0;
-                while (
-                    !document.querySelector('[data-testid="search-panel"]') &&
-                    tries < 40
-                ) {
-                    await new Promise((r) => setTimeout(r, 25));
-                    tries++;
-                }
-                logger.debug(
-                    `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
-                        {
-                            found: !!document.querySelector(
-                                '[data-testid="search-panel"]',
-                            ),
-                            tries,
-                        },
-                    )}`,
-                );
-            };
+            if (import.meta.env.MODE === "test" || window.__E2E__) {
+                window.__OPEN_SEARCH__ = async () => {
+                    // Click toggle button to open only when currently hidden (prevent double toggle)
+                    if (!isSearchPanelVisible) {
+                        const btn =
+                            document.querySelector<HTMLButtonElement>(
+                                ".search-btn",
+                            );
+                        btn?.click();
+                    }
+                    // Wait for search-panel DOM appearance
+                    let tries = 0;
+                    while (
+                        !document.querySelector('[data-testid="search-panel"]') &&
+                        tries < 40
+                    ) {
+                        await new Promise((r) => setTimeout(r, 25));
+                        tries++;
+                    }
+                    logger.debug(
+                        `E2E: __OPEN_SEARCH__ ensured visible (no double toggle): ${JSON.stringify(
+                            {
+                                found: !!document.querySelector(
+                                    '[data-testid="search-panel"]',
+                                ),
+                                tries,
+                            },
+                        )}`,
+                    );
+                };
+            }
         }
 
         // Setup link preview handlers after page load
