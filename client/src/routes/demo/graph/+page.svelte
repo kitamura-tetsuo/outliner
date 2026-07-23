@@ -92,7 +92,7 @@
                     <span class="text-red-400">⚠️</span>
                 </div>
                 <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800">An error occurred</h3>
+                    <h2 class="text-sm font-medium text-red-800">An error occurred</h2>
                     <div class="mt-2 text-sm text-red-700">
                         <p>{error}</p>
                     </div>
