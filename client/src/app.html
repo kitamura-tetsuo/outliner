@@ -102,7 +102,7 @@
                             }
                             return realStore;
                         }).catch(error => {
-                            console.warn("[bootstrap] Failed to load firestoreStore", error);
+                            console.debug("[bootstrap] Failed to load firestoreStore", error);
                             loadPromise = null;
                             throw error;
                         });
