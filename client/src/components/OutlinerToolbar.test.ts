@@ -9,7 +9,7 @@ vi.mock("../utils/pathUtils", () => ({
 describe("OutlinerToolbar", () => {
     test("renders desktop toolbar with expected buttons", () => {
         const onAddItem = vi.fn();
-        const { getByText } = render(OutlinerToolbar, {
+        const { getByText, getByTestId } = render(OutlinerToolbar, {
             props: {
                 mode: "desktop",
                 projectName: "TestProject",
@@ -18,8 +18,9 @@ describe("OutlinerToolbar", () => {
             },
         });
 
-        const addItemBtn = getByText("Add Item");
+        const addItemBtn = getByTestId("add-item-button");
         expect(addItemBtn).toBeTruthy();
+        expect(addItemBtn.textContent).toBe("Add Item");
 
         const addImageBtn = getByText("Add Image");
         expect(addImageBtn).toBeTruthy();
@@ -31,14 +32,14 @@ describe("OutlinerToolbar", () => {
 
     test("desktop mode 'Add Item' button calls onAddItem", async () => {
         const onAddItem = vi.fn();
-        const { getByText } = render(OutlinerToolbar, {
+        const { getByTestId } = render(OutlinerToolbar, {
             props: {
                 mode: "desktop",
                 onAddItem,
             },
         });
 
-        const addItemBtn = getByText("Add Item");
+        const addItemBtn = getByTestId("add-item-button");
         await fireEvent.click(addItemBtn);
 
         expect(onAddItem).toHaveBeenCalledTimes(1);

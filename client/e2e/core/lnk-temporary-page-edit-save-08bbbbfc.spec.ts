@@ -30,7 +30,7 @@ test.describe("LNK-0004: Temporary Page Edit and Save", () => {
         await expect(outlinerBase).toBeVisible();
 
         // Auto-creation is disabled, so we must click 'Add Item' to create the temp page
-        const addItemBtn = page.getByRole("button", { name: "Add Item" });
+        const addItemBtn = page.getByTestId("add-item-button");
         if (await addItemBtn.isVisible()) {
             await addItemBtn.click();
         }

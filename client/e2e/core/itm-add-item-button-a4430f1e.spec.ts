@@ -14,7 +14,7 @@ test.describe("ITM-0002: Add item via button", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
         // Wait for the add item button to be displayed
-        await page.waitForSelector('button:has-text("Add Item")', { timeout: 10000 });
+        await page.waitForSelector('[data-testid="add-item-button"]', { timeout: 10000 });
     });
 
     test("clicking add item button appends new item", async ({ page }) => {
@@ -22,7 +22,7 @@ test.describe("ITM-0002: Add item via button", () => {
         const itemCountBefore = await page.locator(".outliner-item").count();
 
         // Click the add item button
-        await page.click('button:has-text("Add Item")');
+        await page.getByTestId("add-item-button").click();
 
         // Wait for the new item to be added
         await page.waitForTimeout(300);

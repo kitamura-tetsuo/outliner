@@ -34,7 +34,7 @@ test.describe("Add Text Functionality Test", () => {
         const initialCount = await initialItems.count();
 
         // Click the add item button (using button in page-toolbar)
-        const addButton = page.getByTestId("page-toolbar").getByRole("button", { name: "Add Item" });
+        const addButton = page.getByTestId("add-item-button");
         await addButton.click();
         await page.waitForTimeout(500);
 
