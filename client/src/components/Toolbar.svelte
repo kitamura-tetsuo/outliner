@@ -5,7 +5,7 @@ const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 import { store } from "../stores/store.svelte";
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
@@ -49,8 +49,36 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
 	        && "tree" in value;
 	}
 
+	let resizeObserver: ResizeObserver | null = null;
+
+	onDestroy(() => {
+		if (resizeObserver) {
+			resizeObserver.disconnect();
+			resizeObserver = null;
+		}
+	});
+
 	// As a last resort, resolve from service by URL param to support tests
 	onMount(() => {
+		if (toolbarEl && typeof window !== 'undefined') {
+			// Initialize with current height immediately
+			const rect = toolbarEl.getBoundingClientRect();
+			if (rect.height > 0) {
+				document.documentElement.style.setProperty('--toolbar-height', `${rect.height}px`);
+			}
+
+			resizeObserver = new ResizeObserver((entries) => {
+				for (const entry of entries) {
+					if (entry.target === toolbarEl) {
+						// Use borderBoxSize if available for full element height including padding/borders
+						const height = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+						document.documentElement.style.setProperty('--toolbar-height', `${height}px`);
+					}
+				}
+			});
+			resizeObserver.observe(toolbarEl);
+		}
+
 	    const init = async () => {
 	    try {
 	        if (!effectiveProject && typeof window !== "undefined") {
