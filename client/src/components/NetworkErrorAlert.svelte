@@ -2,9 +2,10 @@
 interface Props {
     error?: string | null;
     retryCallback?: (() => void) | null;
+    dismissible?: boolean;
 }
 
-let { error = $bindable(null), retryCallback = null }: Props = $props();
+let { error = $bindable(null), retryCallback = null, dismissible = true }: Props = $props();
 
 function dismiss() {
     error = null;
@@ -25,7 +26,9 @@ function dismiss() {
                 {#if retryCallback}
                     <button type="button" class="retry-btn" onclick={retryCallback}>Retry</button>
                 {/if}
-                <button type="button" class="dismiss-btn" onclick={dismiss}>Close</button>
+                {#if dismissible}
+                    <button type="button" class="dismiss-btn" onclick={dismiss}>Close</button>
+                {/if}
             </div>
         </div>
     </div>

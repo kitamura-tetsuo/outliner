@@ -1,6 +1,7 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
 import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
+import { getClientByProjectTitle, removeClientByProjectId } from "../lib/yjsService.svelte";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
 
@@ -162,6 +163,22 @@ class YjsStore {
     }
     getCurrentProjectId() {
         return this.currentProjectId;
+    }
+
+    async reconnectProject(): Promise<void> {
+        const projectId = this.currentProjectId;
+        if (!projectId) return;
+
+        logger.info(`[yjsStore] Reconnecting project ${projectId}`);
+        removeClientByProjectId(projectId);
+        // Ensure reset of current syncError
+        this.syncError = null;
+
+        try {
+            await getClientByProjectTitle(projectId);
+        } catch (e) {
+            logger.error({ error: e }, `[yjsStore] reconnectProject failed`);
+        }
     }
 }
 

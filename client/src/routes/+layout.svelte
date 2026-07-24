@@ -351,10 +351,10 @@ onDestroy(async () => {
         <NetworkErrorAlert error="Changes are too large to sync. Please undo or reduce the size of your edits." />
     {/if}
     {#if yjsStore.syncError === "rate-limited"}
-        <NetworkErrorAlert error="Rate limit exceeded. Sync has been paused. Please wait and reconnect." />
+        <NetworkErrorAlert error="Rate limit exceeded. Sync has been paused. Please wait and reconnect." retryCallback={() => yjsStore.reconnectProject()} dismissible={false} />
     {/if}
     {#if yjsStore.syncError === "timed-out"}
-        <NetworkErrorAlert error="Could not connect to the server. Showing offline/incomplete data." />
+        <NetworkErrorAlert error="Could not connect to the server. Showing offline/incomplete data." retryCallback={() => yjsStore.reconnectProject()} dismissible={false} />
     {/if}
 </div>
 

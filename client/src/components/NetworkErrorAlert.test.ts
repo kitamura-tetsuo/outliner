@@ -25,4 +25,14 @@ describe("NetworkErrorAlert", () => {
 
         expect(retryCallback).toHaveBeenCalled();
     });
+
+    it("should hide dismiss button when dismissible is false", () => {
+        render(NetworkErrorAlert, { error: "Error", dismissible: false });
+        expect(screen.queryByText("Close")).not.toBeInTheDocument();
+    });
+
+    it("should show dismiss button when dismissible is true (default)", () => {
+        render(NetworkErrorAlert, { error: "Error" });
+        expect(screen.getByText("Close")).toBeInTheDocument();
+    });
 });
