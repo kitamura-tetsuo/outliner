@@ -244,6 +244,12 @@ const logger = getLogger("SearchPanel");
     >
         <div class="search-panel-header">
             <h3>Search and Replace</h3>
+            <button
+                type="button"
+                class="close-btn"
+                aria-label="Close Search Panel"
+                onclick={() => onclose?.()}
+            >×</button>
         </div>
 
         <section class="search-panel-content" aria-label="Search and Replace">
@@ -351,7 +357,7 @@ const logger = getLogger("SearchPanel");
 <style>
     .search-panel {
         position: fixed;
-        top: 20px;
+        top: 60px;
         right: 20px;
         width: 500px;
         background: white;
@@ -362,10 +368,27 @@ const logger = getLogger("SearchPanel");
     }
 
     .search-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 12px 16px;
         border-bottom: 1px solid #eee;
         background: #f8f9fa;
         border-radius: 8px 8px 0 0;
+    }
+
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #666;
+        line-height: 1;
+        padding: 0;
+    }
+
+    .close-btn:hover {
+        color: #333;
     }
 
     .search-panel-header h3 {
