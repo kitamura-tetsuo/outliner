@@ -176,12 +176,45 @@ describe("yjs connection: shared provider setup", () => {
     )("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
         const provider = await setup();
 
-        const fatalCodes = [4001, 4003, 4004, 4005, 4006, 4008];
+        const fatalCodes = [4001, 4003, 4005];
 
         for (const code of fatalCodes) {
             const disconnectSpy = vi.spyOn(provider, "disconnect");
             provider.emit("close", { code, reason: "FATAL" } satisfies CloseEvent);
             expect(disconnectSpy).toHaveBeenCalled();
+            disconnectSpy.mockRestore();
+        }
+    });
+
+    it.each(
+        [
+            ["createProjectConnection", async () => {
+                const promise = createProjectConnection("proj-retry-1");
+                await flushMicrotasks();
+                const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+                provider.markSynced();
+                await promise;
+                return provider;
+            }],
+            ["connectProjectDoc", async () => {
+                const doc = new Y.Doc();
+                await connectProjectDoc(doc, "proj-retry-2");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+            ["createMinimalProjectConnection", async () => {
+                await createMinimalProjectConnection("proj-retry-3");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+        ] as const,
+    )("%s does not stop reconnect attempts for a retryable close code", async (_label, setup) => {
+        const provider = await setup();
+
+        const retryableCodes = [4004, 4006, 4008];
+
+        for (const code of retryableCodes) {
+            const disconnectSpy = vi.spyOn(provider, "disconnect");
+            provider.emit("close", { code, reason: "TRANSIENT" } satisfies CloseEvent);
+            expect(disconnectSpy).not.toHaveBeenCalled();
             disconnectSpy.mockRestore();
         }
     });

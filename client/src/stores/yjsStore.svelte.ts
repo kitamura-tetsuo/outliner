@@ -45,7 +45,7 @@ class YjsStore {
             this.notYetSynced = initialSyncState !== "synced";
             if (
                 initialSyncState === "too-large" || initialSyncState === "rate-limited" || initialSyncState === "denied"
-                || initialSyncState === "timed-out"
+                || initialSyncState === "timed-out" || initialSyncState === "retrying"
             ) {
                 this.syncError = initialSyncState;
             } else {
@@ -53,7 +53,10 @@ class YjsStore {
             }
             this._unsubSyncState = onRoomSyncStateChange(room, (state) => {
                 this.notYetSynced = state !== "synced";
-                if (state === "too-large" || state === "rate-limited" || state === "denied" || state === "timed-out") {
+                if (
+                    state === "too-large" || state === "rate-limited" || state === "denied" || state === "timed-out"
+                    || state === "retrying"
+                ) {
                     this.syncError = state;
                 } else {
                     this.syncError = null;
@@ -130,7 +133,7 @@ class YjsStore {
     // edits may still be applied to a stale/local-only copy of the document.
     notYetSynced: boolean = false;
     // Set when the server rejects sync with a fatal error
-    syncError: "too-large" | "rate-limited" | "denied" | "timed-out" | null = null;
+    syncError: "too-large" | "rate-limited" | "denied" | "timed-out" | "retrying" | null = null;
     get connectionState() {
         return this._client?.getConnectionStateString() ?? "Disconnected";
     }

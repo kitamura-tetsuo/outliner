@@ -356,6 +356,12 @@ onDestroy(async () => {
     {#if yjsStore.syncError === "timed-out"}
         <NetworkErrorAlert error="Could not connect to the server. Showing offline/incomplete data." />
     {/if}
+    {#if yjsStore.syncError === "denied"}
+        <NetworkErrorAlert error="Access denied. You do not have permission to access this project." />
+    {/if}
+    {#if yjsStore.syncError === "retrying"}
+        <NetworkErrorAlert error="Server is busy. Reconnecting in the background..." />
+    {/if}
 </div>
 
 <style>
