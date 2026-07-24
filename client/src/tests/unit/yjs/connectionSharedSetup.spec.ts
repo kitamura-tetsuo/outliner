@@ -124,7 +124,7 @@ describe("yjs connection: shared provider setup", () => {
         expect(typeof provider.configuration.token).toBe("function");
     });
 
-    it("uses the cached ID token by default and only forces a refresh after a 4001 or 4003 close", async () => {
+    it("uses the cached ID token by default and forces a refresh after a 4003 close", async () => {
         const promise = createProjectConnection("proj-token-test");
         await flushMicrotasks();
         const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
@@ -136,14 +136,10 @@ describe("yjs connection: shared provider setup", () => {
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(false);
 
-        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
-        expect(refreshTokenSpy).toHaveBeenCalled();
-
-        await tokenFn();
-        expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
-
         provider.emit("close", { code: 4003, reason: "Forbidden" } satisfies CloseEvent);
-        expect(refreshTokenSpy).toHaveBeenCalledTimes(2);
+        // give microtasks a chance to run so the async IIFE executes
+        await flushMicrotasks();
+        expect(refreshTokenSpy).toHaveBeenCalled();
 
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
@@ -151,6 +147,36 @@ describe("yjs connection: shared provider setup", () => {
         // Subsequent calls go back to using the cache
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(false);
+    });
+
+    it("retries a 4001 close once before giving up", async () => {
+        const promise = createProjectConnection("proj-retry-test");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
+        provider.markSynced();
+        await promise;
+
+        const connectSpy = vi.spyOn(provider, "connect");
+        const disconnectSpy = vi.spyOn(provider, "disconnect");
+        const tokenFn = provider.configuration.token;
+
+        // First 4001: should force a refresh and connect(), not disconnect()
+        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
+        await flushMicrotasks();
+
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+        expect(disconnectSpy).not.toHaveBeenCalled();
+
+        await tokenFn();
+        expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
+
+        // Second 4001: budget exhausted, should disconnect()
+        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
+        await flushMicrotasks();
+
+        expect(connectSpy).toHaveBeenCalledTimes(1); // not called again
+        expect(disconnectSpy).toHaveBeenCalledTimes(1); // called this time
     });
 
     it.each(
@@ -176,7 +202,7 @@ describe("yjs connection: shared provider setup", () => {
     )("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
         const provider = await setup();
 
-        const fatalCodes = [4001, 4003, 4004, 4005, 4006, 4008];
+        const fatalCodes = [4003, 4004, 4005, 4006, 4008];
 
         for (const code of fatalCodes) {
             const disconnectSpy = vi.spyOn(provider, "disconnect");

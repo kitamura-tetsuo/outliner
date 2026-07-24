@@ -223,6 +223,9 @@ async function setupProviderForRoom(
     const { setAwarenessUser = false, bindPresence = false, attachTokenRefreshHook = false } = options;
     const isDemo = projectId === "demo";
     let forceTokenRefresh = false;
+    let authRetries = 0;
+    const MAX_AUTH_RETRIES = 1;
+    let isRetryingCurrentClose = false;
 
     // HocuspocusProvider calls this function itself on every (re)connect attempt and whenever
     // sendToken() runs, so the token is always fresh without us having to patch a cached URL.
@@ -263,10 +266,38 @@ async function setupProviderForRoom(
             logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
         }
 
-        if (code === 4001 || code === 4003) {
-            logger.debug(`[yjs-conn] Auth error ${code} detected for ${room}, forcing token refresh before retry...`);
+        isRetryingCurrentClose = false;
+
+        if (code === 4001 && authRetries < MAX_AUTH_RETRIES) {
+            logger.debug(
+                `[yjs-conn] Auth error 4001 detected for ${room}, forcing token refresh and retrying (${
+                    authRetries + 1
+                }/${MAX_AUTH_RETRIES})...`,
+            );
+            authRetries++;
             forceTokenRefresh = true;
-            void userManager.refreshToken();
+            isRetryingCurrentClose = true;
+            void (async () => {
+                try {
+                    await userManager.refreshToken();
+                } catch (e) {
+                    logger.error({ error: e }, `[yjs-conn] 4001 refresh token failed for ${room}`);
+                }
+                provider.connect();
+            })();
+            return;
+        }
+
+        if (code === 4003) {
+            logger.debug(`[yjs-conn] Auth error 4003 detected for ${room}, forcing token refresh before failing...`);
+            forceTokenRefresh = true;
+            void (async () => {
+                try {
+                    await userManager.refreshToken();
+                } catch (e) {
+                    logger.error({ error: e }, `[yjs-conn] 4003 refresh token failed for ${room}`);
+                }
+            })();
         }
 
         if (code && FATAL_CLOSE_CODES.has(code)) {
@@ -383,6 +414,7 @@ async function setupProviderForRoom(
             };
 
             const closeHandler = (event: { code?: number; reason?: string; }) => {
+                if (isRetryingCurrentClose) return;
                 const code = event.code;
                 if (code && FATAL_CLOSE_CODES.has(code)) {
                     cleanup();
