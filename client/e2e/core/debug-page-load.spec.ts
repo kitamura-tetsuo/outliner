@@ -20,9 +20,7 @@ test.describe("Debug Page Load", () => {
                 url: globalThis.location.href,
                 outlinerBase: !!document.querySelector('[data-testid="outliner-base"]'),
                 outlinerItems: document.querySelectorAll(".outliner-item").length,
-                addButton: !!Array.from(document.querySelectorAll("button")).find(btn =>
-                    btn.textContent?.includes("Add Item")
-                ),
+                addButton: !!document.querySelector('[data-testid="add-item-button"]'),
                 generalStore: generalStore
                     ? {
                         hasProject: !!generalStore.project,

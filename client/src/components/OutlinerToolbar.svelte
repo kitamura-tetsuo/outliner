@@ -56,7 +56,7 @@
 {#if mode === "desktop"}
     <div class="toolbar">
         <div class="actions">
-            <button type="button" onclick={onAddItem}>Add Item</button>
+            <button type="button" onclick={onAddItem} data-testid="add-item-button">Add Item</button>
             <button type="button" onclick={triggerFileSelect} title="Add Image">Add Image</button>
             <input
                 type="file"

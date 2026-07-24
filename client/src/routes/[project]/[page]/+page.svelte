@@ -25,7 +25,6 @@
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
     import { pageViewStore } from "../../../stores/PageViewStore.svelte";
     import { store } from "../../../stores/store.svelte";
-    import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     // Get URL parameters (follow SvelteKit page store)
@@ -340,42 +339,6 @@
         }
     }
 
-    // Auxiliary button to add items from top of screen (for E2E stabilization)
-    function addItemFromTopToolbar() {
-        try {
-            let pageItem = store.currentPage;
-            // If currentPage is not ready, create provisional page with pageName from URL
-            if (!pageItem) {
-                const proj = store.project;
-                if (proj?.addPage && pageName) {
-                    try {
-                        if (store.pageExists(pageName)) return;
-                        const created = proj.addPage(pageName, "tester");
-                        if (created) {
-                            store.currentPage = created;
-                            pageItem = created;
-                        }
-                    } catch {}
-                }
-            }
-            if (!pageItem || !pageItem.items) return;
-            const user = userManager.getCurrentUser()?.id ?? "tester";
-            const node = pageItem.items.addNode(user);
-            // Activate immediately after addition to stabilize subsequent test steps
-            if (node && node.id) {
-                editorOverlayStore.setCursor({
-                    itemId: node.id,
-                    offset: 0,
-                    isActive: true,
-                    userId: "local",
-                });
-                editorOverlayStore.setActiveItem(node.id);
-            }
-        } catch (e) {
-            logger.warn("addItemFromTopToolbar failed", e);
-        }
-    }
-
     // Toggle search panel display
     function toggleSearchPanel() {
         const before = isSearchPanelVisible;
@@ -539,12 +502,6 @@
                     aria-expanded={isSearchPanelVisible}
                 >
                     Search
-                </button>
-                <button type="button"
-                    onclick={addItemFromTopToolbar}
-                    class="px-4 py-2 bg-slate-200 text-slate-800 rounded hover:bg-slate-300"
-                >
-                    Add Item
                 </button>
                 <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
                 <a href={resolvePath(`/${encodeURIComponent(projectName)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>

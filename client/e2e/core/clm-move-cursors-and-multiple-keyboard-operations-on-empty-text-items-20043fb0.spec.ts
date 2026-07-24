@@ -40,7 +40,7 @@ test.describe("Cursor movement on empty text items", () => {
         // If no items exist, create them
         if (debugInfo.itemCount < 2) {
             // Try to create items using the "Add Item" button
-            const addButton = page.locator("button:has-text('Add Item')").first();
+            const addButton = page.getByTestId("add-item-button");
             if (await addButton.isVisible({ timeout: 5000 }).catch(() => false)) {
                 for (let i = 0; i < 2; i++) {
                     await addButton.click();
