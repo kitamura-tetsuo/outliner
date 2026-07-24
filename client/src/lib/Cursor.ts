@@ -788,9 +788,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
         // Move cursor to line start
         this.offset = lineStartOffset;
-        this.applyToStore();
-
         this.updateSelectionAfterMove(startItemId, startOffset);
+        this.applyToStore();
     }
 
     // Extend selection to the end of the line
@@ -822,9 +821,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
         // Move cursor to line end
         this.offset = lineEndOffset;
-        this.applyToStore();
-
         this.updateSelectionAfterMove(startItemId, startOffset);
+        this.applyToStore();
     }
 
     /**
@@ -955,9 +953,21 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             startOffset = this.offset;
         }
 
-        this.moveToDocumentStart();
+        this.resetInitialColumn();
+        const root = generalStore.currentPage;
+        if (!root) return;
+        let item: Item = root;
+        // The root itself is usually the page title; we want to go to the first item.
+        if (item.items && (item.items as Items).length > 0) {
+            const firstChild = (item.items as Items).at(0);
+            if (firstChild) item = firstChild;
+        }
 
+        this.itemId = item.id;
+        this.offset = 0;
         this.updateSelectionAfterMove(startItemId, startOffset);
+        this.applyToStore();
+        store.startCursorBlink();
     }
 
     // Extend selection to document end
@@ -974,9 +984,17 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             startOffset = this.offset;
         }
 
-        this.moveToDocumentEnd();
+        this.resetInitialColumn();
+        const root = generalStore.currentPage;
+        if (!root) return;
 
+        // Ensure root is treated simply as an Item here, to bypass TS strictness errors when structural typing fails for deep nested values
+        const deepest = getDeepestDescendant(root);
+        this.itemId = deepest.id;
+        this.offset = (deepest.text || "").length;
         this.updateSelectionAfterMove(startItemId, startOffset);
+        this.applyToStore();
+        store.startCursorBlink();
     }
 
     // Move to document end
@@ -1136,9 +1154,9 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
         const newOffset = Math.min(selection.startOffset, selection.endOffset);
         this.offset = newOffset;
-        this.applyToStore();
         this.clearSelection();
         this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset);
+        this.applyToStore();
         store.startCursorBlink();
     }
 
