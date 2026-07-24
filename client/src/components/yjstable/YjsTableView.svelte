@@ -54,6 +54,8 @@ let showSchedule = $state(false);
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
+const undoManager = new Y.UndoManager([handles.schemaText, handles.uiDef, handles.data]);
+
 // handles is static within the component lifecycle due to `{#key}` wrapping
 // svelte-ignore state_referenced_locally
 const adapter = new TableSyncAdapter(handles, {
@@ -112,6 +114,7 @@ onMount(() => {
 
 onDestroy(() => {
     handles.uiDef.unobserveDeep(uiMirrorObserver);
+    undoManager.destroy();
     adapter.dispose();
     try {
         disposeConnection?.();
@@ -174,8 +177,8 @@ onDestroy(() => {
             >Schedule</button>
         </div>
         <div class="undo-controls">
-            <button type="button" onclick={() => handles.undo.undo()}>Undo</button>
-            <button type="button" onclick={() => handles.undo.redo()}>Redo</button>
+            <button type="button" onclick={() => undoManager.undo()}>Undo</button>
+            <button type="button" onclick={() => undoManager.redo()}>Redo</button>
         </div>
     </div>
 

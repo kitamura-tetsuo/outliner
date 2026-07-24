@@ -10,7 +10,7 @@
     import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
-    import { listTables, getTableHandles } from "../../../../services/yjstable/tableDocs";
+    import { listTables, getTableHandles, type TableHandles } from "../../../../services/yjstable/tableDocs";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -24,7 +24,7 @@
     let isAuthenticated = $state(false);
     let notFound = $state(false);
     let isLoading = $state(true);
-    let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
+    let tableHandles: TableHandles | undefined = $state(undefined);
 
     async function handleAuthSuccess() {
         isAuthenticated = true;

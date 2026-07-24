@@ -37,7 +37,7 @@ describe("table registry (project doc)", () => {
 });
 
 describe("table handles", () => {
-    it("exposes the three structures and an undo manager spanning them", () => {
+    it("exposes the three structures", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "T");
         const handles = getTableHandles(projectDoc, tableId)!;
@@ -49,14 +49,34 @@ describe("table handles", () => {
         const recordId = addRecord(handles, { title: "hello" });
         expect(handles.data.get(recordId)?.get("title")).toBe("hello");
         expect(handles.data.get(recordId)?.get("id")).toBe(recordId);
+    });
+
+    it("allows undoing changes through an external Y.UndoManager across getTableHandles calls", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "T");
+        const initialHandles = getTableHandles(projectDoc, tableId)!;
+
+        const undoManager = new Y.UndoManager([initialHandles.schemaText, initialHandles.uiDef, initialHandles.data]);
+
+        setSchemaText(initialHandles, "CREATE TABLE t (id TEXT PRIMARY KEY, title TEXT)");
+        initialHandles.uiDef.set("query", "SELECT id, title FROM t");
+        addRecord(initialHandles, { title: "hello" });
+        expect(initialHandles.data.size).toBe(1);
+
+        // Simulate reactive re-evaluation
+        const newHandles = getTableHandles(projectDoc, tableId)!;
+        expect(newHandles).not.toHaveProperty("undo");
 
         // Undo the record insert, then the ui change, then the schema change.
-        handles.undo.undo();
-        expect(handles.data.size).toBe(0);
-        handles.undo.undo();
-        expect(handles.uiDef.get("query")).toBeUndefined();
-        handles.undo.undo();
-        expect(handles.schemaText.toString()).toBe("");
+        undoManager.undo();
+        expect(initialHandles.data.size).toBe(0);
+        expect(newHandles.data.size).toBe(0);
+
+        undoManager.undo();
+        expect(initialHandles.uiDef.get("query")).toBeUndefined();
+
+        undoManager.undo();
+        expect(initialHandles.schemaText.toString()).toBe("");
     });
 
     it("stores records as nested Y.Map for field-level merges", () => {

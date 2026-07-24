@@ -34,8 +34,6 @@ export interface TableHandles {
     schemaText: Y.Text;
     uiDef: Y.Map<unknown>;
     data: TableData;
-    /** Undo scope spans all three structures of the table. */
-    undo: Y.UndoManager;
 }
 
 /** The registry map in the project doc: tableId -> Y.Map entry. */
@@ -87,6 +85,9 @@ export function tableDocGuid(projectGuid: string, tableId: string): string {
  * Resolve the subdoc of a table and wrap its three structures. Returns
  * undefined when the table is not registered. Loading (network/persistence
  * attachment) is the caller's responsibility — see tableDocConnection.
+ *
+ * Note: An UndoManager is not provided here; the owning component should
+ * create and destroy it to avoid leaks on reactive re-evaluations.
  */
 export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandles | undefined {
     const entry = getTableRegistry(projectDoc).get(tableId);
@@ -97,8 +98,7 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
     const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
     const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
     const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
-    const undo = new Y.UndoManager([schemaText, uiDef, data]);
-    return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
+    return { tableId, doc: ydoc, schemaText, uiDef, data };
 }
 
 /** Replace the schema text with a new statement in a single transaction. */
