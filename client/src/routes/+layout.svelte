@@ -361,7 +361,7 @@ onDestroy(async () => {
 <style>
 /* Keep content clear of the fixed Toolbar (height ~4rem) */
 .main-content {
-    padding-top: 5rem;
+    padding-top: var(--toolbar-height, 5rem);
     transition: margin-left 0.3s ease, width 0.3s ease;
     width: 100%;
     box-sizing: border-box;
