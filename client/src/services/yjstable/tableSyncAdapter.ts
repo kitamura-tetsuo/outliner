@@ -12,7 +12,7 @@ import * as Y from "yjs";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
 import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
-import { deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
+import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
 
 export interface RecordSyncError {
@@ -60,7 +60,7 @@ export class TableSyncAdapter {
         events: Y.YEvent<Y.AbstractType<unknown>>[],
         tr: Y.Transaction,
     ) => {
-        if (tr.origin === this) return;
+        if (tr.origin === ADAPTER_ORIGIN) return;
         for (const event of events) {
             if (event.target === this.handles.data) {
                 for (const key of event.changes.keys.keys()) {
@@ -74,7 +74,7 @@ export class TableSyncAdapter {
     };
 
     private readonly schemaObserver = (_event: Y.YTextEvent, tr: Y.Transaction) => {
-        if (tr.origin === this) return;
+        if (tr.origin === ADAPTER_ORIGIN) return;
         void this.rebuildFromSchemaText();
     };
 
@@ -140,10 +140,12 @@ export class TableSyncAdapter {
      */
     async applySchema(parsed: ParsedTableSchema): Promise<void> {
         const diff = diffSchemas(this.schema, parsed);
-        setSchemaText(this.handles, parsed.createSql, this);
-        if (diff.removedColumns.length > 0) {
-            deleteColumnData(this.handles, diff.removedColumns, this);
-        }
+        this.handles.doc.transact(() => {
+            setSchemaText(this.handles, parsed.createSql);
+            if (diff.removedColumns.length > 0) {
+                deleteColumnData(this.handles, diff.removedColumns);
+            }
+        }, ADAPTER_ORIGIN);
         await this.rebuild(parsed);
     }
 
