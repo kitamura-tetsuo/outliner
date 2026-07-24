@@ -148,6 +148,33 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
+    it("allows undoing a schema change that dropped a column with data", async () => {
+        const { handles } = makeTable();
+        setSchemaText(handles, SCHEMA);
+        const adapter = new TableSyncAdapter(handles);
+        try {
+            await adapter.start();
+            const recordId = addRecord(handles, { title: "t", points: 1, status: "open" });
+            await waitMicrotasks();
+
+            // Stop capturing so the setup transactions aren't undone together with the schema change.
+            handles.undo.stopCapturing();
+
+            const next = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL)";
+            const { parsed } = await adapter.prepareSchemaChange(next);
+            await adapter.applySchema(parsed);
+
+            expect(handles.schemaText.toString()).toBe(next);
+            expect(handles.data.get(recordId)?.has("points")).toBe(false);
+
+            handles.undo.undo();
+            expect(handles.schemaText.toString()).toBe(SCHEMA);
+            expect(handles.data.get(recordId)?.get("points")).toBe(1);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
     it("rebuilds when the schema text changes from another client", async () => {
         const { handles } = makeTable();
         setSchemaText(handles, SCHEMA);

@@ -14,6 +14,7 @@
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 
+export const ADAPTER_ORIGIN = Symbol("adapter-origin");
 export const TABLE_REGISTRY_KEY = "yjsTables";
 export const TABLE_SCHEMA_KEY = "schema";
 export const TABLE_UI_KEY = "ui";
@@ -97,7 +98,9 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
     const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
     const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
     const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
-    const undo = new Y.UndoManager([schemaText, uiDef, data]);
+    const undo = new Y.UndoManager([schemaText, uiDef, data], {
+        trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
+    });
     return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
 }
 
