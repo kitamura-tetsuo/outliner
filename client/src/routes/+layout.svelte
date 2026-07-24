@@ -17,6 +17,7 @@ import "../utils/ScrapboxFormatter";
 // Import for global exposure
 import Toolbar from "../components/Toolbar.svelte";
 import NetworkErrorAlert from "../components/NetworkErrorAlert.svelte";
+import type { RoomSyncState } from "../lib/yjs/roomSyncState";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import AliasPicker from "../components/AliasPicker.svelte";
 import Sidebar from "../components/Sidebar.svelte";
@@ -25,6 +26,13 @@ import DatabaseSidebar from "../components/DatabaseSidebar.svelte";
 // Removed unused import: userPreferencesStore
 
 
+
+const SYNC_ERROR_MESSAGES = {
+    "too-large": "Changes are too large to sync. Please undo or reduce the size of your edits.",
+    "rate-limited": "Rate limit exceeded. Sync has been paused. Please wait and reconnect.",
+    "timed-out": "Could not connect to the server. Showing offline/incomplete data.",
+    "denied": "You do not have access to this project, or your session expired. Sign in again to continue."
+} satisfies Record<Exclude<RoomSyncState, "pending" | "synced">, string>;
 
 let { children } = $props();
 const logger = getLogger("AppLayout");
@@ -347,14 +355,8 @@ onDestroy(async () => {
         {@render children()}
     </div>
 
-    {#if yjsStore.syncError === "too-large"}
-        <NetworkErrorAlert error="Changes are too large to sync. Please undo or reduce the size of your edits." />
-    {/if}
-    {#if yjsStore.syncError === "rate-limited"}
-        <NetworkErrorAlert error="Rate limit exceeded. Sync has been paused. Please wait and reconnect." />
-    {/if}
-    {#if yjsStore.syncError === "timed-out"}
-        <NetworkErrorAlert error="Could not connect to the server. Showing offline/incomplete data." />
+    {#if yjsStore.syncError}
+        <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} />
     {/if}
 </div>
 
