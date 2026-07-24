@@ -21,6 +21,10 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 
 An overview of the basic interface and navigation.
 
+### Creating a Page
+
+You can create a new page directly from the project home. Simply enter a title in the "New page name" input field and click the **+ Create** button.
+
 ### Switching to Edit Mode
 
 Click on any text to place your cursor there and enter edit mode.
@@ -150,10 +154,10 @@ Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
-- **Create a new table:** enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
+- **New Table:** enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
 - **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 
-Additionally, you can access your existing databases under the **Tables** section in the left sidebar, or view and manage them by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
+Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
 
 ### Managing Data
 
