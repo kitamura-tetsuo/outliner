@@ -29,13 +29,18 @@ test.describe("LNK-0004: Temporary Page Edit and Save", () => {
         const outlinerBase = page.locator("[data-testid='outliner-base']");
         await expect(outlinerBase).toBeVisible();
 
-        // Auto-creation is disabled, so we must click 'Add Item' to create the temp page
-        const addItemBtn = page.getByTestId("add-item-button");
-        if (await addItemBtn.isVisible()) {
-            await addItemBtn.click();
+        // Auto-creation is disabled, so we must explicitly create the page via the
+        // "Create Page" action shown for a page name that doesn't exist yet.
+        const createPageBtn = page.getByRole("button", { name: "Create Page" });
+        const createPageVisible = await createPageBtn
+            .waitFor({ state: "visible", timeout: 30000 })
+            .then(() => true)
+            .catch(() => false);
+        if (createPageVisible) {
+            await createPageBtn.click();
         }
 
-        await TestHelpers.waitForOutlinerItems(page);
+        await TestHelpers.waitForOutlinerItems(page, 1, 30000);
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await page.waitForTimeout(300);
