@@ -2007,6 +2007,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 
 
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="outliner-item"
     class:page-title={isPageTitle}
