@@ -2,7 +2,7 @@
     import Loader from "../../../components/Loader.svelte";
     import { page } from "$app/stores";
     import { resolvePath } from "../../../utils/pathUtils";
-    import { onDestroy, onMount } from "svelte";
+    import { onDestroy, untrack } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
@@ -101,18 +101,16 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         }
     }
 
-    onMount(() => {
-        // Follow route parameter changes (e.g. internal links between demo pages)
-        let lastLoaded: string | undefined;
-        const unsub = page.subscribe(($p) => {
-            let name = $p.params?.page ?? "";
-            if (!name) return;
+    // Follow route parameter changes (e.g. internal links between demo pages)
+    let lastLoaded: string | undefined;
+    $effect(() => {
+        const currentName = pageName;
+        if (!currentName) return;
 
-            if (name === lastLoaded) return;
-            lastLoaded = name;
-            loadDemoPage();
-        });
-        return () => unsub();
+        if (currentName !== lastLoaded) {
+            lastLoaded = currentName;
+            untrack(() => loadDemoPage());
+        }
     });
 
     // React to page list changes (e.g., initial sync or demo reset recreating the page)
