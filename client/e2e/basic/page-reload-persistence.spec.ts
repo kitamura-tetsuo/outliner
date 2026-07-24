@@ -40,7 +40,7 @@ test.describe("Page Creation and Reload Persistence", () => {
 
         // 5. Add some content
         // Click "Add Item" button in the toolbar to create the first item
-        await page.getByTestId("page-toolbar").getByRole("button", { name: "Add Item" }).click();
+        await page.getByTestId("add-item-button").click();
 
         // Wait for the outliner item with data-item-id to appear in the MAIN outliner
         // index 0 is the page title, index 1 is the first child item we just added

@@ -70,7 +70,7 @@ test.describe("Yjs data is reflected in UI", () => {
 
         if (!matchedInitially) {
             // Add items if missing
-            const addBtn = page.locator(".outliner .toolbar .actions button", { hasText: "Add Item" }).first();
+            const addBtn = page.getByTestId("add-item-button");
             for (let i = 0; i < lines.length; i++) {
                 await addBtn.click({ force: true });
                 await page.waitForTimeout(200);
