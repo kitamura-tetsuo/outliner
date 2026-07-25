@@ -11,8 +11,8 @@ describe("CHK-0001 checklist component", () => {
     beforeEach(() => {
         const ydoc = new Y.Doc();
         yjsStore.yjsClient = {
-            getProject: () => ({ ydoc }),
-        } as any;
+            getProject: () => ({ ydoc }) as unknown,
+        } as unknown as import("../../yjs/YjsClient").YjsClient;
     });
 
     it("adds and archives item in shopping mode", async () => {

@@ -1,4 +1,5 @@
 import { RRule } from "rrule";
+import { SvelteDate } from "svelte/reactivity";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 
@@ -93,7 +94,7 @@ function syncToState() {
     }
 }
 
-let observer: ((events: Y.YEvent<any>[], transaction: Y.Transaction) => void) | undefined;
+let observer: ((events: Y.YEvent<Y.AbstractType<unknown>>[], transaction: Y.Transaction) => void) | undefined;
 
 export function initChecklistSync(ydoc: Y.Doc | undefined) {
     if (currentYDoc === ydoc) return;
@@ -140,7 +141,7 @@ export function createChecklist(
     yChecklist.set("lastReset", Date.now());
 
     const yItems = new Y.Array<Y.Map<ChecklistItemValueType>>();
-    yChecklist.set("items", yItems as any);
+    yChecklist.set("items", yItems as unknown as ChecklistValueType);
 
     checklistsMap.set(id, yChecklist);
     return id;
@@ -227,7 +228,7 @@ export function applyAutoReset(listId: string, now: number = Date.now()): void {
     }
 
     const lastReset = yChecklist.get("lastReset") as number | undefined;
-    const next = rule.after(new Date(lastReset ?? 0));
+    const next = rule.after(new SvelteDate(lastReset ?? 0));
 
     if (next && next.getTime() <= now) {
         yChecklist.set("lastReset", now);
@@ -255,7 +256,7 @@ export function getNextResetDelay(listId: string, now: number = Date.now()): num
             return null;
         }
     }
-    const next = rule.after(new Date(l.lastReset ?? 0));
+    const next = rule.after(new SvelteDate(l.lastReset ?? 0));
     if (!next) return null;
     return Math.max(0, next.getTime() - now);
 }
