@@ -170,3 +170,4 @@ client/demo_*.png
 client/unit_test_output.txt
 *.rej
 *.orig
+.devcontainer/*.deb

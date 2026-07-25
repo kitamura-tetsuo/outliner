@@ -22,6 +22,8 @@ RUN apt-get update && \
     websockify \
     fluxbox \
     dbus-x11 \
+    gnome-keyring \
+    libsecret-1-0 \
     x11-utils \
     x11-apps \
     # docker-compose-plugin \
@@ -35,6 +37,11 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /
     && apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends docker-ce-cli \
     && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+
+COPY claude-desktop_amd64.deb .
+RUN apt-get update && \
+    (DEBIAN_FRONTEND=noninteractive apt-get install -y ./claude-desktop_amd64.deb || DEBIAN_FRONTEND=noninteractive apt-get install -fy) && \
+    apt-get clean -y && rm -rf /var/lib/apt/lists/* claude-desktop_amd64.deb
 
 # Switch to non-root user
 USER node
@@ -55,8 +62,6 @@ RUN pipx ensurepath   # Restart shell/re-login if necessary
 # RUN pipx install git+https://github.com/kitamura-tetsuo/auto-coder.git
 
 RUN pipx install git+https://github.com/kitamura-tetsuo/github-sub-issue.git
-
-RUN cd ~ && rm -rf gemini-cli && git clone https://github.com/kitamura-tetsuo/gemini-cli ; cd gemini-cli && git pull && npm install && npm run bundle && npm link && gemini -h
 
 RUN npm install -g @anthropic-ai/claude-code
 RUN npm install -g @augmentcode/auggie

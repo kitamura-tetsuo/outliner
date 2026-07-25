@@ -9,7 +9,7 @@ services:
 
 
     ports:
-      - "${SSH_PORT:-2222}:2222"
+      - "${SSH_PORT:-2222}:22"
       - "6080:6080"
 
     environment:
