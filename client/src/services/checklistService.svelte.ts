@@ -34,7 +34,9 @@ class ChecklistService {
     // ensureBound will bind to the active document dynamically if one exists
     ensureBound() {
         // Find the current ydoc
-        const doc = yjsStore.yjsClient?.getProject()?.ydoc || (globalThis as unknown as { generalStore?: { project?: { ydoc?: Y.Doc } } }).generalStore?.project?.ydoc;
+        const doc = yjsStore.yjsClient?.getProject()?.ydoc
+            || (globalThis as unknown as { generalStore?: { project?: { ydoc?: Y.Doc; }; }; }).generalStore?.project
+                ?.ydoc;
 
         if (doc && this.ydoc !== doc) {
             this.unbind();
@@ -80,7 +82,7 @@ class ChecklistService {
                             return {
                                 id: yitem.get("id") as string,
                                 label: yitem.get("label") as string,
-                                state: yitem.get("state") as ChecklistItemState
+                                state: yitem.get("state") as ChecklistItemState,
                             };
                         }
                         return null;
@@ -93,7 +95,7 @@ class ChecklistService {
                     mode: ylist.get("mode") as ChecklistMode,
                     rrule: ylist.get("rrule") as string | undefined,
                     lastReset: ylist.get("lastReset") as number | undefined,
-                    items
+                    items,
                 });
             }
         }
@@ -104,7 +106,7 @@ class ChecklistService {
         title: string,
         mode: ChecklistMode = "custom",
         rrule?: string,
-        id: string = uuidv4()
+        id: string = uuidv4(),
     ): string {
         this.ensureBound();
 
