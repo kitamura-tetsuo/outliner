@@ -630,6 +630,33 @@ export function cleanupPendingRegistrationsListeners() {
     }
 }
 
+/**
+ * Reconnects the currently active project by cleanly destroying the old client
+ * and creating a new one. This handles recovery from fatal connection errors.
+ */
+export async function reconnectProject(): Promise<void> {
+    const projectId = yjsStore.getCurrentProjectId();
+    if (!projectId) return;
+
+    logger.info(`[reconnectProject] Starting manual reconnection for projectId=${projectId}`);
+
+    const title = getProjectTitle(projectId);
+
+    // Clear the error state in UI while reconnecting
+    try {
+        const { setRoomSyncState } = await import("./yjs/roomSyncState");
+        const { projectRoomPath } = await import("./yjs/roomPath");
+        setRoomSyncState(projectRoomPath(projectId), "pending");
+    } catch {}
+
+    removeClientByProjectId(projectId);
+
+    const client = await getClientByProjectTitle(title || projectId);
+    if (client) {
+        yjsStore.yjsClient = client;
+    }
+}
+
 // Testing hooks
 if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
     window.__YJS_SERVICE__ = {
