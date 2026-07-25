@@ -290,7 +290,6 @@ describe("Cursor Selection Reproduction", () => {
                 startOffset: 0,
                 endItemId: "item1",
                 endOffset: 0,
-                isReversed: false,
             }));
             expect(cursor.offset).toBe(0);
         });
