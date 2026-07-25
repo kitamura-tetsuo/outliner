@@ -198,8 +198,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                 // Re-initialize metadata
                                 const meta = ydoc.getMap("metadata");
                                 meta.set("title", DEMO_PROJECT_TITLE);
-                                meta.set("lastReset", now);
-                                meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                             });
 
                             // Rebuild the template directly in the live document.
@@ -223,6 +221,14 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                     await tableConnection.disconnect();
                                 }
                             }
+
+                            // Commit the completion metadata ONLY AFTER everything succeeded.
+                            await directConnection.transact((document: unknown) => {
+                                const ydoc = document as unknown as Y.Doc;
+                                const meta = ydoc.getMap("metadata");
+                                meta.set("lastReset", now);
+                                meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+                            });
                         } finally {
                             await directConnection.transact((document: unknown) => {
                                 const ydoc = document as unknown as Y.Doc;
