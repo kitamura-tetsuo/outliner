@@ -157,6 +157,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                             const ydoc = document as unknown as Y.Doc;
                             const meta = ydoc.getMap("metadata");
                             meta.set("isResetting", true);
+                            meta.set("resetStartedAt", now);
                         });
 
                         try {

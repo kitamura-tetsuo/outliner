@@ -329,6 +329,20 @@ export async function startServer(
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
             },
+            async afterLoadDocument(data: any) {
+                if (data.documentName === "projects/demo") {
+                    try {
+                        const doc = data.document;
+                        const meta = doc.getMap("metadata");
+                        if (meta.get("isResetting")) {
+                            logger.info("[Hocuspocus] Clearing stale isResetting flag in demo document");
+                            meta.set("isResetting", false);
+                        }
+                    } catch (err) {
+                        logger.error({ err }, "[Hocuspocus] Failed to clear isResetting in demo document");
+                    }
+                }
+            },
             async onStoreDocument(data: any) {
                 if (persistence) {
                     await handleStoreDocumentForSchedules(
