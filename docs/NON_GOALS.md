@@ -26,6 +26,12 @@ Offline editing will not be implemented. The Fluid Framework used for collaborat
 
 Outliner does not provide a plugin system or extension API. Loading or executing user-defined plugins is outside the project's scope.
 
+## Task Management
+
+### CHK-NON Complex Task Management
+
+Outliner provides a simple Checklist widget (`CHK-0001`) that integrates with the Yjs document to sync across clients. It is intentionally simple and scoped to basic lists (shopping, packing, habit tracking). Full-fledged task management systems (e.g., Kanban boards, complex nested tasks, assignees, deadlines, or external calendar integrations) are non-goals for this project. If you need complex task functionality, we recommend using a dedicated task management application.
+
 ## Database Tables
 
 ### TBL-NON Migration from the legacy SQL table features

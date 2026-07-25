@@ -1,63 +1,77 @@
 <script lang="ts">
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import {
     addItem,
     applyAutoReset,
     type Checklist,
-    checklists,
+    checklistsState,
     createChecklist,
     getNextResetDelay,
     resetChecklist,
     toggleItem,
-} from "../services/checklistService";
+    initChecklistSync
+} from "../services/checklistService.svelte";
+import { yjsStore } from "../stores/yjsStore.svelte";
 
 interface Props {
+    id?: string;
     title?: string;
     mode?: "shopping" | "packing" | "habit" | "custom";
     rrule?: string;
 }
 
-let { title = "My Checklist", mode = "custom", rrule }: Props = $props();
-let list: Checklist | undefined = $state(undefined);
-let newItem = $state("");
+let { id: providedId, title = "My Checklist", mode = "custom", rrule }: Props = $props();
 
 // Generate a unique ID for this instance of the Checklist component
 // This prevents duplicate DOM ID collisions when multiple checklists are rendered.
 let componentId = $state("");
+let listId = $state("");
+
+let list = $derived(checklistsState[listId]);
+let newItem = $state("");
+
+let timerId: ReturnType<typeof setTimeout>;
+let lastSeenReset: number | undefined = $state(undefined);
+let lastSeenRRule: string | undefined = $state(undefined);
+
+function setupTimer() {
+    clearTimeout(timerId);
+    if (!listId) return;
+    const delay = getNextResetDelay(listId);
+    if (delay === null) return;
+
+    const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
+    timerId = setTimeout(() => {
+        applyAutoReset(listId);
+        setupTimer();
+    }, safeDelay);
+}
+
+$effect(() => {
+    if (list && (list.lastReset !== lastSeenReset || list.rrule !== lastSeenRRule)) {
+        lastSeenReset = list.lastReset;
+        lastSeenRRule = list.rrule;
+        setupTimer();
+    }
+});
+
+$effect(() => {
+    // Initialize Yjs sync reactively when client/ydoc is available
+    const ydoc = yjsStore.yjsClient?.getProject()?.ydoc;
+    if (ydoc) {
+        initChecklistSync(ydoc);
+    }
+});
 
 onMount(() => {
     componentId = Math.random().toString(36).substring(2, 9);
-    const id = createChecklist(title, mode, rrule);
 
-    let timerId: ReturnType<typeof setTimeout>;
-    let lastSeenReset: number | undefined;
-    let lastSeenRRule: string | undefined;
+    listId = createChecklist(title, mode, rrule, providedId);
 
-    function setupTimer() {
-        clearTimeout(timerId);
-        const delay = getNextResetDelay(id);
-        if (delay === null) return;
-
-        const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
-        timerId = setTimeout(() => {
-            applyAutoReset(id);
-            setupTimer();
-        }, safeDelay);
-    }
-
-    const unsubscribe = checklists.subscribe(arr => {
-        list = arr.find(l => l.id === id);
-        if (list && (list.lastReset !== lastSeenReset || list.rrule !== lastSeenRRule)) {
-            lastSeenReset = list.lastReset;
-            lastSeenRRule = list.rrule;
-            setupTimer();
-        }
-    });
-
-    applyAutoReset(id);
+    applyAutoReset(listId);
 
     function handleVisibilityOrFocus() {
-        applyAutoReset(id);
+        applyAutoReset(listId);
         setupTimer();
     }
 
@@ -65,7 +79,6 @@ onMount(() => {
     window.addEventListener("focus", handleVisibilityOrFocus);
 
     return () => {
-        unsubscribe();
         clearTimeout(timerId);
         window.removeEventListener("visibilitychange", handleVisibilityOrFocus);
         window.removeEventListener("focus", handleVisibilityOrFocus);

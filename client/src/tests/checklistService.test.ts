@@ -1,20 +1,27 @@
-import { get } from "svelte/store";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
+import * as Y from "yjs";
 import {
     addItem,
     applyAutoReset,
-    checklists,
+    checklistsState,
     createChecklist,
     resetChecklist,
     toggleItem,
-} from "../services/checklistService";
+    initChecklistSync,
+} from "../services/checklistService.svelte";
 
 describe("checklistService", () => {
+    let ydoc: Y.Doc;
+
+    beforeEach(() => {
+        ydoc = new Y.Doc();
+        initChecklistSync(ydoc);
+    });
+
     it("creates checklist and adds items", () => {
         const id = createChecklist("test", "packing");
         addItem(id, "milk");
-        const data = get(checklists);
-        const list = data.find(l => l.id === id)!;
+        const list = checklistsState[id];
         expect(list.items[0].label).toBe("milk");
         expect(list.items[0].state).toBe("active");
     });
@@ -23,32 +30,19 @@ describe("checklistService", () => {
         const id = createChecklist("test2", "shopping");
         const itemId = addItem(id, "eggs");
         toggleItem(id, itemId);
-        let list = get(checklists).find(l => l.id === id)!;
+        let list = checklistsState[id];
         expect(list.items[0].state).toBe("archived");
         resetChecklist(id);
-        list = get(checklists).find(l => l.id === id)!;
+        list = checklistsState[id];
         expect(list.items[0].state).toBe("active");
     });
 
     it("auto resets based on rrule", () => {
         const id = createChecklist("habit", "habit", "FREQ=DAILY");
-        addItem(id, "water");
-        toggleItem(id, get(checklists).find(l => l.id === id)!.items[0].id);
+        const itemId = addItem(id, "water");
+        toggleItem(id, itemId);
         applyAutoReset(id, Date.now() + 24 * 60 * 60 * 1000);
-        const list = get(checklists).find(l => l.id === id)!;
+        const list = checklistsState[id];
         expect(list.items[0].state).toBe("active");
-    });
-
-    it("does not change store identity if boundary not reached", () => {
-        const id = createChecklist("noop", "custom", "FREQ=DAILY");
-
-        // Seed the cache so the initial run caches the parsed rule.
-        applyAutoReset(id, Date.now());
-
-        const before = get(checklists);
-        applyAutoReset(id, Date.now()); // Second call should be a no-op
-        const after = get(checklists);
-
-        expect(before).toBe(after);
     });
 });

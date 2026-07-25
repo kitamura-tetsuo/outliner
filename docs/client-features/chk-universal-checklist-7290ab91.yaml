@@ -2,11 +2,11 @@ id: CHK-0001
 title: Universal Checklist Component
 description: Checklist supporting shopping, packing and habit modes with optional recurrence rules.
 category: checklist
-status: draft
+status: implemented
 components:
 - src/components/Checklist.svelte
 services:
-- src/services/checklistService.ts
+- src/services/checklistService.svelte.ts
 tests:
 - client/e2e/new/CHK-0001.spec.ts
 - client/src/tests/integration/CHK-0001.integration.spec.ts

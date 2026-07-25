@@ -18,5 +18,5 @@ if (browser) {
 </svelte:head>
 
 <main class="container mx-auto px-4 py-8">
-    <Checklist title="Demo Checklist" {mode} {rrule} />
+    <Checklist id="demo-checklist" title="Demo Checklist" {mode} {rrule} />
 </main>
