@@ -25,6 +25,7 @@ test.describe("Demo project feature tour", () => {
                 "Publishing and Sharing",
                 "Advanced Features",
                 "Tasks and Habits",
+                "Recurring Tasks",
             ]
         ) {
             await expect(pageList.getByText(title, { exact: true }).first()).toBeVisible({ timeout: 15000 });

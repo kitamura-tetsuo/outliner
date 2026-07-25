@@ -2,13 +2,19 @@ import { expect } from "chai";
 import * as Y from "yjs";
 import {
     buildDemoProject,
+    buildDemoScheduleRules,
+    DEMO_DAILY_RULE_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_LANDING_PAGE_TITLE,
     DEMO_PROJECT_TITLE,
+    DEMO_ROUTINES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
+    DEMO_WEEKLY_RULE_ID,
     demoPages,
+    demoRoutineTemplates,
     demoTables,
+    routineOccurrenceSql,
     seedDemoTableDoc,
 } from "../src/demo-content.js";
 import type { Item, Items } from "../src/schema/app-schema.js";
@@ -268,5 +274,105 @@ describe("Demo seed content", () => {
         expect(childTexts(snapshots!.items)).to.deep.equal([
             "View this page's [/demo/Publishing and Sharing/diff] to see snapshots.",
         ]);
+    });
+
+    it("seeds the Recurring Tasks page with the live routines table", () => {
+        const page = findChildByText(project.items, "Recurring Tasks");
+        expect(page, "Recurring Tasks page exists").to.not.equal(undefined);
+
+        const table = findChildByText(
+            page!.items,
+            "Tick a checkbox to complete today's (or this week's) task. "
+                + "Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
+        );
+        expect(table, "routines table item exists").to.not.equal(undefined);
+        expect(table!.componentType).to.equal("yjstable");
+        expect(table!.yjsTableId).to.equal(DEMO_ROUTINES_TABLE_ID);
+    });
+
+    it("routines template seeds task definitions plus a history of occurrences", () => {
+        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
+        const definitions = template.records.filter((r) => r.values.kind === "template");
+        const occurrences = template.records.filter((r) => r.values.kind === "occurrence");
+
+        expect(definitions.map((r) => r.values.task_key)).to.deep.equal(
+            demoRoutineTemplates.map((t) => t.taskKey),
+        );
+        expect(
+            demoRoutineTemplates.some((t) => t.cadence === "daily")
+                && demoRoutineTemplates.some((t) => t.cadence === "weekly"),
+            "both cadences are demonstrated",
+        ).to.equal(true);
+
+        // Two occurrences per task, so the display query has something to hide.
+        expect(occurrences.length).to.equal(demoRoutineTemplates.length * 2);
+        for (const definition of demoRoutineTemplates) {
+            const mine = occurrences.filter((r) => r.values.task_key === definition.taskKey);
+            expect(mine.length, `${definition.taskKey} has a history`).to.equal(2);
+            // The id identifies the occurrence: task identity + its date.
+            for (const record of mine) {
+                expect(record.id).to.equal(`${definition.taskKey}-${record.values.occurrence_date}`);
+            }
+        }
+
+        // The checkbox column is a real boolean the grid can toggle.
+        expect(template.components.done).to.equal("checkbox");
+        expect(template.schemaSql).to.contain("done BOOLEAN");
+    });
+
+    it("the routines query keeps only the newest occurrence per task and stays editable", () => {
+        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
+
+        expect(template.query).to.contain("NOT EXISTS");
+        expect(template.query).to.contain("later.task_key = r.task_key");
+        expect(template.query).to.contain("later.occurrence_date > r.occurrence_date");
+        // DISTINCT / GROUP BY / aggregates would make the grid read-only, so
+        // the checkbox could no longer be ticked (see queryAnalysis.ts).
+        expect(/\bdistinct\b/i.test(template.query)).to.equal(false);
+        expect(/\bgroup\s+by\b/i.test(template.query)).to.equal(false);
+        expect(/\bjoin\b/i.test(template.query)).to.equal(false);
+        expect(/\b(count|sum|avg|min|max)\s*\(/i.test(template.query)).to.equal(false);
+        expect(template.query).to.contain("SELECT id,");
+    });
+
+    it("seeds a daily and a weekly schedule rule targeting the routines table", () => {
+        const schedules = project.ydoc.getMap("schedules");
+        expect(schedules.size).to.equal(2);
+
+        for (const rule of buildDemoScheduleRules()) {
+            const ruleMap = schedules.get(rule.ruleId) as Y.Map<unknown> | undefined;
+            expect(ruleMap, `rule ${rule.ruleId} is registered`).to.not.equal(undefined);
+            expect(ruleMap!.get("targetTableId")).to.equal(DEMO_ROUTINES_TABLE_ID);
+            expect(ruleMap!.get("enabled")).to.equal(true);
+            expect(ruleMap!.get("timezone")).to.equal("UTC");
+            // dtstart is a local wall-clock string at midnight.
+            expect(String(ruleMap!.get("dtstart"))).to.match(/^\d{4}-\d{2}-\d{2}T00:00:00$/);
+        }
+
+        const daily = schedules.get(DEMO_DAILY_RULE_ID) as Y.Map<unknown>;
+        const weekly = schedules.get(DEMO_WEEKLY_RULE_ID) as Y.Map<unknown>;
+        expect(daily.get("rrule")).to.equal("RRULE:FREQ=DAILY");
+        expect(weekly.get("rrule")).to.equal("RRULE:FREQ=WEEKLY;BYDAY=MO");
+        // The weekly rule starts on a Monday.
+        expect(new Date(`${String(weekly.get("dtstart")).slice(0, 10)}T00:00:00Z`).getUTCDay()).to.equal(1);
+    });
+
+    it("the rule SQL is valid, deterministic and idempotent by construction", () => {
+        for (const cadence of ["daily", "weekly"] as const) {
+            const sql = routineOccurrenceSql(cadence);
+            // The rule SQL contract (shared/src/services/scheduleRuleValidation.ts):
+            // a single `WITH ... INSERT ... RETURNING *` statement.
+            expect(/^\s*with\b/i.test(sql), `${cadence} SQL starts with WITH`).to.equal(true);
+            expect(/\binsert\b/i.test(sql), `${cadence} SQL inserts`).to.equal(true);
+            expect(/\breturning\s+\*/i.test(sql), `${cadence} SQL returns the inserted rows`).to.equal(true);
+            expect(sql.replace(/;\s*$/, "").includes(";"), `${cadence} SQL is one statement`).to.equal(false);
+            // The scheduled occurrence, never the execution time.
+            expect(sql).to.contain("current_setting('job.occurrence')");
+            expect(/\bnow\s*\(\)/i.test(sql)).to.equal(false);
+            // A deterministic id per task and occurrence keeps retries harmless.
+            expect(sql).to.contain("ON CONFLICT (id) DO NOTHING");
+            expect(sql).to.contain("t.task_key || '-' || to_char(");
+            expect(sql).to.contain(`t.cadence = '${cadence}'`);
+        }
     });
 });
