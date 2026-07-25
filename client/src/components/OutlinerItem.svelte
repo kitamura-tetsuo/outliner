@@ -2354,18 +2354,6 @@ export function setSelectionPosition(start: number, end: number = start) {
     opacity: 1;
 }
 
-
-.referring-aliases-container {
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.outliner-item:hover .referring-aliases-container,
-.outliner-item:focus-within .referring-aliases-container,
-.referring-aliases-container.has-count {
-    opacity: 1;
-}
-
 .title-text {
     font-size: 1.5em;
     color: #333;
