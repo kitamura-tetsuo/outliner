@@ -50,12 +50,27 @@ const logger = getLogger("OutlinerBase");
         if (!currentDoc) return;
         const meta = currentDoc.getMap("metadata");
 
+        let resetTimeout: ReturnType<typeof setTimeout>;
+
         const updateResetting = () => {
-            isServerResetting = !!meta.get("isResetting");
+            const isResetting = meta.get("isResetting");
+            const resetStartedAt = meta.get("resetStartedAt") as number | undefined;
+            const now = Date.now();
+            clearTimeout(resetTimeout);
+
+            if (isResetting && resetStartedAt && now - resetStartedAt < 60000) {
+                isServerResetting = true;
+                resetTimeout = setTimeout(updateResetting, 60000 - (now - resetStartedAt));
+            } else {
+                isServerResetting = false;
+            }
         };
         updateResetting();
         meta.observe(updateResetting);
-        return () => meta.unobserve(updateResetting);
+        return () => {
+            clearTimeout(resetTimeout);
+            meta.unobserve(updateResetting);
+        };
     });
 
     // Ensure a minimal currentPage on mount (effectivePageItem follows thereafter)
