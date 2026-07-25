@@ -9,11 +9,9 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHK-0001: Universal Checklist", () => {
-    let projectName = "";
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000);
-        const res = await TestHelpers.seedProjectAndNavigate(page, testInfo);
-        projectName = res.projectName;
+        await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
     test("add and archive item in shopping mode", async ({ page }) => {
