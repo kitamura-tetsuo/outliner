@@ -231,14 +231,23 @@ async function setupProviderForRoom(
     // sendToken() runs, so the token is always fresh without us having to patch a cached URL.
     const tokenProvider = async (): Promise<string> => {
         if (isDemo) return "1"; // dummy token: demo rooms are unauthenticated but still need a truthy value
+        let token = "";
         try {
-            const token = await getFreshIdToken(forceTokenRefresh);
+            token = await getFreshIdToken(forceTokenRefresh);
             forceTokenRefresh = false;
-            return token || "1";
         } catch (e) {
             logger.error({ error: e }, `[${label}] getFreshIdToken failed`);
-            return "1";
         }
+
+        if (!token) {
+            setRoomSyncState(room, "auth-failed");
+            try {
+                provider.disconnect();
+            } catch {}
+            throw new Error(`[${label}] getFreshIdToken resolved to empty token or failed`);
+        }
+
+        return token;
     };
 
     const wsBase = getWsBase();

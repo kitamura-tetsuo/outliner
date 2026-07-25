@@ -31,7 +31,8 @@ const SYNC_ERROR_MESSAGES = {
     "too-large": "Changes are too large to sync. Please undo or reduce the size of your edits.",
     "rate-limited": "Rate limit exceeded. Sync has been paused. Please wait and reconnect.",
     "timed-out": "Could not connect to the server. Showing offline/incomplete data.",
-    "denied": "You do not have access to this project, or your session expired. Sign in again to continue."
+    "denied": "You do not have access to this project, or your session expired. Sign in again to continue.",
+    "auth-failed": "Your session expired or authentication failed. Please sign in again."
 } satisfies Record<Exclude<RoomSyncState, "pending" | "synced">, string>;
 
 let { children } = $props();
