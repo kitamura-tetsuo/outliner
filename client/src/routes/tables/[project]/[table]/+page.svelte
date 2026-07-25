@@ -10,7 +10,7 @@
     import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
-    import { listTables, getTableHandles } from "../../../../services/yjstable/tableDocs";
+    import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -88,6 +88,12 @@
 
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
+
+        return () => {
+            if (tableHandles?.doc) {
+                destroyTableUndoManager(tableHandles.doc);
+            }
+        };
     });
 </script>
 

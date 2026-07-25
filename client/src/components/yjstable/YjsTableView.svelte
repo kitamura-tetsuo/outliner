@@ -12,7 +12,7 @@ import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 import { connectTableDoc } from "../../lib/yjs/connection";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import type { TableHandles } from "../../services/yjstable/tableDocs";
+import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
 import {
     type RecordSyncError,
     type TableQueryResult,
@@ -118,6 +118,7 @@ onDestroy(() => {
     } catch {
         // provider already gone
     }
+    destroyTableUndoManager(handles.doc);
 });
 </script>
 
