@@ -60,8 +60,10 @@ function getSafeOrigins(): string[] {
         }
 
         return safeOrigins;
-    } catch (error: any) {
-        logger.error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`);
+    } catch (error: unknown) {
+        logger.error(
+            `Error parsing CORS_ORIGIN: ${error instanceof Error ? error.message : String(error)}, using defaults`,
+        );
         return defaultOrigins;
     }
 }
@@ -131,12 +133,18 @@ app.post("/api/save-container", async (req, res) => {
                 containerId: containerId,
             });
         }
-    } catch (error: any) {
-        if (error.message === "Invalid token") {
-            return res.status(401).json({ error: "Authentication failed", details: error.message });
+    } catch (error: unknown) {
+        if (error instanceof Error ? error.message : String(error) === "Invalid token") {
+            return res.status(401).json({
+                error: "Authentication failed",
+                details: error instanceof Error ? error.message : String(error),
+            });
         } else {
             logger.error("Error saving container ID:", error);
-            return res.status(500).json({ error: "Failed to save container ID", details: error.message });
+            return res.status(500).json({
+                error: "Failed to save container ID",
+                details: error instanceof Error ? error.message : String(error),
+            });
         }
     }
 });
@@ -252,8 +260,8 @@ app.post("/api/rotate-logs", async (req, res) => {
             serverRotated,
             timestamp: new Date().toISOString(),
         });
-    } catch (error: any) {
-        return res.status(500).json({ success: false, error: error.message });
+    } catch (error: unknown) {
+        return res.status(500).json({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
 });
 

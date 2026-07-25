@@ -53,7 +53,7 @@ describe("websocket auth security (regression)", () => {
         try {
             await verifyIdTokenCached(token);
             throw new Error("Should have failed");
-        } catch (e: any) {
+        } catch (e: unknown) {
             // Expect either "Invalid token signature" (from our stub) OR a firebase-admin error
             // OR the specific security error we threw "alg:none tokens are not allowed..."
             // Actually, in the code:
@@ -86,7 +86,7 @@ describe("websocket auth security (regression)", () => {
             */
 
             // If the `try` block fails (e.g. JSON parse error), it swallows the error (logger.warn) and falls through to `getAuth().verifyIdToken(token)`.
-            // In the previous test failure, `e.message` was `Firebase ID token has no "kid" claim...`.
+            // In the previous test failure, `e instanceof Error ? e.message : String(e)` was `Firebase ID token has no "kid" claim...`.
             // This means it FELL THROUGH.
             // Why did the `try` block fail?
             // Maybe `createNoneAlgToken` produced something that `JSON.parse` failed on?
@@ -114,7 +114,7 @@ describe("websocket auth security (regression)", () => {
             // It catches the security error and swallows it!
             // I need to fix the implementation to NOT swallow that specific error.
 
-            if (e.message.includes("alg:none tokens are not allowed")) {
+            if (e instanceof Error ? e.message : String(e).includes("alg:none tokens are not allowed")) {
                 return; // Success
             }
 
@@ -152,8 +152,8 @@ describe("websocket auth security (regression)", () => {
         try {
             await verifyIdTokenCached(token);
             throw new Error("Should have failed");
-        } catch (e: any) {
-            if (e.message.includes("alg:none tokens are not allowed")) {
+        } catch (e: unknown) {
+            if (e instanceof Error ? e.message : String(e).includes("alg:none tokens are not allowed")) {
                 return;
             }
             throw e;

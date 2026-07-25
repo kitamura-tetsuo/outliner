@@ -64,8 +64,8 @@ export function validateScheduleRuleRRule(rruleStr: string): { valid: boolean; e
             return { valid: false, error: "FREQ must be HOURLY or coarser" };
         }
         return { valid: true };
-    } catch (err: any) {
-        return { valid: false, error: `Invalid RRULE: ${err.message}` };
+    } catch (err: unknown) {
+        return { valid: false, error: `Invalid RRULE: ${err instanceof Error ? err.message : String(err)}` };
     }
 }
 

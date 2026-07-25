@@ -122,8 +122,10 @@ describe("CORS Middleware", () => {
         try {
             await startServer(config);
             expect.fail("Should have thrown an error");
-        } catch (err: any) {
-            expect(err.message).to.include("SECURITY CRITICAL: ORIGIN_ALLOWLIST is empty in production");
+        } catch (err: unknown) {
+            expect(err instanceof Error ? err.message : String(err)).to.include(
+                "SECURITY CRITICAL: ORIGIN_ALLOWLIST is empty in production",
+            );
         } finally {
             process.env.NODE_ENV = originalEnv;
         }

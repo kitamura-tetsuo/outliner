@@ -90,8 +90,9 @@ async function main() {
     // Cleanup
     if (persistence.db) {
         persistence.db.close((err) => {
-            if (err) console.error(chalk.red("Error closing database:", err.message));
-            else console.log(chalk.gray("Database closed."));
+            if (err) {
+                console.error(chalk.red("Error closing database:", err instanceof Error ? err.message : String(err)));
+            } else console.log(chalk.gray("Database closed."));
             process.exit(0);
         });
     } else {
@@ -104,7 +105,7 @@ async function listDocuments(persistence: Persistence): Promise<{ name: string; 
     return new Promise((resolve, reject) => {
         persistence.db!.all('SELECT name, data FROM "documents"', [], (err: Error | null, rows: any[]) => {
             if (err) {
-                console.error(chalk.red("Error listing documents:", err.message));
+                console.error(chalk.red("Error listing documents:", err instanceof Error ? err.message : String(err)));
                 resolve([]);
             } else {
                 const results = rows.map((row) => {
@@ -180,15 +181,17 @@ async function inspectDocument(persistence: Persistence, docName?: string) {
         try {
             const project = Project.fromDoc(doc);
             await exploreNode(project, result);
-        } catch (e: any) {
-            console.log(chalk.red(`  (Could not parse document as Project: ${e.message})`));
+        } catch (e: unknown) {
+            console.log(
+                chalk.red(`  (Could not parse document as Project: ${e instanceof Error ? e.message : String(e)})`),
+            );
             console.log(chalk.cyan("Metadata:"));
             console.log(JSON.stringify(doc.getMap("metadata").toJSON(), null, 2));
             console.log(chalk.cyan("Document Content:"));
             console.log(JSON.stringify(result, null, 2));
         }
-    } catch (e: any) {
-        console.error(chalk.red("Error fetching document:", e.message));
+    } catch (e: unknown) {
+        console.error(chalk.red("Error fetching document:", e instanceof Error ? e.message : String(e)));
     }
 }
 
@@ -316,7 +319,12 @@ async function deleteDocument(persistence: Persistence, docName?: string) {
             await new Promise<void>((resolve, reject) => {
                 persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [doc], (err) => {
                     if (err) {
-                        console.error(chalk.red(`Error deleting document "${doc}":`, err.message));
+                        console.error(
+                            chalk.red(
+                                `Error deleting document "${doc}":`,
+                                err instanceof Error ? err.message : String(err),
+                            ),
+                        );
                         resolve();
                     } else {
                         console.log(chalk.green(`Document "${doc}" deleted successfully.`));
@@ -344,7 +352,7 @@ async function deleteAllTestProjects(persistence: Persistence) {
     const allDocs = await new Promise<{ name: string; data: any; }[]>((resolve, reject) => {
         persistence.db!.all('SELECT name, data FROM "documents"', [], (err: Error | null, rows: any[]) => {
             if (err) {
-                console.error(chalk.red("Error fetching documents:", err.message));
+                console.error(chalk.red("Error fetching documents:", err instanceof Error ? err.message : String(err)));
                 resolve([]);
             } else {
                 resolve(rows);
@@ -428,7 +436,11 @@ async function deleteAllTestProjects(persistence: Persistence) {
             await new Promise<void>((resolve, reject) => {
                 persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [docName], (err) => {
                     if (err) {
-                        console.error(chalk.red(`Failed to delete ${docName}: ${err.message}`));
+                        console.error(
+                            chalk.red(
+                                `Failed to delete ${docName}: ${err instanceof Error ? err.message : String(err)}`,
+                            ),
+                        );
                         reject(err);
                     } else {
                         deletedCount++;
@@ -479,8 +491,8 @@ async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
                 });
             }
             return true;
-        } catch (e: any) {
-            console.error(chalk.red("Failed to initialize Firebase:", e.message));
+        } catch (e: unknown) {
+            console.error(chalk.red("Failed to initialize Firebase:", e instanceof Error ? e.message : String(e)));
             return false;
         }
     }
@@ -494,8 +506,8 @@ async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
     try {
         const snapshot = await firestore.collection("projects").get();
         firestoreProjects = snapshot.docs.map(doc => doc.id);
-    } catch (e: any) {
-        console.error(chalk.red("Failed to fetch Firestore projects:", e.message));
+    } catch (e: unknown) {
+        console.error(chalk.red("Failed to fetch Firestore projects:", e instanceof Error ? e.message : String(e)));
         return;
     }
 
@@ -559,8 +571,10 @@ async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
             if (deletedCount % 10 === 0) {
                 process.stdout.write(".");
             }
-        } catch (e: any) {
-            console.error(chalk.red(`\nFailed to delete project ${projectId}: ${e.message}`));
+        } catch (e: unknown) {
+            console.error(
+                chalk.red(`\nFailed to delete project ${projectId}: ${e instanceof Error ? e.message : String(e)}`),
+            );
         }
     }
 
@@ -588,8 +602,8 @@ async function addTestDocument(persistence: Persistence) {
     try {
         await persistence.configuration.store({ documentName, state: update });
         console.log(chalk.green(`Test document "${documentName}" created successfully.`));
-    } catch (e: any) {
-        console.error(chalk.red("Error creating document:", e.message));
+    } catch (e: unknown) {
+        console.error(chalk.red("Error creating document:", e instanceof Error ? e.message : String(e)));
     }
 }
 
@@ -645,8 +659,8 @@ async function createPageInProject(persistence: Persistence) {
 
         console.log(chalk.green(`Successfully created page "${pageTitle}" in project ${projectId}.`));
         console.log(chalk.gray(`Page node added to project document.`));
-    } catch (e: any) {
-        console.error(chalk.red("Error creating page:", e.message));
+    } catch (e: unknown) {
+        console.error(chalk.red("Error creating page:", e instanceof Error ? e.message : String(e)));
     }
 }
 

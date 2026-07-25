@@ -86,7 +86,7 @@ export class JobScheduler {
             for (const rule of dueRules) {
                 try {
                     await this.processRule(rule, now);
-                } catch (err: any) {
+                } catch (err: unknown) {
                     logger.error({ err, ruleId: rule.rule_id, room: rule.room }, "JobScheduler rule failed");
                 }
             }
