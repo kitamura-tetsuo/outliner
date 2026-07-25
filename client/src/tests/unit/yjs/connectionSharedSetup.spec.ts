@@ -1,3 +1,4 @@
+import type { User } from "firebase/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
@@ -79,9 +80,15 @@ vi.mock("@hocuspocus/provider", () => ({
     HocuspocusProvider: MockHocuspocusProvider,
 }));
 
+const mockAuth = {
+    currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as unknown as User | null,
+};
+
 vi.mock("../../../auth/UserManager", () => ({
     userManager: {
-        auth: { currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } },
+        get auth() {
+            return mockAuth;
+        },
         getCurrentUser: () => null,
         addEventListener: vi.fn(() => () => {}),
         refreshToken: () => refreshTokenSpy(),
@@ -113,6 +120,9 @@ describe("yjs connection: shared provider setup", () => {
         refreshTokenSpy.mockClear();
         mockPersistenceDestroy.mockClear();
         clearRoomSyncStates();
+        mockAuth.currentUser = {
+            getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
+        } as unknown as User;
     });
 
     it("never resolves to the demo dummy token '1' for a non-demo room on failure", async () => {
@@ -140,6 +150,46 @@ describe("yjs connection: shared provider setup", () => {
             await tokenPromise;
             expect(error).toBeDefined();
             expect(error?.message).toBe("Auth failed");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("waits for auth.currentUser to hydrate instead of immediately failing", async () => {
+        mockAuth.currentUser = null;
+
+        const promise = createProjectConnection("proj-hydrate-test");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
+        provider.markSynced();
+        await promise;
+
+        const tokenFn = provider.configuration.token;
+        getIdTokenSpy.mockResolvedValue("hydrated-token");
+
+        vi.useFakeTimers();
+        try {
+            let resolvedToken: string | undefined;
+            const tokenPromise = tokenFn().then((t: string) => {
+                resolvedToken = t;
+            });
+
+            // Advance time a bit but not enough to timeout the 5s loop
+            await vi.advanceTimersByTimeAsync(1000);
+
+            // Still waiting
+            expect(resolvedToken).toBeUndefined();
+
+            // Simulate hydration
+            mockAuth.currentUser = {
+                getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
+            } as unknown as User;
+
+            // Advance time to allow the loop to see currentUser and break
+            await vi.advanceTimersByTimeAsync(200);
+
+            await tokenPromise;
+            expect(resolvedToken).toBe("hydrated-token");
         } finally {
             vi.useRealTimers();
         }
