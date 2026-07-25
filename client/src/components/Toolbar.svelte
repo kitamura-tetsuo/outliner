@@ -162,8 +162,6 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     padding: 0.75rem 1rem;
     min-height: 4rem;
     height: auto; /* Replace explicit height for mobile wrap */
-    visibility: visible !important;
-    opacity: 1 !important;
     pointer-events: auto;
     /* Ensure pointer events only work within the toolbar bounds */
     overflow: visible;
@@ -176,27 +174,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    /* Ensure full visibility for nested controls (Playwright visibility heuristics) */
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
     flex-wrap: wrap;
-}
-
-/* Force visibility for all descendants to avoid ancestor-origin visibility issues in tests */
-.main-toolbar,
-.main-toolbar *,
-.main-toolbar-content,
-.main-toolbar-content * {
-    visibility: visible !important;
-    opacity: 1 !important;
-    transform: none !important;
-    content-visibility: visible !important;
-    contain: none !important;
-    backface-visibility: visible !important;
-    transition: none !important;
-    animation: none !important;
-    /* Remove pointer-events: auto !important to prevent click interception */
 }
 
 .toolbar-left {
@@ -268,8 +246,4 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     }
 }
 
-/* .main-toolbar-placeholder deleted as unused */
-/* .main-toolbar-placeholder { */
-    /* height: 2.5rem; Ensure same height as SearchBox */
-/* } */
 </style>
