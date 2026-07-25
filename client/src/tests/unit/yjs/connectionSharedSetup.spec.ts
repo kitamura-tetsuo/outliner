@@ -88,6 +88,8 @@ vi.mock("../../../auth/UserManager", () => ({
     },
 }));
 
+vi.stubEnv("MODE", "production");
+
 import {
     connectProjectDoc,
     createMinimalProjectConnection,
@@ -113,6 +115,68 @@ describe("yjs connection: shared provider setup", () => {
         clearRoomSyncStates();
     });
 
+    it("never resolves to the demo dummy token '1' for a non-demo room on failure", async () => {
+        const promise = createProjectConnection("proj-token-fail-test");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
+        provider.markSynced();
+        await promise;
+
+        const tokenFn = provider.configuration.token;
+        getIdTokenSpy.mockRejectedValue(new Error("Auth failed"));
+
+        vi.useFakeTimers();
+        try {
+            let error;
+            const tokenPromise = tokenFn().catch(e => {
+                error = e;
+            });
+
+            // Advance timers enough to trigger all backoff intervals
+            await vi.advanceTimersByTimeAsync(1000); // Attempt 1 wait
+            await vi.advanceTimersByTimeAsync(2000); // Attempt 2 wait
+            await vi.advanceTimersByTimeAsync(3000); // Attempt 3 wait
+
+            await tokenPromise;
+            expect(error).toBeDefined();
+            expect(error.message).toBe("Auth failed");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("never resolves to the demo dummy token '1' when getFreshIdToken returns empty", async () => {
+        const promise = createProjectConnection("proj-token-empty-test");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
+        provider.markSynced();
+        await promise;
+
+        const tokenFn = provider.configuration.token;
+        // getFreshIdToken throws "Token is empty" when auth.currentUser.getIdToken returns empty.
+        // This causes tokenProvider to retry and eventually throw "Token is empty".
+        getIdTokenSpy.mockResolvedValue("");
+
+        vi.useFakeTimers();
+        try {
+            let error;
+            const tokenPromise = tokenFn().catch(e => {
+                error = e;
+            });
+
+            // Advance timers enough to trigger all backoff intervals
+            await vi.advanceTimersByTimeAsync(1000); // Attempt 1 wait
+            await vi.advanceTimersByTimeAsync(2000); // Attempt 2 wait
+            await vi.advanceTimersByTimeAsync(3000); // Attempt 3 wait
+
+            await tokenPromise;
+            expect(error).toBeDefined();
+            expect(error.message).toBe("Token is empty");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("never places the auth token in the WebSocket URL", async () => {
         const promise = createProjectConnection("proj-url-test");
         await flushMicrotasks();
@@ -133,6 +197,7 @@ describe("yjs connection: shared provider setup", () => {
 
         const tokenFn = provider.configuration.token;
 
+        getIdTokenSpy.mockResolvedValue("mock-token-1");
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(false);
 
@@ -141,10 +206,12 @@ describe("yjs connection: shared provider setup", () => {
         await flushMicrotasks();
         expect(refreshTokenSpy).toHaveBeenCalled();
 
+        getIdTokenSpy.mockResolvedValue("mock-token-2");
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
 
         // Subsequent calls go back to using the cache
+        getIdTokenSpy.mockResolvedValue("mock-token-3");
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(false);
     });
@@ -168,6 +235,7 @@ describe("yjs connection: shared provider setup", () => {
         expect(connectSpy).toHaveBeenCalledTimes(1);
         expect(disconnectSpy).not.toHaveBeenCalled();
 
+        getIdTokenSpy.mockResolvedValue("mock-token-retry");
         await tokenFn();
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
 
