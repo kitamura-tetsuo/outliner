@@ -39,6 +39,8 @@ export interface TableHandles {
     undo: Y.UndoManager;
 }
 
+const tableUndoManagers = new WeakMap<Y.Doc, Y.UndoManager>();
+
 /** The registry map in the project doc: tableId -> Y.Map entry. */
 export function getTableRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
     return projectDoc.getMap<Y.Map<unknown>>(TABLE_REGISTRY_KEY);
@@ -98,10 +100,24 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
     const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
     const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
     const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
-    const undo = new Y.UndoManager([schemaText, uiDef, data], {
-        trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
-    });
+
+    let undo = tableUndoManagers.get(ydoc);
+    if (!undo) {
+        undo = new Y.UndoManager([schemaText, uiDef, data], {
+            trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
+        });
+        tableUndoManagers.set(ydoc, undo);
+    }
+
     return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
+}
+
+export function destroyTableUndoManager(doc: Y.Doc): void {
+    const undo = tableUndoManagers.get(doc);
+    if (undo) {
+        undo.destroy();
+        tableUndoManagers.delete(doc);
+    }
 }
 
 /** Replace the schema text with a new statement in a single transaction. */

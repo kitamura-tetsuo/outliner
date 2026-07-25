@@ -91,4 +91,19 @@ describe("table handles", () => {
         const projectDoc = new Y.Doc();
         expect(getTableHandles(projectDoc, "nope")).toBeUndefined();
     });
+
+    it("memoizes UndoManager so repeated getTableHandles calls share the same instance", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "T");
+        const handles1 = getTableHandles(projectDoc, tableId)!;
+
+        setSchemaText(handles1, "CREATE TABLE t (id TEXT)");
+
+        const handles2 = getTableHandles(projectDoc, tableId)!;
+        expect(handles1.undo).toBe(handles2.undo);
+
+        // Assert the edit made before the second call is still undoable
+        handles2.undo.undo();
+        expect(handles2.schemaText.toString()).toBe("");
+    });
 });
