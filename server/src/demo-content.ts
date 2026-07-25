@@ -510,6 +510,14 @@ export const demoPages: DemoPageTemplate[] = [
         items: [
             {
                 text:
+                    "Inline checkboxes can also be used for lightweight, nested task tracking directly in the outline:",
+                children: [
+                    { text: "[ ] This is a pending task" },
+                    { text: "[x] This is a completed task" },
+                ],
+            },
+            {
+                text:
                     "Practical task management and habit tracking, built as presets of the database table feature. The items below are live tables.",
             },
             {
