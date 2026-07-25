@@ -1,5 +1,6 @@
 <script lang="ts">
 import { onMount } from "svelte";
+import { RRule } from "rrule";
 import {
     addItem,
     applyAutoReset,
@@ -31,10 +32,39 @@ onMount(() => {
         list = arr.find(l => l.id === id);
     });
     applyAutoReset(id);
-    const interval = setInterval(() => applyAutoReset(id), 1000);
+
+    let timeout: ReturnType<typeof setTimeout>;
+    let currentRRule: string | undefined;
+
+    // Use $effect.root within onMount to safely register reactive effect
+    // Or just manually subscribe
+    const unsubscribeRrule = checklists.subscribe(arr => {
+        const currentList = arr.find(l => l.id === id);
+        if (currentList && currentList.rrule !== currentRRule) {
+             currentRRule = currentList.rrule;
+             clearTimeout(timeout);
+
+             function scheduleNextReset() {
+                 if (!currentList || !currentList.rrule) return;
+                 const rule = RRule.fromString(currentList.rrule);
+                 const next = rule.after(new Date(Date.now()));
+                 if (next) {
+                     const delay = Math.max(0, next.getTime() - Date.now()) + 1000;
+                     timeout = setTimeout(() => {
+                         applyAutoReset(id);
+                         scheduleNextReset();
+                     }, delay);
+                 }
+             }
+
+             scheduleNextReset();
+        }
+    });
+
     return () => {
         unsubscribe();
-        clearInterval(interval);
+        unsubscribeRrule();
+        clearTimeout(timeout);
     };
 });
 
