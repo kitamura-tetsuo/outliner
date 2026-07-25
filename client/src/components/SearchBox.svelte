@@ -408,8 +408,8 @@ const logger = getLogger("SearchBox");
                     <button type="button"
                         onclick={() => handlePageClick(page)}
                         tabindex="-1"
-                        aria-label={`Go to page ${page.text}`}
-                        >{page.text}</button
+                        aria-label={`Go to page ${page.text.trimEnd()}`}
+                        >{page.text.trimEnd()}</button
                     >
                 </li>
             {/each}

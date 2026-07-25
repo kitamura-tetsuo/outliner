@@ -103,7 +103,7 @@ function handleCreatePage() {
         const existingPage = findPageByName(project.items, pageTitle);
         if (existingPage) {
             selectPage(existingPage);
-            const encodedTitle = encodeURIComponent(existingPage.text);
+            const encodedTitle = encodeURIComponent(existingPage.text.trimEnd());
             const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
             goto(resolvePath(`${basePath}/${encodedTitle}`));
             pageTitle = "";
@@ -116,7 +116,7 @@ function handleCreatePage() {
     selectPage(newPage);
 
     // Also explicitly route to the new page when created via UI (e.g. hitting Enter)
-    const encodedTitle = encodeURIComponent(newPage.text);
+    const encodedTitle = encodeURIComponent(newPage.text.trimEnd());
     const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
     goto(resolvePath(`${basePath}/${encodedTitle}`));
 
@@ -222,7 +222,7 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each sortedItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text)}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text)}`)} onPageClick={() => selectPage(page)} />
+            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text.trimEnd())}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text.trimEnd())}`)} onPageClick={() => selectPage(page)} />
         {/each}
 
         {#if sortedItems.length === 0}

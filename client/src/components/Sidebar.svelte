@@ -253,7 +253,7 @@ import type * as Y from "yjs";
                                 const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
                                 const newPage = store.project.addPage(title, authorId);
                                 const pageHref = resolvePath(
-                                    currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text)}`
+                                    currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text.trimEnd())}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text.trimEnd())}`
                                 );
                                 goto(pageHref);
                             }
@@ -293,7 +293,7 @@ import type * as Y from "yjs";
                     {:else}
                         {#each pages as page (page.id)}
                             {@const pageHref = resolvePath(
-                                currentProjectName === "demo" ? `/demo/${encodeURIComponent(page.text)}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text)}`,
+                                currentProjectName === "demo" ? `/demo/${encodeURIComponent(page.text.trimEnd())}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text.trimEnd())}`,
                             )}
                             <li>
                                 <a

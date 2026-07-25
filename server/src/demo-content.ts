@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 16;
+export const DEMO_TEMPLATE_VERSION = 17;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -617,10 +617,11 @@ function addLinesToPage(page: Item, lines: string[], author: string) {
     let lastItem: Item | undefined;
 
     for (const rawLine of lines) {
-        const text = rawLine.trimStart();
+        const textStartTrimmed = rawLine.trimStart();
+        const text = textStartTrimmed.trimEnd();
         if (!text) continue;
 
-        const indent = rawLine.length - text.length;
+        const indent = rawLine.length - textStartTrimmed.length;
         let depth = Math.floor(indent / 2);
 
         if (depth >= levels.length) {
