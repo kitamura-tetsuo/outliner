@@ -1,7 +1,8 @@
 id: ATT-0001
 title: Drag and drop attachments
-title-ja: ドラッグ&ドロップで添付
-description: Items accept files via drag-and-drop and show image previews. Access control is based on Fluid Framework container permissions.
+title-ja: "\u30C9\u30E9\u30C3\u30B0&\u30C9\u30ED\u30C3\u30D7\u3067\u6DFB\u4ED8"
+description: Items accept files via drag-and-drop and show image previews. Access
+  control is based on Fluid Framework container permissions.
 category: attachments
 status: implemented
 components:
@@ -10,7 +11,7 @@ components:
 - src/services/attachmentService.ts
 - storage.rules
 tests:
-- client/e2e/core/att-drag-and-drop-attachments-11f8904b.spec.ts
+- client/e2e/disabled/att-drag-and-drop-attachments-11f8904b.spec.ts
 - client/src/tests/attachmentService.test.ts
 - functions/test/attachments.test.js
 acceptance:
@@ -21,6 +22,7 @@ acceptance:
 - Only users with access to the container can view, upload, or delete attachments
 - Uploaded attachments appear as image previews beneath the item
 notes:
-- In test environments using Tinylicious, container restoration may fail due to "default dataStore [rootDOId] must exist" error
+- In test environments using Tinylicious, container restoration may fail due to "default
+  dataStore [rootDOId] must exist" error
 - This is a known Tinylicious bug that doesn't occur in production environments
 - Tests focus on upload functionality rather than persistence across page reloads

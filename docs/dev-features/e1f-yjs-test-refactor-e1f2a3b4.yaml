@@ -1,6 +1,7 @@
 id: FTR-e1f2a3b4
 title: Refactor unit/integration tests to Yjs
-description: 'Removed Fluid Framework dependencies from unit and integration tests, migrated
+description: 'Removed Fluid Framework dependencies from unit and integration tests,
+  migrated
 
   verification to Yjs or neutral abstractions, and deleted Fluid-only tests with
 
@@ -17,12 +18,10 @@ changes:
 - Removed Fluid-only tests (Fluid Token endpoint and presence via Fluid)
 - Ensured unit/integration suites pass using Yjs-backed services
 tests:
-- client/src/stores/ContainerStore.test.ts
 - client/src/stores/OutlinerViewModel.test.ts
-- client/src/tests/integration/containerStore.integration.spec.ts
 - client/src/tests/integration/globalStore.integration.spec.ts
-- client/src/tests/integration/yjs-service.integration.spec.ts
-notes: 'Fluid Token endpoint tests were intentionally deleted because the feature has
+notes: 'Fluid Token endpoint tests were intentionally deleted because the feature
+  has
 
   no Yjs equivalent. Endpoint disabling is enforced via hosting/Vite middleware
 
