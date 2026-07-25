@@ -9,5 +9,8 @@
         "uuid": "^14.0.1",
         "yjs": "^13.6.31",
         "yjs-orderedtree": "^1.0.1-beta.3"
+    },
+    "devDependencies": {
+        "typescript": "^7.0.2"
     }
 }

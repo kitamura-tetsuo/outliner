@@ -83,7 +83,7 @@ export function resetChecklist(listId: string): void {
             l.id === listId
                 ? {
                     ...l,
-                    items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" } : it),
+                    items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" as const } : it),
                     lastReset: Date.now(),
                 }
                 : l
@@ -106,7 +106,7 @@ export function applyAutoReset(listId: string, now: number = Date.now()): void {
                 return {
                     ...l,
                     _parsedRule: rule,
-                    items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" } : it),
+                    items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" as const } : it),
                     lastReset: now,
                 };
             }

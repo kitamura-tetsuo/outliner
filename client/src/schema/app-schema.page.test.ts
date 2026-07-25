@@ -20,6 +20,6 @@ describe("Project pages", () => {
 
         page.updateText("foo   ");
         expect(page.text).toBe("foo   ");
-        expect(page.value.get("text")?.toString()).toBe("foo   ");
+        expect(page.yMap.get("text")?.toString()).toBe("foo   ");
     });
 });
