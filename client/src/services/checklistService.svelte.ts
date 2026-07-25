@@ -126,7 +126,7 @@ export function createChecklist(
     title: string,
     mode: ChecklistMode = "custom",
     rrule?: string,
-    id: string = uuidv4()
+    id: string = uuidv4(),
 ): string {
     if (!checklistsMap) return id;
 

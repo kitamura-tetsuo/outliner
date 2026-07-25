@@ -1,13 +1,13 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import {
     addItem,
     applyAutoReset,
     checklistsState,
     createChecklist,
+    initChecklistSync,
     resetChecklist,
     toggleItem,
-    initChecklistSync,
 } from "../services/checklistService.svelte";
 
 describe("checklistService", () => {

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import Checklist from "../../components/Checklist.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -11,7 +11,7 @@ describe("CHK-0001 checklist component", () => {
     beforeEach(() => {
         const ydoc = new Y.Doc();
         yjsStore.yjsClient = {
-            getProject: () => ({ ydoc })
+            getProject: () => ({ ydoc }),
         } as any;
     });
 
