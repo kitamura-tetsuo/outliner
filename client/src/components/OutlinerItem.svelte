@@ -2016,6 +2016,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
 
+    id={isPageTitle ? undefined : model.id}
     role={isPageTitle ? "presentation" : "treeitem"}
     tabindex={isPageTitle ? undefined : (isItemActive ? 0 : -1)}
     aria-level={isPageTitle ? undefined : depth}

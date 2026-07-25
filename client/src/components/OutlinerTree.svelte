@@ -2084,7 +2084,7 @@
                     {/if}
                 {/if}
                 {#if displayItems.length > 1}
-                    <div role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
+                    <div id="outliner-tree" role="tree" aria-label="Outliner Tree" tabindex="0" class="tree-items-role-wrapper">
                         {#each displayItems as display, index (display.model.id)}
                             {#if index > 0}
                                 <div
