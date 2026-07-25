@@ -262,6 +262,8 @@ function handleBlur(event: FocusEvent) {
     bind:this={textareaRef}
     class="global-textarea"
     aria-label="Edit item text"
+    aria-controls="outliner-tree"
+    aria-activedescendant={store.getActiveItem() ?? undefined}
     onkeydown={handleKeyDown}
     oninput={handleInput}
     oncompositionstart={handleCompositionStart}
