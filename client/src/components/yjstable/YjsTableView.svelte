@@ -44,6 +44,7 @@ let recordErrors = $state<RecordSyncError[]>([]);
 let uiQuery = $state("");
 let componentTypes = $state<Record<string, string | undefined>>({});
 let adapterReady = $state(false);
+let isInitialSyncDone = $state(false);
 
 // View switching: panels can be toggled independently (parallel display).
 let showSchema = $state(false);
@@ -100,10 +101,14 @@ onMount(() => {
                 disposeConnection = connection.dispose;
                 // Seed PGlite only after the initial sync so we do not build
                 // the table from a half-loaded document.
-                await connection.waitForInitialSync(10000).catch(() => ({ synced: false }));
+                const syncResult = await connection.waitForInitialSync(10000).catch(() => ({ synced: false }));
+                isInitialSyncDone = syncResult.synced;
             } catch (err) {
                 logger.warn({ err }, "[YjsTableView] table doc connection failed; continuing offline");
+                isInitialSyncDone = false;
             }
+        } else {
+            isInitialSyncDone = true;
         }
         await adapter.start();
         adapterReady = true;
@@ -218,7 +223,7 @@ onDestroy(() => {
     {#if showGrid}
         <section class="panel">
             {#if adapterReady}
-                <TableGrid {handles} {schema} query={uiQuery} {result} {componentTypes} />
+                <TableGrid {handles} {schema} query={uiQuery} {result} {componentTypes} loading={schema === undefined && !isInitialSyncDone} />
             {:else}
                 <p class="loading">Loading table...</p>
             {/if}
