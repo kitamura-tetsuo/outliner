@@ -56,7 +56,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
 
         try {
             await firebaseInit.initializeFirebase();
-        } catch (e: any) {
+        } catch (e: unknown) {
         }
 
         expect(loadSecretsStub.calledOnce).to.be.true;
@@ -86,7 +86,7 @@ describe("firebase-init Secret Manager loading bypass", () => {
 
         try {
             await firebaseInit.initializeFirebase();
-        } catch (e: any) {
+        } catch (e: unknown) {
         }
 
         expect(loadSecretsStub.called).to.be.false;

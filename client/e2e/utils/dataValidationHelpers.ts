@@ -20,7 +20,7 @@ export class DataValidationHelpers {
             const labelBase = testInfo.title.replace(/[^a-z0-9_-]+/gi, "-");
             const label = `${labelBase}-auto-${Date.now()}`;
             await DataValidationHelpers.saveSnapshotsAndCompare(page, label);
-        } catch (e: any) {
+        } catch (e: unknown) {
             // Do not fail the test if snapshot saving fails
             console.warn("[afterEach] snapshot skipped:", e?.message ?? e);
         } finally {
@@ -146,7 +146,7 @@ export class DataValidationHelpers {
                 // Ignore errors during cleanup evaluation
                 console.log("[afterEach] cleanup evaluation skipped:", e?.message ?? e);
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             // Do not fail the test if cleanup fails
             console.warn("[afterEach] cleanup skipped:", e?.message ?? e);
         }
@@ -165,7 +165,7 @@ export class DataValidationHelpers {
                 const store = (globalThis as any).generalStore || (globalThis as any).appStore;
                 return !!(store && store.project);
             }, { timeout: 30000 });
-        } catch (e: any) {
+        } catch (e: unknown) {
             const errMsg = e?.message ?? String(e);
             if (
                 !errMsg.includes("Test ended.") && !errMsg.includes("Target page, context or browser has been closed")

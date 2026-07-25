@@ -89,10 +89,10 @@ function runTests(testFile?: string): { passed: boolean; output: string; } {
             passed: true,
             output,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         return {
             passed: false,
-            output: error.stdout || error.stderr || error.message,
+            output: error.stdout || error.stderr || error instanceof Error ? error.message : String(error),
         };
     }
 }
@@ -129,14 +129,14 @@ async function testWithoutPolling(
             testPassed: result.passed,
             testOutput: result.output,
         };
-    } catch (error: any) {
-        console.log(`  Error: ${error.message}`);
+    } catch (error: unknown) {
+        console.log(`  Error: ${error instanceof Error ? error.message : String(error)}`);
 
         return {
             pollingId,
             testPassed: false,
             testOutput: "",
-            error: error.message,
+            error: error instanceof Error ? error.message : String(error),
         };
     } finally {
         // Restore file

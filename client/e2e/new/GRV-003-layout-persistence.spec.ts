@@ -25,7 +25,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                 }
             });
         } catch (e) {
-            console.log("Could not clear localStorage in beforeEach:", e.message);
+            console.log("Could not clear localStorage in beforeEach:", e instanceof Error ? e.message : String(e));
         }
     });
 
@@ -39,7 +39,7 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
             });
         } catch (e) {
             // Ignore localStorage access errors during test cleanup
-            console.log("Could not clear localStorage in afterEach:", e.message);
+            console.log("Could not clear localStorage in afterEach:", e instanceof Error ? e.message : String(e));
         }
     });
 
@@ -194,8 +194,8 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     });
                 }
                 return { success: false, error: "No nodes found" };
-            } catch (error: any) {
-                return { success: false, error: error.message };
+            } catch (error: unknown) {
+                return { success: false, error: error instanceof Error ? error.message : String(error) };
             }
         });
 
@@ -352,8 +352,8 @@ test.describe("GRV-0002: Graph view layout persistence", () => {
                     } else {
                         console.log(`Retry ${i}: Node not found`);
                     }
-                } catch (error: any) {
-                    console.log(`Retry ${i}: Error: ${error.message}`);
+                } catch (error: unknown) {
+                    console.log(`Retry ${i}: Error: ${error instanceof Error ? error.message : String(error)}`);
                 }
                 await wait(500);
             }

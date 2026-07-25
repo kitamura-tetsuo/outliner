@@ -213,11 +213,11 @@ export async function testWithoutPolling(
         result.withPolling.passed = true;
         result.withPolling.duration = Date.now() - startWith;
         console.log(`  ✓ Passed (${result.withPolling.duration}ms)`);
-    } catch (error: any) {
+    } catch (error: unknown) {
         result.withPolling.passed = false;
         result.withPolling.duration = Date.now() - startWith;
-        result.withPolling.error = error.message;
-        console.log(`  ✗ Failed: ${error.message}`);
+        result.withPolling.error = error instanceof Error ? error.message : String(error);
+        console.log(`  ✗ Failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 2. Test WITHOUT polling
@@ -232,11 +232,11 @@ export async function testWithoutPolling(
         result.withoutPolling.passed = true;
         result.withoutPolling.duration = Date.now() - startWithout;
         console.log(`  ✓ Passed (${result.withoutPolling.duration}ms)`);
-    } catch (error: any) {
+    } catch (error: unknown) {
         result.withoutPolling.passed = false;
         result.withoutPolling.duration = Date.now() - startWithout;
-        result.withoutPolling.error = error.message;
-        console.log(`  ✗ Failed: ${error.message}`);
+        result.withoutPolling.error = error instanceof Error ? error.message : String(error);
+        console.log(`  ✗ Failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     // 3. Determine Result

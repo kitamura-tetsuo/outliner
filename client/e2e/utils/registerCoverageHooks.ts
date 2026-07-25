@@ -44,8 +44,8 @@ function registerBestEffortCoverageHooks(): void {
                 resetOnNavigation: false,
                 reportAnonymousScripts: true,
             });
-        } catch (error: any) {
-            if (!error?.message || !String(error.message).includes("Coverage is already started")) {
+        } catch (error: unknown) {
+            if (!error?.message || !String(error instanceof Error ? error.message : String(error)).includes("Coverage is already started")) {
                 console.warn("[Coverage] Failed to start coverage collection:", error);
             } else {
                 console.log("[Coverage] already started");
@@ -115,7 +115,7 @@ function registerPreciseCoverageHooks(): void {
             });
 
             console.log(`[PreciseCoverage] Started with callCount and detailed mode`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("[PreciseCoverage] Failed to start coverage collection:", error);
         }
     });

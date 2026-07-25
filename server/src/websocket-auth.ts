@@ -81,8 +81,8 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
             }
             return decoded;
         }
-    } catch (e: any) {
-        if (e.message && e.message.includes("alg:none tokens are not allowed")) {
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message && e.message.includes("alg:none tokens are not allowed")) {
             throw e;
         }
         logger.warn({ error: e }, "[Auth] Test mode: failed to parse alg:none token");
@@ -99,10 +99,10 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
             tokenCache.set(token, decoded, { ttl: ttlMs });
         }
         return decoded;
-    } catch (e: any) {
+    } catch (e: unknown) {
         // Debug: Decode token to see why it failed
-        const errorCode = e.code || e.errorInfo?.code;
-        const isExpired = errorCode === "auth/id-token-expired" || e.message?.includes("expired");
+        const errorCode = e && typeof e === "object" && "code" in e ? (e as any).code : (e as any)?.errorInfo?.code;
+        const isExpired = errorCode === "auth/id-token-expired" || (e instanceof Error && e.message?.includes("expired"));
 
         if (isExpired) {
             logger.warn(`[Auth] Token expired (normal during reconnect)`);
@@ -124,7 +124,7 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         } catch (parseErr) {
             logger.error({ error: e }, "[Auth] Failed to parse failed token for debug");
         }
-        logger.error({ error: e }, `[Auth] Token verification failed: ${e.message}`);
+        logger.error({ error: e }, `[Auth] Token verification failed: ${e instanceof Error ? e.message : String(e)}`);
         throw e;
     }
 }
