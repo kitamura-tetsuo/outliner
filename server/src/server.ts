@@ -391,14 +391,15 @@ export async function startServer(
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error(
-                { error: new Error(`Log rotation error: ${error.message}`) },
-                `Log rotation error: ${error.message}`,
+                { error: new Error(`Log rotation error: ${errorMessage}`) },
+                `Log rotation error: ${errorMessage}`,
             );
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: errorMessage,
             });
         }
     });

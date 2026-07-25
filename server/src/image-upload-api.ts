@@ -162,16 +162,17 @@ export function createImageUploadRouter(hocuspocus: HocuspocusInstance) {
                             insertedId = newNode.id;
                         }
                     });
-                } catch (transactError: any) {
+                } catch (transactError: unknown) {
                     await directConnection.disconnect();
                     throw transactError;
                 }
 
                 await directConnection.disconnect();
                 res.status(200).json({ success: true, url, insertedId });
-            } catch (error: any) {
-                logger.error({ error: new Error(error.message), event: "image_upload_error" }, "An error occurred");
-                res.status(500).json({ error: error.message || "Failed to upload image" });
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                logger.error({ error: new Error(errorMessage), event: "image_upload_error" }, "An error occurred");
+                res.status(500).json({ error: errorMessage || "Failed to upload image" });
             }
         },
     );

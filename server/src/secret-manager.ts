@@ -44,9 +44,10 @@ export class SecretManager {
                 if (payload) {
                     this.cache.set(name, payload);
                 }
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // Log but don't crash, allowing fallback to process.env if needed (though requirement says remove dotenvx for secrets)
-                logger.warn(`[SecretManager] Failed to load secret ${name}: ${error.message}`);
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                logger.warn(`[SecretManager] Failed to load secret ${name}: ${errorMessage}`);
             }
         }
     }
