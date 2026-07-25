@@ -1,5 +1,5 @@
 import { RRule } from "rrule";
-import { writable } from "svelte/store";
+import { get, writable } from "svelte/store";
 import { v4 as uuidv4 } from "uuid";
 
 export type ChecklistItemState = "active" | "checked" | "archived" | "deleted";
@@ -17,6 +17,7 @@ export interface Checklist {
     title: string;
     mode: ChecklistMode;
     rrule?: string;
+    _parsedRule?: RRule;
     lastReset?: number;
     items: ChecklistItem[];
 }
@@ -91,19 +92,43 @@ export function resetChecklist(listId: string): void {
 }
 
 export function applyAutoReset(listId: string, now: number = Date.now()): void {
-    lists.update(arr =>
-        arr.map(l => {
+    let changed = false;
+    lists.update(arr => {
+        const newArr = arr.map(l => {
             if (l.id !== listId || !l.rrule) return l;
-            const rule = RRule.fromString(l.rrule);
+            let rule = l._parsedRule;
+            if (!rule) {
+                rule = RRule.fromString(l.rrule);
+            }
             const next = rule.after(new Date(l.lastReset ?? 0));
             if (next && next.getTime() <= now) {
+                changed = true;
                 return {
                     ...l,
+                    _parsedRule: rule,
                     items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" } : it),
                     lastReset: now,
                 };
             }
+            if (!l._parsedRule) {
+                changed = true;
+                return { ...l, _parsedRule: rule };
+            }
             return l;
-        })
-    );
+        });
+        return changed ? newArr : arr;
+    });
+}
+
+export function getNextResetDelay(listId: string, now: number = Date.now()): number | null {
+    const arr = get(lists);
+    const l = arr.find(x => x.id === listId);
+    if (!l || !l.rrule) return null;
+    let rule = l._parsedRule;
+    if (!rule) {
+        rule = RRule.fromString(l.rrule);
+    }
+    const next = rule.after(new Date(l.lastReset ?? 0));
+    if (!next) return null;
+    return Math.max(0, next.getTime() - now);
 }
