@@ -80,12 +80,14 @@ vi.mock("@hocuspocus/provider", () => ({
 }));
 
 const mockAuth = {
-    currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as any
+    currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as any,
 };
 
 vi.mock("../../../auth/UserManager", () => ({
     userManager: {
-        get auth() { return mockAuth; },
+        get auth() {
+            return mockAuth;
+        },
         getCurrentUser: () => null,
         addEventListener: vi.fn(() => () => {}),
         refreshToken: () => refreshTokenSpy(),
