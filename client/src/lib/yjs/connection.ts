@@ -117,10 +117,8 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
         return `${b64(header)}.${b64(payload)}.`;
     };
 
-    const mustAuth = isAuthRequired();
-
-    // If auth is required (e.g., E2E talking to secured WS), wait until user is available
-    if (!auth.currentUser && mustAuth) {
+    // Wait until user is available (getFreshIdToken is only called for non-demo rooms)
+    if (!auth.currentUser) {
         for (let i = 0; i < 50; i++) { // up to ~5s
             await new Promise(resolve => setTimeout(resolve, 100));
             if (auth.currentUser) break;
@@ -130,9 +128,6 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     if (!auth.currentUser) {
         if (isTestEnv) {
             return generateMockToken();
-        }
-        if (!mustAuth) {
-            return "";
         }
         throw new Error("No Firebase user available for Yjs auth");
     }

@@ -106,6 +106,8 @@ type MockProviderInstance = InstanceType<typeof MockHocuspocusProvider> & {
 // tick reliably drains any pending microtask chain in between.
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
+
+
 describe("yjs connection: shared provider setup", () => {
     beforeEach(() => {
         MockHocuspocusProvider.instances = [];
