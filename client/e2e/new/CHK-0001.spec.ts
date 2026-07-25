@@ -6,10 +6,9 @@ registerCoverageHooks();
  *  Source  : docs/client-features/chk-universal-checklist-*.yaml
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHK-0001: Universal Checklist", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async () => {
         test.setTimeout(90000);
         // Note: The standalone /checklist route does not require project seeding
     });
