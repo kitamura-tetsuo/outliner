@@ -3,7 +3,6 @@ import { onMount, onDestroy } from "svelte";
 import {
     addItem,
     applyAutoReset,
-    type Checklist,
     checklistService,
     createChecklist,
     getNextResetDelay,

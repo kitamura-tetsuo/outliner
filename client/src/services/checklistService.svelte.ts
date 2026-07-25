@@ -26,19 +26,22 @@ export interface Checklist {
 class ChecklistService {
     lists = $state<Checklist[]>([]);
     private ydoc: Y.Doc | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private ymap: Y.Map<any> | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private observer: ((events: Y.YEvent<any>[], transaction: Y.Transaction) => void) | null = null;
 
     // ensureBound will bind to the active document dynamically if one exists
     ensureBound() {
         // Find the current ydoc
-        const doc = yjsStore.yjsClient?.getProject()?.ydoc || (globalThis as any).generalStore?.project?.ydoc;
+        const doc = yjsStore.yjsClient?.getProject()?.ydoc || (globalThis as unknown as { generalStore?: { project?: { ydoc?: Y.Doc } } }).generalStore?.project?.ydoc;
 
         if (doc && this.ydoc !== doc) {
             this.unbind();
             this.ydoc = doc;
             this.ymap = doc.getMap("checklists");
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             this.observer = (events: Y.YEvent<any>[], transaction: Y.Transaction) => {
                 if (transaction.origin !== this) {
                     this.syncFromYjs();
@@ -72,12 +75,12 @@ class ChecklistService {
                 const yitems = ylist.get("items");
                 let items: ChecklistItem[] = [];
                 if (yitems instanceof Y.Array) {
-                    items = yitems.toArray().map((yitem: any) => {
+                    items = yitems.toArray().map((yitem: unknown) => {
                         if (yitem instanceof Y.Map) {
                             return {
                                 id: yitem.get("id") as string,
                                 label: yitem.get("label") as string,
-                                state: yitem.get("state") as ChecklistItemState,
+                                state: yitem.get("state") as ChecklistItemState
                             };
                         }
                         return null;
@@ -90,7 +93,7 @@ class ChecklistService {
                     mode: ylist.get("mode") as ChecklistMode,
                     rrule: ylist.get("rrule") as string | undefined,
                     lastReset: ylist.get("lastReset") as number | undefined,
-                    items,
+                    items
                 });
             }
         }
@@ -101,7 +104,7 @@ class ChecklistService {
         title: string,
         mode: ChecklistMode = "custom",
         rrule?: string,
-        id: string = uuidv4(),
+        id: string = uuidv4()
     ): string {
         this.ensureBound();
 
@@ -253,7 +256,7 @@ class ChecklistService {
                     const rruleStr = ylist.get("rrule");
                     if (!rruleStr) return;
 
-                    let rule = RRule.fromString(rruleStr as string);
+                    const rule = RRule.fromString(rruleStr as string);
                     const lastReset = ylist.get("lastReset") as number || 0;
                     const next = rule.after(new Date(lastReset));
 
