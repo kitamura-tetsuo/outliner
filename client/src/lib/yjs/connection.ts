@@ -65,15 +65,20 @@ function getWsBase(): string {
     try {
         if (import.meta.env.VITE_YJS_PORT) port = Number(import.meta.env.VITE_YJS_PORT);
         // Runtime override for E2E tests
-        if (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
-            port = Number(window.localStorage.getItem("VITE_YJS_PORT"));
-            // If explicit port check in localStorage, use it and ignore env WS_URL (overrides file-based env)
-            return `ws://localhost:${port}`;
+        if (isConnDebugEnabled() && typeof window !== "undefined") {
+            const override = window.localStorage?.getItem?.("VITE_YJS_PORT");
+            if (override) {
+                port = Number(override);
+                // If explicit port check in localStorage, use it and ignore env WS_URL (overrides file-based env)
+                return `ws://localhost:${port}`;
+            }
         }
     } catch {}
     logger.debug(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
-            typeof window !== "undefined" ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
+            (isConnDebugEnabled() && typeof window !== "undefined")
+                ? window.localStorage?.getItem("VITE_YJS_PORT")
+                : "N/A"
         }, final=${port}`,
     );
     const url = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
@@ -83,9 +88,11 @@ function getWsBase(): string {
 function isAuthRequired(): boolean {
     try {
         const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
-        const lsVal = typeof window !== "undefined" ? window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") : null;
-        if (lsVal === "false") return false;
-        if (lsVal === "true") return true;
+        if (isConnDebugEnabled() && typeof window !== "undefined") {
+            const lsVal = window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH");
+            if (lsVal === "false") return false;
+            if (lsVal === "true") return true;
+        }
         return envReq;
     } catch {
         return false;

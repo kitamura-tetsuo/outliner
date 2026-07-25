@@ -86,7 +86,7 @@ function getHealthCheckUrl() {
     let port = 7093;
     try {
         if (import.meta.env.VITE_YJS_PORT) port = Number(import.meta.env.VITE_YJS_PORT);
-        if (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
+        if ((import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true") && typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
             port = Number(window.localStorage.getItem("VITE_YJS_PORT"));
         }
     } catch {}
