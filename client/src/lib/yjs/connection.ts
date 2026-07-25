@@ -235,14 +235,29 @@ async function setupProviderForRoom(
     // sendToken() runs, so the token is always fresh without us having to patch a cached URL.
     const tokenProvider = async (): Promise<string> => {
         if (isDemo) return "1"; // dummy token: demo rooms are unauthenticated but still need a truthy value
-        try {
-            const token = await getFreshIdToken(forceTokenRefresh);
-            forceTokenRefresh = false;
-            return token || "1";
-        } catch (e) {
-            logger.error({ error: e }, `[${label}] getFreshIdToken failed`);
-            return "1";
+
+        const MAX_TOKEN_RETRIES = 3;
+        let lastError: unknown;
+
+        for (let attempt = 1; attempt <= MAX_TOKEN_RETRIES; attempt++) {
+            try {
+                const token = await getFreshIdToken(forceTokenRefresh);
+                forceTokenRefresh = false;
+                if (!token) {
+                    throw new Error("getFreshIdToken returned an empty token for a non-demo room");
+                }
+                return token;
+            } catch (e) {
+                lastError = e;
+                logger.error({ error: e }, `[${label}] getFreshIdToken failed (attempt ${attempt}/${MAX_TOKEN_RETRIES})`);
+                if (attempt < MAX_TOKEN_RETRIES) {
+                    // Exponential backoff: 1s, 2s
+                    await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                }
+            }
         }
+
+        throw lastError || new Error("Failed to get token");
     };
 
     const wsBase = getWsBase();
@@ -324,7 +339,13 @@ async function setupProviderForRoom(
     provider.on("authenticated", () => logger.debug(`[yjs-conn] ${room} authenticated`));
     provider.on(
         "authenticationFailed",
-        (data: unknown) => logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`),
+        (data: unknown) => {
+            logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`);
+            setRoomSyncState(room, "denied");
+            try {
+                provider.disconnect();
+            } catch {}
+        },
     );
     provider.on("stateless", (data: unknown) => {
         if (typeof data === "string") {
