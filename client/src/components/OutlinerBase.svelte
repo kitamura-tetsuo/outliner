@@ -66,6 +66,11 @@ const logger = getLogger("OutlinerBase");
 
 <div class="outliner-base" data-testid="outliner-base">
     {#if effectivePageItem}
+        {#if isServerResetting}
+            <div class="reset-banner" role="status" aria-live="polite">
+                Demo content is being reset — editing is paused.
+            </div>
+        {/if}
         {#key `${effectivePageItem?.ydoc ? (effectivePageItem.ydoc as { guid?: string }).guid ?? "" : ""}:${effectivePageItem?.id ?? `${projectName}:${pageName}`}`}
             <OutlinerTree
                 pageItem={effectivePageItem}
