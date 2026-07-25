@@ -38,4 +38,17 @@ describe("checklistService", () => {
         const list = get(checklists).find(l => l.id === id)!;
         expect(list.items[0].state).toBe("active");
     });
+
+    it("does not change store identity if boundary not reached", () => {
+        const id = createChecklist("noop", "custom", "FREQ=DAILY");
+
+        // Seed the cache so the initial run caches the parsed rule.
+        applyAutoReset(id, Date.now());
+
+        const before = get(checklists);
+        applyAutoReset(id, Date.now()); // Second call should be a no-op
+        const after = get(checklists);
+
+        expect(before).toBe(after);
+    });
 });

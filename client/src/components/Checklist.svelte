@@ -6,6 +6,7 @@ import {
     type Checklist,
     checklists,
     createChecklist,
+    getNextResetDelay,
     resetChecklist,
     toggleItem,
 } from "../services/checklistService";
@@ -27,14 +28,47 @@ let componentId = $state("");
 onMount(() => {
     componentId = Math.random().toString(36).substring(2, 9);
     const id = createChecklist(title, mode, rrule);
+
+    let timerId: ReturnType<typeof setTimeout>;
+    let lastSeenReset: number | undefined;
+    let lastSeenRRule: string | undefined;
+
+    function setupTimer() {
+        clearTimeout(timerId);
+        const delay = getNextResetDelay(id);
+        if (delay === null) return;
+
+        const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
+        timerId = setTimeout(() => {
+            applyAutoReset(id);
+            setupTimer();
+        }, safeDelay);
+    }
+
     const unsubscribe = checklists.subscribe(arr => {
         list = arr.find(l => l.id === id);
+        if (list && (list.lastReset !== lastSeenReset || list.rrule !== lastSeenRRule)) {
+            lastSeenReset = list.lastReset;
+            lastSeenRRule = list.rrule;
+            setupTimer();
+        }
     });
+
     applyAutoReset(id);
-    const interval = setInterval(() => applyAutoReset(id), 1000);
+
+    function handleVisibilityOrFocus() {
+        applyAutoReset(id);
+        setupTimer();
+    }
+
+    window.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    window.addEventListener("focus", handleVisibilityOrFocus);
+
     return () => {
         unsubscribe();
-        clearInterval(interval);
+        clearTimeout(timerId);
+        window.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+        window.removeEventListener("focus", handleVisibilityOrFocus);
     };
 });
 
