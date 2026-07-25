@@ -549,7 +549,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                 const w = (typeof window !== "undefined") ? window : null;
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
-                const gs = typeof window !== "undefined" ? (w?.appStore || w?.generalStore) : undefined;
+                const gs = typeof window !== "undefined" ? w?.generalStore : undefined;
                 const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
                 if (mappedId && curPage?.items) {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
@@ -1508,9 +1508,9 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                     const el = document.querySelector(`[data-item-id="${r.itemId}"] .item-text`) as HTMLElement | null;
                     let full = el?.textContent || '';
                     if (!full) {
-                        // Fallback from appStore or generalStore
-                        const w = typeof window !== 'undefined' ? (window as Window & typeof globalThis & { appStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } }, generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } }) : undefined;
-                        const gs = typeof window !== 'undefined' ? (w?.appStore || w?.generalStore) : undefined;
+                        // Fallback from generalStore
+                        const w = typeof window !== 'undefined' ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } }) : undefined;
+                        const gs = typeof window !== 'undefined' ? w?.generalStore : undefined;
                         const items = gs?.currentPage?.items;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
