@@ -319,12 +319,12 @@ const logger = getLogger("GraphView");
 <div class="sr-only">
     <h2>Page graph: {graphNodes.length} pages, {graphLinks.length} links</h2>
     <ul>
-        {#each graphNodes as node}
+        {#each graphNodes as node (node.id)}
             <li>
                 <a href={getPageUrl(node.name)}>{node.name}</a>
                 {#if graphLinks.some(link => link.source === node.id)}
                     <ul>
-                        {#each graphLinks.filter(link => link.source === node.id) as link}
+                        {#each graphLinks.filter(link => link.source === node.id) as link (link.target)}
                             {@const targetNode = graphNodes.find(n => n.id === link.target)}
                             {#if targetNode}
                                 <li>
