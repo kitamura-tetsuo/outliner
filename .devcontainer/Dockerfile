@@ -21,6 +21,7 @@ RUN apt-get update && \
     fluxbox \
     dbus-x11 \
     gnome-keyring \
+    seahorse \
     libsecret-1-0 \
     x11-utils \
     x11-apps \
