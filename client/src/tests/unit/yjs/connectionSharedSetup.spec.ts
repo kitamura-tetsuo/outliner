@@ -1,3 +1,4 @@
+import type { User } from "firebase/auth";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
@@ -80,7 +81,7 @@ vi.mock("@hocuspocus/provider", () => ({
 }));
 
 const mockAuth = {
-    currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as any,
+    currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as unknown as User | null,
 };
 
 vi.mock("../../../auth/UserManager", () => ({
@@ -119,7 +120,9 @@ describe("yjs connection: shared provider setup", () => {
         refreshTokenSpy.mockClear();
         mockPersistenceDestroy.mockClear();
         clearRoomSyncStates();
-        mockAuth.currentUser = { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as any;
+        mockAuth.currentUser = {
+            getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
+        } as unknown as User;
     });
 
     it("never resolves to the demo dummy token '1' for a non-demo room on failure", async () => {
@@ -178,7 +181,9 @@ describe("yjs connection: shared provider setup", () => {
             expect(resolvedToken).toBeUndefined();
 
             // Simulate hydration
-            mockAuth.currentUser = { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as any;
+            mockAuth.currentUser = {
+                getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
+            } as unknown as User;
 
             // Advance time to allow the loop to see currentUser and break
             await vi.advanceTimersByTimeAsync(200);
