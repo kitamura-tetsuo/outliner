@@ -47,6 +47,14 @@ test.describe("GRV-0001: Graph View navigation", () => {
         // Wait until the canvas element is generated
         await expect(page.locator(".graph-view canvas")).toBeVisible();
 
+        // Verify a11y attributes on the canvas
+        await expect(page.locator(".graph-view canvas")).toHaveAttribute("role", "img");
+        await expect(page.locator(".graph-view canvas")).toHaveAttribute("aria-label", /^Page graph: \d+ pages, \d+ links$/);
+
+        // Verify fallback content exists for keyboard navigation
+        const fallbackList = page.locator(".sr-only > ul > li");
+        await expect(fallbackList.first()).toBeVisible();
+
         // Get the first page name and project name from graph data
         const { firstPageName, projectName } = await page.evaluate(() => {
             const chart = (globalThis as any).__GRAPH_CHART__;
