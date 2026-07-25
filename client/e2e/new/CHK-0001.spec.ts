@@ -9,13 +9,15 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CHK-0001: Universal Checklist", () => {
+    let projectName = "";
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000);
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        const res = await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        projectName = res.projectName;
     });
 
     test("add and archive item in shopping mode", async ({ page }) => {
-        await page.goto("/checklist");
+        await page.goto(`/${encodeURIComponent(projectName)}/checklist`);
         await expect(page.locator('[data-testid="add-input"]')).toBeVisible();
         await page.locator('[data-testid="add-input"]').fill("Milk");
         await page.click('[data-testid="add-button"]');
@@ -26,7 +28,7 @@ test.describe("CHK-0001: Universal Checklist", () => {
     });
 
     test("reset unchecks items", async ({ page }) => {
-        await page.goto("/checklist");
+        await page.goto(`/${encodeURIComponent(projectName)}/checklist`);
         await expect(page.locator('[data-testid="add-input"]')).toBeVisible();
         await page.locator('[data-testid="add-input"]').fill("Eggs");
         await page.click('[data-testid="add-button"]');
@@ -42,7 +44,7 @@ test.describe("CHK-0001: Universal Checklist", () => {
             localStorage.setItem("CHK_MODE", "habit");
             localStorage.setItem("CHK_RRULE", "FREQ=SECONDLY;INTERVAL=1");
         });
-        await page.goto("/checklist");
+        await page.goto(`/${encodeURIComponent(projectName)}/checklist`);
         await expect(page.locator('[data-testid="add-input"]')).toBeVisible();
         await page.locator('[data-testid="add-input"]').fill("Pushups");
         await page.click('[data-testid="add-button"]');
