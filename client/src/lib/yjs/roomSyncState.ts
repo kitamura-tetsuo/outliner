@@ -10,10 +10,20 @@ const listeners = new Map<string, Set<(state: RoomSyncState) => void>>();
 
 export function setRoomSyncState(room: string, state: RoomSyncState): void {
     if (states.size >= 100 && !states.has(room)) {
-        const oldestRoom = states.keys().next().value;
-        if (oldestRoom) {
-            states.delete(oldestRoom);
-            listeners.delete(oldestRoom);
+        let candidateForEviction: string | undefined;
+        for (const candidate of states.keys()) {
+            const roomListeners = listeners.get(candidate);
+            if (!roomListeners || roomListeners.size === 0) {
+                candidateForEviction = candidate;
+                break;
+            }
+        }
+
+        if (candidateForEviction) {
+            states.delete(candidateForEviction);
+            listeners.delete(candidateForEviction);
+        } else {
+            console.warn("RoomSyncState leak warning: over 100 rooms all have active listeners");
         }
     }
 
