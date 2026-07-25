@@ -57,4 +57,22 @@ test.describe("Accessible outline tree semantics", () => {
         await expect(details).toContainText("Tab");
         await expect(details).toContainText("Alt+");
     });
+
+    test("item text is not truncated in accessible name", async ({ page }, testInfo) => {
+        // Seed an item with text longer than 50 characters
+        const longText = "Move between items with the arrow keys; the cursor keeps its horizontal position.";
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [longText]);
+        await TestHelpers.waitForOutlinerItems(page, 2);
+
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+
+        // Assert that the item element does not have an aria-label attribute (so the accessible name comes from the full text)
+        await expect(firstItem).not.toHaveAttribute("aria-label");
+
+        // Ensure the element actually contains the full text
+        await expect(firstItem).toContainText(longText);
+    });
 });

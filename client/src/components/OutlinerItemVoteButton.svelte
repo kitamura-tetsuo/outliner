@@ -2,11 +2,11 @@
 interface Props {
     voted: boolean;
     count: number;
-    truncatedText: string;
+    itemText?: string;
     onVote: () => void;
 }
 
-let { voted, count, truncatedText, onVote }: Props = $props();
+let { voted, count, itemText, onVote }: Props = $props();
 </script>
 
 <button type="button"
@@ -18,7 +18,7 @@ let { voted, count, truncatedText, onVote }: Props = $props();
     class="vote-btn" class:has-count={count > 0}
     class:voted={voted}
     title={voted ? "Remove vote" : "Vote"}
-    aria-label={voted ? "Remove vote from: " + truncatedText : "Vote for item: " + truncatedText}
+    aria-label={voted ? (itemText ? `Remove vote from: ${itemText}` : "Remove vote") : (itemText ? `Vote for item: ${itemText}` : "Vote for item")}
     aria-pressed={voted}
 >
     <svg width="16" height="16" viewBox="0 0 24 24" fill={voted ? "currentColor" : "none"} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
