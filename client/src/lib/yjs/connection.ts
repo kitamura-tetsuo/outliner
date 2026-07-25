@@ -80,18 +80,6 @@ function getWsBase(): string {
     return url as string;
 }
 
-function isAuthRequired(): boolean {
-    try {
-        const envReq = String(import.meta.env.VITE_YJS_REQUIRE_AUTH || "") === "true";
-        const lsVal = typeof window !== "undefined" ? window.localStorage?.getItem?.("VITE_YJS_REQUIRE_AUTH") : null;
-        if (lsVal === "false") return false;
-        if (lsVal === "true") return true;
-        return envReq;
-    } catch {
-        return false;
-    }
-}
-
 async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     // Wait for auth and fetch an ID token, using Firebase's cache unless a refresh is requested
     const auth = userManager.auth;
