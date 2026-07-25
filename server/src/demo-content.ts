@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 15;
+export const DEMO_TEMPLATE_VERSION = 16;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -467,9 +467,11 @@ export const demoPages: DemoPageTemplate[] = [
         lines: [
             "Pages and projects can be shared beyond the people editing them.",
             "Sharing: generate a read-only token to share a project without giving edit access.",
+            "  Tokens are generated in the Project Settings (gear icon in the top right).",
             "Scheduled publishing: schedule a page to be published automatically at a later time.",
-            "The schedule management page lists upcoming publishing tasks and lets you edit or cancel them.",
+            "  The [/demo/Publishing and Sharing/schedule] page lists upcoming publishing tasks and lets you edit or cancel them.",
             "Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.",
+            "  View this page's [/demo/Publishing and Sharing/diff] to see snapshots.",
         ],
     },
     {

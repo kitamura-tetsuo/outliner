@@ -63,6 +63,23 @@ test.describe("Demo project feature tour", () => {
         await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible();
     });
 
+    test("the Publishing and Sharing page renders the seeded links", async ({ page }) => {
+        await page.goto("/demo");
+
+        const pageList = page.getByTestId("demo-page-list");
+        await expect(pageList).toBeVisible({ timeout: 30000 });
+        await pageList.getByText("Publishing and Sharing", { exact: true }).first().click();
+
+        await expect(page).toHaveURL(/\/demo\/Publishing%20and%20Sharing$/, { timeout: 15000 });
+        await expect(page.getByTestId("demo-page-toolbar")).toBeVisible({ timeout: 30000 });
+
+        const scheduleText = page.getByText("lists upcoming publishing tasks");
+        await expect(scheduleText).toBeVisible({ timeout: 30000 });
+
+        const diffText = page.getByText("snapshot diff viewer");
+        await expect(diffText).toBeVisible({ timeout: 30000 });
+    });
+
     test("the Tasks and Habits page renders the seeded Tasks and Habits database tables", async ({ page }) => {
         await page.goto("/demo");
 
