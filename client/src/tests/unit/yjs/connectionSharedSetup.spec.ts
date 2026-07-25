@@ -127,9 +127,9 @@ describe("yjs connection: shared provider setup", () => {
 
         vi.useFakeTimers();
         try {
-            let error;
-            const tokenPromise = tokenFn().catch(e => {
-                error = e;
+            let error: Error | undefined;
+            const tokenPromise = tokenFn().catch((e: unknown) => {
+                error = e as Error;
             });
 
             // Advance timers enough to trigger all backoff intervals
@@ -139,7 +139,7 @@ describe("yjs connection: shared provider setup", () => {
 
             await tokenPromise;
             expect(error).toBeDefined();
-            expect(error.message).toBe("Auth failed");
+            expect(error?.message).toBe("Auth failed");
         } finally {
             vi.useRealTimers();
         }
@@ -159,9 +159,9 @@ describe("yjs connection: shared provider setup", () => {
 
         vi.useFakeTimers();
         try {
-            let error;
-            const tokenPromise = tokenFn().catch(e => {
-                error = e;
+            let error: Error | undefined;
+            const tokenPromise = tokenFn().catch((e: unknown) => {
+                error = e as Error;
             });
 
             // Advance timers enough to trigger all backoff intervals
@@ -171,7 +171,7 @@ describe("yjs connection: shared provider setup", () => {
 
             await tokenPromise;
             expect(error).toBeDefined();
-            expect(error.message).toBe("Token is empty");
+            expect(error?.message).toBe("Token is empty");
         } finally {
             vi.useRealTimers();
         }
