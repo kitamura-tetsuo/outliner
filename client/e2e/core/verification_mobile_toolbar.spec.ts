@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 
 registerCoverageHooks();
 

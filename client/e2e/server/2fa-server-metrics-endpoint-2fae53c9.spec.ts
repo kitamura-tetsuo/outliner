@@ -1,9 +1,9 @@
-import "./utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import { spawn } from "child_process";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 function startServer() {

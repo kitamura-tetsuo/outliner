@@ -1,8 +1,8 @@
-import "./utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import fs from "fs";
 import path from "path";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
 test("Cloudflare Tunnel docs mention setup steps", async () => {

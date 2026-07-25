@@ -1,8 +1,8 @@
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-import "./utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "./utils/testHelpers";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @feature YDOC-0001

@@ -73,6 +73,9 @@ if [ $# -eq 0 ]; then
   fi
   echo "✅ ESLint check passed!"
 
+  echo "Checking Playwright coverage..."
+  node "${SCRIPT_DIR}/check-playwright-coverage.cjs"
+
   ensure_services
   npm run test:unit
   npm run test:integration

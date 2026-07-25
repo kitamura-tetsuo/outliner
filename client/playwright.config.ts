@@ -127,6 +127,11 @@ export default defineConfig({
         },
 
         {
+            // Env tests
+            name: "env",
+            testDir: "./e2e/env",
+        },
+        {
             // Basic tests: For environment check and minimal configuration verification
             name: "basic",
             testDir: "./e2e/basic",
@@ -213,6 +218,11 @@ export default defineConfig({
             name: "new-4",
             testDir: "./e2e/new",
             testMatch: ["**/[j-z]*.spec.ts"],
+        },
+        {
+            // Env tests
+            name: "env",
+            testDir: "./e2e/env",
         },
         {
             // Auth tests: Run only in production environment

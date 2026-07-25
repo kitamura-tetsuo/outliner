@@ -1,5 +1,5 @@
-import "./utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /** @feature TST-0005
  *  Title   : Test Environment Initialization and Preparation
