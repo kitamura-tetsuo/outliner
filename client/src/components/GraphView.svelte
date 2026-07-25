@@ -10,6 +10,7 @@ const logger = getLogger("GraphView");
     import { onMount } from "svelte";
     import { store } from "../stores/store.svelte";
     import { buildGraph } from "../utils/graphUtils";
+    import type { GraphData } from "../utils/graphUtils";
     import { getYjsClientByProjectTitle } from "../services";
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { page } from "$app/stores";
@@ -17,6 +18,8 @@ const logger = getLogger("GraphView");
 
     let graphDiv: HTMLDivElement;
     let chart: echarts.ECharts | undefined = $state(undefined);
+    let graphNodes: GraphData["nodes"] = $state([]);
+    let graphLinks: GraphData["links"] = $state([]);
 
     type GraphNodeWithLayout = {
         id: string;
@@ -192,6 +195,8 @@ const logger = getLogger("GraphView");
         if (!chart) return;
 
         const { nodes, links } = buildGraph(pages, project);
+        graphNodes = nodes;
+        graphLinks = links;
 
         // Apply saved layout
         const nodesWithLayout = loadLayout(nodes as GraphNodeWithLayout[]);
@@ -217,6 +222,32 @@ const logger = getLogger("GraphView");
                 },
             ],
         });
+
+        setTimeout(() => {
+            if (graphDiv) {
+                const canvas = graphDiv.querySelector("canvas");
+                if (canvas) {
+                    canvas.setAttribute("role", "img");
+                    canvas.setAttribute(
+                        "aria-label",
+                        `Page graph: ${nodes.length} pages, ${links.length} links`
+                    );
+                }
+            }
+        }, 0);
+    }
+
+    function getPageUrl(pageName: string) {
+        if (!pageName) return "#";
+        const pageStore = get(page);
+        const projectName = pageStore.url.pathname.startsWith('/demo') ? "demo" : (pageStore.params.project || store.project?.title);
+        if (projectName === "demo") {
+            return resolvePath(`/demo/${encodeURIComponent(pageName)}`);
+        } else if (projectName) {
+            return resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
+        } else {
+            return resolvePath(`/${encodeURIComponent(pageName)}`);
+        }
     }
 
     onMount(() => {
@@ -231,15 +262,7 @@ const logger = getLogger("GraphView");
                         : "";
                 if (!pageName) return;
 
-                const pageStore = get(page);
-                const projectName = pageStore.url.pathname.startsWith('/demo') ? "demo" : (pageStore.params.project || store.project?.title);
-                if (projectName === "demo") {
-                    goto(resolvePath(`/demo/${encodeURIComponent(pageName)}`));
-                } else if (projectName) {
-                    goto(resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`));
-                } else {
-                    goto(resolvePath(`/${encodeURIComponent(pageName)}`));
-                }
+                goto(getPageUrl(pageName));
             }
         });
 
@@ -292,3 +315,28 @@ const logger = getLogger("GraphView");
     bind:this={graphDiv}
     style="width: 100%; height: 400px"
 ></div>
+
+<div class="sr-only">
+    <h2>Page graph: {graphNodes.length} pages, {graphLinks.length} links</h2>
+    <ul>
+        {#each graphNodes as node (node.id)}
+            <li>
+                <a href={getPageUrl(node.name)}>{node.name}</a>
+                {#if graphLinks.some(link => link.source === node.id)}
+                    <ul>
+                        {#each graphLinks.filter(link => link.source === node.id) as link (link.target)}
+                            {@const targetNode = graphNodes.find(n => n.id === link.target)}
+                            {#if targetNode}
+                                <li>
+                                    <a href={getPageUrl(targetNode.name)}>
+                                        {targetNode.name}
+                                    </a>
+                                </li>
+                            {/if}
+                        {/each}
+                    </ul>
+                {/if}
+            </li>
+        {/each}
+    </ul>
+</div>
