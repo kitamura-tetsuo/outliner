@@ -507,7 +507,8 @@ export const demoPages: DemoPageTemplate[] = [
         title: "Tasks and Habits",
         items: [
             {
-                text: "Inline checkboxes can also be used for lightweight, nested task tracking directly in the outline:",
+                text:
+                    "Inline checkboxes can also be used for lightweight, nested task tracking directly in the outline:",
                 children: [
                     { text: "[ ] This is a pending task" },
                     { text: "[x] This is a completed task" },
