@@ -1,19 +1,22 @@
-import { get } from "svelte/store";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
     addItem,
     applyAutoReset,
-    checklists,
+    checklistService,
     createChecklist,
     resetChecklist,
     toggleItem,
-} from "../services/checklistService";
+} from "../services/checklistService.svelte";
 
 describe("checklistService", () => {
+    beforeEach(() => {
+        checklistService.reset();
+    });
+
     it("creates checklist and adds items", () => {
         const id = createChecklist("test", "packing");
         addItem(id, "milk");
-        const data = get(checklists);
+        const data = checklistService.lists;
         const list = data.find(l => l.id === id)!;
         expect(list.items[0].label).toBe("milk");
         expect(list.items[0].state).toBe("active");
@@ -23,19 +26,19 @@ describe("checklistService", () => {
         const id = createChecklist("test2", "shopping");
         const itemId = addItem(id, "eggs");
         toggleItem(id, itemId);
-        let list = get(checklists).find(l => l.id === id)!;
+        let list = checklistService.lists.find(l => l.id === id)!;
         expect(list.items[0].state).toBe("archived");
         resetChecklist(id);
-        list = get(checklists).find(l => l.id === id)!;
+        list = checklistService.lists.find(l => l.id === id)!;
         expect(list.items[0].state).toBe("active");
     });
 
     it("auto resets based on rrule", () => {
         const id = createChecklist("habit", "habit", "FREQ=DAILY");
         addItem(id, "water");
-        toggleItem(id, get(checklists).find(l => l.id === id)!.items[0].id);
+        toggleItem(id, checklistService.lists.find(l => l.id === id)!.items[0].id);
         applyAutoReset(id, Date.now() + 24 * 60 * 60 * 1000);
-        const list = get(checklists).find(l => l.id === id)!;
+        const list = checklistService.lists.find(l => l.id === id)!;
         expect(list.items[0].state).toBe("active");
     });
 
@@ -45,10 +48,10 @@ describe("checklistService", () => {
         // Seed the cache so the initial run caches the parsed rule.
         applyAutoReset(id, Date.now());
 
-        const before = get(checklists);
+        const before = checklistService.lists;
         applyAutoReset(id, Date.now()); // Second call should be a no-op
-        const after = get(checklists);
+        const after = checklistService.lists;
 
-        expect(before).toBe(after);
+        expect(before).toStrictEqual(after);
     });
 });

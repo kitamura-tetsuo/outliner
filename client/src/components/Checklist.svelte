@@ -1,75 +1,83 @@
 <script lang="ts">
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import {
     addItem,
     applyAutoReset,
-    type Checklist,
-    checklists,
+    checklistService,
     createChecklist,
     getNextResetDelay,
     resetChecklist,
     toggleItem,
-} from "../services/checklistService";
+} from "../services/checklistService.svelte";
 
 interface Props {
+    id?: string;
     title?: string;
     mode?: "shopping" | "packing" | "habit" | "custom";
     rrule?: string;
 }
 
-let { title = "My Checklist", mode = "custom", rrule }: Props = $props();
-let list: Checklist | undefined = $state(undefined);
-let newItem = $state("");
+let { id: initialId, title = "My Checklist", mode = "custom", rrule }: Props = $props();
 
 // Generate a unique ID for this instance of the Checklist component
 // This prevents duplicate DOM ID collisions when multiple checklists are rendered.
 let componentId = $state("");
+let listId = $state("");
+let list = $derived(checklistService.lists.find(l => l.id === listId));
+let newItem = $state("");
 
 onMount(() => {
     componentId = Math.random().toString(36).substring(2, 9);
-    const id = createChecklist(title, mode, rrule);
+    listId = initialId || Math.random().toString(36).substring(2, 9);
+    createChecklist(title, mode, rrule, listId);
 
-    let timerId: ReturnType<typeof setTimeout>;
-    let lastSeenReset: number | undefined;
-    let lastSeenRRule: string | undefined;
-
-    function setupTimer() {
-        clearTimeout(timerId);
-        const delay = getNextResetDelay(id);
-        if (delay === null) return;
-
-        const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
-        timerId = setTimeout(() => {
-            applyAutoReset(id);
-            setupTimer();
-        }, safeDelay);
-    }
-
-    const unsubscribe = checklists.subscribe(arr => {
-        list = arr.find(l => l.id === id);
-        if (list && (list.lastReset !== lastSeenReset || list.rrule !== lastSeenRRule)) {
-            lastSeenReset = list.lastReset;
-            lastSeenRRule = list.rrule;
-            setupTimer();
-        }
-    });
-
-    applyAutoReset(id);
-
-    function handleVisibilityOrFocus() {
-        applyAutoReset(id);
-        setupTimer();
-    }
+    // Check initial state
+    applyAutoReset(listId);
 
     window.addEventListener("visibilitychange", handleVisibilityOrFocus);
     window.addEventListener("focus", handleVisibilityOrFocus);
+});
 
-    return () => {
-        unsubscribe();
-        clearTimeout(timerId);
+onDestroy(() => {
+    if (typeof window !== "undefined") {
         window.removeEventListener("visibilitychange", handleVisibilityOrFocus);
         window.removeEventListener("focus", handleVisibilityOrFocus);
-    };
+    }
+    clearTimeout(timerId);
+});
+
+let timerId: ReturnType<typeof setTimeout>;
+
+function setupTimer() {
+    clearTimeout(timerId);
+    if (!listId) return;
+
+    const delay = getNextResetDelay(listId);
+    if (delay === null) return;
+
+    const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
+    timerId = setTimeout(() => {
+        applyAutoReset(listId);
+        setupTimer();
+    }, safeDelay);
+}
+
+function handleVisibilityOrFocus() {
+    if (listId) {
+        applyAutoReset(listId);
+        setupTimer();
+    }
+}
+
+let lastSeenReset: number | undefined = $state();
+let lastSeenRRule: string | undefined = $state();
+
+$effect(() => {
+    if (list && (list.lastReset !== lastSeenReset || list.rrule !== lastSeenRRule)) {
+        lastSeenReset = list.lastReset;
+        lastSeenRRule = list.rrule;
+        setupTimer();
+    }
 });
 
 function add(e?: Event) {

@@ -16,6 +16,7 @@ test("demo reset read-only feedback", async ({ page }, testInfo) => {
         const project = store?.project;
         if (project && project.ydoc) {
             project.ydoc.getMap("metadata").set("isResetting", true);
+            project.ydoc.getMap("metadata").set("resetStartedAt", Date.now());
         }
     });
 
