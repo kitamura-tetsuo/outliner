@@ -23,9 +23,11 @@ interface Props {
     result: TableQueryResult;
     /** Component type per column from the UI Definition mirror. */
     componentTypes: Record<string, string | undefined>;
+    /** Whether the table is still loading initial data from the network/storage. */
+    loading?: boolean;
 }
 
-let { handles, schema, query, result, componentTypes }: Props = $props();
+let { handles, schema, query, result, componentTypes, loading = false }: Props = $props();
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
@@ -59,7 +61,9 @@ function deleteRow(recordId: string) {
 </script>
 
 <div class="yjs-table-grid" data-testid="yjs-table-grid">
-    {#if result.columns.length > 0}
+    {#if loading}
+        <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
+    {:else if result.columns.length > 0}
         <table>
             <thead>
                 <tr>
@@ -112,8 +116,10 @@ function deleteRow(recordId: string) {
                 {/each}
             </tbody>
         </table>
-    {:else}
+    {:else if !schema}
         <p class="empty-state">No query result. Apply a schema and set a query to see rows.</p>
+    {:else}
+        <p class="empty-state">The query returned no rows.</p>
     {/if}
 
     {#if !editability.editable && editability.readOnlyReason && result.columns.length > 0}
@@ -193,7 +199,8 @@ th {
 }
 
 .empty-state,
-.readonly-reason {
+.readonly-reason,
+.loading-state {
     color: #6b7280;
     font-size: 0.875rem;
     margin: 6px 0;
