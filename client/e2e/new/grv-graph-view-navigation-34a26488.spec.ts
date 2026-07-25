@@ -49,7 +49,10 @@ test.describe("GRV-0001: Graph View navigation", () => {
 
         // Verify a11y attributes on the canvas
         await expect(page.locator(".graph-view canvas")).toHaveAttribute("role", "img");
-        await expect(page.locator(".graph-view canvas")).toHaveAttribute("aria-label", /^Page graph: \d+ pages, \d+ links$/);
+        await expect(page.locator(".graph-view canvas")).toHaveAttribute(
+            "aria-label",
+            /^Page graph: \d+ pages, \d+ links$/,
+        );
 
         // Verify fallback content exists for keyboard navigation
         const fallbackList = page.locator(".sr-only > ul > li");
