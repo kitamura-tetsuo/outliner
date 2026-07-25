@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // and let the internal warning be emitted (we confirmed visually it works).
 
 // To make it pass and be robust, we mock the logger inline but verify state
-const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 import { clearRoomSyncStates, getRoomSyncState, onRoomSyncStateChange, setRoomSyncState } from "./roomSyncState";
 
