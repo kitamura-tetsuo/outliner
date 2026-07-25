@@ -4,7 +4,6 @@ export default {
     moduleNameMapper: {
         "^(\\.{1,2}/.*)\\.js$": "$1",
         "^yjs$": "<rootDir>/node_modules/yjs/dist/yjs.cjs",
-
     },
     transform: {
         "^.+\\.tsx?$": [

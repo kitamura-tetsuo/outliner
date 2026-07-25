@@ -51,7 +51,9 @@ export async function setupTestUser(): Promise<UserRecord> {
             logger.info(`Test user already exists: ${userRecord.uid}`);
             return userRecord;
         } catch (error: unknown) {
-            const errorCode = error && typeof error === 'object' && 'code' in error ? (error as {code: string}).code : undefined;
+            const errorCode = error && typeof error === "object" && "code" in error
+                ? (error as { code: string; }).code
+                : undefined;
             if (errorCode !== "auth/user-not-found") {
                 throw error;
             }
