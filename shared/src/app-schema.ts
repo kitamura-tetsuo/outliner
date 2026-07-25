@@ -230,15 +230,14 @@ export class Item {
 
         try {
             if (t && typeof (t as { toString?: () => string; }).toString === "function") {
-                // Remove trailing whitespace (like the newline issue during server seeding)
-                return (t as { toString: () => string; }).toString().trimEnd();
+                return (t as { toString: () => string; }).toString();
             }
         } catch (e) {
             logger.warn({ err: e }, "[app-schema] get text() caught error");
             // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
             return "";
         }
-        return String(t).trimEnd();
+        return String(t);
     }
 
     set text(v: string) {

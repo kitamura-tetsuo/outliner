@@ -13,4 +13,13 @@ describe("Project pages", () => {
         // text is a Y.Text, so we check toString()
         expect(items.at(0)?.text.toString()).toBe("page1");
     });
+
+    it("preserves trailing whitespace in text getter", () => {
+        const project = Project.createInstance("test");
+        const page = project.addPage("page1", "u1");
+
+        page.updateText("foo   ");
+        expect(page.text).toBe("foo   ");
+        expect(page.value.get("text")?.toString()).toBe("foo   ");
+    });
 });
