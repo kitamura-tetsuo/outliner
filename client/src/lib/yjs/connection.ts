@@ -76,7 +76,9 @@ function getWsBase(): string {
     } catch {}
     logger.debug(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
-            (isConnDebugEnabled() && typeof window !== "undefined") ? window.localStorage?.getItem("VITE_YJS_PORT") : "N/A"
+            (isConnDebugEnabled() && typeof window !== "undefined")
+                ? window.localStorage?.getItem("VITE_YJS_PORT")
+                : "N/A"
         }, final=${port}`,
     );
     const url = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
