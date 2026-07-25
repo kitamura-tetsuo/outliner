@@ -77,7 +77,7 @@ class ChecklistService {
                             return {
                                 id: yitem.get("id") as string,
                                 label: yitem.get("label") as string,
-                                state: yitem.get("state") as ChecklistItemState
+                                state: yitem.get("state") as ChecklistItemState,
                             };
                         }
                         return null;
@@ -90,7 +90,7 @@ class ChecklistService {
                     mode: ylist.get("mode") as ChecklistMode,
                     rrule: ylist.get("rrule") as string | undefined,
                     lastReset: ylist.get("lastReset") as number | undefined,
-                    items
+                    items,
                 });
             }
         }
@@ -101,7 +101,7 @@ class ChecklistService {
         title: string,
         mode: ChecklistMode = "custom",
         rrule?: string,
-        id: string = uuidv4()
+        id: string = uuidv4(),
     ): string {
         this.ensureBound();
 
