@@ -333,35 +333,22 @@ test.describe("SRP-0001: Project-Wide Search & Replace", () => {
 
         console.log(`Search results after replacement:`, newSearchResults);
 
-        // Confirm replacement success (confirmed by search results becoming 0)
-        expect(newSearchResults.count).toBe(0);
-
-        // Verify actual page content
+        // Page titles are excluded from replace unless "Include page titles" is
+        // checked, so titles containing "page" survive and keep matching.
         const pageTexts = await TestHelpers.getPageTexts(page);
-        const pageContents = pageTexts.map(p => ({
-            id: p.id,
-            text: p.text,
-            hasPage: p.text.includes("page"),
-            hasUpdated: p.text.includes("UPDATED"),
-        }));
+        const titlesWithQuery = pageTexts.filter(p => p.text.includes("page"));
+        console.log("Page titles after replacement:", pageTexts);
+        expect(titlesWithQuery.length).toBeGreaterThanOrEqual(2);
+        pageTexts.forEach(p => expect(p.text.includes("UPDATED")).toBe(false));
 
-        console.log("Page contents after replacement:", pageContents);
+        // Every remaining hit is a protected page title; item text was replaced.
+        expect(newSearchResults.count).toBe(titlesWithQuery.length);
 
-        // Confirm replacement is correctly executed on pages containing "page"
-        pageContents.forEach((page: any) => {
-            if (page.hasUpdated) {
-                // Confirm "page" does not exist in replaced pages
-                expect(page.hasPage).toBe(false);
-                expect(page.hasUpdated).toBe(true);
-            } else if (!page.hasPage && !page.hasUpdated) {
-                // Confirm pages not containing "page" are not replaced
-                expect(page.hasPage).toBe(false);
-                expect(page.hasUpdated).toBe(false);
-            }
-        });
-
-        // Confirm replaced pages exist
-        const updatedPages = pageContents.filter((p: any) => p.hasUpdated);
-        expect(updatedPages.length).toBeGreaterThanOrEqual(2);
+        // Confirm the replacement actually landed in item text.
+        await page.getByTestId("search-input").fill("UPDATED");
+        await page.getByTestId("search-button").click();
+        await expect.poll(async () => {
+            return await page.locator('[data-testid="search-result-item"], .search-results .result-item').count();
+        }, { timeout: 10000 }).toBeGreaterThanOrEqual(1);
     });
 });

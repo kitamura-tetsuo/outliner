@@ -3,6 +3,18 @@ export interface SearchOptions {
     caseSensitive?: boolean;
 }
 
+/**
+ * Options for the replace helpers.
+ *
+ * `skipRoot` protects the root item from being rewritten. When a page tree is
+ * passed as the root, that item holds the page title: renaming it changes the
+ * page URL and dangles every incoming `[Page Title]` link, so callers must opt
+ * in explicitly.
+ */
+export interface ReplaceOptions extends SearchOptions {
+    skipRoot?: boolean;
+}
+
 export interface MatchPosition {
     index: number;
     length: number;
@@ -86,43 +98,70 @@ export function searchItems<T extends { text: unknown; items?: unknown; id: stri
     return results;
 }
 
-export function replaceFirst<T extends { text: unknown; updateText?: (t: string) => void; items?: unknown; }>(
+function applyText<T extends { text: unknown; updateText?: (t: string) => void; }>(item: T, newText: string): void {
+    if (item.updateText) {
+        item.updateText(newText);
+    } else {
+        (item as { text: unknown; }).text = newText;
+    }
+}
+
+/**
+ * Locate the first item whose text a `replaceFirst` call would rewrite, without
+ * modifying anything. Used to warn about page renames before they happen.
+ */
+export function findFirstReplaceTarget<T extends { text: unknown; items?: unknown; }>(
     root: T,
     query: string,
     replacement: string,
-    options: SearchOptions = {},
-): boolean {
+    options: ReplaceOptions = {},
+): { item: T; newText: string; isRoot: boolean; } | undefined {
+    if (!query) return undefined;
     const regex = buildRegExp(query, options);
     const stack: T[] = [root];
     while (stack.length) {
         const item = stack.shift() as T;
-        const text = toStringSafe(item.text);
-        const newText = text.replace(regex, replacement);
-        if (newText !== text) {
-            if (item.updateText) {
-                item.updateText(newText);
-            } else {
-                (item as { text: unknown; }).text = newText;
+        const isRoot = item === root;
+        if (!(isRoot && options.skipRoot)) {
+            const text = toStringSafe(item.text);
+            const newText = text.replace(regex, replacement);
+            if (newText !== text) {
+                return { item, newText, isRoot };
             }
-            return true;
         }
         const children = item.items;
         pushChildren<T>(stack, children);
     }
-    return false;
+    return undefined;
+}
+
+export function replaceFirst<T extends { text: unknown; updateText?: (t: string) => void; items?: unknown; }>(
+    root: T,
+    query: string,
+    replacement: string,
+    options: ReplaceOptions = {},
+): boolean {
+    const found = findFirstReplaceTarget(root, query, replacement, options);
+    if (!found) return false;
+    applyText(found.item, found.newText);
+    return true;
 }
 
 export function replaceAll<T extends { text: unknown; updateText?: (t: string) => void; items?: unknown; }>(
     root: T,
     query: string,
     replacement: string,
-    options: SearchOptions = {},
+    options: ReplaceOptions = {},
 ): number {
     const regex = buildRegExp(query, options);
     let count = 0;
     const stack: T[] = [root];
     while (stack.length) {
         const item = stack.shift() as T;
+        if (item === root && options.skipRoot) {
+            pushChildren<T>(stack, item.items);
+            continue;
+        }
         const text = toStringSafe(item.text);
         let replaced = 0;
         const newText = text.replace(regex, () => {
@@ -130,11 +169,7 @@ export function replaceAll<T extends { text: unknown; updateText?: (t: string) =
             return replacement;
         });
         if (replaced > 0) {
-            if (item.updateText) {
-                item.updateText(newText);
-            } else {
-                (item as { text: unknown; }).text = newText;
-            }
+            applyText(item, newText);
             count += replaced;
         }
         const children = item.items;

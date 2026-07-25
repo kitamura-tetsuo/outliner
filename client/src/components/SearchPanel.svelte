@@ -8,8 +8,11 @@ const logger = getLogger("SearchPanel");
     import { get } from "svelte/store";
     import { store } from "../stores/store.svelte";
     import {
-                replaceAll,
+        buildRegExp,
+        findFirstReplaceTarget,
+        replaceAll,
         replaceFirst,
+        type ReplaceOptions,
         searchItems,
         type SearchOptions,
     } from "../lib/search";
@@ -61,6 +64,12 @@ const logger = getLogger("SearchPanel");
     let matchCount = $state(0);
     let inputEl: HTMLInputElement | undefined = $state();
     let showReplaceAllConfirm = $state(false);
+    // Page titles are the depth-0 item of a page tree. Rewriting one renames the
+    // page, changing its URL and dangling every incoming [Page Title] link, so it
+    // is opt-in and always confirmed.
+    let includePageTitles = $state(false);
+    let showRenameConfirm = $state(false);
+    let pendingRename: { pages: Item[]; run: () => void } | undefined = $state(undefined);
 
     $effect(() => {
         if (isVisible && inputEl) {
@@ -141,27 +150,81 @@ const logger = getLogger("SearchPanel");
 
     }
 
-    function handleReplace() {
-        const options: SearchOptions = {
+    function textOf(item: { text?: unknown } | null | undefined): string {
+        const t = (item as { text?: { toString?: () => string } } | null | undefined)?.text;
+        return t?.toString?.() ?? String(t ?? "");
+    }
+
+    function replaceOptions(): ReplaceOptions {
+        return {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
+            skipRoot: !includePageTitles,
         };
+    }
+
+    /** Pages whose title the pending replacement would rewrite (i.e. rename). */
+    function pagesRenamedByReplaceAll(pages: Item[], options: ReplaceOptions): Item[] {
+        if (!includePageTitles || !searchQuery) return [];
+        const regex = buildRegExp(searchQuery, options);
+        return pages.filter((p) => {
+            const text = textOf(p);
+            regex.lastIndex = 0;
+            return text.replace(regex, replaceText) !== text;
+        });
+    }
+
+    function renameMessage(pages: Item[]): string {
+        const titles = pages.map((p) => `"${textOf(p)}"`).join(", ");
+        const plural = pages.length === 1 ? "page" : "pages";
+        return `This will rename ${pages.length} ${plural} (${titles}). `
+            + `Incoming [links] to ${pages.length === 1 ? "it" : "them"} will no longer resolve, `
+            + `and this action cannot be undone.`;
+    }
+
+    function confirmRename(pages: Item[], run: () => void) {
+        pendingRename = { pages, run };
+        showRenameConfirm = true;
+    }
+
+    /** Follow a rename of the open page instead of leaving the route 404-ing. */
+    function followRenameIfNeeded(previousTitle: string | undefined) {
+        if (!previousTitle || !pageItem) return;
+        const newTitle = textOf(pageItem);
+        if (!newTitle || newTitle === previousTitle) return;
+        const currentPage = get(pageStore);
+        if (currentPage.params?.page !== previousTitle) return;
+        const pageName = encodeURIComponent(newTitle);
+        if (currentPage.url.pathname.startsWith("/demo")) {
+            goto(resolvePath(`/demo/${pageName}`));
+        } else if (project) {
+            goto(resolvePath(`/${encodeURIComponent(project.title)}/${pageName}`));
+        }
+    }
+
+    function handleReplace() {
+        const options = replaceOptions();
         const pages = getPagesToSearch();
-        if (pages.length) {
-            for (const p of pages) {
-                if (replaceFirst(p, searchQuery, replaceText, options)) {
-                    handleSearch();
-                    return;
-                }
+        const roots = pages.length ? pages : pageItem ? [pageItem] : [];
+        if (!roots.length || !searchQuery) return;
+
+        // Find the item the replacement would hit first, so a page rename can be
+        // confirmed before anything is modified.
+        for (const p of roots) {
+            const target = findFirstReplaceTarget(p, searchQuery, replaceText, options);
+            if (!target) continue;
+            const run = () => {
+                const previousTitle = textOf(pageItem);
+                replaceFirst(p, searchQuery, replaceText, options);
+                handleSearch();
+                followRenameIfNeeded(previousTitle);
+            };
+            if (target.isRoot) {
+                confirmRename([p], run);
+            } else {
+                run();
             }
-        } else if (pageItem) {
-            const replaced = replaceFirst(
-                pageItem,
-                searchQuery,
-                replaceText,
-                options,
-            );
-            if (replaced) handleSearch();
+            return;
         }
     }
 
@@ -170,27 +233,27 @@ const logger = getLogger("SearchPanel");
     }
 
     function confirmReplaceAll() {
-        const options: SearchOptions = {
-            regex: isRegexMode,
-            caseSensitive: isCaseSensitive,
-        };
-        const pages = getPagesToSearch();
-        if (pages.length) {
-            for (const p of pages) {
-                replaceAll(
-                    p,
-                    searchQuery,
-                    replaceText,
-                    options,
-                );
-            }
-
-            handleSearch();
-        } else if (pageItem) {
-            replaceAll(pageItem, searchQuery, replaceText, options);
-            handleSearch();
-        }
         showReplaceAllConfirm = false;
+        const options = replaceOptions();
+        const pages = getPagesToSearch();
+        const roots = pages.length ? pages : pageItem ? [pageItem] : [];
+        if (!roots.length) return;
+
+        const run = () => {
+            const previousTitle = textOf(pageItem);
+            for (const p of roots) {
+                replaceAll(p, searchQuery, replaceText, options);
+            }
+            handleSearch();
+            followRenameIfNeeded(previousTitle);
+        };
+
+        const renamed = pagesRenamedByReplaceAll(roots, options);
+        if (renamed.length) {
+            confirmRename(renamed, run);
+        } else {
+            run();
+        }
     }
 
     function jumpTo(match: PageItemMatch<Item>) {
@@ -302,6 +365,15 @@ const logger = getLogger("SearchPanel");
                     <input id="case-sensitive-checkbox" type="checkbox" bind:checked={isCaseSensitive} />
                     Case Sensitive
                 </label>
+                <label class="option-checkbox" for="include-page-titles-checkbox">
+                    <input
+                        id="include-page-titles-checkbox"
+                        type="checkbox"
+                        data-testid="include-page-titles-checkbox"
+                        bind:checked={includePageTitles}
+                    />
+                    Include page titles
+                </label>
             </div>
 
             <div class="search-results" data-testid="search-results">
@@ -341,6 +413,26 @@ const logger = getLogger("SearchPanel");
             </div>
         </section>
     </div>
+{/if}
+
+{#if showRenameConfirm && pendingRename}
+    <ConfirmDialog
+        bind:isOpen={showRenameConfirm}
+        title="Rename pages?"
+        message={renameMessage(pendingRename.pages)}
+        confirmText="Rename and Replace"
+        isDestructive={true}
+        onConfirm={() => {
+            const pending = pendingRename;
+            showRenameConfirm = false;
+            pendingRename = undefined;
+            pending?.run();
+        }}
+        onCancel={() => {
+            showRenameConfirm = false;
+            pendingRename = undefined;
+        }}
+    />
 {/if}
 
 {#if showReplaceAllConfirm}

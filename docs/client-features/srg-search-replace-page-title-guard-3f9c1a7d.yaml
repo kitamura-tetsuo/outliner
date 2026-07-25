@@ -1,0 +1,16 @@
+id: SRG-3f9c1a7d
+title: Search & Replace Page Title Guard
+title-ja: 検索・置換のページタイトル保護
+description: >-
+  Search & Replace never rewrites page titles unless "Include page titles" is
+  checked. When titles are in scope, the rename is confirmed with the affected
+  page names first, and the open route follows the rename instead of 404-ing.
+category: search
+status: implemented
+components:
+- client/src/components/SearchPanel.svelte
+- client/src/lib/search/index.ts
+- client/src/lib/search/projectSearch.ts
+tests:
+- client/e2e/core/srg-search-replace-page-title-guard-3f9c1a7d.spec.ts
+- client/src/tests/search.test.ts

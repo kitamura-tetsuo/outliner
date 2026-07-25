@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 18;
+export const DEMO_TEMPLATE_VERSION = 19;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -401,6 +401,8 @@ export const demoPages: DemoPageTemplate[] = [
             "Use the Search button at the top of a page to search across the whole project.",
             "Recent searches are remembered for quick access.",
             "The inline command palette opens when you type / inside an item.",
+            'Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles".',
+            "With that option on, renaming a page is confirmed first, and the open page follows its new name.",
             "Breadcrumbs at the top of each page let you jump back to the project or home.",
         ],
     },
