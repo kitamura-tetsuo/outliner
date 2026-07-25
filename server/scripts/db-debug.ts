@@ -90,8 +90,9 @@ async function main() {
     // Cleanup
     if (persistence.db) {
         persistence.db.close((err) => {
-            if (err) console.error(chalk.red("Error closing database:", err instanceof Error ? err.message : String(err)));
-            else console.log(chalk.gray("Database closed."));
+            if (err) {
+                console.error(chalk.red("Error closing database:", err instanceof Error ? err.message : String(err)));
+            } else console.log(chalk.gray("Database closed."));
             process.exit(0);
         });
     } else {
@@ -181,7 +182,9 @@ async function inspectDocument(persistence: Persistence, docName?: string) {
             const project = Project.fromDoc(doc);
             await exploreNode(project, result);
         } catch (e: unknown) {
-            console.log(chalk.red(`  (Could not parse document as Project: ${e instanceof Error ? e.message : String(e)})`));
+            console.log(
+                chalk.red(`  (Could not parse document as Project: ${e instanceof Error ? e.message : String(e)})`),
+            );
             console.log(chalk.cyan("Metadata:"));
             console.log(JSON.stringify(doc.getMap("metadata").toJSON(), null, 2));
             console.log(chalk.cyan("Document Content:"));
@@ -316,7 +319,12 @@ async function deleteDocument(persistence: Persistence, docName?: string) {
             await new Promise<void>((resolve, reject) => {
                 persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [doc], (err) => {
                     if (err) {
-                        console.error(chalk.red(`Error deleting document "${doc}":`, err instanceof Error ? err.message : String(err)));
+                        console.error(
+                            chalk.red(
+                                `Error deleting document "${doc}":`,
+                                err instanceof Error ? err.message : String(err),
+                            ),
+                        );
                         resolve();
                     } else {
                         console.log(chalk.green(`Document "${doc}" deleted successfully.`));
@@ -428,7 +436,11 @@ async function deleteAllTestProjects(persistence: Persistence) {
             await new Promise<void>((resolve, reject) => {
                 persistence.db!.run('DELETE FROM "documents" WHERE name = ?', [docName], (err) => {
                     if (err) {
-                        console.error(chalk.red(`Failed to delete ${docName}: ${err instanceof Error ? err.message : String(err)}`));
+                        console.error(
+                            chalk.red(
+                                `Failed to delete ${docName}: ${err instanceof Error ? err.message : String(err)}`,
+                            ),
+                        );
                         reject(err);
                     } else {
                         deletedCount++;
@@ -560,7 +572,9 @@ async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
                 process.stdout.write(".");
             }
         } catch (e: unknown) {
-            console.error(chalk.red(`\nFailed to delete project ${projectId}: ${e instanceof Error ? e.message : String(e)}`));
+            console.error(
+                chalk.red(`\nFailed to delete project ${projectId}: ${e instanceof Error ? e.message : String(e)}`),
+            );
         }
     }
 

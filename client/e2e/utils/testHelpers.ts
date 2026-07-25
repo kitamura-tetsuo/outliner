@@ -761,7 +761,11 @@ export class TestHelpers {
                         };
                     } catch (error) {
                         console.error("Error getting cursor data:", error);
-                        return { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Unknown error" };
+                        return {
+                            error: error instanceof Error
+                                ? error instanceof Error ? error.message : String(error)
+                                : "Unknown error",
+                        };
                     }
                 };
 
@@ -788,7 +792,11 @@ export class TestHelpers {
                         }
                         return result;
                     } catch (error) {
-                        return { error: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Unknown error" };
+                        return {
+                            error: error instanceof Error
+                                ? error instanceof Error ? error.message : String(error)
+                                : "Unknown error",
+                        };
                     }
                 };
             });
@@ -2315,7 +2323,13 @@ export class TestHelpers {
                         return await this.signUpTestUser(host, apiKey);
                     } catch (e: unknown) {
                         // Handle race condition: if another worker created the user in the meantime
-                        if (e instanceof Error ? e.message : String(e) && e instanceof Error ? e.message : String(e).includes("EMAIL_EXISTS")) {
+                        if (
+                            e instanceof Error
+                                ? e.message
+                                : String(e) && e instanceof Error
+                                ? e.message
+                                : String(e).includes("EMAIL_EXISTS")
+                        ) {
                             console.log("[TestHelpers] Race condition detected (EMAIL_EXISTS). Retrying sign-in...");
                             // Retry sign-in
                             const retryResponse = await fetch(signInUrl, {

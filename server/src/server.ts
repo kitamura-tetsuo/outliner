@@ -277,7 +277,9 @@ export async function startServer(
                             throw Object.assign(
                                 new Error(
                                     `Authentication failed: Firebase not ready (${
-                                        err instanceof Error ? err instanceof Error ? err.message : String(err) : String(err)
+                                        err instanceof Error
+                                            ? err instanceof Error ? err.message : String(err)
+                                            : String(err)
                                     })`,
                                 ),
                                 { code: 4001, reason: "FIREBASE_NOT_READY" },
@@ -392,7 +394,9 @@ export async function startServer(
                 })
             }`);
         } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error);
+            const errorMessage = error instanceof Error
+                ? error instanceof Error ? error.message : String(error)
+                : String(error);
             logger.error(
                 { error: new Error(`Log rotation error: ${errorMessage}`) },
                 `Log rotation error: ${errorMessage}`,

@@ -92,14 +92,24 @@ export class SeedClient {
                 return; // Success
             } catch (error: unknown) {
                 lastError = error;
-                console.warn(`[SeedClient] Attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`);
+                console.warn(
+                    `[SeedClient] Attempt ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`,
+                );
 
                 // Handle specific error types
                 if (error.name === "AbortError") {
                     console.error("[SeedClient] Seeding timed out after 30 seconds");
-                } else if (error instanceof Error ? error.message : String(error).includes("Failed to fetch") || error instanceof Error ? error.message : String(error).includes("fetch error")) {
+                } else if (
+                    error instanceof Error
+                        ? error.message
+                        : String(error).includes("Failed to fetch") || error instanceof Error
+                        ? error.message
+                        : String(error).includes("fetch error")
+                ) {
                     console.error(
-                        `[SeedClient] Network error during seeding: ${error instanceof Error ? error.message : String(error)}. Is the Yjs server running on port ${this.apiUrl}?`,
+                        `[SeedClient] Network error during seeding: ${
+                            error instanceof Error ? error.message : String(error)
+                        }. Is the Yjs server running on port ${this.apiUrl}?`,
                     );
                 }
 

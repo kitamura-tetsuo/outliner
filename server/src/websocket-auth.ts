@@ -102,7 +102,8 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
     } catch (e: unknown) {
         // Debug: Decode token to see why it failed
         const errorCode = e && typeof e === "object" && "code" in e ? (e as any).code : (e as any)?.errorInfo?.code;
-        const isExpired = errorCode === "auth/id-token-expired" || (e instanceof Error && e.message?.includes("expired"));
+        const isExpired = errorCode === "auth/id-token-expired"
+            || (e instanceof Error && e.message?.includes("expired"));
 
         if (isExpired) {
             logger.warn(`[Auth] Token expired (normal during reconnect)`);

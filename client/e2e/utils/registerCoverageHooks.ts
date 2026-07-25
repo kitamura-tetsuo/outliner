@@ -45,7 +45,12 @@ function registerBestEffortCoverageHooks(): void {
                 reportAnonymousScripts: true,
             });
         } catch (error: unknown) {
-            if (!error?.message || !String(error instanceof Error ? error.message : String(error)).includes("Coverage is already started")) {
+            if (
+                !error?.message
+                || !String(error instanceof Error ? error.message : String(error)).includes(
+                    "Coverage is already started",
+                )
+            ) {
                 console.warn("[Coverage] Failed to start coverage collection:", error);
             } else {
                 console.log("[Coverage] already started");
