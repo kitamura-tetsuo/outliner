@@ -60,9 +60,10 @@ function ensureLogDirectories() {
             // logger not initialized yet
             process.stdout.write(`Created client log directory: ${clientLogDir}\n`);
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         // logger not initialized yet
-        process.stderr.write(`Failed to create log directories: ${error.message}\n`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        process.stderr.write(`Failed to create log directories: ${errorMessage}\n`);
         process.stderr.write(`Server log directory: ${serverLogDir}\n`);
         process.stderr.write(`Client log directory: ${clientLogDir}\n`);
         // Do not stop the application even if an error occurs
@@ -79,22 +80,25 @@ let telemetryLogStream: fs.WriteStream | null;
 
 try {
     serverLogStream = fs.createWriteStream(serverLogPath, { flags: "a" });
-} catch (error: any) {
-    process.stderr.write(`Failed to create server log stream: ${error.message}\n`);
+} catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Failed to create server log stream: ${errorMessage}\n`);
     serverLogStream = null;
 }
 
 try {
     clientLogStream = fs.createWriteStream(clientLogPath, { flags: "a" });
-} catch (error: any) {
-    process.stderr.write(`Failed to create client log stream: ${error.message}\n`);
+} catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Failed to create client log stream: ${errorMessage}\n`);
     clientLogStream = null;
 }
 
 try {
     telemetryLogStream = fs.createWriteStream(telemetryLogPath, { flags: "a" });
-} catch (error: any) {
-    process.stderr.write(`Failed to create telemetry log stream: ${error.message}\n`);
+} catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Failed to create telemetry log stream: ${errorMessage}\n`);
     telemetryLogStream = null;
 }
 

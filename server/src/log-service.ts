@@ -27,10 +27,10 @@ async function startServer() {
         await initializeFirebase();
         logger.info("Firebase initialization completed, starting log service...");
         return startLogService();
-    } catch (error: any) {
+    } catch (error: unknown) {
         logger.error(
-            { error: new Error(`Failed to initialize Firebase: ${error.message}`) },
-            `Failed to initialize Firebase: ${error.message}`,
+            { error: new Error(`Failed to initialize Firebase: ${error instanceof Error ? error.message : String(error)}`) },
+            `Failed to initialize Firebase: ${error instanceof Error ? error.message : String(error)}`,
         );
         throw error;
     }
@@ -65,10 +65,10 @@ function startLogService() {
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error(
-                { error: new Error(`Error during periodic log rotation: ${error.message}`) },
-                `Error during periodic log rotation: ${error.message}`,
+                { error: new Error(`Error during periodic log rotation: ${error instanceof Error ? error.message : String(error)}`) },
+                `Error during periodic log rotation: ${error instanceof Error ? error.message : String(error)}`,
             );
         }
     };
@@ -108,10 +108,10 @@ function startLogService() {
 
             logger.info(`Using CORS origins: ${safeOrigins.join(", ")}`);
             return safeOrigins;
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error(
-                { error: new Error(`Error parsing CORS_ORIGIN: ${error.message}, using defaults`) },
-                `Error parsing CORS_ORIGIN: ${error.message}, using defaults`,
+                { error: new Error(`Error parsing CORS_ORIGIN: ${error instanceof Error ? error.message : String(error)}, using defaults`) },
+                `Error parsing CORS_ORIGIN: ${error instanceof Error ? error.message : String(error)}, using defaults`,
             );
             return defaultOrigins;
         }
@@ -174,16 +174,16 @@ function startLogService() {
                             },
                         });
                     }
-                } catch (error: any) {
+                } catch (error: unknown) {
                     logger.error(
-                        { error: new Error(`Development login error: ${error.message}`) },
-                        `Development login error: ${error.message}`,
+                        { error: new Error(`Development login error: ${error instanceof Error ? error.message : String(error)}`) },
+                        `Development login error: ${error instanceof Error ? error.message : String(error)}`,
                     );
                 }
             }
             return res.status(401).json({ error: "Invalid credentials" });
-        } catch (error: any) {
-            logger.error({ error: new Error(`Login error: ${error.message}`) }, `Login error: ${error.message}`);
+        } catch (error: unknown) {
+            logger.error({ error: new Error(`Login error: ${error instanceof Error ? error.message : String(error)}`) }, `Login error: ${error instanceof Error ? error.message : String(error)}`);
             return res.status(500).json({ error: "Authentication failed" });
         }
     });
@@ -230,10 +230,10 @@ function startLogService() {
             }
 
             return res.status(200).json({ success: true });
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error(
-                { error: new Error(`Log processing error: ${error.message}`) },
-                `Log processing error: ${error.message}`,
+                { error: new Error(`Log processing error: ${error instanceof Error ? error.message : String(error)}`) },
+                `Log processing error: ${error instanceof Error ? error.message : String(error)}`,
             );
             return res.status(500).json({ error: "Failed to process log" });
         }
@@ -293,10 +293,10 @@ function startLogService() {
                         });
                     });
                 });
-            } catch (error: any) {
+            } catch (error: unknown) {
                 logger.error(
-                    { error: new Error(`Telemetry log retrieval error: ${error.message}`) },
-                    `Telemetry log retrieval error: ${error.message}`,
+                    { error: new Error(`Telemetry log retrieval error: ${error instanceof Error ? error.message : String(error)}`) },
+                    `Telemetry log retrieval error: ${error instanceof Error ? error.message : String(error)}`,
                 );
                 return res.status(500).json({ error: "Failed to retrieve Telemetry log" });
             }
@@ -335,14 +335,14 @@ function startLogService() {
                     timestamp: new Date().toISOString(),
                 })
             }`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error(
-                { error: new Error(`Error occurred during log rotation: ${error.message}`) },
-                `Error occurred during log rotation: ${error.message}`,
+                { error: new Error(`Error occurred during log rotation: ${error instanceof Error ? error.message : String(error)}`) },
+                `Error occurred during log rotation: ${error instanceof Error ? error.message : String(error)}`,
             );
             res.status(500).json({
                 success: false,
-                error: error.message,
+                error: error instanceof Error ? error.message : String(error),
             });
         }
     });
@@ -369,8 +369,8 @@ function startLogService() {
                     expiresIn: payload.exp ? new Date(payload.exp * 1000).toISOString() : "N/A",
                     issuedAt: payload.iat ? new Date(payload.iat * 1000).toISOString() : "N/A",
                 });
-            } catch (error: any) {
-                return res.status(500).json({ error: `Failed to retrieve token information: ${error.message}` });
+            } catch (error: unknown) {
+                return res.status(500).json({ error: `Failed to retrieve token information: ${error instanceof Error ? error.message : String(error)}` });
             }
         });
     }
@@ -395,8 +395,9 @@ function startLogService() {
                     message: "User already exists",
                     uid: existingUser.uid,
                 });
-            } catch (error: any) {
-                if (error.code !== "auth/user-not-found") {
+            } catch (error: unknown) {
+                const errorCode = error && typeof error === 'object' && 'code' in error ? (error as {code: string}).code : undefined;
+                if (errorCode !== "auth/user-not-found") {
                     throw error;
                 }
             }
@@ -418,12 +419,12 @@ function startLogService() {
                 message: "User created successfully",
                 uid: userRecord.uid,
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             logger.error(
-                { error: new Error(`Error creating test user: ${error.message}`) },
-                `Error creating test user: ${error.message}`,
+                { error: new Error(`Error creating test user: ${error instanceof Error ? error.message : String(error)}`) },
+                `Error creating test user: ${error instanceof Error ? error.message : String(error)}`,
             );
-            return res.status(500).json({ error: error.message });
+            return res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
         }
     });
 
@@ -438,8 +439,8 @@ function startLogService() {
 
 startServer().catch(error => {
     logger.error(
-        { error: new Error(`Failed to start server: ${error.message}`) },
-        `Failed to start server: ${error.message}`,
+        { error: new Error(`Failed to start server: ${error instanceof Error ? error.message : String(error)}`) },
+        `Failed to start server: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
 });

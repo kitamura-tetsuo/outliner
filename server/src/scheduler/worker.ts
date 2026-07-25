@@ -56,11 +56,12 @@ async function executeJob(data: any) {
         const result = await db.query(ruleSql);
         await db.exec(`COMMIT;`);
         return { success: true, rows: result.rows };
-    } catch (error: any) {
+    } catch (error: unknown) {
         try {
             await db.exec("ROLLBACK;");
         } catch {}
-        return { success: false, error: error.message };
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -69,8 +70,9 @@ parentPort?.on("message", async (msg) => {
         try {
             const result = await executeJob(msg.data);
             parentPort?.postMessage({ id: msg.id, result });
-        } catch (error: any) {
-            parentPort?.postMessage({ id: msg.id, result: { success: false, error: error.message } });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
         }
     }
 });
