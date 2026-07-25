@@ -26,6 +26,12 @@ Offline editing will not be implemented. The Fluid Framework used for collaborat
 
 Outliner does not provide a plugin system or extension API. Loading or executing user-defined plugins is outside the project's scope.
 
+## Tasks and Checklists
+
+### CHK-NON Task Management Features
+
+Outliner relies on the collaborative Checklist widget (`CHK-0001`) and inline checkboxes (`CHK-0002`) for task management needs. There are no plans to implement a separate, dedicated task management feature.
+
 ## Database Tables
 
 ### TBL-NON Migration from the legacy SQL table features
