@@ -1,14 +1,15 @@
 <script lang="ts">
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import {
     addItem,
     applyAutoReset,
     type Checklist,
-    checklists,
+    checklistsState,
     createChecklist,
     resetChecklist,
     toggleItem,
-} from "../services/checklistService";
+} from "../services/checklistService.svelte";
+import { page } from "$app/stores";
 
 interface Props {
     title?: string;
@@ -17,25 +18,41 @@ interface Props {
 }
 
 let { title = "My Checklist", mode = "custom", rrule }: Props = $props();
-let list: Checklist | undefined = $state(undefined);
+let list: Checklist | undefined = $derived(checklistsState.lists.find((l) => l.id === checklistId));
 let newItem = $state("");
 
 // Generate a unique ID for this instance of the Checklist component
 // This prevents duplicate DOM ID collisions when multiple checklists are rendered.
 let componentId = $state("");
+let checklistId = $state("");
+
+let interval: ReturnType<typeof setInterval>;
 
 onMount(() => {
     componentId = Math.random().toString(36).substring(2, 9);
-    const id = createChecklist(title, mode, rrule);
-    const unsubscribe = checklists.subscribe(arr => {
-        list = arr.find(l => l.id === id);
-    });
-    applyAutoReset(id);
-    const interval = setInterval(() => applyAutoReset(id), 1000);
-    return () => {
-        unsubscribe();
-        clearInterval(interval);
-    };
+
+    // Derive ID from route param or fallback to a static hash so it doesn't create new every mount
+    let routeId = "";
+    try {
+      const p = $page;
+      routeId = p?.params?.project || p?.params?.page || "";
+    } catch {
+      // Ignore
+    }
+    if (routeId) {
+        checklistId = `checklist-${routeId}-${title.replace(/\s+/g, '-').toLowerCase()}`;
+    } else {
+        checklistId = `checklist-${title.replace(/\s+/g, '-').toLowerCase()}`;
+    }
+
+    createChecklist(checklistId, title, mode, rrule);
+
+    applyAutoReset(checklistId);
+    interval = setInterval(() => applyAutoReset(checklistId), 1000);
+});
+
+onDestroy(() => {
+    if (interval) clearInterval(interval);
 });
 
 function add(e?: Event) {

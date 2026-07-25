@@ -1,11 +1,16 @@
 import { render, screen } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Checklist from "../../components/Checklist.svelte";
+import { resetServiceForTests } from "../../services/checklistService.svelte";
 
 // Integration test mirroring e2e/new/CHK-0001.spec.ts
 
 describe("CHK-0001 checklist component", () => {
+    beforeEach(() => {
+        resetServiceForTests();
+    });
+
     it("adds and archives item in shopping mode", async () => {
         const user = userEvent.setup();
         render(Checklist, { title: "Shop", mode: "shopping" });
