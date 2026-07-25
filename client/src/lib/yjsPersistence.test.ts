@@ -283,4 +283,23 @@ describe("yjsPersistence", () => {
         persistence2.destroy();
         doc2.destroy();
     });
+
+    it("should reject on timeout if synced is never emitted", async () => {
+        const mockPersistence = {
+            synced: false,
+            once: () => {},
+            off: () => {},
+        };
+        await expect(waitForSync(mockPersistence, 100)).rejects.toThrow("waitForSync timed out");
+    });
+
+    it("should reject if the underlying _db promise rejects", async () => {
+        const mockPersistence = {
+            synced: false,
+            once: () => {},
+            off: () => {},
+            _db: Promise.reject(new Error("db open failed")),
+        };
+        await expect(waitForSync(mockPersistence, 1000)).rejects.toThrow("db open failed");
+    });
 });

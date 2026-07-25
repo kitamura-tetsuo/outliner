@@ -185,11 +185,16 @@ const RETRYABLE_CLOSE_CODES = new Set([4004, 4006, 4008]);
 
 async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<IndexeddbPersistence | undefined> {
     if (typeof indexedDB === "undefined") return undefined;
+    let persistence: IndexeddbPersistence | undefined;
     try {
-        const persistence = createPersistence(room, doc);
+        persistence = createPersistence(room, doc);
         await waitForSync(persistence);
         return persistence;
-    } catch {
+    } catch (e) {
+        logger.warn(`[yjs-connection] Failed to attach IndexedDB persistence for room ${room}:`, e);
+        if (persistence) {
+            persistence.destroy();
+        }
         return undefined;
     }
 }
