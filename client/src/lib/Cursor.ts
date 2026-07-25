@@ -578,6 +578,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         // Clear existing selection for the same user before setting new range
         store.clearSelectionForUser(this.userId);
 
+        const hasSelection = startItemId !== endItemId || startOffset !== endOffset;
+
         // Set selection
         store.setSelection({
             startItemId,
@@ -592,7 +594,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && hasSelection) {
             tick().then(() => {
                 setTimeout(() => {
                     if (typeof document === "undefined") return;

@@ -9,7 +9,7 @@ import { IndexeddbPersistence } from "y-indexeddb";
 interface MockPersistence {
     once: (eventName: "synced", callback: () => void) => void;
     synced: boolean;
-    destroy: ReturnType<typeof vi.fn>;
+    destroy: () => void;
 }
 
 // Mock IndexeddbPersistence from y-indexeddb
