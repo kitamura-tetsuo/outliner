@@ -357,7 +357,7 @@ onDestroy(async () => {
     </div>
 
     {#if yjsStore.syncError}
-        <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} />
+        <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} retryCallback={() => yjsStore.reconnect()} dismissable={false} />
     {/if}
 </div>
 

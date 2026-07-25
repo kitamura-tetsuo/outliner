@@ -163,6 +163,11 @@ class YjsStore {
     getCurrentProjectId() {
         return this.currentProjectId;
     }
+
+    async reconnect() {
+        const { reconnectProject } = await import("../lib/yjsService.svelte");
+        await reconnectProject();
+    }
 }
 
 export const yjsStore = $state(new YjsStore());
