@@ -288,7 +288,7 @@ describe("yjsPersistence", () => {
         const mockPersistence = {
             synced: false,
             once: () => {},
-            off: () => {},
+            off: () => {}
         };
         await expect(waitForSync(mockPersistence, 100)).rejects.toThrow("waitForSync timed out");
     });
@@ -298,7 +298,7 @@ describe("yjsPersistence", () => {
             synced: false,
             once: () => {},
             off: () => {},
-            _db: Promise.reject(new Error("db open failed")),
+            _db: Promise.reject(new Error("db open failed"))
         };
         await expect(waitForSync(mockPersistence, 1000)).rejects.toThrow("db open failed");
     });

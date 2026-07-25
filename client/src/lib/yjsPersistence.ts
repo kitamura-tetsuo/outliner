@@ -8,6 +8,7 @@ export type PersistenceLike = {
     synced: boolean;
     once: (eventName: "synced", callback: () => void) => void;
     off?: (eventName: "synced", callback: () => void) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _db?: Promise<any>;
     destroy?: () => void;
 };
@@ -45,8 +46,6 @@ export function waitForSync(persistence: PersistenceLike, timeoutMs: number = 30
     }
 
     return new Promise((resolve, reject) => {
-        let timeoutId: ReturnType<typeof setTimeout>;
-
         const onSynced = () => {
             clearTimeout(timeoutId);
             resolve();
@@ -56,7 +55,7 @@ export function waitForSync(persistence: PersistenceLike, timeoutMs: number = 30
         // We rely on persistence.destroy() on error to clean up the listeners.
         persistence.once("synced", onSynced);
 
-        timeoutId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             reject(new Error("waitForSync timed out"));
         }, timeoutMs);
 
