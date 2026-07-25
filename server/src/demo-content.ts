@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 15;
+export const DEMO_TEMPLATE_VERSION = 16;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -506,6 +506,13 @@ export const demoPages: DemoPageTemplate[] = [
     {
         title: "Tasks and Habits",
         items: [
+            {
+                text: "Inline checkboxes can also be used for lightweight, nested task tracking directly in the outline:",
+                children: [
+                    { text: "[ ] This is a pending task" },
+                    { text: "[x] This is a completed task" },
+                ],
+            },
             {
                 text:
                     "Practical task management and habit tracking, built as presets of the database table feature. The items below are live tables.",
