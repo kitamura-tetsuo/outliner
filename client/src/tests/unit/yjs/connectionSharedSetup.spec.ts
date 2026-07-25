@@ -128,7 +128,9 @@ describe("yjs connection: shared provider setup", () => {
         vi.useFakeTimers();
         try {
             let error;
-            const tokenPromise = tokenFn().catch(e => { error = e; });
+            const tokenPromise = tokenFn().catch(e => {
+                error = e;
+            });
 
             // Advance timers enough to trigger all backoff intervals
             await vi.advanceTimersByTimeAsync(1000); // Attempt 1 wait
@@ -158,7 +160,9 @@ describe("yjs connection: shared provider setup", () => {
         vi.useFakeTimers();
         try {
             let error;
-            const tokenPromise = tokenFn().catch(e => { error = e; });
+            const tokenPromise = tokenFn().catch(e => {
+                error = e;
+            });
 
             // Advance timers enough to trigger all backoff intervals
             await vi.advanceTimersByTimeAsync(1000); // Attempt 1 wait

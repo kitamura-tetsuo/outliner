@@ -249,7 +249,10 @@ async function setupProviderForRoom(
                 return token;
             } catch (e) {
                 lastError = e;
-                logger.error({ error: e }, `[${label}] getFreshIdToken failed (attempt ${attempt}/${MAX_TOKEN_RETRIES})`);
+                logger.error(
+                    { error: e },
+                    `[${label}] getFreshIdToken failed (attempt ${attempt}/${MAX_TOKEN_RETRIES})`,
+                );
                 if (attempt < MAX_TOKEN_RETRIES) {
                     // Exponential backoff: 1s, 2s
                     await new Promise(resolve => setTimeout(resolve, attempt * 1000));
