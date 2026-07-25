@@ -1,7 +1,6 @@
 import { SQLite } from "@hocuspocus/extension-sqlite";
 import type { Logger } from "pino";
 import { Config } from "./config.js";
-import { initializeScheduleIndex } from "./scheduler/schedule-indexer.js";
 
 export async function createPersistence(config: Config): Promise<InstanceType<typeof SQLite> | undefined> {
     if (process.env.DISABLE_PERSISTENCE === "true") {
@@ -23,12 +22,10 @@ export async function createPersistence(config: Config): Promise<InstanceType<ty
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const persistence = new SQLite({
+    // Note: the extension opens its database in onConfigure (i.e. when
+    // Hocuspocus is configured), so `persistence.db` does not exist yet here.
+    // The schedule index is created in startServer once it does.
+    return new SQLite({
         database: dbPath,
     });
-    if (persistence.db) {
-        initializeScheduleIndex(persistence.db);
-    }
-
-    return persistence;
 }

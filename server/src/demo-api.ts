@@ -195,6 +195,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                     tables.delete(key);
                                 });
 
+                                // Same for schedule rules: the template's own
+                                // rules are re-registered by populateDemoProject.
+                                const schedules = ydoc.getMap("schedules");
+                                Array.from(schedules.keys()).forEach(key => {
+                                    schedules.delete(key);
+                                });
+
                                 // Re-initialize metadata
                                 const meta = ydoc.getMap("metadata");
                                 meta.set("title", DEMO_PROJECT_TITLE);

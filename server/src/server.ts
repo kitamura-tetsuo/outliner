@@ -18,6 +18,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
+import { JobScheduler } from "./scheduler/Scheduler.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
@@ -582,6 +583,19 @@ export async function startServer(
         });
     });
 
+    // Schedule rule execution (SQL jobs against table docs). The index of due
+    // rules lives in the persistence database, so the scheduler only runs when
+    // persistence is enabled. The database itself is opened asynchronously by
+    // the extension, so the scheduler resolves it on one of its first ticks.
+    let jobScheduler: JobScheduler | undefined;
+    if (persistence && process.env.DISABLE_JOB_SCHEDULER !== "true") {
+        jobScheduler = new JobScheduler(hocuspocus as unknown as Hocuspocus);
+        if (persistence.db) jobScheduler.setDb(persistence.db);
+        const intervalMs = Number(process.env.JOB_SCHEDULER_INTERVAL_MS ?? 60000);
+        jobScheduler.start(Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : 60000);
+        logger.info({ event: "job_scheduler_started" }, "Schedule rule executor started");
+    }
+
     // Listen
     server.listen(config.PORT, "0.0.0.0", () => {
         logger.info({ port: config.PORT }, "Hocuspocus server listening");
@@ -589,6 +603,7 @@ export async function startServer(
 
     const shutdown = () => {
         intervals.forEach(clearInterval);
+        jobScheduler?.stop();
         if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
             (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
         } else {

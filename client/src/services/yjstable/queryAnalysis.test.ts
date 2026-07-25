@@ -71,6 +71,22 @@ describe("analyzeQueryEditability", () => {
         expect(res.editableColumns.has("title")).toBe(true);
     });
 
+    // The demo's recurring tasks table shows only the newest occurrence of
+    // each task with a correlated NOT EXISTS. That must stay editable so the
+    // completion checkbox can be ticked (DISTINCT ON / MAX would not).
+    it("keeps a latest-per-key NOT EXISTS query editable", async () => {
+        const schema = await parseCreateTable(
+            "CREATE TABLE routine_tasks (id TEXT PRIMARY KEY, task_key TEXT, occurrence_date DATE, done BOOLEAN)",
+        );
+        const query = "SELECT id, task_key, occurrence_date, done FROM routine_tasks r "
+            + "WHERE NOT EXISTS (SELECT 1 FROM routine_tasks later "
+            + "WHERE later.task_key = r.task_key AND later.occurrence_date > r.occurrence_date)";
+
+        const res = analyzeQueryEditability(query, schema, ["id", "task_key", "occurrence_date", "done"]);
+        expect(res.editable).toBe(true);
+        expect(res.editableColumns.has("done")).toBe(true);
+    });
+
     it("is read-only when no schema is applied", () => {
         const res = analyzeQueryEditability("SELECT id FROM t", undefined, ["id"]);
         expect(res.editable).toBe(false);

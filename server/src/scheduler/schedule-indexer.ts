@@ -18,6 +18,18 @@ export interface ScheduleIndexRow {
 
 const { rrulestr } = rruleImport;
 
+// The SQLite extension opens its database asynchronously (its onConfigure
+// hook is not awaited), so there is no single point at startup where the
+// database is guaranteed to exist. Every entry point that touches the index
+// therefore ensures it once per database.
+const initializedDatabases = new WeakSet<object>();
+
+export function ensureScheduleIndex(db: BetterSqlite3.Database) {
+    if (initializedDatabases.has(db)) return;
+    initializeScheduleIndex(db);
+    initializedDatabases.add(db);
+}
+
 export function initializeScheduleIndex(db: BetterSqlite3.Database) {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS schedule_index (
@@ -139,6 +151,8 @@ export function computeNextRunAt(
 }
 
 export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db: BetterSqlite3.Database) {
+    ensureScheduleIndex(db);
+
     const documentName = data.documentName;
     const document = data.document;
 

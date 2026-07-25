@@ -86,6 +86,16 @@ use one of two forms:
     target on the same page, so keep both items on one page.
   - `children: DemoItem[]` — nested items.
 
+Beyond the pages, the template also seeds **schedule rules** (recurring SQL
+execution against a table). `buildDemoScheduleRules()` in
+`server/src/demo-content.ts` defines them and `registerDemoScheduleRules()`
+writes them into the project doc's `schedules` map; the reset clears that map
+first, so user experiments do not accumulate. The two seeded rules drive the
+`Recurring Tasks` page: they append the daily and weekly occurrences of the
+recurring tasks held in the `Routines` table. Their dtstarts are relative to
+the seeding moment (today's midnight / this week's Monday), so the first
+occurrence is due immediately and the rule visibly runs shortly after a reset.
+
 The `Advanced Features` page seeds a live database table (with a chart view) and an alias;
 the `Comments and Votes` page seeds a real comment thread and a voted item.
 When you add a feature with a non-text representation, prefer the structured

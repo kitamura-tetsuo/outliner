@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 19;
+export const DEMO_TEMPLATE_VERSION = 20;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -91,9 +91,37 @@ function demoDate(daysFromToday: number): string {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// Recurring-task helpers. The routine table is keyed by UTC dates because the
+// schedule rules that generate its rows run in the UTC timezone, so seeded and
+// generated occurrence ids must agree regardless of the server's local zone.
+function demoUtcDate(daysFromToday: number): string {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + daysFromToday);
+    return d.toISOString().slice(0, 10);
+}
+
+// Monday (UTC) of the week `weeksAgo` weeks before the current one.
+function demoUtcWeekStart(weeksAgo: number): string {
+    const d = new Date();
+    const daysSinceMonday = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - daysSinceMonday - weeksAgo * 7);
+    return d.toISOString().slice(0, 10);
+}
+
 export const DEMO_SALES_TABLE_ID = "demo-table-sales";
 export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
 export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
+export const DEMO_ROUTINES_TABLE_ID = "demo-table-routines";
+
+// The recurring tasks demonstrated on the "Recurring Tasks" page. Each entry
+// becomes a definition row (kind = 'template') of the routines table; the
+// seeded schedule rules turn them into dated occurrences.
+export const demoRoutineTemplates: { taskKey: string; title: string; cadence: "daily" | "weekly"; }[] = [
+    { taskKey: "daily-standup", title: "Write the standup note", cadence: "daily" },
+    { taskKey: "daily-inbox", title: "Empty the inbox", cadence: "daily" },
+    { taskKey: "weekly-review", title: "Weekly review", cadence: "weekly" },
+    { taskKey: "weekly-report", title: "Send the weekly report", cadence: "weekly" },
+];
 
 export const demoTables: DemoTableTemplate[] = [
     {
@@ -265,7 +293,189 @@ export const demoTables: DemoTableTemplate[] = [
             },
         ],
     },
+    {
+        tableId: DEMO_ROUTINES_TABLE_ID,
+        name: "Routines",
+        // One table holds both the recurring task definitions (kind =
+        // 'template') and the occurrences generated for them (kind =
+        // 'occurrence'). `task_key` is the stable identity of a recurring
+        // task: occurrences of the same task share it whatever their title
+        // says, and the id of an occurrence is `<task_key>-<YYYY-MM-DD>`,
+        // which makes the generating INSERT idempotent.
+        schemaSql: "CREATE TABLE routine_tasks (\n"
+            + "  id TEXT PRIMARY KEY,\n"
+            + "  kind TEXT CHECK (kind IN ('template', 'occurrence')),\n"
+            + "  task_key TEXT NOT NULL,\n"
+            + "  title TEXT NOT NULL,\n"
+            + "  cadence TEXT CHECK (cadence IN ('daily', 'weekly')),\n"
+            + "  occurrence_date DATE,\n"
+            + "  done BOOLEAN\n"
+            + ")",
+        // Display only the newest occurrence of each recurring task: a row is
+        // shown when no later occurrence with the same task_key exists. The
+        // correlated NOT EXISTS keeps the result editable (DISTINCT ON and
+        // aggregates would make the grid read-only), so `done` stays a
+        // writable checkbox.
+        query: "SELECT id, task_key, title, cadence, occurrence_date, done\n"
+            + "FROM routine_tasks r\n"
+            + "WHERE r.kind = 'occurrence'\n"
+            + "  AND NOT EXISTS (\n"
+            + "    SELECT 1 FROM routine_tasks later\n"
+            + "    WHERE later.kind = 'occurrence'\n"
+            + "      AND later.task_key = r.task_key\n"
+            + "      AND later.occurrence_date > r.occurrence_date\n"
+            + "  )\n"
+            + "ORDER BY cadence, task_key",
+        components: {
+            task_key: "text",
+            title: "text",
+            cadence: "select",
+            occurrence_date: "date",
+            done: "checkbox",
+        },
+        records: [
+            ...demoRoutineTemplates.map((template) => ({
+                id: `routine-template-${template.taskKey}`,
+                values: {
+                    kind: "template",
+                    task_key: template.taskKey,
+                    title: template.title,
+                    cadence: template.cadence,
+                    occurrence_date: null,
+                    done: null,
+                },
+            })),
+            // Two occurrences per task so the "latest occurrence only" view is
+            // visible right after seeding: the older one is hidden by the
+            // query, the newest one is the row shown in the grid.
+            ...demoRoutineTemplates.flatMap((template) => {
+                const dates = template.cadence === "daily"
+                    ? [demoUtcDate(-1), demoUtcDate(0)]
+                    : [demoUtcWeekStart(1), demoUtcWeekStart(0)];
+                return dates.map((date, index) => ({
+                    id: `${template.taskKey}-${date}`,
+                    values: {
+                        kind: "occurrence",
+                        task_key: template.taskKey,
+                        title: template.title,
+                        cadence: template.cadence,
+                        occurrence_date: date,
+                        // The superseded occurrence is left completed, the
+                        // current one is still open.
+                        done: index === 0,
+                    },
+                }));
+            }),
+        ],
+    },
 ];
+
+// ---------------------------------------------------------------------------
+// Demo schedule rules (recurring SQL execution against a table).
+//
+// A rule runs its SQL at every occurrence of its RRULE and writes the returned
+// rows back into the target table's Data Storage. The demo seeds two rules
+// that append today's / this week's occurrence of every recurring task.
+// ---------------------------------------------------------------------------
+
+export interface DemoScheduleRuleTemplate {
+    // Fixed id so a reseed replaces the rule instead of adding a copy.
+    ruleId: string;
+    targetTableId: string;
+    sql: string;
+    rrule: string;
+    // Local wall-clock start of the recurrence (in `timezone`).
+    dtstart: string;
+    timezone: string;
+    catchUp: boolean;
+}
+
+export const DEMO_DAILY_RULE_ID = "demo-rule-daily-routines";
+export const DEMO_WEEKLY_RULE_ID = "demo-rule-weekly-routines";
+
+/**
+ * The SQL of a routine rule: one occurrence row per recurring task of the
+ * given cadence, for the occurrence the job is running.
+ *
+ * - `current_setting('job.occurrence')` (never `now()`) is the scheduled time,
+ *   so a catch-up run produces the row it would have produced on time.
+ * - the id is derived from the task's `task_key` and that date, so re-running
+ *   the same occurrence is a no-op (`ON CONFLICT DO NOTHING`) and a completed
+ *   checkbox is never reset.
+ * - the outer SELECT renders the date as text: values written back into Yjs
+ *   must be JSON primitives, not Date objects.
+ */
+export function routineOccurrenceSql(cadence: "daily" | "weekly"): string {
+    return `WITH inserted AS (
+    INSERT INTO routine_tasks (id, kind, task_key, title, cadence, occurrence_date, done)
+    SELECT
+        t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
+        'occurrence',
+        t.task_key,
+        t.title,
+        t.cadence,
+        (current_setting('job.occurrence')::timestamptz)::date,
+        false
+    FROM routine_tasks t
+    WHERE t.kind = 'template' AND t.cadence = '${cadence}'
+    ON CONFLICT (id) DO NOTHING
+    RETURNING *
+)
+SELECT
+    id,
+    kind,
+    task_key,
+    title,
+    cadence,
+    to_char(occurrence_date, 'YYYY-MM-DD') AS occurrence_date,
+    done
+FROM inserted`;
+}
+
+/**
+ * The demo's schedule rules. Built on demand because both dtstarts are
+ * relative to the seeding moment: the daily rule starts at today's midnight
+ * and the weekly one at this week's Monday, so the first occurrence is due
+ * immediately and the rule visibly runs shortly after the demo is seeded.
+ */
+export function buildDemoScheduleRules(): DemoScheduleRuleTemplate[] {
+    return [
+        {
+            ruleId: DEMO_DAILY_RULE_ID,
+            targetTableId: DEMO_ROUTINES_TABLE_ID,
+            sql: routineOccurrenceSql("daily"),
+            rrule: "RRULE:FREQ=DAILY",
+            dtstart: `${demoUtcDate(0)}T00:00:00`,
+            timezone: "UTC",
+            catchUp: true,
+        },
+        {
+            ruleId: DEMO_WEEKLY_RULE_ID,
+            targetTableId: DEMO_ROUTINES_TABLE_ID,
+            sql: routineOccurrenceSql("weekly"),
+            rrule: "RRULE:FREQ=WEEKLY;BYDAY=MO",
+            dtstart: `${demoUtcWeekStart(0)}T00:00:00`,
+            timezone: "UTC",
+            catchUp: true,
+        },
+    ];
+}
+
+/** Write the demo's schedule rules into the project doc's `schedules` map. */
+export function registerDemoScheduleRules(projectDoc: Y.Doc): void {
+    const schedules = projectDoc.getMap<Y.Map<string | boolean>>("schedules");
+    for (const rule of buildDemoScheduleRules()) {
+        const ruleMap = new Y.Map<string | boolean>();
+        schedules.set(rule.ruleId, ruleMap);
+        ruleMap.set("targetTableId", rule.targetTableId);
+        ruleMap.set("sql", rule.sql);
+        ruleMap.set("rrule", rule.rrule);
+        ruleMap.set("dtstart", rule.dtstart);
+        ruleMap.set("timezone", rule.timezone);
+        ruleMap.set("enabled", true);
+        ruleMap.set("catchUp", rule.catchUp);
+    }
+}
 
 /**
  * Register every demo table in the project doc: a registry entry (display
@@ -335,6 +545,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Publishing and Sharing]: read-only sharing, scheduled publishing, and snapshots.",
             "  [Advanced Features]: live database tables with charts, aliases, and attachments.",
             "  [Tasks and Habits]: task management and habit tracking built on database tables.",
+            "  [Recurring Tasks]: daily and weekly tasks generated by recurring SQL execution.",
             "  [Schedule Rules]: automate database operations",
             "Give it a try! Everything in this project is editable.",
         ],
@@ -391,7 +602,11 @@ export const demoPages: DemoPageTemplate[] = [
             },
             {
                 text:
-                    "Open the [Tasks and Habits] page and click the Schedule tab on the Tasks table to see rules in action.",
+                    "Tables can run SQL on a recurrence: see [Recurring Tasks] for two live rules that add the tasks of the day and of the week.",
+            },
+            {
+                text:
+                    "Open the Schedule tab of a table (for example on the [Tasks and Habits] page) to create a rule of your own.",
             },
         ],
     },
@@ -540,6 +755,50 @@ export const demoPages: DemoPageTemplate[] = [
             },
         ],
     },
+    {
+        title: "Recurring Tasks",
+        items: [
+            {
+                text:
+                    "Daily and weekly tasks, generated by schedule rules: the SQL of a rule runs again at every occurrence of its recurrence and appends the task of that day or week.",
+            },
+            {
+                text: "How it works:",
+                children: [
+                    {
+                        text:
+                            "Two schedule rules target the table below: one runs every day at 00:00, the other every Monday at 00:00 (UTC).",
+                    },
+                    {
+                        text:
+                            "Each run inserts one occurrence per recurring task definition (the rows with kind = 'template' in the table).",
+                    },
+                    {
+                        text:
+                            "A recurring task is identified by its task_key, not by its title: renaming a task keeps its history together.",
+                    },
+                    {
+                        text:
+                            "The id of an occurrence is task_key + occurrence date, so re-running the same occurrence changes nothing and never clears a completed checkbox.",
+                    },
+                    {
+                        text:
+                            "The table's query shows only the newest occurrence of each task; the earlier ones stay in the table as history.",
+                    },
+                ],
+            },
+            {
+                text:
+                    "Tick a checkbox to complete today's (or this week's) task. Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
+                componentType: "yjstable",
+                yjsTableId: DEMO_ROUTINES_TABLE_ID,
+            },
+            {
+                text:
+                    "Open the Schedule tab of the table to read both rules, edit their SQL or recurrence, or disable them. See also [Schedule Rules].",
+            },
+        ],
+    },
 ];
 
 // Populate an existing, empty project with the demo template pages.
@@ -559,6 +818,10 @@ export function populateDemoProject(project: Project, author = "seed-server"): v
     // project doc. The table contents live in their own rooms and are seeded
     // separately by the demo API.
     registerDemoTables(project.ydoc);
+
+    // Recurring SQL execution against the routines table (see the
+    // "Recurring Tasks" page).
+    registerDemoScheduleRules(project.ydoc);
 
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
