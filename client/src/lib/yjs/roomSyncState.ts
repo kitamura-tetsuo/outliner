@@ -3,6 +3,10 @@
 // offline copy" apart from "fully synced", instead of the previous behavior
 // where a silent 30s timeout made both states indistinguishable.
 
+import { getLogger } from "../logger";
+
+const logger = getLogger("RoomSyncState");
+
 export type RoomSyncState = "pending" | "synced" | "timed-out" | "denied" | "too-large" | "rate-limited" | "retrying";
 
 const states = new Map<string, RoomSyncState>();
@@ -23,7 +27,7 @@ export function setRoomSyncState(room: string, state: RoomSyncState): void {
             states.delete(candidateForEviction);
             listeners.delete(candidateForEviction);
         } else {
-            console.warn("RoomSyncState leak warning: over 100 rooms all have active listeners");
+            logger.warn("RoomSyncState leak warning: over 100 rooms all have active listeners");
         }
     }
 
