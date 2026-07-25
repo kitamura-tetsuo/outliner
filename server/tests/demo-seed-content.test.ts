@@ -237,4 +237,36 @@ describe("Demo seed content", () => {
         expect(comments.length).to.equal(2);
         expect(comments.map(c => c.author)).to.deep.equal(["alice", "bob"]);
     });
+
+    it("seeds nested sharing and publishing details with links", () => {
+        const page = findChildByText(project.items, "Publishing and Sharing");
+        expect(page).to.not.equal(undefined);
+
+        const sharing = findChildByText(
+            page!.items,
+            "Sharing: generate a read-only token to share a project without giving edit access.",
+        );
+        expect(sharing).to.not.equal(undefined);
+        expect(childTexts(sharing!.items)).to.deep.equal([
+            "Tokens are generated in the Project Settings (gear icon in the top right).",
+        ]);
+
+        const schedule = findChildByText(
+            page!.items,
+            "Scheduled publishing: schedule a page to be published automatically at a later time.",
+        );
+        expect(schedule).to.not.equal(undefined);
+        expect(childTexts(schedule!.items)).to.deep.equal([
+            "The [/demo/Publishing and Sharing/schedule] page lists upcoming publishing tasks and lets you edit or cancel them.",
+        ]);
+
+        const snapshots = findChildByText(
+            page!.items,
+            "Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.",
+        );
+        expect(snapshots).to.not.equal(undefined);
+        expect(childTexts(snapshots!.items)).to.deep.equal([
+            "View this page's [/demo/Publishing and Sharing/diff] to see snapshots.",
+        ]);
+    });
 });
