@@ -199,20 +199,53 @@ describe("yjs connection: shared provider setup", () => {
                 return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
             }],
         ] as const,
-    )("%s stops reconnect attempts on a fatal close code instead of retrying forever", async (_label, setup) => {
+    )("%s stops reconnect attempts on a permanent close code instead of retrying forever", async (_label, setup) => {
         const provider = await setup();
 
-        const fatalCodes = [4003, 4004, 4005, 4006, 4008];
+        const permanentCodes = [4003, 4005];
 
-        for (const code of fatalCodes) {
+        for (const code of permanentCodes) {
             const disconnectSpy = vi.spyOn(provider, "disconnect");
-            provider.emit("close", { code, reason: "FATAL" } satisfies CloseEvent);
+            provider.emit("close", { code, reason: "PERMANENT" } satisfies CloseEvent);
             expect(disconnectSpy).toHaveBeenCalled();
             disconnectSpy.mockRestore();
         }
     });
 
-    it("destroys provider, doc, and persistence on fatal close code during initial sync", async () => {
+    it.each(
+        [
+            ["createProjectConnection", async () => {
+                const promise = createProjectConnection("proj-retry-1");
+                await flushMicrotasks();
+                const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+                provider.markSynced();
+                await promise;
+                return provider;
+            }],
+            ["connectProjectDoc", async () => {
+                const doc = new Y.Doc();
+                await connectProjectDoc(doc, "proj-retry-2");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+            ["createMinimalProjectConnection", async () => {
+                await createMinimalProjectConnection("proj-retry-3");
+                return MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];
+            }],
+        ] as const,
+    )("%s keeps reconnect attempts on a retryable close code", async (_label, setup) => {
+        const provider = await setup();
+
+        const retryableCodes = [4004, 4006, 4008];
+
+        for (const code of retryableCodes) {
+            const disconnectSpy = vi.spyOn(provider, "disconnect");
+            provider.emit("close", { code, reason: "RETRYABLE" } satisfies CloseEvent);
+            expect(disconnectSpy).not.toHaveBeenCalled();
+            disconnectSpy.mockRestore();
+        }
+    });
+
+    it("destroys provider, doc, and persistence on permanent close code during initial sync", async () => {
         const promise = createProjectConnection("proj-fatal-rejection");
         await flushMicrotasks();
         const provider = MockHocuspocusProvider.instances[MockHocuspocusProvider.instances.length - 1];

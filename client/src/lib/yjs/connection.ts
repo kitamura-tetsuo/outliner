@@ -168,9 +168,13 @@ function constructWsUrl(wsBase: string, room: string): string {
     return `${baseUrl}/${roomPath}`;
 }
 
-// Fatal close codes mean the server will never accept this connection: retrying is pointless
+// Permanent close codes mean the server will never accept this connection: retrying is pointless
 // and, left unchecked, HocuspocusProvider's built-in backoff will retry forever.
-const FATAL_CLOSE_CODES = new Set([4001, 4003, 4004, 4005, 4006, 4008]);
+// Note: 4001 is handled separately in the code below to allow for a single retry.
+const PERMANENT_CLOSE_CODES = new Set([4001, 4003, 4005]);
+// Retryable close codes mean the server rejected this connection due to transient conditions,
+// so we should keep HocuspocusProvider's built-in backoff.
+const RETRYABLE_CLOSE_CODES = new Set([4004, 4006, 4008]);
 
 async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<IndexeddbPersistence | undefined> {
     if (typeof indexedDB === "undefined") return undefined;
@@ -300,15 +304,19 @@ async function setupProviderForRoom(
             })();
         }
 
-        if (code && FATAL_CLOSE_CODES.has(code)) {
-            logger.error(`[yjs-conn] Fatal close ${code} for ${room}: stopping reconnect attempts`);
+        if (code && PERMANENT_CLOSE_CODES.has(code)) {
+            logger.error(`[yjs-conn] Permanent close ${code} for ${room}: stopping reconnect attempts`);
             let syncState: import("./roomSyncState").RoomSyncState = "denied";
-            if (code === 4004) syncState = "rate-limited";
-            else if (code === 4005) syncState = "too-large";
+            if (code === 4005) syncState = "too-large";
             setRoomSyncState(room, syncState);
             try {
                 provider.disconnect();
             } catch {}
+        } else if (code && RETRYABLE_CLOSE_CODES.has(code)) {
+            logger.warn(`[yjs-conn] Transient close ${code} for ${room}: will retry via backoff`);
+            let syncState: import("./roomSyncState").RoomSyncState = "retrying";
+            if (code === 4004) syncState = "rate-limited";
+            setRoomSyncState(room, syncState);
         }
     });
 
@@ -416,7 +424,7 @@ async function setupProviderForRoom(
             const closeHandler = (event: { code?: number; reason?: string; }) => {
                 if (isRetryingCurrentClose) return;
                 const code = event.code;
-                if (code && FATAL_CLOSE_CODES.has(code)) {
+                if (code && PERMANENT_CLOSE_CODES.has(code)) {
                     cleanup();
                     reject(new Error(`Access Denied: ${code}`));
                 }
