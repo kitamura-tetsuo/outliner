@@ -4,6 +4,13 @@ import { parentPort } from "node:worker_threads";
 async function executeJob(data: any) {
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;
 
+    // A rule may read any table of its project, so the job materializes one
+    // relation per entry of `tables` (the target table first). `schemaSql` /
+    // `records` are the single-table form of the same input.
+    const tableDefs: { schemaSql: string; records?: any[]; }[] = Array.isArray(data.tables) && data.tables.length > 0
+        ? data.tables
+        : [{ schemaSql, records }];
+
     if (typeof ruleId !== "string" || !/^[A-Za-z0-9_-]+$/.test(ruleId)) {
         return { success: false, error: "Invalid ruleId" };
     }
@@ -25,19 +32,31 @@ async function executeJob(data: any) {
 
         await db.exec(`BEGIN;`);
         await db.exec(`SET LOCAL search_path TO "${pgSchema}";`);
-        await db.exec(schemaSql);
 
-        const tablesRes = await db.query<any>(
-            `
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = $1
-        `,
-            [pgSchema],
-        );
-        const tableName = tablesRes.rows[0]?.table_name as string;
+        // Each table's records go into the relation its own CREATE TABLE just
+        // created, so the tables created so far are tracked as they appear.
+        const created = new Set<string>();
+        for (const table of tableDefs) {
+            if (!table?.schemaSql) continue;
+            await db.exec(table.schemaSql);
 
-        if (tableName && records && records.length > 0) {
+            const tablesRes = await db.query<any>(
+                `
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = $1
+            `,
+                [pgSchema],
+            );
+            const tableName = tablesRes.rows
+                .map((r: any) => r.table_name as string)
+                .find((name: string) => !created.has(name));
+            if (!tableName) continue;
+            created.add(tableName);
+
+            const tableRecords = table.records;
+            if (!tableRecords || tableRecords.length === 0) continue;
+
             const colsRes = await db.query<any>(
                 `
                 SELECT column_name
@@ -50,7 +69,7 @@ async function executeJob(data: any) {
 
             let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c.replace(/"/g, '""')}"`).join(",")}) VALUES `;
             const flatValues: any[] = [];
-            const values = records.map((record: any, rIdx: number) => {
+            const values = tableRecords.map((record: any, rIdx: number) => {
                 const rowPlaceholders = cols.map((c, cIdx) => {
                     const val = record[c] !== undefined ? record[c] : null;
                     flatValues.push(val);

@@ -7,7 +7,8 @@ import {
     DEMO_HABITS_TABLE_ID,
     DEMO_LANDING_PAGE_TITLE,
     DEMO_PROJECT_TITLE,
-    DEMO_ROUTINES_TABLE_ID,
+    DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
+    DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
     DEMO_WEEKLY_RULE_ID,
@@ -276,33 +277,58 @@ describe("Demo seed content", () => {
         ]);
     });
 
-    it("seeds the Recurring Tasks page with the live routines table", () => {
+    it("seeds the Recurring Tasks page with the templates and the occurrences table", () => {
         const page = findChildByText(project.items, "Recurring Tasks");
         expect(page, "Recurring Tasks page exists").to.not.equal(undefined);
 
-        const table = findChildByText(
+        const templatesItem = findChildByText(
+            page!.items,
+            "The recurring task definitions. Add a row here and the next run of the matching rule "
+                + "starts generating its occurrences.",
+        );
+        expect(templatesItem, "routine templates table item exists").to.not.equal(undefined);
+        expect(templatesItem!.componentType).to.equal("yjstable");
+        expect(templatesItem!.yjsTableId).to.equal(DEMO_ROUTINE_TEMPLATES_TABLE_ID);
+
+        const occurrencesItem = findChildByText(
             page!.items,
             "Tick a checkbox to complete today's (or this week's) task. "
                 + "Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
         );
-        expect(table, "routines table item exists").to.not.equal(undefined);
-        expect(table!.componentType).to.equal("yjstable");
-        expect(table!.yjsTableId).to.equal(DEMO_ROUTINES_TABLE_ID);
+        expect(occurrencesItem, "routine occurrences table item exists").to.not.equal(undefined);
+        expect(occurrencesItem!.componentType).to.equal("yjstable");
+        expect(occurrencesItem!.yjsTableId).to.equal(DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
     });
 
-    it("routines template seeds task definitions plus a history of occurrences", () => {
-        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
-        const definitions = template.records.filter((r) => r.values.kind === "template");
-        const occurrences = template.records.filter((r) => r.values.kind === "occurrence");
+    it("keeps the task definitions and their occurrences in two separate tables", () => {
+        const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
+        const occurrencesTable = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
 
-        expect(definitions.map((r) => r.values.task_key)).to.deep.equal(
+        // Two tables, two SQL names, and neither carries the other's columns.
+        expect(templates.sqlName).to.equal("routine_templates");
+        expect(occurrencesTable.sqlName).to.equal("routine_occurrences");
+        expect(templates.schemaSql).to.not.contain("occurrence_date");
+        expect(templates.schemaSql).to.not.contain("done");
+        // The discriminator column of the former single table is gone.
+        expect(templates.schemaSql).to.not.contain("kind");
+        expect(occurrencesTable.schemaSql).to.not.contain("kind");
+
+        expect(templates.records.map((r) => r.values.task_key)).to.deep.equal(
             demoRoutineTemplates.map((t) => t.taskKey),
+        );
+        expect(templates.records.map((r) => r.id)).to.deep.equal(
+            demoRoutineTemplates.map((t) => `routine-template-${t.taskKey}`),
         );
         expect(
             demoRoutineTemplates.some((t) => t.cadence === "daily")
                 && demoRoutineTemplates.some((t) => t.cadence === "weekly"),
             "both cadences are demonstrated",
         ).to.equal(true);
+    });
+
+    it("the occurrences table seeds a history of two occurrences per task", () => {
+        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
+        const occurrences = template.records;
 
         // Two occurrences per task, so the display query has something to hide.
         expect(occurrences.length).to.equal(demoRoutineTemplates.length * 2);
@@ -320,8 +346,8 @@ describe("Demo seed content", () => {
         expect(template.schemaSql).to.contain("done BOOLEAN");
     });
 
-    it("the routines query keeps only the newest occurrence per task and stays editable", () => {
-        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
+    it("the occurrences query keeps only the newest occurrence per task and stays editable", () => {
+        const template = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
 
         expect(template.query).to.contain("NOT EXISTS");
         expect(template.query).to.contain("later.task_key = r.task_key");
@@ -335,14 +361,14 @@ describe("Demo seed content", () => {
         expect(template.query).to.contain("SELECT id,");
     });
 
-    it("seeds a daily and a weekly schedule rule targeting the routines table", () => {
+    it("seeds a daily and a weekly schedule rule targeting the occurrences table", () => {
         const schedules = project.ydoc.getMap("schedules");
         expect(schedules.size).to.equal(2);
 
         for (const rule of buildDemoScheduleRules()) {
             const ruleMap = schedules.get(rule.ruleId) as Y.Map<unknown> | undefined;
             expect(ruleMap, `rule ${rule.ruleId} is registered`).to.not.equal(undefined);
-            expect(ruleMap!.get("targetTableId")).to.equal(DEMO_ROUTINES_TABLE_ID);
+            expect(ruleMap!.get("targetTableId")).to.equal(DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
             expect(ruleMap!.get("enabled")).to.equal(true);
             expect(ruleMap!.get("timezone")).to.equal("UTC");
             // dtstart is a local wall-clock string at midnight.
@@ -373,6 +399,10 @@ describe("Demo seed content", () => {
             expect(sql).to.contain("ON CONFLICT (id) DO NOTHING");
             expect(sql).to.contain("t.task_key || '-' || to_char(");
             expect(sql).to.contain(`t.cadence = '${cadence}'`);
+            // The rule reads the definitions from the templates table and
+            // writes into the occurrences one.
+            expect(sql).to.contain("INSERT INTO routine_occurrences");
+            expect(sql).to.contain("FROM routine_templates t");
         }
     });
 });
