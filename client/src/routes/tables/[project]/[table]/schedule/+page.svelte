@@ -53,6 +53,8 @@
                         enabled: ruleMap.get("enabled") as boolean,
                         catchUp: ruleMap.get("catchUp") as boolean,
                         lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
+                        lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+                        lastRunError: ruleMap.get("lastRunError") as string | undefined,
                         completedAt: ruleMap.get("completedAt") as string | undefined,
                         validationError: ruleMap.get("validationError") as string | undefined,
                     }

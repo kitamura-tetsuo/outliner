@@ -17,6 +17,8 @@ export interface ScheduleRule {
     enabled: boolean;
     catchUp: boolean;
     lastRunAt?: string;
+    lastRunStatus?: "ok" | "error";
+    lastRunError?: string;
     completedAt?: string;
     validationError?: string;
 }
@@ -49,6 +51,8 @@ export function createScheduleRule(
     ruleMap.set("catchUp", options.catchUp !== undefined ? options.catchUp : true);
 
     if (options.lastRunAt) ruleMap.set("lastRunAt", options.lastRunAt);
+    if (options.lastRunStatus) ruleMap.set("lastRunStatus", options.lastRunStatus);
+    if (options.lastRunError) ruleMap.set("lastRunError", options.lastRunError);
     if (options.completedAt) ruleMap.set("completedAt", options.completedAt);
     if (options.validationError) ruleMap.set("validationError", options.validationError);
 
@@ -81,6 +85,8 @@ export function updateScheduleRule(
     if (updates.enabled !== undefined) ruleMap.set("enabled", updates.enabled);
     if (updates.catchUp !== undefined) ruleMap.set("catchUp", updates.catchUp);
     if (updates.lastRunAt !== undefined) ruleMap.set("lastRunAt", updates.lastRunAt);
+    if (updates.lastRunStatus !== undefined) ruleMap.set("lastRunStatus", updates.lastRunStatus);
+    if (updates.lastRunError !== undefined) ruleMap.set("lastRunError", updates.lastRunError);
     if (updates.completedAt !== undefined) ruleMap.set("completedAt", updates.completedAt);
     if (updates.validationError !== undefined) ruleMap.set("validationError", updates.validationError);
 }

@@ -67,8 +67,19 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                         </div>
                         <div>
                             <span class="font-medium">Last run:</span> {rule.lastRunAt ? formatDateTime(new Date(rule.lastRunAt).getTime()) : "Never"}
+                            {#if rule.lastRunStatus === "ok"}
+                                <span class="ml-1 text-green-700 font-medium">(OK)</span>
+                            {:else if rule.lastRunStatus === "error"}
+                                <span class="ml-1 text-red-700 font-medium">(Error)</span>
+                            {/if}
                         </div>
                     </div>
+
+                    {#if rule.lastRunStatus === "error" && rule.lastRunError}
+                        <div class="mt-1 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-100 font-mono">
+                            {rule.lastRunError}
+                        </div>
+                    {/if}
 
                     {#if rule.validationError}
                         <div class="mt-2 text-xs bg-red-50 text-red-600 p-2 rounded border border-red-100">

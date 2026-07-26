@@ -138,6 +138,28 @@ describe("Job scheduler run", function() {
         const lastRunAt = ruleMap.get("lastRunAt");
         expect(typeof lastRunAt, "lastRunAt is an ISO string the UI can parse").to.equal("string");
         expect(Number.isNaN(new Date(String(lastRunAt)).getTime())).to.equal(false);
+        expect(ruleMap.get("lastRunStatus")).to.equal("ok");
+        expect(ruleMap.get("lastRunError")).to.be.undefined;
+    });
+
+    it("records a failing run with lastRunStatus 'error' but still advances the cursor", async () => {
+        // Break the SQL so it fails execution
+        const ruleMap = docs.get(projectRoom)!.getMap("schedules").get(dailyRule.ruleId) as Y.Map<unknown>;
+        ruleMap.set("sql", "SELECT * FROM no_such_table");
+
+        await scheduler.tick();
+
+        // The cursor should still advance despite the error
+        expect(updates.length, "the index cursor moved").to.be.greaterThan(0);
+        const last = updates[updates.length - 1];
+        expect(DateTime.fromISO(last.nextRunAt, { zone: "utc" }).toMillis())
+            .to.be.greaterThan(DateTime.utc().toMillis());
+
+        // The run outcome should be recorded as an error
+        const lastRunAt = ruleMap.get("lastRunAt");
+        expect(typeof lastRunAt).to.equal("string");
+        expect(ruleMap.get("lastRunStatus")).to.equal("error");
+        expect(ruleMap.get("lastRunError")).to.match(/relation "no_such_table" does not exist|syntax error/i);
     });
 
     it("does not re-create or reset an occurrence that already exists", async () => {
