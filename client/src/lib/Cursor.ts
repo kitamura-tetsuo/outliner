@@ -1,5 +1,6 @@
 import { tick } from "svelte";
-import type { Item, Items } from "../schema/app-schema";
+import { iterateItemsOrdered } from "../../../shared/src/utils/itemTraversal";
+import type { Item } from "../schema/app-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -928,9 +929,11 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (!root) return;
         let item: Item = root;
         // The root itself is usually the page title; we want to go to the first item.
-        if (item.items && (item.items as Items).length > 0) {
-            const firstChild = (item.items as Items).at(0);
-            if (firstChild) item = firstChild;
+        if (item.items) {
+            for (const child of iterateItemsOrdered(item.items)) {
+                item = child;
+                break;
+            }
         }
 
         this.itemId = item.id;
@@ -960,9 +963,11 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (!root) return;
         let item: Item = root;
         // The root itself is usually the page title; we want to go to the first item.
-        if (item.items && (item.items as Items).length > 0) {
-            const firstChild = (item.items as Items).at(0);
-            if (firstChild) item = firstChild;
+        if (item.items) {
+            for (const child of iterateItemsOrdered(item.items)) {
+                item = child;
+                break;
+            }
         }
 
         this.itemId = item.id;

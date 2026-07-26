@@ -42,3 +42,39 @@ export function iterateItems(items: unknown): Iterable<Item> {
 
     return [];
 }
+
+/**
+ * Iterates over an Item collection sequentially.
+ * Uses standard Iterator or array-like access to preserve item order.
+ *
+ * @param items The item collection to iterate over
+ * @returns An iterable of Items sequentially ordered
+ */
+export function iterateItemsOrdered(items: unknown): Iterable<Item> {
+    if (!items) return [];
+
+    const itemsRecord = items as Record<string | symbol, unknown>;
+
+    // Support standard Iterables (e.g. native arrays, generators)
+    // In our app-schema, Items implements Iterable with the correct sorting.
+    if (typeof (items as Iterable<unknown>)[Symbol.iterator] === "function") {
+        return items as Iterable<Item>;
+    }
+
+    // Support array-like objects with length and at() or index access
+    const len = itemsRecord.length;
+    if (typeof len === "number" && len >= 0) {
+        const arr: Item[] = [];
+        for (let i = 0; i < len; i++) {
+            const v = typeof itemsRecord.at === "function"
+                ? itemsRecord.at(i)
+                : (items as Record<number, unknown>)[i];
+            if (v !== undefined) {
+                arr.push(v as Item);
+            }
+        }
+        return arr;
+    }
+
+    return [];
+}

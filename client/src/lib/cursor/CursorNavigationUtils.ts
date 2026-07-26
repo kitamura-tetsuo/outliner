@@ -1,14 +1,10 @@
+import { iterateItemsOrdered } from "../../../../shared/src/utils/itemTraversal";
 import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
-    const items = node.items as Iterable<Item> | undefined;
-    if (!items || typeof (items as unknown as Record<string | symbol, unknown>)[Symbol.iterator] !== "function") {
-        return [];
-    }
-
     const children: Item[] = [];
-    for (const child of items) {
+    for (const child of iterateItemsOrdered(node.items)) {
         children.push(child);
     }
     return children;
