@@ -4,4 +4,4 @@ title-ja: Cloudflare Tunnel 設定ドキュメント
 description: Sample configuration and setup steps for exposing WSS via Cloudflare Tunnel.
 status: implemented
 tests:
-- client/e2e/ctd-cloudflare-tunnel-docs-8c6d1ad4.spec.ts
+- client/e2e/core/ctd-cloudflare-tunnel-docs-8c6d1ad4.spec.ts

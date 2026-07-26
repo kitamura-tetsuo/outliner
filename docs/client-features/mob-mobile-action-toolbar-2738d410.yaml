@@ -7,6 +7,7 @@ components:
 - client/src/components/OutlinerToolbar.svelte
 - client/src/components/OutlinerTree.svelte
 tests:
+- client/e2e/basic/mobile/mobile-action-toolbar-visible.spec.ts
 - client/e2e/core/MOB-0003.spec.ts
 acceptance:
 - Buttons scroll horizontally when overflowed
