@@ -6,8 +6,26 @@ registerCoverageHooks();
  * @description E2E tests for container title persistence and home dropdown display
  * Verifies that the container title is persisted in metaDoc and displayed in the home dropdown even after page reload
  */
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
+
+// Mirrors stableIdFromTitle in client/src/lib/yjsService.svelte.ts: the seed API
+// derives a project's ID from its title, and the home selector is driven by IDs.
+function stableIdFromTitle(title: string): string {
+    let h = 2166136261 >>> 0; // FNV-1a basis
+    for (let i = 0; i < title.length; i++) {
+        h ^= title.charCodeAt(i);
+        h = (h * 16777619) >>> 0;
+    }
+    return `p${h.toString(16)}`;
+}
+
+/** Option labels currently rendered by the home page project selector. */
+async function selectorOptions(page: Page): Promise<string[]> {
+    const selector = page.locator("select.project-select");
+    await expect(selector).toBeVisible();
+    return await selector.locator("option").allInnerTexts();
+}
 
 /**
  * @feature CNT-0001
@@ -20,40 +38,20 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that the container name is displayed in the home dropdown immediately after creating a new container
      */
     test("Displayed in home dropdown after container creation", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        // Visiting the project page is what writes the title into the local metaDoc.
+        const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        const projectId = stableIdFromTitle(projectName);
 
-        // Create project and page (container is created)
-        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
-        const encodedProject = encodeURIComponent(projectName);
-        const encodedPage = encodeURIComponent(pageName);
-
-        // Navigate to project page
-        await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
-
-        // Get project name (this is used as container title)
-        const projectTitle = projectName;
-
-        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
+        await TestHelpers.setAccessibleProjects(page, [projectId]);
 
-        // Wait for home dropdown or container list to appear
-        await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
-            timeout: 10000,
-        });
-
-        // Verify that the created container is displayed in the home dropdown
-        const containerElement = page.locator('[data-testid="container-dropdown"], .container-list, .home-dropdown');
-        await expect(containerElement).toContainText(projectTitle);
-
-        // Check by container ID as well (fallback feature)
-        // Fallback: If container is not found by project name search, confirm container existence
-        if (await containerElement.count() > 0) {
-            // Confirm container is displayed (specific text may vary by environment)
-            const hasContent = await containerElement.evaluate((el) => el.textContent?.trim().length > 0);
-            expect(hasContent).toBe(true);
-        }
+        await expect(async () => {
+            const options = await selectorOptions(page);
+            expect(
+                options.some(opt => opt.includes(projectName)),
+                `Expected "${projectName}" in selector options. Found: ${options.join(", ")}`,
+            ).toBe(true);
+        }).toPass({ timeout: 30000 });
     });
 
     /**
@@ -108,42 +106,28 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Create a container, move to home, reload page, and verify container is still displayed
      */
     test("Container is displayed in home dropdown after page reload", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        const projectId = stableIdFromTitle(projectName);
 
-        // Create project and page
-        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
-        const encodedProject = encodeURIComponent(projectName);
-        const encodedPage = encodeURIComponent(pageName);
-
-        // Navigate to project page
-        await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
-
-        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
+        await TestHelpers.setAccessibleProjects(page, [projectId]);
 
-        // Wait for home dropdown to appear
-        await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
-            timeout: 10000,
-        });
+        await expect(async () => {
+            const options = await selectorOptions(page);
+            expect(options.some(opt => opt.includes(projectName))).toBe(true);
+        }).toPass({ timeout: 30000 });
 
-        // Check container display state before reload
-        const containerBeforeReload = page.locator(
-            '[data-testid="container-dropdown"], .container-list, .home-dropdown',
-        );
-        const hasContainerBefore = (await containerBeforeReload.count()) > 0;
-        expect(hasContainerBefore).toBe(true);
-
-        // Reload page
+        // The title lives in a local-only metaDoc, so it must survive a reload.
         await page.reload({ waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
+        await TestHelpers.setAccessibleProjects(page, [projectId]);
 
-        // Verify container is displayed after reload
-        const containerAfterReload = page.locator(
-            '[data-testid="container-dropdown"], .container-list, .home-dropdown',
-        );
-        await expect(containerAfterReload).toBeVisible();
+        await expect(async () => {
+            const options = await selectorOptions(page);
+            expect(
+                options.some(opt => opt.includes(projectName)),
+                `Expected "${projectName}" to survive reload. Found: ${options.join(", ")}`,
+            ).toBe(true);
+        }).toPass({ timeout: 30000 });
     });
 
     /**
@@ -217,50 +201,23 @@ test.describe("Container Title Persistence Tests", () => {
      * @description Verify that container ID is displayed instead when no title is set for the container
      */
     test("Container ID is displayed if title is unavailable (fallback)", async ({ page }, testInfo) => {
+        // Seed and visit a real project so the home page has an authenticated session,
+        // then make a *second*, never-visited project accessible. Nothing has written a
+        // title for it into the metaDoc, so the selector must fall back to its raw ID.
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
 
-        // Create project and page (do not set title)
-        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo);
-        const encodedProject = encodeURIComponent(projectName);
-        const encodedPage = encodeURIComponent(pageName);
+        const untitledId = `p${Date.now().toString(16)}`;
 
-        // Navigate to project page
-        await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
-
-        // Get title from metaDoc (verify it is empty)
-        const metaDocTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return "";
-        }, projectName);
-
-        // Verify title is empty
-        expect(metaDocTitle).toBe("");
-
-        // Navigate to home
         await page.goto("/", { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
+        await TestHelpers.setAccessibleProjects(page, [untitledId]);
 
-        // Wait for home dropdown to appear
-        await page.waitForSelector('[data-testid="container-dropdown"], .container-list, .home-dropdown', {
-            timeout: 10000,
-        });
-
-        // Verify container ID (project name) is displayed instead
-        const containerElement = page.locator('[data-testid="container-dropdown"], .container-list, .home-dropdown');
-
-        // Fallback behavior: Project name (container ID) is displayed
-        // Fallback implementation may vary by environment,
-        // so confirm container existence (specific display content depends on environment)
-        await expect(containerElement).toBeVisible();
+        await expect(async () => {
+            const options = await selectorOptions(page);
+            expect(
+                options.some(opt => opt.includes(untitledId)),
+                `Expected fallback to raw ID "${untitledId}". Found: ${options.join(", ")}`,
+            ).toBe(true);
+        }).toPass({ timeout: 30000 });
     });
 
     /**

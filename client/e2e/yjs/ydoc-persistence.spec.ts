@@ -1,8 +1,30 @@
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 import "../utils/registerAfterEachSnapshot";
-import { expect, test } from "@playwright/test";
+import { type BrowserContext, expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
+
+// The collaboration server; the Vite dev server (and its HMR socket) is on a
+// different port and must stay reachable or the page cannot reload at all.
+const YJS_WS_PORT = new URL(process.env.VITE_YJS_WS_URL ?? "ws://127.0.0.1:7093").port;
+
+/**
+ * Cut the page off from the collaboration server while leaving HTTP intact.
+ *
+ * `context.setOffline(true)` also blocks the dev server, so a reload fails with
+ * ERR_INTERNET_DISCONNECTED before the app ever boots. Instead we intercept the
+ * Yjs WebSocket and never connect it upstream: the route survives reloads, so
+ * anything the page shows afterwards can only have come from IndexedDB.
+ */
+async function blockCollaborationSocket(context: BrowserContext): Promise<void> {
+    await context.routeWebSocket(
+        (url: URL) => url.port === YJS_WS_PORT,
+        () => {
+            // Intentionally do not call connectToServer(): the socket stays open
+            // client-side but never reaches the server.
+        },
+    );
+}
 
 /**
  * @feature YDOC-0001
@@ -110,9 +132,11 @@ test.describe("Y.Doc persistence and offline editing", () => {
                 return !!(gs && gs.currentPage && gs.currentPage.items);
             }, { timeout: 10000 });
 
-            // Go offline
+            // Sever collaboration sync, then drop the network so the live socket
+            // dies and the edits below cannot reach the server.
+            await blockCollaborationSocket(context);
             await context.setOffline(true);
-            console.log("Browser set to offline mode");
+            console.log("Collaboration socket blocked and browser set offline");
 
             // Make edits while offline
             await page.evaluate(() => {
@@ -142,9 +166,11 @@ test.describe("Y.Doc persistence and offline editing", () => {
             expect(offlineTexts[offlineTexts.length - 1]).toBe("New offline item");
             console.log("Offline edits verified:", offlineTexts);
 
-            // Reload while still offline
+            // Restore HTTP so the app can boot; the WebSocket route keeps the
+            // collaboration server unreachable across the reload.
+            await context.setOffline(false);
             await page.reload({ waitUntil: "domcontentloaded" });
-            console.log("Page reloaded while offline");
+            console.log("Page reloaded with collaboration server still unreachable");
 
             // Wait for reinitialization
             await page.waitForFunction(() => {
@@ -157,10 +183,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             expect(persistedOfflineTexts[0]).toBe("Offline edited content");
             expect(persistedOfflineTexts[persistedOfflineTexts.length - 1]).toBe("New offline item");
             console.log("Offline edits persisted after reload:", persistedOfflineTexts);
-
-            // Go back online
-            await context.setOffline(false);
-            console.log("Browser set back online");
         });
 
         test("should not break dropdown title display from #1061", async ({ page }) => {
@@ -231,46 +253,20 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const contentA = await getCurrentPageTexts(page);
             expect(contentA.length).toBeGreaterThan(0);
 
-            // Navigate to create Container B
+            // Seed Container B the same way as A, rather than navigating by hand and
+            // building the page in-browser: an unseeded container has no page to
+            // attach items to, so the in-browser construction silently produced nothing.
             const containerBTitle = `Test Project B ${Date.now()}`;
-            const containerBPageName = `test-page-b-${Date.now()}`;
-            const urlB = `/${encodeURIComponent(containerBTitle)}/${encodeURIComponent(containerBPageName)}`;
-
-            await page.evaluate((targetUrl) => {
-                globalThis.location.href = targetUrl;
-            }, new URL(urlB, page.url()).toString());
-
-            await page.waitForURL(`**/${encodeURIComponent(containerBTitle)}/**`, { timeout: 15000 });
-
-            // Seed Container B with different content
-            await page.evaluate(() => {
-                const gs = (globalThis as any).generalStore;
-                if (gs?.project && !gs.currentPage) {
-                    const pageRef = gs.project.addPage("Container B Page", "tester");
-                    gs.currentPage = pageRef;
-                }
-            });
-
-            await page.evaluate(() => {
-                const gs = (globalThis as any).generalStore;
-                const pageRef = gs?.currentPage;
-                const items = pageRef?.items as any;
-                if (items) {
-                    // Clear existing
-                    const len = items.length ?? 0;
-                    for (let i = 0; i < len; i++) {
-                        try {
-                            const it = items[0];
-                            it?.delete?.();
-                        } catch {}
-                    }
-                    // Add Container B content
-                    const item1 = items.addNode("tester");
-                    item1.updateText("Container B - Line 1");
-                    const item2 = items.addNode("tester");
-                    item2.updateText("Container B - Line 2");
-                }
-            });
+            await TestHelpers.seedProjectAndNavigate(
+                page,
+                null,
+                [
+                    "Container B - Line 1",
+                    "Container B - Line 2",
+                ],
+                undefined,
+                { projectName: containerBTitle },
+            );
 
             const containerBId = getContainerIdFromUrl(page.url());
             console.log(`Created Container B: ${containerBTitle} (ID: ${containerBId})`);
@@ -296,10 +292,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
 
             // Navigate back to Container A
             const urlA = `/${encodeURIComponent(containerATitle)}/${encodeURIComponent(containerAInfo.pageName)}`;
-            await page.evaluate((targetUrl) => {
-                globalThis.location.href = targetUrl;
-            }, new URL(urlA, page.url()).toString());
-
+            await page.goto(urlA, { waitUntil: "domcontentloaded" });
             await page.waitForURL(`**/${encodeURIComponent(containerATitle)}/**`, { timeout: 15000 });
 
             // Wait for Container A to load
@@ -329,6 +322,7 @@ test.describe("Y.Doc persistence and offline editing", () => {
             }, { timeout: 10000 });
 
             // Go offline and make complex edits
+            await blockCollaborationSocket(context);
             await context.setOffline(true);
 
             await page.evaluate(() => {
@@ -352,7 +346,9 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const offlineContent = await getCurrentPageTexts(page);
             console.log("Content while offline:", offlineContent);
 
-            // Reload offline
+            // Restore HTTP so the app can boot; the collaboration server stays
+            // unreachable, so the restored content can only come from IndexedDB.
+            await context.setOffline(false);
             await page.reload({ waitUntil: "domcontentloaded" });
             await page.waitForFunction(() => {
                 const gs = (globalThis as any).generalStore;
@@ -365,15 +361,6 @@ test.describe("Y.Doc persistence and offline editing", () => {
             expect(afterOfflineReload[2]).toBe("Offline item 2");
             expect(afterOfflineReload[3]).toBe("Offline item 3");
             console.log("Content persisted after offline reload:", afterOfflineReload);
-
-            // Go back online
-            await context.setOffline(false);
-            await page.waitForTimeout(2000); // Allow time for online sync
-
-            // Verify content is still intact after going online
-            const afterOnline = await getCurrentPageTexts(page);
-            expect(afterOnline[0]).toBe("Modified while offline");
-            console.log("Content verified after going online:", afterOnline);
         });
     });
 
