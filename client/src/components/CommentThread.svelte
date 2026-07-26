@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
 import type { ItemLike } from "../types/yjs-types";
 import { getLogger } from "../lib/logger";
+import { isForeignInput } from "../lib/KeyEventHandler";
 import { onMount } from "svelte";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 const logger = getLogger("CommentThread");
@@ -294,12 +295,17 @@ function saveEdit(id: string) {
     onpointerdown={(e) => e.stopPropagation()}
     onmousedown={(e) => e.stopPropagation()}
     onclick={(e) => e.stopPropagation()}
+    onfocusin={(e) => {
+        if (isForeignInput(e.target)) {
+            editorOverlayStore.clearCursorAndSelection("local", true);
+        }
+    }}
 >
     <div class="comment-summary"><span class="thread-comment-count">{renderCommentsState.length}</span></div>
     {#each renderCommentsState as c (c.id)}
         <div class="comment" data-testid="comment-{c.id}">
             {#if editingId === c.id}
-                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
+                <input bind:value={editText} data-testid="edit-input-{c.id}" aria-label="Edit comment text" />
                 <button type="button" onclick={() => saveEdit(c.id)} data-testid="save-edit-{c.id}" title="Save">Save</button>
                 <button type="button" onclick={() => (editingId = null)} data-testid="cancel-edit-{c.id}" title="Cancel">Cancel</button>
             {:else}
@@ -314,7 +320,7 @@ function saveEdit(id: string) {
         onsubmit={(e) => { e.preventDefault(); try { add(); } catch (err) { logger.error({ error: err as Error }, '[CommentThread] submit add error'); } }}
         data-testid="comment-form"
     >
-        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" onpointerdown={() => editorOverlayStore.clearCursorAndSelection()} />
+        <input placeholder="Add comment" bind:value={newText} data-testid="new-comment-input" aria-label="New comment text" />
         <button type="submit" data-testid="add-comment-btn">Add</button>
     </form>
 </div>

@@ -8,6 +8,7 @@ category: client
 status: implemented
 tests:
 - client/e2e/new/tbl-chart-view-toggle-9d4b17ea.spec.ts
+- client/e2e/new/tbl-focus-clears-item-cursor-73f2c51c.spec.ts
 - client/e2e/new/tbl-database-table-block-53f59906.spec.ts
 - client/e2e/new/tbl-reuse-existing-database-table-53f59906.spec.ts
 - client/e2e/new/tbl-schema-change-warning-dialog-6f2a8c31.spec.ts

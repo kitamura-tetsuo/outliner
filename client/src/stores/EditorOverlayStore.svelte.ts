@@ -1,5 +1,6 @@
 import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
+import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
@@ -250,16 +251,18 @@ export class EditorOverlayStore {
 
                 // Ensure focus on global textarea
                 const textarea = this.getTextareaRef();
-                if (textarea) {
+                if (textarea && !isForeignInput(document.activeElement)) {
                     // Multiple attempts to ensure focus is set
                     textarea.focus();
 
                     // Set focus using requestAnimationFrame and tick
                     requestAnimationFrame(() => {
+                        if (isForeignInput(document.activeElement)) return;
                         textarea.focus();
 
                         tick().then(() => {
                             setTimeout(() => {
+                                if (isForeignInput(document.activeElement)) return;
                                 textarea.focus();
 
                                 // Debug info
@@ -1072,11 +1075,17 @@ export class EditorOverlayStore {
         if (userId === "local") {
             // Ensure reliable focus on global textarea to receive input
             const textarea = this.getTextareaRef();
-            if (textarea) {
+            if (textarea && !isForeignInput(document.activeElement)) {
                 try {
                     textarea.focus();
-                    requestAnimationFrame(() => textarea.focus());
-                    tick().then(() => textarea.focus());
+                    requestAnimationFrame(() => {
+                        if (isForeignInput(document.activeElement)) return;
+                        textarea.focus();
+                    });
+                    tick().then(() => {
+                        if (isForeignInput(document.activeElement)) return;
+                        textarea.focus();
+                    });
                 } catch {}
             }
             // Start cursor blinking as well

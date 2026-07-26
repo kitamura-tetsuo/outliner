@@ -10,6 +10,8 @@
 import { onDestroy, onMount } from "svelte";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
+import { isForeignInput } from "../../lib/KeyEventHandler";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
@@ -125,7 +127,15 @@ onDestroy(() => {
 });
 </script>
 
-<div class="yjs-table-view" data-testid="yjs-table-view">
+<div
+    class="yjs-table-view"
+    data-testid="yjs-table-view"
+    onfocusin={(e) => {
+        if (isForeignInput(e.target)) {
+            editorOverlayStore.clearCursorAndSelection("local", true);
+        }
+    }}
+>
     <div class="view-toolbar">
         {#if tableName}
             <span class="table-name" data-testid="yjs-table-name">{tableName}</span>

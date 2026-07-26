@@ -23,6 +23,8 @@ import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/ta
 import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
+import { isForeignInput } from "../../lib/KeyEventHandler";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 
 interface ItemLike {
     ydoc: import("yjs").Doc;
@@ -124,7 +126,18 @@ function createFromPreset() {
 }
 </script>
 
-<div class="yjs-table-block" data-testid="yjs-table-block" onclick={e => e.stopPropagation()} onmousedown={e => e.stopPropagation()} role="presentation">
+<div
+    class="yjs-table-block"
+    data-testid="yjs-table-block"
+    onclick={e => e.stopPropagation()}
+    onmousedown={e => e.stopPropagation()}
+    onfocusin={(e) => {
+        if (isForeignInput(e.target)) {
+            editorOverlayStore.clearCursorAndSelection("local", true);
+        }
+    }}
+    role="presentation"
+>
     {#if handles}
         {#key handles.doc.guid}
             <YjsTableView {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} />
