@@ -163,10 +163,10 @@ export default defineConfig({
             testMatch: ["**/[nop]*.spec.ts"],
         },
         {
-            // Core tests 6: sbd, sch
+            // Core tests 6: sbd, sch, srg
             name: "core-6",
             testDir: "./e2e/core",
-            testMatch: ["**/sbd*.spec.ts", "**/sch*.spec.ts"],
+            testMatch: ["**/sbd*.spec.ts", "**/sch*.spec.ts", "**/srg*.spec.ts"],
         },
         {
             name: "schedule",
