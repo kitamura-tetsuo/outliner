@@ -1,9 +1,9 @@
+import { fireEvent, render, screen } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/svelte";
 import * as Y from "yjs";
-import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
+import TableUiDefEditor from "./TableUiDefEditor.svelte";
 
 function createMockHandles(): TableHandles {
     const doc = new Y.Doc();

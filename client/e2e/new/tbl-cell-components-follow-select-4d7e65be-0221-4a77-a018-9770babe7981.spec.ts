@@ -67,6 +67,5 @@ test.describe("Table UI Definition Cell components list", () => {
         await titleSelect.selectOption("checkbox");
 
         // Go back to grid to ensure it updates (Optional: switch to grid panel)
-
     });
 });
