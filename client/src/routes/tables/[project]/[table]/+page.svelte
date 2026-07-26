@@ -55,7 +55,10 @@
                 store.project = projectDoc as unknown as NonNullable<typeof store.project>;
             }
 
-            if (!store.project?.ydoc) return;
+            if (!store.project?.ydoc) {
+                error = "Failed to load project document.";
+                return;
+            }
             const registryEntries = listTables(store.project.ydoc);
             const entry = registryEntries.find(e => e.name === tableName);
             if (!entry) {
@@ -83,6 +86,8 @@
     $effect(() => {
         if (isAuthenticated && projectName && tableName) {
             loadTable();
+        } else if (!isAuthenticated) {
+            isLoading = false;
         }
     });
 

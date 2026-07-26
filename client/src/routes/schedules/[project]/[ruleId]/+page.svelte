@@ -97,7 +97,10 @@
                 store.project = projectDoc as unknown as NonNullable<typeof store.project>;
             }
 
-            if (!store.project?.ydoc) return;
+            if (!store.project?.ydoc) {
+                error = "Failed to load project document.";
+                return;
+            }
 
             loadRule();
         } catch (err) {
@@ -111,6 +114,8 @@
     $effect(() => {
         if (isAuthenticated && projectName && ruleId) {
             loadProject();
+        } else if (!isAuthenticated) {
+            isLoading = false;
         }
     });
 
