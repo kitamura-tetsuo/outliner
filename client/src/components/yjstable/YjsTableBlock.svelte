@@ -12,8 +12,15 @@ import {
     observeItemTableId,
     setItemTableId,
 } from "../../services/yjstable/itemBinding";
-import { getTableHandles, getTableName, getTableRegistry, listTables } from "../../services/yjstable/tableDocs";
+import {
+    getTableHandles,
+    getTableName,
+    getTableRegistry,
+    getTableSqlName,
+    listTables,
+} from "../../services/yjstable/tableDocs";
 import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
+import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 
@@ -35,6 +42,11 @@ let registryVersion = $state(0);
 
 let presetKey = $state("tasks");
 let newTableName = $state("");
+// The SQL name is derived from the display name until the user edits it, so
+// the common case needs no extra typing while the identifier stays visible.
+let newSqlName = $state("");
+let sqlNameEdited = $state(false);
+let createError = $state<string | undefined>(undefined);
 
 let creationMode = $state<"new" | "existing">("new");
 let selectedExistingTableId = $state<string | undefined>(undefined);
@@ -58,6 +70,17 @@ const tableName = $derived.by(() => {
     void registryVersion;
     return tableId ? getTableName(item.ydoc, tableId) : undefined;
 });
+const tableSqlName = $derived.by(() => {
+    void registryVersion;
+    return tableId ? getTableSqlName(item.ydoc, tableId) : undefined;
+});
+
+const takenSqlNames = $derived(existingTables.map((t) => t.sqlName).filter(Boolean));
+const suggestedSqlName = $derived.by(() => {
+    const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
+    return deriveSqlName(newTableName.trim() || preset.defaultSqlName, takenSqlNames);
+});
+const effectiveSqlName = $derived(sqlNameEdited ? newSqlName.trim() : suggestedSqlName);
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
 
 const registryObserver = () => {
@@ -88,7 +111,14 @@ function selectExistingTable() {
 function createFromPreset() {
     const preset = TABLE_PRESETS.find((p) => p.key === presetKey) ?? TABLE_PRESETS[0];
     const name = newTableName.trim() || preset.name;
-    const id = createTableFromPreset(item.ydoc, preset, name);
+    const sqlName = effectiveSqlName;
+    createError = sqlNameError(sqlName);
+    if (createError) return;
+    if (takenSqlNames.includes(sqlName)) {
+        createError = `SQL name "${sqlName}" is already used in this project`;
+        return;
+    }
+    const id = createTableFromPreset(item.ydoc, preset, name, sqlName);
     setItemTableId(item, id);
     tableId = id;
 }
@@ -97,7 +127,7 @@ function createFromPreset() {
 <div class="yjs-table-block" data-testid="yjs-table-block" onclick={e => e.stopPropagation()} onmousedown={e => e.stopPropagation()} role="presentation">
     {#if handles}
         {#key handles.doc.guid}
-            <YjsTableView {handles} {projectId} {tableName} />
+            <YjsTableView {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} />
         {/key}
     {:else if tableId}
         <p class="loading" data-testid="yjs-table-waiting">Loading table...</p>
@@ -140,10 +170,25 @@ function createFromPreset() {
                             <option value={preset.key}>{preset.name}</option>
                         {/each}
                     </select>
+                    <input
+                        type="text"
+                        aria-label="SQL name"
+                        placeholder={suggestedSqlName}
+                        data-testid="yjs-table-sql-name-input"
+                        value={effectiveSqlName}
+                        oninput={(e) => {
+                            sqlNameEdited = true;
+                            newSqlName = (e.target as HTMLInputElement).value;
+                        }}
+                    />
                     <button type="button" data-testid="yjs-table-create" onclick={createFromPreset}>
                         Create
                     </button>
                 </div>
+                <p class="hint">Queries reference this table as <code>{effectiveSqlName || "?"}</code>.</p>
+                {#if createError}
+                    <p class="create-error" data-testid="yjs-table-create-error">{createError}</p>
+                {/if}
             {:else}
                 <div class="create-form">
                     <select
@@ -162,7 +207,9 @@ function createFromPreset() {
                         }}
                     >
                         {#each existingTables as table (table.tableId)}
-                            <option value={table.tableId}>{table.name || "Untitled table"}</option>
+                            <option value={table.tableId}>
+                                {table.name || "Untitled table"}{table.sqlName ? ` (${table.sqlName})` : ""}
+                            </option>
                         {/each}
                     </select>
                     <button type="button" data-testid="yjs-table-select-existing" onclick={selectExistingTable}>
@@ -187,6 +234,25 @@ function createFromPreset() {
     display: flex;
     flex-direction: column;
     gap: 6px;
+}
+
+.hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.hint code {
+    font-family: ui-monospace, monospace;
+    background: #f3f4f6;
+    border-radius: 3px;
+    padding: 0 4px;
+}
+
+.create-error {
+    font-size: 0.8rem;
+    color: #dc2626;
+    margin: 0;
 }
 
 .mode-tabs {

@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 20;
+export const DEMO_TEMPLATE_VERSION = 21;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -74,6 +74,9 @@ export interface DemoTableTemplate {
     // Fixed id (also the room segment): [A-Za-z0-9_-] only.
     tableId: string;
     name: string;
+    // Identifier of the CREATE TABLE statement: the only name queries use, and
+    // unique across the project so a query can join any two demo tables.
+    sqlName: string;
     schemaSql: string;
     query: string;
     // Cell component type per column (UI Definition).
@@ -112,6 +115,7 @@ export const DEMO_SALES_TABLE_ID = "demo-table-sales";
 export const DEMO_TASKS_TABLE_ID = "demo-table-tasks";
 export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
 export const DEMO_ROUTINES_TABLE_ID = "demo-table-routines";
+export const DEMO_SALES_TARGETS_TABLE_ID = "demo-table-sales-targets";
 
 // The recurring tasks demonstrated on the "Recurring Tasks" page. Each entry
 // becomes a definition row (kind = 'template') of the routines table; the
@@ -127,6 +131,7 @@ export const demoTables: DemoTableTemplate[] = [
     {
         tableId: DEMO_SALES_TABLE_ID,
         name: "Sales",
+        sqlName: "sales",
         schemaSql: "CREATE TABLE sales (\n"
             + "  id TEXT PRIMARY KEY,\n"
             + "  month TEXT NOT NULL,\n"
@@ -142,8 +147,34 @@ export const demoTables: DemoTableTemplate[] = [
         ],
     },
     {
+        // Cross-table aggregation: this table only stores the monthly targets,
+        // but its query joins `sales` and reports both series side by side.
+        // Postgres resolves `sales` because every table of a project shares one
+        // schema; the engine materializes it even when no view has opened it.
+        tableId: DEMO_SALES_TARGETS_TABLE_ID,
+        name: "Sales vs Target",
+        sqlName: "sales_targets",
+        schemaSql: "CREATE TABLE sales_targets (\n"
+            + "  id TEXT PRIMARY KEY,\n"
+            + "  month TEXT NOT NULL,\n"
+            + "  target INTEGER\n"
+            + ")",
+        query: "SELECT t.month, SUM(s.revenue) AS revenue, MAX(t.target) AS target, "
+            + "SUM(s.revenue) - MAX(t.target) AS diff "
+            + "FROM sales_targets t JOIN sales s ON s.month = t.month "
+            + "GROUP BY t.month ORDER BY MIN(s.id)",
+        components: { month: "text", target: "number" },
+        records: [
+            { id: "demo-target-1", values: { month: "Jan", target: 150 } },
+            { id: "demo-target-2", values: { month: "Feb", target: 150 } },
+            { id: "demo-target-3", values: { month: "Mar", target: 200 } },
+            { id: "demo-target-4", values: { month: "Apr", target: 200 } },
+        ],
+    },
+    {
         tableId: DEMO_TASKS_TABLE_ID,
         name: "Tasks",
+        sqlName: "tasks",
         schemaSql: "CREATE TABLE tasks (\n"
             + "  id TEXT PRIMARY KEY,\n"
             + "  title TEXT NOT NULL,\n"
@@ -229,6 +260,7 @@ export const demoTables: DemoTableTemplate[] = [
     {
         tableId: DEMO_HABITS_TABLE_ID,
         name: "Habits",
+        sqlName: "habits",
         schemaSql: "CREATE TABLE habits (\n"
             + "  id TEXT PRIMARY KEY,\n"
             + "  kind TEXT CHECK (kind IN ('habit', 'log')),\n"
@@ -296,6 +328,7 @@ export const demoTables: DemoTableTemplate[] = [
     {
         tableId: DEMO_ROUTINES_TABLE_ID,
         name: "Routines",
+        sqlName: "routine_tasks",
         // One table holds both the recurring task definitions (kind =
         // 'template') and the occurrences generated for them (kind =
         // 'occurrence'). `task_key` is the stable identity of a recurring
@@ -488,6 +521,7 @@ export function registerDemoTables(projectDoc: Y.Doc): void {
         const entry = new Y.Map<unknown>();
         registry.set(template.tableId, entry);
         entry.set("name", template.name);
+        entry.set("sqlName", template.sqlName);
         entry.set("doc", new Y.Doc({ guid: `demo--table--${template.tableId}`, autoLoad: true }));
     }
 }
@@ -703,6 +737,13 @@ export const demoPages: DemoPageTemplate[] = [
                     + "Toggle the Chart view to render the query result as a bar chart.",
                 componentType: "yjstable",
                 yjsTableId: DEMO_SALES_TABLE_ID,
+            },
+            {
+                text: "Aggregation across tables: this table stores only the monthly targets, "
+                    + "but its query joins the Sales table above and compares both series. "
+                    + "Every table of a project can be referenced by the name its schema declares.",
+                componentType: "yjstable",
+                yjsTableId: DEMO_SALES_TARGETS_TABLE_ID,
             },
             { text: "Aliases: an item can mirror another item and stay in sync with the original." },
             {

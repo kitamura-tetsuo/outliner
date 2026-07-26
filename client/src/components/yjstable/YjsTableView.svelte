@@ -10,12 +10,12 @@
 import { onDestroy, onMount } from "svelte";
 import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
-import { connectTableDoc } from "../../lib/yjs/connection";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
+import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
-import {
-    type RecordSyncError,
-    type TableQueryResult,
+import type {
+    RecordSyncError,
+    TableQueryResult,
     TableSyncAdapter,
 } from "../../services/yjstable/tableSyncAdapter";
 import TableChartPanel from "./TableChartPanel.svelte";
@@ -28,12 +28,16 @@ const logger = getLogger("YjsTableView");
 
 interface Props {
     handles: TableHandles;
+    /** Project doc holding the table registry (name lookups, conflict checks). */
+    projectDoc: Y.Doc;
     /** Project id used to connect the subdoc to its room; undefined = local only. */
     projectId?: string;
     tableName?: string;
+    /** Identifier queries use for this table, shown next to the display name. */
+    sqlName?: string;
 }
 
-let { handles, projectId, tableName }: Props = $props();
+let { handles, projectDoc, projectId, tableName, sqlName }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -55,24 +59,27 @@ let showSchedule = $state(false);
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
-// handles is static within the component lifecycle due to `{#key}` wrapping
-// svelte-ignore state_referenced_locally
-const adapter = new TableSyncAdapter(handles, {
-    onSchemaChanged: (parsed, error) => {
+// The adapter is owned by the engine, not by this component: several views of
+// the same table share one materialization, and sibling tables pulled in by a
+// cross-table query stay alive for as long as this session holds them.
+let adapter = $state<TableSyncAdapter | undefined>(undefined);
+
+const engineCallbacks = {
+    onSchemaChanged: (parsed: ParsedTableSchema | undefined, error?: string) => {
         schema = parsed;
         schemaError = error;
     },
-    onQueryResult: (r) => {
+    onQueryResult: (r: TableQueryResult) => {
         result = r;
         chartPanel?.update(r);
     },
-    onQueryError: (message) => {
+    onQueryError: (message: string | undefined) => {
         queryError = message;
     },
-    onRecordErrors: (errors) => {
+    onRecordErrors: (errors: RecordSyncError[]) => {
         recordErrors = errors;
     },
-});
+};
 
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
@@ -88,41 +95,32 @@ function refreshUiMirror() {
 
 const uiMirrorObserver = () => refreshUiMirror();
 
-let disposeConnection: (() => void) | undefined;
+// handles/projectDoc are static within the component lifecycle due to `{#key}`
+// svelte-ignore state_referenced_locally
+const session = createTableEngineSession({ projectDoc, projectId });
+let unsubscribe: (() => void) | undefined;
 
 onMount(() => {
     refreshUiMirror();
     handles.uiDef.observeDeep(uiMirrorObserver);
 
     void (async () => {
-        if (projectId) {
-            try {
-                const connection = await connectTableDoc(projectId, handles.tableId, handles.doc);
-                disposeConnection = connection.dispose;
-                // Seed PGlite only after the initial sync so we do not build
-                // the table from a half-loaded document.
-                const syncResult = await connection.waitForInitialSync(10000).catch(() => ({ synced: false }));
-                isInitialSyncDone = syncResult.synced;
-            } catch (err) {
-                logger.warn({ err }, "[YjsTableView] table doc connection failed; continuing offline");
-                isInitialSyncDone = false;
-            }
-        } else {
-            isInitialSyncDone = true;
+        const acquired = await session.acquire(handles.tableId);
+        if (!acquired) {
+            logger.warn({ tableId: handles.tableId }, "[YjsTableView] table is not registered in this project");
+            return;
         }
-        await adapter.start();
+        adapter = acquired.adapter;
+        isInitialSyncDone = acquired.remoteSynced;
+        unsubscribe = acquired.adapter.subscribe(engineCallbacks);
         adapterReady = true;
     })();
 });
 
 onDestroy(() => {
     handles.uiDef.unobserveDeep(uiMirrorObserver);
-    adapter.dispose();
-    try {
-        disposeConnection?.();
-    } catch {
-        // provider already gone
-    }
+    unsubscribe?.();
+    session.dispose();
     destroyTableUndoManager(handles.doc);
 });
 </script>
@@ -131,6 +129,11 @@ onDestroy(() => {
     <div class="view-toolbar">
         {#if tableName}
             <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
+        {/if}
+        {#if sqlName}
+            <!-- The identifier queries use. Shown next to the label so the two
+                 names are never confused for one another. -->
+            <code class="table-sql-name" data-testid="yjs-table-sql-name" title="Name to use in SQL queries">{sqlName}</code>
         {/if}
         <div class="view-toggles" role="group" aria-label="Table views">
             <button
@@ -187,7 +190,11 @@ onDestroy(() => {
 
     {#if showSchema}
         <section class="panel">
-            <TableSchemaEditor {handles} {adapter} {schemaError} />
+            {#if adapter}
+                <TableSchemaEditor {handles} {adapter} {schemaError} />
+            {:else}
+                <p class="loading">Loading table...</p>
+            {/if}
         </section>
     {/if}
 
@@ -256,6 +263,15 @@ onDestroy(() => {
 .table-name {
     font-weight: 600;
     color: #111827;
+}
+
+.table-sql-name {
+    font-family: ui-monospace, monospace;
+    font-size: 0.75rem;
+    color: #4b5563;
+    background: #f3f4f6;
+    border-radius: 3px;
+    padding: 1px 5px;
 }
 
 .view-toggles,

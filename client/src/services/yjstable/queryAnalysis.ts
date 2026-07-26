@@ -47,6 +47,21 @@ export function assertSelectQuery(sql: string): string {
 const AGGREGATE_RE = /\b(count|sum|avg|min|max|array_agg|string_agg|json_agg|bool_and|bool_or)\s*\(/i;
 
 /**
+ * Extract the relation name out of Postgres' `relation "x" does not exist`
+ * error. Letting the engine report what is missing keeps Postgres the single
+ * authority on which relations a query really references — no SQL parsing of
+ * our own, so CTEs, aliases and subqueries need no special handling.
+ */
+export function missingRelationName(err: unknown): string | undefined {
+    const message = err instanceof Error ? err.message : String(err ?? "");
+    const match = message.match(/relation "([^"]+)" does not exist/i);
+    if (!match) return undefined;
+    const relation = match[1];
+    // Schema-qualified references are never ours to resolve.
+    return relation.includes(".") ? undefined : relation;
+}
+
+/**
  * Decide which parts of a query result may be edited, given the query text,
  * the applied schema, and the column names of the result set.
  */
@@ -64,9 +79,15 @@ export function analyzeQueryEditability(
     if (!schema) return none("No schema applied");
     const stripped = stripSqlNoise(query);
 
-    if (/\bjoin\b/i.test(stripped)) return none("JOIN queries are read-only");
-    if (/\bgroup\s+by\b/i.test(stripped)) return none("Aggregated queries are read-only");
-    if (AGGREGATE_RE.test(stripped)) return none("Aggregated queries are read-only");
+    if (/\bjoin\b/i.test(stripped)) {
+        return none("Read-only view: rows combined from several tables cannot be edited here");
+    }
+    if (/\bgroup\s+by\b/i.test(stripped)) {
+        return none("Read-only view: aggregated rows have no single source record to edit");
+    }
+    if (AGGREGATE_RE.test(stripped)) {
+        return none("Read-only view: aggregated rows have no single source record to edit");
+    }
     if (/\bdistinct\b/i.test(stripped)) return none("DISTINCT queries are read-only");
     if (!resultColumns.includes("id")) {
         return none("Query result has no id column");

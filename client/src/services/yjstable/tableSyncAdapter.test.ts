@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { resetPgliteForTests } from "./pgliteService";
+import { projectSchemaName } from "./sqlNames";
 import { addRecord, createTable, deleteRecord, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
 import { type RecordSyncError, TableSyncAdapter } from "./tableSyncAdapter";
 
@@ -9,9 +10,11 @@ const SCHEMA = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, po
 
 function makeTable() {
     const projectDoc = new Y.Doc();
-    const tableId = createTable(projectDoc, "Tasks");
+    const tableId = createTable(projectDoc, "Tasks", "tasks");
     const handles = getTableHandles(projectDoc, tableId)!;
-    return { projectDoc, handles };
+    // Every table of a project shares one Postgres schema, so each test needs
+    // its own project schema to stay isolated inside the shared engine.
+    return { projectDoc, handles, pgSchema: projectSchemaName(projectDoc.guid) };
 }
 
 function waitMicrotasks(): Promise<void> {
@@ -26,13 +29,13 @@ afterAll(async () => {
 // 5s timeout when the whole unit suite runs in parallel workers.
 describe("TableSyncAdapter", { timeout: 30000 }, () => {
     it("loads existing records on start and serves the UI query", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
         handles.uiDef.set("query", "SELECT id, title, points FROM tasks ORDER BY title");
         addRecord(handles, { title: "b task", points: 2, status: "open" });
         addRecord(handles, { title: "a task", points: 1, status: "done" });
 
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             const result = await adapter.runQueryNow();
@@ -44,10 +47,10 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("syncs incremental record changes (insert, update, delete)", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
         handles.uiDef.set("query", "SELECT id, title, points FROM tasks");
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
 
@@ -71,12 +74,13 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("collects cast errors per record and keeps other records syncing", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
         handles.uiDef.set("query", "SELECT id, title FROM tasks");
         let errors: RecordSyncError[] = [];
-        const adapter = new TableSyncAdapter(handles, {
-            onRecordErrors: (e) => {
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        adapter.subscribe({
+            onRecordErrors: (e: RecordSyncError[]) => {
                 errors = e;
             },
         });
@@ -98,12 +102,13 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("surfaces constraint violations from PGlite without stopping other records", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
         handles.uiDef.set("query", "SELECT id, title FROM tasks");
         let errors: RecordSyncError[] = [];
-        const adapter = new TableSyncAdapter(handles, {
-            onRecordErrors: (e) => {
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        adapter.subscribe({
+            onRecordErrors: (e: RecordSyncError[]) => {
                 errors = e;
             },
         });
@@ -123,9 +128,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("applies schema changes with a diff and deletes removed-column data", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             const recordId = addRecord(handles, { title: "t", points: 1, status: "open" });
@@ -149,9 +154,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("allows undoing a schema change that dropped a column with data", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             const recordId = addRecord(handles, { title: "t", points: 1, status: "open" });
@@ -176,9 +181,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("rebuilds when the schema text changes from another client", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             // Simulate a remote change: plain transaction with a foreign origin.
@@ -201,10 +206,10 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("does not duplicate rows for schemas without an id column", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, "CREATE TABLE notes (body TEXT)");
         handles.uiDef.set("query", "SELECT body FROM notes");
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             const recordId = addRecord(handles, { body: "first" });
@@ -219,14 +224,14 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("returns correctly formatted date strings from queries (regression)", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(
             handles,
             "CREATE TABLE events (id TEXT PRIMARY KEY, due_date DATE, start_time TIMESTAMP, other_time TIMESTAMPTZ)",
         );
         handles.uiDef.set("query", "SELECT due_date, start_time, other_time FROM events");
 
-        const adapter = new TableSyncAdapter(handles);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
             addRecord(handles, {
@@ -247,11 +252,12 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     });
 
     it("reports query errors without breaking the adapter", async () => {
-        const { handles } = makeTable();
+        const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
         let queryError: string | undefined;
-        const adapter = new TableSyncAdapter(handles, {
-            onQueryError: (message) => {
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        adapter.subscribe({
+            onQueryError: (message: string | undefined) => {
                 queryError = message;
             },
         });

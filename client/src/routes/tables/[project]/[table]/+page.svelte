@@ -26,6 +26,8 @@
     let notFound = $state(false);
     let isLoading = $state(true);
     let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
+    let tableSqlName: string | undefined = $state(undefined);
+    let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
@@ -61,7 +63,10 @@
                 return;
             }
             const registryEntries = listTables(store.project.ydoc);
-            const entry = registryEntries.find(e => e.name === tableName);
+            // The route carries the display name; falling back to the SQL name
+            // keeps links written against the identifier working too.
+            const entry = registryEntries.find(e => e.name === tableName)
+                ?? registryEntries.find(e => e.sqlName === tableName);
             if (!entry) {
                 logger.warn(`Table "${tableName}" not found in project "${projectName}"`);
                 notFound = true;
@@ -76,6 +81,10 @@
             }
 
             tableHandles = handles;
+            tableSqlName = entry.sqlName || undefined;
+            // Held explicitly: the engine session needs the registry doc for
+            // name lookups and conflict checks.
+            tableProjectDoc = store.project.ydoc;
         } catch (err) {
             logger.error({ error: err }, "Failed to load table page:");
             error = err instanceof Error ? err.message : "An error occurred while loading the table.";
@@ -193,7 +202,15 @@
         <div class="flex-grow min-h-0 relative border border-gray-200 rounded-md overflow-hidden bg-white">
             {#key tableHandles.doc.guid}
                 <div class="h-full w-full">
-                    <YjsTableView handles={tableHandles} projectId={yjsStore.currentProjectId ?? undefined} tableName={tableName} />
+                    {#if tableProjectDoc}
+                        <YjsTableView
+                            handles={tableHandles}
+                            projectDoc={tableProjectDoc}
+                            projectId={yjsStore.currentProjectId ?? undefined}
+                            tableName={tableName}
+                            sqlName={tableSqlName}
+                        />
+                    {/if}
                 </div>
             {/key}
         </div>

@@ -72,8 +72,10 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - reuse existing 
         await expect(existingSelect).toBeVisible();
 
         // Check options
+        // The option carries both names: the label and, in parentheses, the
+        // identifier queries use for it.
         const options = await existingSelect.locator("option").allTextContents();
-        expect(options).toContain("Shared Tasks");
+        expect(options).toContain("Shared Tasks (shared_tasks)");
 
         // By default the first one is selected, click select
         await createPanel2.getByTestId("yjs-table-select-existing").click();
