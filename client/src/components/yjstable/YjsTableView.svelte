@@ -200,7 +200,7 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} />
+            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} resultColumns={result.columns} {queryError} />
         </section>
     {/if}
 

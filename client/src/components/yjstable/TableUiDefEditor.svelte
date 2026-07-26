@@ -15,11 +15,19 @@ interface Props {
     /** Mirror of the UI Definition (kept in sync by the parent view). */
     query: string;
     componentTypes: Record<string, string | undefined>;
+    resultColumns: string[];
+    queryError: string | undefined;
 }
 
-let { handles, schema, query, componentTypes }: Props = $props();
+let { handles, schema, query, componentTypes, resultColumns, queryError }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
+
+const schemaByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
+const rows = $derived(resultColumns.map((name) => ({ name, schemaColumn: schemaByName.get(name) })));
+const staleConfigs = $derived(
+    Object.keys(componentTypes).filter((name) => !resultColumns.includes(name) && componentTypes[name] !== undefined)
+);
 
 function commitQuery(e: Event) {
     const value = (e.target as HTMLInputElement).value;
@@ -66,32 +74,56 @@ function setComponentType(column: string, type: string) {
     />
 
     {#if schema}
-        <p class="editor-label">Cell components</p>
-        <div class="component-rows">
-            {#each schema.columns as column (column.name)}
-                <div class="component-row">
-                    <span class="column-name">{column.name}</span>
-                    <span class="column-type">{column.dataType}</span>
-                    <select
-                        data-testid={`yjs-table-component-${column.name}`}
-                        value={isCellComponentType(componentTypes[column.name])
-                        ? componentTypes[column.name]
-                        : "auto"}
-                        onchange={(e) => setComponentType(column.name, (e.target as HTMLSelectElement).value)}
-                    >
-                        <option value="auto">auto ({defaultCellType(column)})</option>
-                        {#each COMPONENT_TYPES as type (type)}
-                            <option value={type}>{type}</option>
-                        {/each}
-                    </select>
-                    {#if column.checkOptions && column.checkOptions.length > 0}
-                        <span class="check-options" title="Options from CHECK constraint">
-                            [{column.checkOptions.join(", ")}]
-                        </span>
-                    {/if}
+        {#if resultColumns.length > 0}
+            <p class="editor-label">Cell components</p>
+            <div class="component-rows">
+                {#each rows as row (row.name)}
+                    <div class="component-row">
+                        <span class="column-name">{row.name}</span>
+                        <span class="column-type">{row.schemaColumn?.dataType ?? "expression"}</span>
+                        <select
+                            data-testid={`yjs-table-component-${row.name}`}
+                            value={isCellComponentType(componentTypes[row.name])
+                            ? componentTypes[row.name]
+                            : "auto"}
+                            onchange={(e) => setComponentType(row.name, (e.target as HTMLSelectElement).value)}
+                        >
+                            <option value="auto">auto ({defaultCellType(row.schemaColumn)})</option>
+                            {#each COMPONENT_TYPES as type (type)}
+                                <option value={type}>{type}</option>
+                            {/each}
+                        </select>
+                        {#if row.schemaColumn?.checkOptions && row.schemaColumn.checkOptions.length > 0}
+                            <span class="check-options" title="Options from CHECK constraint">
+                                [{row.schemaColumn.checkOptions.join(", ")}]
+                            </span>
+                        {/if}
+                    </div>
+                {/each}
+            </div>
+
+            {#if staleConfigs.length > 0}
+                <p class="editor-label">Hidden configurations (not in SELECT)</p>
+                <div class="component-rows stale">
+                    {#each staleConfigs as name (name)}
+                        <div class="component-row">
+                            <span class="column-name stale-name">{name}</span>
+                            <span class="column-type stale-type">Currently: {componentTypes[name]}</span>
+                            <button
+                                type="button"
+                                class="clear-btn"
+                                data-testid={`yjs-table-clear-stale-${name}`}
+                                onclick={() => setComponentType(name, "auto")}
+                            >
+                                Clear
+                            </button>
+                        </div>
+                    {/each}
                 </div>
-            {/each}
-        </div>
+            {/if}
+        {:else}
+            <p class="hint">{queryError ? "The query failed; components follow the last successful result." : "Set a SELECT query to configure cell components."}</p>
+        {/if}
     {:else}
         <p class="hint">Apply a schema to configure cell components.</p>
     {/if}
@@ -152,5 +184,21 @@ select {
 .hint {
     color: #6b7280;
     font-size: 0.8rem;
+}
+
+.stale {
+    opacity: 0.7;
+}
+
+.clear-btn {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    padding: 2px 6px;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+.clear-btn:hover {
+    background: #f3f4f6;
 }
 </style>
