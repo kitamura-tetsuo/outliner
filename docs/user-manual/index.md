@@ -23,7 +23,7 @@ An overview of the basic interface and navigation.
 
 ### Creating a Page
 
-You can create a new page directly from the Pages section in the sidebar. Simply enter a title in the "New page name" input field and click the **Create** button.
+You can create a new page from the project home page. Simply enter a title in the "New page name" input field and click the **Create** button.
 
 ### Switching to Edit Mode
 
@@ -83,7 +83,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - Links to pages that do not exist yet look different, and the page is only created once you edit it.
 - You can also link to a page in another project with `[project/page]` syntax.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the document toolbar to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the page header to access it.
 
 ### External Links
 
@@ -95,7 +95,7 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the Search pages input field in the left main toolbar or the **Search** button in the document toolbar to search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the Search pages input field in the top navigation bar or the **Search** button in the page header to search across the whole project. Recent searches are remembered for quick access.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -150,14 +150,14 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the left main toolbar.
+Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
 - **New Table:** enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
 - **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top right toolbar, which opens the databases sidebar.
+Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
 
 ### Managing Data
 
