@@ -195,8 +195,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   # Create Python virtual environment if it doesn't exist
   ensure_python_env
 
-  # Install pre-commit via pip
-  if python3 -m pip install --no-cache-dir pre-commit; then
+  # Install pre-commit via pip. The version floor matters: .pre-commit-config.yaml
+  # declares its stages with the names introduced in 3.2 ("pre-commit" /
+  # "pre-push"), which an older release rejects with InvalidConfigError before
+  # running a single hook.
+  if python3 -m pip install --no-cache-dir "pre-commit>=${PRE_COMMIT_MIN_VERSION}"; then
     if [ -d "${ROOT_DIR}/.git" ]; then
       pre-commit install --hook-type pre-commit || echo "Warning: Failed to install pre-commit hook"
     else
@@ -297,6 +300,14 @@ else
     echo "Server build artifacts found at ${ROOT_DIR}/server/dist/server/src/index.js"
     ls -l "${ROOT_DIR}/server/dist/server/src/index.js"
   fi
+fi
+
+# Runs on cached setups too: the sentinel skips the install block above, so a
+# stale pre-commit older than the config would otherwise never be corrected.
+echo "Checking pre-commit version..."
+ensure_pre_commit_version
+if [ -d "${ROOT_DIR}/.git" ]; then
+  pre-commit install --hook-type pre-commit >/dev/null 2>&1 || true
 fi
 
 echo "Ensuring node-canvas native dependencies..."
