@@ -97,6 +97,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("targetTableId", "table-1");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", true);
             schedulesMap.set("rule-1", ruleObj);
 
@@ -116,6 +117,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("targetTableId", "table-1");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", true);
             schedulesMap.set("rule-1", ruleObj);
 
@@ -157,6 +159,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("rrule", "FREQ=DAILY;COUNT=3");
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", true);
             schedulesMap.set("rule-1", ruleObj);
 
@@ -182,6 +185,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("rrule", "FREQ=DAILY;COUNT=3");
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", false);
             schedulesMap.set("rule-1", ruleObj);
 
@@ -196,6 +200,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("rrule", "INVALID");
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", true);
             schedulesMap.set("rule-1", ruleObj);
 
@@ -246,6 +251,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("rrule", "FREQ=DAILY;COUNT=1");
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
+            ruleObj.set("sql", "SELECT 1");
             ruleObj.set("enabled", true); // Trigger active transition which recomputes using seq=1!
             schedulesMap.set("rule-1", ruleObj);
 
@@ -254,6 +260,39 @@ describe("Schedule Indexer", () => {
             const row = db.prepare("SELECT * FROM schedule_index WHERE rule_id = ?").get("rule-1") as any;
             expect(row.state).to.equal("exhausted");
             expect(ruleObj.get("completedAt")).to.not.be.undefined;
+        });
+
+        // A rule without `sql` can never be executed by the scheduler, so the
+        // indexer must not track it (and must garbage-collect a stale row that
+        // the scheduler already marked as orphaned).
+        it("should not index a rule without sql and should drop its stale row", () => {
+            db.prepare(
+                "INSERT INTO schedule_index (room, rule_id, target_table_id, timezone, rrule, dtstart, next_run_at, occurrence_seq, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            )
+                .run(
+                    "test-room",
+                    "rule-1",
+                    "table-1",
+                    "UTC",
+                    "FREQ=DAILY",
+                    "2024-01-01T10:00:00",
+                    "2024-01-01T10:00:00.000Z",
+                    0,
+                    "orphaned",
+                );
+
+            const ruleObj = new Y.Map();
+            ruleObj.set("rrule", "FREQ=DAILY;COUNT=3");
+            ruleObj.set("dtstart", "2024-01-01T10:00:00");
+            ruleObj.set("timezone", "UTC");
+            ruleObj.set("targetTableId", "table-1");
+            ruleObj.set("enabled", true);
+            schedulesMap.set("rule-1", ruleObj);
+
+            handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);
+
+            const row = db.prepare("SELECT * FROM schedule_index WHERE rule_id = ?").get("rule-1");
+            expect(row).to.be.undefined;
         });
     });
 });

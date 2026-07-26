@@ -1,0 +1,12 @@
+id: ENV-4b7e2c91
+title: CI runs the server mocha suite
+description: A dedicated CI workflow runs the server-side mocha suite, with bare `yjs` imports pinned to server/node_modules so server/src and the co-compiled shared/src share one Yjs instance.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-test-server.yml
+- scripts/run-server-tests.sh
+- server/tests/loaders/pin-server-deps.mjs
+tests:
+- scripts/tests/env-ci-server-mocha-suite-4b7e2c91.spec.ts
+title-ja: CI runs the server mocha suite
