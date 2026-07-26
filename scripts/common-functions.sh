@@ -154,6 +154,43 @@ npm_ci_if_needed() {
 }
 
 
+# Make sure the pre-commit that git will actually run is new enough for
+# .pre-commit-config.yaml, whose stages use the names introduced in 3.2
+# ("pre-commit" / "pre-push"). An older release rejects the whole config with
+# InvalidConfigError, so every commit fails before a hook runs — and a
+# distro-packaged pre-commit earlier on PATH can shadow the one setup just
+# installed, hence checking the resolved binary rather than the install itself.
+# Never fails the caller: setup.sh runs under `set -e` with a retry trap.
+ensure_pre_commit_version() {
+  local minimum="${PRE_COMMIT_MIN_VERSION:-3.2.0}"
+
+  local resolved
+  resolved="$(pre-commit --version 2>/dev/null | awk '{print $2}' || true)"
+
+  # Older than required (or absent): try once to upgrade the active environment.
+  if [ -z "$resolved" ] || [ "$(printf '%s\n%s\n' "$minimum" "$resolved" | sort -V | head -n1)" != "$minimum" ]; then
+    echo "pre-commit ${resolved:-<missing>} is older than the required ${minimum}; upgrading..."
+    python3 -m pip install --no-cache-dir --upgrade "pre-commit>=${minimum}" || true
+    resolved="$(pre-commit --version 2>/dev/null | awk '{print $2}' || true)"
+  fi
+
+  if [ -z "$resolved" ]; then
+    echo "Warning: pre-commit is not on PATH; commit hooks will not run."
+    echo "         Install it with: python3 -m pip install 'pre-commit>=${minimum}'"
+    return 0
+  fi
+
+  if [ "$(printf '%s\n%s\n' "$minimum" "$resolved" | sort -V | head -n1)" != "$minimum" ]; then
+    echo "Warning: pre-commit ${resolved} cannot parse .pre-commit-config.yaml (needs >= ${minimum})."
+    echo "         It fails with InvalidConfigError on the 'pre-commit' stage names."
+    echo "         Upgrade it with: python3 -m pip install --upgrade 'pre-commit>=${minimum}'"
+    return 0
+  fi
+
+  echo "pre-commit ${resolved} satisfies the required ${minimum}"
+  return 0
+}
+
 # Install global packages if needed
 install_global_packages() {
   if ! command -v firebase >/dev/null || ! command -v tinylicious >/dev/null || ! command -v pm2 >/dev/null; then

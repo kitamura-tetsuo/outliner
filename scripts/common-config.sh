@@ -43,6 +43,12 @@ export TEST_API_PORT
 # Firebase emulator settings for test environment
 export USE_FIREBASE_EMULATOR=true
 
+# Oldest pre-commit that understands the hook stage names used by
+# .pre-commit-config.yaml ("pre-commit" / "pre-push", renamed in 3.2). An older
+# release cannot parse the config and aborts every commit with
+# InvalidConfigError, so setup.sh installs and verifies at least this version.
+export PRE_COMMIT_MIN_VERSION="3.2.0"
+
 # Normalize helper hosts to match ports
 export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
 export AUTH_EMULATOR_HOST="${FIREBASE_AUTH_EMULATOR_HOST}"
