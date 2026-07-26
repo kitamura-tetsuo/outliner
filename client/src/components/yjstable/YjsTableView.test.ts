@@ -5,11 +5,13 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 
 // Mock TableUndoManager handles
+const mockDoc = new Y.Doc();
 const mockHandles = {
-    doc: new Y.Doc(),
+    doc: mockDoc,
     tableId: "test-table",
-    uiDef: new Y.Map(),
-    data: new Y.Map(),
+    schemaText: mockDoc.getText("schemaText"),
+    uiDef: mockDoc.getMap("uiDef"),
+    data: mockDoc.getMap("data"),
     undo: { undo: vi.fn(), redo: vi.fn() },
 };
 
