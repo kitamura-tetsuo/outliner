@@ -9,9 +9,9 @@ const mockDoc = new Y.Doc();
 const mockHandles = {
     doc: mockDoc,
     tableId: "test-table",
-    schemaText: mockDoc.getText('schemaText'),
-    uiDef: mockDoc.getMap('uiDef'),
-    data: mockDoc.getMap('data'),
+    schemaText: mockDoc.getText("schemaText"),
+    uiDef: mockDoc.getMap("uiDef"),
+    data: mockDoc.getMap("data"),
     undo: { undo: vi.fn(), redo: vi.fn() },
 };
 
