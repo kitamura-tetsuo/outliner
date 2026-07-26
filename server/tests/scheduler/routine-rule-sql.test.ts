@@ -2,7 +2,8 @@ import { expect } from "chai";
 import {
     buildDemoScheduleRules,
     DEMO_DAILY_RULE_ID,
-    DEMO_ROUTINES_TABLE_ID,
+    DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
+    DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_WEEKLY_RULE_ID,
     demoTables,
 } from "../../src/demo-content.js";
@@ -15,13 +16,15 @@ import { castValueForColumn, parseSchemaString } from "../../src/scheduler/Sched
 describe("Demo routine schedule rule SQL", function() {
     this.timeout(30000);
 
-    const routines = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
+    const occurrences = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
+    const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
     const rules = buildDemoScheduleRules();
     const dailyRule = rules.find((r) => r.ruleId === DEMO_DAILY_RULE_ID)!;
     const weeklyRule = rules.find((r) => r.ruleId === DEMO_WEEKLY_RULE_ID)!;
 
     // The records as the scheduler reads them from Data Storage (plain objects).
-    const seededRecords = routines.records.map((record) => ({ id: record.id, ...record.values }));
+    const seededRecords = occurrences.records.map((record) => ({ id: record.id, ...record.values }));
+    const templateRecords = templates.records.map((record) => ({ id: record.id, ...record.values }));
 
     let executor: JobExecutor;
 
@@ -34,12 +37,19 @@ describe("Demo routine schedule rule SQL", function() {
         await executor.stopWorker();
     });
 
+    // The rule reads the templates table and writes into the occurrences one,
+    // so the job materializes both relations (target table first), exactly as
+    // the scheduler assembles them from the project's table registry.
     const runRule = (ruleId: string, sql: string, occurrenceUtcIso: string, records = seededRecords) =>
         executor.executeJob({
             ruleId,
-            schemaSql: routines.schemaSql,
+            schemaSql: occurrences.schemaSql,
             ruleSql: sql,
             records,
+            tables: [
+                { schemaSql: occurrences.schemaSql, records },
+                { schemaSql: templates.schemaSql, records: templateRecords },
+            ],
             timezone: "UTC",
             occurrenceUtcIso,
         });
@@ -53,7 +63,6 @@ describe("Demo routine schedule rule SQL", function() {
             "daily-standup-2026-03-05",
         ]);
         for (const row of result.rows) {
-            expect(row.kind).to.equal("occurrence");
             expect(row.cadence).to.equal("daily");
             expect(row.occurrence_date).to.equal("2026-03-05");
             expect(row.done).to.equal(false);
@@ -100,13 +109,12 @@ describe("Demo routine schedule rule SQL", function() {
 
     it("returns values the client can store: dates as text, done as boolean", async () => {
         const result = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, "2026-03-05T00:00:00Z");
-        const schema = parseSchemaString(routines.schemaSql);
+        const schema = parseSchemaString(occurrences.schemaSql);
         const columnTypes = new Map(schema.columns.map((c: any) => [c.name, c.type]));
 
         // Every schema column is parsed despite the CHECK constraints.
         expect([...columnTypes.keys()]).to.deep.equal([
             "id",
-            "kind",
             "task_key",
             "title",
             "cadence",
@@ -132,7 +140,7 @@ describe("Demo routine schedule rule SQL", function() {
     it("the display query returns only the newest occurrence of each task", async () => {
         // The UI Definition query is a plain SELECT; run it through the same
         // executor to verify the "latest occurrence only" behaviour.
-        const result = await runRule(DEMO_DAILY_RULE_ID, routines.query, "2026-03-05T00:00:00Z");
+        const result = await runRule(DEMO_DAILY_RULE_ID, occurrences.query, "2026-03-05T00:00:00Z");
 
         expect(result.success, result.error).to.equal(true);
         const taskKeys = result.rows.map((r: any) => r.task_key);
@@ -143,12 +151,12 @@ describe("Demo routine schedule rule SQL", function() {
             "weekly-report",
             "weekly-review",
         ]);
-        // Templates are definitions, not occurrences, and never show up.
+        // Task definitions live in their own table and never show up here.
         expect(result.rows.every((r: any) => !String(r.id).startsWith("routine-template-"))).to.equal(true);
 
         for (const row of result.rows) {
             const newest = seededRecords
-                .filter((r) => r.kind === "occurrence" && r.task_key === row.task_key)
+                .filter((r) => r.task_key === row.task_key)
                 .map((r) => String(r.occurrence_date))
                 .sort()
                 .at(-1);

@@ -299,6 +299,57 @@ export class JobScheduler {
         `).run(nextRunAtIso, seq, room, ruleId);
     }
 
+    /**
+     * Read a table subdoc: its schema and its records as plain objects (the
+     * executor runs in a worker thread, so records must be structured-
+     * cloneable rather than nested Y.Maps).
+     */
+    private readTableDoc(doc: Y.Doc): { schemaSql: string; records: any[]; } {
+        const schemaSql = doc.getText("schema").toString();
+        const records: any[] = [];
+        for (const value of doc.getMap("data").values()) {
+            records.push(value instanceof Y.Map ? value.toJSON() : value);
+        }
+        return { schemaSql, records };
+    }
+
+    /**
+     * The other tables of the project the rule SQL reads from. A rule writes
+     * into its target table only, but may query any table of the project (as
+     * the demo's recurring tasks do: the rule reads the templates table and
+     * inserts into the occurrences one), so every registered table whose SQL
+     * name appears in the statement is materialized alongside the target.
+     */
+    private async loadReferencedTables(rule: any, ruleSql: string): Promise<{ schemaSql: string; records: any[]; }[]> {
+        const projectConn = await this.hocuspocus.openDirectConnection(rule.room);
+        const referenced: { tableId: string; }[] = [];
+        try {
+            const registry = projectConn.document?.getMap("yjsTables");
+            if (!registry) return [];
+            for (const [tableId, entry] of registry.entries()) {
+                if (tableId === rule.target_table_id) continue;
+                const sqlName = entry instanceof Y.Map ? String(entry.get("sqlName") ?? "") : "";
+                if (!sqlName || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(sqlName)) continue;
+                if (new RegExp(`\\b${sqlName}\\b`, "i").test(ruleSql)) referenced.push({ tableId });
+            }
+        } finally {
+            projectConn.disconnect();
+        }
+
+        const tables: { schemaSql: string; records: any[]; }[] = [];
+        for (const { tableId } of referenced) {
+            const conn = await this.hocuspocus.openDirectConnection(`${rule.room}/tables/${tableId}`);
+            try {
+                if (!conn.document) continue;
+                const table = this.readTableDoc(conn.document);
+                if (table.schemaSql) tables.push(table);
+            } finally {
+                conn.disconnect();
+            }
+        }
+        return tables;
+    }
+
     private async dispatchJob(rule: any, occurrenceIso: string, ruleSql: string) {
         // Table contents live in their own room (see client roomPath.ts:
         // `projects/<projectId>/tables/<tableId>`).
@@ -312,24 +363,20 @@ export class JobScheduler {
         }
 
         try {
-            const schemaText = doc.getText("schema");
             const dataMap = doc.getMap("data");
-
-            const schemaSql = schemaText.toString();
+            const { schemaSql, records } = this.readTableDoc(doc);
             if (!schemaSql) return;
-
-            // Records are nested Y.Maps; the executor runs in a worker thread,
-            // so they must be plain (structured-cloneable) objects.
-            const records: any[] = [];
-            for (const value of dataMap.values()) {
-                records.push(value instanceof Y.Map ? value.toJSON() : value);
-            }
 
             const jobData = {
                 ruleId: rule.rule_id,
                 schemaSql: schemaSql,
                 ruleSql: ruleSql,
                 records: records,
+                // The target table first, then the tables the SQL reads from.
+                tables: [
+                    { schemaSql, records },
+                    ...await this.loadReferencedTables(rule, ruleSql),
+                ],
                 timezone: rule.timezone,
                 occurrenceUtcIso: occurrenceIso,
             };

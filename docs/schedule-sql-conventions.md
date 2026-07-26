@@ -47,27 +47,29 @@ For aggregations, it's safer to use the occurrence time itself as part of the ID
 
 ### Worked example: recurring tasks
 
-The demo's recurring tasks (`Recurring Tasks` page, see `server/src/demo-content.ts`) follow this pattern. A stable `task_key` column identifies the recurring task — not its title, which the user may edit — and the id of a generated row combines that key with the occurrence date:
+The demo's recurring tasks (`Recurring Tasks` page, see `server/src/demo-content.ts`) follow this pattern. The definitions live in one table (`routine_templates`) and the generated rows in another (`routine_occurrences`), so a definition is edited in one place while its history grows separately. A stable `task_key` column identifies the recurring task — not its title, which the user may edit — and the id of a generated row combines that key with the occurrence date:
 
 ```sql
 WITH inserted AS (
-    INSERT INTO routine_tasks (id, kind, task_key, title, cadence, occurrence_date, done)
+    INSERT INTO routine_occurrences (id, task_key, title, cadence, occurrence_date, done)
     SELECT
         t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
-        'occurrence', t.task_key, t.title, t.cadence,
+        t.task_key, t.title, t.cadence,
         (current_setting('job.occurrence')::timestamptz)::date,
         false
-    FROM routine_tasks t
-    WHERE t.kind = 'template' AND t.cadence = 'daily'
+    FROM routine_templates t
+    WHERE t.cadence = 'daily'
     ON CONFLICT (id) DO NOTHING
     RETURNING *
 )
-SELECT id, kind, task_key, title, cadence,
+SELECT id, task_key, title, cadence,
        to_char(occurrence_date, 'YYYY-MM-DD') AS occurrence_date, done
 FROM inserted
 ```
 
-Two further conventions matter here:
+Three further conventions matter here:
+
+- **Read any table, write one**: a rule writes into its target table only, but its SQL may read from any table of the project. The job materializes the target table plus every registered table whose SQL name appears in the statement (see `JobScheduler.loadReferencedTables`), each with its own records, so the relation names of the project resolve as they do in a table query.
 
 - **Return JSON primitives**: returned rows are written back into the table's Yjs Data Storage and cast strictly against the schema, so a `DATE`/`TIMESTAMP` column must be rendered as text (`to_char`) rather than returned as a Postgres date, which would arrive as a `Date` object and fail the cast.
 - **Never overwrite user state**: `ON CONFLICT (id) DO NOTHING` means a retried or caught-up occurrence returns no row, so a checkbox the user already ticked is never reset.
@@ -78,12 +80,10 @@ A table that accumulates one row per occurrence usually wants to show only the n
 
 ```sql
 SELECT id, task_key, title, cadence, occurrence_date, done
-FROM routine_tasks r
-WHERE r.kind = 'occurrence'
-  AND NOT EXISTS (
-    SELECT 1 FROM routine_tasks later
-    WHERE later.kind = 'occurrence'
-      AND later.task_key = r.task_key
+FROM routine_occurrences r
+WHERE NOT EXISTS (
+    SELECT 1 FROM routine_occurrences later
+    WHERE later.task_key = r.task_key
       AND later.occurrence_date > r.occurrence_date
   )
 ORDER BY cadence, task_key

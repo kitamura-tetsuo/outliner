@@ -5,7 +5,8 @@ import {
     buildDemoScheduleRules,
     DEMO_DAILY_RULE_ID,
     DEMO_PROJECT_TITLE,
-    DEMO_ROUTINES_TABLE_ID,
+    DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
+    DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     demoTables,
     seedDemoTableDoc,
 } from "../../src/demo-content.js";
@@ -18,8 +19,10 @@ describe("Job scheduler run", function() {
     this.timeout(30000);
 
     const projectRoom = `projects/${DEMO_PROJECT_TITLE}`;
-    const tableRoom = `${projectRoom}/tables/${DEMO_ROUTINES_TABLE_ID}`;
-    const routines = demoTables.find((t) => t.tableId === DEMO_ROUTINES_TABLE_ID)!;
+    const tableRoom = `${projectRoom}/tables/${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}`;
+    const templatesRoom = `${projectRoom}/tables/${DEMO_ROUTINE_TEMPLATES_TABLE_ID}`;
+    const occurrences = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
+    const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
     const dailyRule = buildDemoScheduleRules().find((r) => r.ruleId === DEMO_DAILY_RULE_ID)!;
 
     let scheduler: JobScheduler;
@@ -37,10 +40,23 @@ describe("Job scheduler run", function() {
         projectDoc.getMap("schedules").set(dailyRule.ruleId, ruleMap);
         ruleMap.set("sql", dailyRule.sql);
         ruleMap.set("catchUp", true);
+        // The rule reads the templates table, which it finds through the
+        // project's table registry (sqlName -> table room).
+        const registry = projectDoc.getMap("yjsTables");
+        for (const table of [occurrences, templates]) {
+            const entry = new Y.Map<unknown>();
+            entry.set("name", table.name);
+            entry.set("sqlName", table.sqlName);
+            registry.set(table.tableId, entry);
+        }
         docs.set(projectRoom, projectDoc);
 
+        const templatesDoc = new Y.Doc();
+        seedDemoTableDoc(templatesDoc, templates);
+        docs.set(templatesRoom, templatesDoc);
+
         const tableDoc = new Y.Doc();
-        seedDemoTableDoc(tableDoc, routines);
+        seedDemoTableDoc(tableDoc, occurrences);
         // Drop today's daily occurrences from the seed so the rule has to
         // generate them itself.
         const data = tableDoc.getMap("data");
@@ -55,7 +71,7 @@ describe("Job scheduler run", function() {
         indexRow = {
             room: projectRoom,
             rule_id: dailyRule.ruleId,
-            target_table_id: DEMO_ROUTINES_TABLE_ID,
+            target_table_id: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
             timezone: "UTC",
             rrule: dailyRule.rrule,
             dtstart: `${due.toFormat("yyyy-MM-dd")}T00:00:00`,
@@ -104,6 +120,7 @@ describe("Job scheduler run", function() {
         await scheduler.tick();
 
         expect(openedRooms, "the table subdoc room is used, not the project room").to.contain(tableRoom);
+        expect(openedRooms, "the templates table the rule reads from is loaded too").to.contain(templatesRoom);
 
         const data = docs.get(tableRoom)!.getMap("data");
         // catchUp: only the most recent missed occurrence runs, i.e. today's.
@@ -113,8 +130,9 @@ describe("Job scheduler run", function() {
 
         expect(record, `occurrence ${generatedId} was created`).to.be.instanceOf(Y.Map);
         expect(record!.get("id")).to.equal(generatedId);
-        expect(record!.get("kind")).to.equal("occurrence");
         expect(record!.get("task_key")).to.equal("daily-standup");
+        // The title comes from the definition row of the templates table.
+        expect(record!.get("title")).to.equal("Write the standup note");
         expect(record!.get("cadence")).to.equal("daily");
         expect(record!.get("occurrence_date")).to.equal(today);
         expect(record!.get("done"), "a new occurrence starts unchecked").to.equal(false);

@@ -91,8 +91,9 @@ execution against a table). `buildDemoScheduleRules()` in
 `server/src/demo-content.ts` defines them and `registerDemoScheduleRules()`
 writes them into the project doc's `schedules` map; the reset clears that map
 first, so user experiments do not accumulate. The two seeded rules drive the
-`Recurring Tasks` page: they append the daily and weekly occurrences of the
-recurring tasks held in the `Routines` table. Their dtstarts are relative to
+`Recurring Tasks` page: they read the definitions from the `Routine Templates`
+table and append the daily and weekly occurrences to the `Routine Occurrences`
+table. Their dtstarts are relative to
 the seeding moment (today's midnight / this week's Monday), so the first
 occurrence is due immediately and the rule visibly runs shortly after a reset.
 
