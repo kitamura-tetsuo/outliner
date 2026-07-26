@@ -38,15 +38,23 @@ async function executeJob(data: any) {
         const tableName = tablesRes.rows[0]?.table_name as string;
 
         if (tableName && records && records.length > 0) {
-            const cols = Object.keys(records[0]);
+            const colsRes = await db.query<any>(
+                `
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = $1 AND table_name = $2
+            `,
+                [pgSchema, tableName],
+            );
+            const cols = colsRes.rows.map(r => r.column_name as string);
 
             let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c.replace(/"/g, '""')}"`).join(",")}) VALUES `;
             const flatValues: any[] = [];
             const values = records.map((record: any, rIdx: number) => {
                 const rowPlaceholders = cols.map((c, cIdx) => {
-                    const val = record[c];
+                    const val = record[c] !== undefined ? record[c] : null;
                     flatValues.push(val);
-                    return `$${rIdx * cols.length + cIdx + 1}`;
+                    return "$" + (rIdx * cols.length + cIdx + 1);
                 });
                 return `(${rowPlaceholders.join(",")})`;
             });
