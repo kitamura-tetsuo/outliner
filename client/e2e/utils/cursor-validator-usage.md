@@ -191,7 +191,7 @@ The actual data structure is as follows:
     ],
     "selections": [],
     "activeItemId": "69bb3616-50b0-475a-9713-36146086f50a",
-    "cursorVisible": true,
+    "animationPaused": true,
     "cursorInstances": [
         {
             "cursorId": "c1220e18-60ef-48c4-9c58-8731e89ccfb4",
