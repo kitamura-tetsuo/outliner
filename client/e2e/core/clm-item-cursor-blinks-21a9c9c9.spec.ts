@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
-import { CursorValidator } from "../utils/cursorValidation";
 import { v4 as uuidv4 } from "uuid";
+import { CursorValidator } from "../utils/cursorValidation";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-103: Cursor Blinking Behavior", () => {
     let projectTitle: string;
@@ -14,7 +14,7 @@ test.describe("CLM-103: Cursor Blinking Behavior", () => {
         await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, ["Line 1", "Line 2"], undefined, {
             projectName: projectTitle,
             pageName: pageTitle,
-            skipAppReady: false
+            skipAppReady: false,
         });
     });
 
