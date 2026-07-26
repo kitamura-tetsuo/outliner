@@ -378,54 +378,24 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const content1 = await getCurrentPageTexts(page);
             expect(content1[0]).toBe("Container 1 specific data");
 
-            // Create second container
-            const title2 = `Test Project ${Date.now()}`;
-            const pageName2 = `test-page-${Date.now()}`;
-            const url2 = `/${encodeURIComponent(title2)}/${encodeURIComponent(pageName2)}`;
-
-            await page.evaluate((targetUrl) => {
-                globalThis.location.href = targetUrl;
-            }, new URL(url2, page.url()).toString());
-
-            await page.waitForURL(`**/${encodeURIComponent(title2)}/**`, { timeout: 15000 });
-
-            await page.evaluate(() => {
-                const gs = (globalThis as any).generalStore;
-                if (gs?.project && !gs.currentPage) {
-                    const pageRef = gs.project.addPage("Container 2 Page", "tester");
-                    gs.currentPage = pageRef;
-                }
-            });
-
-            await page.evaluate(() => {
-                const gs = (globalThis as any).generalStore;
-                const pageRef = gs?.currentPage;
-                const items = pageRef?.items as any;
-                if (items) {
-                    const len = items.length ?? 0;
-                    for (let i = 0; i < len; i++) {
-                        try {
-                            const it = items[0];
-                            it?.delete?.();
-                        } catch {}
-                    }
-                    const item = items.addNode("tester");
-                    item.updateText("Container 2 specific data");
-                }
-            });
+            // Seed the second container rather than navigating to an unseeded URL and
+            // building its page in-browser: there is no page to attach items to, so
+            // the items were never created and the assertion below read undefined.
+            const title2 = `Test Project 2 ${Date.now()}`;
+            await TestHelpers.seedProjectAndNavigate(
+                page,
+                null,
+                ["Container 2 specific data"],
+                undefined,
+                { projectName: title2 },
+            );
 
             const content2 = await getCurrentPageTexts(page);
             expect(content2[0]).toBe("Container 2 specific data");
 
-            // Simulate time passage and cleanup
-            await page.waitForTimeout(1000);
-
             // Navigate back to first container
             const url1 = `/${encodeURIComponent(title1)}/${encodeURIComponent(pageName1)}`;
-            await page.evaluate((targetUrl) => {
-                globalThis.location.href = targetUrl;
-            }, new URL(url1, page.url()).toString());
-
+            await page.goto(url1, { waitUntil: "domcontentloaded" });
             await page.waitForURL(`**/${encodeURIComponent(title1)}/**`, { timeout: 15000 });
 
             await page.waitForFunction(() => {
