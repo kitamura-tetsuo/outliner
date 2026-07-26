@@ -6,7 +6,6 @@ registerCoverageHooks();
  *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
  */
 import { expect, test } from "@playwright/test";
-import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus clearing", () => {

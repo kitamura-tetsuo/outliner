@@ -30,9 +30,9 @@ describe("YjsTableView focus handling", () => {
     it("clears cursor and selection when a foreign input inside the table gets focusin", async () => {
         // Render the Table View
         const projectDoc = new Y.Doc();
-        const { getByTestId, container } = render(YjsTableView, {
+        const { getByTestId } = render(YjsTableView, {
             props: {
-                handles: mockHandles as any,
+                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
                 projectDoc,
                 tableName: "Test Table",
             },
@@ -70,7 +70,7 @@ describe("YjsTableView focus handling", () => {
         const projectDoc = new Y.Doc();
         const { getByTestId } = render(YjsTableView, {
             props: {
-                handles: mockHandles as any,
+                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
                 projectDoc,
                 tableName: "Test Table",
             },
