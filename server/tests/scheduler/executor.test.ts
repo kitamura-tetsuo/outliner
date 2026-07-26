@@ -22,7 +22,7 @@ describe("JobExecutor timeout recovery", function() {
             records: [],
             timezone: "UTC",
             occurrenceUtcIso: "2023-01-01T00:00:00Z",
-            ruleId: "timeout-rule"
+            ruleId: "timeout-rule",
         };
 
         const normalJobData = {
@@ -31,7 +31,7 @@ describe("JobExecutor timeout recovery", function() {
             records: [],
             timezone: "UTC",
             occurrenceUtcIso: "2023-01-01T00:00:00Z",
-            ruleId: "normal-rule"
+            ruleId: "normal-rule",
         };
 
         // 1. Submit a job that will time out

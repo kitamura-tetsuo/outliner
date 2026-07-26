@@ -85,7 +85,7 @@ export class JobExecutor {
                 reject: (err) => {
                     clearTimeout(timer);
                     reject(err);
-                }
+                },
             });
 
             this.worker.postMessage({ id, type: "execute", data: jobData });
