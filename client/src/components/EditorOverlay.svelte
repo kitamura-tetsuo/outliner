@@ -9,6 +9,7 @@ import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte
 import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
+import { isEditorClipboardEvent } from '../lib/KeyEventHandler';
 
 // store API (functions only)
 const { stopCursorBlink } = store;
@@ -738,6 +739,8 @@ onMount(() => {
     // Fallback when Ctrl+C is pressed (for E2E environment)
     const keydownHandler = (e: KeyboardEvent) => {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+            // Only mirror the item selection when the editor owns the focus
+            if (!isEditorClipboardEvent(e)) return;
             try {
                 let txt = store.getSelectedText('local');
                 if (!txt) {
@@ -905,6 +908,10 @@ function handleCopy(event: ClipboardEvent) {
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
     logger.debug(`handleCopy called`);
   }
+
+  // The listener is on document (capture), so it also sees copies made in other
+  // inputs or over plain page text. Leave those to the browser.
+  if (!isEditorClipboardEvent(event)) return;
 
   // Do nothing if no selection (reference store directly to avoid reactive lag)
   const selections = Object.values(store.selections).filter(sel =>
@@ -1247,6 +1254,10 @@ function handleCut(event: ClipboardEvent) {
   if (typeof window !== 'undefined' && window.DEBUG_MODE) {
     logger.debug(`handleCut called`);
   }
+
+  // Same ownership check as handleCopy: never cut item text on behalf of
+  // another input or of a plain page selection.
+  if (!isEditorClipboardEvent(event)) return;
 
   // Do nothing if no selection
   const selections = allSelections.filter(sel =>
