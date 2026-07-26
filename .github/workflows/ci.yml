@@ -54,6 +54,12 @@ jobs:
     uses: ./.github/workflows/ci-test-integration.yml
     secrets: inherit
 
+  server-test:
+    needs: [format, eslint-client]
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-test-server.yml
+    secrets: inherit
+
   e2e-test:
     needs: [format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
