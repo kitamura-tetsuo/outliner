@@ -27,11 +27,14 @@ async function executeJob(data: any) {
         await db.exec(`SET LOCAL search_path TO "${pgSchema}";`);
         await db.exec(schemaSql);
 
-        const tablesRes = await db.query<any>(`
+        const tablesRes = await db.query<any>(
+            `
             SELECT table_name
             FROM information_schema.tables
             WHERE table_schema = $1
-        `, [pgSchema]);
+        `,
+            [pgSchema],
+        );
         const tableName = tablesRes.rows[0]?.table_name as string;
 
         if (tableName && records && records.length > 0) {
