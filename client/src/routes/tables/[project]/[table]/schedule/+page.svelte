@@ -92,7 +92,10 @@
                 store.project = projectDoc as unknown as NonNullable<typeof store.project>;
             }
 
-            if (!store.project?.ydoc) return;
+            if (!store.project?.ydoc) {
+                error = "Failed to load project document.";
+                return;
+            }
 
             // Set up observer for schedules
             store.project.schedules.observeDeep(() => {
@@ -121,6 +124,8 @@
     $effect(() => {
         if (isAuthenticated && projectName && tableName) {
             loadTable();
+        } else if (!isAuthenticated) {
+            isLoading = false;
         }
     });
 
