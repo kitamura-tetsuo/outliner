@@ -5,7 +5,8 @@ Verify that all Playwright E2E spec files import and call registerCoverageHooks(
 Target files: client/e2e/**/*.spec.ts
 Checks:
   1) import { registerCoverageHooks } from "./utils/registerCoverageHooks"; (for files in e2e/)
-     OR import { registerCoverageHooks } from "../utils/registerCoverageHooks"; (for files in e2e/subdir/)
+     OR import { registerCoverageHooks } from "../utils/registerCoverageHooks"; (for files in e2e/subdir/,
+     with one ../ per directory level of nesting)
   2) registerCoverageHooks();
 
 If any file is missing either requirement, exit with non-zero status and print a
@@ -21,9 +22,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 E2E_DIR = REPO_ROOT / "client" / "e2e"
 
 # Regex patterns (tolerant to whitespace and optional semicolon)
-# Accept both ./utils/ (for files in e2e/) and ../utils/ (for files in e2e/subdir/)
+# Accept ./utils/ (for files in e2e/) and any depth of ../ (e2e/subdir/, e2e/a/b/, ...)
 IMPORT_RE = re.compile(
-    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"']\.\.?/utils/registerCoverageHooks[\"']\s*;?",
+    r"import\s*\{\s*registerCoverageHooks\s*\}\s*from\s*[\"'](?:\./|(?:\.\./)+)utils/registerCoverageHooks[\"']\s*;?",
     re.MULTILINE,
 )
 CALL_RE = re.compile(r"registerCoverageHooks\s*\(\s*\)\s*;?", re.MULTILINE)
