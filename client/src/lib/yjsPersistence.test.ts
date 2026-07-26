@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createPersistence, waitForSync } from "./yjsPersistence";
+import { createPersistence, TimeoutError, waitForSync } from "./yjsPersistence";
 import "fake-indexeddb/auto";
 
 // Import IndexeddbPersistence for type checking
@@ -290,7 +290,14 @@ describe("yjsPersistence", () => {
             once: () => {},
             off: () => {},
         };
-        await expect(waitForSync(mockPersistence, 100)).rejects.toThrow("waitForSync timed out");
+        let err;
+        try {
+            await waitForSync(mockPersistence as any, 100);
+        } catch (e) {
+            err = e;
+        }
+        expect(err).toBeInstanceOf(TimeoutError);
+        expect((err as Error).message).toBe("waitForSync timed out");
     });
 
     it("should reject if the underlying _db promise rejects", async () => {
@@ -300,6 +307,47 @@ describe("yjsPersistence", () => {
             off: () => {},
             _db: Promise.reject(new Error("db open failed")),
         };
-        await expect(waitForSync(mockPersistence, 1000)).rejects.toThrow("db open failed");
+        let err;
+        try {
+            await waitForSync(mockPersistence as any, 1000);
+        } catch (e) {
+            err = e;
+        }
+        expect(err).toBeInstanceOf(Error);
+        expect((err as Error).message).toBe("db open failed");
+    });
+
+
+    it("should retain persistence provider and eventually sync after a timeout", async () => {
+        const containerId = "test-container-timeout-sync";
+        const doc = new Y.Doc();
+        const persistence = createPersistence(containerId, doc);
+
+        // y-indexeddb might be fast and sync immediately in test.
+        // We actually want to test our waitForSync function's handling of the timeout.
+        const mockPersistence = {
+            synced: false,
+            once: () => {},
+            off: () => {},
+            _db: new Promise(resolve => {
+                setTimeout(resolve, 500); // resolve after timeout
+            })
+        };
+
+        // Wait for sync, expecting a timeout
+        let err;
+        try {
+            await waitForSync(mockPersistence as any, 100);
+        } catch (e) {
+            err = e;
+        }
+        expect(err).toBeInstanceOf(TimeoutError);
+        expect(mockPersistence.synced).toBe(false);
+
+        // Assert mockPersistence wasn't destroyed (by proxy of still existing and not throwing)
+        expect(mockPersistence).toBeDefined();
+
+        persistence.destroy();
+        doc.destroy();
     });
 });

@@ -353,6 +353,10 @@ onDestroy(async () => {
         {@render children()}
     </div>
 
+    {#if yjsStore.persistenceError}
+        <NetworkErrorAlert error="Offline changes are not being saved locally." dismissable={true} dismissCallback={() => { yjsStore.persistenceError = false; }} />
+    {/if}
+
     {#if yjsStore.syncError}
         <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} retryCallback={() => yjsStore.reconnect()} dismissable={false} />
     {/if}

@@ -3,12 +3,14 @@ interface Props {
     error?: string | null;
     retryCallback?: (() => void) | null;
     dismissable?: boolean;
+    dismissCallback?: (() => void) | null;
 }
 
-let { error = $bindable(null), retryCallback = null, dismissable = true }: Props = $props();
+let { error = $bindable(null), retryCallback = null, dismissable = true, dismissCallback = null }: Props = $props();
 
 function dismiss() {
     error = null;
+    if (dismissCallback) dismissCallback();
 }
 </script>
 
