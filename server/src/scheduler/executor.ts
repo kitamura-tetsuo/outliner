@@ -20,21 +20,38 @@ export class JobExecutor {
                 ? resolve(baseDir.replace("/src/", "/dist/server/src/"), "worker.js")
                 : resolve(baseDir, "worker.js");
 
-            this.worker = new Worker(workerFile);
-            this.worker.unref();
-            this.worker.on("message", (msg) => {
+            const worker = new Worker(workerFile);
+            this.worker = worker;
+            worker.unref();
+            worker.on("message", (msg) => {
                 if (msg.id !== undefined && this.resolvers.has(msg.id)) {
                     const r = this.resolvers.get(msg.id)!;
                     this.resolvers.delete(msg.id);
                     r.resolve(msg.result);
                 }
             });
-            this.worker.on("error", (err) => {
+            worker.on("error", (err) => {
                 logger.error({ err }, "JobExecutor worker error");
-                this.worker = null;
+                // The worker is dead, but if it is still the current one, clean up and restart.
+                if (this.worker === worker) {
+                    worker.terminate().catch(() => {});
+                    this.worker = null;
+                    for (const r of this.resolvers.values()) {
+                        r.reject(new Error("Worker error"));
+                    }
+                    this.resolvers.clear();
+                    this.startWorker();
+                }
             });
-            this.worker.on("exit", (code) => {
-                this.worker = null;
+            worker.on("exit", (code) => {
+                if (this.worker === worker) {
+                    this.worker = null;
+                    for (const r of this.resolvers.values()) {
+                        r.reject(new Error(`Worker exited with code ${code}`));
+                    }
+                    this.resolvers.clear();
+                    this.startWorker();
+                }
             });
         } catch (err) {
             logger.error({ err }, "Failed to start JobExecutor worker");
@@ -47,29 +64,48 @@ export class JobExecutor {
                 return reject(new Error("Worker not started"));
             }
             const id = this.msgId++;
-            this.resolvers.set(id, { resolve, reject });
-            this.worker.postMessage({ id, type: "execute", data: jobData });
 
-            setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (this.resolvers.has(id)) {
                     const r = this.resolvers.get(id)!;
                     this.resolvers.delete(id);
-                    this.stopWorker();
+                    this.stopWorker().catch((err) => {
+                        logger.error({ err }, "Error stopping worker on timeout");
+                    });
                     this.startWorker();
                     r.reject(new Error("Job timeout"));
                 }
             }, 10000);
+
+            this.resolvers.set(id, {
+                resolve: (val) => {
+                    clearTimeout(timer);
+                    resolve(val);
+                },
+                reject: (err) => {
+                    clearTimeout(timer);
+                    reject(err);
+                }
+            });
+
+            this.worker.postMessage({ id, type: "execute", data: jobData });
         });
     }
 
     async stopWorker(): Promise<void> {
-        if (this.worker) {
-            await this.worker.terminate();
+        const workerToTerminate = this.worker;
+        if (workerToTerminate) {
+            // Null out the worker immediately so startWorker() can create a new one synchronously
             this.worker = null;
+
+            // Clear outstanding jobs before terminating so they reject with "Worker terminated"
+            // rather than generic "Worker exited" from the exit handler.
             for (const r of this.resolvers.values()) {
                 r.reject(new Error("Worker terminated"));
             }
             this.resolvers.clear();
+
+            await workerToTerminate.terminate();
         }
     }
 }
