@@ -130,9 +130,16 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
             <button type="button"
                 class="add-database-btn"
                 aria-label="Add Database"
+                title="Add Database"
                 onclick={() => commandPaletteStore.insert("yjstable")}
             >
-                Add Database
+                <span class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </span>
+                <span class="btn-text">Add Database</span>
             </button>
             <div role="search">
                 <SearchBox project={effectiveProject ?? undefined} />
@@ -200,6 +207,15 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     color: #374151;
     cursor: pointer;
     transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+}
+
+.add-database-btn .btn-icon {
+    display: inline-flex;
+    align-items: center;
 }
 
 .add-database-btn:hover {
@@ -234,6 +250,16 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     .main-toolbar-content {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .add-database-btn {
+        margin-left: 0;
+        margin-right: 0.5rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .add-database-btn .btn-text {
+        display: none;
     }
 
     .toolbar-right {

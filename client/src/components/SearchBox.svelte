@@ -422,6 +422,7 @@ const logger = getLogger("SearchBox");
         position: relative;
         width: 100%;
         max-width: 400px;
+        min-width: 0;
     }
 
     .search-icon {
@@ -438,6 +439,7 @@ const logger = getLogger("SearchBox");
 
     .page-search-box input {
         width: 100%;
+        min-width: 0;
         padding: 0.5rem 2.25rem 0.5rem 2.25rem;
         border: 1px solid #d1d5db;
         border-radius: 0.375rem;
