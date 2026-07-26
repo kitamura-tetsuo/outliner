@@ -17,7 +17,9 @@ async function createTable(page: Page, itemIndex: number, displayName: string): 
     await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
     await addDatabaseBtn.click();
 
-    const createPanel = page.getByTestId("yjs-table-create-panel").nth(itemIndex);
+    // Only the block just inserted shows a create panel; earlier blocks have
+    // already become table views.
+    const createPanel = page.getByTestId("yjs-table-create-panel").first();
     await expect(createPanel).toBeVisible({ timeout: 10000 });
     await createPanel.getByTestId("yjs-table-name-input").fill(displayName);
     await createPanel.getByTestId("yjs-table-create").click();

@@ -49,7 +49,8 @@ test.describe("FTR-7b3e9c42: SQL names are unique within a project", () => {
         await page.waitForTimeout(300);
         await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
 
-        const secondPanel = page.getByTestId("yjs-table-create-panel").nth(1);
+        // The first block is a table view by now, so this is the only panel.
+        const secondPanel = page.getByTestId("yjs-table-create-panel").first();
         await expect(secondPanel).toBeVisible({ timeout: 10000 });
         await secondPanel.getByTestId("yjs-table-sql-name-input").fill("sales");
         await secondPanel.getByTestId("yjs-table-create").click();
