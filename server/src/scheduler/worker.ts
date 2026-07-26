@@ -1,56 +1,65 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
 
-let db: PGlite | null = null;
-
 async function executeJob(data: any) {
-    if (!db) {
-        db = new PGlite();
-        await db.waitReady;
-    }
-
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;
+
+    if (typeof ruleId !== "string" || !/^[A-Za-z0-9_-]+$/.test(ruleId)) {
+        return { success: false, error: "Invalid ruleId" };
+    }
     const pgSchema = `t_${ruleId.replace(/-/g, "_")}`;
 
+    if (timezone) {
+        try {
+            Intl.DateTimeFormat(undefined, { timeZone: timezone });
+        } catch {
+            return { success: false, error: "Invalid timezone" };
+        }
+    }
+
+    const db = new PGlite();
+    await db.waitReady;
+
     try {
-        await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
         await db.exec(`CREATE SCHEMA "${pgSchema}";`);
 
         await db.exec(`BEGIN;`);
         await db.exec(`SET LOCAL search_path TO "${pgSchema}";`);
         await db.exec(schemaSql);
 
-        const tablesRes = await db.query<any>(`
+        const tablesRes = await db.query<any>(
+            `
             SELECT table_name
             FROM information_schema.tables
-            WHERE table_schema = '${pgSchema}'
-        `);
+            WHERE table_schema = $1
+        `,
+            [pgSchema],
+        );
         const tableName = tablesRes.rows[0]?.table_name as string;
 
         if (tableName && records && records.length > 0) {
             const cols = Object.keys(records[0]);
 
-            let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c}"`).join(",")}) VALUES `;
-            const values = records.map((record: any) => {
-                const rowVals = cols.map(c => {
+            let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c.replace(/"/g, '""')}"`).join(",")}) VALUES `;
+            const flatValues: any[] = [];
+            const values = records.map((record: any, rIdx: number) => {
+                const rowPlaceholders = cols.map((c, cIdx) => {
                     const val = record[c];
-                    if (val === null || val === undefined) return "NULL";
-                    if (typeof val === "string") return `'${val.replace(/'/g, "''")}'`;
-                    if (typeof val === "number" || typeof val === "boolean") return val;
-                    return `'${String(val).replace(/'/g, "''")}'`;
+                    flatValues.push(val);
+                    return `$${rIdx * cols.length + cIdx + 1}`;
                 });
-                return `(${rowVals.join(",")})`;
+                return `(${rowPlaceholders.join(",")})`;
             });
 
             query += values.join(",") + ";";
-            await db.exec(query);
+            await db.query(query, flatValues);
         }
 
         if (timezone) {
-            await db.exec(`SET LOCAL TIME ZONE '${timezone}';`);
+            await db.query(`SELECT set_config('timezone', $1, true);`, [timezone]);
         }
         if (occurrenceUtcIso) {
-            await db.exec(`SELECT set_config('job.occurrence', '${occurrenceUtcIso}', true);`);
+            await db.query(`SELECT set_config('job.occurrence', $1, true);`, [occurrenceUtcIso]);
         }
 
         const result = await db.query(ruleSql);
@@ -62,6 +71,8 @@ async function executeJob(data: any) {
         } catch {}
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
+    } finally {
+        await db.close();
     }
 }
 
