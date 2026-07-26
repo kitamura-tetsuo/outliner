@@ -46,6 +46,9 @@ let isAuthenticated = $state(false);
 let isSidebarOpen = $state(false);
 let isDatabaseSidebarOpen = $state(false);
 
+// Initialization error state
+let initError: string | null = $state(null);
+
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser && typeof window !== "undefined") {
     window.generalStore =
@@ -175,7 +178,7 @@ onMount(() => {
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
         } catch {}
         // Dynamically import browser-only modules
-        let userManager: { addEventListener: (f: (e: unknown) => void) => void } | undefined;
+        let userManager: typeof import("../auth/UserManager").userManager | undefined;
         try {
             ({ userManager } = await import("../auth/UserManager"));
             // Initialize metadata Y.Doc with IndexedDB persistence
@@ -183,6 +186,7 @@ onMount(() => {
             await import("../services");
         } catch (e) {
             logger.error({ error: e as Error }, "Failed to load client-only modules");
+            initError = "Failed to load application modules. Please check your connection and reload.";
         }
         // Application initialization log
         if (import.meta.env.DEV) {
@@ -206,8 +210,8 @@ onMount(() => {
         }
 
         // Check authentication status
-                const userManagerWithGetCurrentUser = userManager as unknown as { getCurrentUser?: () => unknown };
-        isAuthenticated = userManagerWithGetCurrentUser?.getCurrentUser?.() !== null;
+        const currentUser = userManager?.getCurrentUser?.();
+        isAuthenticated = currentUser != null;
 
         if (isAuthenticated) {
             // Initialize debug functions
@@ -359,6 +363,10 @@ onDestroy(async () => {
 
     {#if yjsStore.syncError}
         <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} retryCallback={() => yjsStore.reconnect()} dismissable={false} />
+    {/if}
+
+    {#if initError}
+        <NetworkErrorAlert error={initError} retryCallback={() => window.location.reload()} dismissable={false} />
     {/if}
 </div>
 
