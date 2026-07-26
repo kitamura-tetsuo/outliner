@@ -36,6 +36,17 @@ export function getEnv(key: string, defaultValue: string = ""): string {
 }
 
 /**
+ * Function to determine if the application is running in an E2E testing environment
+ * @returns true if running in E2E, false otherwise
+ */
+export function isE2eEnvironment(): boolean {
+    const isTestMode = typeof import.meta !== "undefined" && import.meta.env?.MODE === "test";
+    const hasLocalStorageFlag = typeof window !== "undefined"
+        && window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
+    return isTestMode || hasLocalStorageFlag;
+}
+
+/**
  * Function to retrieve environment configuration for debugging
  */
 export function getDebugConfig() {
