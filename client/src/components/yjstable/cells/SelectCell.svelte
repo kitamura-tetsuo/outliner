@@ -4,17 +4,18 @@ interface Props {
     editable: boolean;
     /** Allowed values, read from the schema's CHECK (col IN (...)) constraint. */
     options?: string[];
+    ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
 }
 
-let { value, editable, options = [], onCommit }: Props = $props();
+let { value, editable, options = [], ariaLabel, onCommit }: Props = $props();
 
 const current = $derived(value === null || value === undefined ? "" : String(value));
 </script>
 
 <select
     class="cell-select"
-    aria-label="Select value"
+    aria-label={ariaLabel || "Select value"}
     value={current}
     disabled={!editable}
     onpointerdown={(e: Event) => e.stopPropagation()}

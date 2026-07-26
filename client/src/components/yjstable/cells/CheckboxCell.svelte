@@ -2,14 +2,15 @@
 interface Props {
     value: unknown;
     editable: boolean;
+    ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
 }
 
-let { value, editable, onCommit }: Props = $props();
+let { value, editable, ariaLabel, onCommit }: Props = $props();
 </script>
 
 <input
-    type="checkbox" aria-label="Toggle cell value"
+    type="checkbox" aria-label={ariaLabel || "Toggle cell value"}
     class="cell-checkbox"
     checked={value === true || value === "true"}
     disabled={!editable}
