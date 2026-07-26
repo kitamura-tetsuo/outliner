@@ -26,7 +26,15 @@ export type TableData = Y.Map<TableRecord>;
 
 export interface TableRegistryEntry {
     tableId: string;
+    /** Free-text label. Never appears in SQL. */
     name: string;
+    /**
+     * The identifier of the table's `CREATE TABLE` statement, denormalized
+     * into the project doc so conflicts can be detected and `FROM <name>`
+     * resolved to a table id without loading every subdoc. The schema text is
+     * authoritative: this field is rewritten whenever a schema is applied.
+     */
+    sqlName: string;
 }
 
 export interface TableHandles {
@@ -50,7 +58,11 @@ export function listTables(projectDoc: Y.Doc): TableRegistryEntry[] {
     const registry = getTableRegistry(projectDoc);
     const entries: TableRegistryEntry[] = [];
     registry.forEach((entry, tableId) => {
-        entries.push({ tableId, name: String(entry.get("name") ?? "") });
+        entries.push({
+            tableId,
+            name: String(entry.get("name") ?? ""),
+            sqlName: String(entry.get("sqlName") ?? ""),
+        });
     });
     return entries;
 }
@@ -59,12 +71,13 @@ export function listTables(projectDoc: Y.Doc): TableRegistryEntry[] {
  * Create a new table: a fresh subdoc referenced from the project registry.
  * Returns the new table id.
  */
-export function createTable(projectDoc: Y.Doc, name: string): string {
+export function createTable(projectDoc: Y.Doc, name: string, sqlName: string): string {
     const tableId = uuidv4();
     const subdoc = new Y.Doc({ guid: tableDocGuid(projectDoc.guid, tableId), autoLoad: true });
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
         entry.set("name", name);
+        entry.set("sqlName", sqlName);
         entry.set("doc", subdoc);
         getTableRegistry(projectDoc).set(tableId, entry);
     });
@@ -79,6 +92,43 @@ export function renameTable(projectDoc: Y.Doc, tableId: string, name: string): v
 export function getTableName(projectDoc: Y.Doc, tableId: string): string | undefined {
     const entry = getTableRegistry(projectDoc).get(tableId);
     return entry ? String(entry.get("name") ?? "") : undefined;
+}
+
+export function getTableSqlName(projectDoc: Y.Doc, tableId: string): string | undefined {
+    const entry = getTableRegistry(projectDoc).get(tableId);
+    const sqlName = entry ? String(entry.get("sqlName") ?? "") : "";
+    return sqlName || undefined;
+}
+
+/**
+ * Record the identifier of the applied `CREATE TABLE` statement. Called only
+ * by the sync adapter after a schema has been validated and applied.
+ */
+export function setTableSqlName(projectDoc: Y.Doc, tableId: string, sqlName: string): void {
+    const entry = getTableRegistry(projectDoc).get(tableId);
+    if (entry && entry.get("sqlName") !== sqlName) entry.set("sqlName", sqlName);
+}
+
+/** Resolve a relation name used in a query to the table that owns it. */
+export function findTableIdBySqlName(projectDoc: Y.Doc, sqlName: string): string | undefined {
+    return listTables(projectDoc).find((entry) => entry.sqlName === sqlName)?.tableId;
+}
+
+/**
+ * Check whether `sqlName` is already used by a different table of the project.
+ * Returns a message naming the conflicting table, or undefined when free.
+ */
+export function findSqlNameConflict(
+    projectDoc: Y.Doc,
+    tableId: string,
+    sqlName: string,
+): string | undefined {
+    const conflict = listTables(projectDoc).find(
+        (entry) => entry.tableId !== tableId && entry.sqlName === sqlName,
+    );
+    if (!conflict) return undefined;
+    return `Table name "${sqlName}" is already used by "${conflict.name || conflict.tableId}" `
+        + "in this project. Table names must be unique so queries can reference them.";
 }
 
 /** Deterministic subdoc guid so every client resolves the same table room. */

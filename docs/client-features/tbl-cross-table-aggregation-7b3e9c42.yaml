@@ -1,0 +1,52 @@
+id: FTR-7b3e9c42
+title: Cross-table aggregation with project-unique SQL names
+title-ja: プロジェクト内で一意な SQL 名によるテーブル横断集計
+category: client
+status: implemented
+description: 'A table''s UI Definition query may reference any other table of the
+  same project, so JOIN and aggregate queries (SUM/COUNT/GROUP BY) can combine
+  several tables.
+
+
+  Naming: a table has exactly two names and both are visible to the user. The
+  display name (registry `name`) is free text used by the sidebar and the
+  /tables/... route and never appears in SQL. The SQL name is the identifier of
+  the table''s own `CREATE TABLE` statement: it is the only name queries use, it
+  is unique within the project (enforced when a schema is applied), and it is
+  changed by editing the schema rather than by renaming a label. There is no
+  alias or view layer in between, so an engine error names the same identifier
+  the user typed. The creation dialog takes both names, deriving the SQL name
+  from the display name (falling back to `data` for titles without ASCII
+  characters) and validating it against `^[a-z_][a-z0-9_]*$`, the Postgres
+  identifier length limit and the reserved-word list.
+
+
+  Execution: all tables of a project share one Postgres schema (`p_<projectId>`)
+  instead of the former per-table schema, so Postgres resolves `FROM a JOIN b`
+  itself. A query that references a table which is not materialized yet fails
+  with `relation "x" does not exist`; the adapter takes the relation name from
+  that error, materializes the sibling table through the registry and retries
+  (bounded), which keeps Postgres the only component that has to understand SQL
+  — CTEs, aliases and subqueries need no special handling. A cross-table result
+  is therefore either complete or an error, never silently partial.
+
+
+  Ownership: a table is materialized exactly once per project no matter how many
+  views show it or how many sibling queries reference it. Views hold engine
+  sessions, sessions hold references, and a table''s query pins the relations it
+  pulled in. Entries no longer reachable from a live session are swept and their
+  relations dropped, so a later query can never read stale rows left behind by a
+  closed block. Two tables whose queries reference each other are collected too.
+
+
+  Results built from a JOIN or an aggregate stay read-only in the grid, with a
+  message explaining that such rows have no single source record to edit.
+
+  '
+tests:
+- client/src/services/yjstable/sqlNames.test.ts
+- client/src/services/yjstable/tableEngine.test.ts
+- client/src/services/yjstable/tableDocs.test.ts
+- client/src/services/yjstable/tableSyncAdapter.test.ts
+- client/e2e/new/tbl-cross-table-aggregation-7b3e9c42.spec.ts
+- client/e2e/new/tbl-sql-name-uniqueness-7b3e9c42.spec.ts

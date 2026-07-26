@@ -9,8 +9,15 @@ export interface TablePreset {
     key: "blank" | "tasks" | "habits";
     /** Display name used for the registry entry by default. */
     name: string;
-    schemaSql: string;
-    query: string;
+    /** Default SQL name suggested by the creation dialog. */
+    defaultSqlName: string;
+    /**
+     * Preset SQL is a template: the SQL name chosen at creation time is the
+     * real `CREATE TABLE` identifier, so two tables built from the same preset
+     * are two distinct relations instead of two copies of one hardcoded name.
+     */
+    schemaSql: (table: string) => string;
+    query: (table: string) => string;
     /** Cell component type per column (nested Y.Map in the UI Definition). */
     components: Record<string, { type: string; }>;
 }
@@ -18,12 +25,14 @@ export interface TablePreset {
 export const BLANK_PRESET: TablePreset = {
     key: "blank",
     name: "Table",
-    schemaSql: "CREATE TABLE items (\n"
+    defaultSqlName: "items",
+    schemaSql: (t) =>
+        `CREATE TABLE ${t} (\n`
         + "  id TEXT PRIMARY KEY,\n"
         + "  title TEXT NOT NULL,\n"
         + "  done BOOLEAN\n"
         + ")",
-    query: "SELECT id, title, done FROM items",
+    query: (t) => `SELECT id, title, done FROM ${t}`,
     components: {
         title: { type: "text" },
         done: { type: "checkbox" },
@@ -35,7 +44,9 @@ export const BLANK_PRESET: TablePreset = {
 export const TASKS_PRESET: TablePreset = {
     key: "tasks",
     name: "Tasks",
-    schemaSql: "CREATE TABLE tasks (\n"
+    defaultSqlName: "tasks",
+    schemaSql: (t) =>
+        `CREATE TABLE ${t} (\n`
         + "  id TEXT PRIMARY KEY,\n"
         + "  title TEXT NOT NULL,\n"
         + "  status TEXT CHECK (status IN ('open', 'done')),\n"
@@ -45,7 +56,8 @@ export const TASKS_PRESET: TablePreset = {
         + "  created_at TIMESTAMP,\n"
         + "  completed_at TIMESTAMP\n"
         + ")",
-    query: "SELECT id, title, status, priority, due_date, repeat_days FROM tasks "
+    query: (t) =>
+        `SELECT id, title, status, priority, due_date, repeat_days FROM ${t} `
         + "ORDER BY status DESC, due_date NULLS LAST, priority",
     components: {
         title: { type: "text" },
@@ -61,7 +73,9 @@ export const TASKS_PRESET: TablePreset = {
 export const HABITS_PRESET: TablePreset = {
     key: "habits",
     name: "Habits",
-    schemaSql: "CREATE TABLE habits (\n"
+    defaultSqlName: "habits",
+    schemaSql: (t) =>
+        `CREATE TABLE ${t} (\n`
         + "  id TEXT PRIMARY KEY,\n"
         + "  kind TEXT CHECK (kind IN ('habit', 'log')),\n"
         + "  habit_id TEXT,\n"
@@ -70,7 +84,7 @@ export const HABITS_PRESET: TablePreset = {
         + "  log_date DATE,\n"
         + "  created_at TIMESTAMP\n"
         + ")",
-    query: "SELECT id, kind, name, interval_days, log_date FROM habits ORDER BY kind, name, log_date",
+    query: (t) => `SELECT id, kind, name, interval_days, log_date FROM ${t} ORDER BY kind, name, log_date`,
     components: {
         kind: { type: "select" },
         name: { type: "text" },
@@ -82,9 +96,9 @@ export const HABITS_PRESET: TablePreset = {
 export const TABLE_PRESETS: TablePreset[] = [BLANK_PRESET, TASKS_PRESET, HABITS_PRESET];
 
 /** Seed a table's UI Definition from a preset (nested Y.Map per column). */
-export function applyPresetUi(handles: TableHandles, preset: TablePreset): void {
+export function applyPresetUi(handles: TableHandles, preset: TablePreset, sqlName: string): void {
     handles.doc.transact(() => {
-        handles.uiDef.set("query", preset.query);
+        handles.uiDef.set("query", preset.query(sqlName));
         const components = new Y.Map<Y.Map<unknown>>();
         for (const [column, config] of Object.entries(preset.components)) {
             const cfg = new Y.Map<unknown>();
@@ -103,12 +117,13 @@ export function createTableFromPreset(
     projectDoc: Y.Doc,
     preset: TablePreset,
     name: string = preset.name,
+    sqlName: string = preset.defaultSqlName,
 ): string {
-    const tableId = createTable(projectDoc, name);
+    const tableId = createTable(projectDoc, name, sqlName);
     const handles = getTableHandles(projectDoc, tableId);
     if (handles) {
-        setSchemaText(handles, preset.schemaSql);
-        applyPresetUi(handles, preset);
+        setSchemaText(handles, preset.schemaSql(sqlName));
+        applyPresetUi(handles, preset, sqlName);
     }
     return tableId;
 }

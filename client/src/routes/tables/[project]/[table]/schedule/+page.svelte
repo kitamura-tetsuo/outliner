@@ -106,7 +106,8 @@
             });
 
             const registryEntries = listTables(store.project.ydoc);
-            const entry = registryEntries.find(e => e.name === tableName);
+            const entry = registryEntries.find(e => e.name === tableName)
+                ?? registryEntries.find(e => e.sqlName === tableName);
             if (!entry) {
                 logger.warn(`Table "${tableName}" not found in project "${projectName}"`);
                 notFound = true;
