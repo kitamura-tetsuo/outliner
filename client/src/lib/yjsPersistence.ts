@@ -4,13 +4,20 @@ const logger = getLogger("yjsPersistence");
 import { IndexeddbPersistence } from "y-indexeddb";
 import type * as Y from "yjs";
 
+export class TimeoutError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "TimeoutError";
+    }
+}
+
 export type PersistenceLike = {
     synced: boolean;
     once: (eventName: "synced", callback: () => void) => void;
     off?: (eventName: "synced", callback: () => void) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     _db?: Promise<any>;
-    destroy?: () => void;
+    destroy?: () => void | Promise<void>;
 };
 
 /**
@@ -56,7 +63,7 @@ export function waitForSync(persistence: PersistenceLike, timeoutMs: number = 30
         persistence.once("synced", onSynced);
 
         const timeoutId = setTimeout(() => {
-            reject(new Error("waitForSync timed out"));
+            reject(new TimeoutError("waitForSync timed out"));
         }, timeoutMs);
 
         if (persistence._db) {

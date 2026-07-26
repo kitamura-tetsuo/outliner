@@ -7,9 +7,14 @@ import { IndexeddbPersistence } from "y-indexeddb";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
-import { createPersistence, waitForSync } from "../yjsPersistence";
+import { createPersistence, TimeoutError, waitForSync } from "../yjsPersistence";
 import { projectRoomPath, tableRoomPath } from "./roomPath";
-import { deleteRoomSyncState, setRoomSyncState } from "./roomSyncState";
+import {
+    deleteRoomPersistenceError,
+    deleteRoomSyncState,
+    setRoomPersistenceError,
+    setRoomSyncState,
+} from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
@@ -192,10 +197,20 @@ async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<Ind
         await waitForSync(persistence);
         return persistence;
     } catch (e) {
+        if (e instanceof TimeoutError) {
+            logger.warn(
+                `[yjs-connection] Timeout attaching IndexedDB persistence for room ${room}, continuing in background:`,
+                e,
+            );
+            setRoomPersistenceError(room, false); // Record that a timeout happened (UI can show warning), but don't drop persistence
+            return persistence;
+        }
+
         logger.warn(`[yjs-connection] Failed to attach IndexedDB persistence for room ${room}:`, e);
         if (persistence) {
-            persistence.destroy();
+            await persistence.destroy();
         }
+        setRoomPersistenceError(room, true);
         return undefined;
     }
 }
@@ -488,6 +503,7 @@ async function setupProviderForRoom(
             } catch {}
         }
         deleteRoomSyncState(room);
+        deleteRoomPersistenceError(room);
     };
 
     return { provider, awareness, waitForInitialSync, dispose };

@@ -69,3 +69,68 @@ export function clearRoomSyncStates(): void {
     states.clear();
     listeners.clear();
 }
+
+export type RoomPersistenceError = boolean; // true = fatal error, false = timeout (but continuing in background)
+
+const persistenceErrorStates = new Map<string, RoomPersistenceError>();
+const persistenceErrorListeners = new Map<string, Set<(state: RoomPersistenceError) => void>>();
+
+export function setRoomPersistenceError(room: string, state: RoomPersistenceError): void {
+    if (persistenceErrorStates.size >= 100 && !persistenceErrorStates.has(room)) {
+        let candidateForEviction: string | undefined;
+        for (const candidate of persistenceErrorStates.keys()) {
+            const roomListeners = persistenceErrorListeners.get(candidate);
+            if (!roomListeners || roomListeners.size === 0) {
+                candidateForEviction = candidate;
+                break;
+            }
+        }
+
+        if (candidateForEviction) {
+            persistenceErrorStates.delete(candidateForEviction);
+            persistenceErrorListeners.delete(candidateForEviction);
+        } else {
+            logger.warn("RoomPersistenceError leak warning: over 100 rooms all have active listeners");
+        }
+    }
+
+    persistenceErrorStates.set(room, state);
+    const set = persistenceErrorListeners.get(room);
+    if (!set) return;
+    for (const listener of set) {
+        try {
+            listener(state);
+        } catch {
+            // Listener errors must not break sync-state propagation
+        }
+    }
+}
+
+export function getRoomPersistenceError(room: string): RoomPersistenceError | undefined {
+    return persistenceErrorStates.get(room);
+}
+
+export function onRoomPersistenceErrorChange(
+    room: string,
+    listener: (state: RoomPersistenceError) => void,
+): () => void {
+    let set = persistenceErrorListeners.get(room);
+    if (!set) {
+        set = new Set();
+        persistenceErrorListeners.set(room, set);
+    }
+    set.add(listener);
+    return () => {
+        set?.delete(listener);
+    };
+}
+
+export function deleteRoomPersistenceError(room: string): void {
+    persistenceErrorStates.delete(room);
+    persistenceErrorListeners.delete(room);
+}
+
+export function clearRoomPersistenceErrorStates(): void {
+    persistenceErrorStates.clear();
+    persistenceErrorListeners.clear();
+}

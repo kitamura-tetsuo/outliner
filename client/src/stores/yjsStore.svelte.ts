@@ -1,6 +1,11 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
-import { getRoomSyncState, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
+import {
+    getRoomPersistenceError,
+    getRoomSyncState,
+    onRoomPersistenceErrorChange,
+    onRoomSyncStateChange,
+} from "../lib/yjs/roomSyncState";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
 
@@ -12,6 +17,7 @@ class YjsStore {
     private _lastProjectGuid: string | null = null;
     private _unsubSyncState: (() => void) | undefined;
     private _unsubWsProvider: (() => void) | undefined;
+    private _unsubPersistenceError: (() => void) | undefined;
 
     get yjsClient(): YjsClient | undefined {
         return this._client;
@@ -39,9 +45,18 @@ class YjsStore {
             this._unsubSyncState?.();
         } catch {}
         this._unsubSyncState = undefined;
+        try {
+            this._unsubPersistenceError?.();
+        } catch {}
+        this._unsubPersistenceError = undefined;
         if (v?.containerId) {
             const room = projectRoomPath(v.containerId);
             const initialSyncState = getRoomSyncState(room);
+            const initialPersistenceError = getRoomPersistenceError(room);
+            this.persistenceError = initialPersistenceError === true;
+            this._unsubPersistenceError = onRoomPersistenceErrorChange(room, (state) => {
+                this.persistenceError = state === true;
+            });
             this.notYetSynced = initialSyncState !== "synced";
             if (
                 initialSyncState === "too-large" || initialSyncState === "rate-limited" || initialSyncState === "denied"
@@ -62,6 +77,7 @@ class YjsStore {
         } else {
             this.notYetSynced = false;
             this.syncError = null;
+            this.persistenceError = false;
         }
 
         if (v) {
@@ -129,6 +145,7 @@ class YjsStore {
     // True until the current room's initial sync completes, so the UI can indicate that
     // edits may still be applied to a stale/local-only copy of the document.
     notYetSynced: boolean = false;
+    persistenceError: boolean = false;
     // Set when the server rejects sync with a fatal error
     syncError: "too-large" | "rate-limited" | "denied" | "timed-out" | null = null;
     get connectionState() {
@@ -152,6 +169,11 @@ class YjsStore {
             this._unsubSyncState?.();
         } catch {}
         this._unsubSyncState = undefined;
+        try {
+            this._unsubPersistenceError?.();
+        } catch {}
+        this._unsubPersistenceError = undefined;
+        this.persistenceError = false;
     }
 
     getIsConnected() {
