@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createPersistence, TimeoutError, waitForSync } from "./yjsPersistence";
+import { createPersistence, type PersistenceLike, TimeoutError, waitForSync } from "./yjsPersistence";
 import "fake-indexeddb/auto";
 
 // Import IndexeddbPersistence for type checking
@@ -292,7 +292,7 @@ describe("yjsPersistence", () => {
         };
         let err;
         try {
-            await waitForSync(mockPersistence as any, 100);
+            await waitForSync(mockPersistence as unknown as PersistenceLike, 100);
         } catch (e) {
             err = e;
         }
@@ -309,7 +309,7 @@ describe("yjsPersistence", () => {
         };
         let err;
         try {
-            await waitForSync(mockPersistence as any, 1000);
+            await waitForSync(mockPersistence as unknown as PersistenceLike, 1000);
         } catch (e) {
             err = e;
         }
@@ -336,7 +336,7 @@ describe("yjsPersistence", () => {
         // Wait for sync, expecting a timeout
         let err;
         try {
-            await waitForSync(mockPersistence as any, 100);
+            await waitForSync(mockPersistence as unknown as PersistenceLike, 100);
         } catch (e) {
             err = e;
         }
