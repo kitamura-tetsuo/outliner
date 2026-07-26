@@ -27,6 +27,47 @@ async function selectorOptions(page: Page): Promise<string[]> {
     return await selector.locator("option").allInnerTexts();
 }
 
+interface MetaDocModule {
+    setContainerTitleInMetaDoc: (project: string, title: string) => void;
+    getContainerTitleFromMetaDoc: (project: string) => string | null;
+}
+
+/**
+ * metaDoc exposes itself on window only after its module has evaluated, and it
+ * hydrates from IndexedDB asynchronously. Writing before either has happened is
+ * how this suite ended up reading back null (module absent) or "" (not yet
+ * readable), so always wait for the module first.
+ */
+async function waitForMetaDoc(page: Page): Promise<void> {
+    await page.waitForFunction(
+        () => !!(globalThis as unknown as { __META_DOC_MODULE__?: MetaDocModule; }).__META_DOC_MODULE__,
+        { timeout: 30000 },
+    );
+}
+
+async function setMetaDocTitle(page: Page, projectName: string, title: string): Promise<void> {
+    await waitForMetaDoc(page);
+    await page.evaluate(({ projectName, title }) => {
+        const metaDocModule = (globalThis as unknown as { __META_DOC_MODULE__?: MetaDocModule; }).__META_DOC_MODULE__;
+        metaDocModule?.setContainerTitleInMetaDoc(projectName, title);
+    }, { projectName, title });
+}
+
+async function getMetaDocTitle(page: Page, projectName: string): Promise<string | null> {
+    return await page.evaluate((projectName) => {
+        const metaDocModule = (globalThis as unknown as { __META_DOC_MODULE__?: MetaDocModule; }).__META_DOC_MODULE__;
+        return metaDocModule?.getContainerTitleFromMetaDoc(projectName) ?? null;
+    }, projectName);
+}
+
+/** Poll rather than read once: the metaDoc write lands asynchronously. */
+async function expectMetaDocTitle(page: Page, projectName: string, expected: string): Promise<void> {
+    await waitForMetaDoc(page);
+    await expect(async () => {
+        expect(await getMetaDocTitle(page, projectName)).toBe(expected);
+    }).toPass({ timeout: 30000 });
+}
+
 /**
  * @feature CNT-0001
  *  Title   : Container title persistence and home dropdown display
@@ -70,35 +111,8 @@ test.describe("Container Title Persistence Tests", () => {
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Set container title in metaDoc (call setContainerTitleInMetaDoc)
-        await page.evaluate((projectName) => {
-            // Call metaDoc module function to set title
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Custom Container Title");
-            }
-        }, projectName);
-
-        // Verify that the title is set in metaDoc
-        const storedTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName);
-
-        expect(storedTitle).toBe("Custom Container Title");
+        await setMetaDocTitle(page, projectName, "Custom Container Title");
+        await expectMetaDocTitle(page, projectName, "Custom Container Title");
     });
 
     /**
@@ -146,54 +160,12 @@ test.describe("Container Title Persistence Tests", () => {
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Set custom title in metaDoc
-        await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Reload Persistence Test Title");
-            }
-        }, projectName);
+        await setMetaDocTitle(page, projectName, "Reload Persistence Test Title");
+        await expectMetaDocTitle(page, projectName, "Reload Persistence Test Title");
 
-        // Verify set title can be retrieved
-        let storedTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName);
-
-        expect(storedTitle).toBe("Reload Persistence Test Title");
-
-        // Reload page
+        // metaDoc is backed by IndexedDB, so the title must survive a reload.
         await page.reload({ waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(3000); // Wait for IndexedDB loading
-
-        // Verify title is preserved after reload
-        storedTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName);
-
-        expect(storedTitle).toBe("Reload Persistence Test Title");
+        await expectMetaDocTitle(page, projectName, "Reload Persistence Test Title");
     });
 
     /**
@@ -236,61 +208,11 @@ test.describe("Container Title Persistence Tests", () => {
         await page.goto(`/${encodedProject}/${encodedPage}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Set initial title
-        await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Initial Title");
-            }
-        }, projectName);
+        await setMetaDocTitle(page, projectName, "Initial Title");
+        await expectMetaDocTitle(page, projectName, "Initial Title");
 
-        // Verify initial title is set
-        let storedTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName);
-        expect(storedTitle).toBe("Initial Title");
-
-        // Update title
-        await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Updated Title");
-            }
-        }, projectName);
-
-        // Verify updated title is reflected
-        storedTitle = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName);
-        expect(storedTitle).toBe("Updated Title");
+        await setMetaDocTitle(page, projectName, "Updated Title");
+        await expectMetaDocTitle(page, projectName, "Updated Title");
     });
 
     /**
@@ -312,33 +234,8 @@ test.describe("Container Title Persistence Tests", () => {
         await page.goto(`/${encodedProject1}/${encodedPage1}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Set title for Container 1
-        await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 1 Title");
-            }
-        }, projectName1);
-
-        // Verify Container 1 title is set
-        let storedTitle1 = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName1);
-        expect(storedTitle1).toBe("Container 1 Title");
+        await setMetaDocTitle(page, projectName1, "Container 1 Title");
+        await expectMetaDocTitle(page, projectName1, "Container 1 Title");
 
         // Create Container 2
         const projectName2 = `TestProject2-${Date.now()}`;
@@ -352,47 +249,10 @@ test.describe("Container Title Persistence Tests", () => {
         await page.goto(`/${encodedProject2}/${encodedPage2}`, { waitUntil: "domcontentloaded" });
         await page.waitForTimeout(2000);
 
-        // Set title for Container 2
-        await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.setContainerTitleInMetaDoc) {
-                metaDocModule.setContainerTitleInMetaDoc(projectName, "Container 2 Title");
-            }
-        }, projectName2);
+        await setMetaDocTitle(page, projectName2, "Container 2 Title");
+        await expectMetaDocTitle(page, projectName2, "Container 2 Title");
 
-        // Verify Container 2 title is set
-        const storedTitle2 = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName2);
-        expect(storedTitle2).toBe("Container 2 Title");
-
-        // Verify Container 1 title is unaffected
-        storedTitle1 = await page.evaluate((projectName) => {
-            const metaDocModule = (globalThis as unknown as {
-                __META_DOC_MODULE__?: {
-                    setContainerTitleInMetaDoc: (project: string, title: string) => void;
-                    getContainerTitleFromMetaDoc: (project: string) => string | null;
-                };
-            }).__META_DOC_MODULE__;
-            if (metaDocModule && metaDocModule.getContainerTitleFromMetaDoc) {
-                return metaDocModule.getContainerTitleFromMetaDoc(projectName);
-            }
-            return null;
-        }, projectName1);
-        expect(storedTitle1).toBe("Container 1 Title");
+        // Container 1's title must be unaffected by Container 2's.
+        await expectMetaDocTitle(page, projectName1, "Container 1 Title");
     });
 });
