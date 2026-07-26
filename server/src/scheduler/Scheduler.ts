@@ -217,6 +217,8 @@ export class JobScheduler {
 
         // Catch-up policy: when several occurrences were missed (downtime),
         // run only the most recent one if catchUp is set, none otherwise.
+        // If an occurrence fails, it is currently skipped (the cursor advances)
+        // rather than retried on the next tick.
         const mainRoomConn = await this.hocuspocus.openDirectConnection(rule.room);
         let catchUp = false;
         let ruleSql = "";
@@ -348,6 +350,13 @@ export class JobScheduler {
                     mainRoomConn2.document.transact(() => {
                         // ISO string: the UI parses lastRunAt with new Date(...).
                         ruleItem.set("lastRunAt", new Date().toISOString());
+                        if (result.success) {
+                            ruleItem.set("lastRunStatus", "ok");
+                            ruleItem.delete("lastRunError");
+                        } else {
+                            ruleItem.set("lastRunStatus", "error");
+                            ruleItem.set("lastRunError", result.error || "Unknown error");
+                        }
                     }, "server-scheduler");
                 }
             }
