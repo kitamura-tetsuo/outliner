@@ -10,5 +10,5 @@ services:
 - WebSocket server
 - Firebase Auth
 tests:
-- client/e2e/ws-connection-limit-3f7a0c9b.spec.ts
+- client/e2e/server/ws-connection-limit-3f7a0c9b.spec.ts
 - server/tests/connection-limits.test.ts

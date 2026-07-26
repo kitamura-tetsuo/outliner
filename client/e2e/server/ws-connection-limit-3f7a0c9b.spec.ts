@@ -1,8 +1,8 @@
-import "./utils/registerAfterEachSnapshot";
+import "../utils/registerAfterEachSnapshot";
 import { expect, test } from "@playwright/test";
 import WebSocket from "ws";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
-import { TestHelpers } from "./utils/testHelpers";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.beforeEach(async ({ page }, testInfo) => {

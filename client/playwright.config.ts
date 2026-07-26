@@ -234,5 +234,10 @@ export default defineConfig({
             name: "yjs",
             testDir: "./e2e/yjs",
         },
+        {
+            // Environment maintenance tests that need a browser (ENV-*)
+            name: "env",
+            testDir: "./e2e/env",
+        },
     ],
 });

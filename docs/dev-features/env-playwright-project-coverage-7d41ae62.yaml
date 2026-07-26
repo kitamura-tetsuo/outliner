@@ -1,0 +1,17 @@
+id: ENV-7d41ae62
+title: Every Playwright spec belongs to a project
+title-ja: すべての Playwright スペックをいずれかのプロジェクトに所属させる
+description: 'client/playwright.config.ts declares a top-level testDir, but every entry in projects[] overrides it with its own testDir/testMatch. A spec file that falls outside all of them is silently never collected and never run, so CI stays green whether it passes or not.
+
+  Root-level, e2e/env and e2e/debug specs are placed under a project that owns them, and a guard test compares the spec files on disk against the files Playwright actually collects so the gap cannot reappear.
+
+  '
+category: environment
+status: implemented
+components:
+- client/playwright.config.ts
+- scripts/tests/env-playwright-collects-every-spec-7d41ae62.spec.ts
+tests:
+- scripts/tests/env-playwright-collects-every-spec-7d41ae62.spec.ts
+commands:
+- bash scripts/run-env-tests.sh

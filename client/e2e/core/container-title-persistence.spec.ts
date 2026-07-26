@@ -1,5 +1,5 @@
-import "./utils/registerAfterEachSnapshot";
-import { registerCoverageHooks } from "./utils/registerCoverageHooks";
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 /**
  * @file container-title-persistence.spec.ts
@@ -7,7 +7,7 @@ registerCoverageHooks();
  * Verifies that the container title is persisted in metaDoc and displayed in the home dropdown even after page reload
  */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "./utils/testHelpers";
+import { TestHelpers } from "../utils/testHelpers";
 
 /**
  * @feature CNT-0001
