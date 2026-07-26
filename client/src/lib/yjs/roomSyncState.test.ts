@@ -8,7 +8,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // To make it pass and be robust, we mock the logger inline but verify state
 const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-import { clearRoomSyncStates, getRoomSyncState, onRoomSyncStateChange, setRoomSyncState, setRoomPersistenceError, getRoomPersistenceError, onRoomPersistenceErrorChange, clearRoomPersistenceErrorStates } from "./roomSyncState";
+import {
+    clearRoomPersistenceErrorStates,
+    clearRoomSyncStates,
+    getRoomPersistenceError,
+    getRoomSyncState,
+    onRoomPersistenceErrorChange,
+    onRoomSyncStateChange,
+    setRoomPersistenceError,
+    setRoomSyncState,
+} from "./roomSyncState";
 
 describe("roomSyncState", () => {
     beforeEach(() => {

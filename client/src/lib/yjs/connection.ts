@@ -9,7 +9,12 @@ import * as Y from "yjs";
 import { userManager } from "../../auth/UserManager";
 import { createPersistence, TimeoutError, waitForSync } from "../yjsPersistence";
 import { projectRoomPath, tableRoomPath } from "./roomPath";
-import { deleteRoomPersistenceError, deleteRoomSyncState, setRoomPersistenceError, setRoomSyncState } from "./roomSyncState";
+import {
+    deleteRoomPersistenceError,
+    deleteRoomSyncState,
+    setRoomPersistenceError,
+    setRoomSyncState,
+} from "./roomSyncState";
 import { yjsService } from "./service";
 import { attachTokenRefresh, type TokenRefreshableProvider } from "./tokenRefresh";
 
@@ -193,7 +198,10 @@ async function attachIndexedDbPersistence(room: string, doc: Y.Doc): Promise<Ind
         return persistence;
     } catch (e) {
         if (e instanceof TimeoutError) {
-            logger.warn(`[yjs-connection] Timeout attaching IndexedDB persistence for room ${room}, continuing in background:`, e);
+            logger.warn(
+                `[yjs-connection] Timeout attaching IndexedDB persistence for room ${room}, continuing in background:`,
+                e,
+            );
             setRoomPersistenceError(room, false); // Record that a timeout happened (UI can show warning), but don't drop persistence
             return persistence;
         }

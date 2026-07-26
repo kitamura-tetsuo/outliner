@@ -317,7 +317,6 @@ describe("yjsPersistence", () => {
         expect((err as Error).message).toBe("db open failed");
     });
 
-
     it("should retain persistence provider and eventually sync after a timeout", async () => {
         const containerId = "test-container-timeout-sync";
         const doc = new Y.Doc();
@@ -331,7 +330,7 @@ describe("yjsPersistence", () => {
             off: () => {},
             _db: new Promise(resolve => {
                 setTimeout(resolve, 500); // resolve after timeout
-            })
+            }),
         };
 
         // Wait for sync, expecting a timeout

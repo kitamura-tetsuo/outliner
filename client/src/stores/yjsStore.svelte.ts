@@ -1,6 +1,11 @@
 import { getLogger } from "../lib/logger";
 import { projectRoomPath } from "../lib/yjs/roomPath";
-import { getRoomPersistenceError, getRoomSyncState, onRoomPersistenceErrorChange, onRoomSyncStateChange } from "../lib/yjs/roomSyncState";
+import {
+    getRoomPersistenceError,
+    getRoomSyncState,
+    onRoomPersistenceErrorChange,
+    onRoomSyncStateChange,
+} from "../lib/yjs/roomSyncState";
 import type { YjsClient } from "../yjs/YjsClient";
 import { isProvisionalProject, store as globalStore } from "./store.svelte";
 

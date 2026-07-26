@@ -70,7 +70,6 @@ export function clearRoomSyncStates(): void {
     listeners.clear();
 }
 
-
 export type RoomPersistenceError = boolean; // true = fatal error, false = timeout (but continuing in background)
 
 const persistenceErrorStates = new Map<string, RoomPersistenceError>();
@@ -111,7 +110,10 @@ export function getRoomPersistenceError(room: string): RoomPersistenceError | un
     return persistenceErrorStates.get(room);
 }
 
-export function onRoomPersistenceErrorChange(room: string, listener: (state: RoomPersistenceError) => void): () => void {
+export function onRoomPersistenceErrorChange(
+    room: string,
+    listener: (state: RoomPersistenceError) => void,
+): () => void {
     let set = persistenceErrorListeners.get(room);
     if (!set) {
         set = new Set();
