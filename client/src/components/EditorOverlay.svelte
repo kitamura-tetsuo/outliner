@@ -42,13 +42,6 @@ let selectionList = $state<SelectionRange[]>([]);
 let allSelections = $derived.by(() => Object.values(store.selections));
 let clipboardRef: HTMLTextAreaElement;
 let localActiveItemId = $state<string | null>(null);
-let localCursorVisible = $state<boolean>(false);
-// derive a stable visibility that does not blink while alias picker is open
-// in test environments, always show the cursor
-let overlayCursorVisible = $derived.by(() => {
-    const isTestEnvironment = typeof window !== 'undefined' && window.navigator?.webdriver;
-    return (store.cursorVisible || isTestEnvironment) && !aliasPickerStore.isVisible;
-});
 
 // References to DOM elements
 let overlayRef: HTMLDivElement;
@@ -322,14 +315,6 @@ onMount(() => {
                 }
                 updateTextareaPosition();
 
-                // Update localCursorVisible in all environments to ensure proper reactivity
-                // In test environments, ensure it's always true if there are active cursors
-                const isTestEnvironment = typeof window !== 'undefined' && window.navigator?.webdriver;
-                if (isTestEnvironment) {
-                    localCursorVisible = store.cursorVisible || cursorList.some(cursor => cursor.isActive);
-                } else {
-                    localCursorVisible = store.cursorVisible;
-                }
             }, 16); // Update at ~60fps interval
         });
     } catch (error) {
@@ -343,21 +328,8 @@ onMount(() => {
             window.__selectionList = selectionList;
         }
         updateTextareaPosition();
-        // In test environments, trigger an immediate update to ensure DOM is ready
         if (typeof window !== 'undefined' && window.navigator?.webdriver) {
             updatePositionMap();
-            // Also make sure cursor blink is working in test environments
-            setTimeout(() => {
-                if (cursorList.some(cursor => cursor.isActive)) {
-                    store.startCursorBlink();
-                } else {
-                    // If no active cursors exist, ensure we at least set cursorVisible to true for test environments
-                    store.setCursorVisible(true);
-                }
-            }, 100);
-        } else {
-            // In non-test environments, set cursorVisible based on store state
-            localCursorVisible = store.cursorVisible;
         }
     } catch (error) {
         logger.warn('Failed to update textarea position on init:', error);
@@ -1441,7 +1413,7 @@ function handlePaste(event: ClipboardEvent) {
     }
 </script>
 
-<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:visible={overlayCursorVisible || localCursorVisible || (typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver)} data-test-env={(typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver) ? 'true' : 'false'}>
+<div class="editor-overlay" bind:this={overlayRef} class:paused={store.animationPaused} class:alias-picker-visible={aliasPickerStore.isVisible}>
     <!-- Debug button -->
     {#if import.meta.env.DEV}
         <button type="button"
@@ -1579,64 +1551,39 @@ function handlePaste(event: ClipboardEvent) {
     {/each}
     {/if}
 
-    <!-- Rendering cursor (always render in all environments including test) -->
+    <!-- Rendering cursor -->
     {#each cursorList as cursor (cursor.cursorId)}
-        {@const isTestEnvironment = typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator.webdriver}
-        {@const cursorPos = (function() {
-            try {
-                const pos = calculateCursorPixelPosition(cursor.itemId, cursor.offset);
-                // In test environments, always return a valid position to ensure cursor is rendered
-                if (isTestEnvironment && !pos) {
-                    return { left: 0, top: 0 }; // Fallback position for tests
+        {#key `${cursor.cursorId}:${store.cursorBlinkEpoch}`}
+            {@const cursorPos = (function() {
+                try {
+                    return calculateCursorPixelPosition(cursor.itemId, cursor.offset) || { left: 0, top: 0 };
+                } catch (e) {
+                    logger.warn('Error calculating cursor position:', e);
+                    return { left: 0, top: 0 };
                 }
-                return pos || { left: 0, top: 0 };
-            } catch (e) {
-                logger.warn('Error calculating cursor position:', e);
-                return { left: 0, top: 0 };
-            }
-        })()}
-        {@const isPageTitle = cursor.itemId === "page-title"}
-        {@const isActive = cursor.isActive}
-        <!-- Specify only cursor position with style, leave blinking to CSS class -->
-        <div
-            class="cursor"
-            class:active={isActive}
-            class:page-title-cursor={isPageTitle}
-            class:test-env-visible={isTestEnvironment}
-            data-offset={cursor.offset}
-            data-cursor-id={cursor.cursorId}
-            data-rendered={true}
-            style="
-                position: absolute;
-                left: {cursorPos.left}px;
-                top: {cursorPos.top}px;
-                height: {isPageTitle ? '1.5em' : (positionMap[cursor.itemId]?.lineHeight || '1.2em')};
-                background-color: {cursor.color || presenceStore.users[cursor.userId || '']?.color || '#0078d7'};
-                pointer-events: none;
-            "
-            title={cursor.userName || ''}
-        ></div>
+            })()}
+            {@const isPageTitle = cursor.itemId === "page-title"}
+            {@const isActive = cursor.isActive}
+            <!-- Specify only cursor position with style, leave blinking to CSS class -->
+            <div
+                class="cursor"
+                class:active={isActive}
+                class:page-title-cursor={isPageTitle}
+                data-offset={cursor.offset}
+                data-cursor-id={cursor.cursorId}
+                data-rendered={true}
+                style="
+                    position: absolute;
+                    left: {cursorPos.left}px;
+                    top: {cursorPos.top}px;
+                    height: {isPageTitle ? '1.5em' : (positionMap[cursor.itemId]?.lineHeight || '1.2em')};
+                    background-color: {cursor.color || presenceStore.users[cursor.userId || '']?.color || '#0078d7'};
+                    pointer-events: none;
+                "
+                title={cursor.userName || ''}
+            ></div>
+        {/key}
     {/each}
-
-    <!-- In test environments, ensure at least one cursor element is rendered to ensure the CSS classes work correctly -->
-    {#if typeof window !== 'undefined' && (window as typeof window & { navigator?: { webdriver?: boolean } })?.navigator?.webdriver && cursorList.length === 0}
-        <div
-            class="cursor"
-            class:test-env-visible={true}
-            data-offset={0}
-            data-cursor-id="test-placeholder"
-            data-placeholder={true}
-            style="
-                position: absolute;
-                left: 0px;
-                top: 0px;
-                height: 1.2em;
-                width: 2px;
-                background-color: #0078d7;
-                pointer-events: none;
-            "
-        ></div>
-    {/if}
 
     {#if DEBUG_MODE && localActiveItemId}
         <div class="debug-info">
@@ -1666,27 +1613,30 @@ function handlePaste(event: ClipboardEvent) {
     display: block !important;
 }
 
-/* blink via JS-driven visibility */
-.editor-overlay .cursor.active {
-    opacity: 0;
-    visibility: hidden;
-}
-.editor-overlay.visible .cursor.active {
-    opacity: 1;
-    visibility: visible !important;
-}
-/* In test environments, always show cursor if it's active */
-.editor-overlay .cursor.test-env-visible.active {
-    opacity: 1 !important;
-    visibility: visible !important;
-    animation: none !important;
+@keyframes cursor-blink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
 }
 
-/* Force cursor visibility in test environments regardless of active state */
-.editor-overlay .cursor.test-env-visible {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: block !important;
+.cursor.active {
+    animation: cursor-blink 1.06s step-end infinite;
+}
+
+.editor-overlay.paused .cursor.active,
+.editor-overlay.alias-picker-visible .cursor.active {
+    animation: none;
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cursor.active {
+        animation: none;
+        opacity: 1;
+    }
 }
 
 .cursor {
@@ -1885,8 +1835,7 @@ function handlePaste(event: ClipboardEvent) {
 }
 
 /* Force overlay visibility in test environments */
-:global(.test-environment) .editor-overlay,
-.editor-overlay[data-test-env="true"] {
+:global(.test-environment) .editor-overlay {
     opacity: 1 !important;
     visibility: visible !important;
     display: block !important;

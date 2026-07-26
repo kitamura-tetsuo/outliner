@@ -1,0 +1,13 @@
+id: CLM-0103
+title: Item cursor blinks
+description: The item cursor should blink on and off continuously while active. The blinking phase should restart whenever the cursor moves or the user types.
+category: cursor-management
+status: implemented
+tests:
+- client/e2e/core/clm-item-cursor-blinks-21a9c9c9.spec.ts
+acceptance:
+- A local, active item cursor blinks continuously
+- The blink phase restarts "on" whenever the user types
+- Multiple cursors blink in phase
+- Remote cursors stay solid
+title-ja: アイテムカーソルの点滅

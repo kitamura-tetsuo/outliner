@@ -68,7 +68,7 @@ export class EditorOverlayStore {
     cursorHistory = $state<string[]>([]);
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
-    cursorVisible = $state<boolean>(true);
+    cursorBlinkEpoch = $state<number>(0);
     animationPaused = $state<boolean>(false);
     // IME composition state
     isComposing = $state<boolean>(false);
@@ -86,8 +86,6 @@ export class EditorOverlayStore {
     /* eslint-disable svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state */
     private listeners = new Set<() => void>();
     /* eslint-enable svelte/prefer-svelte-reactivity */
-
-    private timerId!: ReturnType<typeof setTimeout>;
 
     // Set textarea reference
     setTextareaRef(el: HTMLTextAreaElement | null) {
@@ -684,11 +682,6 @@ export class EditorOverlayStore {
         return this.activeItemId;
     }
 
-    setCursorVisible(visible: boolean) {
-        this.cursorVisible = visible;
-        this.notifyChange();
-    }
-
     setAnimationPaused(paused: boolean) {
         this.animationPaused = paused;
         this.notifyChange();
@@ -711,18 +704,13 @@ export class EditorOverlayStore {
     }
 
     startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        // Simply toggle so it works in Node too
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
+        this.cursorBlinkEpoch = (this.cursorBlinkEpoch + 1) % 10000;
+        this.setAnimationPaused(false);
     }
 
     stopCursorBlink() {
         if (this) {
-            clearInterval(this.timerId);
-            this.cursorVisible = true;
+            this.setAnimationPaused(true);
         }
     }
 
@@ -889,9 +877,8 @@ export class EditorOverlayStore {
         this.cursors = {};
         this.selections = {};
         this.activeItemId = null;
-        this.cursorVisible = true;
+        this.cursorBlinkEpoch = 0;
         this.animationPaused = false;
-        clearTimeout(this.timerId);
         this.notifyChange();
     }
 
