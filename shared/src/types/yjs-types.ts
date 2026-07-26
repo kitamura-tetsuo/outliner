@@ -31,7 +31,7 @@ export type CommentValueType = string | number;
 /**
  * Type for Schedule Rule Y.Map values
  */
-export type ScheduleRuleValueType = string | boolean | undefined;
+export type ScheduleRuleValueType = string | boolean | number | undefined;
 
 /**
  * Type for Y.Doc options

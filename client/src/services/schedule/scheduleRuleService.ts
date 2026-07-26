@@ -19,6 +19,7 @@ export interface ScheduleRule {
     lastRunAt?: string;
     completedAt?: string;
     validationError?: string;
+    skippedOccurrences?: number;
 }
 
 /**
@@ -51,6 +52,7 @@ export function createScheduleRule(
     if (options.lastRunAt) ruleMap.set("lastRunAt", options.lastRunAt);
     if (options.completedAt) ruleMap.set("completedAt", options.completedAt);
     if (options.validationError) ruleMap.set("validationError", options.validationError);
+    if (options.skippedOccurrences) ruleMap.set("skippedOccurrences", options.skippedOccurrences);
 
     schedulesMap.set(ruleId, ruleMap);
 
@@ -83,6 +85,7 @@ export function updateScheduleRule(
     if (updates.lastRunAt !== undefined) ruleMap.set("lastRunAt", updates.lastRunAt);
     if (updates.completedAt !== undefined) ruleMap.set("completedAt", updates.completedAt);
     if (updates.validationError !== undefined) ruleMap.set("validationError", updates.validationError);
+    if (updates.skippedOccurrences !== undefined) ruleMap.set("skippedOccurrences", updates.skippedOccurrences);
 }
 
 /**

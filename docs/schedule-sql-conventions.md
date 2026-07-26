@@ -13,6 +13,15 @@ Why?
 - **Deterministic catch-up**: If the executor is offline for a while and misses runs, it will "catch up" by executing the job for each missed occurrence. Using `job.occurrence` ensures each run processes data relative to its scheduled time, not the actual execution time.
 - **Hourly floor**: The occurrence time is rounded down to the nearest hour. This is a design constraint of the scheduler to prevent rapid micro-executions.
 
+## Skipped Occurrences
+
+If the scheduler is offline for a period of time, it will miss scheduled runs. When it resumes:
+- By default (if `catchUp` is false), the scheduler will **skip** all missed occurrences if more than one was missed. No occurrences will be processed, and it will simply advance to the next run time.
+- If `catchUp` is true, the scheduler will process **every** missed occurrence in chronological order, up to a maximum limit (`MAX_CATCHUP_OCCURRENCES`).
+- Missed occurrences that are skipped are logged as a warning and the count is updated in the rule's `skippedOccurrences` field.
+
+Your SQL script should be aware that runs might be skipped entirely unless `catchUp` is enabled.
+
 ## Idempotency and the `id` column
 
 Your SQL statement must generate a deterministic `id` column for any inserted records.
