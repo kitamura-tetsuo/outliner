@@ -12,6 +12,7 @@
     import ScheduleRuleList from "../../../../../components/schedule/ScheduleRuleList.svelte";
     import ScheduleRuleEditor from "../../../../../components/schedule/ScheduleRuleEditor.svelte";
     import { createScheduleRule, deleteScheduleRule, updateScheduleRule, type ScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
+    import { DEMO_PROJECT_NAME } from "../../../../../lib/demoSeed";
 
     const logger = getLogger("TableSchedulePage");
 
@@ -72,7 +73,7 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || !isAuthenticated) return;
+        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading table schedule: project="${projectName}", table="${tableName}"`);
         isLoading = true;
@@ -221,7 +222,7 @@
         <div class="rounded-md bg-yellow-50 p-4">
             <p class="text-sm text-yellow-700">Table not found.</p>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !isAuthenticated && projectName !== DEMO_PROJECT_NAME}
         <div class="rounded-md bg-blue-50 p-4">
             <p class="text-sm text-blue-700">Please log in.</p>
         </div>

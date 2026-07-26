@@ -11,6 +11,7 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import { listTables, type TableRegistryEntry } from "../../../../services/yjstable/tableDocs";
     import ScheduleRuleEditor from "../../../../components/schedule/ScheduleRuleEditor.svelte";
+    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
     import {
         deleteScheduleRule,
         updateScheduleRule,
@@ -73,7 +74,7 @@
     }
 
     async function loadProject() {
-        if (!projectName || !isAuthenticated) return;
+        if (!projectName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading schedule editor: project="${projectName}", rule="${ruleId}"`);
         isLoading = true;
@@ -188,7 +189,7 @@
         <div class="rounded-md bg-yellow-50 p-4">
             <p class="text-sm text-yellow-700">Scheduled SQL not found.</p>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !isAuthenticated && projectName !== DEMO_PROJECT_NAME}
         <div class="rounded-md bg-blue-50 p-4">
             <p class="text-sm text-blue-700">Please log in.</p>
         </div>

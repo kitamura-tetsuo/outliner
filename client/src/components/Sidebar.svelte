@@ -103,8 +103,16 @@ import type * as Y from "yjs";
         return table?.name || "Scheduled SQL";
     }
 
+    // Prefer the project name from the current route (the human-readable name the
+    // user navigated with) over store.project.title, which may be stale or, for
+    // projects whose Yjs metadata never had a title set, corrupted with a raw
+    // container UUID.
+    let currentProjectName = $derived(
+        $pageStore.url.pathname.startsWith('/demo') || $pageStore.url.pathname.startsWith('/tables/demo') || $pageStore.url.pathname.startsWith('/schedules/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
+    );
+
     // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes
-    let projectTitleForPath = $derived(store.project?.title || "");
+    let projectTitleForPath = $derived(currentProjectName);
 
     function addSchedule(e: MouseEvent) {
         e.stopPropagation();
@@ -148,14 +156,6 @@ import type * as Y from "yjs";
         }
         return result;
     });
-
-    // Prefer the project name from the current route (the human-readable name the
-    // user navigated with) over store.project.title, which may be stale or, for
-    // projects whose Yjs metadata never had a title set, corrupted with a raw
-    // container UUID.
-    let currentProjectName = $derived(
-        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
-    );
 
 </script>
 

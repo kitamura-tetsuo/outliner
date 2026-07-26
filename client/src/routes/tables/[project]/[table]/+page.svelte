@@ -11,6 +11,7 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
+    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -35,7 +36,7 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || !isAuthenticated) return;
+        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading standalone table: project="${projectName}", table="${tableName}"`);
         isLoading = true;
@@ -165,7 +166,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !isAuthenticated && projectName !== DEMO_PROJECT_NAME}
         <div class="rounded-md bg-blue-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
