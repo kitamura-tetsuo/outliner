@@ -1,5 +1,5 @@
-import type { Item } from "../../schema/app-schema";
 import { iterateItemsOrdered } from "../../../../shared/src/utils/itemTraversal";
+import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
