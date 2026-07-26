@@ -7,8 +7,11 @@ acceptance:
 - Copied text can be pasted elsewhere
 - Pasting multi-line text splits it appropriately into multiple items
 - Text in selection ranges spanning multiple items can be copied
+- Copy only applies to the outliner while the editor has focus; a copy made in
+  another input or over plain page text keeps the browser default behavior
 tests:
 - client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
+- client/e2e/core/slr-copy-requires-editor-focus-3d7c2f18.spec.ts
 - client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts
 - client/e2e/core/slr-paste-multiline-f8740117.spec.ts
 title-ja: 複数アイテム選択範囲のコピー＆ペースト

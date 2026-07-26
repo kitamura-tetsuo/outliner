@@ -25,6 +25,28 @@ export function isForeignInput(target: EventTarget | null): boolean {
 }
 
 /**
+ * Whether the outliner editor owns the clipboard for this event.
+ *
+ * Copy/cut listeners are registered on `document` (capture phase), so they also
+ * observe clipboard events that belong to other parts of the page: a comment
+ * input, the search box, a dialog, or a plain text selection made outside the
+ * tree. In those cases a stale item selection may still be present in the
+ * store, which used to make Ctrl+C copy item content instead of what the user
+ * actually selected. Only handle the event while the editor input surface (the
+ * global textarea) or an element inside the outliner has focus; otherwise let
+ * the browser perform its default clipboard behavior.
+ */
+export function isEditorClipboardEvent(event: Event): boolean {
+    if (typeof document === "undefined") return false;
+    if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return false;
+
+    const active = document.activeElement as HTMLElement | null;
+    if (!active) return false;
+    if (active.classList?.contains("global-textarea")) return true;
+    return !!active.closest?.(".outliner, .tree-container");
+}
+
+/**
  * Handler that distributes key and input events to each cursor instance
  */
 export class KeyEventHandler {
@@ -1158,6 +1180,9 @@ export class KeyEventHandler {
         ) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(`KeyEventHandler.handleCopy called`);
         }
+
+        // Do nothing when the copy belongs to another input or to a plain page selection
+        if (!isEditorClipboardEvent(event)) return;
 
         // Do nothing if no selection
         const selections = Object.values(store.selections);
@@ -2401,6 +2426,9 @@ export class KeyEventHandler {
         ) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(`KeyEventHandler.handleCut called`);
         }
+
+        // Do nothing when the cut belongs to another input or to a plain page selection
+        if (!isEditorClipboardEvent(event)) return;
 
         // Do nothing if no selection
         const selections = Object.values(store.selections);
