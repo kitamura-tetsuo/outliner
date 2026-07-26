@@ -13,6 +13,7 @@ export interface CellProps {
     value: unknown;
     editable: boolean;
     options?: string[];
+    ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
 }
 

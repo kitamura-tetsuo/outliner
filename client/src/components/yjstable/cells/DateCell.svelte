@@ -2,10 +2,11 @@
 interface Props {
     value: unknown;
     editable: boolean;
+    ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
 }
 
-let { value, editable, onCommit }: Props = $props();
+let { value, editable, ariaLabel, onCommit }: Props = $props();
 
 const current = $derived(value === null || value === undefined ? "" : String(value).slice(0, 10));
 </script>
@@ -13,7 +14,7 @@ const current = $derived(value === null || value === undefined ? "" : String(val
 <input
     type="date"
     class="cell-date"
-    aria-label="Edit date"
+    aria-label={ariaLabel || "Edit date"}
     value={current}
     disabled={!editable}
     onchange={(e) => {

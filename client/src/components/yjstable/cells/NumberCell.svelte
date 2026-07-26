@@ -2,10 +2,11 @@
 interface Props {
     value: unknown;
     editable: boolean;
+    ariaLabel?: string;
     onCommit: (value: string | number | boolean | null) => void;
 }
 
-let { value, editable, onCommit }: Props = $props();
+let { value, editable, ariaLabel, onCommit }: Props = $props();
 let editing = $state(false);
 
 function commit(e: Event) {
@@ -26,7 +27,7 @@ function commit(e: Event) {
     <!-- svelte-ignore a11y_autofocus -->
     <input
         class="cell-input"
-        aria-label="Edit cell value"
+        aria-label={ariaLabel || "Edit cell value"}
         type="number"
         step="any"
         value={value === null || value === undefined ? "" : String(value)}
@@ -41,7 +42,7 @@ function commit(e: Event) {
     <button
         type="button"
         class="cell-value"
-        aria-label={value === null || value === undefined || String(value) === "" ? "Empty cell" : String(value)}
+        aria-label={value === null || value === undefined || String(value) === "" ? `Empty cell, ${ariaLabel || "cell"}` : `${String(value)}, ${ariaLabel || "cell"}`}
         class:readonly={!editable}
         disabled={!editable}
         onclick={() => {

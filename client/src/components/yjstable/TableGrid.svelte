@@ -68,7 +68,7 @@ function deleteRow(recordId: string) {
             <thead>
                 <tr>
                     {#each result.columns as column (column)}
-                        <th>
+                        <th scope="col">
                             {column}
                             {#if editability.editable && !editability.editableColumns.has(column) && column !== "id"}
                                 <span class="readonly-mark" title="Read-only column">RO</span>
@@ -76,7 +76,7 @@ function deleteRow(recordId: string) {
                         </th>
                     {/each}
                     {#if editability.editable}
-                        <th class="actions-col"><span class="sr-only">Actions</span></th>
+                        <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
                     {/if}
                 </tr>
             </thead>
@@ -94,6 +94,7 @@ function deleteRow(recordId: string) {
                                     && recordId !== undefined
                                     && editability.editableColumns.has(column)}
                                     options={schemaColumn?.checkOptions}
+                                    ariaLabel={`${column} for ${recordId ?? "new row"}`}
                                     onCommit={(value) => {
                                         if (recordId !== undefined) commitCell(recordId, column, value);
                                     }}
@@ -106,7 +107,7 @@ function deleteRow(recordId: string) {
                                     <button
                                         type="button"
                                         class="delete-row"
-                                        aria-label="Delete row"
+                                        aria-label={`Delete row ${recordId}`}
                                         onclick={() => deleteRow(recordId)}
                                     >x</button>
                                 {/if}
