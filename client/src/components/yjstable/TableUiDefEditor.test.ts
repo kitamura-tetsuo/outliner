@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
@@ -52,7 +52,7 @@ describe("TableUiDefEditor", () => {
 
     it("renders 'expression' and auto(text) for aliased/calculated columns without schema definition", () => {
         const handles = createMockHandles();
-        const { container } = render(TableUiDefEditor, {
+        render(TableUiDefEditor, {
             handles,
             schema: mockSchema,
             query: "SELECT id, price * qty AS amount FROM tasks",
@@ -115,10 +115,10 @@ describe("TableUiDefEditor", () => {
         const titleSelect = screen.getByTestId("yjs-table-component-title");
         await fireEvent.change(titleSelect, { target: { value: "checkbox" } });
 
-        const components = handles.uiDef.get("components") as Y.Map<any>;
+        const components = handles.uiDef.get("components") as Y.Map<unknown>;
         expect(components).toBeDefined();
 
-        const titleConfig = components.get("title") as Y.Map<any>;
+        const titleConfig = components.get("title") as Y.Map<unknown>;
         expect(titleConfig.get("type")).toBe("checkbox");
 
         await fireEvent.change(titleSelect, { target: { value: "auto" } });
