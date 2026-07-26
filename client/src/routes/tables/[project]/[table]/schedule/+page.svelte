@@ -12,6 +12,7 @@
     import ScheduleRuleList from "../../../../../components/schedule/ScheduleRuleList.svelte";
     import ScheduleRuleEditor from "../../../../../components/schedule/ScheduleRuleEditor.svelte";
     import { createScheduleRule, deleteScheduleRule, updateScheduleRule, type ScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
+    import { DEMO_PROJECT_NAME } from "../../../../../lib/demoSeed";
 
     const logger = getLogger("TableSchedulePage");
 
@@ -74,7 +75,7 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || !isAuthenticated) return;
+        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading table schedule: project="${projectName}", table="${tableName}"`);
         isLoading = true;
@@ -124,7 +125,7 @@
     }
 
     $effect(() => {
-        if (isAuthenticated && projectName && tableName) {
+        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && tableName) {
             loadTable();
         } else if (!isAuthenticated) {
             isLoading = false;
@@ -132,7 +133,7 @@
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null;
+        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
     });
 
     function startCreate() {

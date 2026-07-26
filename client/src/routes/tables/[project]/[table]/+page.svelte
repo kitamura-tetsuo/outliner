@@ -11,6 +11,7 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
+    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -35,7 +36,7 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || !isAuthenticated) return;
+        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading standalone table: project="${projectName}", table="${tableName}"`);
         isLoading = true;
@@ -84,7 +85,7 @@
     }
 
     $effect(() => {
-        if (isAuthenticated && projectName && tableName) {
+        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && tableName) {
             loadTable();
         } else if (!isAuthenticated) {
             isLoading = false;
@@ -92,7 +93,7 @@
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null;
+        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
 
         return () => {
             if (tableHandles?.doc) {

@@ -17,6 +17,7 @@
         updateScheduleRule,
         type ScheduleRule,
     } from "../../../../services/schedule/scheduleRuleService";
+    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -76,7 +77,7 @@
     }
 
     async function loadProject() {
-        if (!projectName || !isAuthenticated) return;
+        if (!projectName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
         logger.info(`Loading schedule editor: project="${projectName}", rule="${ruleId}"`);
         isLoading = true;
@@ -112,7 +113,7 @@
     }
 
     $effect(() => {
-        if (isAuthenticated && projectName && ruleId) {
+        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && ruleId) {
             loadProject();
         } else if (!isAuthenticated) {
             isLoading = false;
@@ -120,7 +121,7 @@
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null;
+        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
     });
 
     function backToProject() {
