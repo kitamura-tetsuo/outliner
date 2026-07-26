@@ -28,22 +28,27 @@ async function executeJob(data: any) {
         const tableName = tablesRes.rows[0]?.table_name as string;
 
         if (tableName && records && records.length > 0) {
-            const cols = Object.keys(records[0]);
+            const colsRes = await db.query<any>(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = '${pgSchema}' AND table_name = '${tableName}'
+            `);
+            const cols = colsRes.rows.map(r => r.column_name as string);
 
-            let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c}"`).join(",")}) VALUES `;
-            const values = records.map((record: any) => {
-                const rowVals = cols.map(c => {
-                    const val = record[c];
-                    if (val === null || val === undefined) return "NULL";
-                    if (typeof val === "string") return `'${val.replace(/'/g, "''")}'`;
-                    if (typeof val === "number" || typeof val === "boolean") return val;
-                    return `'${String(val).replace(/'/g, "''")}'`;
-                });
-                return `(${rowVals.join(",")})`;
-            });
+            if (cols.length > 0) {
+                const insertSql = `INSERT INTO "${tableName}" (${cols.map(c => `"${c}"`).join(",")}) VALUES (${
+                    cols.map((_, i) => `$${i + 1}`).join(",")
+                })`;
 
-            query += values.join(",") + ";";
-            await db.exec(query);
+                for (const record of records) {
+                    const values = cols.map(c => {
+                        const val = record[c];
+                        if (val === undefined) return null;
+                        return val;
+                    });
+                    await db.query(insertSql, values);
+                }
+            }
         }
 
         if (timezone) {

@@ -29,4 +29,26 @@ describe("Job executor", () => {
         expect(result.success).to.be.true;
         expect(result.rows).to.deep.equal([{ name: "Bob" }]);
     }, 15000);
+
+    it("should handle heterogeneous records and ignore missing or extra keys", async () => {
+        const result = await executor.executeJob({
+            ruleId: "test-heterogeneous",
+            schemaSql: "CREATE TABLE test (id int, name text, age int);",
+            ruleSql: "SELECT id, name, age FROM test ORDER BY id;",
+            records: [
+                { id: 1 }, // Missing name and age
+                { id: 2, name: "Bob", extra_key: "ignore_me" }, // Missing age, extra key
+                { id: 3, name: "Charlie", age: 30 }, // Full record
+            ],
+            timezone: "UTC",
+            occurrenceUtcIso: "2023-01-01T00:00:00Z",
+        });
+
+        expect(result.success).to.be.true;
+        expect(result.rows).to.deep.equal([
+            { id: 1, name: null, age: null },
+            { id: 2, name: "Bob", age: null },
+            { id: 3, name: "Charlie", age: 30 },
+        ]);
+    }, 15000);
 });
