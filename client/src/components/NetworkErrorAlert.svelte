@@ -1,11 +1,12 @@
 <script lang="ts">
 interface Props {
+    title?: string;
     error?: string | null;
     retryCallback?: (() => void) | null;
     dismissable?: boolean;
 }
 
-let { error = $bindable(null), retryCallback = null, dismissable = true }: Props = $props();
+let { title = "Server Connection Error", error = $bindable(null), retryCallback = null, dismissable = true }: Props = $props();
 
 function dismiss() {
     error = null;
@@ -20,7 +21,7 @@ function dismiss() {
     >
         <div class="error-icon" aria-hidden="true">⚠️</div>
         <div class="error-content">
-            <h2>Server Connection Error</h2>
+            <h2>{title}</h2>
             <p>{error}</p>
             <div class="error-actions">
                 {#if retryCallback}

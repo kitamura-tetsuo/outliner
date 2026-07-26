@@ -46,6 +46,8 @@ let isAuthenticated = $state(false);
 let isSidebarOpen = $state(false);
 let isDatabaseSidebarOpen = $state(false);
 
+let loadModuleError = $state<string | null>(null);
+
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser && typeof window !== "undefined") {
     window.generalStore =
@@ -175,14 +177,17 @@ onMount(() => {
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
         } catch {}
         // Dynamically import browser-only modules
-        let userManager: { addEventListener: (f: (e: unknown) => void) => void } | undefined;
+        let userManager: typeof import("../auth/UserManager").userManager | undefined;
+        let loadFailed = false;
         try {
             ({ userManager } = await import("../auth/UserManager"));
             // Initialize metadata Y.Doc with IndexedDB persistence
             await import("../lib/metaDoc.svelte");
             await import("../services");
         } catch (e) {
+            loadFailed = true;
             logger.error({ error: e as Error }, "Failed to load client-only modules");
+            loadModuleError = "A critical error occurred while loading the application. Please try reloading the page.";
         }
         // Application initialization log
         if (import.meta.env.DEV) {
@@ -206,21 +211,23 @@ onMount(() => {
         }
 
         // Check authentication status
-                const userManagerWithGetCurrentUser = userManager as unknown as { getCurrentUser?: () => unknown };
-        isAuthenticated = userManagerWithGetCurrentUser?.getCurrentUser?.() !== null;
+        if (!loadFailed) {
+            const currentUser = userManager?.getCurrentUser?.();
+            isAuthenticated = currentUser != null;
 
-        if (isAuthenticated) {
-            // Initialize debug functions
-            setupGlobalDebugFunctions();
-        }
-        else {
-            // Monitor authentication state changes
-            userManager?.addEventListener((authResult: unknown) => {
-                isAuthenticated = authResult !== null;
-                if (isAuthenticated && browser) {
-                    setupGlobalDebugFunctions();
-                }
-            });
+            if (isAuthenticated) {
+                // Initialize debug functions
+                setupGlobalDebugFunctions();
+            }
+            else {
+                // Monitor authentication state changes
+                userManager?.addEventListener((authResult: unknown) => {
+                    isAuthenticated = authResult !== null;
+                    if (isAuthenticated && browser) {
+                        setupGlobalDebugFunctions();
+                    }
+                });
+            }
         }
 
         // Yjs: no auth-coupled init hook required
@@ -352,6 +359,10 @@ onDestroy(async () => {
     <div id="main-content" class="main-content" class:with-sidebar={isSidebarOpen} class:with-database-sidebar={isDatabaseSidebarOpen} tabindex="-1" style="outline: none;">
         {@render children()}
     </div>
+
+    {#if loadModuleError}
+        <NetworkErrorAlert title="Application Error" error={loadModuleError} retryCallback={() => window.location.reload()} dismissable={false} />
+    {/if}
 
     {#if yjsStore.syncError}
         <NetworkErrorAlert error={SYNC_ERROR_MESSAGES[yjsStore.syncError]} retryCallback={() => yjsStore.reconnect()} dismissable={false} />

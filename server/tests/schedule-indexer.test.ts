@@ -98,6 +98,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("timezone", "UTC");
             ruleObj.set("targetTableId", "table-1");
             ruleObj.set("enabled", true);
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);
@@ -117,6 +118,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("timezone", "UTC");
             ruleObj.set("targetTableId", "table-1");
             ruleObj.set("enabled", true);
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);
@@ -158,6 +160,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("enabled", true);
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             // First run
@@ -183,6 +186,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("enabled", false);
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);
@@ -197,6 +201,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("enabled", true);
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);
@@ -247,6 +252,7 @@ describe("Schedule Indexer", () => {
             ruleObj.set("dtstart", "2024-01-01T10:00:00");
             ruleObj.set("timezone", "UTC");
             ruleObj.set("enabled", true); // Trigger active transition which recomputes using seq=1!
+            ruleObj.set("sql", "SELECT 1;");
             schedulesMap.set("rule-1", ruleObj);
 
             handleStoreDocumentForSchedules({ documentName: "test-room", document: doc } as any, db);

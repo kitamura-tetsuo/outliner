@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { describe, it } from "vitest";
+import { describe, it } from "mocha";
 
 describe("Rate Limiting Tests Dummy", () => {
     it("should pass", () => {
