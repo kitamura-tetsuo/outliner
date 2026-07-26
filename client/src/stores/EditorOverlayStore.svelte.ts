@@ -1,9 +1,9 @@
 import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
+import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
-import { isForeignInput } from "../lib/KeyEventHandler";
 import { yjsStore } from "./yjsStore.svelte";
 const logger = getLogger("EditorOverlayStore");
 

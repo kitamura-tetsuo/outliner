@@ -1,8 +1,8 @@
-import { render, fireEvent } from "@testing-library/svelte";
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import YjsTableView from "./YjsTableView.svelte";
+import { fireEvent, render } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import YjsTableView from "./YjsTableView.svelte";
 
 // Mock TableUndoManager handles
 const mockHandles = {
@@ -10,7 +10,7 @@ const mockHandles = {
     tableId: "test-table",
     uiDef: new Y.Map(),
     data: new Y.Map(),
-    undo: { undo: vi.fn(), redo: vi.fn() }
+    undo: { undo: vi.fn(), redo: vi.fn() },
 };
 
 vi.mock("../../lib/KeyEventHandler", () => ({
@@ -18,7 +18,7 @@ vi.mock("../../lib/KeyEventHandler", () => ({
         if (!target) return false;
         const tag = (target as HTMLElement).tagName?.toUpperCase();
         return ["INPUT", "TEXTAREA", "SELECT", "OPTION", "BUTTON"].includes(tag);
-    }
+    },
 }));
 
 describe("YjsTableView focus handling", () => {
@@ -34,13 +34,19 @@ describe("YjsTableView focus handling", () => {
             props: {
                 handles: mockHandles as any,
                 projectDoc,
-                tableName: "Test Table"
-            }
+                tableName: "Test Table",
+            },
         });
 
         // Add a local cursor and selection
         editorOverlayStore.addCursor({ itemId: "item-1", offset: 0, isActive: true, userId: "local" });
-        editorOverlayStore.setSelection({ startItemId: "item-1", startOffset: 0, endItemId: "item-1", endOffset: 5, userId: "local" });
+        editorOverlayStore.setSelection({
+            startItemId: "item-1",
+            startOffset: 0,
+            endItemId: "item-1",
+            endOffset: 5,
+            userId: "local",
+        });
 
         expect(Object.keys(editorOverlayStore.cursors).length).toBe(1);
         expect(Object.keys(editorOverlayStore.selections).length).toBe(1);
@@ -66,8 +72,8 @@ describe("YjsTableView focus handling", () => {
             props: {
                 handles: mockHandles as any,
                 projectDoc,
-                tableName: "Test Table"
-            }
+                tableName: "Test Table",
+            },
         });
 
         editorOverlayStore.addCursor({ itemId: "item-1", offset: 0, isActive: true, userId: "local" });
