@@ -86,6 +86,11 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                             <strong>Validation Error:</strong> {rule.validationError}
                         </div>
                     {/if}
+                    {#if rule.skippedOccurrences}
+                        <div class="mt-2 text-xs bg-yellow-50 text-yellow-700 p-2 rounded border border-yellow-200">
+                            <strong>Warning:</strong> {rule.skippedOccurrences} occurrence(s) were missed while the server was down and have been skipped.
+                        </div>
+                    {/if}
                 </li>
             {/each}
         </ul>

@@ -249,8 +249,35 @@ export class JobScheduler {
 
         const skipAll = missed.length > 1 && !catchUp;
         if (!skipAll) {
-            const occurrenceIso = catchUp ? missed[missed.length - 1] : missed[0];
-            await this.dispatchJob(rule, occurrenceIso, ruleSql);
+            if (catchUp) {
+                for (const occurrenceIso of missed) {
+                    await this.dispatchJob(rule, occurrenceIso, ruleSql);
+                }
+            } else {
+                await this.dispatchJob(rule, missed[0], ruleSql);
+            }
+        } else {
+            logger.warn(
+                {
+                    ruleId: rule.rule_id,
+                    room: rule.room,
+                    count: missed.length,
+                    skippedRange: `${missed[0]} to ${missed[missed.length - 1]}`,
+                },
+                "JobScheduler skipped occurrences",
+            );
+            const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
+            if (mainRoomConn2.document) {
+                const schedulesMap = mainRoomConn2.document.getMap("schedules");
+                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
+                if (ruleItem) {
+                    mainRoomConn2.document.transact(() => {
+                        const currentSkipped = ruleItem.get("skippedOccurrences") || 0;
+                        ruleItem.set("skippedOccurrences", currentSkipped + missed.length);
+                    }, "server-scheduler");
+                }
+            }
+            mainRoomConn2.disconnect();
         }
 
         if (exhausted || !nextRunAt) {
