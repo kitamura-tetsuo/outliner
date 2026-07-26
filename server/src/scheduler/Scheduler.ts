@@ -223,17 +223,29 @@ export class JobScheduler {
         let catchUp = false;
         let ruleSql = "";
 
-        if (mainRoomConn.document) {
-            const schedulesMap = mainRoomConn.document.getMap("schedules");
-            const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
-            if (ruleItem) {
-                ruleSql = ruleItem.get("sql") || "";
-                catchUp = ruleItem.get("catchUp") || false;
+        try {
+            if (mainRoomConn.document) {
+                const schedulesMap = mainRoomConn.document.getMap("schedules");
+                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
+                if (ruleItem) {
+                    ruleSql = ruleItem.get("sql") || "";
+                    catchUp = ruleItem.get("catchUp") || false;
+                }
             }
+        } finally {
+            mainRoomConn.disconnect();
         }
-        mainRoomConn.disconnect();
 
-        if (!ruleSql) return; // rule got deleted? Or malformed? Let's skip.
+        if (!ruleSql) {
+            // rule got deleted? Or malformed? Let's skip.
+            this.sqliteDb.prepare(`
+                UPDATE schedule_index
+                SET state = 'orphaned'
+                WHERE room = ? AND rule_id = ?
+            `).run(rule.room, rule.rule_id);
+            logger.warn({ ruleId: rule.rule_id, room: rule.room }, "Skipping and orphaning rule: ruleSql is empty");
+            return;
+        }
 
         const skipAll = missed.length > 1 && !catchUp;
         if (!skipAll) {

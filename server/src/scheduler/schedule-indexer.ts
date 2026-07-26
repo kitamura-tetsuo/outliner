@@ -186,7 +186,6 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
         const dbRuleIds = new Set(currentSchedulesInDb.map(r => r.rule_id));
 
         schedulesMap.forEach((ruleObj: unknown, ruleId: string) => {
-            currentRuleIds.add(ruleId);
             if (!(ruleObj instanceof Y.Map)) return;
 
             const rruleStr = ruleObj.get("rrule") as string;
@@ -194,10 +193,13 @@ export function handleStoreDocumentForSchedules(data: onStoreDocumentPayload, db
             const timezoneStr = ruleObj.get("timezone") as string;
             const targetTableId = ruleObj.get("targetTableId") as string;
             const enabled = ruleObj.get("enabled") as boolean ?? true;
+            const sqlStr = ruleObj.get("sql") as string;
 
-            if (!rruleStr || !dtstartStr || !timezoneStr) {
+            if (!rruleStr || !dtstartStr || !timezoneStr || !sqlStr) {
                 return;
             }
+
+            currentRuleIds.add(ruleId);
 
             const existingRow = getRow.get(documentName, ruleId) as ScheduleIndexRow | undefined;
 
