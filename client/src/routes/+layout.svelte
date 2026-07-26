@@ -13,6 +13,7 @@ import "../app.css";
 import "$lib";
 // Defer user/auth-related imports to client to avoid SSR crashes
 import { setupGlobalDebugFunctions } from "../lib/debug";
+import { isE2eEnvironment } from "../lib/env";
 import "../utils/ScrapboxFormatter";
 // Import for global exposure
 import Toolbar from "../components/Toolbar.svelte";
@@ -192,9 +193,7 @@ onMount(() => {
 
 
         // Disable Service Worker in E2E tests to prevent interference with navigation or page closing
-        const isE2e = import.meta.env.MODE === "test"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" );
+        const isE2e = isE2eEnvironment();
         if (!isE2e && !import.meta.env.DEV && "serviceWorker" in navigator) {
             navigator.serviceWorker.register("/service-worker.js", { scope: "/" })
                 .then(reg => {
@@ -227,9 +226,7 @@ onMount(() => {
         // Yjs: no auth-coupled init hook required
 
         // Disable cleanup listeners in E2E to avoid interference with page transitions
-        const isE2eCleanup = import.meta.env.MODE === "test"
-            || (typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true")
-            || (typeof window !== "undefined" );
+        const isE2eCleanup = isE2eEnvironment();
         if (!isE2eCleanup) {
             // Register event listener for browser termination
             window.addEventListener("beforeunload", handleBeforeUnload);
