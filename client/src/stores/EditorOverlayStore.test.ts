@@ -86,6 +86,9 @@ class TestEditorOverlayStore {
             this.cursorVisible = !this.cursorVisible;
         }, 530);
     }
+    getTextareaRef() {
+        return null;
+    }
     stopCursorBlink() {
         clearInterval(this.timerId);
         this.cursorVisible = true;
@@ -102,6 +105,14 @@ class TestEditorOverlayStore {
 
 describe("EditorOverlayStore", () => {
     let store: TestEditorOverlayStore;
+
+    beforeEach(() => {
+        vi.stubGlobal("document", { activeElement: { tagName: "BODY" } });
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
 
     beforeEach(() => {
         store = new TestEditorOverlayStore();
