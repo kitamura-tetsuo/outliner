@@ -244,8 +244,13 @@ export class JobScheduler {
             }
         } else {
             logger.warn(
-                { ruleId: rule.rule_id, room: rule.room, count: missed.length, skippedRange: `${missed[0]} to ${missed[missed.length - 1]}` },
-                "JobScheduler skipped occurrences"
+                {
+                    ruleId: rule.rule_id,
+                    room: rule.room,
+                    count: missed.length,
+                    skippedRange: `${missed[0]} to ${missed[missed.length - 1]}`,
+                },
+                "JobScheduler skipped occurrences",
             );
             const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
             if (mainRoomConn2.document) {

@@ -16,6 +16,7 @@ Why?
 ## Skipped Occurrences
 
 If the scheduler is offline for a period of time, it will miss scheduled runs. When it resumes:
+
 - By default (if `catchUp` is false), the scheduler will **skip** all missed occurrences if more than one was missed. No occurrences will be processed, and it will simply advance to the next run time.
 - If `catchUp` is true, the scheduler will process **every** missed occurrence in chronological order, up to a maximum limit (`MAX_CATCHUP_OCCURRENCES`).
 - Missed occurrences that are skipped are logged as a warning and the count is updated in the rule's `skippedOccurrences` field.
