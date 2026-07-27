@@ -92,7 +92,7 @@ describe("analyzeQueryEditability", () => {
         expect(res.editable).toBe(false);
     });
 
-    it("marks a bare-id single-table result addressed by \"id\"", async () => {
+    it('marks a bare-id single-table result addressed by "id"', async () => {
         const schema = await schemaPromise;
         const res = analyzeQueryEditability("SELECT id, title FROM tasks", schema, ["id", "title"]);
         expect(res.editable).toBe(true);
@@ -102,7 +102,7 @@ describe("analyzeQueryEditability", () => {
     // A calendar-style query unions outline items with generated rows. Neither
     // side has a single `id` column tracing back to one relation, but the pair
     // survives the projection so the result stays editable (issue #4273).
-    it("keeps a UNION carrying source_kind/source_id editable, addressed by \"source\"", async () => {
+    it('keeps a UNION carrying source_kind/source_id editable, addressed by "source"', async () => {
         const schema = await schemaPromise;
         const query = "SELECT 'a' AS source_kind, id AS source_id, title, points FROM tasks "
             + "UNION ALL SELECT 'b' AS source_kind, id AS source_id, title, points FROM tasks";

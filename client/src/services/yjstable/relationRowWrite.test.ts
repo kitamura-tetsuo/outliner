@@ -6,9 +6,9 @@
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
-import { analyzeQueryEditability } from "./queryAnalysis";
-import { resetPgliteForTests } from "./pgliteService";
 import { ITEMS_RELATION_NAME } from "./itemsRelation";
+import { resetPgliteForTests } from "./pgliteService";
+import { analyzeQueryEditability } from "./queryAnalysis";
 import type { RelationProvider, RelationWrite } from "./relationProvider";
 import { RelationWriteError, TABLE_RELATION_CAPABILITIES } from "./relationProvider";
 import { applyUnionedRowEdit } from "./relationRowWrite";
