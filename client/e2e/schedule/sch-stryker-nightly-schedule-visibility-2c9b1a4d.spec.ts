@@ -12,7 +12,7 @@ import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
 test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
-    test.beforeEach(async ({ page }, testInfo) => {
+    test.beforeEach(async ({ page, context }, testInfo) => {
         await TestHelpers.seedProjectAndNavigateForProject(page, testInfo);
         await page.evaluate(async () => {
             let attempts = 0;
@@ -53,7 +53,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
-        const req = page.waitForRequest("**/api/list-schedules**");
+        const req = page.waitForResponse("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
         await req;
 
@@ -75,7 +75,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
-        const req = page.waitForRequest("**/api/list-schedules**");
+        const req = page.waitForResponse("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
         await req;
 
@@ -99,7 +99,7 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
-        const req = page.waitForRequest("**/api/list-schedules**");
+        const req = page.waitForResponse("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
         await req;
 
