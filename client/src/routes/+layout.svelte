@@ -64,107 +64,6 @@ if (browser && typeof window !== "undefined") {
 
 
 
-/**
- * Function to rotate log files
- */
-async function rotateLogFiles() {
-    try {
-        if (import.meta.env.DEV) {
-            logger.info(
-                "Executing log rotation at application termination",
-            );
-        }
-
-        // 1. Try with standard Fetch API first
-        try {
-            const response = await fetch(`/api/rotate-logs`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({}),
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                if (import.meta.env.DEV) {
-                    logger.info("Log rotation completed", result);
-                }
-                return;
-            }
-        }
-        catch {
-            // Try sendBeacon if fetch fails - do not record error
-            if (import.meta.env.DEV) {
-                logger.debug(
-                    "Standard fetch call failed, attempting sendBeacon",
-                );
-            }
-        }
-
-        // 2. Use sendBeacon as fallback
-        const blob = new Blob([JSON.stringify({})], {
-            type: "application/json",
-        });
-        const success = navigator.sendBeacon(
-            `/api/rotate-logs`,
-            blob,
-        );
-
-        if (success) {
-            if (import.meta.env.DEV) {
-                logger.info("Log rotation execution scheduled");
-            }
-        }
-        else {
-            logger.warn("Log rotation transmission failed");
-
-            // 3. Try closing request (image beacon) as a further retry
-            try {
-                const img = new Image();
-                img.src = `/api/rotate-logs?t=${Date.now()}`;
-            }
-            catch {
-                // Ignore error as it is the last attempt
-            }
-        }
-    }
-    catch (error) {
-        logger.error({ error: error as Error }, "An error occurred during log rotation");
-    }
-}
-
-/**
- * Function to execute periodic log rotation (preventive measure)
- */
-function schedulePeriodicLogRotation() {
-    // Periodic log rotation (every 12 hours)
-    const ROTATION_INTERVAL = 12 * 60 * 60 * 1000;
-
-    return setInterval(() => {
-        if (import.meta.env.DEV) {
-            logger.info("Executing periodic log rotation");
-        }
-        rotateLogFiles();
-    }, ROTATION_INTERVAL);
-}
-
-let rotationInterval: ReturnType<typeof setInterval> | undefined = undefined;
-
-// Listener for browser unload event
-function handleBeforeUnload() {
-    // Execute log rotation when browser closes
-    rotateLogFiles();
-}
-
-// Use visibilitychange event as another calling method
-function handleVisibilityChange() {
-    if (document.visibilityState === "hidden") {
-        // Try log rotation also when user leaves the page
-        rotateLogFiles();
-    }
-}
-
 // Processing at application initialization
 onMount(() => {
     const init = async () => {
@@ -228,20 +127,6 @@ onMount(() => {
         }
 
         // Yjs: no auth-coupled init hook required
-
-        // Disable cleanup listeners in E2E to avoid interference with page transitions
-        const isE2eCleanup = isE2eEnvironment();
-        if (!isE2eCleanup) {
-            // Register event listener for browser termination
-            window.addEventListener("beforeunload", handleBeforeUnload);
-            // Register visibilitychange event listener (additional insurance)
-            document.addEventListener("visibilitychange", handleVisibilityChange);
-            // Set up periodic log rotation
-            rotationInterval = schedulePeriodicLogRotation();
-        }
-
-
-
     }
     };
     init();
@@ -251,22 +136,10 @@ onMount(() => {
 onDestroy(async () => {
     // Execute only in browser environment
     if (browser) {
-        // Remove event listeners
-        window.removeEventListener("beforeunload", handleBeforeUnload);
-        document.removeEventListener(
-            "visibilitychange",
-            handleVisibilityChange,
-        );
-
         try {
             const { cleanupYjsClient } = await import("../services");
             cleanupYjsClient();
         } catch {}
-
-        // Cancel periodic log rotation
-        if (rotationInterval) {
-            clearInterval(rotationInterval);
-        }
     }
 });
 // HMR Trigger
