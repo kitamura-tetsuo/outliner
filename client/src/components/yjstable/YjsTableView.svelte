@@ -15,6 +15,7 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
+import { globalUndoRouter } from "../../services/undo/undoRouter";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -193,8 +194,8 @@ onDestroy(() => {
             >Schedule</button>
         </div>
         <div class="undo-controls">
-            <button type="button" onclick={() => handles.undo.undo()}>Undo</button>
-            <button type="button" onclick={() => handles.undo.redo()}>Redo</button>
+            <button type="button" onclick={() => globalUndoRouter.undo()}>Undo</button>
+            <button type="button" onclick={() => globalUndoRouter.redo()}>Redo</button>
         </div>
     </div>
 
