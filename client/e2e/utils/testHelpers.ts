@@ -1075,7 +1075,7 @@ export class TestHelpers {
         text: string,
         userId: string = "local",
     ): Promise<void> {
-        await page.evaluate(async ({ itemId, text, userId }) => {
+        const success = await page.evaluate(async ({ itemId, text, userId }) => {
             const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && editorOverlayStore.getCursorInstances) {
                 const cursorInstances = editorOverlayStore.getCursorInstances();
@@ -1083,17 +1083,24 @@ export class TestHelpers {
                 if (cursor && cursor.insertText) {
                     console.log(`TestHelpers.insertText: Found cursor for itemId=${itemId}, userId=${userId}`);
                     cursor.insertText(text);
+                    return { ok: true };
                 } else {
                     console.error(`TestHelpers.insertText: Cursor not found for itemId=${itemId}, userId=${userId}`);
                     console.log(
                         `Available cursors:`,
                         cursorInstances.map((c: any) => ({ itemId: c.itemId, userId: c.userId })),
                     );
+                    return { ok: false, error: `Cursor not found for itemId=${itemId}, userId=${userId}` };
                 }
             } else {
                 console.error(`TestHelpers.insertText: editorOverlayStore or getCursorInstances not available`);
+                return { ok: false, error: "editorOverlayStore or getCursorInstances not available" };
             }
         }, { itemId, text, userId });
+
+        if (!success.ok) {
+            throw new Error(`TestHelpers.insertText: ${success.error}`);
+        }
     }
 
     /**
