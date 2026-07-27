@@ -1,6 +1,6 @@
 import { SQLite } from "@hocuspocus/extension-sqlite";
-import type BetterSqlite3 from "better-sqlite3";
 import { Hocuspocus } from "@hocuspocus/server";
+import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
 import { serverLogger as logger } from "../utils/log-manager.js";
@@ -320,7 +320,9 @@ export class JobScheduler {
         const schemaSql = doc.getText("schema").toString();
         const records: Record<string, unknown>[] = [];
         for (const value of doc.getMap("data").values()) {
-            records.push(value instanceof Y.Map ? value.toJSON() as Record<string, unknown> : value as Record<string, unknown>);
+            records.push(
+                value instanceof Y.Map ? value.toJSON() as Record<string, unknown> : value as Record<string, unknown>,
+            );
         }
         return { schemaSql, records };
     }
@@ -332,7 +334,10 @@ export class JobScheduler {
      * inserts into the occurrences one), so every registered table whose SQL
      * name appears in the statement is materialized alongside the target.
      */
-    private async loadReferencedTables(rule: ScheduleIndexRow, ruleSql: string): Promise<{ schemaSql: string; records: Record<string, unknown>[]; }[]> {
+    private async loadReferencedTables(
+        rule: ScheduleIndexRow,
+        ruleSql: string,
+    ): Promise<{ schemaSql: string; records: Record<string, unknown>[]; }[]> {
         const projectConn = await this.hocuspocus.openDirectConnection(rule.room);
         const referenced: { tableId: string; }[] = [];
         try {

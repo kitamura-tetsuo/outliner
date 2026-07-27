@@ -8,9 +8,10 @@ async function executeJob(data: JobData) {
     // A rule may read any table of its project, so the job materializes one
     // relation per entry of `tables` (the target table first). `schemaSql` /
     // `records` are the single-table form of the same input.
-    const tableDefs: { schemaSql: string; records?: Record<string, unknown>[]; }[] = Array.isArray(data.tables) && data.tables.length > 0
-        ? data.tables
-        : [{ schemaSql, records }];
+    const tableDefs: { schemaSql: string; records?: Record<string, unknown>[]; }[] =
+        Array.isArray(data.tables) && data.tables.length > 0
+            ? data.tables
+            : [{ schemaSql, records }];
 
     if (typeof ruleId !== "string" || !/^[A-Za-z0-9_-]+$/.test(ruleId)) {
         return { success: false, error: "Invalid ruleId" };
@@ -41,7 +42,7 @@ async function executeJob(data: JobData) {
             if (!table?.schemaSql) continue;
             await db.exec(table.schemaSql);
 
-            const tablesRes = await db.query<{ table_name: string }>(
+            const tablesRes = await db.query<{ table_name: string; }>(
                 `
                 SELECT table_name
                 FROM information_schema.tables
@@ -58,7 +59,7 @@ async function executeJob(data: JobData) {
             const tableRecords = table.records;
             if (!tableRecords || tableRecords.length === 0) continue;
 
-            const colsRes = await db.query<{ column_name: string }>(
+            const colsRes = await db.query<{ column_name: string; }>(
                 `
                 SELECT column_name
                 FROM information_schema.columns
