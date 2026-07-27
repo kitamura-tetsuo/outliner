@@ -367,7 +367,10 @@ async function setupProviderForRoom(
     });
 
     // Detailed event logging for sync debugging
-    provider.on("authenticated", () => logger.debug(`[yjs-conn] ${room} authenticated`));
+    provider.on("authenticated", () => {
+        authRetries = 0;
+        logger.debug(`[yjs-conn] ${room} authenticated`);
+    });
     provider.on(
         "authenticationFailed",
         (data: unknown) => {
