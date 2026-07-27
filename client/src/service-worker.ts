@@ -77,11 +77,15 @@ self.addEventListener("fetch", event => {
                     .then(response => {
                         return response;
                     })
-                    .catch(err => {
+                    .catch(async err => {
                         logger.warn("Fetch failed, trying cache:", err);
-                        return caches.match(req).then(res => {
-                            return res || new Response("Network error", { status: 503 });
-                        });
+                        const cached = await caches.match(req);
+                        if (cached) return cached;
+                        if (req.mode === "navigate") {
+                            const shell = await caches.match("/");
+                            if (shell) return shell;
+                        }
+                        return new Response("Network error", { status: 503 });
                     }),
             );
         } else {
