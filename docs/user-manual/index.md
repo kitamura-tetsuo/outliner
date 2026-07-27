@@ -39,6 +39,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 ### Sidebar Navigation
 
 Click the hamburger menu in the top-left corner to access the main sidebar navigation. The sidebar provides quick access to:
+
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project.
 - **Tables:** View and manage database tables.
