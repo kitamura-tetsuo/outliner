@@ -13,9 +13,10 @@ service firebase.storage {
 }
 
 // Check if user has access to the container
-// This function checks the containerUsers collection in Firestore
+// See server/src/access-control.ts for the authoritative access model.
+// This function checks the projectUsers collection in Firestore as the single source of truth.
 function hasContainerAccess(userId, containerId) {
-  return exists(/databases/$(database)/documents/containerUsers/$(containerId + '_' + userId)) ||
-         exists(/databases/$(database)/documents/userContainers/$(userId)) &&
-         get(/databases/$(database)/documents/userContainers/$(userId)).data.containers[containerId] != null;
+  let projectUserDoc = /databases/$(database)/documents/projectUsers/$(containerId);
+  return exists(projectUserDoc) &&
+         userId in get(projectUserDoc).data.accessibleUserIds;
 }
