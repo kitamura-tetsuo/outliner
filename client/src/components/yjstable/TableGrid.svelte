@@ -4,7 +4,12 @@
 // into Data Storage (Y.Map) only — PGlite is updated by the sync adapter and
 // the grid re-renders from the debounced re-query (one-way data flow).
 
-import { analyzeQueryEditability } from "../../services/yjstable/queryAnalysis";
+import {
+    analyzeQueryEditability,
+    SOURCE_ID_COLUMN,
+    SOURCE_KIND_COLUMN,
+} from "../../services/yjstable/queryAnalysis";
+import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import {
     addRecord,
@@ -25,15 +30,49 @@ interface Props {
     componentTypes: Record<string, string | undefined>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
+    /** Resolves the relation provider a unioned row's `source_kind` names. */
+    session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, loading = false }: Props = $props();
+let { handles, schema, query, result, componentTypes, loading = false, session }: Props = $props();
+
+/** Row-identity columns: metadata about the row, never shown as "read-only data". */
+const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 
-function commitCell(recordId: string, column: string, value: TableRecordValue) {
-    setRecordValue(handles, recordId, column, value);
+/** This table's own record id, only meaningful when rows are addressed by `id`. */
+function recordIdOf(row: Record<string, unknown>): string | undefined {
+    if (editability.rowIdentity !== "id") return undefined;
+    return typeof row.id === "string" ? row.id : undefined;
+}
+
+/** The relation and row a unioned row's edit routes to, when addressed by `source_kind`/`source_id`. */
+function sourceOf(row: Record<string, unknown>): { sourceKind: string; sourceId: string; } | undefined {
+    if (editability.rowIdentity !== "source") return undefined;
+    const sourceKind = row.source_kind;
+    const sourceId = row.source_id;
+    if (typeof sourceKind !== "string" || typeof sourceId !== "string") return undefined;
+    return { sourceKind, sourceId };
+}
+
+function rowKey(row: Record<string, unknown>, rowIndex: number): string {
+    const recordId = recordIdOf(row);
+    if (recordId !== undefined) return recordId;
+    const source = sourceOf(row);
+    if (source) return `${source.sourceKind}:${source.sourceId}`;
+    return `row-${rowIndex}`;
+}
+
+function commitCell(row: Record<string, unknown>, column: string, value: TableRecordValue) {
+    const recordId = recordIdOf(row);
+    if (recordId !== undefined) {
+        setRecordValue(handles, recordId, column, value);
+        return;
+    }
+    const source = sourceOf(row);
+    if (source) void applyUnionedRowEdit(session, source.sourceKind, source.sourceId, column, value);
 }
 
 function newRecordDefaults(): Record<string, TableRecordValue> {
@@ -70,20 +109,21 @@ function deleteRow(recordId: string) {
                     {#each result.columns as column (column)}
                         <th scope="col">
                             {column}
-                            {#if editability.editable && !editability.editableColumns.has(column) && column !== "id"}
+                            {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
                                 <span class="readonly-mark" title="Read-only column">RO</span>
                             {/if}
                         </th>
                     {/each}
-                    {#if editability.editable}
+                    {#if editability.editable && editability.rowIdentity === "id"}
                         <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
                     {/if}
                 </tr>
             </thead>
             <tbody>
-                {#each result.rows as row, rowIndex (typeof row.id === "string" ? row.id : `row-${rowIndex}`)}
-                    {@const recordId = typeof row.id === "string" ? row.id : undefined}
-                    <tr data-record-id={recordId}>
+                {#each result.rows as row, rowIndex (rowKey(row, rowIndex))}
+                    {@const recordId = recordIdOf(row)}
+                    {@const source = sourceOf(row)}
+                    <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         {#each result.columns as column (column)}
                             {@const schemaColumn = columnByName.get(column)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
@@ -91,17 +131,17 @@ function deleteRow(recordId: string) {
                                 <CellComponent
                                     value={row[column]}
                                     editable={editability.editable
-                                    && recordId !== undefined
+                                    && (recordId !== undefined || source !== undefined)
                                     && editability.editableColumns.has(column)}
                                     options={schemaColumn?.checkOptions}
-                                    ariaLabel={`${column} for ${recordId ?? "new row"}`}
+                                    ariaLabel={`${column} for ${recordId ?? source?.sourceId ?? "new row"}`}
                                     onCommit={(value) => {
-                                        if (recordId !== undefined) commitCell(recordId, column, value);
+                                        if (recordId !== undefined || source !== undefined) commitCell(row, column, value);
                                     }}
                                 />
                             </td>
                         {/each}
-                        {#if editability.editable}
+                        {#if editability.editable && editability.rowIdentity === "id"}
                             <td class="actions-col">
                                 {#if recordId !== undefined}
                                     <button
@@ -127,7 +167,7 @@ function deleteRow(recordId: string) {
         <p class="readonly-reason" data-testid="grid-readonly-reason">{editability.readOnlyReason}</p>
     {/if}
 
-    {#if schema && editability.editable}
+    {#if schema && editability.editable && editability.rowIdentity === "id"}
         <button type="button" class="add-row" data-testid="yjs-table-add-row" onclick={addRow}>
             + Add row
         </button>
