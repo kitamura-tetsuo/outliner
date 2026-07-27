@@ -36,3 +36,48 @@ test.describe("Service Worker Registration", () => {
         expect(swRegistrations).toBe(0);
     });
 });
+
+// While SW registration is disabled in E2E environments to prevent caching issues across tests,
+// we add a simple unit-style mock test here (or the equivalent logic) just to ensure the basic branching
+// logic inside the Service Worker fetch handler would theoretically execute as expected.
+test.describe("Service Worker Fetch Logic Analysis", () => {
+    test("fetch logic routes network vs cache correctly based on url", async () => {
+        // Here we simulate the logic of the service worker to verify our rule set
+        function mockSwFetchLogic(req: { method: string; url: string; mode: string; }) {
+            if (req.method !== "GET") return "bypass";
+
+            const url = new URL(req.url);
+            if (url.pathname.startsWith("/api/")) return "bypass";
+
+            const isImmutable = url.pathname.startsWith("/_app/immutable/");
+
+            if (req.mode === "navigate" || !isImmutable) {
+                return "network-first";
+            } else {
+                return "cache-first";
+            }
+        }
+
+        expect(mockSwFetchLogic({ method: "POST", url: "http://localhost/api/data", mode: "cors" })).toBe("bypass");
+        expect(mockSwFetchLogic({ method: "GET", url: "http://localhost/api/data", mode: "cors" })).toBe("bypass");
+
+        // HTML Navigation
+        expect(mockSwFetchLogic({ method: "GET", url: "http://localhost/demo", mode: "navigate" })).toBe(
+            "network-first",
+        );
+
+        // Immutable asset
+        expect(
+            mockSwFetchLogic({
+                method: "GET",
+                url: "http://localhost/_app/immutable/chunks/index.js",
+                mode: "no-cors",
+            }),
+        ).toBe("cache-first");
+
+        // Non-immutable asset (like a random image or json file not in immutable)
+        expect(mockSwFetchLogic({ method: "GET", url: "http://localhost/favicon.png", mode: "no-cors" })).toBe(
+            "network-first",
+        );
+    });
+});

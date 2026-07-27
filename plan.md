@@ -1,15 +1,11 @@
-1. **Fix `getFreshIdToken` in `client/src/lib/yjs/connection.ts`:**
-   - Remove the `mustAuth` condition when waiting for `auth.currentUser`. The code should be `if (!auth.currentUser) { ... }` instead of `if (!auth.currentUser && mustAuth) { ... }`.
-   - I will use `replace_with_git_merge_diff` to apply this fix.
-
-2. **Add a unit test in `client/src/tests/unit/yjs/connectionSharedSetup.spec.ts`:**
-   - Add a test checking that when `auth.currentUser` is initially null (simulating a cold start), the application waits and rechecks it instead of immediately failing.
-   - I will dynamically change `userManager.auth.currentUser` in the test to be null initially, and then use `setTimeout` or `vi.advanceTimersByTimeAsync` to simulate it hydrating (being populated with an object that has `getIdToken`) after ~1s. We expect `provider.configuration.token()` to wait and eventually return the token rather than returning empty.
-   - Wait, `userManager` is exported as a module variable mock. We need to make it writable or change its `auth` property in the test. The mock currently has `auth: { currentUser: { getIdToken: ... } }`. We can do `userManager.auth.currentUser = null` initially, and then `setTimeout(() => { userManager.auth.currentUser = { getIdToken: ... } }, 1000)` using fake timers.
-   - I will use `replace_with_git_merge_diff` to add this test.
-
-3. **Complete pre-commit steps.**
-   - Run `pre_commit_instructions` to ensure proper testing, verification, review, and reflection are done.
-
-4. **Submit the change.**
-   - Submit the change using the `submit` tool.
+1. **Analyze Root Cause**: The service worker in `client/src/service-worker.ts` treats all GET requests identically, storing them indefinitely using a cache-first approach. For HTML navigations, this means returning users are stuck with outdated shell HTML, and the cache size grows unboundedly because every distinct page URL visited is stored permanently.
+2. **Import `build` and `files`**: In `client/src/service-worker.ts`, import `build` and `files` from `$service-worker` in addition to `version`.
+3. **Pre-cache Assets**: Combine `build` and `files` into the `ASSETS` array to pre-cache the build manifest at install time instead of dynamically accumulating them. We can also include `/` and `/favicon.png`.
+4. **Distinguish Requests in Fetch Listener**:
+   - Determine if the request is for an immutable asset by checking if the URL pathname starts with `/_app/immutable/`.
+   - Don't cache `/api/*` responses at all (if they happen to be GET).
+   - If the request mode is "navigate" or it's not immutable, use a network-first strategy (with fallback to cache for offline support).
+   - Otherwise (for immutable assets), use a cache-first strategy.
+   - For network responses, do not put navigations or non-immutable assets into the permanent runtime cache (or restrict what is put in there) to avoid unbounded growth.
+5. **E2E/Unit Assertion**: Write a test to assert that a second load after a version bump serves the new shell (if applicable, though Playwright tests for SWs are sometimes tricky, we can check basic behavior).
+6. **Pre-commit**: Complete pre-commit steps to ensure proper testing, verification, review, and reflection are done.
