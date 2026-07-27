@@ -45,9 +45,16 @@ async function fulfillListSchedules(route: Route, schedules: ScheduleFixture[]):
 
 test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
     test.beforeEach(async ({ page }) => {
-        // The schedule page itself has no login UI, so sign in on the app root
-        // first; Firebase persists the session for the following navigation.
-        await page.goto("/");
+        // The schedule page has no login UI, so sign in first and let Firebase
+        // persist the session for the navigations the tests perform.
+        // Loading /schedule without a pageId is enough: the route imports
+        // UserManager (which publishes __USER_MANAGER__) but returns before
+        // fetching, so no request escapes ahead of the route mocks.
+        await page.goto("/schedule");
+        await page.waitForFunction(
+            () => !!(globalThis as unknown as { __USER_MANAGER__?: unknown; }).__USER_MANAGER__,
+            { timeout: 30000 },
+        );
         await TestHelpers.login(page);
     });
 
