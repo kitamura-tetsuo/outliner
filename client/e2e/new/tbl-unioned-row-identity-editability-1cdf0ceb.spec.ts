@@ -103,9 +103,12 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         );
         await page.keyboard.press("Enter");
 
-        await expect(page.locator(".outliner-item", { hasText: "Ship the redesigned feature" }))
+        // Scoped to the item's own text node (.item-content), not the whole
+        // .outliner-item subtree: the anchor item embeds this very table
+        // block, so its rendered grid cells would otherwise false-match.
+        await expect(page.locator(".item-content", { hasText: "Ship the redesigned feature" }))
             .toBeVisible({ timeout: 15000 });
         // The table row's own edit did not leak into the outline item.
-        await expect(page.locator(".outliner-item", { hasText: "Water the plants" })).toHaveCount(0);
+        await expect(page.locator(".item-content", { hasText: "Water the plants" })).toHaveCount(0);
     });
 });
