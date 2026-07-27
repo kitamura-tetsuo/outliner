@@ -391,4 +391,49 @@ describe("yjs connection: shared provider setup", () => {
             vi.useRealTimers();
         }
     });
+
+    it("resets auth retry budget upon successful authentication", async () => {
+        const promise = createProjectConnection("proj-retry-reset-test");
+        await flushMicrotasks();
+        const provider = MockHocuspocusProvider.instances[0] as MockProviderInstance;
+        provider.markSynced();
+        await promise;
+
+        const connectSpy = vi.spyOn(provider, "connect");
+        const disconnectSpy = vi.spyOn(provider, "disconnect");
+        const tokenFn = provider.configuration.token;
+
+        // First 4001: should force a refresh and connect(), not disconnect()
+        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
+        await flushMicrotasks();
+
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
+        expect(disconnectSpy).not.toHaveBeenCalled();
+
+        getIdTokenSpy.mockResolvedValue("mock-token-retry-1");
+        await tokenFn();
+
+        // Emulate successful auth
+        provider.emit("authenticated", null);
+        await flushMicrotasks();
+
+        // Second 4001: should force another refresh and connect(), budget was reset
+        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
+        await flushMicrotasks();
+
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(2);
+        expect(connectSpy).toHaveBeenCalledTimes(2);
+        expect(disconnectSpy).not.toHaveBeenCalled();
+
+        getIdTokenSpy.mockResolvedValue("mock-token-retry-2");
+        await tokenFn();
+
+        // Third 4001 (without intervening authenticated): budget exhausted, should disconnect()
+        provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
+        await flushMicrotasks();
+
+        expect(connectSpy).toHaveBeenCalledTimes(2); // not called again
+        expect(disconnectSpy).toHaveBeenCalledTimes(1); // called this time
+    });
 });
