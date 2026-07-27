@@ -162,6 +162,11 @@ test.describe("CMT-0001: comment threads", () => {
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
         ).toHaveText("1", { timeout: 30000 });
 
+        // Assert there is only one comment count element in total for this item
+        const countBadges = await page.locator(`[data-item-id="${firstId}"] .comment-count`).count();
+        const visualBadges = await page.locator(`[data-item-id="${firstId}"] .comment-count-visual`).count();
+        expect(countBadges + visualBadges).toBe(1);
+
         // Wait for the comment element to appear with specific text, which indicates successful sync
         await expect(page.locator('[data-testid="comment-thread"] .text')).toContainText("hello", { timeout: 30000 });
 
@@ -244,7 +249,7 @@ test.describe("CMT-0001: comment threads", () => {
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
         // Wait for comment count to disappear
         await expect(
-            page.locator(`[data-item-id="${firstId}"] .comment-count-visual`),
+            page.locator(`[data-item-id="${firstId}"] .comment-count`),
         ).toHaveText("0", { timeout: 10000 });
     });
 

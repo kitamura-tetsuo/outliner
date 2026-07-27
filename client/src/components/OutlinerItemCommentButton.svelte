@@ -9,7 +9,6 @@ interface Props {
 let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 </script>
 
-<span class="comment-count-visual" class:has-count={commentCount > 0} aria-hidden="true">{commentCount}</span>
 <button type="button"
     tabindex="-1"
     class="comment-button" class:has-count={commentCount > 0}
@@ -27,18 +26,14 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 </button>
 
 <style>
-.comment-button,
-.comment-count-visual {
+.comment-button {
     opacity: 0;
     transition: opacity 0.2s;
 }
 
 :global(.outliner-item:hover) .comment-button,
 :global(.outliner-item:focus-within) .comment-button,
-:global(.outliner-item:hover) .comment-count-visual,
-:global(.outliner-item:focus-within) .comment-count-visual,
-.comment-button.has-count,
-.comment-count-visual.has-count {
+.comment-button.has-count {
     opacity: 1;
 }
 
@@ -70,8 +65,7 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
    control that's invisible most of the time - collapse it out of the layout
    until the item is actively focused (or it has comments to show). */
 @media (max-width: 768px) {
-    .comment-button,
-    .comment-count-visual {
+    .comment-button {
         display: none;
     }
 
@@ -82,12 +76,6 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
     :global(.outliner-item[data-active="true"]) .comment-button,
     .comment-button.has-count {
         display: inline-block;
-    }
-
-    :global(.outliner-item:hover) .comment-count-visual,
-    :global(.outliner-item[data-active="true"]) .comment-count-visual,
-    .comment-count-visual.has-count {
-        display: inline;
     }
 }
 </style>
