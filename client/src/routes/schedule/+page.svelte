@@ -30,7 +30,8 @@ onMount(() => {
     const init = async () => {
     const params = new URLSearchParams(window.location.search);
     const pageId = params.get("pageId");
-    const idToken = localStorage.getItem("firebase:authUser:*:idToken");
+    const { userManager } = await import("../../auth/UserManager");
+    const idToken = await userManager.auth.currentUser?.getIdToken();
     if (!pageId || !idToken) return;
     try {
         const res = await fetch(`/api/list-schedules?idToken=${idToken}&pageId=${pageId}`);

@@ -7,21 +7,35 @@
 
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
 test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
-    test.beforeEach(async ({ page }) => {
-        await page.addInitScript(() => {
-            globalThis.localStorage.setItem("firebase:authUser:*:idToken", "e2e-stryker-token");
+    test.beforeEach(async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigateForProject(page, testInfo);
+        await page.evaluate(async () => {
+            let attempts = 0;
+            while (attempts < 50) {
+                const mgr = (globalThis as any).__USER_MANAGER__;
+                if (mgr?.loginWithEmailPassword) {
+                    await mgr.loginWithEmailPassword("test@example.com", "password");
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 100));
+                attempts++;
+            }
+            throw new Error("UserManager not available after waiting");
         });
+        // Wait a bit to ensure login has completely propagated
+        await page.waitForTimeout(500);
     });
 
     test("Row is displayed when API response contains Stryker job", async ({ page }) => {
         await page.route("**/api/list-schedules**", async (route) => {
             const url = new URL(route.request().url());
             expect(url.searchParams.get("pageId")).toBe("mutation-jobs");
-            expect(url.searchParams.get("idToken")).toBe("e2e-stryker-token");
+            expect(url.searchParams.get("idToken")).toBeTruthy();
 
             await route.fulfill({
                 status: 200,
@@ -39,7 +53,9 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
+        const req = page.waitForRequest("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
+        await req;
 
         const row = page.locator('[data-schedule-id="stryker-nightly"]');
         await expect(row).toBeVisible();
@@ -59,7 +75,9 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
+        const req = page.waitForRequest("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
+        await req;
 
         await expect(page.locator("tbody tr")).toHaveCount(0);
     });
@@ -81,7 +99,9 @@ test.describe("ENV-2c9b1a4d: Stryker nightly schedule visibility", () => {
             });
         });
 
+        const req = page.waitForRequest("**/api/list-schedules**");
         await page.goto("/schedule?pageId=mutation-jobs");
+        await req;
 
         const row = page.locator('[data-schedule-id="stryker-nightly"]');
         await expect(row).toBeVisible();
