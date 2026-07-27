@@ -16,12 +16,12 @@ status: implemented
 components:
 - .github/workflows/stryker-nightly.yml
 - .github/workflows/stryker-pr.yml
-- client/e2e/env/env-stryker-nightly-schedule-visibility-2c9b1a4d.spec.ts
+- client/e2e/schedule/sch-stryker-nightly-schedule-visibility-2c9b1a4d.spec.ts
 - client/package.json
 - client/scripts/create-stryker-summary.mjs
 - client/stryker.conf.mjs
 tests:
-- client/e2e/env/env-stryker-nightly-schedule-visibility-2c9b1a4d.spec.ts
+- client/e2e/schedule/sch-stryker-nightly-schedule-visibility-2c9b1a4d.spec.ts
 title-ja: Enable Stryker mutation testing
 commands:
 - npm run test:mutation
