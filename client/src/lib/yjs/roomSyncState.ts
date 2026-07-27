@@ -7,130 +7,90 @@ import { getLogger } from "../logger";
 
 const logger = getLogger("RoomSyncState");
 
-export type RoomSyncState = "pending" | "synced" | "timed-out" | "denied" | "too-large" | "rate-limited" | "retrying";
+function createRoomRegistry<T>(label: string, max = 100) {
+    const states = new Map<string, T>();
+    const listeners = new Map<string, Set<(state: T) => void>>();
 
-const states = new Map<string, RoomSyncState>();
-const listeners = new Map<string, Set<(state: RoomSyncState) => void>>();
+    return {
+        set(room: string, state: T): void {
+            if (states.size >= max && !states.has(room)) {
+                let candidateForEviction: string | undefined;
+                for (const candidate of states.keys()) {
+                    const roomListeners = listeners.get(candidate);
+                    if (!roomListeners || roomListeners.size === 0) {
+                        candidateForEviction = candidate;
+                        break;
+                    }
+                }
 
-export function setRoomSyncState(room: string, state: RoomSyncState): void {
-    if (states.size >= 100 && !states.has(room)) {
-        let candidateForEviction: string | undefined;
-        for (const candidate of states.keys()) {
-            const roomListeners = listeners.get(candidate);
-            if (!roomListeners || roomListeners.size === 0) {
-                candidateForEviction = candidate;
-                break;
+                if (candidateForEviction) {
+                    states.delete(candidateForEviction);
+                    listeners.delete(candidateForEviction);
+                } else {
+                    logger.warn(`${label} leak warning: over ${max} rooms all have active listeners`);
+                }
             }
-        }
 
-        if (candidateForEviction) {
-            states.delete(candidateForEviction);
-            listeners.delete(candidateForEviction);
-        } else {
-            logger.warn("RoomSyncState leak warning: over 100 rooms all have active listeners");
-        }
-    }
+            states.set(room, state);
+            const set = listeners.get(room);
+            if (!set) return;
+            for (const listener of set) {
+                try {
+                    listener(state);
+                } catch {
+                    // Listener errors must not break sync-state propagation
+                }
+            }
+        },
 
-    states.set(room, state);
-    const set = listeners.get(room);
-    if (!set) return;
-    for (const listener of set) {
-        try {
-            listener(state);
-        } catch {
-            // Listener errors must not break sync-state propagation
-        }
-    }
-}
+        get(room: string): T | undefined {
+            return states.get(room);
+        },
 
-export function getRoomSyncState(room: string): RoomSyncState | undefined {
-    return states.get(room);
-}
+        subscribe(room: string, listener: (state: T) => void): () => void {
+            let set = listeners.get(room);
+            if (!set) {
+                set = new Set();
+                listeners.set(room, set);
+            }
+            set.add(listener);
+            return () => {
+                set?.delete(listener);
+                if (set?.size === 0) {
+                    listeners.delete(room);
+                }
+            };
+        },
 
-export function onRoomSyncStateChange(room: string, listener: (state: RoomSyncState) => void): () => void {
-    let set = listeners.get(room);
-    if (!set) {
-        set = new Set();
-        listeners.set(room, set);
-    }
-    set.add(listener);
-    return () => {
-        set?.delete(listener);
+        delete(room: string): void {
+            states.delete(room);
+            listeners.delete(room);
+        },
+
+        clear(): void {
+            states.clear();
+            listeners.clear();
+        },
     };
 }
 
-export function deleteRoomSyncState(room: string): void {
-    states.delete(room);
-    listeners.delete(room);
-}
+export type RoomSyncState = "pending" | "synced" | "timed-out" | "denied" | "too-large" | "rate-limited" | "retrying";
 
+const syncStates = createRoomRegistry<RoomSyncState>("RoomSyncState");
+
+export const setRoomSyncState = syncStates.set;
+export const getRoomSyncState = syncStates.get;
+export const onRoomSyncStateChange = syncStates.subscribe;
+export const deleteRoomSyncState = syncStates.delete;
 // Exposed for tests only
-export function clearRoomSyncStates(): void {
-    states.clear();
-    listeners.clear();
-}
+export const clearRoomSyncStates = syncStates.clear;
 
 export type RoomPersistenceError = boolean; // true = fatal error, false = timeout (but continuing in background)
 
-const persistenceErrorStates = new Map<string, RoomPersistenceError>();
-const persistenceErrorListeners = new Map<string, Set<(state: RoomPersistenceError) => void>>();
+const persistenceErrors = createRoomRegistry<RoomPersistenceError>("RoomPersistenceError");
 
-export function setRoomPersistenceError(room: string, state: RoomPersistenceError): void {
-    if (persistenceErrorStates.size >= 100 && !persistenceErrorStates.has(room)) {
-        let candidateForEviction: string | undefined;
-        for (const candidate of persistenceErrorStates.keys()) {
-            const roomListeners = persistenceErrorListeners.get(candidate);
-            if (!roomListeners || roomListeners.size === 0) {
-                candidateForEviction = candidate;
-                break;
-            }
-        }
-
-        if (candidateForEviction) {
-            persistenceErrorStates.delete(candidateForEviction);
-            persistenceErrorListeners.delete(candidateForEviction);
-        } else {
-            logger.warn("RoomPersistenceError leak warning: over 100 rooms all have active listeners");
-        }
-    }
-
-    persistenceErrorStates.set(room, state);
-    const set = persistenceErrorListeners.get(room);
-    if (!set) return;
-    for (const listener of set) {
-        try {
-            listener(state);
-        } catch {
-            // Listener errors must not break sync-state propagation
-        }
-    }
-}
-
-export function getRoomPersistenceError(room: string): RoomPersistenceError | undefined {
-    return persistenceErrorStates.get(room);
-}
-
-export function onRoomPersistenceErrorChange(
-    room: string,
-    listener: (state: RoomPersistenceError) => void,
-): () => void {
-    let set = persistenceErrorListeners.get(room);
-    if (!set) {
-        set = new Set();
-        persistenceErrorListeners.set(room, set);
-    }
-    set.add(listener);
-    return () => {
-        set?.delete(listener);
-    };
-}
-
-export function deleteRoomPersistenceError(room: string): void {
-    persistenceErrorStates.delete(room);
-    persistenceErrorListeners.delete(room);
-}
-
-export function clearRoomPersistenceErrorStates(): void {
-    persistenceErrorStates.clear();
-    persistenceErrorListeners.clear();
-}
+export const setRoomPersistenceError = persistenceErrors.set;
+export const getRoomPersistenceError = persistenceErrors.get;
+export const onRoomPersistenceErrorChange = persistenceErrors.subscribe;
+export const deleteRoomPersistenceError = persistenceErrors.delete;
+export const clearRoomPersistenceErrorStates = persistenceErrors.clear;
