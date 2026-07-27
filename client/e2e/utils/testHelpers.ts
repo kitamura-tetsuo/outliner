@@ -1047,7 +1047,9 @@ export class TestHelpers {
         }, { itemId, offset, userId });
 
         if (!success.ok) {
-            throw new Error(`TestHelpers.setCursor: failed to set cursor for itemId=${itemId}. Reason: ${success.error}`);
+            throw new Error(
+                `TestHelpers.setCursor: failed to set cursor for itemId=${itemId}. Reason: ${success.error}`,
+            );
         }
     }
 
