@@ -17,86 +17,105 @@ import {
     onRoomSyncStateChange,
     setRoomPersistenceError,
     setRoomSyncState,
+    type RoomSyncState,
+    type RoomPersistenceError,
 } from "./roomSyncState";
 
-describe("roomSyncState", () => {
-    beforeEach(() => {
-        clearRoomSyncStates();
-        warnSpy.mockClear();
-    });
+const registries = [
+    {
+        name: "RoomSyncState",
+        set: setRoomSyncState,
+        get: getRoomSyncState,
+        subscribe: onRoomSyncStateChange,
+        clear: clearRoomSyncStates,
+        val1: "pending" as RoomSyncState,
+        val2: "synced" as RoomSyncState,
+    },
+    {
+        name: "RoomPersistenceError",
+        set: setRoomPersistenceError,
+        get: getRoomPersistenceError,
+        subscribe: onRoomPersistenceErrorChange,
+        clear: clearRoomPersistenceErrorStates,
+        val1: false as RoomPersistenceError,
+        val2: true as RoomPersistenceError,
+    },
+];
 
-    it("should not evict rooms with active listeners", () => {
-        // Register 100 rooms
-        for (let i = 0; i < 100; i++) {
-            setRoomSyncState(`room-${i}`, "pending");
-        }
-
-        // Subscribe to the first room
-        let fired = false;
-        onRoomSyncStateChange("room-0", () => {
-            fired = true;
+registries.forEach(({ name, set, get, subscribe, clear, val1, val2 }) => {
+    describe(name, () => {
+        beforeEach(() => {
+            clear();
+            warnSpy.mockClear();
         });
 
-        // Register 101st room
-        setRoomSyncState("room-100", "pending");
+        it("should return undefined for unknown room", () => {
+            expect(get("room-unknown")).toBeUndefined();
+        });
 
-        // Verify room-0 was not evicted
-        expect(getRoomSyncState("room-0")).toBe("pending");
+        it("should set and get states", () => {
+            set("room-a", val1);
+            set("room-b", val2);
 
-        // Verify room-1 was evicted since it has no listeners and is oldest
-        expect(getRoomSyncState("room-1")).toBeUndefined();
+            expect(get("room-a")).toBe(val1);
+            expect(get("room-b")).toBe(val2);
+        });
 
-        // Change state on room-0 and verify listener fires
-        setRoomSyncState("room-0", "synced");
-        expect(fired).toBe(true);
-    });
+        it("should notify listeners on change", () => {
+            const listener = vi.fn();
+            const unsubscribe = subscribe("room-a", listener);
 
-    it("should warn if all rooms have listeners and keep the entries", () => {
-        // Register 100 rooms and subscribe to all
-        for (let i = 0; i < 100; i++) {
-            setRoomSyncState(`room-${i}`, "pending");
-            onRoomSyncStateChange(`room-${i}`, () => {});
-        }
+            set("room-a", val1);
+            set("room-a", val2);
 
-        // Register 101st room
-        setRoomSyncState("room-100", "pending");
+            expect(listener).toHaveBeenCalledTimes(2);
+            expect(listener).toHaveBeenNthCalledWith(1, val1);
+            expect(listener).toHaveBeenNthCalledWith(2, val2);
 
-        // Verify room-0 was not evicted
-        expect(getRoomSyncState("room-0")).toBe("pending");
-        expect(getRoomSyncState("room-100")).toBe("pending");
-    });
-});
+            unsubscribe();
+            set("room-a", val1);
+            expect(listener).toHaveBeenCalledTimes(2); // no more calls
+        });
 
-describe("roomPersistenceErrorState", () => {
-    beforeEach(() => {
-        clearRoomPersistenceErrorStates();
-    });
+        it("should not evict rooms with active listeners", () => {
+            // Register 100 rooms
+            for (let i = 0; i < 100; i++) {
+                set(`room-${i}`, val1);
+            }
 
-    it("should return undefined for unknown room", () => {
-        expect(getRoomPersistenceError("projects/unknown")).toBeUndefined();
-    });
+            // Subscribe to the first room
+            let fired = false;
+            subscribe("room-0", () => {
+                fired = true;
+            });
 
-    it("should set and get persistence error states", () => {
-        setRoomPersistenceError("projects/a", false);
-        setRoomPersistenceError("projects/b", true);
+            // Register 101st room
+            set("room-100", val1);
 
-        expect(getRoomPersistenceError("projects/a")).toBe(false);
-        expect(getRoomPersistenceError("projects/b")).toBe(true);
-    });
+            // Verify room-0 was not evicted
+            expect(get("room-0")).toBe(val1);
 
-    it("should notify listeners on change", () => {
-        const listener = vi.fn();
-        const unsubscribe = onRoomPersistenceErrorChange("projects/a", listener);
+            // Verify room-1 was evicted since it has no listeners and is oldest
+            expect(get("room-1")).toBeUndefined();
 
-        setRoomPersistenceError("projects/a", false);
-        setRoomPersistenceError("projects/a", true);
+            // Change state on room-0 and verify listener fires
+            set("room-0", val2);
+            expect(fired).toBe(true);
+        });
 
-        expect(listener).toHaveBeenCalledTimes(2);
-        expect(listener).toHaveBeenNthCalledWith(1, false);
-        expect(listener).toHaveBeenNthCalledWith(2, true);
+        it("should warn if all rooms have listeners and keep the entries", () => {
+            // Register 100 rooms and subscribe to all
+            for (let i = 0; i < 100; i++) {
+                set(`room-${i}`, val1);
+                subscribe(`room-${i}`, () => {});
+            }
 
-        unsubscribe();
-        setRoomPersistenceError("projects/a", false);
-        expect(listener).toHaveBeenCalledTimes(2); // no more calls
+            // Register 101st room
+            set("room-100", val1);
+
+            // Verify room-0 was not evicted
+            expect(get("room-0")).toBe(val1);
+            expect(get("room-100")).toBe(val1);
+        });
     });
 });
