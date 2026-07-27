@@ -1029,7 +1029,7 @@ export class TestHelpers {
             throw new Error("TestHelpers.setCursor: editorOverlayStore.setCursor is not available within timeout");
         });
 
-        const setSucceeded = await page.evaluate(({ itemId, offset, userId }) => {
+        const success = await page.evaluate(({ itemId, offset, userId }) => {
             const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && typeof editorOverlayStore.setCursor === "function") {
                 console.log(
@@ -1041,14 +1041,13 @@ export class TestHelpers {
                     isActive: true,
                     userId: userId,
                 });
-                return true;
+                return { ok: true };
             }
-            console.error(`TestHelpers.setCursor: editorOverlayStore or setCursor not available`);
-            return false;
+            return { ok: false, error: "editorOverlayStore or setCursor not available" };
         }, { itemId, offset, userId });
 
-        if (!setSucceeded) {
-            throw new Error(`TestHelpers.setCursor: failed to set cursor for itemId=${itemId}`);
+        if (!success.ok) {
+            throw new Error(`TestHelpers.setCursor: failed to set cursor for itemId=${itemId}. Reason: ${success.error}`);
         }
     }
 
@@ -1093,7 +1092,7 @@ export class TestHelpers {
                     return { ok: false, error: `Cursor not found for itemId=${itemId}, userId=${userId}` };
                 }
             } else {
-                console.error(`TestHelpers.insertText: editorOverlayStore or getCursorInstances not available`);
+                // removed console.error
                 return { ok: false, error: "editorOverlayStore or getCursorInstances not available" };
             }
         }, { itemId, text, userId });
@@ -1431,7 +1430,7 @@ export class TestHelpers {
             TestHelpers.slog("waitForOutlinerItems: success", { itemCount, minRequiredItems });
         } catch (e) {
             // Rethrow explicit errors (like timeout)
-            console.error("waitForOutlinerItems: Error waiting for items", e);
+            // Rethrowing explicit errors without console.error
 
             // Try to capture useful debug info before failing
             try {
