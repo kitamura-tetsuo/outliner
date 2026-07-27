@@ -1585,8 +1585,7 @@ export class TestHelpers {
         await page.evaluate(sel => {
             const element = document.querySelector(sel);
             if (!element) {
-                console.error(`Element not found: ${sel}`);
-                return;
+                throw new Error(`Element not found: ${sel}`);
             }
 
             // forcefully fire mouseenter event
@@ -1641,8 +1640,7 @@ export class TestHelpers {
             }
 
             if (!element) {
-                console.error(`Element not found: ${sel}`);
-                return;
+                throw new Error(`Element not found: ${sel}`);
             }
 
             // forcefully fire mouseleave event
@@ -1671,8 +1669,7 @@ export class TestHelpers {
         // Check if button exists
         const buttonExists = await toggleButton.count() > 0;
         if (!buttonExists) {
-            console.error("Backlink toggle button not found");
-            return;
+            throw new Error("Backlink toggle button not found");
         }
 
         // Check if panel is already open
