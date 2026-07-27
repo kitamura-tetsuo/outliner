@@ -3,12 +3,13 @@
 import { getLogger } from "./lib/logger";
 const logger = getLogger("ServiceWorker");
 
-import { version } from "$service-worker";
+import { build, files, version } from "$service-worker";
 
 const CACHE_NAME = `outliner-cache-${version}`;
 const ASSETS = [
     "/",
-    "/favicon.png",
+    ...build,
+    ...files,
 ];
 
 // Type definitions to avoid no-undef errors
@@ -134,29 +135,55 @@ self.addEventListener("fetch", event => {
 
     // Cache handling for GET requests
     if (req.method === "GET") {
-        event.respondWith(
-            caches.match(req).then(res => {
-                if (res) {
-                    return res;
-                }
+        const url = new URL(req.url);
 
-                return fetch(req).then(response => {
-                    // Cache only if response is normal
-                    if (response.status === 200) {
-                        const copy = response.clone();
-                        caches.open(CACHE_NAME).then(cache => {
-                            cache.put(req, copy).catch(err => {
-                                logger.warn("Failed to cache response:", err);
-                            });
+        // Do not cache API responses
+        if (url.pathname.startsWith("/api/")) {
+            return;
+        }
+
+        const isImmutable = url.pathname.startsWith("/_app/immutable/");
+
+        if (req.mode === "navigate" || !isImmutable) {
+            // Network-first, fall back to cache when offline
+            event.respondWith(
+                fetch(req)
+                    .then(response => {
+                        return response;
+                    })
+                    .catch(err => {
+                        logger.warn("Fetch failed, trying cache:", err);
+                        return caches.match(req).then(res => {
+                            return res || new Response("Network error", { status: 503 });
                         });
+                    }),
+            );
+        } else {
+            // Cache-first: the URL already encodes the content hash
+            event.respondWith(
+                caches.match(req).then(res => {
+                    if (res) {
+                        return res;
                     }
-                    return response;
-                }).catch(err => {
-                    logger.warn("Fetch failed, trying cache:", err);
-                    return caches.match(req) || new Response("Network error", { status: 503 });
-                });
-            }),
-        );
+
+                    return fetch(req).then(response => {
+                        // Cache only if response is normal
+                        if (response.status === 200) {
+                            const copy = response.clone();
+                            caches.open(CACHE_NAME).then(cache => {
+                                cache.put(req, copy).catch(err => {
+                                    logger.warn("Failed to cache response:", err);
+                                });
+                            });
+                        }
+                        return response;
+                    }).catch(err => {
+                        logger.warn("Fetch failed, trying cache:", err);
+                        return new Response("Network error", { status: 503 });
+                    });
+                }),
+            );
+        }
         return;
     }
 
