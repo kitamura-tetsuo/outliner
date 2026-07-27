@@ -729,7 +729,7 @@ export class TestHelpers {
                         const cursors = Object.values(editorOverlayStore.cursors);
                         const selections = Object.values(editorOverlayStore.selections);
                         const activeItemId = editorOverlayStore.activeItemId;
-                        const cursorVisible = editorOverlayStore.cursorVisible;
+                        const animationPaused = editorOverlayStore.animationPaused;
 
                         // Get cursor instance information
                         const cursorInstances: Array<{
@@ -754,7 +754,7 @@ export class TestHelpers {
                             cursors,
                             selections,
                             activeItemId,
-                            cursorVisible,
+                            animationPaused,
                             cursorInstances,
                             cursorCount: cursors.length,
                             selectionCount: selections.length,
@@ -2228,7 +2228,7 @@ export class TestHelpers {
                     (globalThis as any).editorOverlayStore.cursors = {};
                     (globalThis as any).editorOverlayStore.cursorInstances = new Map();
                     (globalThis as any).editorOverlayStore.activeItemId = null;
-                    (globalThis as any).editorOverlayStore.cursorVisible = false;
+                    (globalThis as any).editorOverlayStore.animationPaused = false;
                 }
             });
 

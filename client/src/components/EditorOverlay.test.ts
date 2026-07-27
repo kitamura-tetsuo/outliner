@@ -7,11 +7,10 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         selections: {},
         cursors: {},
-        cursorVisible: true,
+        cursorBlinkEpoch: 0,
         animationPaused: false,
         stopCursorBlink: vi.fn(),
         startCursorBlink: vi.fn(),
-        setCursorVisible: vi.fn(),
         subscribe: vi.fn((fn) => {
             fn(); // Execute immediately
             return () => {}; // Unsubscribe function

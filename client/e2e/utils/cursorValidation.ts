@@ -25,7 +25,7 @@ export class CursorValidator {
                     const cursors = Object.values(editorOverlayStore.cursors);
                     const selections = Object.values(editorOverlayStore.selections);
                     const activeItemId = editorOverlayStore.activeItemId;
-                    const cursorVisible = editorOverlayStore.cursorVisible;
+                    const animationPaused = editorOverlayStore.animationPaused;
 
                     // Get information about cursor instances
                     const cursorInstances: Array<any> = [];
@@ -44,7 +44,7 @@ export class CursorValidator {
                         cursors,
                         selections,
                         activeItemId,
-                        cursorVisible,
+                        animationPaused,
                         cursorInstances,
                         cursorCount: cursors.length,
                         selectionCount: selections.length,
@@ -272,34 +272,55 @@ export class CursorValidator {
     }
 
     /**
-     * Validates cursor blinking.
+     * Validates that the active caret blinks.
+     * The blink is a CSS animation (`cursor-blink`, 1.06s period) that animates opacity
+     * only, so the caret stays "visible" for Playwright throughout the off phase.
+     * Samples the computed opacity over at least one full period and requires both an
+     * on phase (1) and an off phase (0) to be observed.
      * @param page The Playwright Page object.
-     * @param waitTime Time to wait for blinking state change (in milliseconds).
+     * @param sampleDurationMs How long to sample (must cover a full blink period).
      */
-    static async assertCursorBlink(page: Page, waitTime: number = 600): Promise<void> {
+    static async assertCursorBlink(page: Page, sampleDurationMs: number = 1600): Promise<void> {
         // Verify that an active cursor exists
         const initialDomInfo = await this.getDOMCursorInfo(page);
         expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
 
-        // Get initial opacity
-        const initialOpacity = await page.evaluate(() => {
+        const samples = await page.evaluate(async (duration: number) => {
+            const collected: string[] = [];
+            const deadline = Date.now() + duration;
+            while (Date.now() < deadline) {
+                const cursor = document.querySelector(".editor-overlay .cursor.active");
+                if (cursor) {
+                    collected.push(globalThis.getComputedStyle(cursor).opacity);
+                }
+                await new Promise(resolve => globalThis.setTimeout(resolve, 50));
+            }
+            return collected;
+        }, sampleDurationMs);
+
+        expect(samples.length).toBeGreaterThan(0);
+
+        const distinct = Array.from(new Set(samples));
+        expect(
+            distinct.length,
+            `Cursor did not blink: opacity stayed at ${distinct.join(", ")}`,
+        ).toBeGreaterThan(1);
+        expect(samples.some(opacity => Number(opacity) === 1)).toBe(true);
+        expect(samples.some(opacity => Number(opacity) === 0)).toBe(true);
+    }
+
+    /**
+     * Asserts that the caret is currently in its "on" phase, i.e. the blink phase has
+     * just been restarted (caret moved or the user typed).
+     * @param page The Playwright Page object.
+     */
+    static async assertCursorBlinkPhaseOn(page: Page): Promise<void> {
+        const opacity = await page.evaluate(() => {
             const cursor = document.querySelector(".editor-overlay .cursor.active");
-            return cursor ? globalThis.getComputedStyle(cursor).opacity : null;
+            return cursor ? globalThis.getComputedStyle(cursor).opacity : undefined;
         });
-        expect(initialOpacity).not.toBeNull();
-
-        // Wait for blinking state change
-        await page.waitForTimeout(waitTime);
-
-        // Get opacity after change
-        const nextOpacity = await page.evaluate(() => {
-            const cursor = document.querySelector(".editor-overlay .cursor.active");
-            return cursor ? globalThis.getComputedStyle(cursor).opacity : null;
-        });
-        expect(nextOpacity).not.toBeNull();
-
-        // Verify that opacity has changed (is blinking)
-        expect(initialOpacity).not.toBe(nextOpacity);
+        expect(opacity).not.toBeUndefined();
+        expect(Number(opacity)).toBe(1);
     }
 }
 
