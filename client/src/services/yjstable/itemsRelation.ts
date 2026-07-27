@@ -1,4 +1,4 @@
-// The `items` relation: outline items projected into the project's Postgres
+// The `outline_items` relation: outline items projected into the project's Postgres
 // schema so a calendar can read items and generated table rows with one query.
 //
 // Three things make this relation different from a table:
@@ -36,8 +36,14 @@ import { quoteIdent } from "./sqlNames";
 
 const logger = getLogger("itemsRelation");
 
-/** Reserved SQL name of the projection. See `RESERVED_RELATION_NAMES`. */
-export const ITEMS_RELATION_NAME = "items";
+/**
+ * Reserved SQL name of the projection. See `RESERVED_RELATION_NAMES`.
+ *
+ * Deliberately not the bare `items`: that is a name users reach for when they
+ * name a table of their own, and a reserved word should cost them as little as
+ * possible. The prefix says whose relation it is.
+ */
+export const ITEMS_RELATION_NAME = "outline_items";
 
 /** Origin of every write-back, so the observer ignores its own echo. */
 export const ITEMS_RELATION_ORIGIN = Symbol("items-relation-origin");

@@ -45,13 +45,13 @@ afterAll(async () => {
 
 // The first test pays PGlite's cold-start cost.
 describe("items relation in the table engine", { timeout: 30000 }, () => {
-    it("resolves `items` for a query that references it, without any view opening it", async () => {
+    it("resolves `outline_items` for a query that references it, without any view opening it", async () => {
         const projectId = "proj-items-query";
         const { projectDoc, tableId, table, scheduled } = seedProject(projectId);
         table.uiDef.set(
             "query",
             "SELECT title, due FROM routine_occurrences "
-                + "UNION ALL SELECT text AS title, due FROM items ORDER BY title",
+                + "UNION ALL SELECT text AS title, due FROM outline_items ORDER BY title",
         );
 
         const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
@@ -65,7 +65,7 @@ describe("items relation in the table engine", { timeout: 30000 }, () => {
         }
     });
 
-    it("hands out a write-back provider for `items` and drops the relation when released", async () => {
+    it("hands out a write-back provider for `outline_items` and drops the relation when released", async () => {
         const projectId = "proj-items-write";
         const { projectDoc, scheduled } = seedProject(projectId);
         const pgSchema = projectSchemaName(projectId);

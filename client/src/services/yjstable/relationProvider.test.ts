@@ -35,22 +35,22 @@ describe("declared capabilities", () => {
 
 describe("assertWriteAllowed", () => {
     it("refuses an INSERT into the items relation without an explicit destination", () => {
-        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, INSERT, "items"))
+        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, INSERT, "outline_items"))
             .toThrow(RelationWriteError);
-        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, INSERT, "items"))
+        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, INSERT, "outline_items"))
             .toThrow(/explicit destination/);
 
         expect(() =>
             assertWriteAllowed(
                 ITEMS_RELATION_CAPABILITIES,
                 { ...INSERT, destination: { parentKey: "page-1" } } as RelationWrite,
-                "items",
+                "outline_items",
             )
         ).not.toThrow();
     });
 
     it("refuses a DELETE from the items relation without an explicit choice", () => {
-        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, DELETE, "items"))
+        expect(() => assertWriteAllowed(ITEMS_RELATION_CAPABILITIES, DELETE, "outline_items"))
             .toThrow(/deleting the item and clearing its date/);
 
         for (const disposition of ["delete-source", "clear-projected-field"] as const) {
@@ -58,7 +58,7 @@ describe("assertWriteAllowed", () => {
                 assertWriteAllowed(
                     ITEMS_RELATION_CAPABILITIES,
                     { ...DELETE, disposition },
-                    "items",
+                    "outline_items",
                 )
             ).not.toThrow();
         }

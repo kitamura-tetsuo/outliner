@@ -132,7 +132,7 @@ const RESERVED_WORDS = new Set([
  * projection would otherwise be shadowed by a table of the same name and a
  * calendar query would silently read the wrong rows.
  */
-export const RESERVED_RELATION_NAMES = new Set(["items"]);
+export const RESERVED_RELATION_NAMES = new Set(["outline_items"]);
 
 /**
  * Message when `name` belongs to a system-defined relation, undefined when it

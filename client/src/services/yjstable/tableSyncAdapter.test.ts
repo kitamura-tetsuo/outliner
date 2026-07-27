@@ -160,7 +160,7 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         const adapter = new TableSyncAdapter(handles, { pgSchema });
         try {
             await adapter.start();
-            const reserved = "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT)";
+            const reserved = "CREATE TABLE outline_items (id TEXT PRIMARY KEY, title TEXT)";
             await expect(adapter.prepareSchemaChange(reserved)).rejects.toThrow(/reserved/);
 
             const parsed = await parseCreateTable(reserved);
@@ -176,7 +176,7 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
     it("reports the conflict when a reserved name arrives in the schema text", async () => {
         const { handles, pgSchema } = makeTable();
         // As a remote client would deliver it: straight into the Y.Text.
-        setSchemaText(handles, "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT)");
+        setSchemaText(handles, "CREATE TABLE outline_items (id TEXT PRIMARY KEY, title TEXT)");
         const adapter = new TableSyncAdapter(handles, { pgSchema });
         let schemaError: string | undefined;
         try {

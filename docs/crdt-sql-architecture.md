@@ -145,10 +145,14 @@ serves any union of several tables.
 
 ### 4.5 Reserved SQL name
 
-_Implemented_ — the relation is named `items`, listed in
+_Implemented_ — the relation is named `outline_items`, listed in
 `RESERVED_RELATION_NAMES` (`sqlNames.ts`) and refused by the sync adapter on
 every schema apply, including a schema text that arrives from another client.
 No migration was required — no existing project used the name.
+
+The name is prefixed on purpose. Reserving the bare `items` would take a name
+users reach for when naming a table of their own (an existing E2E fixture does
+exactly that), and a reserved word should cost users as little as possible.
 
 The items relation is system-defined; no user authors its `CREATE TABLE`. Its
 SQL name is reserved, so a user table can never claim it.

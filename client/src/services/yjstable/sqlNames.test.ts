@@ -29,10 +29,11 @@ describe("sqlNameError", () => {
     });
 
     it("rejects the name of the system items relation", () => {
-        expect(sqlNameError("items")).toMatch(/reserved/);
-        expect(reservedRelationNameError("items")).toMatch(/outline items/);
-        expect(reservedRelationNameError("item")).toBeUndefined();
-        expect(reservedRelationNameError("items_2")).toBeUndefined();
+        expect(sqlNameError("outline_items")).toMatch(/reserved/);
+        expect(reservedRelationNameError("outline_items")).toMatch(/outline items/);
+        // The bare `items` stays available: users name tables that.
+        expect(sqlNameError("items")).toBeUndefined();
+        expect(reservedRelationNameError("outline_item")).toBeUndefined();
     });
 
     it("rejects names longer than the Postgres identifier limit", () => {
@@ -46,7 +47,7 @@ describe("deriveSqlName", () => {
         expect(deriveSqlName("Sales 2026")).toBe("sales_2026");
         expect(deriveSqlName("  Customer  Notes  ")).toBe("customer_notes");
         expect(deriveSqlName("order")).toBe("order_table");
-        expect(deriveSqlName("Items")).toBe("items_table");
+        expect(deriveSqlName("Outline Items")).toBe("outline_items_table");
     });
 
     it("falls back for display names without ASCII characters", () => {
