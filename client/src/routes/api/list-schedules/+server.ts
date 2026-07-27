@@ -4,10 +4,13 @@ const logger = getLogger("API");
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
-export const GET: RequestHandler = async ({ url, request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
     try {
-        const idToken = url.searchParams.get("idToken");
-        const pageId = url.searchParams.get("pageId");
+        const authHeader = request.headers.get("authorization");
+        const idToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+        const body = await request.json().catch(() => ({}));
+        const pageId = body.pageId;
 
         if (!idToken || !pageId) {
             return json({ error: "Missing required parameters" }, { status: 400 });
