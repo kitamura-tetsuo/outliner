@@ -253,7 +253,15 @@ onDestroy(() => {
     {#if showGrid}
         <section class="panel">
             {#if adapterReady}
-                <TableGrid {handles} {schema} query={uiQuery} {result} {componentTypes} loading={schema === undefined && !isInitialSyncDone} />
+                <TableGrid
+                    {handles}
+                    {schema}
+                    query={uiQuery}
+                    {result}
+                    {componentTypes}
+                    loading={schema === undefined && !isInitialSyncDone}
+                    {session}
+                />
             {:else}
                 <p class="loading">Loading table...</p>
             {/if}

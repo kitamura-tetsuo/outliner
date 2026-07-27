@@ -1,7 +1,7 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §4 is implemented except for the query-editability
-generalization (§4.4), the shared undo stack (§4.6) and the calendar UI itself.
+Status: accepted. §4 is implemented except for the shared undo stack (§4.6)
+and the calendar UI itself.
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -134,14 +134,31 @@ without an `id` column, or when it uses JOIN / aggregation / grouping).
 
 ### 4.4 Row identity across the projection
 
-_Planned._
+_Implemented_ — `analyzeQueryEditability` (`client/src/services/yjstable/queryAnalysis.ts`)
+generalizes the single-table `id` rule to a second row identity: a
+`source_kind` + `source_id` pair carried in the result. A result stays
+editable when either identity survives the projection; it is read-only when a
+query carries only one half of the pair, message included. Per-column
+editability keeps using the hosting table's own applied schema either way —
+a column not among its columns (a calculated expression, or one relation's
+column aliased under another's name) stays read-only, so the same rule that
+protects a single table's calculated columns also protects a union's
+aliased ones without parsing the query's per-branch expressions.
 
-A calendar query that unions items with generated rows currently trips the
-read-only rules above. What is needed is not "make items read-only" but a notion
-of row identity that survives the projection: a `source_kind` + `source_id` pair
-carried in the result, with `analyzeQueryEditability` generalized to keep a
-result editable while that pair is preserved. The same generalization then
-serves any union of several tables.
+A write on a `source`-identified row is dispatched by
+`applyUnionedRowEdit` (`client/src/services/yjstable/relationRowWrite.ts`):
+it re-resolves the relation named by `source_kind` through
+`RelationRegistryPort.resolveRelation` — the same mechanism a cross-relation
+query already uses to materialize a sibling relation — and applies the write
+addressed by `source_id`. `TableGrid.svelte` routes a cell edit through this
+path when the query result carries `source_kind`/`source_id`, and through
+the direct Data Storage write when it carries a bare `id`, unchanged from
+before. INSERT and DELETE on a unioned result are not covered here — the
+destination picker and delete prompt they need (§4.3) are still to come — so
+the grid only offers row add/remove for the single-table case.
+
+The same generalization serves any union of several tables, not only the
+items case.
 
 ### 4.5 Reserved SQL name
 

@@ -91,4 +91,66 @@ describe("analyzeQueryEditability", () => {
         const res = analyzeQueryEditability("SELECT id FROM t", undefined, ["id"]);
         expect(res.editable).toBe(false);
     });
+
+    it("marks a bare-id single-table result addressed by \"id\"", async () => {
+        const schema = await schemaPromise;
+        const res = analyzeQueryEditability("SELECT id, title FROM tasks", schema, ["id", "title"]);
+        expect(res.editable).toBe(true);
+        expect(res.rowIdentity).toBe("id");
+    });
+
+    // A calendar-style query unions outline items with generated rows. Neither
+    // side has a single `id` column tracing back to one relation, but the pair
+    // survives the projection so the result stays editable (issue #4273).
+    it("keeps a UNION carrying source_kind/source_id editable, addressed by \"source\"", async () => {
+        const schema = await schemaPromise;
+        const query = "SELECT 'a' AS source_kind, id AS source_id, title, points FROM tasks "
+            + "UNION ALL SELECT 'b' AS source_kind, id AS source_id, title, points FROM tasks";
+        const res = analyzeQueryEditability(query, schema, ["source_kind", "source_id", "title", "points"]);
+        expect(res.editable).toBe(true);
+        expect(res.rowIdentity).toBe("source");
+        expect([...res.editableColumns].sort()).toEqual(["points", "title"]);
+        expect(res.editableColumns.has("source_kind")).toBe(false);
+        expect(res.editableColumns.has("source_id")).toBe(false);
+    });
+
+    it("is read-only when only one half of source_kind/source_id is present", async () => {
+        const schema = await schemaPromise;
+        const withoutId = analyzeQueryEditability(
+            "SELECT 'a' AS source_kind, title FROM tasks",
+            schema,
+            ["source_kind", "title"],
+        );
+        expect(withoutId.editable).toBe(false);
+        expect(withoutId.readOnlyReason).toMatch(/source_kind.*source_id/);
+
+        const withoutKind = analyzeQueryEditability(
+            "SELECT id AS source_id, title FROM tasks",
+            schema,
+            ["source_id", "title"],
+        );
+        expect(withoutKind.editable).toBe(false);
+        expect(withoutKind.readOnlyReason).toMatch(/source_kind.*source_id/);
+    });
+
+    it("keeps aggregated/grouped unioned results read-only", async () => {
+        const schema = await schemaPromise;
+        const res = analyzeQueryEditability(
+            "SELECT 'a' AS source_kind, id AS source_id, COUNT(*) AS n FROM tasks GROUP BY id",
+            schema,
+            ["source_kind", "source_id", "n"],
+        );
+        expect(res.editable).toBe(false);
+    });
+
+    it("treats an aliased/calculated column as read-only within an otherwise editable union", async () => {
+        const schema = await schemaPromise;
+        const res = analyzeQueryEditability(
+            "SELECT 'a' AS source_kind, id AS source_id, points * 2 AS doubled FROM tasks",
+            schema,
+            ["source_kind", "source_id", "doubled"],
+        );
+        expect(res.editable).toBe(true);
+        expect(res.editableColumns.has("doubled")).toBe(false);
+    });
 });
