@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { test } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("CLM-0001: Click to enter edit mode", () => {
@@ -23,7 +24,10 @@ test.describe("CLM-0001: Click to enter edit mode", () => {
             await item.locator(".item-content").click({ force: true });
         }
         await TestHelpers.waitForCursorVisible(page);
-        await page.waitForTimeout(300);
+
+        // The caret must alternate between opacity 1 and 0 (CSS `cursor-blink`, 1.06s period)
+        await CursorValidator.assertCursorBlink(page);
+
         await page.screenshot({ path: "client/test-results/CLM-0001-blink-end.png" });
     });
 });

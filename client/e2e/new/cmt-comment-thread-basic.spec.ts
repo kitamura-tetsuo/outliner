@@ -80,7 +80,7 @@ test.describe("CMT-0001: comment threads", () => {
                                 // Manual reset if no reset method
                                 editorStore.cursors = {};
                                 editorStore.activeItemId = null;
-                                editorStore.cursorVisible = false;
+                                editorStore.animationPaused = false;
                                 if (editorStore.cursorInstances) {
                                     editorStore.cursorInstances.clear();
                                 }
@@ -323,7 +323,7 @@ test.describe("CMT-0001: comment threads", () => {
                                 // Manual reset if no reset method
                                 editorStore.cursors = {};
                                 editorStore.activeItemId = null;
-                                editorStore.cursorVisible = false;
+                                editorStore.animationPaused = false;
                                 if (editorStore.cursorInstances) {
                                     editorStore.cursorInstances.clear();
                                 }

@@ -40,7 +40,7 @@ test.describe("SLR-0010: Change selection format", () => {
         // Verify cursor is visible
         const cursorData = await CursorValidator.getCursorData(page);
         expect(cursorData.cursorCount).toBeGreaterThan(0);
-        expect(cursorData.cursorVisible).toBe(true);
+        expect(cursorData.animationPaused).toBe(false);
     });
 
     test("Can change selection within a single item to bold", async ({ page }) => {

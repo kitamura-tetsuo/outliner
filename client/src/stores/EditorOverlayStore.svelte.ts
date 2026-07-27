@@ -69,7 +69,12 @@ export class EditorOverlayStore {
     cursorHistory = $state<string[]>([]);
     selections = $state<Record<string, SelectionRange>>({});
     activeItemId = $state<string | null>(null);
-    cursorVisible = $state<boolean>(true);
+    /**
+     * Incremented every time the caret blink phase must restart (caret moved, text typed).
+     * The overlay keys the caret element on this value so Svelte remounts it and the
+     * CSS blink animation restarts from its "on" phase. Blinking itself is pure CSS.
+     */
+    cursorBlinkEpoch = $state<number>(0);
     animationPaused = $state<boolean>(false);
     // IME composition state
     isComposing = $state<boolean>(false);
@@ -87,8 +92,6 @@ export class EditorOverlayStore {
     /* eslint-disable svelte/prefer-svelte-reactivity -- Internal listener set, not reactive state */
     private listeners = new Set<() => void>();
     /* eslint-enable svelte/prefer-svelte-reactivity */
-
-    private timerId!: ReturnType<typeof setTimeout>;
 
     // Set textarea reference
     setTextareaRef(el: HTMLTextAreaElement | null) {
@@ -687,11 +690,6 @@ export class EditorOverlayStore {
         return this.activeItemId;
     }
 
-    setCursorVisible(visible: boolean) {
-        this.cursorVisible = visible;
-        this.notifyChange();
-    }
-
     setAnimationPaused(paused: boolean) {
         this.animationPaused = paused;
         this.notifyChange();
@@ -713,20 +711,20 @@ export class EditorOverlayStore {
         return this.isComposing;
     }
 
+    /**
+     * Restart the caret blink phase "on" and make sure blinking is running.
+     * No timer is involved: the phase restart is expressed through cursorBlinkEpoch.
+     */
     startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        // Simply toggle so it works in Node too
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
+        this.cursorBlinkEpoch += 1;
+        this.animationPaused = false;
+        this.notifyChange();
     }
 
+    /** Freeze the caret in its visible state (editor lost focus, alias picker open, ...). */
     stopCursorBlink() {
-        if (this) {
-            clearInterval(this.timerId);
-            this.cursorVisible = true;
-        }
+        this.animationPaused = true;
+        this.notifyChange();
     }
 
     /**
@@ -859,6 +857,11 @@ export class EditorOverlayStore {
             this.activeItemId = null;
         }
 
+        // No local caret left: freeze the blink. addCursor() re-arms it via startCursorBlink().
+        if (!activeCursorExists && (userId ?? "local") === "local") {
+            this.animationPaused = true;
+        }
+
         // Notify that cursors or selection ranges have changed
         this.notifyChange();
 
@@ -892,9 +895,8 @@ export class EditorOverlayStore {
         this.cursors = {};
         this.selections = {};
         this.activeItemId = null;
-        this.cursorVisible = true;
+        this.cursorBlinkEpoch = 0;
         this.animationPaused = false;
-        clearTimeout(this.timerId);
         this.notifyChange();
     }
 

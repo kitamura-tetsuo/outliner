@@ -11,9 +11,8 @@ class TestEditorOverlayStore {
         { startItemId: string; startOffset: number; endItemId: string; endOffset: number; userId?: string; }
     > = {};
     activeItemId: string | null = null;
-    cursorVisible = true;
+    cursorBlinkEpoch = 0;
     animationPaused = false;
-    private timerId: ReturnType<typeof setInterval> | undefined;
     private genUUID() {
         return Math.random().toString(36).slice(2);
     }
@@ -80,26 +79,21 @@ class TestEditorOverlayStore {
         );
     }
     startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
+        this.cursorBlinkEpoch += 1;
+        this.animationPaused = false;
     }
     getTextareaRef() {
         return null;
     }
     stopCursorBlink() {
-        clearInterval(this.timerId);
-        this.cursorVisible = true;
+        this.animationPaused = true;
     }
     reset() {
         this.cursors = {};
         this.selections = {};
         this.activeItemId = null;
-        this.cursorVisible = true;
+        this.cursorBlinkEpoch = 0;
         this.animationPaused = false;
-        clearInterval(this.timerId);
     }
 }
 
@@ -122,7 +116,7 @@ describe("EditorOverlayStore", () => {
         expect(store.cursors).toEqual({});
         expect(store.selections).toEqual({});
         expect(store.activeItemId).toBeNull();
-        expect(store.cursorVisible).toBe(true);
+        expect(store.cursorBlinkEpoch).toBe(0);
         expect(store.animationPaused).toBe(false);
     });
 
@@ -255,17 +249,16 @@ describe("EditorOverlayStore", () => {
         expect(Object.keys(store.selections).length).toBe(0);
     });
 
-    it("startCursorBlink and stopCursorBlink toggle cursorVisible", () => {
-        vi.useFakeTimers();
-        store.startCursorBlink();
-        expect(store.cursorVisible).toBe(true);
-        vi.advanceTimersByTime(530);
-        expect(store.cursorVisible).toBe(false);
-        vi.advanceTimersByTime(530);
-        expect(store.cursorVisible).toBe(true);
+    it("startCursorBlink bumps the blink epoch and resumes the animation", () => {
         store.stopCursorBlink();
-        expect(store.cursorVisible).toBe(true);
-        vi.useRealTimers();
+        expect(store.animationPaused).toBe(true);
+
+        store.startCursorBlink();
+        expect(store.cursorBlinkEpoch).toBe(1);
+        expect(store.animationPaused).toBe(false);
+
+        store.startCursorBlink();
+        expect(store.cursorBlinkEpoch).toBe(2);
     });
 
     afterEach(() => {

@@ -62,7 +62,7 @@ test.describe("Multi-Page Schedule Management", () => {
                             // Manual reset if no reset method
                             editorStore.cursors = {};
                             editorStore.activeItemId = null;
-                            editorStore.cursorVisible = false;
+                            editorStore.animationPaused = false;
                             if (editorStore.cursorInstances) {
                                 editorStore.cursorInstances.clear();
                             }
@@ -134,7 +134,7 @@ test.describe("Multi-Page Schedule Management", () => {
                             // Manual reset if no reset method
                             editorStore.cursors = {};
                             editorStore.activeItemId = null;
-                            editorStore.cursorVisible = false;
+                            editorStore.animationPaused = false;
                             if (editorStore.cursorInstances) {
                                 editorStore.cursorInstances.clear();
                             }

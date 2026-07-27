@@ -89,7 +89,7 @@ export class DataValidationHelpers {
                                 w.editorOverlayStore.cursors = {};
                                 w.editorOverlayStore.selections = {};
                                 w.editorOverlayStore.activeItemId = null;
-                                w.editorOverlayStore.cursorVisible = false;
+                                w.editorOverlayStore.animationPaused = false;
                                 if (w.editorOverlayStore.cursorInstances) {
                                     w.editorOverlayStore.cursorInstances.clear();
                                 }

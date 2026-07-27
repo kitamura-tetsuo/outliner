@@ -323,7 +323,7 @@ test.afterEach(async ({ page }) => {
                     editorStore.cursorInstances = new Map();
                 }
                 editorStore.activeItemId = null;
-                editorStore.cursorVisible = false;
+                editorStore.animationPaused = false;
                 editorStore.activeItem = null;
             }
         }
