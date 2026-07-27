@@ -1,11 +1,7 @@
 id: CLM-9d5e2af6
 title: Item cursor blinking
 title-ja: アイテムカーソルの点滅
-description: >-
-  The local active item cursor blinks continuously (1.06s period) via a CSS animation while
-  the editor holds focus. The blink phase restarts "on" whenever the caret moves or the user
-  types, exactly like a native caret. Blinking behaves identically in development, production
-  and test builds. Remote/presence cursors stay solid.
+description: The local active item cursor blinks continuously (1.06s period) via a CSS animation while the editor holds focus. The blink phase restarts "on" whenever the caret moves or the user types, exactly like a native caret. Blinking behaves identically in development, production and test builds. Remote/presence cursors stay solid.
 category: cursor-movement
 status: implemented
 tests:
@@ -15,7 +11,7 @@ tests:
 - client/src/stores/EditorOverlayStore.blink.test.ts
 acceptance:
 - A local, active item cursor blinks continuously while the editor holds focus
-- The blink phase restarts "on" whenever the caret moves or the user types
 - Blinking is identical in development, production and test builds
 - Multiple cursors blink in phase
 - Remote cursors stay solid
+- The blink phase restarts "on" whenever the caret moves or the user types
