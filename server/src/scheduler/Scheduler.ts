@@ -1,10 +1,11 @@
 import { SQLite } from "@hocuspocus/extension-sqlite";
 import { Hocuspocus } from "@hocuspocus/server";
+import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
 import { serverLogger as logger } from "../utils/log-manager.js";
 import { JobExecutor } from "./executor.js";
-import { computeNextRunAt, ensureScheduleIndex } from "./schedule-indexer.js";
+import { computeNextRunAt, ensureScheduleIndex, ScheduleIndexRow } from "./schedule-indexer.js";
 
 // Upper bound on how many past occurrences a single tick walks through, so a
 // rule whose dtstart lies far in the past cannot stall the scheduler.
@@ -49,7 +50,11 @@ function splitColumnDefs(body: string): string[] {
     return defs;
 }
 
-export function parseSchemaString(sql: string): any {
+export interface SchemaDefinition {
+    columns: { name: string; type: string; }[];
+}
+
+export function parseSchemaString(sql: string): SchemaDefinition {
     const cols = sql.match(/\((.*)\)/s);
     if (!cols) return { columns: [] };
     const columns: { name: string; type: string; }[] = [];
@@ -63,7 +68,7 @@ export function parseSchemaString(sql: string): any {
     return { columns };
 }
 
-export function castValueForColumn(val: any, type: string): any {
+export function castValueForColumn(val: unknown, type: string): unknown {
     if (val === null || val === undefined) return val;
     const lowered = type?.toLowerCase() ?? "";
     if (lowered.includes("bool")) {
@@ -82,7 +87,7 @@ export class JobScheduler {
     private executor: JobExecutor;
     private interval: ReturnType<typeof setInterval> | null = null;
     private hocuspocus: Hocuspocus;
-    private sqliteDb: any;
+    private sqliteDb: BetterSqlite3.Database | undefined;
     private ticking = false;
 
     constructor(hocuspocus: Hocuspocus) {
@@ -90,7 +95,7 @@ export class JobScheduler {
         this.executor = new JobExecutor();
     }
 
-    setDb(db: any) {
+    setDb(db: BetterSqlite3.Database) {
         this.sqliteDb = db;
         if (db) ensureScheduleIndex(db);
     }
@@ -151,10 +156,11 @@ export class JobScheduler {
             const nowIso = now.toISO();
             if (!nowIso) return;
 
+            if (!this.sqliteDb) return;
             const dueRules = this.sqliteDb.prepare(`
                 SELECT * FROM schedule_index
                 WHERE state = 'active' AND next_run_at <= ?
-            `).all(nowIso);
+            `).all(nowIso) as ScheduleIndexRow[];
 
             for (const rule of dueRules) {
                 try {
@@ -174,7 +180,7 @@ export class JobScheduler {
      * (`computeNextRunAt`), so the rule's dtstart and timezone are honoured
      * and the times do not drift away from the scheduled wall clock.
      */
-    private collectDueOccurrences(rule: any, now: DateTime): {
+    private collectDueOccurrences(rule: ScheduleIndexRow, now: DateTime): {
         missed: string[];
         nextRunAt: string | null;
         nextSeq: number;
@@ -207,7 +213,7 @@ export class JobScheduler {
         return { missed, nextRunAt, nextSeq: seq, exhausted };
     }
 
-    private async processRule(rule: any, now: DateTime) {
+    private async processRule(rule: ScheduleIndexRow, now: DateTime) {
         const { missed, nextRunAt, nextSeq, exhausted } = this.collectDueOccurrences(rule, now);
 
         if (missed.length === 0) {
@@ -226,10 +232,10 @@ export class JobScheduler {
         try {
             if (mainRoomConn.document) {
                 const schedulesMap = mainRoomConn.document.getMap("schedules");
-                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
+                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
                 if (ruleItem) {
-                    ruleSql = ruleItem.get("sql") || "";
-                    catchUp = ruleItem.get("catchUp") || false;
+                    ruleSql = (ruleItem.get("sql") as string) || "";
+                    catchUp = (ruleItem.get("catchUp") as boolean) || false;
                 }
             }
         } finally {
@@ -238,11 +244,13 @@ export class JobScheduler {
 
         if (!ruleSql) {
             // rule got deleted? Or malformed? Let's skip.
-            this.sqliteDb.prepare(`
-                UPDATE schedule_index
-                SET state = 'orphaned'
-                WHERE room = ? AND rule_id = ?
-            `).run(rule.room, rule.rule_id);
+            if (this.sqliteDb) {
+                this.sqliteDb.prepare(`
+                    UPDATE schedule_index
+                    SET state = 'orphaned'
+                    WHERE room = ? AND rule_id = ?
+                `).run(rule.room, rule.rule_id);
+            }
             logger.warn({ ruleId: rule.rule_id, room: rule.room }, "Skipping and orphaning rule: ruleSql is empty");
             return;
         }
@@ -269,10 +277,10 @@ export class JobScheduler {
             const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
             if (mainRoomConn2.document) {
                 const schedulesMap = mainRoomConn2.document.getMap("schedules");
-                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
+                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
                 if (ruleItem) {
                     mainRoomConn2.document.transact(() => {
-                        const currentSkipped = ruleItem.get("skippedOccurrences") || 0;
+                        const currentSkipped = (ruleItem.get("skippedOccurrences") as number) || 0;
                         ruleItem.set("skippedOccurrences", currentSkipped + missed.length);
                     }, "server-scheduler");
                 }
@@ -281,22 +289,26 @@ export class JobScheduler {
         }
 
         if (exhausted || !nextRunAt) {
-            this.sqliteDb.prepare(`
-                UPDATE schedule_index
-                SET state = 'completed', occurrence_seq = ?
-                WHERE room = ? AND rule_id = ?
-            `).run(nextSeq, rule.room, rule.rule_id);
+            if (this.sqliteDb) {
+                this.sqliteDb.prepare(`
+                    UPDATE schedule_index
+                    SET state = 'completed', occurrence_seq = ?
+                    WHERE room = ? AND rule_id = ?
+                `).run(nextSeq, rule.room, rule.rule_id);
+            }
         } else {
             this.updateNextRunAt(rule.room, rule.rule_id, nextRunAt, nextSeq);
         }
     }
 
     private updateNextRunAt(room: string, ruleId: string, nextRunAtIso: string, seq: number) {
-        this.sqliteDb.prepare(`
-            UPDATE schedule_index
-            SET next_run_at = ?, occurrence_seq = ?
-            WHERE room = ? AND rule_id = ?
-        `).run(nextRunAtIso, seq, room, ruleId);
+        if (this.sqliteDb) {
+            this.sqliteDb.prepare(`
+                UPDATE schedule_index
+                SET next_run_at = ?, occurrence_seq = ?
+                WHERE room = ? AND rule_id = ?
+            `).run(nextRunAtIso, seq, room, ruleId);
+        }
     }
 
     /**
@@ -304,11 +316,13 @@ export class JobScheduler {
      * executor runs in a worker thread, so records must be structured-
      * cloneable rather than nested Y.Maps).
      */
-    private readTableDoc(doc: Y.Doc): { schemaSql: string; records: any[]; } {
+    private readTableDoc(doc: Y.Doc): { schemaSql: string; records: Record<string, unknown>[]; } {
         const schemaSql = doc.getText("schema").toString();
-        const records: any[] = [];
+        const records: Record<string, unknown>[] = [];
         for (const value of doc.getMap("data").values()) {
-            records.push(value instanceof Y.Map ? value.toJSON() : value);
+            records.push(
+                value instanceof Y.Map ? value.toJSON() as Record<string, unknown> : value as Record<string, unknown>,
+            );
         }
         return { schemaSql, records };
     }
@@ -320,7 +334,10 @@ export class JobScheduler {
      * inserts into the occurrences one), so every registered table whose SQL
      * name appears in the statement is materialized alongside the target.
      */
-    private async loadReferencedTables(rule: any, ruleSql: string): Promise<{ schemaSql: string; records: any[]; }[]> {
+    private async loadReferencedTables(
+        rule: ScheduleIndexRow,
+        ruleSql: string,
+    ): Promise<{ schemaSql: string; records: Record<string, unknown>[]; }[]> {
         const projectConn = await this.hocuspocus.openDirectConnection(rule.room);
         const referenced: { tableId: string; }[] = [];
         try {
@@ -336,7 +353,7 @@ export class JobScheduler {
             projectConn.disconnect();
         }
 
-        const tables: { schemaSql: string; records: any[]; }[] = [];
+        const tables: { schemaSql: string; records: Record<string, unknown>[]; }[] = [];
         for (const { tableId } of referenced) {
             const conn = await this.hocuspocus.openDirectConnection(`${rule.room}/tables/${tableId}`);
             try {
@@ -350,7 +367,7 @@ export class JobScheduler {
         return tables;
     }
 
-    private async dispatchJob(rule: any, occurrenceIso: string, ruleSql: string) {
+    private async dispatchJob(rule: ScheduleIndexRow, occurrenceIso: string, ruleSql: string) {
         // Table contents live in their own room (see client roomPath.ts:
         // `projects/<projectId>/tables/<tableId>`).
         const docName = `${rule.room}/tables/${rule.target_table_id}`;
@@ -394,7 +411,7 @@ export class JobScheduler {
                 const schemaDef = parseSchemaString(schemaSql);
 
                 doc.transact(() => {
-                    for (const row of result.rows) {
+                    for (const row of result.rows!) {
                         const id = row.id;
                         if (!id) continue;
 
@@ -415,9 +432,9 @@ export class JobScheduler {
                         // Data Storage keeps one nested Y.Map per record so
                         // that concurrent field edits merge (see tableDocs.ts).
                         const recordId = String(id);
-                        let record = dataMap.get(recordId) as Y.Map<any> | undefined;
+                        let record = dataMap.get(recordId) as Y.Map<unknown> | undefined;
                         if (!(record instanceof Y.Map)) {
-                            record = new Y.Map<any>();
+                            record = new Y.Map<unknown>();
                             dataMap.set(recordId, record);
                         }
                         for (const [column, value] of Object.entries(validRow)) {

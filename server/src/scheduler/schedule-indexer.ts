@@ -1,7 +1,7 @@
 import { onStoreDocumentPayload } from "@hocuspocus/server";
 import type BetterSqlite3 from "better-sqlite3";
 import { DateTime } from "luxon";
-import { default as rruleImport } from "rrule";
+import { default as rruleImport, RRule } from "rrule";
 import * as Y from "yjs";
 
 export interface ScheduleIndexRow {
@@ -81,9 +81,9 @@ export function computeNextRunAt(
             Date.UTC(dtstart.year, dtstart.month - 1, dtstart.day, dtstart.hour, dtstart.minute, dtstart.second),
         );
 
-        let rule: any;
+        let rule: RRule;
         try {
-            rule = rrulestr(rruleStr, { dtstart: rruleDtstart });
+            rule = rrulestr(rruleStr, { dtstart: rruleDtstart }) as RRule;
         } catch (e: unknown) {
             return {
                 next_run_at: null,
