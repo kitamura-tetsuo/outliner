@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock globals for Service Worker
-const listeners: Record<string, Function> = {};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const listeners: Record<string, (...args: any[]) => any> = {};
 
 vi.stubGlobal("self", {
-    addEventListener: (event: string, callback: Function) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    addEventListener: (event: string, callback: (...args: any[]) => any) => {
         listeners[event] = callback;
     },
     skipWaiting: vi.fn(),
