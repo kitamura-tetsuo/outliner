@@ -194,8 +194,19 @@ onDestroy(() => {
             >Schedule</button>
         </div>
         <div class="undo-controls">
-            <button type="button" onclick={() => globalUndoRouter.undo()}>Undo</button>
-            <button type="button" onclick={() => globalUndoRouter.redo()}>Redo</button>
+            <!-- Undo/redo always go through the global router, never through
+                 this table's own Y.UndoManager: a direct call would advance the
+                 scope's stack without the router's and desynchronize them. -->
+            <button
+                type="button"
+                data-testid="yjs-table-undo"
+                onclick={() => globalUndoRouter.undo()}
+            >Undo</button>
+            <button
+                type="button"
+                data-testid="yjs-table-redo"
+                onclick={() => globalUndoRouter.redo()}
+            >Redo</button>
         </div>
     </div>
 

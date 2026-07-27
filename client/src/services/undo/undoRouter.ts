@@ -1,66 +1,97 @@
-import * as Y from "yjs";
+import type * as Y from "yjs";
+import { getLogger } from "../../lib/logger";
+
+const logger = getLogger("undoRouter");
 
 /**
- * Tracks Y.UndoManager instances by operation sequence to provide a single, unified
- * undo/redo stack across multiple documents and scopes (like the outline and tables).
+ * A single undo/redo history across every Yjs scope of the workspace.
+ *
+ * Each scope (the outline's `orderedTree`, and one manager per table) keeps its
+ * own `Y.UndoManager`. This router does not replace them: it records, per
+ * operation, which scope the operation was applied to, and delegates undo/redo
+ * to that scope. `undoStack`/`redoStack` therefore hold manager references in
+ * the order the operations happened; because each manager pops its own internal
+ * stack in LIFO order, popping the router stack addresses exactly the operation
+ * that comes next in reverse chronological order.
+ *
+ * The router must be the sole entry point. If anything calls `undo()` on a
+ * scope directly, that scope's internal stack advances while the router's does
+ * not, and the two desynchronize. Such a call is detected here (the "redo"
+ * branch in `register`) and repaired, but the correct fix is always to route
+ * the call through the router.
+ *
+ * Scope lifetime: entries of a destroyed scope are dropped, not revived. A
+ * table that has been torn down cannot replay its inverse operations, so its
+ * history leaves the global stack with it and the remaining entries stay usable.
  */
 export class UndoRouter {
     private undoStack: Y.UndoManager[] = [];
     private redoStack: Y.UndoManager[] = [];
 
-    // We hold a mapping to easily unregister or cleanup
     private registered = new Set<Y.UndoManager>();
 
-    // We store the handler bound to `this` so we can remove it later
-    private handlers = new WeakMap<Y.UndoManager, (event: { type: "undo" | "redo"; }) => void>();
-
-    // Yjs emits stack-cleared events when a new operation interrupts a redo stack
-    private clearHandlers = new WeakMap<
+    // Handlers are kept per manager so they can be detached on unregister.
+    private addedHandlers = new WeakMap<Y.UndoManager, (event: { type: "undo" | "redo"; }) => void>();
+    private clearedHandlers = new WeakMap<
         Y.UndoManager,
         (event: { undoStackCleared: boolean; redoStackCleared: boolean; }) => void
     >();
 
-    // Track state to distinguish user operations from our router's undo/redo calls
-    private isUndoing = false;
-    private isRedoing = false;
+    /** True while the router itself drives a scope, so its events are ignored. */
+    private routing = false;
 
     public register(um: Y.UndoManager): void {
         if (this.registered.has(um)) return;
         this.registered.add(um);
 
         const onAdded = (event: { type: "undo" | "redo"; }) => {
-            if (this.isUndoing || this.isRedoing) {
-                // If the router is actively driving an undo or redo, we manage the global stacks
-                // directly in those methods. We ignore the events triggered by the manager itself.
-                return;
-            }
+            // Events raised by our own undo()/redo() are already accounted for
+            // by those methods.
+            if (this.routing) return;
 
             if (event.type === "undo") {
-                // A new user operation was added.
+                // A new operation. Yjs merges consecutive operations of the same
+                // manager into a single stack item while it is still capturing,
+                // which would make one entry stand for two operations separated
+                // in time by an operation in another scope. Close the capture
+                // window of the other scopes so their next operation starts a
+                // fresh stack item and chronological order is preserved. Nothing
+                // happens while only one scope is being edited, so outline-only
+                // behavior is unchanged.
+                for (const other of this.registered) {
+                    if (other !== um) other.stopCapturing();
+                }
                 this.undoStack.push(um);
-                // When a new operation happens, the global redo stack must be cleared.
-                // Note: The individual UndoManagers will clear their own redo stacks,
-                // and might emit stack-cleared, but it's safest to just clear our global one here.
+                // A new operation invalidates the redo history, exactly as it
+                // does inside a single Y.UndoManager.
                 this.redoStack = [];
+            } else {
+                // A scope pushed a redo item without the router asking for it,
+                // which means undo() was called on that scope directly. Repair
+                // the router's view so later undos stay aligned.
+                logger.warn(
+                    "Undo was invoked on a scope directly; the global undo router is the only supported entry point.",
+                );
+                const last = this.undoStack.lastIndexOf(um);
+                if (last !== -1) this.undoStack.splice(last, 1);
+                this.redoStack.push(um);
             }
         };
 
         const onCleared = (event: { undoStackCleared: boolean; redoStackCleared: boolean; }) => {
-            // When an UndoManager is cleared entirely, we don't necessarily remove everything
-            // from the global stack unless we want to rebuild it, but normally Y.UndoManager
-            // only clears the redo stack on new changes, or undo/redo stacks when explicitly cleared.
-            // If the redoStack is cleared (undoStackCleared is false), then we don't have to do
-            // much because we already clear the global redo stack in `onAdded` for "undo".
+            // Emitted when a manager drops history of its own accord — notably
+            // when a new operation clears its redo stack. Drop the matching
+            // entries so the router never points at a stack item that is gone.
             if (event.undoStackCleared) {
-                this.undoStack = this.undoStack.filter(m => m !== um);
+                this.undoStack = this.undoStack.filter((entry) => entry !== um);
             }
             if (event.redoStackCleared) {
-                this.redoStack = this.redoStack.filter(m => m !== um);
+                this.redoStack = this.redoStack.filter((entry) => entry !== um);
             }
         };
 
-        this.handlers.set(um, onAdded);
-        this.clearHandlers.set(um, onCleared);
+        this.addedHandlers.set(um, onAdded);
+        this.clearedHandlers.set(um, onCleared);
 
         um.on("stack-item-added", onAdded);
         um.on("stack-cleared", onCleared);
@@ -69,44 +100,75 @@ export class UndoRouter {
     public unregister(um: Y.UndoManager): void {
         if (!this.registered.has(um)) return;
 
-        const onAdded = this.handlers.get(um);
+        const onAdded = this.addedHandlers.get(um);
         if (onAdded) um.off("stack-item-added", onAdded);
 
-        const onCleared = this.clearHandlers.get(um);
+        const onCleared = this.clearedHandlers.get(um);
         if (onCleared) um.off("stack-cleared", onCleared);
 
         this.registered.delete(um);
-        this.handlers.delete(um);
-        this.clearHandlers.delete(um);
+        this.addedHandlers.delete(um);
+        this.clearedHandlers.delete(um);
 
-        // Entries for a destroyed scope do not break later undos
-        this.undoStack = this.undoStack.filter(item => item !== um);
-        this.redoStack = this.redoStack.filter(item => item !== um);
+        this.undoStack = this.undoStack.filter((entry) => entry !== um);
+        this.redoStack = this.redoStack.filter((entry) => entry !== um);
     }
 
+    /** Reverse the most recent operation, whichever scope it belongs to. */
     public undo(): void {
-        const um = this.undoStack.pop();
-        if (um) {
-            this.isUndoing = true;
-            try {
-                um.undo();
-                this.redoStack.push(um);
-            } finally {
-                this.isUndoing = false;
-            }
-        }
+        this.run(this.undoStack, this.redoStack, (um) => um.undo());
     }
 
+    /** Restore the most recently undone operation. */
     public redo(): void {
-        const um = this.redoStack.pop();
-        if (um) {
-            this.isRedoing = true;
-            try {
-                um.redo();
-                this.undoStack.push(um);
-            } finally {
-                this.isRedoing = false;
+        this.run(this.redoStack, this.undoStack, (um) => um.redo());
+    }
+
+    public canUndo(): boolean {
+        return this.undoStack.length > 0;
+    }
+
+    public canRedo(): boolean {
+        return this.redoStack.length > 0;
+    }
+
+    /** Number of recorded operations. Exposed for tests and diagnostics. */
+    public get undoDepth(): number {
+        return this.undoStack.length;
+    }
+
+    public get redoDepth(): number {
+        return this.redoStack.length;
+    }
+
+    /** Drop the whole history. */
+    public clear(): void {
+        this.undoStack = [];
+        this.redoStack = [];
+    }
+
+    /**
+     * Pop `from` until a scope actually applies the operation, then record it on
+     * `to`. An entry whose scope has nothing left to apply is stale — its stack
+     * item was dropped by Yjs — and is discarded rather than swallowing the
+     * user's keystroke.
+     */
+    private run(
+        from: Y.UndoManager[],
+        to: Y.UndoManager[],
+        apply: (um: Y.UndoManager) => unknown,
+    ): void {
+        this.routing = true;
+        try {
+            while (from.length > 0) {
+                const um = from.pop();
+                if (um && apply(um)) {
+                    to.push(um);
+                    return;
+                }
             }
+        } finally {
+            this.routing = false;
         }
     }
 }

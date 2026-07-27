@@ -1,0 +1,9 @@
+id: FTR-3c7f81ad
+title: Unified undo stack across scopes
+title-ja: スコープをまたぐ統合Undoスタック
+description: Undo and redo run off a single history shared by the outline and every table. Each entry records the scope the operation was applied to, and undo delegates to that scope's Y.UndoManager, so alternating edits across scopes reverse in strict reverse chronological order. The global stack is the only entry point; remote changes from other collaborators and server-scheduler writes stay outside it, and the history of a torn-down table is dropped rather than breaking later undos.
+category: client
+status: implemented
+tests:
+- client/e2e/new/und-unified-undo-stack-3c7f81ad.spec.ts
+- client/src/services/undo/undoRouter.test.ts
