@@ -244,6 +244,30 @@ export class Item {
         this.updateText(v ?? "");
     }
 
+    get due(): string | undefined {
+        return this.value.get("due") as string | undefined;
+    }
+
+    set due(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("due");
+        } else {
+            this.value.set("due", v);
+        }
+    }
+
+    get done(): boolean | undefined {
+        return this.value.get("done") as boolean | undefined;
+    }
+
+    set done(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("done");
+        } else {
+            this.value.set("done", v);
+        }
+    }
+
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
