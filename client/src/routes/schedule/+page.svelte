@@ -2,6 +2,7 @@
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
 import { onMount } from "svelte";
+import { userManager } from "../../auth/UserManager";
 
 type ScheduleEntry = {
     id: string;
@@ -30,8 +31,12 @@ onMount(() => {
     const init = async () => {
     const params = new URLSearchParams(window.location.search);
     const pageId = params.get("pageId");
-    const idToken = localStorage.getItem("firebase:authUser:*:idToken");
-    if (!pageId || !idToken) return;
+    if (!pageId) return;
+    // Wait until Firebase restored the persisted session, otherwise currentUser
+    // is still null while the page mounts and the request would be skipped.
+    await userManager.auth.authStateReady();
+    const idToken = await userManager.auth.currentUser?.getIdToken();
+    if (!idToken) return;
     try {
         const res = await fetch("/api/list-schedules", {
             method: "POST",
