@@ -18,7 +18,7 @@ Outliner does not send notifications through Slack or any other external applica
 
 ### OFF-NON Offline Editing Support
 
-Offline editing will not be implemented. The Fluid Framework used for collaboration requires a network connection and does not support offline operations.
+Offline editing will not be implemented. The Fluid Framework used for collaboration requires a network connection and does not support offline operations. Additionally, offline API requests (e.g., project saves, schedules) are not queued by the service worker; any write attempted while offline will fail loudly rather than being dropped silently.
 
 ## Extensibility
 
