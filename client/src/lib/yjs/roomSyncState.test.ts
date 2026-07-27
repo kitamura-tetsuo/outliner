@@ -15,10 +15,10 @@ import {
     getRoomSyncState,
     onRoomPersistenceErrorChange,
     onRoomSyncStateChange,
+    type RoomPersistenceError,
+    type RoomSyncState,
     setRoomPersistenceError,
     setRoomSyncState,
-    type RoomSyncState,
-    type RoomPersistenceError,
 } from "./roomSyncState";
 
 const registries = [

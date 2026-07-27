@@ -70,7 +70,7 @@ function createRoomRegistry<T>(label: string, max = 100) {
         clear(): void {
             states.clear();
             listeners.clear();
-        }
+        },
     };
 }
 
