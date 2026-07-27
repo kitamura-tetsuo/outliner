@@ -132,6 +132,12 @@ self.addEventListener("sync", event => {
 self.addEventListener("fetch", event => {
     const req = event.request;
 
+    // Do not cache API endpoints
+    const url = new URL(req.url);
+    if (url.pathname.startsWith("/api/")) {
+        return;
+    }
+
     // Cache handling for GET requests
     if (req.method === "GET") {
         event.respondWith(

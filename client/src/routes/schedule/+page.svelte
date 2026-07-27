@@ -33,7 +33,14 @@ onMount(() => {
     const idToken = localStorage.getItem("firebase:authUser:*:idToken");
     if (!pageId || !idToken) return;
     try {
-        const res = await fetch(`/api/list-schedules?idToken=${idToken}&pageId=${pageId}`);
+        const res = await fetch("/api/list-schedules", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ pageId }),
+        });
         if (res.ok) {
             const data = await res.json();
             schedules = (data.schedules ?? [])
