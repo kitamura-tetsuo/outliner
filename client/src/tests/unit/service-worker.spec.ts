@@ -33,6 +33,7 @@ describe("Service Worker", () => {
         await import("../../service-worker");
         const fetchCall = mockAddEventListener.mock.calls.find(call => call[0] === "fetch");
         expect(fetchCall).toBeDefined();
+        if (!fetchCall) throw new Error("fetchCall is undefined");
         fetchHandler = fetchCall[1];
     });
 

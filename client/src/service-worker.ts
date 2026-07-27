@@ -12,11 +12,7 @@ const ASSETS = [
     ...files,
 ];
 
-// Type definitions to avoid no-undef errors
-type ServiceWorkerGlobalScope = typeof globalThis & {
-    skipWaiting(): Promise<void>;
-};
-
+/// <reference lib="webworker" />
 // Import idb in Service Worker environment
 declare const self: ServiceWorkerGlobalScope;
 
