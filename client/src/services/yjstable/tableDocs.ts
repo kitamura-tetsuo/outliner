@@ -13,6 +13,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { globalUndoRouter } from "../undo/undoRouter";
 
 export const ADAPTER_ORIGIN = Symbol("adapter-origin");
 export const TABLE_REGISTRY_KEY = "yjsTables";
@@ -157,6 +158,7 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
             trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
         });
         tableUndoManagers.set(ydoc, undo);
+        globalUndoRouter.register(undo);
     }
 
     return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
@@ -165,6 +167,7 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
 export function destroyTableUndoManager(doc: Y.Doc): void {
     const undo = tableUndoManagers.get(doc);
     if (undo) {
+        globalUndoRouter.unregister(undo);
         undo.destroy();
         tableUndoManagers.delete(doc);
     }

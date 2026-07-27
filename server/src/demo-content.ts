@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 22;
+export const DEMO_TEMPLATE_VERSION = 23;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -583,6 +583,7 @@ export const demoPages: DemoPageTemplate[] = [
             "Feature tour:",
             "  [Formatting]: bold, italic, strike-through, code, and links.",
             "  [Outliner Basics]: items, indentation, and keyboard navigation.",
+            "  [Undo and Redo]: one history shared by the outline and the database tables.",
             "  [Internal Links]: linking between pages, backlinks, and the graph view.",
             "  [Search and Commands]: full-text search and the inline command palette.",
             "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
@@ -627,6 +628,22 @@ export const demoPages: DemoPageTemplate[] = [
             "      Grandchild item",
             "    Another child",
             "Try reorganizing the tree above with Tab and Shift+Tab.",
+        ],
+    },
+    {
+        title: "Undo and Redo",
+        lines: [
+            "Undo and redo run off a single history for the whole project.",
+            "Shortcuts:",
+            "  Ctrl+Z undoes the most recent change.",
+            "  Ctrl+Shift+Z or Ctrl+Y redoes it.",
+            "The outline and every database table each keep their own change history internally, "
+            + "but you never have to think about which one you are in.",
+            "One stack, in order:",
+            "  Edit a line here, then add a row to a table on the [Advanced Features] page.",
+            "  Press Ctrl+Z twice: the table row goes first, then the edit on this page.",
+            "  Changes made by other people editing the demo at the same time are never undone by you.",
+            "Try it: type something on this line, then undo it.",
         ],
     },
     {

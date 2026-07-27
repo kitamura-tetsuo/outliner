@@ -9,6 +9,7 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Item, Items } from "../schema/app-schema";
 import { Project } from "../schema/app-schema";
+import { globalUndoRouter } from "../services/undo/undoRouter";
 
 export class GeneralStore {
     // Use $state for pages to ensure proper Svelte reactivity
@@ -272,6 +273,7 @@ export class GeneralStore {
             this._project = undefined;
             this.projectVersion += 1;
             if (this.undoManager) {
+                globalUndoRouter.unregister(this.undoManager);
                 this.undoManager.destroy();
                 this.undoManager = undefined;
             }
@@ -283,10 +285,12 @@ export class GeneralStore {
         this.projectVersion += 1;
 
         if (this.undoManager) {
+            globalUndoRouter.unregister(this.undoManager);
             this.undoManager.destroy();
         }
         /* eslint-disable svelte/prefer-svelte-reactivity -- Y.UndoManager internally uses standard Set which is required by its API */
         this.undoManager = new Y.UndoManager(v.ydoc.getMap("orderedTree"), { trackedOrigins: new Set([null]) });
+        globalUndoRouter.register(this.undoManager);
         /* eslint-enable svelte/prefer-svelte-reactivity */
 
         // Build initial cache
