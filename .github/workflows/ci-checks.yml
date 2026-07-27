@@ -98,7 +98,7 @@ jobs:
           firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
 
           echo "Validating Storage rules..."
-          firebase emulators:exec --only storage "echo 'Storage rules valid'"
+          firebase deploy --only storage --project outliner-d57b0 --token "${{ secrets.FIREBASE_TOKEN }}" --dry-run
 
           echo "Performing Firebase Functions deployment validation..."
           # Allow failure due to permissions issues with Eventarc identity in CI
