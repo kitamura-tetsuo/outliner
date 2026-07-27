@@ -1,13 +1,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
+import { JobData } from "./worker-types.js";
 
-async function executeJob(data: any) {
+async function executeJob(data: JobData) {
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;
 
     // A rule may read any table of its project, so the job materializes one
     // relation per entry of `tables` (the target table first). `schemaSql` /
     // `records` are the single-table form of the same input.
-    const tableDefs: { schemaSql: string; records?: any[]; }[] = Array.isArray(data.tables) && data.tables.length > 0
+    const tableDefs: { schemaSql: string; records?: Record<string, unknown>[]; }[] = Array.isArray(data.tables) && data.tables.length > 0
         ? data.tables
         : [{ schemaSql, records }];
 
@@ -40,7 +41,7 @@ async function executeJob(data: any) {
             if (!table?.schemaSql) continue;
             await db.exec(table.schemaSql);
 
-            const tablesRes = await db.query<any>(
+            const tablesRes = await db.query<{ table_name: string }>(
                 `
                 SELECT table_name
                 FROM information_schema.tables
@@ -49,7 +50,7 @@ async function executeJob(data: any) {
                 [pgSchema],
             );
             const tableName = tablesRes.rows
-                .map((r: any) => r.table_name as string)
+                .map((r) => r.table_name)
                 .find((name: string) => !created.has(name));
             if (!tableName) continue;
             created.add(tableName);
@@ -57,7 +58,7 @@ async function executeJob(data: any) {
             const tableRecords = table.records;
             if (!tableRecords || tableRecords.length === 0) continue;
 
-            const colsRes = await db.query<any>(
+            const colsRes = await db.query<{ column_name: string }>(
                 `
                 SELECT column_name
                 FROM information_schema.columns
@@ -65,11 +66,11 @@ async function executeJob(data: any) {
             `,
                 [pgSchema, tableName],
             );
-            const cols = colsRes.rows.map(r => r.column_name as string);
+            const cols = colsRes.rows.map(r => r.column_name);
 
             let query = `INSERT INTO "${tableName}" (${cols.map(c => `"${c.replace(/"/g, '""')}"`).join(",")}) VALUES `;
-            const flatValues: any[] = [];
-            const values = tableRecords.map((record: any, rIdx: number) => {
+            const flatValues: unknown[] = [];
+            const values = tableRecords.map((record: Record<string, unknown>, rIdx: number) => {
                 const rowPlaceholders = cols.map((c, cIdx) => {
                     const val = record[c] !== undefined ? record[c] : null;
                     flatValues.push(val);

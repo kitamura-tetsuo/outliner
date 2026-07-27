@@ -1511,10 +1511,10 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                         // Fallback from generalStore
                         const w = typeof window !== 'undefined' ? (window as Window & typeof globalThis & { generalStore?: { currentPage?: { items?: { length: number, at?: (i: number) => { id?: string, text?: string }, [key: number]: { id?: string, text?: string } } } } }) : undefined;
                         const gs = typeof window !== 'undefined' ? w?.generalStore : undefined;
-                        const items = gs?.currentPage?.items;
+                        const items = gs?.currentPage?.items as Record<number, { id?: string; text?: string }> & { length?: number; at?: (i: number) => { id?: string; text?: string } } | undefined;
                         const len = items?.length ?? 0;
                         for (let i = 0; i < len; i++) {
-                            const it = items?.at ? items.at(i) : (items as unknown as Record<number, { id?: string; text?: string }>)?.[i];
+                            const it = items?.at ? items.at(i) : items?.[i];
                             if (it?.id === r.itemId) { full = String(it?.text ?? ''); break; }
                         }
                     }
@@ -1704,7 +1704,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         import.meta.env.MODE === 'test',
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as unknown as (modelOriginal: unknown, url: string, isTest: boolean) => void,
+        addAttachmentSafely as (modelOriginal: unknown, url: string, isTest: boolean) => void,
         model.original,
         event
     );

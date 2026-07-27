@@ -3,10 +3,12 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 import { serverLogger as logger } from "../utils/log-manager.js";
 
+import { JobData, JobResult } from "./worker-types.js";
+
 export class JobExecutor {
     private worker: Worker | null = null;
     private msgId = 0;
-    private resolvers = new Map<number, { resolve: (val: any) => void; reject: (err: any) => void; }>();
+    private resolvers = new Map<number, { resolve: (val: JobResult) => void; reject: (err: unknown) => void; }>();
 
     constructor() {}
 
@@ -58,7 +60,7 @@ export class JobExecutor {
         }
     }
 
-    executeJob(jobData: any): Promise<any> {
+    executeJob(jobData: JobData): Promise<JobResult> {
         return new Promise((resolve, reject) => {
             if (!this.worker) {
                 return reject(new Error("Worker not started"));
