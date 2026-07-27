@@ -7,14 +7,11 @@ status: implemented
 owner: server
 introduced-in: server/src/update-listeners.ts
 summary:
-  en: 'Replace doc.on(''update'') with minimal-granularity Yjs observeDeep on the
-    root orderedTree map when available, with a safe fallback to doc-level update
-    listener.
+  en: 'Replace doc.on(''update'') with minimal-granularity Yjs observeDeep on the root orderedTree map when available, with a safe fallback to doc-level update listener.
 
     '
 motivation:
-  en: 'Reduce unnecessary wake-ups from unrelated Y.Doc updates and make room-size
-    checks more targeted.
+  en: 'Reduce unnecessary wake-ups from unrelated Y.Doc updates and make room-size checks more targeted.
 
     Keep backward compatibility for containers without orderedTree.
 
@@ -24,8 +21,7 @@ changes:
   description:
     en: 'addRoomSizeListener prefers ymap.observeDeep(warn) on doc.getMap("orderedTree"),
 
-      otherwise falls back to doc.on(''update'', warn). removeRoomSizeListener detaches
-      both safely.
+      otherwise falls back to doc.on(''update'', warn). removeRoomSizeListener detaches both safely.
 
       '
 impact:
@@ -34,13 +30,11 @@ impact:
   load:
     en: Lower CPU due to fewer irrelevant listener wake-ups; equivalent memory footprint.
   detach:
-    en: 'Safe detach covers both unobserveDeep and off(''update''). Listener references
-      are ref-counted per room.
+    en: 'Safe detach covers both unobserveDeep and off(''update''). Listener references are ref-counted per room.
 
       '
 fallback:
-  en: If orderedTree is missing or observeDeep is unavailable, uses doc.on('update')
-    to preserve behavior.
+  en: If orderedTree is missing or observeDeep is unavailable, uses doc.on('update') to preserve behavior.
 future:
   en: '- Consider subdoc-level listeners if pages are split into subdocs.
 

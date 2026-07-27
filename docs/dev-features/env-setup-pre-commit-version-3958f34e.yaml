@@ -1,15 +1,7 @@
 id: ENV-3958f34e
 title: Setup installs a pre-commit new enough for the hook config
 title-ja: フック設定に対応した pre-commit を setup が導入する
-description: scripts/setup.sh installs pre-commit with the version floor PRE_COMMIT_MIN_VERSION
-  (3.2.0, defined in scripts/common-config.sh) because .pre-commit-config.yaml declares
-  its hook stages with the names introduced in pre-commit 3.2 ("pre-commit" / "pre-push"),
-  which older releases reject with InvalidConfigError before running any hook. ensure_pre_commit_version
-  in scripts/common-functions.sh checks the pre-commit that PATH actually resolves
-  to - a distro package can shadow the freshly installed one - upgrades the active
-  environment once when it is too old, and otherwise prints how to fix it. The check
-  runs outside the installation block so a cached setup (sentinel present) still corrects
-  a stale pre-commit, and the git hook is re-installed afterwards.
+description: scripts/setup.sh installs pre-commit with the version floor PRE_COMMIT_MIN_VERSION (3.2.0, defined in scripts/common-config.sh) because .pre-commit-config.yaml declares its hook stages with the names introduced in pre-commit 3.2 ("pre-commit" / "pre-push"), which older releases reject with InvalidConfigError before running any hook. ensure_pre_commit_version in scripts/common-functions.sh checks the pre-commit that PATH actually resolves to - a distro package can shadow the freshly installed one - upgrades the active environment once when it is too old, and otherwise prints how to fix it. The check runs outside the installation block so a cached setup (sentinel present) still corrects a stale pre-commit, and the git hook is re-installed afterwards.
 category: environment
 status: implemented
 components:

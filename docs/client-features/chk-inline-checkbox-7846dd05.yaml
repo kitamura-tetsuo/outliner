@@ -6,7 +6,7 @@ status: draft
 tests:
 - client/e2e/basic/inline-checkbox.spec.ts
 acceptance:
-- Typing [ ] or [x] creates a clickable checkbox
 - Clicking the checkbox toggles the state between [ ] and [x]
 - Parent checkboxes reflect completion status of child checkboxes
+- Typing [ ] or [x] creates a clickable checkbox
 title-ja: インラインチェックボックス構文

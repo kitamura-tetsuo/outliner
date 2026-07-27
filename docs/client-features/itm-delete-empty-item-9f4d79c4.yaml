@@ -8,5 +8,4 @@ acceptance:
 - Pressing Delete on an empty item deletes that item
 tests:
 - client/e2e/core/itm-delete-empty-item-9f4d79c4.spec.ts
-title-ja: "Delete\u30AD\u30FC\u3067\u7A7A\u306E\u30A2\u30A4\u30C6\u30E0\u3092\u524A\
-  \u9664"
+title-ja: Deleteキーで空のアイテムを削除
