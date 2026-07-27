@@ -4,18 +4,11 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     // Container-based attachments: /attachments/{containerId}/{itemId}/{fileName}
-    // Access control based on Fluid Framework container permissions
+    // Direct client access is denied. All attachment traffic must go through
+    // the Functions endpoints (uploadAttachment / listAttachments / deleteAttachment),
+    // which enforce access via server/src/access-control.ts using the Admin SDK.
     match /attachments/{containerId}/{itemId}/{fileName} {
-      allow read, write: if request.auth != null &&
-        hasContainerAccess(request.auth.uid, containerId);
+      allow read, write: if false;
     }
   }
-}
-
-// Check if user has access to the container
-// This function checks the containerUsers collection in Firestore
-function hasContainerAccess(userId, containerId) {
-  return exists(/databases/$(database)/documents/containerUsers/$(containerId + '_' + userId)) ||
-         exists(/databases/$(database)/documents/userContainers/$(userId)) &&
-         get(/databases/$(database)/documents/userContainers/$(userId)).data.containers[containerId] != null;
 }

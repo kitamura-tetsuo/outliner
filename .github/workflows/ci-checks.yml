@@ -93,6 +93,8 @@ jobs:
           # Dependencies restored by setup-test-env
           node -c index.js
           cd ..
+          echo "Performing Firebase Storage rules validation..."
+          firebase emulators:exec --only storage "echo \"Storage rules valid\""
 
           echo "Validating Firebase project configuration..."
           firebase projects:list --token "${{ secrets.FIREBASE_TOKEN }}" | grep outliner-d57b0
