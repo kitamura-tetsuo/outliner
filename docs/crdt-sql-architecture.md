@@ -1,7 +1,7 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted (rationale for what is implemented) + planned (the write-back
-relation section, not yet implemented).
+Status: accepted. §4 is implemented except for the query-editability
+generalization (§4.4), the shared undo stack (§4.6) and the calendar UI itself.
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -71,6 +71,8 @@ affordances: two adjacent entries where only one can be dragged.
 
 ## 4. Decision: items project into SQL as a write-back-capable relation
 
+_Implemented_ — `client/src/services/yjstable/itemsRelation.ts`.
+
 Outline items are materialized into PGlite as a relation like any table, and
 that relation accepts writes, which are applied to the item's Y.Map.
 
@@ -81,6 +83,8 @@ that relation accepts writes, which are applied to the item's Y.Map.
   preserved.
 
 ### 4.1 Schedule attributes are structured fields, not text
+
+_Implemented_ — `due` / `done` on the `Item` class (`shared/src/app-schema.ts`).
 
 Dates must **not** be parsed out of item text. Dragging in the calendar would
 then rewrite the item's body — using text as a datastore, which is the weakness
@@ -94,6 +98,9 @@ calendar_.
 
 ### 4.2 Projection scope
 
+_Implemented_ — `ItemsRelationProvider` projects only items carrying `due`, and
+maintains the relation by diffed upserts from `observeDeep`.
+
 Only items that carry the structured field are projected. This keeps the
 relation sparse (projecting every item of every page does not scale) and matches
 the user-facing rule above.
@@ -105,6 +112,12 @@ carries a transaction origin so the adapter ignores its own echo, as
 `ADAPTER_ORIGIN` already does.
 
 ### 4.3 Write capabilities of the items relation
+
+_Implemented_ — `RelationCapabilities` and `assertWriteAllowed`
+(`client/src/services/yjstable/relationProvider.ts`). The declaration is
+binding: a caller cannot INSERT without a destination, or DELETE without
+choosing between removing the item and clearing its date. The destination
+picker and the delete prompt themselves are UI, still to come.
 
 The items relation is deliberately asymmetric with real tables, because the
 inverse mapping is asymmetric:
@@ -121,6 +134,8 @@ without an `id` column, or when it uses JOIN / aggregation / grouping).
 
 ### 4.4 Row identity across the projection
 
+_Planned._
+
 A calendar query that unions items with generated rows currently trips the
 read-only rules above. What is needed is not "make items read-only" but a notion
 of row identity that survives the projection: a `source_kind` + `source_id` pair
@@ -130,12 +145,17 @@ serves any union of several tables.
 
 ### 4.5 Reserved SQL name
 
+_Implemented_ — the relation is named `items`, listed in
+`RESERVED_RELATION_NAMES` (`sqlNames.ts`) and refused by the sync adapter on
+every schema apply, including a schema text that arrives from another client.
+No migration was required — no existing project used the name.
+
 The items relation is system-defined; no user authors its `CREATE TABLE`. Its
-SQL name is reserved and added to the reserved-word list in `sqlNames.ts`, so a
-user table can never claim it. No migration is required — no existing project
-uses the name.
+SQL name is reserved, so a user table can never claim it.
 
 ### 4.6 Undo
+
+_Planned._
 
 There is one undo/redo stack, and it delegates.
 
@@ -151,11 +171,14 @@ on a scope desynchronizes the two.
 
 ## 5. Implementation shape
 
-Generalize the port that `TableSyncAdapter` already takes
-(`TableRegistryPort`) into a relation provider: `materialize()`,
-`applyWrite(rowId, column, value)`, and declared capabilities. Real tables
-implement it as `rowId → Data Storage Y.Map key`; items implement it as
-`item key → node value field`.
+_Implemented._ The port that `TableSyncAdapter` takes is a relation registry
+(`RelationRegistryPort`) that resolves a SQL name to a `RelationProvider`:
+`materialize()`, `applyWrite(write)`, and declared capabilities. Real tables
+implement it as `rowId → Data Storage Y.Map key`
+(`tableRelationProvider.ts`); items implement it as `item key → node value
+field` (`itemsRelation.ts`). `tableEngine.ts` owns both kinds behind one
+entry/sweep model, so the projection is materialized once per project and
+dropped when no session can reach it.
 
 This keeps the inverse mapping closed per relation, and keeps the invariant that
 no component writes to PGlite.

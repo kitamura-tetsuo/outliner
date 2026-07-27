@@ -126,6 +126,26 @@ const RESERVED_WORDS = new Set([
     "with",
 ]);
 
+/**
+ * Names owned by system-defined relations. No user authors their
+ * `CREATE TABLE`, so a user table must never be able to claim one — the
+ * projection would otherwise be shadowed by a table of the same name and a
+ * calendar query would silently read the wrong rows.
+ */
+export const RESERVED_RELATION_NAMES = new Set(["items"]);
+
+/**
+ * Message when `name` belongs to a system-defined relation, undefined when it
+ * is free. Checked on every schema apply, not only in the creation dialog:
+ * the SQL name comes from the `CREATE TABLE` statement, which the user may
+ * edit at any time.
+ */
+export function reservedRelationNameError(name: string): string | undefined {
+    if (!RESERVED_RELATION_NAMES.has(name)) return undefined;
+    return `Table name "${name}" is reserved: it is the system relation that projects `
+        + "outline items into SQL. Choose a different name.";
+}
+
 /** Double-quote an identifier for safe interpolation into SQL. */
 export function quoteIdent(name: string): string {
     return `"${name.replace(/"/g, '""')}"`;
@@ -149,7 +169,7 @@ export function sqlNameError(name: string): string | undefined {
             + "and must not start with a digit";
     }
     if (RESERVED_WORDS.has(name)) return `"${name}" is a reserved SQL word`;
-    return undefined;
+    return reservedRelationNameError(name);
 }
 
 /**
@@ -168,7 +188,7 @@ export function deriveSqlName(displayName: string, taken: Iterable<string> = [])
     // "table" would be the obvious fallback but it is a reserved word.
     if (!base || /^[0-9]/.test(base)) base = base ? `t_${base}` : "data";
     base = base.slice(0, MAX_SQL_NAME_LENGTH - 4);
-    if (RESERVED_WORDS.has(base)) base = `${base}_table`;
+    if (RESERVED_WORDS.has(base) || RESERVED_RELATION_NAMES.has(base)) base = `${base}_table`;
 
     if (!used.has(base)) return base;
     for (let i = 2;; i++) {

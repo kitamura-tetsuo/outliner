@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { resetPgliteForTests } from "./pgliteService";
+import { parseCreateTable } from "./schemaIntrospection";
 import { projectSchemaName } from "./sqlNames";
 import { addRecord, createTable, deleteRecord, getTableHandles, setRecordValue, setSchemaText } from "./tableDocs";
 import { type RecordSyncError, TableSyncAdapter } from "./tableSyncAdapter";
@@ -148,6 +149,41 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
             handles.uiDef.set("query", "SELECT id, title FROM tasks");
             const result = await adapter.runQueryNow();
             expect(result?.rows).toHaveLength(1);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
+    it("refuses a schema whose table name is the reserved items relation", async () => {
+        const { handles, pgSchema } = makeTable();
+        setSchemaText(handles, SCHEMA);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        try {
+            await adapter.start();
+            const reserved = "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT)";
+            await expect(adapter.prepareSchemaChange(reserved)).rejects.toThrow(/reserved/);
+
+            const parsed = await parseCreateTable(reserved);
+            await expect(adapter.applySchema(parsed)).rejects.toThrow(/reserved/);
+            // The refusal left the applied schema alone.
+            expect(adapter.appliedSchema?.tableName).toBe("tasks");
+            expect(handles.schemaText.toString()).toBe(SCHEMA);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
+    it("reports the conflict when a reserved name arrives in the schema text", async () => {
+        const { handles, pgSchema } = makeTable();
+        // As a remote client would deliver it: straight into the Y.Text.
+        setSchemaText(handles, "CREATE TABLE items (id TEXT PRIMARY KEY, title TEXT)");
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+        let schemaError: string | undefined;
+        try {
+            adapter.subscribe({ onSchemaChanged: (_schema, error) => (schemaError = error) });
+            await adapter.start();
+            expect(schemaError).toMatch(/reserved/);
+            expect(adapter.appliedSchema).toBeUndefined();
         } finally {
             adapter.dispose();
         }
