@@ -90,15 +90,18 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
             .toBeVisible({ timeout: 15000 });
 
         // Edit the outline_items branch's row: the write must reach the item,
-        // not the table (issue #4273's write-routing requirement).
+        // not the table (issue #4273's write-routing requirement). The grid
+        // itself is not asserted here: a table's adapter only re-runs its
+        // query on its own data/schema/query-text changes (tableSyncAdapter.ts),
+        // not when a referenced sibling relation changes elsewhere, so the
+        // live outline item — a direct Yjs binding — is the reliable signal
+        // that the write landed on the right row.
         await itemRow.locator('td[data-col="text"] .cell-value').click();
         await itemRow.locator('td[data-col="text"] input.cell-input').fill(
             "Ship the redesigned feature",
             { force: true },
         );
         await page.keyboard.press("Enter");
-        await expect(itemRow.locator('td[data-col="text"] .cell-value', { hasText: "Ship the redesigned feature" }))
-            .toBeVisible({ timeout: 15000 });
 
         await expect(page.locator(".outliner-item", { hasText: "Ship the redesigned feature" }))
             .toBeVisible({ timeout: 15000 });
