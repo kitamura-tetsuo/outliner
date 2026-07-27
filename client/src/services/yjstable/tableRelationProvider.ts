@@ -14,13 +14,7 @@ import {
     RelationWriteError,
     TABLE_RELATION_CAPABILITIES,
 } from "./relationProvider";
-import {
-    addRecord,
-    deleteRecord,
-    setRecordValue,
-    type TableHandles,
-    type TableRecordValue,
-} from "./tableDocs";
+import { addRecord, deleteRecord, setRecordValue, type TableHandles, type TableRecordValue } from "./tableDocs";
 import type { TableSyncAdapter } from "./tableSyncAdapter";
 
 export class TableRelationProvider implements RelationProvider {
