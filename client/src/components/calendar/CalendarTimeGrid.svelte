@@ -128,7 +128,7 @@ function onPointerCancel(e: PointerEvent) {
 /** Arrow-key moves: Up/Down = 15 minutes, Left/Right = 1 day. Immediate, one write per press. */
 function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaMs = 0;
+    let deltaMs;
     if (e.key === "ArrowUp") deltaMs = -15 * 60_000;
     else if (e.key === "ArrowDown") deltaMs = 15 * 60_000;
     else if (e.key === "ArrowLeft") deltaMs = -DAY_MS;
