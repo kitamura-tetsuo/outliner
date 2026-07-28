@@ -48,6 +48,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
     const router = express.Router();
 
     router.use(cors({ origin: true, credentials: true }));
+    router.options("/seed-demo", cors({ origin: true, credentials: true }));
 
     router.post("/seed-demo", async (req, res): Promise<void> => {
         try {
