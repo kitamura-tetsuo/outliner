@@ -6,9 +6,7 @@ import { UndoRouter } from "./undoRouter";
 function scope(router: UndoRouter, name: string, trackedOrigins?: Set<unknown>) {
     const doc = new Y.Doc();
     const map = doc.getMap<number>(name);
-    /* eslint-disable svelte/prefer-svelte-reactivity -- Y.UndoManager requires a standard Set */
     const undo = new Y.UndoManager(map, trackedOrigins ? { trackedOrigins } : undefined);
-    /* eslint-enable svelte/prefer-svelte-reactivity */
     router.register(undo);
     const edit = (key: string, value: number, origin?: unknown) => {
         doc.transact(() => map.set(key, value), origin);
@@ -145,9 +143,7 @@ describe("UndoRouter", () => {
 
     it("keeps remote-origin changes out of the local stack", () => {
         const router = new UndoRouter();
-        /* eslint-disable svelte/prefer-svelte-reactivity -- Y.UndoManager requires a standard Set */
         const outline = scope(router, "outline", new Set([null]));
-        /* eslint-enable svelte/prefer-svelte-reactivity */
 
         outline.edit("local", 1);
         outline.edit("remote", 2, "remote-origin");

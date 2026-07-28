@@ -174,6 +174,10 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+            // Initialized eagerly, like votes/attachments: two clients adding
+            // different tags to the same item concurrently must merge into one
+            // array rather than race to create it (see Item#addTag).
+            value.set("tags", new Y.Array<string>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -242,6 +246,128 @@ export class Item {
 
     set text(v: string) {
         this.updateText(v ?? "");
+    }
+
+    get due(): string | undefined {
+        return this.value.get("due") as string | undefined;
+    }
+
+    set due(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("due");
+        } else {
+            this.value.set("due", v);
+        }
+    }
+
+    get done(): boolean | undefined {
+        return this.value.get("done") as boolean | undefined;
+    }
+
+    set done(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("done");
+        } else {
+            this.value.set("done", v);
+        }
+    }
+
+    /**
+     * Which of the two time shapes `start` is: a floating date (all-day) or
+     * an instant (timed). Absent means `start` carries no shape yet — see
+     * docs/crdt-sql-architecture.md §6.1.
+     */
+    get allDay(): boolean | undefined {
+        return this.value.get("allDay") as boolean | undefined;
+    }
+
+    set allDay(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("allDay");
+        } else {
+            this.value.set("allDay", v);
+        }
+    }
+
+    /**
+     * When this entry is worked on: a floating date (`YYYY-MM-DD`) when
+     * `allDay` is true, an ISO instant otherwise. Distinct from `due`, which
+     * answers when the item must be finished rather than when it is worked
+     * on — the two are never collapsed (§6.1).
+     */
+    get start(): string | undefined {
+        return this.value.get("start") as string | undefined;
+    }
+
+    set start(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("start");
+        } else {
+            this.value.set("start", v);
+        }
+    }
+
+    /**
+     * Length of the entry, as an ISO-8601 duration string (e.g. `PT1H30M`).
+     * Never a stored end: RFC 5545 forbids carrying both, and duration is the
+     * shape that survives a DST boundary, where a stored end would drift.
+     */
+    get duration(): string | undefined {
+        return this.value.get("duration") as string | undefined;
+    }
+
+    set duration(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("duration");
+        } else {
+            this.value.set("duration", v);
+        }
+    }
+
+    /**
+     * Tags stored as a `Y.Array<string>` rather than a delimited string:
+     * concurrent additions from two clients both survive the merge, where a
+     * delimited string would let one client's write clobber the other's.
+     */
+    get tags(): string[] {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Replace the whole tag set. Used by the items-relation write-back. */
+    set tags(v: string[] | undefined) {
+        const clean = Array.from(
+            new Set((v ?? []).map((t) => t.trim()).filter((t) => t !== "")),
+        );
+        const existing = this.value.get("tags") as Y.Array<string> | undefined;
+        if (clean.length === 0) {
+            if (existing) this.value.delete("tags");
+            return;
+        }
+        const arr = existing ?? new Y.Array<string>();
+        if (!existing) this.value.set("tags", arr);
+        else if (arr.length > 0) arr.delete(0, arr.length);
+        arr.push(clean);
+    }
+
+    /** Add one tag, merging concurrently with additions from another client. */
+    addTag(tag: string): void {
+        const t = tag.trim();
+        if (!t) return;
+        let arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("tags", arr);
+        }
+        if (!arr.toArray().includes(t)) arr.push([t]);
+    }
+
+    /** Remove one tag, if present. */
+    removeTag(tag: string): void {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(tag);
+        if (idx >= 0) arr.delete(idx, 1);
     }
 
     // componentType stored in Y.Map ("table" | "chart" | undefined)
@@ -731,6 +857,9 @@ export class Items implements Iterable<Item> {
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+        // Eagerly initialized so concurrent `addTag` calls from two clients
+        // merge into one shared array instead of racing to create it.
+        value.set("tags", new Y.Array<string>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 

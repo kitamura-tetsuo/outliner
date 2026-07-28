@@ -1,20 +1,26 @@
 // Ownership of what is materialized in PGlite for a project.
 //
-// One table is materialized exactly once per project, no matter how many
+// One relation is materialized exactly once per project, no matter how many
 // views show it or how many sibling queries reference it. That single
-// ownership is what makes cross-table results deterministic: a query never
-// depends on which blocks happen to be mounted, and a table that nobody needs
-// any more is dropped instead of lingering as stale rows that would answer a
-// later JOIN with plausible but outdated numbers.
+// ownership is what makes cross-relation results deterministic: a query never
+// depends on which blocks happen to be mounted, and a relation that nobody
+// needs any more is dropped instead of lingering as stale rows that would
+// answer a later JOIN with plausible but outdated numbers.
 //
 // Views take a session, sessions take references, and adapters pin the
 // relations their queries touched. Entries no longer reachable from a
 // referencing session are swept — a mark phase, so two tables whose queries
 // reference each other are collected too.
+//
+// Two kinds of relation share this machinery, behind one `RelationProvider`
+// interface: a table (a subdoc's Data Storage) and the system `items`
+// projection (outline items carrying a date).
 
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
+import { ITEMS_RELATION_NAME, ItemsRelationProvider } from "./itemsRelation";
 import { enqueueWrite } from "./pgliteService";
+import type { RelationProvider } from "./relationProvider";
 import { projectSchemaName, quoteIdent } from "./sqlNames";
 import {
     findSqlNameConflict,
@@ -23,11 +29,15 @@ import {
     setTableSqlName,
     type TableHandles,
 } from "./tableDocs";
-import { type TableRegistryPort, TableSyncAdapter } from "./tableSyncAdapter";
+import { TableRelationProvider } from "./tableRelationProvider";
+import { type RelationRegistryPort, TableSyncAdapter } from "./tableSyncAdapter";
 
 const logger = getLogger("tableEngine");
 
 const INITIAL_SYNC_TIMEOUT_MS = 10000;
+
+/** Entry key suffix of the project's single items projection. */
+const ITEMS_ENTRY_ID = `@${ITEMS_RELATION_NAME}`;
 
 export interface TableDocConnection {
     waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
@@ -60,32 +70,37 @@ export interface AcquiredTable {
 export interface TableEngineSession {
     /** Materialize a table and keep it alive until the session is disposed. */
     acquire: (tableId: string) => Promise<AcquiredTable | undefined>;
+    /**
+     * Materialize a relation by SQL name — a table of the project or the
+     * system `items` projection — and keep it alive until the session is
+     * disposed. This is the write-back entry point: the returned provider
+     * declares what it accepts and applies writes to the owning Yjs structure.
+     */
+    resolveRelation: (sqlName: string) => Promise<RelationProvider | undefined>;
     dispose: () => void;
 }
 
 interface Entry {
     key: string;
-    tableId: string;
     pgSchema: string;
     /** References held by live sessions. */
     refs: number;
-    /** Entry keys this table's query pulled in. */
+    /** Entry keys this relation's query pulled in. */
     deps: Set<string>;
-    handles: TableHandles;
-    adapter: TableSyncAdapter;
-    ready: Promise<AcquiredTable>;
-    remoteSynced: boolean;
+    provider: RelationProvider;
+    /** Resolves once the relation finished loading and materializing. */
+    ready: Promise<unknown>;
     disposeConnection?: () => Promise<void> | void;
 }
 
 const entries = new Map<string, Entry>();
 let pendingWork: Promise<unknown> = Promise.resolve();
 
-function entryKey(pgSchema: string, tableId: string): string {
-    return `${pgSchema}::${tableId}`;
+function entryKey(pgSchema: string, id: string): string {
+    return `${pgSchema}::${id}`;
 }
 
-function createEntry(
+function createTableEntry(
     projectDoc: Y.Doc,
     projectId: string | undefined,
     pgSchema: string,
@@ -96,37 +111,39 @@ function createEntry(
     if (!handles) return undefined;
 
     const key = entryKey(pgSchema, tableId);
-    const registry: TableRegistryPort = {
+    const registry: RelationRegistryPort = {
         checkSqlNameConflict: (id, sqlName) => findSqlNameConflict(projectDoc, id, sqlName),
         recordSqlName: (id, sqlName) => setTableSqlName(projectDoc, id, sqlName),
-        materializeRelation: async (sqlName) => {
-            const targetId = findTableIdBySqlName(projectDoc, sqlName);
-            if (!targetId || targetId === tableId) return false;
-            const target = await acquireInternal(projectDoc, projectId, pgSchema, targetId, connect);
-            if (!target) return false;
+        resolveRelation: async (sqlName) => {
+            const resolved = await resolveRelationInternal(projectDoc, projectId, pgSchema, sqlName, connect);
+            if (!resolved || resolved.entry.key === key) return undefined;
             // Pin the dependency so it stays materialized while this query
             // needs it, and is swept together with this entry.
-            entries.get(key)?.deps.add(entryKey(pgSchema, targetId));
-            // The registry name is only an index; the applied schema decides
-            // whether the relation the query asked for really exists now.
-            return target.adapter.appliedSchema?.tableName === sqlName;
+            entries.get(key)?.deps.add(resolved.entry.key);
+            return resolved.provider;
         },
     };
 
     const adapter = new TableSyncAdapter(handles, { pgSchema, registry });
+    let remoteSynced = false;
+    // Deferred so the connection callback can write back onto `entry`.
+    let resolveReady: (value: AcquiredTable) => void = () => {};
+    let rejectReady: (reason: unknown) => void = () => {};
+    const ready = new Promise<AcquiredTable>((resolve, reject) => {
+        resolveReady = resolve;
+        rejectReady = reject;
+    });
+
     const entry: Entry = {
         key,
-        tableId,
         pgSchema,
         refs: 0,
         deps: new Set(),
-        handles,
-        adapter,
-        remoteSynced: false,
-        ready: Promise.resolve({ adapter, handles, remoteSynced: false }),
+        provider: new TableRelationProvider(handles, adapter, ready),
+        ready,
     };
 
-    entry.ready = (async () => {
+    void (async () => {
         if (projectId) {
             try {
                 const connection = await connect(projectId, tableId, handles.doc);
@@ -136,19 +153,38 @@ function createEntry(
                 const sync = await connection
                     .waitForInitialSync(INITIAL_SYNC_TIMEOUT_MS)
                     .catch(() => ({ synced: false }));
-                entry.remoteSynced = sync.synced;
+                remoteSynced = sync.synced;
             } catch (err) {
                 logger.warn({ err, tableId }, "[tableEngine] table doc connection failed; continuing offline");
-                entry.remoteSynced = false;
+                remoteSynced = false;
             }
         } else {
-            entry.remoteSynced = true;
+            remoteSynced = true;
         }
         await adapter.start();
-        return { adapter, handles, remoteSynced: entry.remoteSynced };
-    })();
+        return { adapter, handles, remoteSynced };
+    })().then(resolveReady, rejectReady);
 
     entries.set(key, entry);
+    return entry;
+}
+
+/**
+ * The project's single items projection. Unlike a table it has no subdoc and
+ * no schema to apply: the outline tree already lives in the project doc, so
+ * the entry is ready as soon as the relation is built.
+ */
+function createItemsEntry(projectDoc: Y.Doc, pgSchema: string): Entry {
+    const provider = new ItemsRelationProvider({ projectDoc, pgSchema });
+    const entry: Entry = {
+        key: entryKey(pgSchema, ITEMS_ENTRY_ID),
+        pgSchema,
+        refs: 0,
+        deps: new Set(),
+        provider,
+        ready: provider.materialize(),
+    };
+    entries.set(entry.key, entry);
     return entry;
 }
 
@@ -160,9 +196,39 @@ async function acquireInternal(
     connect: TableDocConnector,
 ): Promise<AcquiredTable | undefined> {
     const key = entryKey(pgSchema, tableId);
-    const entry = entries.get(key) ?? createEntry(projectDoc, projectId, pgSchema, tableId, connect);
+    const entry = entries.get(key) ?? createTableEntry(projectDoc, projectId, pgSchema, tableId, connect);
     if (!entry) return undefined;
-    return await entry.ready;
+    return await entry.ready as AcquiredTable;
+}
+
+/**
+ * Resolve a SQL name to the entry that owns it, materializing the relation.
+ * Returns undefined when the project has no such relation, or when it could
+ * not be materialized under exactly that name — the registry name is only an
+ * index, the materialized relation is what a query actually resolves.
+ */
+async function resolveRelationInternal(
+    projectDoc: Y.Doc,
+    projectId: string | undefined,
+    pgSchema: string,
+    sqlName: string,
+    connect: TableDocConnector,
+): Promise<{ entry: Entry; provider: RelationProvider; } | undefined> {
+    if (sqlName === ITEMS_RELATION_NAME) {
+        const key = entryKey(pgSchema, ITEMS_ENTRY_ID);
+        const entry = entries.get(key) ?? createItemsEntry(projectDoc, pgSchema);
+        await entry.ready;
+        if (!await entry.provider.materialize()) return undefined;
+        return { entry, provider: entry.provider };
+    }
+
+    const targetId = findTableIdBySqlName(projectDoc, sqlName);
+    if (!targetId) return undefined;
+    const acquired = await acquireInternal(projectDoc, projectId, pgSchema, targetId, connect);
+    if (!acquired) return undefined;
+    const entry = entries.get(entryKey(pgSchema, targetId));
+    if (!entry || entry.provider.sqlName !== sqlName) return undefined;
+    return { entry, provider: entry.provider };
 }
 
 /** Destroy every entry that no live session can reach. */
@@ -194,17 +260,17 @@ function sweep(): void {
 }
 
 async function destroyEntry(entry: Entry): Promise<void> {
-    const tableName = entry.adapter.appliedSchema?.tableName;
-    entry.adapter.dispose();
-    if (tableName) {
+    const relationName = entry.provider.sqlName;
+    entry.provider.dispose();
+    if (relationName) {
         try {
             await enqueueWrite(async (db) => {
                 await db.exec(
-                    `DROP TABLE IF EXISTS ${quoteIdent(entry.pgSchema)}.${quoteIdent(tableName)} CASCADE;`,
+                    `DROP TABLE IF EXISTS ${quoteIdent(entry.pgSchema)}.${quoteIdent(relationName)} CASCADE;`,
                 );
             });
         } catch (err) {
-            logger.warn({ err, tableName }, "[tableEngine] dropping a released table failed");
+            logger.warn({ err, relationName }, "[tableEngine] dropping a released relation failed");
         }
     }
     try {
@@ -229,6 +295,12 @@ export function createTableEngineSession(options: {
     const held: string[] = [];
     let disposed = false;
 
+    /** Reference an entry for this session's lifetime. */
+    const hold = (entry: Entry): void => {
+        entry.refs++;
+        held.push(entry.key);
+    };
+
     return {
         acquire: async (tableId: string) => {
             if (disposed) return undefined;
@@ -236,13 +308,32 @@ export function createTableEngineSession(options: {
             // Reference before awaiting so a concurrent sweep cannot collect
             // the entry while it is still being built.
             const existing = entries.get(key)
-                ?? createEntry(projectDoc, projectId, pgSchema, tableId, connect);
+                ?? createTableEntry(projectDoc, projectId, pgSchema, tableId, connect);
             if (!existing) return undefined;
-            existing.refs++;
-            held.push(key);
-            const acquired = await existing.ready;
+            hold(existing);
+            const acquired = await existing.ready as AcquiredTable;
             if (disposed) return undefined;
             return acquired;
+        },
+        resolveRelation: async (sqlName: string) => {
+            if (disposed) return undefined;
+            // Same ordering as acquire: the items entry is created (and
+            // referenced) before the first await.
+            if (sqlName === ITEMS_RELATION_NAME) {
+                const key = entryKey(pgSchema, ITEMS_ENTRY_ID);
+                hold(entries.get(key) ?? createItemsEntry(projectDoc, pgSchema));
+            } else {
+                const targetId = findTableIdBySqlName(projectDoc, sqlName);
+                if (!targetId) return undefined;
+                const key = entryKey(pgSchema, targetId);
+                const entry = entries.get(key)
+                    ?? createTableEntry(projectDoc, projectId, pgSchema, targetId, connect);
+                if (!entry) return undefined;
+                hold(entry);
+            }
+            const resolved = await resolveRelationInternal(projectDoc, projectId, pgSchema, sqlName, connect);
+            if (disposed) return undefined;
+            return resolved?.provider;
         },
         dispose: () => {
             if (disposed) return;

@@ -1,13 +1,28 @@
 // Static analysis of the UI Definition query used to decide grid editability.
 //
 // Editing rules (per the consolidated table feature):
-// - the whole result is read-only when the query has no `id` column, or uses
-//   JOINs, aggregation, or grouping;
+// - the whole result is read-only when the query uses JOINs, aggregation, or
+//   grouping, or when its rows carry neither a bare `id` column nor a
+//   `source_kind` + `source_id` pair;
 // - individual columns are read-only when they are not plain columns of the
 //   applied schema (calculated/aliased expressions).
+//
+// A single-table result is addressed by its own `id` column, tracing back to
+// one relation. A query that unions several relations (outline items with
+// generated rows, say) has no such single column, but the union can still
+// carry row identity that survives the projection: `source_kind` names the
+// relation a row came from and `source_id` is that relation's own row
+// identity (see docs/crdt-sql-architecture.md §4.4). A write to such a row
+// routes to the provider named by `source_kind`, addressing the row by
+// `source_id` — see `relationRowWrite.ts`.
 
 import { TableSqlError } from "./pgliteService";
 import type { ParsedTableSchema } from "./schemaIntrospection";
+
+/** Column carrying the SQL name of the relation a unioned row came from. */
+export const SOURCE_KIND_COLUMN = "source_kind";
+/** Column carrying that relation's own row identity. */
+export const SOURCE_ID_COLUMN = "source_id";
 
 export interface QueryEditability {
     /** True when rows may be edited at all. */
@@ -16,6 +31,13 @@ export interface QueryEditability {
     readOnlyReason?: string;
     /** Column names (of the result set) that may be edited. */
     editableColumns: Set<string>;
+    /**
+     * How an editable row is addressed for a write: `"id"` for the original
+     * single-relation case, `"source"` when the row is addressed by its
+     * `source_kind` + `source_id` pair. Undefined when the result is
+     * read-only.
+     */
+    rowIdentity?: "id" | "source";
 }
 
 function stripSqlNoise(sql: string): string {
@@ -89,14 +111,30 @@ export function analyzeQueryEditability(
         return none("Read-only view: aggregated rows have no single source record to edit");
     }
     if (/\bdistinct\b/i.test(stripped)) return none("DISTINCT queries are read-only");
-    if (!resultColumns.includes("id")) {
+
+    const hasSourceKind = resultColumns.includes(SOURCE_KIND_COLUMN);
+    const hasSourceId = resultColumns.includes(SOURCE_ID_COLUMN);
+    if (hasSourceKind !== hasSourceId) {
+        return none(
+            `Read-only view: a result must carry both ${SOURCE_KIND_COLUMN} and ${SOURCE_ID_COLUMN} `
+                + "to keep row identity through a projection",
+        );
+    }
+
+    const rowIdentity: "id" | "source" | undefined = hasSourceKind && hasSourceId
+        ? "source"
+        : resultColumns.includes("id")
+        ? "id"
+        : undefined;
+    if (!rowIdentity) {
         return none("Query result has no id column");
     }
 
     const schemaColumns = new Set(schema.columns.map((c) => c.name));
+    const identityColumns = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
     const editableColumns = new Set<string>();
     for (const column of resultColumns) {
-        if (column !== "id" && schemaColumns.has(column)) editableColumns.add(column);
+        if (!identityColumns.has(column) && schemaColumns.has(column)) editableColumns.add(column);
     }
-    return { editable: true, editableColumns };
+    return { editable: true, editableColumns, rowIdentity };
 }

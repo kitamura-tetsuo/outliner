@@ -900,7 +900,14 @@ export class TestHelpers {
                     }
                     const cursors = Object.values(editorOverlayStore.cursors);
                     const activeCursors = cursors.filter((c: any) => c.isActive);
-                    return activeCursors.length > 0;
+                    if (activeCursors.length === 0) return false;
+                    // EditorOverlay mirrors the store into `cursorList` through a ~16ms
+                    // debounce, so the store can hold an active cursor before the caret
+                    // element exists. Wait for the rendered caret too, otherwise callers
+                    // that read the DOM right after this helper observe a count of 0.
+                    const overlay = document.querySelector(".editor-overlay");
+                    if (!overlay) return true;
+                    return overlay.querySelectorAll(".cursor").length > 0;
                 },
                 { timeout },
             );

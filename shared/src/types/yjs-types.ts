@@ -15,6 +15,7 @@ export type RowValueType = string;
 export type ItemValueType =
     | string
     | number
+    | boolean
     | Y.Text
     | Y.Array<string>
     | Y.Array<Y.Map<CommentValueType>>

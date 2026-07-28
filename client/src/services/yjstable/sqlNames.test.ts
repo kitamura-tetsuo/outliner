@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { deriveSqlName, isValidSqlName, projectSchemaName, quoteIdent, sqlNameError } from "./sqlNames";
+import {
+    deriveSqlName,
+    isValidSqlName,
+    projectSchemaName,
+    quoteIdent,
+    reservedRelationNameError,
+    sqlNameError,
+} from "./sqlNames";
 
 describe("sqlNameError", () => {
     it("accepts plain lower-case identifiers", () => {
@@ -21,6 +28,14 @@ describe("sqlNameError", () => {
         expect(sqlNameError("")).toMatch(/required/);
     });
 
+    it("rejects the name of the system items relation", () => {
+        expect(sqlNameError("outline_items")).toMatch(/reserved/);
+        expect(reservedRelationNameError("outline_items")).toMatch(/outline items/);
+        // The bare `items` stays available: users name tables that.
+        expect(sqlNameError("items")).toBeUndefined();
+        expect(reservedRelationNameError("outline_item")).toBeUndefined();
+    });
+
     it("rejects names longer than the Postgres identifier limit", () => {
         expect(sqlNameError("a".repeat(63))).toBeUndefined();
         expect(sqlNameError("a".repeat(64))).toMatch(/at most/);
@@ -32,6 +47,7 @@ describe("deriveSqlName", () => {
         expect(deriveSqlName("Sales 2026")).toBe("sales_2026");
         expect(deriveSqlName("  Customer  Notes  ")).toBe("customer_notes");
         expect(deriveSqlName("order")).toBe("order_table");
+        expect(deriveSqlName("Outline Items")).toBe("outline_items_table");
     });
 
     it("falls back for display names without ASCII characters", () => {
