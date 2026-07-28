@@ -1,7 +1,7 @@
 # Calendar SQL Conventions
 
-A calendar's query filters, but the client decides *what window is on
-screen*. This mirrors `docs/schedule-sql-conventions.md`'s `job.occurrence`
+A calendar's query filters, but the client decides _what window is on
+screen_. This mirrors `docs/schedule-sql-conventions.md`'s `job.occurrence`
 convention: the client injects wall-clock context into the query's session as
 a Postgres setting, and the query reads it with `current_setting(...)` rather
 than computing "now" or "the visible window" itself.

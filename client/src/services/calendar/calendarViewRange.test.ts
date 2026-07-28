@@ -64,12 +64,14 @@ describe("queryReferencesViewRange", () => {
     });
 
     it(`is true for a query referencing only ${VIEW_RANGE_START_SETTING}`, () => {
-        const sql = `SELECT id FROM outline_items WHERE start_at >= current_setting('${VIEW_RANGE_START_SETTING}')::timestamptz`;
+        const sql =
+            `SELECT id FROM outline_items WHERE start_at >= current_setting('${VIEW_RANGE_START_SETTING}')::timestamptz`;
         expect(queryReferencesViewRange(sql)).toBe(true);
     });
 
     it(`is true for a query referencing only ${VIEW_RANGE_END_SETTING}`, () => {
-        const sql = `SELECT id FROM outline_items WHERE start_at < current_setting('${VIEW_RANGE_END_SETTING}')::timestamptz`;
+        const sql =
+            `SELECT id FROM outline_items WHERE start_at < current_setting('${VIEW_RANGE_END_SETTING}')::timestamptz`;
         expect(queryReferencesViewRange(sql)).toBe(true);
     });
 
