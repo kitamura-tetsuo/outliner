@@ -74,7 +74,9 @@ test.describe("Formatting combinations", () => {
         const firstItem = page.locator(".outliner-item").nth(1);
         await firstItem.waitFor({ state: "visible" });
         // Wait for specific formatting to appear to handle hydration/rendering delays
-        await firstItem.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch(() => {});
+        await firstItem.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch((e) =>
+            console.warn("Promise rejected: ", e)
+        );
 
         const firstItemHtml = await firstItem.locator(".item-text").first().innerHTML();
 
