@@ -1,6 +1,6 @@
+import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { Project } from "$shared/app-schema";
 import type { CalendarEntry } from "./calendarEntries";
 import { layoutGantt } from "./calendarGanttLayout";
 import { analyzeGanttSubtreeShift, applyGanttSubtreeShift } from "./calendarGanttWrite";
@@ -39,7 +39,10 @@ describe("analyzeGanttSubtreeShift", () => {
             dueMs: T0 + 5 * DAY,
             raw: {},
         };
-        const entryByKey = new Map([[parentEntry.key, parentEntry], [childEntry.key, childEntry], [dueOnlyEntry.key, dueOnlyEntry]]);
+        const entryByKey = new Map([[parentEntry.key, parentEntry], [childEntry.key, childEntry], [
+            dueOnlyEntry.key,
+            dueOnlyEntry,
+        ]]);
         const { rows } = layoutGantt([parentEntry, childEntry, dueOnlyEntry], []);
         const parentRow = rows!.find((r) => r.key === "p")!;
 
@@ -49,7 +52,13 @@ describe("analyzeGanttSubtreeShift", () => {
     });
 
     it("is not shiftable when any start-bearing descendant is unaddressable", () => {
-        const parentEntry: CalendarEntry = { key: "p", sourceKind: "outline_items", sourceId: "p", title: "Parent", raw: {} };
+        const parentEntry: CalendarEntry = {
+            key: "p",
+            sourceKind: "outline_items",
+            sourceId: "p",
+            title: "Parent",
+            raw: {},
+        };
         const unaddressableChild: CalendarEntry = {
             key: "c",
             parentId: "p",
@@ -68,7 +77,13 @@ describe("analyzeGanttSubtreeShift", () => {
     });
 
     it("is not shiftable when the role resolves to a calculated (non-writable) column", () => {
-        const parentEntry: CalendarEntry = { key: "p", sourceKind: "outline_items", sourceId: "p", title: "Parent", raw: {} };
+        const parentEntry: CalendarEntry = {
+            key: "p",
+            sourceKind: "outline_items",
+            sourceId: "p",
+            title: "Parent",
+            raw: {},
+        };
         const childEntry: CalendarEntry = {
             key: "c",
             sourceKind: "outline_items",

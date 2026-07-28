@@ -198,7 +198,10 @@ function ganttTickDays(scale: GanttScale, anchorUtcMs: number, timeZone: string)
         case "month": {
             const w = utcMsToWallTime(anchorUtcMs, timeZone);
             const thisMonth = wallTimeToUtcMs({ ...w, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
-            const nextMonth = wallTimeToUtcMs({ ...w, month: w.month + 1, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+            const nextMonth = wallTimeToUtcMs(
+                { ...w, month: w.month + 1, day: 1, hour: 0, minute: 0, second: 0 },
+                timeZone,
+            );
             return Math.round((nextMonth - thisMonth) / DAY_MS);
         }
     }
@@ -247,9 +250,17 @@ export function computeGanttTicks(
         } else {
             const quarter = Math.floor((w.month - 1) / 3) + 1;
             ticks.push({ startUtcMs: cursor, label: `Q${quarter} ${w.year}` });
-            const nextQuarterMonth = (quarter) * 3 + 1;
+            const nextQuarterMonth = quarter * 3 + 1;
             cursor = nextQuarterMonth > 12
-                ? wallTimeToUtcMs({ ...w, year: w.year + 1, month: nextQuarterMonth - 12, day: 1, hour: 0, minute: 0, second: 0 }, timeZone)
+                ? wallTimeToUtcMs({
+                    ...w,
+                    year: w.year + 1,
+                    month: nextQuarterMonth - 12,
+                    day: 1,
+                    hour: 0,
+                    minute: 0,
+                    second: 0,
+                }, timeZone)
                 : wallTimeToUtcMs({ ...w, month: nextQuarterMonth, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
         }
     }

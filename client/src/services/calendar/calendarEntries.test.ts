@@ -113,7 +113,10 @@ describe("buildCalendarEntries", () => {
 
     it("leaves parentId undefined when the query does not select parent_id", () => {
         const [entry] = buildCalendarEntries(
-            { columns: ["title", "source_kind", "source_id"], rows: [{ title: "Root", source_kind: "item", source_id: "r1" }] },
+            {
+                columns: ["title", "source_kind", "source_id"],
+                rows: [{ title: "Root", source_kind: "item", source_id: "r1" }],
+            },
             SETTINGS,
         );
         expect(entry.parentId).toBeUndefined();

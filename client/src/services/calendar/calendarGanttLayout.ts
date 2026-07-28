@@ -95,14 +95,17 @@ interface Occupancy {
 
 /** Whether `entry.startMs` renders as a real bar (a duration, or all-day's implicit whole day). */
 function hasRealBar(entry: CalendarEntry): boolean {
-    return entry.startMs !== undefined && (entry.allDay === true || (entry.durationMs !== undefined && entry.durationMs > 0));
+    return entry.startMs !== undefined
+        && (entry.allDay === true || (entry.durationMs !== undefined && entry.durationMs > 0));
 }
 
 /** The time this entry's own `start` occupies, for rollup purposes. `due` never contributes (§6.1: not an allocation of time). */
 function ownOccupancy(entry: CalendarEntry): Occupancy | undefined {
     if (entry.startMs === undefined) return undefined;
     if (hasRealBar(entry)) {
-        const end = entry.allDay ? entry.startMs + Math.max(entry.durationMs ?? DAY_MS, DAY_MS) : entry.startMs + entry.durationMs!;
+        const end = entry.allDay
+            ? entry.startMs + Math.max(entry.durationMs ?? DAY_MS, DAY_MS)
+            : entry.startMs + entry.durationMs!;
         return { start: entry.startMs, end, hasBar: true };
     }
     return { start: entry.startMs, end: entry.startMs, hasBar: false };
@@ -288,7 +291,9 @@ function layoutGrouped(entries: CalendarEntry[], groupColumn: string): GanttLane
     return ordered.map((laneKey) => {
         const rows = laneEntries.get(laneKey)!
             .map((entry) => flatRow(entry, laneKey))
-            .sort((a, b) => (a.entry.startMs ?? a.entry.dueMs ?? Infinity) - (b.entry.startMs ?? b.entry.dueMs ?? Infinity));
+            .sort((a, b) =>
+                (a.entry.startMs ?? a.entry.dueMs ?? Infinity) - (b.entry.startMs ?? b.entry.dueMs ?? Infinity)
+            );
         return { key: laneKey, rows };
     });
 }

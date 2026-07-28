@@ -2,7 +2,7 @@
 
 Status: accepted. §1–§5 are implemented. §6.1, §6.2, §6.4, §6.5, §6.6 and §6.7
 are implemented; §6.3's role assignment is implemented, but its grouping
-*lanes* (rendering entries by axis, writability-gated drops) are still in
+_lanes_ (rendering entries by axis, writability-gated drops) are still in
 progress (#4348). The two write affordances the calendar owns — the INSERT
 destination picker and the DELETE prompt (§4.3) — are still in progress
 (#4349).
@@ -600,7 +600,7 @@ Gantt hierarchy is the outline hierarchy: `outline_items` already carries
 outline. Because the items relation only ever projects a row that carries
 `due`/`start`/`rrule` (§4.2), a purely structural ancestor with no dates of its
 own is never itself a row; a dated item's nesting therefore reaches only as
-far up as its nearest *dated* ancestor, which is an accepted consequence of
+far up as its nearest _dated_ ancestor, which is an accepted consequence of
 reusing the existing projection gate rather than widening it or fabricating
 synthetic, non-writable rows.
 
