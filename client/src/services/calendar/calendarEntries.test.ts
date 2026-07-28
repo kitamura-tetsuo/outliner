@@ -97,7 +97,14 @@ describe("buildCalendarEntries", () => {
     it("reads recurrence_parent_id/recurrence_occurrence_id structurally, regardless of role assignment", () => {
         const [entry] = buildCalendarEntries(
             {
-                columns: ["title", "start", "source_kind", "source_id", "recurrence_parent_id", "recurrence_occurrence_id"],
+                columns: [
+                    "title",
+                    "start",
+                    "source_kind",
+                    "source_id",
+                    "recurrence_parent_id",
+                    "recurrence_occurrence_id",
+                ],
                 rows: [{
                     title: "Standup (moved)",
                     start: "2026-03-16T10:00:00.000Z",
@@ -115,7 +122,10 @@ describe("buildCalendarEntries", () => {
 
     it("leaves recurrence fields undefined when the row does not carry them", () => {
         const [entry] = buildCalendarEntries(
-            { columns: ["title", "source_kind", "source_id"], rows: [{ title: "Plain", source_kind: "item", source_id: "p1" }] },
+            {
+                columns: ["title", "source_kind", "source_id"],
+                rows: [{ title: "Plain", source_kind: "item", source_id: "p1" }],
+            },
             SETTINGS,
         );
         expect(entry.recurrenceParentId).toBeUndefined();

@@ -129,10 +129,10 @@ decisions for the calendar; nothing bypasses `assertWriteAllowed` to get there.
 The items relation is deliberately asymmetric with real tables, because the
 inverse mapping is asymmetric:
 
-| Operation | Behavior                                                                                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UPDATE`  | Writes the mapped field of the item's node value. This is the drag-to-reschedule path.                                                                                    |
-| `INSERT`  | Allowed. The destination (a page) is **chosen explicitly at each creation** (`calendarEntryCreate.ts`), with previously chosen destinations offered as history (`calendarDestinationHistory.ts`, per-user/per-project local storage, never the project doc). There is no implicit inbox. |
+| Operation | Behavior                                                                                                                                                                                                                                                                                       |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UPDATE`  | Writes the mapped field of the item's node value. This is the drag-to-reschedule path.                                                                                                                                                                                                         |
+| `INSERT`  | Allowed. The destination (a page) is **chosen explicitly at each creation** (`calendarEntryCreate.ts`), with previously chosen destinations offered as history (`calendarDestinationHistory.ts`, per-user/per-project local storage, never the project doc). There is no implicit inbox.       |
 | `DELETE`  | Prompts each time: delete the item itself, or only clear its date so it leaves the calendar (`calendarEntryDelete.ts`). One occurrence of a recurring plan is a third outcome — it records an exception on the source item (§6.2) rather than either of the above. Never silently destructive. |
 
 Capabilities are a property of the relation, expressed explicitly, in the same

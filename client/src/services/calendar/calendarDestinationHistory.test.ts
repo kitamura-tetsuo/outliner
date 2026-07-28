@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-    getDestinationHistory,
-    pruneUnresolvableDestinations,
-    recordDestination,
-} from "./calendarDestinationHistory";
+import { getDestinationHistory, pruneUnresolvableDestinations, recordDestination } from "./calendarDestinationHistory";
 
 describe("calendarDestinationHistory", () => {
     beforeEach(() => {

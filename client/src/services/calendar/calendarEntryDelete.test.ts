@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
+import { expandItemOccurrences } from "../yjstable/recurrenceExpansion";
 import type { RelationProvider, RelationWrite } from "../yjstable/relationProvider";
 import { TABLE_RELATION_CAPABILITIES } from "../yjstable/relationProvider";
-import { expandItemOccurrences } from "../yjstable/recurrenceExpansion";
 import {
     deleteCalendarEntry,
     deleteCalendarRecurrenceOccurrence,

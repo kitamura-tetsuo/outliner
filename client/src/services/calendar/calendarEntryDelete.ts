@@ -24,8 +24,8 @@
 
 import type { Project } from "$shared/app-schema";
 import { Item } from "$shared/app-schema";
-import type { RelationDeleteDisposition } from "../yjstable/relationProvider";
 import { ORDERED_TREE_KEY } from "../yjstable/itemsRelation";
+import type { RelationDeleteDisposition } from "../yjstable/relationProvider";
 import type { RelationResolver } from "../yjstable/relationRowWrite";
 import { applyUnionedRowDelete } from "../yjstable/relationRowWrite";
 import type { CalendarEntry } from "./calendarEntries";

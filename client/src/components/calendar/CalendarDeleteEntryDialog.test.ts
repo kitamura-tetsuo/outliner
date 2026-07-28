@@ -1,11 +1,11 @@
 import { Items, Project } from "$shared/app-schema";
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
+import type { CalendarEntry } from "../../services/calendar/calendarEntries";
+import { createRecurrenceOverride } from "../../services/calendar/recurrenceEditing";
 import { expandItemOccurrences } from "../../services/yjstable/recurrenceExpansion";
 import type { RelationProvider, RelationWrite } from "../../services/yjstable/relationProvider";
 import { TABLE_RELATION_CAPABILITIES } from "../../services/yjstable/relationProvider";
-import { createRecurrenceOverride } from "../../services/calendar/recurrenceEditing";
-import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import CalendarDeleteEntryDialog from "./CalendarDeleteEntryDialog.svelte";
 
 class RecordingProvider implements RelationProvider {
