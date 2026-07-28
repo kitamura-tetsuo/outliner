@@ -32,7 +32,10 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         const item = page.locator(".outliner-item").first();
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        // A generous timeout: CI shards running several PGlite/wasm-heavy
+        // calendar tests back to back can see cold-start CPU contention push
+        // the context menu's appearance past a tight timeout.
+        await expect(contextMenu).toBeVisible({ timeout: 20000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
@@ -83,7 +86,10 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         const item = page.locator(".outliner-item").first();
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        // A generous timeout: CI shards running several PGlite/wasm-heavy
+        // calendar tests back to back can see cold-start CPU contention push
+        // the context menu's appearance past a tight timeout.
+        await expect(contextMenu).toBeVisible({ timeout: 20000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();

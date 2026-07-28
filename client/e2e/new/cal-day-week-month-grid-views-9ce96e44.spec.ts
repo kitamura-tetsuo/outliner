@@ -30,7 +30,10 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         const item = page.locator(".outliner-item").first();
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        // A generous timeout: this is the first heavy (PGlite/wasm) calendar
+        // test several CI shards run, and cold-start CPU contention can push
+        // the context menu's appearance past a tight timeout.
+        await expect(contextMenu).toBeVisible({ timeout: 20000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
@@ -78,7 +81,7 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         const item = page.locator(".outliner-item").first();
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        await expect(contextMenu).toBeVisible({ timeout: 20000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
