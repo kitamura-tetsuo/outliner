@@ -101,7 +101,7 @@ export async function verifyIdTokenCached(token: string): Promise<DecodedIdToken
         return decoded;
     } catch (e: unknown) {
         // Debug: Decode token to see why it failed
-        const errorCode = e && typeof e === "object" && "code" in e ? (e as any).code : (e as any)?.errorInfo?.code;
+        const errorCode = e && typeof e === "object" && e !== null ? (("code" in e ? (e as Record<string, unknown>).code : (e as Record<string, Record<string, unknown>>)?.errorInfo?.code)) : undefined;
         const isExpired = errorCode === "auth/id-token-expired"
             || (e instanceof Error && e.message?.includes("expired"));
 
