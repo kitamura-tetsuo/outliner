@@ -216,15 +216,15 @@ Outlinerにはエイリアスやスケジュールなどの高度な機能が含
 
 ドキュメントツールバーの **Keyboard & accessibility help**（キーボードとアクセシビリティのヘルプ）リンクをクリックすると、完全なショートカット一覧とアクセシビリティ設定にアクセスできます。
 
-| 操作              | Windows/Linux            | Mac                         |
-| ----------------- | ------------------------ | --------------------------- |
-| 新規アイテム追加  | `Enter`                  | `Enter`                     |
-| 行の全選択        | `Ctrl + L`               | `Cmd + L`                   |
-| 行の先頭まで選択  | `Shift + Home`           | `Shift + Home`              |
-| 行の末尾まで選択  | `Shift + End`            | `Shift + End`               |
-| 矩形選択 (マウス) | `Alt + Shift + ドラッグ` | `Option + Shift + ドラッグ` |
-| 矩形選択 (キー)   | `Alt + Shift + 矢印`     | `Option + Shift + 矢印`     |
-| 選択範囲の拡大    | `Shift + Alt + Right`    | `Shift + Option + Right`    |
-| 選択範囲の縮小    | `Shift + Alt + Left`     | `Shift + Option + Left`     |
-| 元に戻す          | `Ctrl + Z`               | `Cmd + Z`                   |
+| 操作              | Windows/Linux                        | Mac                                |
+| ----------------- | ------------------------------------ | ---------------------------------- |
+| 新規アイテム追加  | `Enter`                              | `Enter`                            |
+| 行の全選択        | `Ctrl + L`                           | `Cmd + L`                          |
+| 行の先頭まで選択  | `Shift + Home`                       | `Shift + Home`                     |
+| 行の末尾まで選択  | `Shift + End`                        | `Shift + End`                      |
+| 矩形選択 (マウス) | `Alt + Shift + ドラッグ`             | `Option + Shift + ドラッグ`        |
+| 矩形選択 (キー)   | `Alt + Shift + 矢印`                 | `Option + Shift + 矢印`            |
+| 選択範囲の拡大    | `Shift + Alt + Right`                | `Shift + Option + Right`           |
+| 選択範囲の縮小    | `Shift + Alt + Left`                 | `Shift + Option + Left`            |
+| 元に戻す          | `Ctrl + Z`                           | `Cmd + Z`                          |
 | やり直し          | `Ctrl + Shift + Z` または `Ctrl + Y` | `Cmd + Shift + Z` または `Cmd + Y` |

@@ -216,15 +216,15 @@ Databases are stored the same way as other outliner data, so data changes and sc
 
 You can also access a complete list of shortcuts by clicking the **Keyboard & accessibility help** link in the document toolbar.
 
-| Action                  | Windows/Linux         | Mac                      |
-| ----------------------- | --------------------- | ------------------------ |
-| Add new item            | `Enter`               | `Enter`                  |
-| Select entire line      | `Ctrl + L`            | `Cmd + L`                |
-| Select to start of line | `Shift + Home`        | `Shift + Home`           |
-| Select to end of line   | `Shift + End`         | `Shift + End`            |
-| Box selection (Mouse)   | `Alt + Shift + Drag`  | `Option + Shift + Drag`  |
-| Box selection (Key)     | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
-| Expand selection        | `Shift + Alt + Right` | `Shift + Option + Right` |
-| Shrink selection        | `Shift + Alt + Left`  | `Shift + Option + Left`  |
-| Undo                    | `Ctrl + Z`            | `Cmd + Z`                |
+| Action                  | Windows/Linux                    | Mac                            |
+| ----------------------- | -------------------------------- | ------------------------------ |
+| Add new item            | `Enter`                          | `Enter`                        |
+| Select entire line      | `Ctrl + L`                       | `Cmd + L`                      |
+| Select to start of line | `Shift + Home`                   | `Shift + Home`                 |
+| Select to end of line   | `Shift + End`                    | `Shift + End`                  |
+| Box selection (Mouse)   | `Alt + Shift + Drag`             | `Option + Shift + Drag`        |
+| Box selection (Key)     | `Alt + Shift + Arrow`            | `Option + Shift + Arrow`       |
+| Expand selection        | `Shift + Alt + Right`            | `Shift + Option + Right`       |
+| Shrink selection        | `Shift + Alt + Left`             | `Shift + Option + Left`        |
+| Undo                    | `Ctrl + Z`                       | `Cmd + Z`                      |
 | Redo                    | `Ctrl + Shift + Z` or `Ctrl + Y` | `Cmd + Shift + Z` or `Cmd + Y` |
