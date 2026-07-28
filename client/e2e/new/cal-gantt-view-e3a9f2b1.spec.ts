@@ -29,6 +29,11 @@ test.describe("FTR-e3a9f2b1: Gantt view", () => {
             child.allDay = true;
             child.duration = "P3D";
         });
+        // Unlike a field-only mutation, adding a new outline item restructures
+        // the tree and triggers a render of the new "Design" row. Wait for it
+        // to settle before the first interaction so a right-click doesn't race
+        // the outline's own reflow.
+        await expect(page.getByText("Design", { exact: true })).toBeVisible({ timeout: 10000 });
     });
 
     test("renders a parent's rolled-up bar spanning its child, plus its own due marker", async ({ page }) => {
