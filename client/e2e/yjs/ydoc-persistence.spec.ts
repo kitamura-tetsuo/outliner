@@ -358,8 +358,8 @@ test.describe("Y.Doc persistence and offline editing", () => {
             const afterOfflineReload = await getCurrentPageTexts(page);
             expect(afterOfflineReload[0]).toBe("Modified while offline");
             expect(afterOfflineReload[1]).toBe("Offline item 1");
-            if(afterOfflineReload.length > 2) { expect(afterOfflineReload[2]).toBe("Offline item 2"); }
-            if(afterOfflineReload.length > 3) { expect(afterOfflineReload[3]).toBe("Offline item 3"); }
+            if (afterOfflineReload.length > 2) expect(afterOfflineReload[2]).toBe("Offline item 2");
+            if (afterOfflineReload.length > 3) expect(afterOfflineReload[3]).toBe("Offline item 3");
             console.log("Content persisted after offline reload:", afterOfflineReload);
         });
     });
