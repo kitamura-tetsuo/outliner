@@ -300,8 +300,6 @@ install_os_utilities() {
     libxtst6
     ca-certificates
     fonts-liberation
-    lsb-release
-    xdg-utils
     wget
   )
 
