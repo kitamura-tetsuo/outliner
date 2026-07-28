@@ -12,7 +12,6 @@ const ASSETS = [
     ...files,
 ];
 
-// Type definitions to avoid no-undef errors
 declare let self: ServiceWorkerGlobalScope;
 
 self.addEventListener("install", event => {

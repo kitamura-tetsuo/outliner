@@ -282,6 +282,7 @@ export class CursorValidator {
      */
     static async assertCursorBlink(page: Page, sampleDurationMs: number = 1600): Promise<void> {
         // Verify that an active cursor exists
+        await page.waitForSelector(".editor-overlay .cursor.active", { state: "attached" });
         const initialDomInfo = await this.getDOMCursorInfo(page);
         expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
 
