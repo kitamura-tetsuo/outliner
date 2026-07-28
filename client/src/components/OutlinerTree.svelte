@@ -7,6 +7,7 @@
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("OutlinerTree.svelte");
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { yjsService } from "../lib/yjs/service";
     import { Item, Items } from "../schema/app-schema";
@@ -77,7 +78,7 @@
                     yjsService.reapplyAllPresences(awareness);
                 }
             }
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
     });
 
     let unsubscribeUser: (() => void) | null = null;
@@ -179,7 +180,7 @@
                                 );
                             });
                         }
-                    } catch {}
+                    } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
                     let shouldQueue = false;
 
@@ -221,10 +222,10 @@
                 return () => {
                     try {
                         ymap.unobserveDeep(handler);
-                    } catch {}
+                    } catch (err) { _localLogger.warn("Silenced error", { err }); }
                 };
             }
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
     });
 
     // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
@@ -340,7 +341,7 @@
         if (files.length === 0) return;
 
         let containerId: string | undefined = undefined;
-        try { containerId = await getDefaultContainerId(); } catch {}
+        try { containerId = await getDefaultContainerId(); } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
         if (!containerId && import.meta.env.MODE !== "test") {
@@ -421,7 +422,7 @@
                 key,
                 treeType: (tree as { constructor?: { name?: string } })?.constructor?.name,
             } }, "handleIndent debug");
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
         if (
             !tree ||
@@ -460,14 +461,14 @@
                     siblingOrder,
                     currentIndex,
                 } }, "handleIndent parent info");
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
         if (currentIndex <= 0) return; // Cannot indent first item
 
         const targetParentKey = siblingOrder[currentIndex - 1];
         try {
             logger.debug({ data: { itemId, targetParentKey, currentIndex } }, "handleIndent moving");
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
         if (!targetParentKey) return;
 
         const run = () => {
@@ -501,7 +502,7 @@
 
                     newParent: safeGetNodeParent(tree, key),
                 } }, "handleIndent new parent");
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
         logger.info(
             { itemId, targetParentKey },
@@ -606,13 +607,13 @@
         if (lastToolbarItemId) {
             try {
                 logger.debug({ lastToolbarItemId }, "resolveActiveItemId: using last known id");
-            } catch {}
+            } catch (err) { _localLogger.warn("Silenced error", { err }); }
             return lastToolbarItemId;
         }
 
         try {
             logger.debug("resolveActiveItemId: no active item");
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
         return null;
     }
 
@@ -623,7 +624,7 @@
             if (flag === "1" || flag === "true") {
                 window.DEBUG_MODE = true;
             }
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
     }
 
     // Item navigation handling
@@ -1745,7 +1746,7 @@
                 targetItem.addAttachment(url);
             } catch {
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { _localLogger.warn("Silenced error", { err }); }
                 }
             }
         } else {
@@ -1768,7 +1769,7 @@
                     newItem.addAttachment(url);
                 } catch {
                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch {}
+                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { _localLogger.warn("Silenced error", { err }); }
                     }
                 }
             }

@@ -4,6 +4,7 @@ import * as Y from "yjs";
 import type { Comment } from "../schema/app-schema";
 import type { ItemLike } from "../types/yjs-types";
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("CommentThread.svelte");
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { onMount } from "svelte";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
@@ -85,12 +86,12 @@ onMount(() => {
                 }
             };
             yarr.observeDeep(handler);
-            unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
+            unobserve = () => { try { yarr.unobserveDeep(handler); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
             // Initial reflection
             handler();
         }
-    } catch {}
-    return () => { try { unobserve?.(); } catch {} };
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
+    return () => { try { unobserve?.(); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
 });
 
 
@@ -155,7 +156,7 @@ function add() {
         const optimistic: Comment = { id, author: user, text: newText, created: time, lastChanged: time };
         localComments = [...localComments, optimistic];
 
-    } catch {}
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
 
 
     // Normal path: Sync state after Yjs addition and notify parent with exact count
@@ -174,13 +175,13 @@ function add() {
                         countNow = itemComments.length;
                     }
                 }
-            } catch {}
+            } catch (err) { _localLogger.warn("Silenced error", { err }); }
         }
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
             // Notify parent (OutlinerItem) via props callback only
-            try { onCountChanged?.(countNow); } catch {}
+            try { onCountChanged?.(countNow); } catch (err) { _localLogger.warn("Silenced error", { err }); }
         }
     } catch (e) {
         logger.error({ error: e as Error }, '[CommentThread] failed to sync after add');
@@ -220,7 +221,7 @@ function remove(id: string) {
     // Only notify if count actually changed to prevent infinite loops
     if (countNow !== lastNotifiedCount) {
         lastNotifiedCount = countNow;
-        try { onCountChanged?.(countNow); } catch {}
+        try { onCountChanged?.(countNow); } catch (err) { _localLogger.warn("Silenced error", { err }); }
     }
 }
 

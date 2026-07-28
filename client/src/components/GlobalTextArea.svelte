@@ -1,5 +1,6 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("GlobalTextArea.svelte");
 const logger = getLogger("GlobalTextArea");
 
 import {
@@ -44,7 +45,7 @@ onMount(() => {
 
     store.setTextareaRef(textareaRef);
     // Keep a reference in generalStore as well (used as a fallback for the command palette)
-    try { generalStore.textareaRef = textareaRef; } catch {}
+    try { generalStore.textareaRef = textareaRef; } catch (err) { _localLogger.warn("Silenced error", { err }); }
     if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Textarea reference set in store");
 
     // Expose KeyEventHandler globally (for testing)
@@ -78,7 +79,7 @@ onMount(() => {
 
 onDestroy(() => {
     store.setTextareaRef(null);
-    try { generalStore.textareaRef = null; } catch {}
+    try { generalStore.textareaRef = null; } catch (err) { _localLogger.warn("Silenced error", { err }); }
 });
 
 function updateCompositionWidth(text: string) {
@@ -144,7 +145,7 @@ function handleKeyDown(event: KeyboardEvent) {
                 store.startCursorBlink();
             }
         }
-    } catch {}
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
 }
 
 // Delegate input event to KeyEventHandler

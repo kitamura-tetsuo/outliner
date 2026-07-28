@@ -5,6 +5,7 @@ import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { onMount } from "svelte";
 import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("OutlinerItemAttachments.svelte");
 
 
 interface HasObservableAttachments { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } }
@@ -34,18 +35,18 @@ onMount(() => {
                 const arr = (yArr?.toArray?.() ?? []);
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
                 logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][Yjs] attachments observe ->');
-            } catch {}
+            } catch (err) { _localLogger.warn("Silenced error", { err }); }
         };
         if (yArr && typeof yArr.observe === 'function' && typeof yArr.unobserve === 'function') {
             read(); // Initial reflection
             const yHandler = () => { read(); };
             yArr.observe(yHandler);
-            return () => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch {} };
+            return () => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
         } else {
             // Fallback: Reflect once even if observe is unavailable
             attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
         }
-    } catch {}
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
 });
 
 // Event listener for test environment
@@ -61,12 +62,12 @@ onMount(() => {
                 attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
             }
             logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][TEST] mirror updated ->');
-        } catch {}
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
     };
     try {
         if (IS_TEST) window.addEventListener('item-attachments-changed', onAtt as EventListener, { passive: true });
-    } catch {}
-    return () => { try { window.removeEventListener('item-attachments-changed', onAtt as EventListener); } catch {} };
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
+    return () => { try { window.removeEventListener('item-attachments-changed', onAtt as EventListener); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
 });
 
 const attachments = $derived.by(() => {
@@ -88,7 +89,7 @@ function getAttachmentLabel(url: string): string {
         if (filename) {
             return `View attachment: ${safeDecodeURIComponent(filename)}`;
         }
-    } catch {}
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
     return "View attachment";
 }
 </script>

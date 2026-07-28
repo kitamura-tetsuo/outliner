@@ -1,5 +1,6 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("EditorOverlay.svelte");
 const logger = getLogger("EditorOverlay");
 
 import { SvelteSet } from "svelte/reactivity";
@@ -1397,7 +1398,7 @@ function handlePaste(event: ClipboardEvent) {
                 if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                     logger.debug('EditorOverlay: setupUpdatingFlag set false for', key, 'class=', node.className);
                 }
-            } catch {}
+            } catch (err) { _localLogger.warn("Silenced error", { err }); }
         }, 1200);
         return {
             destroy() {
@@ -1408,7 +1409,7 @@ function handlePaste(event: ClipboardEvent) {
                     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                         logger.debug('EditorOverlay: setupUpdatingFlag destroy for', key);
                     }
-                } catch {}
+                } catch (err) { _localLogger.warn("Silenced error", { err }); }
             },
         } as const;
     }

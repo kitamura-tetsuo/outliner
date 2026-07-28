@@ -6,6 +6,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import OutlinerTree from "./OutlinerTree.svelte";
 import OutlinerItemAliasSegment from "./OutlinerItemAliasSegment.svelte";
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("OutlinerItemAlias.svelte");
 
 const logger = getLogger("OutlinerItemAlias");
 
@@ -36,13 +37,13 @@ $effect(() => {
                             logger.debug({ itemId: modelId, newValue }, "OutlinerItemAlias: aliasTargetId updated via observe");
                         }
                     }
-                } catch {}
+                } catch (err) { _localLogger.warn("Silenced error", { err }); }
             };
             ymap.observe(obs);
             obs(); // Initial reflection
-            cleanup = () => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch {} };
+            cleanup = () => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
         }
-    } catch {}
+    } catch (err) { _localLogger.warn("Silenced error", { err }); }
     return cleanup;
 });
 

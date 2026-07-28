@@ -1,5 +1,6 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
+const _localLogger = getLogger("AliasPicker.svelte");
 const logger = getLogger("AliasPicker");
 
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
@@ -26,7 +27,7 @@ let visible = $derived(!!aliasPickerStore.isVisible);
 let activeDescendantId = $derived(visible && selectedIndex >= 0 ? `alias-option-${selectedIndex}` : undefined);
 
 onMount(() => {
-    const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch {} };
+    const onVis = (e: AliasPickerVisibilityEvent) => { try { visible = !!(e?.detail?.visible); } catch (err) { _localLogger.warn("Silenced error", { err }); } };
     window.addEventListener("aliaspicker-visibility", onVis as EventListener);
     return () => window.removeEventListener("aliaspicker-visibility", onVis as EventListener);
 });
@@ -41,7 +42,7 @@ function getFilteredOptions(): Option[] {
 // Reset selected index only when input value changes (limit side effects with DOM events)
 function handleInput() {
     selectedIndex = 0;
-    try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+    try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch (err) { _localLogger.warn("Silenced error", { err }); }
 }
 
 function confirm(id: string) {
@@ -64,7 +65,7 @@ function handleKeydown(event: KeyboardEvent) {
         event.preventDefault();
         event.stopPropagation();
         selectedIndex = Math.min(selectedIndex + 1, Math.max(getFilteredOptions().length - 1, 0));
-        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch (err) { _localLogger.warn("Silenced error", { err }); }
         return;
     }
 
@@ -72,7 +73,7 @@ function handleKeydown(event: KeyboardEvent) {
         event.preventDefault();
         event.stopPropagation();
         selectedIndex = Math.max(selectedIndex - 1, 0);
-        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
+        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch (err) { _localLogger.warn("Silenced error", { err }); }
         return;
     }
 
@@ -103,8 +104,8 @@ $effect(() => {
                 inputElement?.focus();
             });
             // Sync selected index to external store
-            try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-        } catch {}
+            try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { _localLogger.warn("Silenced error", { err }); }
     }
 });
 </script>
@@ -143,7 +144,7 @@ $effect(() => {
                         tabindex="-1"
                         data-id={opt.id}
                         onclick={() => confirm(opt.id)}
-                        onmouseenter={() => { selectedIndex = index; try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {} }}
+                        onmouseenter={() => { selectedIndex = index; try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch (err) { _localLogger.warn("Silenced error", { err }); } }}
                     >
                         {opt.path}
                     </button>
