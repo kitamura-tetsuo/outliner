@@ -29,13 +29,13 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
     });
 
     async function createCalendarGroupedByTags(page: import("@playwright/test").Page) {
-        const item = page.locator(".outliner-item").first();
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (handleContextMenu returns early for isPageTitle); use the
+        // seeded item below it instead.
+        const item = page.locator(".outliner-item").nth(1);
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        // A generous timeout: CI shards running several PGlite/wasm-heavy
-        // calendar tests back to back can see cold-start CPU contention push
-        // the context menu's appearance past a tight timeout.
-        await expect(contextMenu).toBeVisible({ timeout: 20000 });
+        await expect(contextMenu).toBeVisible({ timeout: 10000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
@@ -83,13 +83,13 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
     });
 
     test("a lane backed by a non-writable column shows no drag handle", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (handleContextMenu returns early for isPageTitle); use the
+        // seeded item below it instead.
+        const item = page.locator(".outliner-item").nth(1);
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
-        // A generous timeout: CI shards running several PGlite/wasm-heavy
-        // calendar tests back to back can see cold-start CPU contention push
-        // the context menu's appearance past a tight timeout.
-        await expect(contextMenu).toBeVisible({ timeout: 20000 });
+        await expect(contextMenu).toBeVisible({ timeout: 10000 });
         await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
