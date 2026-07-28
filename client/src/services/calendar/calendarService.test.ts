@@ -97,6 +97,30 @@ describe("calendarService", () => {
         expect(() => updateCalendar(project, "missing", { name: "x" })).toThrow(/not found/);
     });
 
+    it("stores and updates the due role, week start, and working-hours settings", () => {
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            roleDue: "due",
+            weekStart: 1,
+            workingHoursStartMinutes: 480,
+            workingHoursEndMinutes: 1020,
+        });
+
+        expect(getCalendar(project, calendarId)).toMatchObject({
+            roleDue: "due",
+            weekStart: 1,
+            workingHoursStartMinutes: 480,
+            workingHoursEndMinutes: 1020,
+        });
+
+        updateCalendar(project, calendarId, { weekStart: 0, roleDue: "" });
+        expect(getCalendar(project, calendarId)).toMatchObject({
+            weekStart: 0,
+            roleDue: undefined,
+            workingHoursStartMinutes: 480,
+        });
+    });
+
     it("notifies observers reactively (observeDeep), for create/update/delete", () => {
         let notifications = 0;
         const unsubscribe = observeCalendars(project, () => {

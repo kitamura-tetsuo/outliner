@@ -16,6 +16,11 @@ export const DEFAULT_CALENDAR_VIEW_TYPE = "week";
 /** The four fixed roles a calendar assigns over its query's result columns. */
 export type CalendarRoleKey = "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration";
 
+/** Wall-clock minutes-from-midnight default for the grid's working-hours band: 09:00. */
+export const DEFAULT_WORKING_HOURS_START_MINUTES = 9 * 60;
+/** Wall-clock minutes-from-midnight default for the grid's working-hours band: 18:00. */
+export const DEFAULT_WORKING_HOURS_END_MINUTES = 18 * 60;
+
 export interface CalendarSettings {
     name: string;
     query: string;
@@ -25,8 +30,16 @@ export interface CalendarSettings {
     roleStart?: string;
     roleAllDay?: string;
     roleDuration?: string;
+    /** Deadline role (#4341's `due`): rendered as a marker, never a block (§6.1/§4347). */
+    roleDue?: string;
     /** Zero or more result columns to group entries by. */
     groupAxes: string[];
+    /** 0 (Sunday) .. 6 (Saturday). Undefined means "use the locale's default". */
+    weekStart?: number;
+    /** Minutes from midnight where the time-grid's initial scroll lands. */
+    workingHoursStartMinutes?: number;
+    /** Minutes from midnight where the working-hours band ends. */
+    workingHoursEndMinutes?: number;
 }
 
 export interface CalendarListEntry {
@@ -79,7 +92,11 @@ function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSe
         roleStart: calendarMap.get("roleStart") as string | undefined,
         roleAllDay: calendarMap.get("roleAllDay") as string | undefined,
         roleDuration: calendarMap.get("roleDuration") as string | undefined,
+        roleDue: calendarMap.get("roleDue") as string | undefined,
         groupAxes: groupAxesValue instanceof Y.Array ? groupAxesValue.toArray() : [],
+        weekStart: calendarMap.get("weekStart") as number | undefined,
+        workingHoursStartMinutes: calendarMap.get("workingHoursStartMinutes") as number | undefined,
+        workingHoursEndMinutes: calendarMap.get("workingHoursEndMinutes") as number | undefined,
     };
 }
 
@@ -115,6 +132,14 @@ export function createCalendar(
     if (options.roleStart) calendarMap.set("roleStart", options.roleStart);
     if (options.roleAllDay) calendarMap.set("roleAllDay", options.roleAllDay);
     if (options.roleDuration) calendarMap.set("roleDuration", options.roleDuration);
+    if (options.roleDue) calendarMap.set("roleDue", options.roleDue);
+    if (options.weekStart !== undefined) calendarMap.set("weekStart", options.weekStart);
+    if (options.workingHoursStartMinutes !== undefined) {
+        calendarMap.set("workingHoursStartMinutes", options.workingHoursStartMinutes);
+    }
+    if (options.workingHoursEndMinutes !== undefined) {
+        calendarMap.set("workingHoursEndMinutes", options.workingHoursEndMinutes);
+    }
 
     const groupAxes = new Y.Array<string>();
     if (options.groupAxes && options.groupAxes.length > 0) groupAxes.push(options.groupAxes);
@@ -126,6 +151,11 @@ export function createCalendar(
 
 function setOrClear(calendarMap: Y.Map<CalendarValueType>, key: string, value: string | undefined): void {
     if (value === undefined || value === "") calendarMap.delete(key);
+    else calendarMap.set(key, value);
+}
+
+function setOrClearNumber(calendarMap: Y.Map<CalendarValueType>, key: string, value: number | undefined): void {
+    if (value === undefined) calendarMap.delete(key);
     else calendarMap.set(key, value);
 }
 
@@ -161,6 +191,14 @@ export function updateCalendar(
         if (updates.roleStart !== undefined) setOrClear(calendarMap, "roleStart", updates.roleStart);
         if (updates.roleAllDay !== undefined) setOrClear(calendarMap, "roleAllDay", updates.roleAllDay);
         if (updates.roleDuration !== undefined) setOrClear(calendarMap, "roleDuration", updates.roleDuration);
+        if (updates.roleDue !== undefined) setOrClear(calendarMap, "roleDue", updates.roleDue);
+        if (updates.weekStart !== undefined) setOrClearNumber(calendarMap, "weekStart", updates.weekStart);
+        if (updates.workingHoursStartMinutes !== undefined) {
+            setOrClearNumber(calendarMap, "workingHoursStartMinutes", updates.workingHoursStartMinutes);
+        }
+        if (updates.workingHoursEndMinutes !== undefined) {
+            setOrClearNumber(calendarMap, "workingHoursEndMinutes", updates.workingHoursEndMinutes);
+        }
         if (updates.groupAxes !== undefined) {
             const groupAxes = ensureGroupAxesArray(calendarMap);
             if (groupAxes.length > 0) groupAxes.delete(0, groupAxes.length);

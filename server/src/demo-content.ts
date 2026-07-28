@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 24;
+export const DEMO_TEMPLATE_VERSION = 25;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -46,6 +46,14 @@ export interface DemoItem {
     ref?: string;
     // Make this item an alias mirroring the item declared with `ref: <aliasTo>`.
     aliasTo?: string;
+    // Calendar time model (#4341): a floating date (`YYYY-MM-DD`) when
+    // `allDay` is true, an ISO instant otherwise.
+    start?: string;
+    allDay?: boolean;
+    // ISO 8601 duration (`Item.duration`'s own format), e.g. "PT30M".
+    duration?: string;
+    // Deadline, independent of `start`/`duration` (#4341).
+    due?: string;
     // Nested child items.
     children?: DemoItem[];
 }
@@ -543,6 +551,7 @@ export interface DemoCalendarTemplate {
     roleStart?: string;
     roleAllDay?: string;
     roleDuration?: string;
+    roleDue?: string;
     groupAxes?: string[];
 }
 
@@ -561,6 +570,7 @@ export const demoCalendars: DemoCalendarTemplate[] = [
         roleStart: "start_at",
         roleAllDay: "all_day",
         roleDuration: "duration",
+        roleDue: "due",
         groupAxes: ["tags"],
     },
 ];
@@ -578,6 +588,7 @@ export function registerDemoCalendars(projectDoc: Y.Doc): void {
         if (template.roleStart) calendarMap.set("roleStart", template.roleStart);
         if (template.roleAllDay) calendarMap.set("roleAllDay", template.roleAllDay);
         if (template.roleDuration) calendarMap.set("roleDuration", template.roleDuration);
+        if (template.roleDue) calendarMap.set("roleDue", template.roleDue);
         const groupAxes = new Y.Array<string>();
         if (template.groupAxes && template.groupAxes.length > 0) groupAxes.push(template.groupAxes);
         calendarMap.set("groupAxes", groupAxes);
@@ -966,15 +977,37 @@ export const demoPages: DemoPageTemplate[] = [
                     },
                     {
                         text:
-                            "Day / week / month / Gantt grid views over these roles are a later feature; this page shows the query, the role editor, and a plain preview of the result.",
+                            "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month with the toolbar select; Gantt is a later feature.",
                     },
                 ],
             },
             {
                 text:
-                    "A calendar over this project's outline items, already assigned title/start/all-day/duration roles and grouped by tags. Try changing the query or reassigning a role.",
+                    "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
                 componentType: "calendar",
                 calendarId: DEMO_CALENDAR_ID,
+            },
+            {
+                text: "Scheduled today",
+                start: `${demoUtcDate(0)}T09:00:00.000Z`,
+                allDay: false,
+                duration: "PT30M",
+            },
+            {
+                text: "Scheduled tomorrow, longer block",
+                start: `${demoUtcDate(1)}T13:00:00.000Z`,
+                allDay: false,
+                duration: "PT2H",
+            },
+            {
+                text: "All-day conference",
+                start: demoUtcDate(2),
+                allDay: true,
+                duration: "P2D",
+            },
+            {
+                text: "Deadline only, no start — renders as a marker, not a block",
+                due: `${demoUtcDate(3)}T17:00:00.000Z`,
             },
         ],
     },
@@ -1045,6 +1078,10 @@ function addDemoItems(
         if (def.componentType) node.componentType = def.componentType;
         if (def.yjsTableId !== undefined) node.yjsTableId = def.yjsTableId;
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
+        if (def.start !== undefined) node.start = def.start;
+        if (def.allDay !== undefined) node.allDay = def.allDay;
+        if (def.duration !== undefined) node.duration = def.duration;
+        if (def.due !== undefined) node.due = def.due;
         if (def.votes) {
             for (const voter of def.votes) node.toggleVote(voter);
         }
