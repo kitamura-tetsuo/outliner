@@ -185,7 +185,11 @@ describe("writeCalendarLaneDrop against the real items relation", { timeout: 300
         const provider2 = new ItemsRelationProvider({ projectDoc: doc2, pgSchema: f.pgSchema });
 
         try {
-            const e = entry({ sourceKind: ITEMS_RELATION_NAME, sourceId: key, raw: { tags: JSON.stringify(["base"]) } });
+            const e = entry({
+                sourceKind: ITEMS_RELATION_NAME,
+                sourceId: key,
+                raw: { tags: JSON.stringify(["base"]) },
+            });
             const resolver1 = { resolveRelation: async () => f.provider };
             const resolver2 = { resolveRelation: async () => provider2 };
 

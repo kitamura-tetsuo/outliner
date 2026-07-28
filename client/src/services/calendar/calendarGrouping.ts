@@ -151,7 +151,12 @@ function buildLevel(
         if (rest.length === 0) {
             lanes.push({ value, path: lanePath, entries: laneEntries });
         } else {
-            lanes.push({ value, path: lanePath, entries: [], children: buildLevel(laneEntries, rest, options, lanePath, false) });
+            lanes.push({
+                value,
+                path: lanePath,
+                entries: [],
+                children: buildLevel(laneEntries, rest, options, lanePath, false),
+            });
         }
     }
     return lanes;

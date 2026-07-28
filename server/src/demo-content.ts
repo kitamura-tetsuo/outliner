@@ -986,7 +986,7 @@ export const demoPages: DemoPageTemplate[] = [
                     },
                     {
                         text:
-                            'Grouping by "tags" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry\'s small handle onto another lane to replace its tag set; hold Ctrl (Cmd on macOS) while dropping to add the lane\'s tag instead of replacing.',
+                            "Grouping by \"tags\" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry's small handle onto another lane to replace its tag set; hold Ctrl (Cmd on macOS) while dropping to add the lane's tag instead of replacing.",
                     },
                 ],
             },

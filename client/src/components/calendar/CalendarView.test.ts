@@ -219,9 +219,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
-        await waitFor(() =>
-            expect(getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`)).toBeTruthy()
-        );
+        await waitFor(() => expect(getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`)).toBeTruthy());
 
         const handle = getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`);
         await fireEvent.dragStart(handle);
