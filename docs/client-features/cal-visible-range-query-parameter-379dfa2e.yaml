@@ -1,0 +1,13 @@
+id: FTR-379dfa2e
+title: Inject the visible range into the calendar query as view.range_start / view.range_end
+title-ja: カレンダーの表示範囲を view.range_start / view.range_end としてクエリに注入する
+description: 'A calendar draws a window (a day, a week, a month) but its own query returns everything it matches, so a month view over a table that has accumulated years of rows reads all of them to draw thirty days. The client now computes that window client-side (`computeViewRange`, half-open so a boundary instant lands in exactly one window) and injects it into the query''s own transaction as the `view.range_start` / `view.range_end` Postgres settings, transaction-locally and via parameters (never string-concatenated) — mirroring how the scheduler injects `job.occurrence`. Filtering stays the query''s own job: the calendar''s role-assignment editor warns, without blocking execution, when a query references neither setting, and names the overlap idiom (`start_at < current_setting(''view.range_end'')::timestamptz AND start_at + duration > current_setting(''view.range_start'')::timestamptz`) as the fix. Prev/Today/Next navigation controls move the visible window and re-run the query, debounced; the injected range never reaches a table''s own query, which has no view.
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/cal-visible-range-query-parameter-379dfa2e.spec.ts
+- client/src/components/calendar/CalendarRoleEditor.test.ts
+- client/src/services/calendar/calendarQueryRunner.test.ts
+- client/src/services/calendar/calendarViewRange.test.ts

@@ -26,6 +26,8 @@ import {
     getCalendarMap,
     updateCalendar,
 } from "../../services/calendar/calendarService";
+import { listSupportedTimeZones, resolveCalendarTimezone } from "../../services/calendar/calendarTimezone";
+import { computeViewRange, shiftAnchor } from "../../services/calendar/calendarViewRange";
 import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
@@ -54,6 +56,28 @@ let queryError = $state<string | undefined>(undefined);
 
 const editability = $derived(analyzeCalendarEditability(result.columns));
 
+// The view's timezone (§6.5) is an explicit, visible setting: absent means
+// viewer-local, resolved here rather than left implicit. The SQL session
+// timezone for this calendar's own query must equal it (`runQuery` below),
+// and the range below is computed in it, so two collaborators viewing a
+// calendar with a fixed timezone see the same window regardless of either
+// viewer's own local zone.
+const timeZone = $derived(resolveCalendarTimezone(settings.timezone));
+const timeZoneOptions = listSupportedTimeZones();
+
+// The visible window (§6.4), per viewer: which period is on screen is
+// navigation state, not project data, so it lives here rather than in the
+// calendars map. `range` recomputes whenever the view type (from the map),
+// the timezone (from the map), or the anchor (from navigation) changes;
+// `runQuery` reads it at call time.
+let anchorDate = $state(new Date());
+const range = $derived(computeViewRange(settings.viewType, anchorDate, timeZone));
+const rangeLabel = $derived(
+    `${range.start.toLocaleDateString(undefined, { timeZone })} – ${
+        new Date(range.end.getTime() - 1).toLocaleDateString(undefined, { timeZone })
+    }`,
+);
+
 function readSettingsFromMap(): CalendarSettings | undefined {
     const map = getCalendarMap(project, calendarId);
     if (!map) return undefined;
@@ -80,7 +104,7 @@ const pgSchema = projectSchemaName(projectId);
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {
-    const outcome = await runCalendarQuery(session, pgSchema, settings.query);
+    const outcome = await runCalendarQuery(session, pgSchema, settings.query, range, timeZone);
     if (outcome.result) {
         result = outcome.result;
         queryError = undefined;
@@ -101,9 +125,34 @@ function refreshMirror() {
     const next = readSettingsFromMap();
     if (!next) return;
     const queryChanged = next.query !== settings.query;
+    const viewTypeChanged = next.viewType !== settings.viewType;
+    const timezoneChanged = next.timezone !== settings.timezone;
     settings = next;
     queryInput = next.query;
-    if (queryChanged) scheduleRequery();
+    if (queryChanged || viewTypeChanged || timezoneChanged) scheduleRequery();
+}
+
+/** Navigate to the next/previous period; re-runs the query, debounced. */
+function navigate(direction: 1 | -1) {
+    anchorDate = shiftAnchor(settings.viewType, anchorDate, direction, timeZone);
+    scheduleRequery();
+}
+
+function goToToday() {
+    anchorDate = new Date();
+    scheduleRequery();
+}
+
+/**
+ * Switch the calendar's timezone; an empty value clears it back to
+ * viewer-local. Pass the empty string through as-is rather than `undefined`
+ * — `updateCalendar` only touches a field when the update object mentions it
+ * (`!== undefined`), and uses an empty string as the "clear" signal
+ * (`setOrClear`), so `{ timezone: undefined }` here would be silently
+ * ignored instead of clearing anything.
+ */
+function commitTimezone(e: Event) {
+    updateCalendar(project, calendarId, { timezone: (e.target as HTMLSelectElement).value });
 }
 
 const mirrorObserver = () => refreshMirror();
@@ -139,6 +188,28 @@ onDestroy(() => {
         </div>
     </div>
 
+    <div class="view-toolbar">
+        <div class="nav-controls">
+            <button type="button" data-testid="calendar-nav-prev" onclick={() => navigate(-1)}>◀</button>
+            <button type="button" data-testid="calendar-nav-today" onclick={goToToday}>Today</button>
+            <button type="button" data-testid="calendar-nav-next" onclick={() => navigate(1)}>▶</button>
+        </div>
+        <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
+    </div>
+
+    <div class="view-toolbar">
+        <label class="timezone-control">
+            <span>Timezone</span>
+            <select data-testid="calendar-timezone-select" value={settings.timezone ?? ""} onchange={commitTimezone}>
+                <option value="">Viewer-local ({resolveCalendarTimezone(undefined)})</option>
+                {#each timeZoneOptions as tz (tz)}
+                    <option value={tz}>{tz}</option>
+                {/each}
+            </select>
+        </label>
+        <span class="active-timezone" data-testid="calendar-active-timezone">{timeZone}</span>
+    </div>
+
     <label class="editor-label" for="calendar-query-input">Query (SELECT)</label>
     <input
         id="calendar-query-input"
@@ -156,6 +227,7 @@ onDestroy(() => {
     <CalendarRoleEditor
         {project}
         {calendarId}
+        query={settings.query}
         resultColumns={result.columns}
         roles={{
             roleTitle: settings.roleTitle,
@@ -225,6 +297,42 @@ onDestroy(() => {
     padding: 2px 10px;
     cursor: pointer;
     font-size: 0.8rem;
+}
+
+.nav-controls {
+    display: flex;
+    gap: 4px;
+}
+
+.nav-controls button {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    padding: 2px 10px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.range-label {
+    font-size: 0.8rem;
+    color: #374151;
+}
+
+.timezone-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #374151;
+}
+
+.timezone-control select {
+    font-size: 0.8rem;
+}
+
+.active-timezone {
+    font-size: 0.8rem;
+    color: #6b7280;
 }
 
 .editor-label {
