@@ -1,7 +1,8 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §4 is implemented. What remains is the calendar UI itself,
-and the two write affordances it owns: the INSERT destination picker and the
+Status: accepted. §1–§5 are implemented. §6 records the contract the calendar
+UI is to be built against and is not implemented yet; it also covers the two
+write affordances the calendar owns — the INSERT destination picker and the
 DELETE prompt (§4.3).
 
 This document records _why_ documents are CRDT-centric while tabular data is
@@ -217,10 +218,183 @@ dropped when no session can reach it.
 This keeps the inverse mapping closed per relation, and keeps the invariant that
 no component writes to PGlite.
 
-## 6. What must not be done
+## 6. The calendar contract
+
+_Planned._ §4 delivered the data layer; this section fixes the decisions the
+calendar UI is built against, so that day / multi-day / week / month / Gantt
+views and grouping do not each invent their own answer.
+
+The reference model throughout is iCalendar (RFC 5545). The project already
+speaks it — schedule rules use RRULE, and schedules export as iCal
+(SCH-5A1C2B3D) — so following it keeps one vocabulary rather than two.
+
+### 6.1 Time model
+
+**An all-day entry is a date. A timed entry is an instant. They are not the
+same type.** RFC 5545 separates them (`DTSTART;VALUE=DATE` versus a timestamp
+with a `TZID`), and so does every calendar API that survived contact with
+users. Storing an all-day entry as midnight in some timezone is the single
+largest source of "my event moved a day" bugs.
+
+The projection therefore carries an explicit discriminator rather than one
+overloaded column:
+
+| Column     | Meaning                                                                      |
+| ---------- | ---------------------------------------------------------------------------- |
+| `all_day`  | Which of the two shapes this row is.                                         |
+| `start_on` | All-day entries: a floating `DATE`, no timezone, identical for every viewer. |
+| `start_at` | Timed entries: a `TIMESTAMPTZ` instant.                                      |
+
+`start_on` and `start_at` are mutually exclusive; exactly one is non-NULL.
+Both are properly typed, so range predicates and ordering work in SQL without
+casting text.
+
+**Ends are exclusive.** An all-day entry on 8/1 ends 8/2. This is the RFC's
+convention, and departing from it means every interval comparison in every view
+needs a special case.
+
+**Length is stored as a duration, never as an end.** RFC 5545 forbids carrying
+both, and of the two, duration is the one that survives recurrence: an entry
+that lasts an hour still lasts an hour on the occurrence that crosses a DST
+boundary, where a stored end would drift. The end is derived for rendering.
+
+**Plans store wall clock plus zone; records store instants.** A recurring plan
+("every Monday at 09:00") must be stored as local time with an IANA timezone,
+because converting it to a UTC instant makes it drift by an hour twice a year.
+Something that already happened — a row the scheduler generated — is correctly a
+UTC instant, because it names a moment, not an intention. The two categories
+coexist on one calendar and are stored differently on purpose.
+
+### 6.2 Recurrence
+
+**Recurring entries are not materialized.** The standard model, and the one
+adopted here, is:
+
+1. store the rule — `DTSTART` + `RRULE`, plus `EXDATE` for cancelled instances;
+2. expand it on read, for the visible range only;
+3. persist only the exceptions — an instance that was moved or modified.
+
+The client already depends on `rrule`, so expansion needs no new dependency.
+
+A virtual occurrence **becomes real the moment the user edits it**. Dragging a
+generated occurrence writes an override, and from then on it is an ordinary row.
+This is what keeps §3's rule intact: the user never meets an entry that looks
+draggable and is not. The familiar "this event / this and following / all
+events" prompt falls out of this model rather than being bolted onto it.
+
+#### Why this is not unified with schedule rules
+
+A schedule rule's body is **arbitrary SQL**, not a declarative event. Its RRULE
+tells us when the next occurrence fires, but nothing about the row that
+occurrence would produce — that is only knowable by executing the statement.
+Previewing the future would mean running user SQL speculatively for every
+visible occurrence, which is expensive and muddies the meaning of a rule that
+has not actually run.
+
+The two mechanisms stay separate because they answer different questions:
+
+|                               | Purpose                                                              | Storage                              | On the calendar                        |
+| ----------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Schedule rule (implemented)   | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
+| Calendar recurrence (planned) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
+
+Nothing about the existing scheduler changes.
+
+### 6.3 The query contract
+
+A calendar is a query plus a **role assignment over its result columns**, held
+in the calendar's UI Definition. The roles are title, start, duration, all-day,
+and the grouping axes. Candidates are the columns the query actually returns —
+the same principle as the table feature's cell-component list, which follows the
+SELECT rather than the schema (#4238).
+
+`source_kind` and `source_id` are required in the result: without them the
+result is read-only (§4.4) and nothing on the calendar can be dragged.
+
+**Grouping is a client-side operation over result rows, never SQL `GROUP BY`.**
+Aggregation collapses row identity and makes the whole result read-only, which
+would cost the calendar every one of its affordances. Adding a grouping axis
+means adding a _column_ — which is exactly how "group keys can be added
+dynamically in SQL" is realized: `CASE WHEN … END AS bucket` and the axis
+appears.
+
+**A group lane accepts drops only when its column is writable.** Moving a card
+between lanes writes the grouping column, and a calculated expression has no
+writable origin — per-column editability already says so (§4.4). A lane backed
+by such a column is display-only, and must look it. Tags are a structured field
+on the item, so tag lanes are writable and cards can be dragged between them;
+this is precisely why tags are not parsed out of item text.
+
+### 6.4 The visible range is a query parameter
+
+The client injects the view's window as settings — `view.range_start` and
+`view.range_end` — mirroring how the scheduler injects `job.occurrence`, so a
+query filters with `current_setting(...)` and the engine returns only what is on
+screen. Without this, a month or Gantt view over a table that has accumulated
+years of generated rows reads all of them to draw thirty days.
+
+The range is computed in the view's timezone (§6.5), so the window and the
+drawing agree at the boundaries.
+
+### 6.5 Timezone
+
+**The view's timezone is an explicit, visible property.** It defaults to the
+viewer's local zone and can be switched to a fixed IANA zone. What is rejected
+is not viewer-local rendering — it is _implicit_ viewer-local rendering.
+
+**The SQL session timezone must equal the view's timezone.** This is a
+constraint on the engine, not a rendering preference: `date_trunc('week', …)`
+and `::date` in a grouping expression are evaluated by Postgres against the
+session zone. Let the two diverge and the same query sorts rows into different
+buckets for different viewers, and the injected range no longer matches what is
+drawn.
+
+The reasons the timezone cannot stay implicit:
+
+- It is the first surface in this app where collaborators do not see the same
+  layout. Everywhere else — outline, tables, presence cursors — the screen is
+  the same for everyone. "The one on Monday" stops being a shared reference.
+- All-day entries are floating and identical for everyone while timed entries
+  shift, so two cards on one day for one viewer can land on two days for
+  another. That is §3's inconsistency, on the time axis.
+- Rows generated by a schedule rule had their date decided by the _rule's_
+  timezone, and carry it as text (`to_char`, per
+  `docs/schedule-sql-conventions.md`). Draw them in a different zone and a row
+  reading `2026-08-01` sits in the 8/2 column, contradicting itself on screen.
+- Tests would otherwise assert against the runner's ambient zone.
+
+### 6.6 Where a calendar lives
+
+A calendar has a query and view settings, and **no data of its own**. It does
+not need a table's three-structure subdoc; a `calendars` `Y.Map` on the project
+doc, in the shape `schedules` already uses, carries it.
+
+Changes to view settings route through the `UndoRouter` (§4.6) like any other
+edit, so undo covers reconfiguring a view and not only moving a card.
+
+As with tables, a calendar is reachable both as a block embedded in an item and
+as a standalone route.
+
+### 6.7 Gantt
+
+Gantt hierarchy is the outline hierarchy: `outline_items` already carries
+`parent_id`, so nesting comes for free and means the same thing it means in the
+outline.
+
+Dependency links between entries — finish-to-start arrows, critical path — are
+**out of scope**. They are a new relation between rows, not a property of one,
+and belong in their own decision rather than smuggled into the calendar's.
+
+## 7. What must not be done
 
 - Do not persist the item projection into any table's Data Storage. It is a
   virtual relation, rebuilt on the client like everything else in PGlite. Storing
   it creates a second truth.
 - Do not make PGlite authoritative for any field, on client or server.
-- Do not encode schedule attributes in item text.
+- Do not encode schedule attributes, or tags, in item text.
+- Do not implement grouping as SQL `GROUP BY`. It makes the result read-only and
+  takes every calendar affordance with it.
+- Do not store an all-day entry as a midnight instant.
+- Do not render in an ambient timezone, and do not let the SQL session zone
+  differ from the view's.
+- Do not speculatively execute schedule-rule SQL to preview future occurrences.
