@@ -44,7 +44,9 @@ export function resolveCalendarEntryWritability(
     };
 }
 
-function requireOrigin(entry: Pick<CalendarEntry, "sourceKind" | "sourceId">): { sourceKind: string; sourceId: string; } {
+function requireOrigin(
+    entry: Pick<CalendarEntry, "sourceKind" | "sourceId">,
+): { sourceKind: string; sourceId: string; } {
     if (!entry.sourceKind || !entry.sourceId) {
         throw new Error("Entry has no writable origin (missing source_kind/source_id)");
     }
