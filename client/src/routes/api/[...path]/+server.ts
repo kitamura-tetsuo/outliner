@@ -38,7 +38,9 @@ const proxyRequest = async (event: RequestEvent) => {
     if (!headers.has("x-forwarded-for")) {
         try {
             headers.set("x-forwarded-for", event.getClientAddress());
-        } catch (_e) {}
+        } catch (err) {
+            console.warn("Failed to get client address:", err);
+        }
     }
 
     const response = await fetch(targetUrl, {

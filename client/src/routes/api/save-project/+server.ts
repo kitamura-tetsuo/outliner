@@ -33,7 +33,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         if (!headers["x-forwarded-for"]) {
             try {
                 headers["x-forwarded-for"] = getClientAddress();
-            } catch (_e) {}
+            } catch (err) {
+                logger.warn({ err }, "Failed to get client address");
+            }
         }
 
         const response = await fetch(`${apiBaseUrl}/api/save-project`, {
