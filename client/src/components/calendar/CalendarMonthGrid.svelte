@@ -39,7 +39,8 @@ function onDropOnCell(entry: CalendarEntry, cell: MonthCell) {
 
 function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaDays;
+    // eslint-disable-next-line no-useless-assignment
+    let deltaDays = 0;
     if (e.key === "ArrowLeft") deltaDays = -1;
     else if (e.key === "ArrowRight") deltaDays = 1;
     else if (e.key === "ArrowUp") deltaDays = -7;
