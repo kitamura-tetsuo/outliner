@@ -92,3 +92,7 @@ ORDER BY cadence, task_key
 ## Timezones
 
 Schedule rules have an explicit timezone (e.g., `America/New_York`). This timezone is used by the executor to determine _when_ the job should run. The `job.occurrence` value provided to the SQL statement is an absolute UTC timestamp, so you can safely cast it to `timestamptz` without worrying about local server time.
+
+## See also
+
+A calendar's own query uses the same `current_setting(...)` injection pattern for its visible window (`view.range_start` / `view.range_end`) instead of an occurrence time — see `docs/calendar-sql-conventions.md`.
