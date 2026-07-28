@@ -40,18 +40,19 @@ test.describe("FTR-840bea57: the calendar's timezone is an explicit, visible vie
         const viewerLocalZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
         await expect(activeTimezone).toHaveText(viewerLocalZone);
 
-        const rangeLabel = page.getByTestId("calendar-range-label").first();
-        const rangeBeforeSwitch = await rangeLabel.textContent();
-
         // Switching to a fixed zone updates the active-timezone label and
-        // recomputes the displayed range (both are timezone-dependent).
+        // re-runs the query without error. The *range window* is also
+        // recomputed in the new zone (covered by calendarViewRange.test.ts's
+        // cross-zone unit tests), but whether the displayed week-range label
+        // text actually changes depends on how close "now" happens to be to
+        // a week boundary between the two zones at the moment the suite
+        // runs, which an e2e run cannot control — so this only asserts the
+        // parts that are guaranteed regardless of the clock.
         const timezoneSelect = page.getByTestId("calendar-timezone-select").first();
         await timezoneSelect.selectOption("Asia/Tokyo");
         await expect(activeTimezone).toHaveText("Asia/Tokyo");
-
-        await expect
-            .poll(async () => rangeLabel.textContent(), { timeout: 15000 })
-            .not.toBe(rangeBeforeSwitch);
+        await expect(page.getByTestId("calendar-range-label").first()).toBeVisible();
+        await expect(page.getByTestId("calendar-query-error")).toHaveCount(0);
 
         // Clearing back to "Viewer-local" restores the resolved local zone.
         await timezoneSelect.selectOption("");
