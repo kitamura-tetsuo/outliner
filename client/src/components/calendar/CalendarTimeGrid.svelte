@@ -130,6 +130,14 @@ function onPointerCancel(e: PointerEvent) {
     drag = undefined;
 }
 
+function keyToDeltaMs(key: string): number | undefined {
+    if (key === "ArrowUp") return -15 * 60_000;
+    if (key === "ArrowDown") return 15 * 60_000;
+    if (key === "ArrowLeft") return -DAY_MS;
+    if (key === "ArrowRight") return DAY_MS;
+    return undefined;
+}
+
 /** Arrow-key moves: Up/Down = 15 minutes, Left/Right = 1 day. Immediate, one write per press. */
 function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
@@ -138,12 +146,8 @@ function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
         return;
     }
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaMs = 0;
-    if (e.key === "ArrowUp") deltaMs = -15 * 60_000;
-    else if (e.key === "ArrowDown") deltaMs = 15 * 60_000;
-    else if (e.key === "ArrowLeft") deltaMs = -DAY_MS;
-    else if (e.key === "ArrowRight") deltaMs = DAY_MS;
-    else return;
+    const deltaMs = keyToDeltaMs(e.key);
+    if (deltaMs === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaMs);
 }

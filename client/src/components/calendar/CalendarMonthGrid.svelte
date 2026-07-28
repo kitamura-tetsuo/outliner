@@ -48,6 +48,14 @@ function onDropOnCell(entry: CalendarEntry, cell: MonthCell) {
     onDragEnd(entry, newStart);
 }
 
+function keyToDeltaDays(key: string): number | undefined {
+    if (key === "ArrowLeft") return -1;
+    if (key === "ArrowRight") return 1;
+    if (key === "ArrowUp") return -7;
+    if (key === "ArrowDown") return 7;
+    return undefined;
+}
+
 function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
         e.preventDefault();
@@ -55,12 +63,8 @@ function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
         return;
     }
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaDays = 0;
-    if (e.key === "ArrowLeft") deltaDays = -1;
-    else if (e.key === "ArrowRight") deltaDays = 1;
-    else if (e.key === "ArrowUp") deltaDays = -7;
-    else if (e.key === "ArrowDown") deltaDays = 7;
-    else return;
+    const deltaDays = keyToDeltaDays(e.key);
+    if (deltaDays === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaDays * DAY_MS);
 }
