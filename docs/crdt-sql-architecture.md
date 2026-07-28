@@ -363,6 +363,18 @@ extension of the iCal export (SCH-5A1C2B3D) to plans straightforward.
 
 ### 6.2 Recurrence
 
+_Implemented_ — `rrule` / `recurrenceDtstart` / `recurrenceTimezone` /
+`recurrenceExdate` on the `Item` class (`shared/src/app-schema.ts`); read-time
+expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
+`rrule` / `recurrence_dtstart` / `recurrence_timezone` /
+`recurrence_parent_id` / `recurrence_occurrence_id` columns of
+`outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
+creation, exception recording and rule splitting in
+`client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
+day/week/month/Gantt views that would drive this from a drag gesture (#4347,
+#4350) and the visible-range injection that bounds expansion in a live query
+(#4345) are still to come.
+
 **Recurring entries are not materialized.** The standard model, and the one
 adopted here, is:
 
@@ -378,6 +390,47 @@ This is what keeps §3's rule intact: the user never meets an entry that looks
 draggable and is not. The familiar "this event / this and following / all
 events" prompt falls out of this model rather than being bolted onto it.
 
+#### Implementation notes
+
+**A virtual occurrence never becomes a PGlite row.** `outline_items` keeps its
+one-row-per-item invariant (§4.2/§4.4): a recurring item's own row is the
+anchor (carrying `rrule`/`recurrence_dtstart`/`recurrence_timezone`, no
+`due`/`start` of its own), and expansion happens above the projection, as a
+pure function of the anchor plus an explicit range —
+`expandRecurrence`/`expandItemOccurrences` take `[rangeStart, rangeEnd)`
+directly rather than reading it from query context, since §6.4's range
+injection has not landed yet. Materializing every occurrence eagerly would be
+exactly the unbounded-storage problem this section opens with; a bounded
+range argument is what keeps expansion cheap regardless of how far a
+`COUNT`/`UNTIL`-less rule runs.
+
+**An override is an ordinary item**, not a nested record: a new sibling of
+the recurring item, carrying `recurrenceParentId` (the anchor's `id`) and
+`recurrenceOccurrenceId` (the overridden occurrence's local dtstart — what a
+`RECURRENCE-ID` identifies). This is what makes "an ordinary row from then
+on" literal — the override is draggable, taggable, deletable through every
+path an item already has, with no calendar-specific code required for any of
+that. `excludeOverriddenOccurrences` is what keeps the override from
+double-rendering alongside the virtual occurrence it replaces.
+
+**A plan's own `allDay`/`duration`** are the existing §6.1 fields, reused
+rather than duplicated: they describe the shape of every generated
+occurrence the same way they describe an ordinary item's own schedule. Only
+the recurrence identity (`rrule`/`recurrenceDtstart`/`recurrenceTimezone`/
+`recurrenceExdate`) is new.
+
+**DST correctness without a new dependency.** The server's scheduler
+(`server/src/scheduler/schedule-indexer.ts`) solves the same
+wall-clock/`rrule` problem with `luxon`, a server-only dependency. The client
+has no `luxon`, so `shared/src/utils/zonedTime.ts` reimplements the same
+two-pass offset-correction technique on native `Intl.DateTimeFormat`: treat a
+local wall-clock reading as if it were UTC for `rrule`'s floating-time
+iteration, then convert each candidate occurrence to a real instant by
+reading the zone's actual offset at that moment (twice, so a transition
+between the guess and the correction cannot leave the result off by the
+transition's delta). A wall-clock time that does not round-trip is a
+spring-forward gap and is skipped.
+
 #### Why this is not unified with schedule rules
 
 A schedule rule's body is **arbitrary SQL**, not a declarative event. Its RRULE
@@ -389,10 +442,10 @@ has not actually run.
 
 The two mechanisms stay separate because they answer different questions:
 
-|                               | Purpose                                                              | Storage                              | On the calendar                        |
-| ----------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
-| Schedule rule (implemented)   | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
-| Calendar recurrence (planned) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
+|                                   | Purpose                                                              | Storage                              | On the calendar                        |
+| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Schedule rule (implemented)       | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
+| Calendar recurrence (implemented) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
 
 Nothing about the existing scheduler changes.
 
