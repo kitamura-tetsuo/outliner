@@ -46,19 +46,16 @@ export interface CursorNavigationContext {
  * @param ids Array to collect IDs into
  * @returns Array of item IDs in tree traversal order
  */
+import { iterateItemsOrdered } from "../../../../shared/src/utils/itemTraversal";
+
 export function collectAllItemIds(node: AppItem, ids: string[]): string[] {
     if (node.id) {
         ids.push(node.id);
     }
 
-    // Check if node has items that are iterable
-    if (node.items && typeof (node.items as { length?: number; }).length === "number") {
-        const items = node.items as { length: number; at: (i: number) => AppItem | undefined; };
-        for (let i = 0; i < items.length; i++) {
-            const child = items.at(i);
-            if (child) {
-                collectAllItemIds(child, ids);
-            }
+    if (node.items) {
+        for (const child of iterateItemsOrdered(node.items) as Iterable<AppItem>) {
+            collectAllItemIds(child, ids);
         }
     }
 
