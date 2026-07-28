@@ -11,7 +11,7 @@ import { resetPgliteForTests } from "./pgliteService";
 import { analyzeQueryEditability } from "./queryAnalysis";
 import type { RelationProvider, RelationWrite } from "./relationProvider";
 import { RelationWriteError, TABLE_RELATION_CAPABILITIES } from "./relationProvider";
-import { applyUnionedRowEdit } from "./relationRowWrite";
+import { applyUnionedRowDelete, applyUnionedRowEdit } from "./relationRowWrite";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
@@ -64,6 +64,49 @@ describe("applyUnionedRowEdit (resolver dispatch)", () => {
     it("rejects a source_kind the project has no relation for", async () => {
         const resolver = { resolveRelation: async () => undefined };
         await expect(applyUnionedRowEdit(resolver, "nowhere", "row-1", "title", "x"))
+            .rejects.toThrow(RelationWriteError);
+    });
+});
+
+describe("applyUnionedRowDelete (resolver dispatch)", () => {
+    class RecordingProvider implements RelationProvider {
+        readonly sqlName = "recorded";
+        readonly capabilities = TABLE_RELATION_CAPABILITIES;
+        writes: RelationWrite[] = [];
+        async materialize() {
+            return true;
+        }
+        async applyWrite(write: RelationWrite) {
+            this.writes.push(write);
+        }
+        dispose() {}
+    }
+
+    it("resolves the relation named by source_kind and deletes the row named by source_id", async () => {
+        const provider = new RecordingProvider();
+        const resolver = {
+            resolveRelation: async (sqlName: string) => sqlName === "widgets" ? provider : undefined,
+        };
+
+        await applyUnionedRowDelete(resolver, "widgets", "row-7", "delete-source");
+
+        expect(provider.writes).toEqual([
+            { op: "DELETE", rowId: "row-7", disposition: "delete-source" },
+        ]);
+    });
+
+    it("passes an absent disposition through unchanged", async () => {
+        const provider = new RecordingProvider();
+        const resolver = { resolveRelation: async () => provider };
+
+        await applyUnionedRowDelete(resolver, "widgets", "row-1");
+
+        expect(provider.writes).toEqual([{ op: "DELETE", rowId: "row-1", disposition: undefined }]);
+    });
+
+    it("rejects a source_kind the project has no relation for", async () => {
+        const resolver = { resolveRelation: async () => undefined };
+        await expect(applyUnionedRowDelete(resolver, "nowhere", "row-1", "delete-source"))
             .rejects.toThrow(RelationWriteError);
     });
 });
@@ -161,6 +204,59 @@ describe("edit on a unioned result reaches the right relation and row", { timeou
             expect(record?.get("title")).toBe("Water the plants");
             // The unrelated outline item stayed untouched.
             expect(scheduled.text).toBe("Ship the calendar");
+        } finally {
+            session.dispose();
+        }
+    });
+});
+
+describe("delete on a unioned result reaches the right relation and row", { timeout: 30000 }, () => {
+    it("delete-source removes the outline item", async () => {
+        const projectId = "proj-union-delete-source";
+        const { projectDoc, tableId, scheduled } = seedProject(projectId);
+
+        const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+        try {
+            const acquired = await session.acquire(tableId);
+            const result = await acquired!.adapter.runQueryNow();
+            const itemRow = result!.rows.find((r) => r.source_kind === ITEMS_RELATION_NAME);
+            expect(itemRow?.source_id).toBe(scheduled.key);
+
+            await applyUnionedRowDelete(
+                session,
+                String(itemRow!.source_kind),
+                String(itemRow!.source_id),
+                "delete-source",
+            );
+
+            expect(projectDoc.getMap("orderedTree").has(scheduled.key)).toBe(false);
+        } finally {
+            session.dispose();
+        }
+    });
+
+    it("clear-projected-field keeps the item but drops it from the projection", async () => {
+        const projectId = "proj-union-delete-clear";
+        const { projectDoc, tableId, scheduled } = seedProject(projectId);
+
+        const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+        try {
+            const acquired = await session.acquire(tableId);
+            const result = await acquired!.adapter.runQueryNow();
+            const itemRow = result!.rows.find((r) => r.source_kind === ITEMS_RELATION_NAME);
+
+            await applyUnionedRowDelete(
+                session,
+                String(itemRow!.source_kind),
+                String(itemRow!.source_id),
+                "clear-projected-field",
+            );
+
+            expect(scheduled.due).toBeUndefined();
+            expect(scheduled.text).toBe("Ship the calendar");
+
+            const after = await acquired!.adapter.runQueryNow();
+            expect(after!.rows.some((r) => r.source_id === scheduled.key)).toBe(false);
         } finally {
             session.dispose();
         }

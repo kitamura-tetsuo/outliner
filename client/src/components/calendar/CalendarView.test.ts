@@ -155,4 +155,70 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         destroyCalendarUndoManager(projectDoc);
     });
+
+    it("creates a new item under the chosen destination via the New entry dialog", async () => {
+        const projectId = "proj-calendar-view-create";
+        const { projectDoc, project, page } = seedProject(projectId);
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_on, "
+                + "'item' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_on",
+            roleAllDay: "all_day",
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId("calendar-new-entry")).toBeTruthy());
+
+        await fireEvent.click(getByTestId("calendar-new-entry"));
+        await waitFor(() => expect(getByTestId("calendar-create-dialog")).toBeTruthy());
+
+        await fireEvent.input(getByTestId("calendar-create-title-input"), { target: { value: "Ship it" } });
+        await fireEvent.change(getByTestId("calendar-create-destination-select"), { target: { value: page.key } });
+        await fireEvent.click(getByTestId("calendar-create-submit"));
+
+        await waitFor(() => {
+            const created = [...new Items(projectDoc, project.tree, page.key)]
+                .find((child) => child.text === "Ship it");
+            expect(created).toBeDefined();
+        });
+        // The dialog closes and the grid picks up the new entry on the next requery.
+        await waitFor(() => expect(() => getByTestId("calendar-create-dialog")).toThrow());
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("deletes an item through the delete-disposition prompt", async () => {
+        const projectId = "proj-calendar-view-delete";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Standup";
+        item.start = `${todayIso()}T09:00:00.000Z`;
+        item.allDay = false;
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
+
+        await fireEvent.click(getByTestId(`calendar-entry-delete-outline_items:${item.key}`));
+        await waitFor(() => expect(getByTestId("calendar-delete-dialog")).toBeTruthy());
+
+        await fireEvent.click(getByTestId("calendar-delete-source"));
+
+        await waitFor(() => {
+            expect([...new Items(projectDoc, project.tree, page.key)].some((i) => i.key === item.key)).toBe(false);
+        });
+
+        destroyCalendarUndoManager(projectDoc);
+    });
 });
