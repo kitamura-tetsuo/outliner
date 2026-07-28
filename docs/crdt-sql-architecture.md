@@ -271,7 +271,9 @@ _Implemented_ — `allDay` / `start` / `duration` on the `Item` class
 (`shared/src/app-schema.ts`); the `all_day` / `start_on` / `start_at` /
 `duration` columns of `outline_items`
 (`client/src/services/yjstable/itemsRelation.ts`), tracked by #4341. The
-day/week/month/Gantt views that read them (#4347, #4350) are still to come.
+day/multi-day/week/month grid views that read them are
+`client/src/services/calendar/calendarTimeGridLayout.ts` and
+`calendarMonthGridLayout.ts` (#4347); Gantt (#4350) is still to come.
 
 **An all-day entry is a date. A timed entry is an instant. They are not the
 same type.** RFC 5545 separates them (`DTSTART;VALUE=DATE` versus a timestamp
@@ -371,9 +373,12 @@ expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
 `outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
 creation, exception recording and rule splitting in
 `client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
-day/week/month/Gantt views that would drive this from a drag gesture (#4347,
-#4350) and the visible-range injection that bounds expansion in a live query
-(#4345) are still to come.
+day/multi-day/week/month views drive occurrence expansion from a drag gesture
+as of #4347; Gantt (#4350) is still to come. The visible-range injection that
+would bound expansion at the SQL level (#4345) has not landed on `main`
+(tracked separately, in flight via #4361) — #4347's grid views clip to the
+visible range client-side in `layoutTimeGrid`/`layoutMonthGrid` in the
+meantime, which is correct but not yet the performance win §6.4 describes.
 
 **Recurring entries are not materialized.** The standard model, and the one
 adopted here, is:
@@ -558,10 +563,10 @@ _Implemented_ — the `calendars` `Y.Map` on the project doc
 created `Y.UndoManager` (§4.6); the embedded block (`componentType`
 "calendar", `client/src/components/calendar/CalendarBlock.svelte`) and the
 standalone route (`client/src/routes/calendars/[project]/[calendar]/+page.svelte`)
-render the same `CalendarView.svelte`, tracked by #4344. The day / week / month
-/ Gantt grid views (§6.1's block above says "still to come") read the assigned
-roles once #4347/#4350 land; for now `CalendarView` renders a plain result
-preview.
+render the same `CalendarView.svelte`, tracked by #4344. The day / multi-day /
+week / month grid views over the assigned roles are implemented (#4347,
+`CalendarTimeGrid.svelte` / `CalendarMonthGrid.svelte`); Gantt (#4350) is still
+to come and has no viewType of its own yet.
 
 A calendar has a query and view settings, and **no data of its own**. It does
 not need a table's three-structure subdoc; a `calendars` `Y.Map` on the project
