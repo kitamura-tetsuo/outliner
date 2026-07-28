@@ -12,7 +12,6 @@ const ASSETS = [
     ...files,
 ];
 
-/// <reference lib="webworker" />
 // Import idb in Service Worker environment
 declare const self: ServiceWorkerGlobalScope;
 
