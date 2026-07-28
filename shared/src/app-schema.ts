@@ -727,8 +727,8 @@ export class Item {
                                 try {
                                     cand.addAttachment(url);
                                 } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
-        }
+                                    logger.warn({ err: _e }, "Silenced error");
+                                }
                                 throw new Error("__DONE__");
                             }
                         }
@@ -744,8 +744,8 @@ export class Item {
                                     try {
                                         cand.addAttachment(url);
                                     } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
-        }
+                                        logger.warn({ err: _e }, "Silenced error");
+                                    }
                                     break;
                                 }
                             }

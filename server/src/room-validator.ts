@@ -32,7 +32,7 @@ export function parseRoom(path: string): RoomInfo | undefined {
             }
         }
     } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+        logger.warn({ err: _e }, "Silenced error");
         return undefined;
     }
     return undefined;

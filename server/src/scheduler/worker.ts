@@ -1,8 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
-import { JobData } from "./worker-types.js";
 import { logger } from "../logger.js";
-
+import { JobData } from "./worker-types.js";
 
 async function executeJob(data: JobData) {
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;

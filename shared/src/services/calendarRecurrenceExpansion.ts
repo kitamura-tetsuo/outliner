@@ -70,7 +70,7 @@ export function expandRecurrence(
     try {
         parsed = rrulestr(rule.rrule, { dtstart: floatingDtstart });
     } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+        logger.warn({ err: _e }, "Silenced error");
         return [];
     }
 

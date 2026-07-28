@@ -16,7 +16,7 @@ export function sanitizeUrl(urlStr: string | undefined): string {
 
         return url.pathname + url.search;
     } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+        logger.warn({ err: _e }, "Silenced error");
         return urlStr;
     }
 }
