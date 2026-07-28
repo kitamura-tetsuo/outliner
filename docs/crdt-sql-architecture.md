@@ -100,13 +100,14 @@ calendar_.
 
 ### 4.2 Projection scope
 
-_Implemented_ — `ItemsRelationProvider` projects only items carrying `due`, and
-maintains the relation by diffed upserts from `observeDeep`.
+_Implemented_ — `ItemsRelationProvider` projects items carrying `due` **or**
+`start` (§6.1, #4341), and maintains the relation by diffed upserts from
+`observeDeep`.
 
-Only items that carry the structured field are projected. This keeps the
-relation sparse (projecting every item of every page does not scale) and matches
-the user-facing rule above. Once `start` exists (§6.1), the condition widens to
-`due` **or** `start`, so that planned work without a deadline is projected too.
+Only items that carry one of the structured fields are projected. This keeps
+the relation sparse (projecting every item of every page does not scale) and
+matches the user-facing rule above: planned work without a deadline (`start`
+alone) is projected exactly like a deadline without a plan (`due` alone).
 
 Synchronization must be incremental: items live across the page structure
 (`YTree`), not in a single subdoc's Data Storage, so the projection is
@@ -265,6 +266,12 @@ speaks it — schedule rules use RRULE, and schedules export as iCal
 (SCH-5A1C2B3D) — so following it keeps one vocabulary rather than two.
 
 ### 6.1 Time model
+
+_Implemented_ — `allDay` / `start` / `duration` on the `Item` class
+(`shared/src/app-schema.ts`); the `all_day` / `start_on` / `start_at` /
+`duration` columns of `outline_items`
+(`client/src/services/yjstable/itemsRelation.ts`), tracked by #4341. The
+day/week/month/Gantt views that read them (#4347, #4350) are still to come.
 
 **An all-day entry is a date. A timed entry is an instant. They are not the
 same type.** RFC 5545 separates them (`DTSTART;VALUE=DATE` versus a timestamp

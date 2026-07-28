@@ -3,9 +3,9 @@
 //
 // Three things make this relation different from a table:
 //
-//   1. Scope. Only items carrying `due` are projected. Projecting every item
-//      of every page does not scale, and it matches the user-facing rule:
-//      give an item a date and it appears on the calendar.
+//   1. Scope. Only items carrying `due` or `start` are projected. Projecting
+//      every item of every page does not scale, and it matches the
+//      user-facing rule: give an item a date and it appears on the calendar.
 //   2. Incremental maintenance. Items live across the page structure
 //      (`YTree`), not in one subdoc's Data Storage, so the projection is
 //      maintained by diffed upserts from `observeDeep`, never by full rebuild.
@@ -51,19 +51,30 @@ export const ITEMS_RELATION_ORIGIN = Symbol("items-relation-origin");
 /** The Y.Map holding the outline tree inside a project doc. */
 export const ORDERED_TREE_KEY = "orderedTree";
 
-/** Node value field that decides whether an item is projected at all. */
+/** Node value field that (along with `START_FIELD`) decides projection scope. */
 const DUE_FIELD = "due";
+
+/** Node value field carrying the floating date or instant (see §6.1). */
+const START_FIELD = "start";
 
 /**
  * Columns of the projection, and the node value field each maps back to.
  * `id` is the item's tree key: it is what `applyWrite` addresses a row by, and
  * unlike the item's `id` field it is guaranteed present and unique.
+ *
+ * `start_on` and `start_at` both map back to `start`: which one a write lands
+ * as is decided by which column it targets (see `writeStart`), not by a
+ * second field.
  */
 const COLUMN_TO_FIELD: Record<string, string> = {
     text: "text",
     due: DUE_FIELD,
     done: "done",
     tags: "tags",
+    all_day: "allDay",
+    start_on: START_FIELD,
+    start_at: START_FIELD,
+    duration: "duration",
 };
 
 export const ITEMS_RELATION_COLUMNS = [
@@ -74,6 +85,10 @@ export const ITEMS_RELATION_COLUMNS = [
     "due",
     "done",
     "tags",
+    "all_day",
+    "start_on",
+    "start_at",
+    "duration",
 ] as const;
 
 function createTableSql(): string {
@@ -84,7 +99,11 @@ function createTableSql(): string {
         "text" TEXT,
         "due" TIMESTAMPTZ,
         "done" BOOLEAN,
-        "tags" TEXT
+        "tags" TEXT,
+        "all_day" BOOLEAN,
+        "start_on" DATE,
+        "start_at" TIMESTAMPTZ,
+        "duration" INTERVAL
     )`;
 }
 
@@ -93,10 +112,18 @@ interface ProjectedRow {
     page_id: string | undefined;
     parent_id: string | undefined;
     text: string;
-    due: string;
+    /** Absent when the item is projected only because it carries `start`. */
+    due: string | undefined;
     done: boolean;
     /** JSON-encoded array of tag strings — see §4.7 of the CRDT/SQL ADR. */
     tags: string;
+    /** Undefined when the item carries no `start` (only `due`). */
+    all_day: boolean | undefined;
+    /** All-day entries only; mutually exclusive with `start_at`. */
+    start_on: string | undefined;
+    /** Timed entries only; mutually exclusive with `start_on`. */
+    start_at: string | undefined;
+    duration: string | undefined;
 }
 
 export interface ItemsRelationOptions {
@@ -240,7 +267,18 @@ export class ItemsRelationProvider implements RelationProvider {
                         touched.push(...this.subtreeKeys(write.rowId));
                         this.tree.deleteNodeAndDescendants(write.rowId);
                     } else {
-                        this.writeField(write.rowId, "due", null);
+                        // Clear every field that could keep the item
+                        // projected: `due` alone no longer guarantees that
+                        // (§4.2 widened the scope to `due` OR `start`).
+                        const nodeValue = this.nodeValue(write.rowId);
+                        if (!nodeValue) {
+                            throw new RelationWriteError(
+                                `Item "${write.rowId}" does not exist in this project`,
+                            );
+                        }
+                        nodeValue.delete("due");
+                        nodeValue.delete("start");
+                        nodeValue.delete("allDay");
                         touched.push(write.rowId);
                     }
                     return;
@@ -281,6 +319,22 @@ export class ItemsRelationProvider implements RelationProvider {
             this.writeTags(nodeValue, value);
             return;
         }
+        if (column === "all_day") {
+            if (value === null || value === undefined) {
+                nodeValue.delete("allDay");
+            } else {
+                nodeValue.set("allDay", this.toBoolean(value));
+            }
+            return;
+        }
+        if (column === "start_on") {
+            this.writeStart(nodeValue, value, true);
+            return;
+        }
+        if (column === "start_at") {
+            this.writeStart(nodeValue, value, false);
+            return;
+        }
         // Absent means "not scheduled"/"not done": null clears the field
         // rather than storing a null the accessors would have to special-case.
         if (value === null || value === undefined || value === "") {
@@ -288,6 +342,23 @@ export class ItemsRelationProvider implements RelationProvider {
             return;
         }
         nodeValue.set(field, field === "done" ? this.toBoolean(value) : String(value));
+    }
+
+    /**
+     * `start_on` and `start_at` both write the item's single `start` field;
+     * which column the write targets decides `allDay` too, since that is what
+     * distinguishes a floating date from an instant (§6.1). Clearing either
+     * clears both, so a later write to the other column starts from a clean
+     * shape rather than inheriting a stale one.
+     */
+    private writeStart(nodeValue: Y.Map<unknown>, value: RelationValue, allDay: boolean): void {
+        if (value === null || value === undefined || value === "") {
+            nodeValue.delete(START_FIELD);
+            nodeValue.delete("allDay");
+            return;
+        }
+        nodeValue.set(START_FIELD, String(value));
+        nodeValue.set("allDay", allDay);
     }
 
     /** Replace the item's tag set from the relation's JSON-encoded value. */
@@ -385,23 +456,33 @@ export class ItemsRelationProvider implements RelationProvider {
     private async insertRow(db: PGlite, row: ProjectedRow): Promise<void> {
         try {
             await db.query(
-                `INSERT INTO ${this.qualifiedName()} ("id", "page_id", "parent_id", "text", "due", "done", "tags")
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)
+                `INSERT INTO ${this.qualifiedName()}
+                     ("id", "page_id", "parent_id", "text", "due", "done", "tags",
+                      "all_day", "start_on", "start_at", "duration")
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                  ON CONFLICT ("id") DO UPDATE SET
                      "page_id" = EXCLUDED."page_id",
                      "parent_id" = EXCLUDED."parent_id",
                      "text" = EXCLUDED."text",
                      "due" = EXCLUDED."due",
                      "done" = EXCLUDED."done",
-                     "tags" = EXCLUDED."tags"`,
+                     "tags" = EXCLUDED."tags",
+                     "all_day" = EXCLUDED."all_day",
+                     "start_on" = EXCLUDED."start_on",
+                     "start_at" = EXCLUDED."start_at",
+                     "duration" = EXCLUDED."duration"`,
                 [
                     row.id,
                     row.page_id ?? null,
                     row.parent_id ?? null,
                     row.text,
-                    row.due,
+                    row.due ?? null,
                     row.done,
                     row.tags,
+                    row.all_day ?? null,
+                    row.start_on ?? null,
+                    row.start_at ?? null,
+                    row.duration ?? null,
                 ],
             );
         } catch (err) {
@@ -445,8 +526,22 @@ export class ItemsRelationProvider implements RelationProvider {
     private projectRow(key: string): ProjectedRow | undefined {
         const value = this.nodeValue(key);
         if (!value) return undefined;
-        const due = value.get(DUE_FIELD);
-        if (typeof due !== "string" || due.trim() === "") return undefined;
+
+        const dueRaw = value.get(DUE_FIELD);
+        const due = typeof dueRaw === "string" && dueRaw.trim() !== "" ? dueRaw.trim() : undefined;
+        const startRaw = value.get(START_FIELD);
+        const start = typeof startRaw === "string" && startRaw.trim() !== ""
+            ? startRaw.trim()
+            : undefined;
+
+        // §4.2: an item is projected when it carries `due` OR `start`.
+        if (due === undefined && start === undefined) return undefined;
+
+        const allDay = start === undefined ? undefined : value.get("allDay") === true;
+        const durationRaw = value.get("duration");
+        const duration = typeof durationRaw === "string" && durationRaw.trim() !== ""
+            ? durationRaw.trim()
+            : undefined;
 
         const text = value.get("text");
         const parentKey = this.parentOf(key);
@@ -458,9 +553,15 @@ export class ItemsRelationProvider implements RelationProvider {
             page_id: this.pageKeyOf(key),
             parent_id: parentKey === "root" ? undefined : parentKey,
             text: text instanceof Y.Text ? text.toString() : String(text ?? ""),
-            due: due.trim(),
+            due,
             done: value.get("done") === true,
             tags: JSON.stringify(tagsArr instanceof Y.Array ? tagsArr.toArray() : []),
+            all_day: allDay,
+            // `start_on`/`start_at` are mutually exclusive: `allDay` decides
+            // which one of the two carries `start`, never both (§6.1).
+            start_on: allDay === true ? start : undefined,
+            start_at: allDay === false ? start : undefined,
+            duration,
         };
     }
 
