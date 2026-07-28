@@ -94,6 +94,31 @@ describe("buildCalendarEntries", () => {
         expect(rows[1].allDay).toBe(false);
     });
 
+    it("carries parent_id for Gantt's hierarchy (#4350) when the query selects it", () => {
+        const [entry] = buildCalendarEntries(
+            {
+                columns: ["title", "start", "source_kind", "source_id", "parent_id"],
+                rows: [{
+                    title: "Subtask",
+                    start: "2026-03-16T09:00:00.000Z",
+                    source_kind: "item",
+                    source_id: "child-1",
+                    parent_id: "parent-1",
+                }],
+            },
+            SETTINGS,
+        );
+        expect(entry.parentId).toBe("parent-1");
+    });
+
+    it("leaves parentId undefined when the query does not select parent_id", () => {
+        const [entry] = buildCalendarEntries(
+            { columns: ["title", "source_kind", "source_id"], rows: [{ title: "Root", source_kind: "item", source_id: "r1" }] },
+            SETTINGS,
+        );
+        expect(entry.parentId).toBeUndefined();
+    });
+
     it("leaves start/allDay/duration undefined when the relevant role is unassigned", () => {
         const [entry] = buildCalendarEntries(
             { columns: ["title"], rows: [{ title: "Bare" }] },

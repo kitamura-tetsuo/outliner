@@ -19,6 +19,27 @@ import {
 
 export type CalendarViewType = "day" | "days" | "week" | "month";
 
+/**
+ * Gantt's own axis granularity (#4350), independent of `CalendarViewType`:
+ * which tick the horizontal axis is drawn in. "The chosen scale sets the
+ * visible span" (docs/crdt-sql-architecture.md §6.7) — each scale pairs a
+ * tick unit with a span wide enough to show a useful number of ticks, so a
+ * coarser scale asks the engine for more time but never for "everything".
+ */
+export type GanttScale = "day" | "week" | "month" | "quarter";
+
+export const DEFAULT_GANTT_SCALE: GanttScale = "day";
+
+/** Total visible span for each scale, in whole days. */
+const GANTT_SCALE_SPAN_DAYS: Record<GanttScale, number> = {
+    day: 30, // ~1 month of day columns
+    week: 90, // ~1 quarter of week columns
+    month: 365, // ~1 year of month columns
+    quarter: 730, // ~8 quarters (2 years) of quarter columns
+};
+
+const DAY_MS = 86_400_000;
+
 export interface ViewRange {
     /** Inclusive lower bound, a UTC instant. */
     start: number;
@@ -151,4 +172,86 @@ export function shiftAnchor(
 /** Today's date at local midnight, in `timeZone`, as a UTC instant. */
 export function todayAnchor(timeZone: string, nowUtcMs: number): number {
     return startOfWallDay(nowUtcMs, timeZone);
+}
+
+/**
+ * The Gantt chart's visible window (§6.7): `GANTT_SCALE_SPAN_DAYS[scale]`
+ * whole days starting at the anchor's local midnight, in `timeZone`. Half-open
+ * `[start, end)`, the same convention every other range in this module uses,
+ * so it injects into `view.range_start`/`view.range_end` (#4345) exactly like
+ * the time-grid views' own range.
+ */
+export function computeGanttRange(anchorUtcMs: number, scale: GanttScale, timeZone: string): ViewRange {
+    const start = startOfWallDay(anchorUtcMs, timeZone);
+    return { start, end: addWallDays(start, GANTT_SCALE_SPAN_DAYS[scale], timeZone) };
+}
+
+/** One tick's worth of calendar days, for `shiftGanttAnchor` and axis-tick generation. */
+function ganttTickDays(scale: GanttScale, anchorUtcMs: number, timeZone: string): number {
+    switch (scale) {
+        case "day":
+            return 1;
+        case "week":
+            return 7;
+        case "quarter":
+            return 91; // a fixed-width approximation; tick boundaries below still snap to real month starts
+        case "month": {
+            const w = utcMsToWallTime(anchorUtcMs, timeZone);
+            const thisMonth = wallTimeToUtcMs({ ...w, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+            const nextMonth = wallTimeToUtcMs({ ...w, month: w.month + 1, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+            return Math.round((nextMonth - thisMonth) / DAY_MS);
+        }
+    }
+}
+
+/** Move the Gantt anchor by one tick of `scale`, in `timeZone`'s wall clock. */
+export function shiftGanttAnchor(anchorUtcMs: number, scale: GanttScale, timeZone: string, direction: 1 | -1): number {
+    const dayStart = startOfWallDay(anchorUtcMs, timeZone);
+    return addWallDays(dayStart, direction * ganttTickDays(scale, dayStart, timeZone), timeZone);
+}
+
+export interface GanttTick {
+    /** Local midnight of this tick's start, as a UTC instant. */
+    startUtcMs: number;
+    /** Human label for the axis header (e.g. "Mar 16", "Week of Mar 16", "March 2026", "Q1 2026"). */
+    label: string;
+}
+
+/**
+ * Tick boundaries across `[rangeStart, rangeEnd)`, in `timeZone`'s wall
+ * clock — month and quarter ticks snap to real calendar-month/quarter
+ * starts rather than a fixed day count, so "March" is always the whole of
+ * March regardless of how many days it has.
+ */
+export function computeGanttTicks(
+    rangeStart: number,
+    rangeEnd: number,
+    scale: GanttScale,
+    timeZone: string,
+): GanttTick[] {
+    const ticks: GanttTick[] = [];
+    let cursor = rangeStart;
+    let guard = 0;
+    while (cursor < rangeEnd && guard < 1000) {
+        guard++;
+        const w = utcMsToWallTime(cursor, timeZone);
+        if (scale === "day") {
+            ticks.push({ startUtcMs: cursor, label: `${w.month}/${w.day}` });
+            cursor = addWallDays(cursor, 1, timeZone);
+        } else if (scale === "week") {
+            ticks.push({ startUtcMs: cursor, label: `${w.month}/${w.day}` });
+            cursor = addWallDays(cursor, 7, timeZone);
+        } else if (scale === "month") {
+            ticks.push({ startUtcMs: cursor, label: `${w.year}-${String(w.month).padStart(2, "0")}` });
+            cursor = wallTimeToUtcMs({ ...w, month: w.month + 1, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+        } else {
+            const quarter = Math.floor((w.month - 1) / 3) + 1;
+            ticks.push({ startUtcMs: cursor, label: `Q${quarter} ${w.year}` });
+            const nextQuarterMonth = (quarter) * 3 + 1;
+            cursor = nextQuarterMonth > 12
+                ? wallTimeToUtcMs({ ...w, year: w.year + 1, month: nextQuarterMonth - 12, day: 1, hour: 0, minute: 0, second: 0 }, timeZone)
+                : wallTimeToUtcMs({ ...w, month: nextQuarterMonth, day: 1, hour: 0, minute: 0, second: 0 }, timeZone);
+        }
+    }
+    return ticks;
 }

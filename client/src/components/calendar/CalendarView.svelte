@@ -19,9 +19,16 @@ import {
     writeCalendarEntryDuration,
     writeCalendarEntryStart,
 } from "../../services/calendar/calendarEntryWrite";
+import type { GanttRow } from "../../services/calendar/calendarGanttLayout";
+import { analyzeGanttSubtreeShift, applyGanttSubtreeShift, type GanttSubtreeShiftAnalysis } from "../../services/calendar/calendarGanttWrite";
 import {
+    computeGanttRange,
+    computeGanttTicks,
     computeViewRange,
+    DEFAULT_GANTT_SCALE,
+    type GanttScale,
     shiftAnchor,
+    shiftGanttAnchor,
     todayAnchor,
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
@@ -52,6 +59,7 @@ import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import CalendarGanttChart from "./CalendarGanttChart.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
 import CalendarTimeGrid from "./CalendarTimeGrid.svelte";
@@ -71,12 +79,15 @@ const EMPTY_SETTINGS: CalendarSettings = {
     groupAxes: [],
 };
 
-const VIEW_TYPE_OPTIONS: { value: CalendarViewType; label: string; }[] = [
+const VIEW_TYPE_OPTIONS: { value: string; label: string; }[] = [
     { value: "day", label: "Day" },
     { value: "days", label: "Multi-day" },
     { value: "week", label: "Week" },
     { value: "month", label: "Month" },
+    { value: "gantt", label: "Gantt" },
 ];
+
+const GANTT_SCALES = new Set<GanttScale>(["day", "week", "month", "quarter"]);
 
 let settings = $state<CalendarSettings>(EMPTY_SETTINGS);
 let queryInput = $state("");
@@ -101,13 +112,21 @@ const weekStart = $derived(settings.weekStart ?? resolveDefaultWeekStart());
 const workingHoursStart = $derived(settings.workingHoursStartMinutes ?? DEFAULT_WORKING_HOURS_START_MINUTES);
 const workingHoursEnd = $derived(settings.workingHoursEndMinutes ?? DEFAULT_WORKING_HOURS_END_MINUTES);
 const KNOWN_VIEW_TYPES = new Set<CalendarViewType>(["day", "days", "week", "month"]);
-// A stored viewType this component does not know how to grid (a future
-// "gantt", or a stale value) falls back to "week" rather than crashing the
-// range computation, which is only total over the known variants.
+const isGantt = $derived(settings.viewType === "gantt");
+// A stored viewType this component does not know how to grid (a stale
+// value) falls back to "week" rather than crashing the range computation,
+// which is only total over the known variants. Irrelevant when `isGantt`,
+// which uses its own scale/range below.
 const viewType = $derived(
     KNOWN_VIEW_TYPES.has(settings.viewType as CalendarViewType) ? (settings.viewType as CalendarViewType) : "week",
 );
-const range = $derived(computeViewRange(anchorUtcMs, viewType, weekStart, timeZone));
+const ganttScale = $derived(
+    GANTT_SCALES.has(settings.ganttScale as GanttScale) ? (settings.ganttScale as GanttScale) : DEFAULT_GANTT_SCALE,
+);
+const range = $derived(
+    isGantt ? computeGanttRange(anchorUtcMs, ganttScale, timeZone) : computeViewRange(anchorUtcMs, viewType, weekStart, timeZone),
+);
+const ganttTicks = $derived(isGantt ? computeGanttTicks(range.start, range.end, ganttScale, timeZone) : []);
 // The same visible window, in the `{ start: Date, end: Date }` shape the
 // query runner injects as `view.range_start`/`view.range_end` (§6.4). The
 // grid keeps working in UTC millis; only the SQL boundary needs Dates.
@@ -115,11 +134,14 @@ const queryRange = $derived({ start: new Date(range.start), end: new Date(range.
 
 const rawEntries = $derived(buildCalendarEntries(result, settings));
 const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
+const entryByKey = $derived(new Map(placedEntries.map((e) => [e.key, e])));
 
 const timeGridLayout = $derived(
-    viewType === "month" ? undefined : layoutTimeGrid(placedEntries, range.start, range.end),
+    isGantt || viewType === "month" ? undefined : layoutTimeGrid(placedEntries, range.start, range.end),
 );
-const monthCells = $derived(viewType === "month" ? layoutMonthGrid(placedEntries, range.start, range.end) : undefined);
+const monthCells = $derived(
+    !isGantt && viewType === "month" ? layoutMonthGrid(placedEntries, range.start, range.end) : undefined,
+);
 
 function isStartWritable(entry: CalendarEntry): boolean {
     return resolveCalendarEntryWritability(entry, settings, writableColumns).startWritable;
@@ -146,6 +168,7 @@ function readSettingsFromMap(): CalendarSettings | undefined {
         weekStart: map.get("weekStart") as number | undefined,
         workingHoursStartMinutes: map.get("workingHoursStartMinutes") as number | undefined,
         workingHoursEndMinutes: map.get("workingHoursEndMinutes") as number | undefined,
+        ganttScale: map.get("ganttScale") as string | undefined,
     };
 }
 
@@ -185,9 +208,10 @@ function refreshMirror() {
     const queryChanged = next.query !== settings.query;
     const viewTypeChanged = next.viewType !== settings.viewType;
     const timezoneChanged = next.timezone !== settings.timezone;
+    const ganttScaleChanged = next.ganttScale !== settings.ganttScale;
     settings = next;
     queryInput = next.query;
-    if (queryChanged || viewTypeChanged || timezoneChanged) scheduleRequery();
+    if (queryChanged || viewTypeChanged || timezoneChanged || ganttScaleChanged) scheduleRequery();
 }
 
 /**
@@ -213,16 +237,24 @@ function setViewType(e: Event) {
     updateCalendar(project, calendarId, { viewType: (e.target as HTMLSelectElement).value });
 }
 
+function commitGanttScale(scale: GanttScale) {
+    updateCalendar(project, calendarId, { ganttScale: scale });
+}
+
 function goToday() {
     anchorUtcMs = todayAnchor(timeZone, Date.now());
     scheduleRequery();
 }
 function goPrev() {
-    anchorUtcMs = shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, -1);
+    anchorUtcMs = isGantt
+        ? shiftGanttAnchor(anchorUtcMs, ganttScale, timeZone, -1)
+        : shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, -1);
     scheduleRequery();
 }
 function goNext() {
-    anchorUtcMs = shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, 1);
+    anchorUtcMs = isGantt
+        ? shiftGanttAnchor(anchorUtcMs, ganttScale, timeZone, 1)
+        : shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, 1);
     scheduleRequery();
 }
 
@@ -276,6 +308,32 @@ async function commitDuration(entry: CalendarEntry, newDurationMs: number) {
 
 function cancelDrag(entry: CalendarEntry) {
     optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+}
+
+// --- Gantt's own write: a parent roll-up bar has no start column of its
+// own, so dragging it shifts every start-bearing descendant's own `start`
+// directly (calendarGanttWrite.ts), never through the relation write path
+// leaf bars use — see that module's header comment for why.
+
+function subtreeShiftAnalysis(row: GanttRow): GanttSubtreeShiftAnalysis {
+    return analyzeGanttSubtreeShift(row, entryByKey, settings, writableColumns);
+}
+
+function commitSubtreeShift(_row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) {
+    let next = optimisticOverrides;
+    for (const member of analysis.members) {
+        next = setOptimisticOverride(next, member.key, { startMs: member.startMs + deltaMs });
+    }
+    optimisticOverrides = next;
+    try {
+        applyGanttSubtreeShift(project, analysis.members, deltaMs);
+        writeError = undefined;
+    } catch (err) {
+        for (const member of analysis.members) {
+            optimisticOverrides = clearOptimisticOverride(optimisticOverrides, member.key);
+        }
+        writeError = err instanceof Error ? err.message : String(err);
+    }
 }
 
 onMount(() => {
@@ -366,7 +424,27 @@ onDestroy(() => {
         <p class="hint">Grid views below render this query's result, but nothing can be dragged until it is writable.</p>
     {/if}
 
-    {#if viewType === "month" && monthCells}
+    {#if isGantt}
+        <CalendarGanttChart
+            entries={placedEntries}
+            groupAxes={settings.groupAxes}
+            rangeStart={range.start}
+            rangeEnd={range.end}
+            ticks={ganttTicks}
+            scale={ganttScale}
+            onScaleChange={commitGanttScale}
+            isLeafStartWritable={isStartWritable}
+            isLeafDurationWritable={isDurationWritable}
+            analyzeSubtreeShift={subtreeShiftAnalysis}
+            onLeafDragMove={previewStart}
+            onLeafDragEnd={commitStart}
+            onLeafDragCancel={cancelDrag}
+            onLeafResizeMove={previewDuration}
+            onLeafResizeEnd={commitDuration}
+            onLeafKeyboardMove={commitStart}
+            onSubtreeDragEnd={commitSubtreeShift}
+        />
+    {:else if viewType === "month" && monthCells}
         <CalendarMonthGrid
             cells={monthCells}
             {weekStart}

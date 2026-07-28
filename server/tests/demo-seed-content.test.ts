@@ -5,6 +5,7 @@ import {
     buildDemoScheduleRules,
     DEMO_CALENDAR_ID,
     DEMO_DAILY_RULE_ID,
+    DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_LANDING_PAGE_TITLE,
     DEMO_PROJECT_TITLE,
@@ -431,13 +432,14 @@ describe("Demo seed content", () => {
             expect(calendarMap, `calendar ${template.calendarId} is registered`).to.not.equal(undefined);
             expect(calendarMap!.get("name")).to.equal(template.name);
             expect(calendarMap!.get("query")).to.equal(template.query);
+            expect(calendarMap!.get("viewType")).to.equal(template.viewType ?? "week");
             expect(calendarMap!.get("roleTitle")).to.equal(template.roleTitle);
             expect(calendarMap!.get("roleStart")).to.equal(template.roleStart);
             expect(calendarMap!.get("roleAllDay")).to.equal(template.roleAllDay);
             expect(calendarMap!.get("roleDuration")).to.equal(template.roleDuration);
             expect(calendarMap!.get("roleDue")).to.equal(template.roleDue);
             const groupAxes = calendarMap!.get("groupAxes") as Y.Array<string>;
-            expect(groupAxes.toArray()).to.deep.equal(template.groupAxes);
+            expect(groupAxes.toArray()).to.deep.equal(template.groupAxes ?? []);
         }
     });
 
@@ -472,5 +474,47 @@ describe("Demo seed content", () => {
         expect(template.query).to.contain("'item' AS source_kind");
         expect(template.query).to.contain("id AS source_id");
         expect(template.query).to.contain("FROM outline_items");
+    });
+
+    it("seeds a live Gantt calendar component (#4350) whose query selects parent_id and the reserved source_kind", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const ganttItem = findChildByText(calendarsPage!.items, "Project plan");
+        expect(ganttItem, "gantt calendar item exists").to.not.equal(undefined);
+        expect(ganttItem!.componentType).to.equal("calendar");
+        expect(ganttItem!.calendarId).to.equal(DEMO_GANTT_CALENDAR_ID);
+
+        const template = demoCalendars.find((t) => t.calendarId === DEMO_GANTT_CALENDAR_ID);
+        expect(template, "gantt calendar template exists").to.not.equal(undefined);
+        expect(template!.viewType).to.equal("gantt");
+        expect(template!.query).to.contain("parent_id");
+        // The reserved relation name itself, not an arbitrary label — a write
+        // must resolve back to `outline_items` via `resolveRelation`.
+        expect(template!.query).to.contain("'outline_items' AS source_kind");
+    });
+
+    it("seeds a nested demo hierarchy so a parent's Gantt bar can roll up from its children", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        const launchPlan = findChildByText(calendarsPage!.items, "Launch plan");
+        expect(launchPlan, "launch plan parent exists").to.not.equal(undefined);
+        expect(launchPlan!.due).to.be.a("string");
+        expect(launchPlan!.start).to.equal(undefined);
+
+        const design = findChildByText(launchPlan!.items, "Design");
+        const build = findChildByText(launchPlan!.items, "Build");
+        const test = findChildByText(launchPlan!.items, "Test");
+        expect(design, "Design child exists").to.not.equal(undefined);
+        expect(build, "Build child exists").to.not.equal(undefined);
+        expect(test, "Test child exists").to.not.equal(undefined);
+        expect(design!.start).to.be.a("string");
+        expect(build!.start).to.be.a("string");
+
+        // A grandchild, to exercise the recursive roll-up (a grandchild's
+        // span must reach all the way up to "Launch plan").
+        const backend = findChildByText(build!.items, "Backend");
+        const frontend = findChildByText(build!.items, "Frontend");
+        expect(backend, "Backend grandchild exists").to.not.equal(undefined);
+        expect(frontend, "Frontend grandchild exists").to.not.equal(undefined);
     });
 });

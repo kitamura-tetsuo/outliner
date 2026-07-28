@@ -1,9 +1,11 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §1–§5 are implemented. §6 records the contract the calendar
-UI is to be built against and is not implemented yet; it also covers the two
-write affordances the calendar owns — the INSERT destination picker and the
-DELETE prompt (§4.3).
+Status: accepted. §1–§5 are implemented. §6.1, §6.2, §6.4, §6.5, §6.6 and §6.7
+are implemented; §6.3's role assignment is implemented, but its grouping
+*lanes* (rendering entries by axis, writability-gated drops) are still in
+progress (#4348). The two write affordances the calendar owns — the INSERT
+destination picker and the DELETE prompt (§4.3) — are still in progress
+(#4349).
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -273,7 +275,8 @@ _Implemented_ — `allDay` / `start` / `duration` on the `Item` class
 (`client/src/services/yjstable/itemsRelation.ts`), tracked by #4341. The
 day/multi-day/week/month grid views that read them are
 `client/src/services/calendar/calendarTimeGridLayout.ts` and
-`calendarMonthGridLayout.ts` (#4347); Gantt (#4350) is still to come.
+`calendarMonthGridLayout.ts` (#4347); Gantt's own reading of them is
+`calendarGanttLayout.ts` (#4350).
 
 **An all-day entry is a date. A timed entry is an instant. They are not the
 same type.** RFC 5545 separates them (`DTSTART;VALUE=DATE` versus a timestamp
@@ -374,7 +377,10 @@ expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
 creation, exception recording and rule splitting in
 `client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
 day/multi-day/week/month views drive occurrence expansion from a drag gesture
-as of #4347; Gantt (#4350) is still to come. The visible-range injection that
+as of #4347; Gantt (#4350) reuses the same leaf write path
+(`calendarEntryWrite.ts`) and so shares this same posture, with no
+Gantt-specific occurrence-materialization behavior added. The visible-range
+injection that
 would bound expansion at the SQL level (#4345) has not landed on `main`
 (tracked separately, in flight via #4361) — #4347's grid views clip to the
 visible range client-side in `layoutTimeGrid`/`layoutMonthGrid` in the
@@ -565,8 +571,9 @@ created `Y.UndoManager` (§4.6); the embedded block (`componentType`
 standalone route (`client/src/routes/calendars/[project]/[calendar]/+page.svelte`)
 render the same `CalendarView.svelte`, tracked by #4344. The day / multi-day /
 week / month grid views over the assigned roles are implemented (#4347,
-`CalendarTimeGrid.svelte` / `CalendarMonthGrid.svelte`); Gantt (#4350) is still
-to come and has no viewType of its own yet.
+`CalendarTimeGrid.svelte` / `CalendarMonthGrid.svelte`); Gantt is its own
+`"gantt"` `viewType` (#4350, `CalendarGanttChart.svelte`), with its own axis
+scale (`ganttScale`) independent of the four time-grid view types.
 
 A calendar has a query and view settings, and **no data of its own**. It does
 not need a table's three-structure subdoc; a `calendars` `Y.Map` on the project
@@ -580,13 +587,59 @@ as a standalone route.
 
 ### 6.7 Gantt
 
+_Implemented_ — `client/src/services/calendar/calendarGanttLayout.ts`
+(hierarchy, roll-up, milestone/point rendering, grouped flattening),
+`client/src/services/calendar/calendarGanttWrite.ts` (the subtree-shift
+write), `client/src/services/calendar/calendarGridRange.ts`'s
+`computeGanttRange`/`shiftGanttAnchor`/`computeGanttTicks` (the day/week/
+month/quarter axis scale), `client/src/components/calendar/CalendarGanttChart.svelte`,
+tracked by #4350.
+
 Gantt hierarchy is the outline hierarchy: `outline_items` already carries
 `parent_id`, so nesting comes for free and means the same thing it means in the
-outline.
+outline. Because the items relation only ever projects a row that carries
+`due`/`start`/`rrule` (§4.2), a purely structural ancestor with no dates of its
+own is never itself a row; a dated item's nesting therefore reaches only as
+far up as its nearest *dated* ancestor, which is an accepted consequence of
+reusing the existing projection gate rather than widening it or fabricating
+synthetic, non-writable rows.
+
+A parent's bar is derived, never stored: it is the earliest start to the
+latest end across its whole subtree (recursive, so a grandchild's span
+reaches the top), computed fresh on every layout rather than read from the
+parent's own `start`/`duration`. Its own `due`, if present, still renders as
+an independent marker alongside the rolled-up bar. Dragging a rolled-up bar
+therefore cannot go through the ordinary per-row relation write
+(`relationRowWrite.ts`) the way a leaf bar's drag does — there is no row to
+address for a shift that touches N descendants — so it writes every
+start-bearing descendant's own `Item.start` directly, batched into one
+`project.ydoc.transact` call so the outline's `Y.UndoManager` records the
+whole shift as a single stack item. A subtree containing one descendant whose
+start is not itself writable (per the calendar's own column-writability
+analysis) blocks the whole shift rather than moving part of it.
+
+When a calendar's grouping axis (§6.3) is active, grouping wins over
+hierarchy: rows flatten to one lane section per group value, with no nesting
+and no roll-up, because a rolled-up bar computed only from the children
+visible in one lane would mean a different span depending on which lane is
+open — the same "same data looks different depending on where you stand"
+failure the viewer-timezone decision (§6.5) and the affordance-consistency
+rule (§3) remove everywhere else.
+
+The axis granularity (day/week/month/quarter) is its own calendar setting
+(`ganttScale`), independent of the four time-grid view types — switching it
+recomputes the injected visible range (§6.4) the same way switching between
+day/week/month does.
+
+Collapse/expand state is per-viewer, local UI state (mirroring the
+destination-history precedent of #4349) — never written to the project doc,
+so folding a subtree never folds it for another collaborator and costs no
+undo entry.
 
 Dependency links between entries — finish-to-start arrows, critical path — are
 **out of scope**. They are a new relation between rows, not a property of one,
 and belong in their own decision rather than smuggled into the calendar's.
+No dependency-link data or UI was added here.
 
 ## 7. What must not be done
 

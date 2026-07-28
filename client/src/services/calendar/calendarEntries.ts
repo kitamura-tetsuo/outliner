@@ -18,6 +18,14 @@ export interface CalendarEntry {
     key: string;
     sourceKind?: string;
     sourceId?: string;
+    /**
+     * The outline parent of this row's item, when the query's SELECT carries
+     * a `parent_id` column (Gantt's hierarchy, #4350 — `outline_items`
+     * already carries it, so nesting means exactly what it means in the
+     * outline). Only ever set for items-relation rows; a table-derived row
+     * has no `parent_id` and so never nests.
+     */
+    parentId?: string;
     title: string;
     /** True for a floating-date entry, false for an instant, undefined when the row has no start at all. */
     allDay?: boolean;
@@ -60,6 +68,7 @@ export function buildCalendarEntries(
         const sourceId = toStringValue(row["source_id"]);
         const idFallback = toStringValue(row["id"]);
         const key = sourceKind && sourceId ? `${sourceKind}:${sourceId}` : idFallback ?? `row:${index}`;
+        const parentId = toStringValue(row["parent_id"]);
 
         const title = settings.roleTitle ? toStringValue(row[settings.roleTitle]) ?? "" : "";
 
@@ -81,6 +90,7 @@ export function buildCalendarEntries(
             key,
             sourceKind,
             sourceId,
+            parentId,
             title,
             allDay,
             startMs,

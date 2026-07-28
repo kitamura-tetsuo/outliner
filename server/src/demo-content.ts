@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 25;
+export const DEMO_TEMPLATE_VERSION = 26;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -547,6 +547,9 @@ export interface DemoCalendarTemplate {
     calendarId: string;
     name: string;
     query: string;
+    // Defaults to "week" (day/multi-day/week/month grid views, #4347).
+    // "gantt" selects the Gantt view (#4350) instead.
+    viewType?: string;
     roleTitle?: string;
     roleStart?: string;
     roleAllDay?: string;
@@ -556,6 +559,7 @@ export interface DemoCalendarTemplate {
 }
 
 export const DEMO_CALENDAR_ID = "demo-calendar-tasks";
+export const DEMO_GANTT_CALENDAR_ID = "demo-calendar-gantt";
 
 export const demoCalendars: DemoCalendarTemplate[] = [
     {
@@ -573,6 +577,24 @@ export const demoCalendars: DemoCalendarTemplate[] = [
         roleDue: "due",
         groupAxes: ["tags"],
     },
+    {
+        calendarId: DEMO_GANTT_CALENDAR_ID,
+        name: "Project Plan (Gantt)",
+        // `parent_id` drives Gantt's hierarchy/roll-up (#4350, §6.7) — it is
+        // the outline's own parent, projected for free by `outline_items`.
+        // `source_kind` must be the reserved relation name itself
+        // (`ITEMS_RELATION_NAME`, not an arbitrary label) or a write can
+        // never resolve back to a provider (`resolveRelation` matches on the
+        // exact name).
+        query: "SELECT id, text AS title, due, all_day, start_on, start_at, duration, parent_id, "
+            + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+        viewType: "gantt",
+        roleTitle: "title",
+        roleStart: "start_at",
+        roleAllDay: "all_day",
+        roleDuration: "duration",
+        roleDue: "due",
+    },
 ];
 
 /** Write the demo's calendars into the project doc's `calendars` map. */
@@ -583,7 +605,7 @@ export function registerDemoCalendars(projectDoc: Y.Doc): void {
         calendars.set(template.calendarId, calendarMap);
         calendarMap.set("name", template.name);
         calendarMap.set("query", template.query);
-        calendarMap.set("viewType", "week");
+        calendarMap.set("viewType", template.viewType ?? "week");
         if (template.roleTitle) calendarMap.set("roleTitle", template.roleTitle);
         if (template.roleStart) calendarMap.set("roleStart", template.roleStart);
         if (template.roleAllDay) calendarMap.set("roleAllDay", template.roleAllDay);
@@ -1008,6 +1030,59 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "Deadline only, no start — renders as a marker, not a block",
                 due: `${demoUtcDate(3)}T17:00:00.000Z`,
+            },
+            {
+                text:
+                    "Gantt (#4350): one row per entry, nested by this outline's own hierarchy — no separate Gantt hierarchy to define. A parent with dated children shows a rolled-up bar spanning their earliest start to latest end instead of its own dates; dragging it shifts the whole subtree as one undo entry. Axis granularity (day/week/month/quarter) is a view setting.",
+                children: [
+                    {
+                        text:
+                            "A parent's own due (if any) still renders as a marker alongside its rolled-up bar — the case that makes the roll-up useful: a deadline the children's own schedule may be overrunning.",
+                    },
+                ],
+            },
+            {
+                text: "Project plan",
+                componentType: "calendar",
+                calendarId: DEMO_GANTT_CALENDAR_ID,
+            },
+            {
+                text: "Launch plan",
+                due: `${demoUtcDate(20)}T17:00:00.000Z`,
+                children: [
+                    {
+                        text: "Design",
+                        start: demoUtcDate(0),
+                        allDay: true,
+                        duration: "P3D",
+                    },
+                    {
+                        text: "Build",
+                        start: demoUtcDate(3),
+                        allDay: true,
+                        duration: "P5D",
+                        children: [
+                            {
+                                text: "Backend",
+                                start: demoUtcDate(3),
+                                allDay: true,
+                                duration: "P4D",
+                            },
+                            {
+                                text: "Frontend",
+                                start: demoUtcDate(5),
+                                allDay: true,
+                                duration: "P3D",
+                            },
+                        ],
+                    },
+                    {
+                        text: "Test",
+                        start: demoUtcDate(8),
+                        allDay: true,
+                        duration: "P2D",
+                    },
+                ],
             },
         ],
     },
