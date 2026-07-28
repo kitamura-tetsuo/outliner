@@ -1,7 +1,9 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §4 is implemented except for the shared undo stack (§4.6)
-and the calendar UI itself.
+Status: accepted. §1–§5 are implemented. §6 records the contract the calendar
+UI is to be built against and is not implemented yet; it also covers the two
+write affordances the calendar owns — the INSERT destination picker and the
+DELETE prompt (§4.3).
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -98,12 +100,14 @@ calendar_.
 
 ### 4.2 Projection scope
 
-_Implemented_ — `ItemsRelationProvider` projects only items carrying `due`, and
-maintains the relation by diffed upserts from `observeDeep`.
+_Implemented_ — `ItemsRelationProvider` projects items carrying `due` **or**
+`start` (§6.1, #4341), and maintains the relation by diffed upserts from
+`observeDeep`.
 
-Only items that carry the structured field are projected. This keeps the
-relation sparse (projecting every item of every page does not scale) and matches
-the user-facing rule above.
+Only items that carry one of the structured fields are projected. This keeps
+the relation sparse (projecting every item of every page does not scale) and
+matches the user-facing rule above: planned work without a deadline (`start`
+alone) is projected exactly like a deadline without a plan (`due` alone).
 
 Synchronization must be incremental: items live across the page structure
 (`YTree`), not in a single subdoc's Data Storage, so the projection is
@@ -176,19 +180,66 @@ SQL name is reserved, so a user table can never claim it.
 
 ### 4.6 Undo
 
-_Planned._
+_Implemented_ — `UndoRouter` (`client/src/services/undo/undoRouter.ts`).
 
 There is one undo/redo stack, and it delegates.
 
-Today there are already two scopes: the outline's `orderedTree` manager
+There are two kinds of scope: the outline's `orderedTree` manager
 (`client/src/stores/store.svelte.ts`) and a per-table manager
-(`client/src/services/yjstable/tableDocs.ts`). A single global stack records
-which scope each operation was applied to, and undo pops that stack and calls
-undo on the corresponding scope.
+(`client/src/services/yjstable/tableDocs.ts`). The router does not replace
+them — it records, per operation, which scope the operation was applied to,
+and undo pops that stack and calls undo on the corresponding scope. Because
+each `Y.UndoManager` pops its own internal stack in LIFO order, popping the
+router's stack addresses exactly the next operation in reverse chronological
+order.
 
 The hazard to respect: each `Y.UndoManager` keeps its own internal stack, so the
 global stack must be the **only** entry point. Any path that calls undo directly
-on a scope desynchronizes the two.
+on a scope desynchronizes the two. The router detects such a call and repairs
+itself, but the correct fix is always to route the call through it.
+
+Two details the implementation must keep: Yjs merges consecutive operations of
+one manager into a single stack item while it is still capturing, so recording
+an operation closes the capture window of the _other_ scopes — otherwise one
+entry would stand for two operations separated in time by an edit elsewhere.
+And a destroyed scope's entries are dropped rather than revived: a torn-down
+table cannot replay its inverse operations, so its history leaves the global
+stack with it.
+
+### 4.7 Tags are a structured field, projected as a JSON-encoded column
+
+_Implemented_ — `tags` / `addTag` / `removeTag` on the `Item` class
+(`shared/src/app-schema.ts`); the `tags` column of `outline_items`
+(`client/src/services/yjstable/itemsRelation.ts`), tracked by #4342.
+
+`#tag` in item text is rejected for the same reason §4.1 rejects it for dates:
+a tag derived from text has no writable origin, so its column would be
+read-only and cards could not be dragged between tag lanes (§6.3). Tags are a
+structured field on the node value instead, alongside `due` / `done`.
+
+**Yjs representation: `Y.Array<string>`, not a delimited string.** A
+delimited string is a single Yjs value — one client's concurrent write
+replaces the other's outright. A `Y.Array` merges concurrent `push`es from two
+clients, so two collaborators tagging the same item at once both survive.
+This is the same reasoning that already applies to `votes` and `attachments`.
+
+**Projection shape: a `tags TEXT` column on `outline_items` holding a
+JSON-encoded array, not a companion `outline_item_tags` relation.** The
+companion relation is the more normalized model — one row per (item, tag) —
+but it is a second reserved name and a second projection to keep
+incrementally in sync for a feature whose consumer (§6.3) already reads
+grouping client-side over result rows rather than through `GROUP BY`. Since
+grouping never aggregates in SQL, the client is already the one splitting a
+multi-valued column into lanes, so a single JSON column is sufficient and
+keeps the write path a single `UPDATE` of one row — the same shape every other
+items-relation write already takes. A query filters or checks membership with
+`tags::jsonb ? 'work'`; `tags::jsonb` unnested via
+`jsonb_array_elements_text` groups by individual tag when a query needs one
+row per tag.
+
+Write-back replaces the whole tag set from the relation's JSON value (used by
+a lane drop); the `Item` API additionally exposes `addTag` / `removeTag` for
+callers that want to mutate one tag without reading the rest back first.
 
 ## 5. Implementation shape
 
@@ -204,10 +255,297 @@ dropped when no session can reach it.
 This keeps the inverse mapping closed per relation, and keeps the invariant that
 no component writes to PGlite.
 
-## 6. What must not be done
+## 6. The calendar contract
+
+_Planned._ §4 delivered the data layer; this section fixes the decisions the
+calendar UI is built against, so that day / multi-day / week / month / Gantt
+views and grouping do not each invent their own answer.
+
+The reference model throughout is iCalendar (RFC 5545). The project already
+speaks it — schedule rules use RRULE, and schedules export as iCal
+(SCH-5A1C2B3D) — so following it keeps one vocabulary rather than two.
+
+### 6.1 Time model
+
+_Implemented_ — `allDay` / `start` / `duration` on the `Item` class
+(`shared/src/app-schema.ts`); the `all_day` / `start_on` / `start_at` /
+`duration` columns of `outline_items`
+(`client/src/services/yjstable/itemsRelation.ts`), tracked by #4341. The
+day/week/month/Gantt views that read them (#4347, #4350) are still to come.
+
+**An all-day entry is a date. A timed entry is an instant. They are not the
+same type.** RFC 5545 separates them (`DTSTART;VALUE=DATE` versus a timestamp
+with a `TZID`), and so does every calendar API that survived contact with
+users. Storing an all-day entry as midnight in some timezone is the single
+largest source of "my event moved a day" bugs.
+
+The projection therefore carries an explicit discriminator rather than one
+overloaded column:
+
+| Column     | Meaning                                                                      |
+| ---------- | ---------------------------------------------------------------------------- |
+| `all_day`  | Which of the two shapes this row is.                                         |
+| `start_on` | All-day entries: a floating `DATE`, no timezone, identical for every viewer. |
+| `start_at` | Timed entries: a `TIMESTAMPTZ` instant.                                      |
+
+`start_on` and `start_at` are mutually exclusive; exactly one is non-NULL.
+Both are properly typed, so range predicates and ordering work in SQL without
+casting text.
+
+**Ends are exclusive.** An all-day entry on 8/1 ends 8/2. This is the RFC's
+convention, and departing from it means every interval comparison in every view
+needs a special case.
+
+**Length is stored as a duration, never as an end.** RFC 5545 forbids carrying
+both, and of the two, duration is the one that survives recurrence: an entry
+that lasts an hour still lasts an hour on the occurrence that crosses a DST
+boundary, where a stored end would drift. The end is derived for rendering.
+
+**Plans store wall clock plus zone; records store instants.** A recurring plan
+("every Monday at 09:00") must be stored as local time with an IANA timezone,
+because converting it to a UTC instant makes it drift by an hour twice a year.
+Something that already happened — a row the scheduler generated — is correctly a
+UTC instant, because it names a moment, not an intention. The two categories
+coexist on one calendar and are stored differently on purpose.
+
+#### `due` and `start` are different things
+
+RFC 5545 has two components, and the difference between them is exactly this
+one: a `VEVENT` occupies time (`DTSTART` + `DURATION`), while a `VTODO` has a
+deadline (`DUE`) and may separately say when it is planned (`DTSTART`).
+
+| Field                | Question it answers       | Nature                          |
+| -------------------- | ------------------------- | ------------------------------- |
+| `start` + `duration` | When is this worked on?   | An allocation of time           |
+| `due`                | When must it be finished? | A constraint; allocates nothing |
+
+A task due Friday is often worked on Wednesday. With a single field the user
+must lie — putting the intended working day in the deadline field and losing the
+real deadline — which is why single-date task systems are poor at planning.
+
+So `due` is **not** an alias for `start` with a zero duration, and the two are
+never collapsed. All four combinations mean something:
+
+| State                     | Meaning                               | On the calendar                           |
+| ------------------------- | ------------------------------------- | ----------------------------------------- |
+| `due` only                | Only the deadline is known            | A deadline marker; a milestone in Gantt   |
+| `start` + `duration` only | Time is set aside, with no deadline   | An ordinary block or bar                  |
+| Both                      | Planned work that also has a deadline | Bar plus marker; an overrun is detectable |
+| Neither                   | Not scheduled and not due             | Not shown                                 |
+
+**`due` is neither derived from nor constrained by `start + duration`.** It is
+an independent constraint, and a calendar may surface the conflict when
+`start + duration` runs past it. (RFC 5545 makes `DUE` and `DURATION` mutually
+exclusive within a `VTODO` only because there `DURATION` is measured from
+`DTSTART`, so carrying both would define the end twice. Here `due` is not an
+end, so there is no such conflict — but implementers will assume it is one
+unless told otherwise.)
+
+**The exclusive-end rule above does not apply to `due`.** An all-day entry
+ending 8/1 ends at 8/2, but an all-day `due` of 8/1 means _by the end of 8/1_.
+The same date carries different meaning as an event end and as a deadline;
+treating them alike shifts every deadline by a day.
+
+Because `start` alone is a legitimate state, the projection scope of §4.2
+widens: an item is projected when it carries `due` **or** `start`, not `due`
+alone.
+
+Keeping the two apart is also what lets the role assignment (§6.3) be useful. A
+calendar can bind the start role to `due` to read as a deadline calendar, or to
+`start` to read as a plan, or show both with different treatments — a choice
+that disappears the moment the fields are merged. Drag semantics follow the same
+split: moving a bar writes `start`, moving a marker writes `due`, and each is
+independently subject to whether its column is writable.
+
+With `done` already present, an item carrying these fields is in effect a
+`VTODO` (`DTSTART` / `DUE` / `DURATION` / `STATUS`), which keeps a future
+extension of the iCal export (SCH-5A1C2B3D) to plans straightforward.
+
+### 6.2 Recurrence
+
+_Implemented_ — `rrule` / `recurrenceDtstart` / `recurrenceTimezone` /
+`recurrenceExdate` on the `Item` class (`shared/src/app-schema.ts`); read-time
+expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
+`rrule` / `recurrence_dtstart` / `recurrence_timezone` /
+`recurrence_parent_id` / `recurrence_occurrence_id` columns of
+`outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
+creation, exception recording and rule splitting in
+`client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
+day/week/month/Gantt views that would drive this from a drag gesture (#4347,
+#4350) and the visible-range injection that bounds expansion in a live query
+(#4345) are still to come.
+
+**Recurring entries are not materialized.** The standard model, and the one
+adopted here, is:
+
+1. store the rule — `DTSTART` + `RRULE`, plus `EXDATE` for cancelled instances;
+2. expand it on read, for the visible range only;
+3. persist only the exceptions — an instance that was moved or modified.
+
+The client already depends on `rrule`, so expansion needs no new dependency.
+
+A virtual occurrence **becomes real the moment the user edits it**. Dragging a
+generated occurrence writes an override, and from then on it is an ordinary row.
+This is what keeps §3's rule intact: the user never meets an entry that looks
+draggable and is not. The familiar "this event / this and following / all
+events" prompt falls out of this model rather than being bolted onto it.
+
+#### Implementation notes
+
+**A virtual occurrence never becomes a PGlite row.** `outline_items` keeps its
+one-row-per-item invariant (§4.2/§4.4): a recurring item's own row is the
+anchor (carrying `rrule`/`recurrence_dtstart`/`recurrence_timezone`, no
+`due`/`start` of its own), and expansion happens above the projection, as a
+pure function of the anchor plus an explicit range —
+`expandRecurrence`/`expandItemOccurrences` take `[rangeStart, rangeEnd)`
+directly rather than reading it from query context, since §6.4's range
+injection has not landed yet. Materializing every occurrence eagerly would be
+exactly the unbounded-storage problem this section opens with; a bounded
+range argument is what keeps expansion cheap regardless of how far a
+`COUNT`/`UNTIL`-less rule runs.
+
+**An override is an ordinary item**, not a nested record: a new sibling of
+the recurring item, carrying `recurrenceParentId` (the anchor's `id`) and
+`recurrenceOccurrenceId` (the overridden occurrence's local dtstart — what a
+`RECURRENCE-ID` identifies). This is what makes "an ordinary row from then
+on" literal — the override is draggable, taggable, deletable through every
+path an item already has, with no calendar-specific code required for any of
+that. `excludeOverriddenOccurrences` is what keeps the override from
+double-rendering alongside the virtual occurrence it replaces.
+
+**A plan's own `allDay`/`duration`** are the existing §6.1 fields, reused
+rather than duplicated: they describe the shape of every generated
+occurrence the same way they describe an ordinary item's own schedule. Only
+the recurrence identity (`rrule`/`recurrenceDtstart`/`recurrenceTimezone`/
+`recurrenceExdate`) is new.
+
+**DST correctness without a new dependency.** The server's scheduler
+(`server/src/scheduler/schedule-indexer.ts`) solves the same
+wall-clock/`rrule` problem with `luxon`, a server-only dependency. The client
+has no `luxon`, so `shared/src/utils/zonedTime.ts` reimplements the same
+two-pass offset-correction technique on native `Intl.DateTimeFormat`: treat a
+local wall-clock reading as if it were UTC for `rrule`'s floating-time
+iteration, then convert each candidate occurrence to a real instant by
+reading the zone's actual offset at that moment (twice, so a transition
+between the guess and the correction cannot leave the result off by the
+transition's delta). A wall-clock time that does not round-trip is a
+spring-forward gap and is skipped.
+
+#### Why this is not unified with schedule rules
+
+A schedule rule's body is **arbitrary SQL**, not a declarative event. Its RRULE
+tells us when the next occurrence fires, but nothing about the row that
+occurrence would produce — that is only knowable by executing the statement.
+Previewing the future would mean running user SQL speculatively for every
+visible occurrence, which is expensive and muddies the meaning of a rule that
+has not actually run.
+
+The two mechanisms stay separate because they answer different questions:
+
+|                                   | Purpose                                                              | Storage                              | On the calendar                        |
+| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Schedule rule (implemented)       | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
+| Calendar recurrence (implemented) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
+
+Nothing about the existing scheduler changes.
+
+### 6.3 The query contract
+
+A calendar is a query plus a **role assignment over its result columns**, held
+in the calendar's UI Definition. The roles are title, start, duration, all-day,
+and the grouping axes. Candidates are the columns the query actually returns —
+the same principle as the table feature's cell-component list, which follows the
+SELECT rather than the schema (#4238).
+
+`source_kind` and `source_id` are required in the result: without them the
+result is read-only (§4.4) and nothing on the calendar can be dragged.
+
+**Grouping is a client-side operation over result rows, never SQL `GROUP BY`.**
+Aggregation collapses row identity and makes the whole result read-only, which
+would cost the calendar every one of its affordances. Adding a grouping axis
+means adding a _column_ — which is exactly how "group keys can be added
+dynamically in SQL" is realized: `CASE WHEN … END AS bucket` and the axis
+appears.
+
+**A group lane accepts drops only when its column is writable.** Moving a card
+between lanes writes the grouping column, and a calculated expression has no
+writable origin — per-column editability already says so (§4.4). A lane backed
+by such a column is display-only, and must look it. Tags are a structured field
+on the item, so tag lanes are writable and cards can be dragged between them;
+this is precisely why tags are not parsed out of item text.
+
+### 6.4 The visible range is a query parameter
+
+The client injects the view's window as settings — `view.range_start` and
+`view.range_end` — mirroring how the scheduler injects `job.occurrence`, so a
+query filters with `current_setting(...)` and the engine returns only what is on
+screen. Without this, a month or Gantt view over a table that has accumulated
+years of generated rows reads all of them to draw thirty days.
+
+The range is computed in the view's timezone (§6.5), so the window and the
+drawing agree at the boundaries.
+
+### 6.5 Timezone
+
+**The view's timezone is an explicit, visible property.** It defaults to the
+viewer's local zone and can be switched to a fixed IANA zone. What is rejected
+is not viewer-local rendering — it is _implicit_ viewer-local rendering.
+
+**The SQL session timezone must equal the view's timezone.** This is a
+constraint on the engine, not a rendering preference: `date_trunc('week', …)`
+and `::date` in a grouping expression are evaluated by Postgres against the
+session zone. Let the two diverge and the same query sorts rows into different
+buckets for different viewers, and the injected range no longer matches what is
+drawn.
+
+The reasons the timezone cannot stay implicit:
+
+- It is the first surface in this app where collaborators do not see the same
+  layout. Everywhere else — outline, tables, presence cursors — the screen is
+  the same for everyone. "The one on Monday" stops being a shared reference.
+- All-day entries are floating and identical for everyone while timed entries
+  shift, so two cards on one day for one viewer can land on two days for
+  another. That is §3's inconsistency, on the time axis.
+- Rows generated by a schedule rule had their date decided by the _rule's_
+  timezone, and carry it as text (`to_char`, per
+  `docs/schedule-sql-conventions.md`). Draw them in a different zone and a row
+  reading `2026-08-01` sits in the 8/2 column, contradicting itself on screen.
+- Tests would otherwise assert against the runner's ambient zone.
+
+### 6.6 Where a calendar lives
+
+A calendar has a query and view settings, and **no data of its own**. It does
+not need a table's three-structure subdoc; a `calendars` `Y.Map` on the project
+doc, in the shape `schedules` already uses, carries it.
+
+Changes to view settings route through the `UndoRouter` (§4.6) like any other
+edit, so undo covers reconfiguring a view and not only moving a card.
+
+As with tables, a calendar is reachable both as a block embedded in an item and
+as a standalone route.
+
+### 6.7 Gantt
+
+Gantt hierarchy is the outline hierarchy: `outline_items` already carries
+`parent_id`, so nesting comes for free and means the same thing it means in the
+outline.
+
+Dependency links between entries — finish-to-start arrows, critical path — are
+**out of scope**. They are a new relation between rows, not a property of one,
+and belong in their own decision rather than smuggled into the calendar's.
+
+## 7. What must not be done
 
 - Do not persist the item projection into any table's Data Storage. It is a
   virtual relation, rebuilt on the client like everything else in PGlite. Storing
   it creates a second truth.
 - Do not make PGlite authoritative for any field, on client or server.
-- Do not encode schedule attributes in item text.
+- Do not encode schedule attributes, or tags, in item text.
+- Do not implement grouping as SQL `GROUP BY`. It makes the result read-only and
+  takes every calendar affordance with it.
+- Do not store an all-day entry as a midnight instant.
+- Do not collapse `due` into `start`, and do not treat `due` as an end — the
+  exclusive-end rule is for event ends only.
+- Do not render in an ambient timezone, and do not let the SQL session zone
+  differ from the view's.
+- Do not speculatively execute schedule-rule SQL to preview future occurrences.

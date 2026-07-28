@@ -174,6 +174,10 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+            // Initialized eagerly, like votes/attachments: two clients adding
+            // different tags to the same item concurrently must merge into one
+            // array rather than race to create it (see Item#addTag).
+            value.set("tags", new Y.Array<string>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -266,6 +270,207 @@ export class Item {
         } else {
             this.value.set("done", v);
         }
+    }
+
+    /**
+     * Which of the two time shapes `start` is: a floating date (all-day) or
+     * an instant (timed). Absent means `start` carries no shape yet — see
+     * docs/crdt-sql-architecture.md §6.1.
+     */
+    get allDay(): boolean | undefined {
+        return this.value.get("allDay") as boolean | undefined;
+    }
+
+    set allDay(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("allDay");
+        } else {
+            this.value.set("allDay", v);
+        }
+    }
+
+    /**
+     * When this entry is worked on: a floating date (`YYYY-MM-DD`) when
+     * `allDay` is true, an ISO instant otherwise. Distinct from `due`, which
+     * answers when the item must be finished rather than when it is worked
+     * on — the two are never collapsed (§6.1).
+     */
+    get start(): string | undefined {
+        return this.value.get("start") as string | undefined;
+    }
+
+    set start(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("start");
+        } else {
+            this.value.set("start", v);
+        }
+    }
+
+    /**
+     * Length of the entry, as an ISO-8601 duration string (e.g. `PT1H30M`).
+     * Never a stored end: RFC 5545 forbids carrying both, and duration is the
+     * shape that survives a DST boundary, where a stored end would drift.
+     */
+    get duration(): string | undefined {
+        return this.value.get("duration") as string | undefined;
+    }
+
+    set duration(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("duration");
+        } else {
+            this.value.set("duration", v);
+        }
+    }
+
+    /**
+     * Tags stored as a `Y.Array<string>` rather than a delimited string:
+     * concurrent additions from two clients both survive the merge, where a
+     * delimited string would let one client's write clobber the other's.
+     */
+    get tags(): string[] {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Replace the whole tag set. Used by the items-relation write-back. */
+    set tags(v: string[] | undefined) {
+        const clean = Array.from(
+            new Set((v ?? []).map((t) => t.trim()).filter((t) => t !== "")),
+        );
+        const existing = this.value.get("tags") as Y.Array<string> | undefined;
+        if (clean.length === 0) {
+            if (existing) this.value.delete("tags");
+            return;
+        }
+        const arr = existing ?? new Y.Array<string>();
+        if (!existing) this.value.set("tags", arr);
+        else if (arr.length > 0) arr.delete(0, arr.length);
+        arr.push(clean);
+    }
+
+    /** Add one tag, merging concurrently with additions from another client. */
+    addTag(tag: string): void {
+        const t = tag.trim();
+        if (!t) return;
+        let arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("tags", arr);
+        }
+        if (!arr.toArray().includes(t)) arr.push([t]);
+    }
+
+    /** Remove one tag, if present. */
+    removeTag(tag: string): void {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(tag);
+        if (idx >= 0) arr.delete(idx, 1);
+    }
+
+    /**
+     * RFC 5545 `RRULE` body (no `RRULE:` prefix — same bare-string convention
+     * as `ScheduleRule.rrule`). Paired with `recurrenceDtstart` /
+     * `recurrenceTimezone`; see docs/crdt-sql-architecture.md §6.2.
+     */
+    get rrule(): string | undefined {
+        return this.value.get("rrule") as string | undefined;
+    }
+    set rrule(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("rrule");
+            return;
+        }
+        this.value.set("rrule", v);
+        // Created here rather than eagerly for every item (unlike `tags`):
+        // only a recurring item needs it, but from this point on it must
+        // exist before any concurrent `addRecurrenceExdate` call, for the
+        // same merge-safety reason `tags` is eager (see `Items.addNode`).
+        if (!this.value.get("recurrenceExdate")) {
+            this.value.set("recurrenceExdate", new Y.Array<string>());
+        }
+    }
+
+    /**
+     * First occurrence, as a local wall-clock datetime string
+     * (`YYYY-MM-DDTHH:MM:SS`, no offset) — the RRULE's `DTSTART`. Recurring
+     * plans store wall clock plus zone, not a UTC instant, so an occurrence
+     * stays at the same local time across a DST boundary (§6.1).
+     */
+    get recurrenceDtstart(): string | undefined {
+        return this.value.get("recurrenceDtstart") as string | undefined;
+    }
+    set recurrenceDtstart(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceDtstart");
+        else this.value.set("recurrenceDtstart", v);
+    }
+
+    /** IANA zone `recurrenceDtstart` (and every generated occurrence) is read in. */
+    get recurrenceTimezone(): string | undefined {
+        return this.value.get("recurrenceTimezone") as string | undefined;
+    }
+    set recurrenceTimezone(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceTimezone");
+        else this.value.set("recurrenceTimezone", v);
+    }
+
+    /**
+     * Cancelled occurrences, identified by their local wall-clock dtstart —
+     * the same value a `RECURRENCE-ID` would carry. A `Y.Array<string>` for
+     * the same reason as `tags`: two clients cancelling different occurrences
+     * concurrently must merge into one exception set, not race to create it.
+     */
+    get recurrenceExdate(): string[] {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Record one occurrence as cancelled, if not already. */
+    addRecurrenceExdate(occurrenceId: string): void {
+        const id = occurrenceId.trim();
+        if (!id) return;
+        let arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("recurrenceExdate", arr);
+        }
+        if (!arr.toArray().includes(id)) arr.push([id]);
+    }
+
+    /** Un-cancel a previously excluded occurrence, if present. */
+    removeRecurrenceExdate(occurrenceId: string): void {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(occurrenceId);
+        if (idx >= 0) arr.delete(idx, 1);
+    }
+
+    /**
+     * Set on an override item only: the `id` of the recurring item whose
+     * occurrence this overrides. A virtual occurrence becomes this — an
+     * ordinary item — the moment the user edits it (§6.2).
+     */
+    get recurrenceParentId(): string | undefined {
+        return this.value.get("recurrenceParentId") as string | undefined;
+    }
+    set recurrenceParentId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceParentId");
+        else this.value.set("recurrenceParentId", v);
+    }
+
+    /**
+     * Set on an override item only: the local wall-clock dtstart of the
+     * virtual occurrence it replaces — what `RECURRENCE-ID` identifies in
+     * RFC 5545. Read together with `recurrenceParentId`.
+     */
+    get recurrenceOccurrenceId(): string | undefined {
+        return this.value.get("recurrenceOccurrenceId") as string | undefined;
+    }
+    set recurrenceOccurrenceId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceOccurrenceId");
+        else this.value.set("recurrenceOccurrenceId", v);
     }
 
     // componentType stored in Y.Map ("table" | "chart" | undefined)
@@ -755,6 +960,9 @@ export class Items implements Iterable<Item> {
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+        // Eagerly initialized so concurrent `addTag` calls from two clients
+        // merge into one shared array instead of racing to create it.
+        value.set("tags", new Y.Array<string>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 

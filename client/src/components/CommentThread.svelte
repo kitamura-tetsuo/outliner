@@ -213,7 +213,7 @@ function remove(id: string) {
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
-    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after delete error'); }
+    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after delete error'); }
     localComments = localComments.filter(c => c.id !== id);
 
     const countNow = renderCommentsState.length;
