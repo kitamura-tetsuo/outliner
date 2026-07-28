@@ -204,6 +204,41 @@ And a destroyed scope's entries are dropped rather than revived: a torn-down
 table cannot replay its inverse operations, so its history leaves the global
 stack with it.
 
+### 4.7 Tags are a structured field, projected as a JSON-encoded column
+
+_Implemented_ — `tags` / `addTag` / `removeTag` on the `Item` class
+(`shared/src/app-schema.ts`); the `tags` column of `outline_items`
+(`client/src/services/yjstable/itemsRelation.ts`), tracked by #4342.
+
+`#tag` in item text is rejected for the same reason §4.1 rejects it for dates:
+a tag derived from text has no writable origin, so its column would be
+read-only and cards could not be dragged between tag lanes (§6.3). Tags are a
+structured field on the node value instead, alongside `due` / `done`.
+
+**Yjs representation: `Y.Array<string>`, not a delimited string.** A
+delimited string is a single Yjs value — one client's concurrent write
+replaces the other's outright. A `Y.Array` merges concurrent `push`es from two
+clients, so two collaborators tagging the same item at once both survive.
+This is the same reasoning that already applies to `votes` and `attachments`.
+
+**Projection shape: a `tags TEXT` column on `outline_items` holding a
+JSON-encoded array, not a companion `outline_item_tags` relation.** The
+companion relation is the more normalized model — one row per (item, tag) —
+but it is a second reserved name and a second projection to keep
+incrementally in sync for a feature whose consumer (§6.3) already reads
+grouping client-side over result rows rather than through `GROUP BY`. Since
+grouping never aggregates in SQL, the client is already the one splitting a
+multi-valued column into lanes, so a single JSON column is sufficient and
+keeps the write path a single `UPDATE` of one row — the same shape every other
+items-relation write already takes. A query filters or checks membership with
+`tags::jsonb ? 'work'`; `tags::jsonb` unnested via
+`jsonb_array_elements_text` groups by individual tag when a query needs one
+row per tag.
+
+Write-back replaces the whole tag set from the relation's JSON value (used by
+a lane drop); the `Item` API additionally exposes `addTag` / `removeTag` for
+callers that want to mutate one tag without reading the rest back first.
+
 ## 5. Implementation shape
 
 _Implemented._ The port that `TableSyncAdapter` takes is a relation registry

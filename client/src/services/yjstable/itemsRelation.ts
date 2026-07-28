@@ -63,9 +63,18 @@ const COLUMN_TO_FIELD: Record<string, string> = {
     text: "text",
     due: DUE_FIELD,
     done: "done",
+    tags: "tags",
 };
 
-export const ITEMS_RELATION_COLUMNS = ["id", "page_id", "parent_id", "text", "due", "done"] as const;
+export const ITEMS_RELATION_COLUMNS = [
+    "id",
+    "page_id",
+    "parent_id",
+    "text",
+    "due",
+    "done",
+    "tags",
+] as const;
 
 function createTableSql(): string {
     return `CREATE TABLE ${quoteIdent(ITEMS_RELATION_NAME)} (
@@ -74,7 +83,8 @@ function createTableSql(): string {
         "parent_id" TEXT,
         "text" TEXT,
         "due" TIMESTAMPTZ,
-        "done" BOOLEAN
+        "done" BOOLEAN,
+        "tags" TEXT
     )`;
 }
 
@@ -85,6 +95,8 @@ interface ProjectedRow {
     text: string;
     due: string;
     done: boolean;
+    /** JSON-encoded array of tag strings — see §4.7 of the CRDT/SQL ADR. */
+    tags: string;
 }
 
 export interface ItemsRelationOptions {
@@ -265,6 +277,10 @@ export class ItemsRelationProvider implements RelationProvider {
             }
             return;
         }
+        if (field === "tags") {
+            this.writeTags(nodeValue, value);
+            return;
+        }
         // Absent means "not scheduled"/"not done": null clears the field
         // rather than storing a null the accessors would have to special-case.
         if (value === null || value === undefined || value === "") {
@@ -272,6 +288,38 @@ export class ItemsRelationProvider implements RelationProvider {
             return;
         }
         nodeValue.set(field, field === "done" ? this.toBoolean(value) : String(value));
+    }
+
+    /** Replace the item's tag set from the relation's JSON-encoded value. */
+    private writeTags(nodeValue: Y.Map<unknown>, value: RelationValue): void {
+        const next = this.parseTagsValue(value);
+        const existing = nodeValue.get("tags") as Y.Array<string> | undefined;
+        if (next.length === 0) {
+            if (existing) nodeValue.delete("tags");
+            return;
+        }
+        const arr = existing ?? new Y.Array<string>();
+        if (!existing) nodeValue.set("tags", arr);
+        else if (arr.length > 0) arr.delete(0, arr.length);
+        arr.push(next);
+    }
+
+    private parseTagsValue(value: RelationValue): string[] {
+        if (typeof value !== "string" || value.trim() === "") return [];
+        try {
+            const parsed: unknown = JSON.parse(value);
+            if (!Array.isArray(parsed)) return [];
+            return Array.from(
+                new Set(
+                    parsed
+                        .filter((t): t is string => typeof t === "string")
+                        .map((t) => t.trim())
+                        .filter((t) => t !== ""),
+                ),
+            );
+        } catch {
+            return [];
+        }
     }
 
     private toBoolean(value: RelationValue): boolean {
@@ -337,15 +385,24 @@ export class ItemsRelationProvider implements RelationProvider {
     private async insertRow(db: PGlite, row: ProjectedRow): Promise<void> {
         try {
             await db.query(
-                `INSERT INTO ${this.qualifiedName()} ("id", "page_id", "parent_id", "text", "due", "done")
-                 VALUES ($1, $2, $3, $4, $5, $6)
+                `INSERT INTO ${this.qualifiedName()} ("id", "page_id", "parent_id", "text", "due", "done", "tags")
+                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                  ON CONFLICT ("id") DO UPDATE SET
                      "page_id" = EXCLUDED."page_id",
                      "parent_id" = EXCLUDED."parent_id",
                      "text" = EXCLUDED."text",
                      "due" = EXCLUDED."due",
-                     "done" = EXCLUDED."done"`,
-                [row.id, row.page_id ?? null, row.parent_id ?? null, row.text, row.due, row.done],
+                     "done" = EXCLUDED."done",
+                     "tags" = EXCLUDED."tags"`,
+                [
+                    row.id,
+                    row.page_id ?? null,
+                    row.parent_id ?? null,
+                    row.text,
+                    row.due,
+                    row.done,
+                    row.tags,
+                ],
             );
         } catch (err) {
             // An unparseable date is one item's problem: the rest of the
@@ -393,6 +450,7 @@ export class ItemsRelationProvider implements RelationProvider {
 
         const text = value.get("text");
         const parentKey = this.parentOf(key);
+        const tagsArr = value.get("tags");
         return {
             id: key,
             // Pages are the top-level items, so the page of an item is the
@@ -402,6 +460,7 @@ export class ItemsRelationProvider implements RelationProvider {
             text: text instanceof Y.Text ? text.toString() : String(text ?? ""),
             due: due.trim(),
             done: value.get("done") === true,
+            tags: JSON.stringify(tagsArr instanceof Y.Array ? tagsArr.toArray() : []),
         };
     }
 
