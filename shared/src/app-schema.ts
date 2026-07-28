@@ -273,6 +273,58 @@ export class Item {
     }
 
     /**
+     * Which of the two time shapes `start` is: a floating date (all-day) or
+     * an instant (timed). Absent means `start` carries no shape yet — see
+     * docs/crdt-sql-architecture.md §6.1.
+     */
+    get allDay(): boolean | undefined {
+        return this.value.get("allDay") as boolean | undefined;
+    }
+
+    set allDay(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("allDay");
+        } else {
+            this.value.set("allDay", v);
+        }
+    }
+
+    /**
+     * When this entry is worked on: a floating date (`YYYY-MM-DD`) when
+     * `allDay` is true, an ISO instant otherwise. Distinct from `due`, which
+     * answers when the item must be finished rather than when it is worked
+     * on — the two are never collapsed (§6.1).
+     */
+    get start(): string | undefined {
+        return this.value.get("start") as string | undefined;
+    }
+
+    set start(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("start");
+        } else {
+            this.value.set("start", v);
+        }
+    }
+
+    /**
+     * Length of the entry, as an ISO-8601 duration string (e.g. `PT1H30M`).
+     * Never a stored end: RFC 5545 forbids carrying both, and duration is the
+     * shape that survives a DST boundary, where a stored end would drift.
+     */
+    get duration(): string | undefined {
+        return this.value.get("duration") as string | undefined;
+    }
+
+    set duration(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("duration");
+        } else {
+            this.value.set("duration", v);
+        }
+    }
+
+    /**
      * Tags stored as a `Y.Array<string>` rather than a delimited string:
      * concurrent additions from two clients both survive the merge, where a
      * delimited string would let one client's write clobber the other's.
