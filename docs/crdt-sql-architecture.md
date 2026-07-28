@@ -405,7 +405,7 @@ by the query's live result columns via
 `client/src/services/calendar/calendarRoleCandidates.ts`, never a schema), and
 the `source_kind`/`source_id` read-only rule
 (`client/src/services/calendar/calendarEditability.ts`), tracked by #4344.
-Group *lanes* — rendering entries by axis and writability-gated drops between
+Group _lanes_ — rendering entries by axis and writability-gated drops between
 them — are #4348; this section's role assignment only decides which column is
 the grouping axis.
 
