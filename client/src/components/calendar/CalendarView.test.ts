@@ -226,6 +226,16 @@ describe("CalendarView", { timeout: 30000 }, () => {
         await fireEvent.drop(getByTestId("calendar-lane-urgent"));
 
         await waitFor(() => expect(item.tags).toEqual(["urgent"]));
+        // The write alone isn't enough — commitLaneDrop has no optimistic
+        // placement of its own, so the requery it triggers is what has to
+        // move the card into its new lane's DOM.
+        await waitFor(() =>
+            expect(
+                getByTestId("calendar-lane-urgent").querySelector(
+                    `[data-testid="calendar-entry-outline_items:${item.key}"]`,
+                ),
+            ).toBeTruthy()
+        );
 
         destroyCalendarUndoManager(projectDoc);
     });
