@@ -198,9 +198,7 @@ function readSettingsFromMap(): CalendarSettings | undefined {
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
-// svelte-ignore state_referenced_locally
 const pgSchema = projectSchemaName(projectId);
-// svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {

@@ -31,6 +31,9 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         // a no-op (handleContextMenu returns early for isPageTitle); use the
         // seeded item below it instead.
         const item = page.locator(".outliner-item").nth(1);
+        await expect(item).toBeVisible({ timeout: 10000 });
+        await item.click();
+        await page.waitForTimeout(300);
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
         await expect(contextMenu).toBeVisible({ timeout: 10000 });
@@ -82,6 +85,9 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         // a no-op (handleContextMenu returns early for isPageTitle); use the
         // seeded item below it instead.
         const item = page.locator(".outliner-item").nth(1);
+        await expect(item).toBeVisible({ timeout: 10000 });
+        await item.click();
+        await page.waitForTimeout(300);
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
         await expect(contextMenu).toBeVisible({ timeout: 10000 });
