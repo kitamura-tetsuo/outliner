@@ -1,7 +1,6 @@
 <script lang="ts">
 import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
-const _localLogger = getLogger("OutlinerItemAliasSegment.svelte");
 
 const logger = getLogger("OutlinerItemAliasSegment");
 
@@ -44,7 +43,7 @@ function setupSubscription(currentItem: Item) {
                     }
                 };
                 t.observe(h1);
-                unsubs.push(() => { try { t.unobserve?.(h1); } catch (err) { _localLogger.warn("Silenced error", { err }); } });
+                unsubs.push(() => { try { t.unobserve?.(h1); } catch (err) { logger.warn("Silenced error", { err }); } });
                 h1(); // Initial reflection
             } else {
                 textString = (currentItem as Item).text || "";

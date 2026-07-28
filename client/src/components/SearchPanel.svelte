@@ -1,6 +1,5 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
-const _localLogger = getLogger("SearchPanel.svelte");
 const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
@@ -47,7 +46,7 @@ const logger = getLogger("SearchPanel");
             isTestEnv =
                 typeof window !== "undefined" &&
                 localStorage.getItem("VITE_IS_TEST") === "true";
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
     });
 
     let matches: Array<PageItemMatch<Item>> = $state([]);
@@ -88,7 +87,7 @@ const logger = getLogger("SearchPanel");
                 for (const p of iterateItems(items)) arr.push(p);
             }
             if (arr.length) return arr;
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
         // 2) Fallback to generalStore.pages.current
         try {
             const w = typeof window !== 'undefined' ? (window as Window & typeof globalThis & { generalStore?: { pages?: { current?: unknown[] } } }) : undefined;
@@ -115,7 +114,7 @@ const logger = getLogger("SearchPanel");
                 query: searchQuery,
                 pagesLen: pages.length,
             });
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
         let newMatches: Array<PageItemMatch<Item>> = [];
         if (pages.length) {
@@ -147,7 +146,7 @@ const logger = getLogger("SearchPanel");
                         m.item?.text?.toString?.() ?? String(m.item?.text ?? ""),
                 })),
             });
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
     }
 

@@ -1,6 +1,5 @@
 <script lang="ts">
 import { getLogger } from "../lib/logger";
-const _localLogger = getLogger("GraphView.svelte");
 const logger = getLogger("GraphView");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
@@ -300,7 +299,7 @@ const logger = getLogger("GraphView");
         const onResize = () => {
             try {
                 chart?.resize();
-            } catch (err) { _localLogger.warn("Silenced error", { err }); }
+            } catch (err) { logger.warn("Silenced error", { err }); }
         };
         window.addEventListener("resize", onResize);
 

@@ -7,7 +7,6 @@
     import { fade } from "svelte/transition";
     import { SvelteMap, SvelteSet } from "svelte/reactivity";
     import { getLogger } from "../lib/logger";
-const _localLogger = getLogger("OutlinerTree.svelte");
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { yjsService } from "../lib/yjs/service";
     import { Item, Items } from "../schema/app-schema";
@@ -78,7 +77,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                     yjsService.reapplyAllPresences(awareness);
                 }
             }
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
     });
 
     let unsubscribeUser: (() => void) | null = null;
@@ -180,7 +179,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                                 );
                             });
                         }
-                    } catch (err) { _localLogger.warn("Silenced error", { err }); }
+                    } catch (err) { logger.warn("Silenced error", { err }); }
 
                     let shouldQueue = false;
 
@@ -222,10 +221,10 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                 return () => {
                     try {
                         ymap.unobserveDeep(handler);
-                    } catch (err) { _localLogger.warn("Silenced error", { err }); }
+                    } catch (err) { logger.warn("Silenced error", { err }); }
                 };
             }
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
     });
 
     // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
@@ -341,7 +340,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
         if (files.length === 0) return;
 
         let containerId: string | undefined = undefined;
-        try { containerId = await getDefaultContainerId(); } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        try { containerId = await getDefaultContainerId(); } catch (err) { logger.warn("Silenced error", { err }); }
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
         if (!containerId && import.meta.env.MODE !== "test") {
@@ -422,7 +421,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                 key,
                 treeType: (tree as { constructor?: { name?: string } })?.constructor?.name,
             } }, "handleIndent debug");
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
         if (
             !tree ||
@@ -461,14 +460,14 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                     siblingOrder,
                     currentIndex,
                 } }, "handleIndent parent info");
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
         if (currentIndex <= 0) return; // Cannot indent first item
 
         const targetParentKey = siblingOrder[currentIndex - 1];
         try {
             logger.debug({ data: { itemId, targetParentKey, currentIndex } }, "handleIndent moving");
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
         if (!targetParentKey) return;
 
         const run = () => {
@@ -502,7 +501,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
 
                     newParent: safeGetNodeParent(tree, key),
                 } }, "handleIndent new parent");
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
         logger.info(
             { itemId, targetParentKey },
@@ -607,13 +606,13 @@ const _localLogger = getLogger("OutlinerTree.svelte");
         if (lastToolbarItemId) {
             try {
                 logger.debug({ lastToolbarItemId }, "resolveActiveItemId: using last known id");
-            } catch (err) { _localLogger.warn("Silenced error", { err }); }
+            } catch (err) { logger.warn("Silenced error", { err }); }
             return lastToolbarItemId;
         }
 
         try {
             logger.debug("resolveActiveItemId: no active item");
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
         return null;
     }
 
@@ -624,7 +623,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
             if (flag === "1" || flag === "true") {
                 window.DEBUG_MODE = true;
             }
-        } catch (err) { _localLogger.warn("Silenced error", { err }); }
+        } catch (err) { logger.warn("Silenced error", { err }); }
     }
 
     // Item navigation handling
@@ -1746,7 +1745,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                 targetItem.addAttachment(url);
             } catch {
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { _localLogger.warn("Silenced error", { err }); }
+                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
                 }
             }
         } else {
@@ -1769,7 +1768,7 @@ const _localLogger = getLogger("OutlinerTree.svelte");
                     newItem.addAttachment(url);
                 } catch {
                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { _localLogger.warn("Silenced error", { err }); }
+                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
                     }
                 }
             }
