@@ -94,4 +94,93 @@ describe("runCalendarQuery", { timeout: 30000 }, () => {
             session.dispose();
         }
     });
+
+    describe("view.range_start / view.range_end injection (§6.4)", () => {
+        it("is readable via current_setting inside the query when a range is passed", async () => {
+            const projectId = "proj-calendar-range-readable";
+            const { projectDoc } = seedProject(projectId);
+            const pgSchema = projectSchemaName(projectId);
+            const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+            try {
+                const range = { start: new Date("2026-08-01T00:00:00Z"), end: new Date("2026-08-31T00:00:00Z") };
+                const outcome = await runCalendarQuery(
+                    session,
+                    pgSchema,
+                    "SELECT current_setting('view.range_start')::timestamptz AS range_start, "
+                        + "current_setting('view.range_end')::timestamptz AS range_end",
+                    range,
+                );
+                expect(outcome.error).toBeUndefined();
+                expect(outcome.result?.rows).toEqual([
+                    { range_start: range.start.toISOString(), range_end: range.end.toISOString() },
+                ]);
+            } finally {
+                session.dispose();
+            }
+        });
+
+        it("does not leak the range into a later query that runs without one (transaction-local)", async () => {
+            const projectId = "proj-calendar-range-local";
+            const { projectDoc } = seedProject(projectId);
+            const pgSchema = projectSchemaName(projectId);
+            const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+            try {
+                await runCalendarQuery(session, pgSchema, "SELECT 1", {
+                    start: new Date("2026-08-01T00:00:00Z"),
+                    end: new Date("2026-08-31T00:00:00Z"),
+                });
+                const outcome = await runCalendarQuery(
+                    session,
+                    pgSchema,
+                    "SELECT current_setting('view.range_start', true) AS range_start",
+                );
+                expect(outcome.error).toBeUndefined();
+                // Postgres/PGlite report a missing setting (`missing_ok = true`) as
+                // an empty string rather than SQL NULL; either way it must not be
+                // the ISO instant set by the previous, already-committed transaction.
+                expect(outcome.result?.rows).toEqual([{ range_start: "" }]);
+            } finally {
+                session.dispose();
+            }
+        });
+
+        it("supports the overlap idiom: entries starting before the window but overlapping into it are included", async () => {
+            const projectId = "proj-calendar-range-overlap";
+            const { projectDoc, scheduled } = seedProject(projectId);
+            // A second item whose start+duration overlaps into the visible window
+            // from before it, and a third that ends before the window starts.
+            const tree = Project.fromDoc(projectDoc).tree;
+            const overlapping = new Items(projectDoc, tree, "root").addNode("tester");
+            overlapping.text = "Spills into the window";
+            overlapping.allDay = false;
+            overlapping.start = "2026-07-31T22:00:00Z";
+            overlapping.duration = "PT4H";
+            const before = new Items(projectDoc, tree, "root").addNode("tester");
+            before.text = "Entirely before the window";
+            before.allDay = false;
+            before.start = "2026-07-30T09:00:00Z";
+            before.duration = "PT1H";
+
+            const pgSchema = projectSchemaName(projectId);
+            const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+            try {
+                const outcome = await runCalendarQuery(
+                    session,
+                    pgSchema,
+                    `SELECT id, text AS title, 'item' AS source_kind, id AS source_id
+                     FROM outline_items
+                     WHERE start_at < current_setting('view.range_end')::timestamptz
+                       AND start_at + duration > current_setting('view.range_start')::timestamptz
+                     ORDER BY start_at`,
+                    { start: new Date("2026-08-01T00:00:00Z"), end: new Date("2026-08-02T00:00:00Z") },
+                );
+                expect(outcome.error).toBeUndefined();
+                expect(outcome.result?.rows.map((r) => r.title)).toEqual(["Spills into the window"]);
+                expect(outcome.result?.rows.map((r) => r.title)).not.toContain("Entirely before the window");
+                expect(outcome.result?.rows.map((r) => r.title)).not.toContain(scheduled.text);
+            } finally {
+                session.dispose();
+            }
+        });
+    });
 });

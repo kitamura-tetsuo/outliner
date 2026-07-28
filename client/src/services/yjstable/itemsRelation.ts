@@ -51,11 +51,14 @@ export const ITEMS_RELATION_ORIGIN = Symbol("items-relation-origin");
 /** The Y.Map holding the outline tree inside a project doc. */
 export const ORDERED_TREE_KEY = "orderedTree";
 
-/** Node value field that (along with `START_FIELD`) decides projection scope. */
+/** Node value field that (along with `START_FIELD`/`RRULE_FIELD`) decides projection scope. */
 const DUE_FIELD = "due";
 
 /** Node value field carrying the floating date or instant (see §6.1). */
 const START_FIELD = "start";
+
+/** Node value field marking a recurring item (see §6.2). */
+const RRULE_FIELD = "rrule";
 
 /**
  * Columns of the projection, and the node value field each maps back to.
@@ -65,6 +68,12 @@ const START_FIELD = "start";
  * `start_on` and `start_at` both map back to `start`: which one a write lands
  * as is decided by which column it targets (see `writeStart`), not by a
  * second field.
+ *
+ * `recurrence_parent_id`/`recurrence_occurrence_id` are read-only here (not
+ * present in this map): they identify an override and are set only by
+ * `client/src/services/calendar/recurrenceEditing.ts`, never by a generic
+ * relation write, the same way `page_id`/`parent_id` are structural and not
+ * writable columns either.
  */
 const COLUMN_TO_FIELD: Record<string, string> = {
     text: "text",
@@ -75,6 +84,9 @@ const COLUMN_TO_FIELD: Record<string, string> = {
     start_on: START_FIELD,
     start_at: START_FIELD,
     duration: "duration",
+    rrule: RRULE_FIELD,
+    recurrence_dtstart: "recurrenceDtstart",
+    recurrence_timezone: "recurrenceTimezone",
 };
 
 export const ITEMS_RELATION_COLUMNS = [
@@ -89,6 +101,11 @@ export const ITEMS_RELATION_COLUMNS = [
     "start_on",
     "start_at",
     "duration",
+    "rrule",
+    "recurrence_dtstart",
+    "recurrence_timezone",
+    "recurrence_parent_id",
+    "recurrence_occurrence_id",
 ] as const;
 
 function createTableSql(): string {
@@ -103,7 +120,12 @@ function createTableSql(): string {
         "all_day" BOOLEAN,
         "start_on" DATE,
         "start_at" TIMESTAMPTZ,
-        "duration" INTERVAL
+        "duration" INTERVAL,
+        "rrule" TEXT,
+        "recurrence_dtstart" TEXT,
+        "recurrence_timezone" TEXT,
+        "recurrence_parent_id" TEXT,
+        "recurrence_occurrence_id" TEXT
     )`;
 }
 
@@ -124,6 +146,15 @@ interface ProjectedRow {
     /** Timed entries only; mutually exclusive with `start_on`. */
     start_at: string | undefined;
     duration: string | undefined;
+    /** RFC 5545 RRULE body. Present only on a recurring item's anchor row (§6.2). */
+    rrule: string | undefined;
+    /** Local wall-clock dtstart paired with `rrule`; never a UTC instant. */
+    recurrence_dtstart: string | undefined;
+    recurrence_timezone: string | undefined;
+    /** Set on an override row only: the recurring item's `id`. */
+    recurrence_parent_id: string | undefined;
+    /** Set on an override row only: the occurrence it replaces, by local dtstart. */
+    recurrence_occurrence_id: string | undefined;
 }
 
 export interface ItemsRelationOptions {
@@ -269,7 +300,8 @@ export class ItemsRelationProvider implements RelationProvider {
                     } else {
                         // Clear every field that could keep the item
                         // projected: `due` alone no longer guarantees that
-                        // (§4.2 widened the scope to `due` OR `start`).
+                        // (§4.2 widened the scope to `due` OR `start` OR
+                        // `rrule`, §6.2).
                         const nodeValue = this.nodeValue(write.rowId);
                         if (!nodeValue) {
                             throw new RelationWriteError(
@@ -279,6 +311,10 @@ export class ItemsRelationProvider implements RelationProvider {
                         nodeValue.delete("due");
                         nodeValue.delete("start");
                         nodeValue.delete("allDay");
+                        nodeValue.delete(RRULE_FIELD);
+                        nodeValue.delete("recurrenceDtstart");
+                        nodeValue.delete("recurrenceTimezone");
+                        nodeValue.delete("recurrenceExdate");
                         touched.push(write.rowId);
                     }
                     return;
@@ -327,6 +363,10 @@ export class ItemsRelationProvider implements RelationProvider {
             }
             return;
         }
+        if (column === "rrule") {
+            this.writeRrule(nodeValue, value);
+            return;
+        }
         if (column === "start_on") {
             this.writeStart(nodeValue, value, true);
             return;
@@ -359,6 +399,23 @@ export class ItemsRelationProvider implements RelationProvider {
         }
         nodeValue.set(START_FIELD, String(value));
         nodeValue.set("allDay", allDay);
+    }
+
+    /**
+     * Writing `rrule` also eagerly creates `recurrenceExdate` when absent —
+     * matching `Item.rrule`'s own setter — so a later concurrent
+     * `addRecurrenceExdate` from two clients merges into one shared array
+     * instead of racing to create it, the same reason `tags` is eager.
+     */
+    private writeRrule(nodeValue: Y.Map<unknown>, value: RelationValue): void {
+        if (value === null || value === undefined || value === "") {
+            nodeValue.delete(RRULE_FIELD);
+            return;
+        }
+        nodeValue.set(RRULE_FIELD, String(value));
+        if (!nodeValue.get("recurrenceExdate")) {
+            nodeValue.set("recurrenceExdate", new Y.Array<string>());
+        }
     }
 
     /** Replace the item's tag set from the relation's JSON-encoded value. */
@@ -458,8 +515,10 @@ export class ItemsRelationProvider implements RelationProvider {
             await db.query(
                 `INSERT INTO ${this.qualifiedName()}
                      ("id", "page_id", "parent_id", "text", "due", "done", "tags",
-                      "all_day", "start_on", "start_at", "duration")
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                      "all_day", "start_on", "start_at", "duration",
+                      "rrule", "recurrence_dtstart", "recurrence_timezone",
+                      "recurrence_parent_id", "recurrence_occurrence_id")
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
                  ON CONFLICT ("id") DO UPDATE SET
                      "page_id" = EXCLUDED."page_id",
                      "parent_id" = EXCLUDED."parent_id",
@@ -470,7 +529,12 @@ export class ItemsRelationProvider implements RelationProvider {
                      "all_day" = EXCLUDED."all_day",
                      "start_on" = EXCLUDED."start_on",
                      "start_at" = EXCLUDED."start_at",
-                     "duration" = EXCLUDED."duration"`,
+                     "duration" = EXCLUDED."duration",
+                     "rrule" = EXCLUDED."rrule",
+                     "recurrence_dtstart" = EXCLUDED."recurrence_dtstart",
+                     "recurrence_timezone" = EXCLUDED."recurrence_timezone",
+                     "recurrence_parent_id" = EXCLUDED."recurrence_parent_id",
+                     "recurrence_occurrence_id" = EXCLUDED."recurrence_occurrence_id"`,
                 [
                     row.id,
                     row.page_id ?? null,
@@ -483,6 +547,11 @@ export class ItemsRelationProvider implements RelationProvider {
                     row.start_on ?? null,
                     row.start_at ?? null,
                     row.duration ?? null,
+                    row.rrule ?? null,
+                    row.recurrence_dtstart ?? null,
+                    row.recurrence_timezone ?? null,
+                    row.recurrence_parent_id ?? null,
+                    row.recurrence_occurrence_id ?? null,
                 ],
             );
         } catch (err) {
@@ -533,11 +602,19 @@ export class ItemsRelationProvider implements RelationProvider {
         const start = typeof startRaw === "string" && startRaw.trim() !== ""
             ? startRaw.trim()
             : undefined;
+        const rruleRaw = value.get(RRULE_FIELD);
+        const rrule = typeof rruleRaw === "string" && rruleRaw.trim() !== "" ? rruleRaw.trim() : undefined;
+        const recurrenceParentId = this.stringField(value, "recurrenceParentId");
 
-        // §4.2: an item is projected when it carries `due` OR `start`.
-        if (due === undefined && start === undefined) return undefined;
+        // §4.2/§6.2: an item is projected when it carries `due`, `start`, an
+        // `rrule` (a recurring item's own anchor row), or is an override
+        // (`recurrenceParentId` — always paired with its own `start`, but
+        // checked explicitly so the invariant does not depend on that).
+        if (due === undefined && start === undefined && rrule === undefined && recurrenceParentId === undefined) {
+            return undefined;
+        }
 
-        const allDay = start === undefined ? undefined : value.get("allDay") === true;
+        const allDay = start === undefined && rrule === undefined ? undefined : value.get("allDay") === true;
         const durationRaw = value.get("duration");
         const duration = typeof durationRaw === "string" && durationRaw.trim() !== ""
             ? durationRaw.trim()
@@ -562,7 +639,17 @@ export class ItemsRelationProvider implements RelationProvider {
             start_on: allDay === true ? start : undefined,
             start_at: allDay === false ? start : undefined,
             duration,
+            rrule,
+            recurrence_dtstart: this.stringField(value, "recurrenceDtstart"),
+            recurrence_timezone: this.stringField(value, "recurrenceTimezone"),
+            recurrence_parent_id: recurrenceParentId,
+            recurrence_occurrence_id: this.stringField(value, "recurrenceOccurrenceId"),
         };
+    }
+
+    private stringField(value: Y.Map<unknown>, field: string): string | undefined {
+        const raw = value.get(field);
+        return typeof raw === "string" && raw.trim() !== "" ? raw.trim() : undefined;
     }
 
     private parentOf(key: string): string | undefined {

@@ -371,6 +371,109 @@ export class Item {
         if (idx >= 0) arr.delete(idx, 1);
     }
 
+    /**
+     * RFC 5545 `RRULE` body (no `RRULE:` prefix — same bare-string convention
+     * as `ScheduleRule.rrule`). Paired with `recurrenceDtstart` /
+     * `recurrenceTimezone`; see docs/crdt-sql-architecture.md §6.2.
+     */
+    get rrule(): string | undefined {
+        return this.value.get("rrule") as string | undefined;
+    }
+    set rrule(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("rrule");
+            return;
+        }
+        this.value.set("rrule", v);
+        // Created here rather than eagerly for every item (unlike `tags`):
+        // only a recurring item needs it, but from this point on it must
+        // exist before any concurrent `addRecurrenceExdate` call, for the
+        // same merge-safety reason `tags` is eager (see `Items.addNode`).
+        if (!this.value.get("recurrenceExdate")) {
+            this.value.set("recurrenceExdate", new Y.Array<string>());
+        }
+    }
+
+    /**
+     * First occurrence, as a local wall-clock datetime string
+     * (`YYYY-MM-DDTHH:MM:SS`, no offset) — the RRULE's `DTSTART`. Recurring
+     * plans store wall clock plus zone, not a UTC instant, so an occurrence
+     * stays at the same local time across a DST boundary (§6.1).
+     */
+    get recurrenceDtstart(): string | undefined {
+        return this.value.get("recurrenceDtstart") as string | undefined;
+    }
+    set recurrenceDtstart(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceDtstart");
+        else this.value.set("recurrenceDtstart", v);
+    }
+
+    /** IANA zone `recurrenceDtstart` (and every generated occurrence) is read in. */
+    get recurrenceTimezone(): string | undefined {
+        return this.value.get("recurrenceTimezone") as string | undefined;
+    }
+    set recurrenceTimezone(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceTimezone");
+        else this.value.set("recurrenceTimezone", v);
+    }
+
+    /**
+     * Cancelled occurrences, identified by their local wall-clock dtstart —
+     * the same value a `RECURRENCE-ID` would carry. A `Y.Array<string>` for
+     * the same reason as `tags`: two clients cancelling different occurrences
+     * concurrently must merge into one exception set, not race to create it.
+     */
+    get recurrenceExdate(): string[] {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Record one occurrence as cancelled, if not already. */
+    addRecurrenceExdate(occurrenceId: string): void {
+        const id = occurrenceId.trim();
+        if (!id) return;
+        let arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("recurrenceExdate", arr);
+        }
+        if (!arr.toArray().includes(id)) arr.push([id]);
+    }
+
+    /** Un-cancel a previously excluded occurrence, if present. */
+    removeRecurrenceExdate(occurrenceId: string): void {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(occurrenceId);
+        if (idx >= 0) arr.delete(idx, 1);
+    }
+
+    /**
+     * Set on an override item only: the `id` of the recurring item whose
+     * occurrence this overrides. A virtual occurrence becomes this — an
+     * ordinary item — the moment the user edits it (§6.2).
+     */
+    get recurrenceParentId(): string | undefined {
+        return this.value.get("recurrenceParentId") as string | undefined;
+    }
+    set recurrenceParentId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceParentId");
+        else this.value.set("recurrenceParentId", v);
+    }
+
+    /**
+     * Set on an override item only: the local wall-clock dtstart of the
+     * virtual occurrence it replaces — what `RECURRENCE-ID` identifies in
+     * RFC 5545. Read together with `recurrenceParentId`.
+     */
+    get recurrenceOccurrenceId(): string | undefined {
+        return this.value.get("recurrenceOccurrenceId") as string | undefined;
+    }
+    set recurrenceOccurrenceId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceOccurrenceId");
+        else this.value.set("recurrenceOccurrenceId", v);
+    }
+
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
