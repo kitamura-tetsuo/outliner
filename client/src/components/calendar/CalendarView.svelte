@@ -338,6 +338,9 @@ async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefine
     try {
         await writeCalendarLaneDrop(session, entry, groupAxis, column, laneValue, mode);
         writeError = undefined;
+        // No optimistic override moves the card (see comment above), so the
+        // requery itself is what makes the drop visible.
+        await runQuery();
     } catch (err) {
         writeError = err instanceof Error ? err.message : String(err);
     }
