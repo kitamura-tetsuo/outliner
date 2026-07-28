@@ -15,6 +15,12 @@ let { componentType, item }: Props = $props();
             <YjsTableBlock item={item} />
         </div>
     {/await}
+{:else if componentType === "calendar"}
+    {#await import("./calendar/CalendarBlock.svelte") then { default: CalendarBlock }}
+        <div class="component-wrapper">
+            <CalendarBlock item={item} />
+        </div>
+    {/await}
 {/if}
 
 <style>

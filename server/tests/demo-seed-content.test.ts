@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import {
     buildDemoProject,
     buildDemoScheduleRules,
+    DEMO_CALENDAR_ID,
     DEMO_DAILY_RULE_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_LANDING_PAGE_TITLE,
@@ -12,6 +13,7 @@ import {
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
     DEMO_WEEKLY_RULE_ID,
+    demoCalendars,
     demoPages,
     demoRoutineTemplates,
     demoTables,
@@ -404,5 +406,46 @@ describe("Demo seed content", () => {
             expect(sql).to.contain("INSERT INTO routine_occurrences");
             expect(sql).to.contain("FROM routine_templates t");
         }
+    });
+
+    it("seeds a live calendar component bound to the demo calendar", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const calendarItem = findChildByText(
+            calendarsPage!.items,
+            "A calendar over this project's outline items, already assigned title/start/all-day/duration roles "
+                + "and grouped by tags. Try changing the query or reassigning a role.",
+        );
+        expect(calendarItem, "calendar item exists").to.not.equal(undefined);
+        expect(calendarItem!.componentType).to.equal("calendar");
+        expect(calendarItem!.calendarId).to.equal(DEMO_CALENDAR_ID);
+    });
+
+    it("registers the demo calendar in the project doc's calendars map", () => {
+        const calendars = project.ydoc.getMap("calendars");
+        expect(calendars.size).to.equal(demoCalendars.length);
+
+        for (const template of demoCalendars) {
+            const calendarMap = calendars.get(template.calendarId) as Y.Map<unknown> | undefined;
+            expect(calendarMap, `calendar ${template.calendarId} is registered`).to.not.equal(undefined);
+            expect(calendarMap!.get("name")).to.equal(template.name);
+            expect(calendarMap!.get("query")).to.equal(template.query);
+            expect(calendarMap!.get("roleTitle")).to.equal(template.roleTitle);
+            expect(calendarMap!.get("roleStart")).to.equal(template.roleStart);
+            expect(calendarMap!.get("roleAllDay")).to.equal(template.roleAllDay);
+            expect(calendarMap!.get("roleDuration")).to.equal(template.roleDuration);
+            const groupAxes = calendarMap!.get("groupAxes") as Y.Array<string>;
+            expect(groupAxes.toArray()).to.deep.equal(template.groupAxes);
+        }
+    });
+
+    it("the demo calendar's query is a plain, addressable SELECT (source_kind/source_id present)", () => {
+        const template = demoCalendars[0];
+        expect(/\bjoin\b/i.test(template.query)).to.equal(false);
+        expect(/\bgroup\s+by\b/i.test(template.query)).to.equal(false);
+        expect(template.query).to.contain("'item' AS source_kind");
+        expect(template.query).to.contain("id AS source_id");
+        expect(template.query).to.contain("FROM outline_items");
     });
 });
