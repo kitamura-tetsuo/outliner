@@ -496,7 +496,10 @@ export class ItemsRelationProvider implements RelationProvider {
             } catch (err) {
                 logger.warn({ err }, "[itemsRelation] applying an item change failed");
             }
-        }).catch(() => undefined);
+        }).catch((err) => {
+            logger.warn({ err }, "[itemsRelation] flushPending failed");
+            return undefined;
+        });
         return this.flushing;
     }
 

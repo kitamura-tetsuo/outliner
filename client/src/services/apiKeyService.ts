@@ -1,4 +1,7 @@
 import { userManager } from "../auth/UserManager";
+import { getLogger } from "../lib/logger";
+
+const logger = getLogger("apiKeyService");
 
 export interface ApiKey {
     id: string;
@@ -36,7 +39,10 @@ async function callApi(path: string, options: RequestInit = {}) {
     });
 
     if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
+        const errData = await res.json().catch((err) => {
+            logger.warn({ err }, "[apiKeyService] Failed to parse error response JSON");
+            return {};
+        });
         throw new Error(errData.error || `API error ${res.status}`);
     }
 
