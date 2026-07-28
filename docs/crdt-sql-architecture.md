@@ -105,7 +105,8 @@ maintains the relation by diffed upserts from `observeDeep`.
 
 Only items that carry the structured field are projected. This keeps the
 relation sparse (projecting every item of every page does not scale) and matches
-the user-facing rule above.
+the user-facing rule above. Once `start` exists (§6.1), the condition widens to
+`due` **or** `start`, so that planned work without a deadline is projected too.
 
 Synchronization must be incremental: items live across the page structure
 (`YTree`), not in a single subdoc's Data Storage, so the projection is
@@ -265,6 +266,59 @@ Something that already happened — a row the scheduler generated — is correct
 UTC instant, because it names a moment, not an intention. The two categories
 coexist on one calendar and are stored differently on purpose.
 
+#### `due` and `start` are different things
+
+RFC 5545 has two components, and the difference between them is exactly this
+one: a `VEVENT` occupies time (`DTSTART` + `DURATION`), while a `VTODO` has a
+deadline (`DUE`) and may separately say when it is planned (`DTSTART`).
+
+| Field | Question it answers | Nature |
+| --- | --- | --- |
+| `start` + `duration` | When is this worked on? | An allocation of time |
+| `due` | When must it be finished? | A constraint; allocates nothing |
+
+A task due Friday is often worked on Wednesday. With a single field the user
+must lie — putting the intended working day in the deadline field and losing the
+real deadline — which is why single-date task systems are poor at planning.
+
+So `due` is **not** an alias for `start` with a zero duration, and the two are
+never collapsed. All four combinations mean something:
+
+| State | Meaning | On the calendar |
+| --- | --- | --- |
+| `due` only | Only the deadline is known | A deadline marker; a milestone in Gantt |
+| `start` + `duration` only | Time is set aside, with no deadline | An ordinary block or bar |
+| Both | Planned work that also has a deadline | Bar plus marker; an overrun is detectable |
+| Neither | Not scheduled and not due | Not shown |
+
+**`due` is neither derived from nor constrained by `start + duration`.** It is
+an independent constraint, and a calendar may surface the conflict when
+`start + duration` runs past it. (RFC 5545 makes `DUE` and `DURATION` mutually
+exclusive within a `VTODO` only because there `DURATION` is measured from
+`DTSTART`, so carrying both would define the end twice. Here `due` is not an
+end, so there is no such conflict — but implementers will assume it is one
+unless told otherwise.)
+
+**The exclusive-end rule above does not apply to `due`.** An all-day entry
+ending 8/1 ends at 8/2, but an all-day `due` of 8/1 means _by the end of 8/1_.
+The same date carries different meaning as an event end and as a deadline;
+treating them alike shifts every deadline by a day.
+
+Because `start` alone is a legitimate state, the projection scope of §4.2
+widens: an item is projected when it carries `due` **or** `start`, not `due`
+alone.
+
+Keeping the two apart is also what lets the role assignment (§6.3) be useful. A
+calendar can bind the start role to `due` to read as a deadline calendar, or to
+`start` to read as a plan, or show both with different treatments — a choice
+that disappears the moment the fields are merged. Drag semantics follow the same
+split: moving a bar writes `start`, moving a marker writes `due`, and each is
+independently subject to whether its column is writable.
+
+With `done` already present, an item carrying these fields is in effect a
+`VTODO` (`DTSTART` / `DUE` / `DURATION` / `STATUS`), which keeps a future
+extension of the iCal export (SCH-5A1C2B3D) to plans straightforward.
+
 ### 6.2 Recurrence
 
 **Recurring entries are not materialized.** The standard model, and the one
@@ -395,6 +449,8 @@ and belong in their own decision rather than smuggled into the calendar's.
 - Do not implement grouping as SQL `GROUP BY`. It makes the result read-only and
   takes every calendar affordance with it.
 - Do not store an all-day entry as a midnight instant.
+- Do not collapse `due` into `start`, and do not treat `due` as an end — the
+  exclusive-end rule is for event ends only.
 - Do not render in an ambient timezone, and do not let the SQL session zone
   differ from the view's.
 - Do not speculatively execute schedule-rule SQL to preview future occurrences.
