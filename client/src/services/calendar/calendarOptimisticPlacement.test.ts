@@ -19,6 +19,17 @@ describe("calendarOptimisticPlacement", () => {
         expect(placed.startMs).toBe(1000);
     });
 
+    it("applies a pending raw grouping-column override without mutating the query row", () => {
+        const original = { ...entry("a", 0), raw: { tags: '["work"]', id: "a" } };
+        const overrides = setOptimisticOverride(createOptimisticOverrides(), "a", {
+            raw: { tags: '["urgent"]' },
+        });
+        const [placed] = applyOptimisticOverrides([original], overrides);
+
+        expect(placed.raw).toEqual({ tags: '["urgent"]', id: "a" });
+        expect(original.raw).toEqual({ tags: '["work"]', id: "a" });
+    });
+
     it("leaves entries with no pending override untouched", () => {
         const overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000 });
         const [placed] = applyOptimisticOverrides([entry("b", 0)], overrides);
@@ -54,6 +65,18 @@ describe("calendarOptimisticPlacement", () => {
         const overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000 });
         const next = reconcileOptimisticOverrides(overrides, [entry("b", 0)]);
         expect(next.has("a")).toBe(true);
+    });
+
+    it("keeps a raw-column override through a stale projection and clears it after the projection catches up", () => {
+        const overrides = setOptimisticOverride(createOptimisticOverrides(), "a", {
+            raw: { tags: '["urgent"]' },
+        });
+        const stale = { ...entry("a", 0), raw: { tags: '["work"]' } };
+        const pending = reconcileOptimisticOverrides(overrides, [stale]);
+        expect(pending.has("a")).toBe(true);
+
+        const current = { ...entry("a", 0), raw: { tags: '["urgent"]' } };
+        expect(reconcileOptimisticOverrides(pending, [current]).has("a")).toBe(false);
     });
 
     it("reconciliation is a no-op (same reference) when nothing changes", () => {

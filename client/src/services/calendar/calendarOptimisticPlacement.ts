@@ -15,6 +15,8 @@ export interface OptimisticOverride {
     startMs?: number;
     /** New duration, when a resize changed it. */
     durationMs?: number;
+    /** Raw query columns changed by a write, such as a grouping axis after a lane drop. */
+    raw?: Record<string, unknown>;
 }
 
 export type OptimisticOverrides = Map<string, OptimisticOverride>;
@@ -46,22 +48,31 @@ export function clearOptimisticOverride(overrides: OptimisticOverrides, key: str
 }
 
 /**
- * Drop every pending override whose entry is present in the fresh query
- * result — whether or not the new value matches what was optimistically
- * placed (the query result is authoritative: a concurrent remote change wins
- * over the local optimistic placement). Never grows unbounded: an override
- * is held only until the next result that covers its row arrives.
+ * Drop positional overrides when their entry is present in a fresh query
+ * result (the query is authoritative for concurrent moves). Raw-column
+ * overrides wait until those written columns appear, because the relation
+ * projection may briefly return its pre-write row while its observer flushes.
  */
 export function reconcileOptimisticOverrides(
     overrides: OptimisticOverrides,
     freshEntries: CalendarEntry[],
 ): OptimisticOverrides {
     if (overrides.size === 0) return overrides;
-    const freshKeys = new Set(freshEntries.map((e) => e.key));
+    const freshByKey = new Map(freshEntries.map((entry) => [entry.key, entry]));
     let changed = false;
     const next = new Map(overrides);
     for (const key of overrides.keys()) {
-        if (freshKeys.has(key)) {
+        const fresh = freshByKey.get(key);
+        if (!fresh) continue;
+        const override = overrides.get(key)!;
+        // A relation projection can briefly return the pre-write row while
+        // its Yjs observer is still flushing to PGlite. Keep raw-column
+        // mirrors through that stale result; clear them once those columns
+        // are actually reflected. Positional overrides retain the original
+        // "fresh query wins" behavior for concurrent drag reconciliation.
+        const rawMatches = !override.raw
+            || Object.entries(override.raw).every(([column, value]) => fresh.raw[column] === value);
+        if (rawMatches) {
             next.delete(key);
             changed = true;
         }
@@ -82,6 +93,7 @@ export function applyOptimisticOverrides(
             ...entry,
             startMs: override.startMs ?? entry.startMs,
             durationMs: override.durationMs ?? entry.durationMs,
+            raw: override.raw ? { ...entry.raw, ...override.raw } : entry.raw,
         };
     });
 }

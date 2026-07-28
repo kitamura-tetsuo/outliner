@@ -25,7 +25,12 @@ import {
     todayAnchor,
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
-import { collapseLanePath, entryAxisValues, groupCalendarEntries } from "../../services/calendar/calendarGrouping";
+import {
+    collapseLanePath,
+    entryAxisValues,
+    groupCalendarEntries,
+    isMultiValuedAxis,
+} from "../../services/calendar/calendarGrouping";
 import { isLaneDropWritable, writeCalendarLaneDrop } from "../../services/calendar/calendarLaneWrite";
 import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale";
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
@@ -323,24 +328,30 @@ function cancelDrag(entry: CalendarEntry) {
 }
 
 /**
- * Drop `entry` onto a lane (#4348). Unlike reschedule, a lane drop has no
- * optimistic placement of its own: the next query result is what moves the
- * card between swimlanes, since the write and the requery are both quick and
- * a lane change (unlike a pixel-accurate time drag) has no visible
- * snap-back to avoid.
+ * Drop `entry` onto a lane (#4348). Mirror the target membership
+ * optimistically: the Yjs -> PGlite projection is asynchronous, so waiting
+ * for its query round-trip would leave a successfully dropped card in the
+ * old lane. The next authoritative query result reconciles the mirror.
  */
 async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefined, mode: "replace" | "add") {
     if (!groupAxis) return;
     const column = writableColumns.get(groupAxis);
     if (!column) return;
+    const multiValued = isMultiValuedAxis(entry, groupAxis);
+    const currentValues = entryAxisValues(entry, groupAxis).filter((value): value is string => value !== undefined);
+    const nextValues = mode === "add" && laneValue !== undefined
+        ? Array.from(new Set([...currentValues, laneValue]))
+        : laneValue === undefined ? [] : [laneValue];
+    const optimisticValue = multiValued ? JSON.stringify(nextValues) : laneValue;
+    optimisticOverrides = setOptimisticOverride(optimisticOverrides, entry.key, {
+        raw: { [groupAxis]: optimisticValue },
+    });
     try {
         await writeCalendarLaneDrop(session, entry, groupAxis, column, laneValue, mode);
         writeError = undefined;
-        // No optimistic override moves the card (see comment above), so the
-        // requery itself is what makes the drop visible — the same debounced
-        // path a query/viewType/timezone edit or nav action uses.
         scheduleRequery();
     } catch (err) {
+        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
