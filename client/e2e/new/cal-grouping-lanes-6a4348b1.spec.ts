@@ -76,9 +76,24 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         await expect(urgentEntry).toContainText("Urgent item");
 
         // Drag the "Work item" entry's lane handle onto the "urgent" lane —
-        // a plain drop replaces its tag set.
-        const handle = workLane.locator('[data-testid^="calendar-entry-lane-handle-outline_items:"]').first();
-        await handle.dragTo(urgentLane);
+        // a plain drop replaces its tag set. Playwright's locator.dragTo()
+        // simulates the drag via synthetic mouse movement, which is
+        // unreliable for a deeply nested, custom HTML5 drag target like this
+        // one (the drop target's own bounding-box center can land on a
+        // scrollable descendant rather than the lane band itself); dispatch
+        // the drag events directly instead, the pattern Playwright's own docs
+        // recommend for testing custom HTML5 drag-and-drop.
+        await page.evaluate(() => {
+            const handle = document.querySelector(
+                '[data-testid="calendar-lane-work"] [data-testid^="calendar-entry-lane-handle-outline_items:"]',
+            )!;
+            const lane = document.querySelector('[data-testid="calendar-lane-urgent"]')!;
+            const dataTransfer = new DataTransfer();
+            handle.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer }));
+            lane.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer }));
+            lane.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+            handle.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer }));
+        });
 
         await expect(urgentLane.locator('[data-testid^="calendar-entry-outline_items:"]', { hasText: "Work item" }))
             .toBeVisible({ timeout: 15000 });
