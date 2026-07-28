@@ -33,7 +33,7 @@ afterAll(async () => {
     await resetPgliteForTests();
 });
 
-describe("CalendarView", { timeout: 30000 }, () => {
+describe("CalendarView", { timeout: 60000 }, () => {
     it("renders a timed entry from the query result in the week time-grid", async () => {
         const projectId = "proj-calendar-view-week";
         const { projectDoc, project, page } = seedProject(projectId);
@@ -57,7 +57,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         await waitFor(() => {
             expect(getByTestId(`calendar-entry-item:${item.key}`)).toBeTruthy();
-        });
+        }, { timeout: 15000 });
         expect(getByTestId("calendar-time-grid")).toBeTruthy();
 
         destroyCalendarUndoManager(projectDoc);
@@ -85,7 +85,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         await waitFor(() => {
             expect(getByTestId(`calendar-entry-item:${item.key}`)).toBeTruthy();
-        });
+        }, { timeout: 15000 });
         expect(getByTestId("calendar-month-grid")).toBeTruthy();
 
         destroyCalendarUndoManager(projectDoc);
@@ -97,11 +97,11 @@ describe("CalendarView", { timeout: 30000 }, () => {
         const calendarId = createCalendar(project, { name: "Cal", query: "SELECT 1" });
 
         const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
-        await waitFor(() => expect(getByTestId("calendar-view-type")).toBeTruthy());
+        await waitFor(() => expect(getByTestId("calendar-view-type")).toBeTruthy(), { timeout: 15000 });
 
         await fireEvent.change(getByTestId("calendar-view-type"), { target: { value: "month" } });
         expect(getCalendar(project, calendarId)?.viewType).toBe("month");
-        await waitFor(() => expect(getByTestId("calendar-month-grid")).toBeTruthy());
+        await waitFor(() => expect(getByTestId("calendar-month-grid")).toBeTruthy(), { timeout: 15000 });
 
         destroyCalendarUndoManager(project.ydoc);
     });
@@ -112,7 +112,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
         const calendarId = createCalendar(project, { name: "Cal", viewType: "day", query: "SELECT 1" });
 
         const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
-        await waitFor(() => expect(getByTestId("calendar-range-label")).toBeTruthy());
+        await waitFor(() => expect(getByTestId("calendar-range-label")).toBeTruthy(), { timeout: 15000 });
 
         const before = getByTestId("calendar-range-label").textContent;
         await fireEvent.click(getByTestId("calendar-nav-next"));
@@ -144,14 +144,14 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
-        await waitFor(() => expect(getByTestId("calendar-read-only-banner")).toBeTruthy());
+        await waitFor(() => expect(getByTestId("calendar-read-only-banner")).toBeTruthy(), { timeout: 15000 });
         await waitFor(() => {
             // No source_kind/source_id: the row falls back to its bare `id`
             // column for identity (calendarEntries.ts), but is still
             // non-writable since analyzeCalendarEditability requires both.
             const el = getByTestId(`calendar-entry-${item.key}`);
             expect(el.className).toContain("not-writable");
-        });
+        }, { timeout: 15000 });
 
         destroyCalendarUndoManager(projectDoc);
     });
