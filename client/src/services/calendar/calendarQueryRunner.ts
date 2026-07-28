@@ -7,6 +7,10 @@
 // materialized yet is reported by Postgres as `relation "x" does not exist`,
 // resolved through the engine session's registry, and retried.
 
+import { getLogger } from "../../lib/logger";
+
+const logger = getLogger("calendarQueryRunner");
+
 import { enqueueWrite, TableSqlError, toTableSqlError } from "../yjstable/pgliteService";
 import { assertSelectQuery, missingRelationName } from "../yjstable/queryAnalysis";
 import { formatQueryDateFields } from "../yjstable/queryResultFormatting";
@@ -59,7 +63,7 @@ async function executeQuery(pgSchema: string, selectSql: string): Promise<TableQ
                 rows: formatQueryDateFields(res.fields, res.rows),
             };
         } catch (err) {
-            await db.exec("ROLLBACK").catch(() => undefined);
+            await db.exec("ROLLBACK").catch((err) => logger.warn({ err }, "Rollback failed"));
             throw err;
         }
     });

@@ -36,7 +36,7 @@ export class JobExecutor {
                 logger.error({ err }, "JobExecutor worker error");
                 // The worker is dead, but if it is still the current one, clean up and restart.
                 if (this.worker === worker) {
-                    worker.terminate().catch(() => {});
+                    worker.terminate().catch((err) => logger.warn({ err }, "Failed to terminate worker"));
                     this.worker = null;
                     for (const r of this.resolvers.values()) {
                         r.reject(new Error("Worker error"));
