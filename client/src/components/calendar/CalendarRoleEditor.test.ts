@@ -84,6 +84,23 @@ describe("CalendarRoleEditor", () => {
         expect(getByTestId("calendar-read-only-banner").textContent).toMatch(/source_kind/);
     });
 
+    it("writes the selected column into the due role assignment", async () => {
+        const { getByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                resultColumns: ["id", "due"],
+                roles: { groupAxes: [] },
+                readOnly: false,
+            },
+        });
+
+        const dueSelect = getByTestId("calendar-role-roleDue") as HTMLSelectElement;
+        await fireEvent.change(dueSelect, { target: { value: "due" } });
+
+        expect(getCalendar(project, calendarId)?.roleDue).toBe("due");
+    });
+
     it("warns when the query references neither view.range_start nor view.range_end", () => {
         const { getByTestId } = render(CalendarRoleEditor, {
             props: {

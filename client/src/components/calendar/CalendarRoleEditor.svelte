@@ -26,6 +26,7 @@ interface RoleAssignment {
     roleStart?: string;
     roleAllDay?: string;
     roleDuration?: string;
+    roleDue?: string;
     groupAxes: string[];
 }
 
@@ -50,26 +51,29 @@ let { project, calendarId, query = "", resultColumns, roles, readOnly, readOnlyR
 // `queryReferencesViewRange`.
 const showRangeWarning = $derived(query.trim() !== "" && !queryReferencesViewRange(query));
 
-const ROLE_FIELDS: { key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration"; label: string; }[] = [
+const ROLE_FIELDS: { key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" | "roleDue"; label: string; }[] = [
     { key: "roleTitle", label: "Title" },
     { key: "roleStart", label: "Start" },
     { key: "roleAllDay", label: "All-day" },
     { key: "roleDuration", label: "Duration" },
+    { key: "roleDue", label: "Due" },
 ];
 
 const titleCandidates = $derived(mergeCandidates(resultColumns, [roles.roleTitle]));
 const startCandidates = $derived(mergeCandidates(resultColumns, [roles.roleStart]));
 const allDayCandidates = $derived(mergeCandidates(resultColumns, [roles.roleAllDay]));
 const durationCandidates = $derived(mergeCandidates(resultColumns, [roles.roleDuration]));
+const dueCandidates = $derived(mergeCandidates(resultColumns, [roles.roleDue]));
 const candidatesByRole = $derived({
     roleTitle: titleCandidates,
     roleStart: startCandidates,
     roleAllDay: allDayCandidates,
     roleDuration: durationCandidates,
+    roleDue: dueCandidates,
 });
 const groupAxisCandidates = $derived(mergeCandidates(resultColumns, roles.groupAxes));
 
-function setRole(key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration", value: string) {
+function setRole(key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" | "roleDue", value: string) {
     updateCalendar(project, calendarId, { [key]: value === "" ? undefined : value });
 }
 

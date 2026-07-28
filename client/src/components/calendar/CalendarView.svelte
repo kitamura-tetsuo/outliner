@@ -1,24 +1,44 @@
 <script lang="ts">
 // Orchestrates one calendar: owns the query-execution session, keeps a plain
-// $state mirror of the calendar's Y.Map (AGENTS.md §11 mirror pattern), and
-// hosts the role-assignment editor. Rendered by both the embedded block and
-// the standalone route (docs/crdt-sql-architecture.md §6.6), so they always
-// show the same calendar.
+// $state mirror of the calendar's Y.Map (AGENTS.md §11 mirror pattern), hosts
+// the role-assignment editor, and renders the day/multi-day/week/month grid
+// views over the query result (#4347; Gantt is #4350, still a later piece).
 //
 // This component is always mounted under {#key calendarId} (see
 // CalendarBlock/the standalone route) — a calendar has no subdoc to key on
 // the way a table does, so the id itself is the remount key.
-//
-// The day/week/month/Gantt grid views are a separate, later piece of work
-// (#4347/#4350); this view renders a plain preview of the query result so
-// the role assignment is visible without waiting on that grid.
 
 import { onDestroy, onMount } from "svelte";
 import type { Project } from "$shared/app-schema";
 import * as Y from "yjs";
 import { analyzeCalendarEditability } from "../../services/calendar/calendarEditability";
+import { analyzeCalendarColumnWritability } from "../../services/calendar/calendarColumnWritability";
+import { buildCalendarEntries, type CalendarEntry } from "../../services/calendar/calendarEntries";
+import {
+    resolveCalendarEntryWritability,
+    writeCalendarEntryDuration,
+    writeCalendarEntryStart,
+} from "../../services/calendar/calendarEntryWrite";
+import {
+    computeViewRange,
+    shiftAnchor,
+    todayAnchor,
+    type CalendarViewType,
+} from "../../services/calendar/calendarGridRange";
+import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale";
+import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
+import {
+    applyOptimisticOverrides,
+    clearOptimisticOverride,
+    createOptimisticOverrides,
+    reconcileOptimisticOverrides,
+    setOptimisticOverride,
+    type OptimisticOverrides,
+} from "../../services/calendar/calendarOptimisticPlacement";
 import { runCalendarQuery } from "../../services/calendar/calendarQueryRunner";
 import {
+    DEFAULT_WORKING_HOURS_END_MINUTES,
+    DEFAULT_WORKING_HOURS_START_MINUTES,
     type CalendarSettings,
     DEFAULT_CALENDAR_VIEW_TYPE,
     destroyCalendarUndoManager,
@@ -26,13 +46,15 @@ import {
     getCalendarMap,
     updateCalendar,
 } from "../../services/calendar/calendarService";
+import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import { listSupportedTimeZones, resolveCalendarTimezone } from "../../services/calendar/calendarTimezone";
-import { computeViewRange, shiftAnchor } from "../../services/calendar/calendarViewRange";
 import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
+import CalendarTimeGrid from "./CalendarTimeGrid.svelte";
 
 interface Props {
     project: Project;
@@ -49,34 +71,61 @@ const EMPTY_SETTINGS: CalendarSettings = {
     groupAxes: [],
 };
 
+const VIEW_TYPE_OPTIONS: { value: CalendarViewType; label: string; }[] = [
+    { value: "day", label: "Day" },
+    { value: "days", label: "Multi-day" },
+    { value: "week", label: "Week" },
+    { value: "month", label: "Month" },
+];
+
 let settings = $state<CalendarSettings>(EMPTY_SETTINGS);
 let queryInput = $state("");
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
+let writeError = $state<string | undefined>(undefined);
+let anchorUtcMs = $state(Date.now());
+let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides());
 
 const editability = $derived(analyzeCalendarEditability(result.columns));
-
+const writableColumns = $derived(analyzeCalendarColumnWritability(settings.query));
 // The view's timezone (§6.5) is an explicit, visible setting: absent means
 // viewer-local, resolved here rather than left implicit. The SQL session
 // timezone for this calendar's own query must equal it (`runQuery` below),
-// and the range below is computed in it, so two collaborators viewing a
+// and the grid range below is computed in it, so two collaborators viewing a
 // calendar with a fixed timezone see the same window regardless of either
 // viewer's own local zone.
 const timeZone = $derived(resolveCalendarTimezone(settings.timezone));
 const timeZoneOptions = listSupportedTimeZones();
-
-// The visible window (§6.4), per viewer: which period is on screen is
-// navigation state, not project data, so it lives here rather than in the
-// calendars map. `range` recomputes whenever the view type (from the map),
-// the timezone (from the map), or the anchor (from navigation) changes;
-// `runQuery` reads it at call time.
-let anchorDate = $state(new Date());
-const range = $derived(computeViewRange(settings.viewType, anchorDate, timeZone));
-const rangeLabel = $derived(
-    `${range.start.toLocaleDateString(undefined, { timeZone })} – ${
-        new Date(range.end.getTime() - 1).toLocaleDateString(undefined, { timeZone })
-    }`,
+const weekStart = $derived(settings.weekStart ?? resolveDefaultWeekStart());
+const workingHoursStart = $derived(settings.workingHoursStartMinutes ?? DEFAULT_WORKING_HOURS_START_MINUTES);
+const workingHoursEnd = $derived(settings.workingHoursEndMinutes ?? DEFAULT_WORKING_HOURS_END_MINUTES);
+const KNOWN_VIEW_TYPES = new Set<CalendarViewType>(["day", "days", "week", "month"]);
+// A stored viewType this component does not know how to grid (a future
+// "gantt", or a stale value) falls back to "week" rather than crashing the
+// range computation, which is only total over the known variants.
+const viewType = $derived(
+    KNOWN_VIEW_TYPES.has(settings.viewType as CalendarViewType) ? (settings.viewType as CalendarViewType) : "week",
 );
+const range = $derived(computeViewRange(anchorUtcMs, viewType, weekStart, timeZone));
+// The same visible window, in the `{ start: Date, end: Date }` shape the
+// query runner injects as `view.range_start`/`view.range_end` (§6.4). The
+// grid keeps working in UTC millis; only the SQL boundary needs Dates.
+const queryRange = $derived({ start: new Date(range.start), end: new Date(range.end) });
+
+const rawEntries = $derived(buildCalendarEntries(result, settings));
+const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
+
+const timeGridLayout = $derived(
+    viewType === "month" ? undefined : layoutTimeGrid(placedEntries, range.start, range.end),
+);
+const monthCells = $derived(viewType === "month" ? layoutMonthGrid(placedEntries, range.start, range.end) : undefined);
+
+function isStartWritable(entry: CalendarEntry): boolean {
+    return resolveCalendarEntryWritability(entry, settings, writableColumns).startWritable;
+}
+function isDurationWritable(entry: CalendarEntry): boolean {
+    return resolveCalendarEntryWritability(entry, settings, writableColumns).durationWritable;
+}
 
 function readSettingsFromMap(): CalendarSettings | undefined {
     const map = getCalendarMap(project, calendarId);
@@ -91,23 +140,29 @@ function readSettingsFromMap(): CalendarSettings | undefined {
         roleStart: map.get("roleStart") as string | undefined,
         roleAllDay: map.get("roleAllDay") as string | undefined,
         roleDuration: map.get("roleDuration") as string | undefined,
+        roleDue: map.get("roleDue") as string | undefined,
         groupAxes: groupAxesValue instanceof Y.Array ? groupAxesValue.toArray() : [],
+        weekStart: map.get("weekStart") as number | undefined,
+        workingHoursStartMinutes: map.get("workingHoursStartMinutes") as number | undefined,
+        workingHoursEndMinutes: map.get("workingHoursEndMinutes") as number | undefined,
     };
 }
 
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
-// svelte-ignore state_referenced_locally
 const pgSchema = projectSchemaName(projectId);
-// svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {
-    const outcome = await runCalendarQuery(session, pgSchema, settings.query, range, timeZone);
+    const outcome = await runCalendarQuery(session, pgSchema, settings.query, queryRange, timeZone);
     if (outcome.result) {
         result = outcome.result;
         queryError = undefined;
+        // The query result is authoritative: drop any optimistic placement
+        // whose row has now come back, whether or not it agrees with the
+        // local guess (a concurrent remote move wins either way).
+        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings));
     } else {
         queryError = outcome.error;
     }
@@ -132,17 +187,6 @@ function refreshMirror() {
     if (queryChanged || viewTypeChanged || timezoneChanged) scheduleRequery();
 }
 
-/** Navigate to the next/previous period; re-runs the query, debounced. */
-function navigate(direction: 1 | -1) {
-    anchorDate = shiftAnchor(settings.viewType, anchorDate, direction, timeZone);
-    scheduleRequery();
-}
-
-function goToToday() {
-    anchorDate = new Date();
-    scheduleRequery();
-}
-
 /**
  * Switch the calendar's timezone; an empty value clears it back to
  * viewer-local. Pass the empty string through as-is rather than `undefined`
@@ -160,6 +204,75 @@ const mirrorObserver = () => refreshMirror();
 function commitQuery(e: Event) {
     const value = (e.target as HTMLInputElement).value;
     updateCalendar(project, calendarId, { query: value });
+}
+
+function setViewType(e: Event) {
+    updateCalendar(project, calendarId, { viewType: (e.target as HTMLSelectElement).value });
+}
+
+function goToday() {
+    anchorUtcMs = todayAnchor(timeZone, Date.now());
+    scheduleRequery();
+}
+function goPrev() {
+    anchorUtcMs = shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, -1);
+    scheduleRequery();
+}
+function goNext() {
+    anchorUtcMs = shiftAnchor(anchorUtcMs, viewType, weekStart, timeZone, 1);
+    scheduleRequery();
+}
+
+const rangeLabel = $derived(
+    `${new Date(range.start).toISOString().slice(0, 10)} – ${
+        new Date(range.end - 1).toISOString().slice(0, 10)
+    } (${timeZone})`,
+);
+
+// --- Write dispatch: drag/resize/keyboard all funnel through here. ---
+
+function startColumn(): string | undefined {
+    return settings.roleStart ? writableColumns.get(settings.roleStart) : undefined;
+}
+function durationColumn(): string | undefined {
+    return settings.roleDuration ? writableColumns.get(settings.roleDuration) : undefined;
+}
+
+function previewStart(entry: CalendarEntry, newStartMs: number) {
+    optimisticOverrides = setOptimisticOverride(optimisticOverrides, entry.key, { startMs: newStartMs });
+}
+function previewDuration(entry: CalendarEntry, newDurationMs: number) {
+    optimisticOverrides = setOptimisticOverride(optimisticOverrides, entry.key, { durationMs: newDurationMs });
+}
+
+async function commitStart(entry: CalendarEntry, newStartMs: number) {
+    previewStart(entry, newStartMs);
+    const column = startColumn();
+    if (!column) return;
+    try {
+        await writeCalendarEntryStart(session, entry, column, newStartMs);
+        writeError = undefined;
+    } catch (err) {
+        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        writeError = err instanceof Error ? err.message : String(err);
+    }
+}
+
+async function commitDuration(entry: CalendarEntry, newDurationMs: number) {
+    previewDuration(entry, newDurationMs);
+    const column = durationColumn();
+    if (!column) return;
+    try {
+        await writeCalendarEntryDuration(session, entry, column, newDurationMs);
+        writeError = undefined;
+    } catch (err) {
+        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        writeError = err instanceof Error ? err.message : String(err);
+    }
+}
+
+function cancelDrag(entry: CalendarEntry) {
+    optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
 }
 
 onMount(() => {
@@ -182,19 +295,21 @@ onDestroy(() => {
 <div class="calendar-view" data-testid="calendar-view">
     <div class="view-toolbar">
         <span class="calendar-name" data-testid="calendar-name">{settings.name}</span>
+        <div class="nav-controls">
+            <button type="button" data-testid="calendar-nav-prev" onclick={goPrev}>‹</button>
+            <button type="button" data-testid="calendar-nav-today" onclick={goToday}>Today</button>
+            <button type="button" data-testid="calendar-nav-next" onclick={goNext}>›</button>
+            <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
+        </div>
+        <select data-testid="calendar-view-type" value={viewType} onchange={setViewType}>
+            {#each VIEW_TYPE_OPTIONS as opt (opt.value)}
+                <option value={opt.value}>{opt.label}</option>
+            {/each}
+        </select>
         <div class="undo-controls">
             <button type="button" data-testid="calendar-undo" onclick={() => globalUndoRouter.undo()}>Undo</button>
             <button type="button" data-testid="calendar-redo" onclick={() => globalUndoRouter.redo()}>Redo</button>
         </div>
-    </div>
-
-    <div class="view-toolbar">
-        <div class="nav-controls">
-            <button type="button" data-testid="calendar-nav-prev" onclick={() => navigate(-1)}>◀</button>
-            <button type="button" data-testid="calendar-nav-today" onclick={goToToday}>Today</button>
-            <button type="button" data-testid="calendar-nav-next" onclick={() => navigate(1)}>▶</button>
-        </div>
-        <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
     </div>
 
     <div class="view-toolbar">
@@ -223,6 +338,9 @@ onDestroy(() => {
     {#if queryError}
         <p class="error" data-testid="calendar-query-error">{queryError}</p>
     {/if}
+    {#if writeError}
+        <p class="error" data-testid="calendar-write-error">{writeError}</p>
+    {/if}
 
     <CalendarRoleEditor
         {project}
@@ -234,34 +352,41 @@ onDestroy(() => {
             roleStart: settings.roleStart,
             roleAllDay: settings.roleAllDay,
             roleDuration: settings.roleDuration,
+            roleDue: settings.roleDue,
             groupAxes: settings.groupAxes,
         }}
         readOnly={!editability.editable}
         readOnlyReason={editability.readOnlyReason}
     />
 
-    <p class="editor-label">Preview (day/week/month/Gantt grid views are a later feature)</p>
-    {#if result.rows.length === 0}
-        <p class="hint">No entries yet.</p>
-    {:else}
-        <table class="preview-table" data-testid="calendar-preview-table">
-            <thead>
-                <tr>
-                    {#each result.columns as column (column)}
-                        <th>{column}</th>
-                    {/each}
-                </tr>
-            </thead>
-            <tbody>
-                {#each result.rows as row, i (i)}
-                    <tr>
-                        {#each result.columns as column (column)}
-                            <td>{String(row[column] ?? "")}</td>
-                        {/each}
-                    </tr>
-                {/each}
-            </tbody>
-        </table>
+    {#if !editability.editable}
+        <p class="hint">Grid views below render this query's result, but nothing can be dragged until it is writable.</p>
+    {/if}
+
+    {#if viewType === "month" && monthCells}
+        <CalendarMonthGrid
+            cells={monthCells}
+            {weekStart}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
+            {isStartWritable}
+            onDragEnd={commitStart}
+            onKeyboardMove={commitStart}
+        />
+    {:else if timeGridLayout}
+        <CalendarTimeGrid
+            layout={timeGridLayout}
+            rangeStart={range.start}
+            workingHoursStartMinutes={workingHoursStart}
+            workingHoursEndMinutes={workingHoursEnd}
+            {isStartWritable}
+            {isDurationWritable}
+            onDragMove={previewStart}
+            onDragEnd={commitStart}
+            onDragCancel={cancelDrag}
+            onResizeMove={previewDuration}
+            onResizeEnd={commitDuration}
+            onKeyboardMove={commitStart}
+        />
     {/if}
 </div>
 
@@ -278,6 +403,7 @@ onDestroy(() => {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .calendar-name {
@@ -285,11 +411,24 @@ onDestroy(() => {
     color: #111827;
 }
 
+.nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.range-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-left: 6px;
+}
+
 .undo-controls {
     display: flex;
     gap: 4px;
 }
 
+.nav-controls button,
 .undo-controls button {
     border: 1px solid #d1d5db;
     border-radius: 4px;
@@ -297,25 +436,6 @@ onDestroy(() => {
     padding: 2px 10px;
     cursor: pointer;
     font-size: 0.8rem;
-}
-
-.nav-controls {
-    display: flex;
-    gap: 4px;
-}
-
-.nav-controls button {
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    background: white;
-    padding: 2px 10px;
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.range-label {
-    font-size: 0.8rem;
-    color: #374151;
 }
 
 .timezone-control {
@@ -342,7 +462,8 @@ onDestroy(() => {
     margin: 4px 0 0;
 }
 
-input {
+input,
+select {
     border: 1px solid #d1d5db;
     border-radius: 4px;
     padding: 4px 6px;
@@ -360,18 +481,5 @@ input {
     color: #6b7280;
     font-size: 0.8rem;
     margin: 0;
-}
-
-.preview-table {
-    border-collapse: collapse;
-    font-size: 0.8rem;
-    width: 100%;
-}
-
-.preview-table th,
-.preview-table td {
-    border: 1px solid #e5e7eb;
-    padding: 2px 6px;
-    text-align: left;
 }
 </style>

@@ -45,9 +45,7 @@ test.describe("Italic Syntax Ambiguity", () => {
         await page.waitForTimeout(100);
 
         // Assert that the rendered HTML contains <em> tags for the italics
-        await textLocator.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch((e) =>
-            console.warn("Promise rejected: ", e)
-        );
+        await textLocator.locator("em").waitFor({ state: "attached", timeout: 5000 }).catch(() => {});
         const innerHTML = await textLocator.innerHTML();
         expect(innerHTML).toContain("<em>italic text</em>");
 

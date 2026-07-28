@@ -37,7 +37,7 @@ test.describe("CMT-4a01c3ee: comment input keeps focus while an item cursor is a
                     }
                 }
             }
-        }).catch((e) => console.warn("Promise rejected: ", e));
+        }).catch(() => {});
     });
 
     test("typing in the comment input does not corrupt the item text", async ({ page }, testInfo) => {

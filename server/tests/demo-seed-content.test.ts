@@ -414,8 +414,8 @@ describe("Demo seed content", () => {
 
         const calendarItem = findChildByText(
             calendarsPage!.items,
-            "A calendar over this project's outline items, already assigned title/start/all-day/duration roles "
-                + "and grouped by tags. Try changing the query or reassigning a role.",
+            "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles "
+                + "and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
         );
         expect(calendarItem, "calendar item exists").to.not.equal(undefined);
         expect(calendarItem!.componentType).to.equal("calendar");
@@ -435,9 +435,34 @@ describe("Demo seed content", () => {
             expect(calendarMap!.get("roleStart")).to.equal(template.roleStart);
             expect(calendarMap!.get("roleAllDay")).to.equal(template.roleAllDay);
             expect(calendarMap!.get("roleDuration")).to.equal(template.roleDuration);
+            expect(calendarMap!.get("roleDue")).to.equal(template.roleDue);
             const groupAxes = calendarMap!.get("groupAxes") as Y.Array<string>;
             expect(groupAxes.toArray()).to.deep.equal(template.groupAxes);
         }
+    });
+
+    it("seeds concrete calendar entries on the Calendars page so the grid views have something to draw", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const timed = findChildByText(calendarsPage!.items, "Scheduled today");
+        expect(timed, "timed entry exists").to.not.equal(undefined);
+        expect(timed!.allDay).to.equal(false);
+        expect(timed!.start).to.be.a("string");
+        expect(timed!.duration).to.equal("PT30M");
+
+        const allDay = findChildByText(calendarsPage!.items, "All-day conference");
+        expect(allDay, "all-day entry exists").to.not.equal(undefined);
+        expect(allDay!.allDay).to.equal(true);
+        expect(allDay!.duration).to.equal("P2D");
+
+        const dueOnly = findChildByText(
+            calendarsPage!.items,
+            "Deadline only, no start — renders as a marker, not a block",
+        );
+        expect(dueOnly, "due-only entry exists").to.not.equal(undefined);
+        expect(dueOnly!.due).to.be.a("string");
+        expect(dueOnly!.start).to.equal(undefined);
     });
 
     it("the demo calendar's query is a plain, addressable SELECT (source_kind/source_id present)", () => {
