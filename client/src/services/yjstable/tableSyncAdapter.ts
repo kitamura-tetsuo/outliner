@@ -18,6 +18,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
+import { formatQueryDateFields } from "./queryResultFormatting";
 import type { RelationProvider } from "./relationProvider";
 import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
 import { quoteIdent, reservedRelationNameError } from "./sqlNames";
@@ -501,43 +502,9 @@ export class TableSyncAdapter {
                 const res = await db.query<Record<string, unknown>>(selectSql);
                 await db.exec("COMMIT");
 
-                const DATE_OID = 1082;
-                const TIMESTAMP_OID = 1114;
-                const TIMESTAMPTZ_OID = 1184;
-                const dateFields = new Set(res.fields.filter(f => f.dataTypeID === DATE_OID).map(f => f.name));
-                const tsNoTzFields = new Set(
-                    res.fields.filter(f => f.dataTypeID === TIMESTAMP_OID).map(f => f.name),
-                );
-                const tsTzFields = new Set(
-                    res.fields.filter(f => f.dataTypeID === TIMESTAMPTZ_OID).map(f => f.name),
-                );
-                const pad = (n: number) => String(n).padStart(2, "0");
-
-                const rows = res.rows.map((row) => {
-                    const newRow = { ...row };
-                    for (const [key, value] of Object.entries(newRow)) {
-                        if (value instanceof Date) {
-                            if (dateFields.has(key)) {
-                                newRow[key] = `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${
-                                    pad(value.getUTCDate())
-                                }`;
-                            } else if (tsNoTzFields.has(key)) {
-                                newRow[key] = `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${
-                                    pad(value.getDate())
-                                }T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}.${
-                                    String(value.getMilliseconds()).padStart(3, "0")
-                                }Z`;
-                            } else if (tsTzFields.has(key)) {
-                                newRow[key] = value.toISOString();
-                            }
-                        }
-                    }
-                    return newRow;
-                });
-
                 return {
                     columns: res.fields.map((f) => f.name),
-                    rows,
+                    rows: formatQueryDateFields(res.fields, res.rows),
                 };
             } catch (err) {
                 try {
