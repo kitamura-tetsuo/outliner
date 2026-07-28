@@ -23,7 +23,7 @@
 // stays the query's own job — see `queryReferencesViewRange` below, used only
 // to warn when a query never reads either setting.
 
-import { utcMsToWallTime, wallTimeToUtcMs, type WallTime } from "$shared/utils/zonedTime";
+import { utcMsToWallTime, type WallTime, wallTimeToUtcMs } from "$shared/utils/zonedTime";
 
 /** Postgres setting names a calendar query reads via `current_setting(...)`. */
 export const VIEW_RANGE_START_SETTING = "view.range_start";
