@@ -12,8 +12,8 @@ import {
     expandRecurrence,
     type RecurrenceOccurrence,
 } from "$shared/services/calendarRecurrenceExpansion";
-import { iterateItems } from "$shared/utils/itemTraversal";
 import { parseIsoDurationMs } from "$shared/utils/isoDuration";
+import { iterateItems } from "$shared/utils/itemTraversal";
 
 export interface ItemOccurrence extends RecurrenceOccurrence {
     /** `Item.id` of the recurring item this occurrence belongs to. */

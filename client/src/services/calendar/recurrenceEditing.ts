@@ -33,7 +33,7 @@ export interface OverrideEdits {
 export function createRecurrenceOverride(
     tree: YTree,
     source: Item,
-    occurrence: { occurrenceId: string; startUtcMs: number },
+    occurrence: { occurrenceId: string; startUtcMs: number; },
     edits: OverrideEdits = {},
 ): Item {
     const parentKey = tree.getNodeParentFromKey(source.key);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { Item, PlainItemData } from "../../src/app-schema";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { Item, PlainItemData } from "../../src/app-schema";
 
 describe("Item recurrence", () => {
     it("returns undefined for rrule, recurrenceDtstart and recurrenceTimezone when absent", () => {

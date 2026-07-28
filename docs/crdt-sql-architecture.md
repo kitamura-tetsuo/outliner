@@ -442,9 +442,9 @@ has not actually run.
 
 The two mechanisms stay separate because they answer different questions:
 
-|                               | Purpose                                                              | Storage                              | On the calendar                        |
-| ----------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
-| Schedule rule (implemented)   | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
+|                                   | Purpose                                                              | Storage                              | On the calendar                        |
+| --------------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Schedule rule (implemented)       | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
 | Calendar recurrence (implemented) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
 
 Nothing about the existing scheduler changes.
