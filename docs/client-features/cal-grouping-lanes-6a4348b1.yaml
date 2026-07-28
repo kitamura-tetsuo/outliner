@@ -1,0 +1,21 @@
+id: FTR-6a4348b1
+title: 'Grouping lanes with writability-gated drops'
+title-ja: グループ化レーンと書き込み可能性に基づくドロップ制御
+description: 'A calendar can group its entries by any assigned column into lanes — a client-side operation over result rows, never SQL GROUP BY, since aggregation would collapse row identity and make the whole result read-only. Grouping supports a multi-valued axis like tags (an item with two tags appears in every matching lane, via JSON-array membership, never substring matching), places an entry with no value for the axis in a NULL lane that always sorts last, and honors a configured lane order plus a show/hide-empty-lanes toggle. A lane only accepts a drop when its underlying column is writable (a calculated expression, or source_kind, is display-only and looks it); dropping a card writes the grouping column through the same relation write path as every other edit. A plain drop replaces the item''s whole value for the axis; holding Ctrl (Cmd on macOS) while dropping adds the target lane''s value instead, via a new UPDATE_APPEND relation write that appends to the underlying Y.Array directly so two clients concurrently adding different tags to the same item both survive the merge, rather than one full-value replace clobbering the other. The day/multi-day/week time-grid views render lanes as horizontal swimlanes, each an independent grid so rescheduling (drag/resize) is unaffected; a small drag handle on each writable entry is what moves it between lanes, keeping that gesture separate from the pointer-based reschedule drag. Month view treats lanes as "not a layout": entries are colour-coded by lane and an optional filter shows a single lane at a time.
+
+  '
+category: client
+status: implemented
+tests:
+- client/src/components/calendar/CalendarLaneTimeGrid.svelte
+- client/src/components/calendar/CalendarRoleEditor.test.ts
+- client/src/components/calendar/CalendarView.test.ts
+- client/src/services/calendar/calendarGrouping.test.ts
+- client/src/services/calendar/calendarLaneColor.test.ts
+- client/src/services/calendar/calendarLaneWrite.test.ts
+- client/src/services/calendar/calendarService.test.ts
+- client/src/services/yjstable/itemsRelation.tags.test.ts
+- client/src/services/yjstable/relationProvider.test.ts
+- client/src/services/yjstable/relationRowWrite.test.ts
+- client/src/services/yjstable/tableRelationProvider.test.ts
+- client/e2e/new/cal-grouping-lanes-6a4348b1.spec.ts

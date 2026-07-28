@@ -155,4 +155,110 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         destroyCalendarUndoManager(projectDoc);
     });
+
+    it("groups entries into tag swimlanes in the week view (#4348)", async () => {
+        const projectId = "proj-calendar-view-lanes-week";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const workItem = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        workItem.text = "Work item";
+        workItem.start = `${todayIso()}T09:00:00.000Z`;
+        workItem.allDay = false;
+        workItem.tags = ["work"];
+        const urgentItem = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        urgentItem.text = "Urgent item";
+        urgentItem.start = `${todayIso()}T10:00:00.000Z`;
+        urgentItem.allDay = false;
+        urgentItem.tags = ["urgent"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(getByTestId("calendar-lane-time-grid")).toBeTruthy());
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${workItem.key}`)).toBeTruthy());
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${urgentItem.key}`)).toBeTruthy());
+
+        // Each entry appears under its own tag's lane header.
+        const workLane = getByTestId("calendar-lane-work");
+        const urgentLane = getByTestId("calendar-lane-urgent");
+        expect(workLane.querySelector(`[data-testid="calendar-entry-outline_items:${workItem.key}"]`)).toBeTruthy();
+        expect(urgentLane.querySelector(`[data-testid="calendar-entry-outline_items:${urgentItem.key}"]`))
+            .toBeTruthy();
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("dragging an entry's lane handle onto another lane replaces its tag (#4348)", async () => {
+        const projectId = "proj-calendar-view-lane-drop";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Movable";
+        item.start = `${todayIso()}T09:00:00.000Z`;
+        item.allDay = false;
+        item.tags = ["work"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+            laneOrder: ["work", "urgent"],
+            showEmptyLanes: true,
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() =>
+            expect(getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`)).toBeTruthy()
+        );
+
+        const handle = getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`);
+        await fireEvent.dragStart(handle);
+        await fireEvent.drop(getByTestId("calendar-lane-urgent"));
+
+        await waitFor(() => expect(item.tags).toEqual(["urgent"]));
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("shows a lane filter and colour-codes entries in month view when grouping is active (#4348)", async () => {
+        const projectId = "proj-calendar-view-lanes-month";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Conference";
+        item.start = todayIso();
+        item.allDay = true;
+        item.tags = ["work"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            viewType: "month",
+            query: "SELECT id, text AS title, all_day, start_on, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_on",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
+        expect(getByTestId("calendar-month-lane-filter")).toBeTruthy();
+        const entryEl = getByTestId(`calendar-entry-outline_items:${item.key}`);
+        expect(entryEl.getAttribute("style")).toMatch(/background/);
+
+        destroyCalendarUndoManager(projectDoc);
+    });
 });

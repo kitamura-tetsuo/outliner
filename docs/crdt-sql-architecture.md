@@ -456,16 +456,26 @@ Nothing about the existing scheduler changes.
 
 ### 6.3 The query contract
 
-_Implemented (role assignment)_ — the `calendars` registry
+_Implemented_ — role assignment: the `calendars` registry
 (`client/src/services/calendar/calendarService.ts`), the role-assignment editor
 (`client/src/components/calendar/CalendarRoleEditor.svelte`, candidates driven
 by the query's live result columns via
 `client/src/services/calendar/calendarRoleCandidates.ts`, never a schema), and
 the `source_kind`/`source_id` read-only rule
 (`client/src/services/calendar/calendarEditability.ts`), tracked by #4344.
-Group _lanes_ — rendering entries by axis and writability-gated drops between
-them — are #4348; this section's role assignment only decides which column is
-the grouping axis.
+Group _lanes_ — the pure grouping function
+(`client/src/services/calendar/calendarGrouping.ts`: single/multi-level, a
+multi-valued axis like `tags` via JSON-array membership, the NULL/empty lane
+always last, a configured lane order and a show/hide-empty toggle), the
+writability-gated drop dispatch
+(`client/src/services/calendar/calendarLaneWrite.ts`, a plain drop replaces the
+whole value, a `Ctrl`/`Cmd` drop adds via the relation's `UPDATE_APPEND` op so a
+concurrent add from another client merges instead of clobbering), and the
+per-view arrangement (swimlanes in the day/multi-day/week grid via
+`CalendarLaneTimeGrid.svelte`, colour-coding plus a single-lane filter in month
+view) are tracked by #4348. Multi-level nesting and the day view's own
+sub-column arrangement (as opposed to a swimlane) are not yet rendered; Gantt's
+row-section lanes are #4350.
 
 A calendar is a query plus a **role assignment over its result columns**, held
 in the calendar's UI Definition. The roles are title, start, duration, all-day,

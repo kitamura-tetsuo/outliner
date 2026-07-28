@@ -28,6 +28,8 @@ interface RoleAssignment {
     roleDuration?: string;
     roleDue?: string;
     groupAxes: string[];
+    laneOrder: string[];
+    showEmptyLanes?: boolean;
 }
 
 interface Props {
@@ -39,9 +41,26 @@ interface Props {
     roles: RoleAssignment;
     readOnly: boolean;
     readOnlyReason?: string;
+    /**
+     * Distinct values the first group axis currently carries, from the latest
+     * query result — the lane-order list mixes these with `roles.laneOrder`
+     * so a value can be reordered before or after it has actually appeared
+     * (docs/crdt-sql-architecture.md §6.3: lane order is configured, not
+     * inferred).
+     */
+    knownLaneValues?: string[];
 }
 
-let { project, calendarId, query = "", resultColumns, roles, readOnly, readOnlyReason }: Props = $props();
+let {
+    project,
+    calendarId,
+    query = "",
+    resultColumns,
+    roles,
+    readOnly,
+    readOnlyReason,
+    knownLaneValues = [],
+}: Props = $props();
 
 // A query that never reads the injected window (§6.4) silently takes the
 // slow path — it filters nothing, so it re-reads every matching row on every
@@ -80,6 +99,27 @@ function setRole(key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" 
 function toggleGroupAxis(column: string, checked: boolean) {
     const next = checked ? [...roles.groupAxes, column] : roles.groupAxes.filter((c) => c !== column);
     updateCalendar(project, calendarId, { groupAxes: next });
+}
+
+// The lane-order list mixes the explicitly configured order with any value
+// currently seen but not yet ordered (appended after, like `mergeCandidates`)
+// so a value the user has never touched is still visible and reorderable.
+const laneOrderDisplay = $derived([
+    ...roles.laneOrder,
+    ...knownLaneValues.filter((v) => !roles.laneOrder.includes(v)),
+]);
+
+function moveLane(value: string, direction: -1 | 1) {
+    const index = laneOrderDisplay.indexOf(value);
+    const targetIndex = index + direction;
+    if (index < 0 || targetIndex < 0 || targetIndex >= laneOrderDisplay.length) return;
+    const next = [...laneOrderDisplay];
+    [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+    updateCalendar(project, calendarId, { laneOrder: next });
+}
+
+function setShowEmptyLanes(value: boolean) {
+    updateCalendar(project, calendarId, { showEmptyLanes: value });
 }
 </script>
 
@@ -135,6 +175,41 @@ function toggleGroupAxis(column: string, checked: boolean) {
                 </label>
             {/each}
         </div>
+
+        <p class="editor-label">Lane order</p>
+        {#if laneOrderDisplay.length === 0}
+            <p class="hint">No lane values seen yet — lanes appear here once the query returns some.</p>
+        {:else}
+            <ul class="lane-order-list" data-testid="calendar-lane-order">
+                {#each laneOrderDisplay as value, index (value)}
+                    <li class="lane-order-row">
+                        <span>{value}</span>
+                        <button
+                            type="button"
+                            data-testid={`calendar-lane-order-up-${value}`}
+                            disabled={index === 0}
+                            onclick={() => moveLane(value, -1)}
+                        >↑</button>
+                        <button
+                            type="button"
+                            data-testid={`calendar-lane-order-down-${value}`}
+                            disabled={index === laneOrderDisplay.length - 1}
+                            onclick={() => moveLane(value, 1)}
+                        >↓</button>
+                    </li>
+                {/each}
+            </ul>
+        {/if}
+
+        <label class="show-empty-toggle">
+            <input
+                type="checkbox"
+                data-testid="calendar-show-empty-lanes"
+                checked={roles.showEmptyLanes ?? false}
+                onchange={(e) => setShowEmptyLanes((e.target as HTMLInputElement).checked)}
+            />
+            Show empty lanes
+        </label>
     {/if}
 </div>
 
@@ -214,6 +289,44 @@ select {
     align-items: center;
     gap: 4px;
     font-size: 0.85rem;
+}
+
+.lane-order-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+}
+
+.lane-order-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.lane-order-row button {
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    background: white;
+    font-size: 0.7rem;
+    padding: 0 4px;
+    cursor: pointer;
+}
+
+.lane-order-row button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.show-empty-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    margin-top: 4px;
 }
 
 .hint {

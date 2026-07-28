@@ -68,7 +68,17 @@ export type RelationWrite =
         values: Record<string, RelationValue>;
         destination?: RelationInsertDestination;
     }
-    | { op: "DELETE"; rowId: string; disposition?: RelationDeleteDisposition; };
+    | { op: "DELETE"; rowId: string; disposition?: RelationDeleteDisposition; }
+    /**
+     * Add one value to a multi-valued (JSON-array-encoded) column without
+     * reading the rest of the set back first — e.g. adding a tag to a
+     * grouping lane via `Ctrl`/`Cmd`-drop (docs/crdt-sql-architecture.md
+     * §6.3). Distinct from `UPDATE`, which replaces the whole column value:
+     * on the items relation, appending to `tags` pushes onto the item's own
+     * `Y.Array` so a concurrent add from another client merges instead of
+     * racing a full-array replace.
+     */
+    | { op: "UPDATE_APPEND"; rowId: string; column: string; value: string; };
 
 /** A write the relation's declared capabilities do not allow. */
 export class RelationWriteError extends Error {
@@ -109,8 +119,9 @@ export function assertWriteAllowed(
 ): void {
     switch (write.op) {
         case "UPDATE":
+        case "UPDATE_APPEND":
             if (!capabilities.update) {
-                throw new RelationWriteError(`Relation "${relationName}" does not accept UPDATE`);
+                throw new RelationWriteError(`Relation "${relationName}" does not accept ${write.op}`);
             }
             return;
         case "INSERT": {
