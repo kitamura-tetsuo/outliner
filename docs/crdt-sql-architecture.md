@@ -272,10 +272,10 @@ RFC 5545 has two components, and the difference between them is exactly this
 one: a `VEVENT` occupies time (`DTSTART` + `DURATION`), while a `VTODO` has a
 deadline (`DUE`) and may separately say when it is planned (`DTSTART`).
 
-| Field | Question it answers | Nature |
-| --- | --- | --- |
-| `start` + `duration` | When is this worked on? | An allocation of time |
-| `due` | When must it be finished? | A constraint; allocates nothing |
+| Field                | Question it answers       | Nature                          |
+| -------------------- | ------------------------- | ------------------------------- |
+| `start` + `duration` | When is this worked on?   | An allocation of time           |
+| `due`                | When must it be finished? | A constraint; allocates nothing |
 
 A task due Friday is often worked on Wednesday. With a single field the user
 must lie — putting the intended working day in the deadline field and losing the
@@ -284,12 +284,12 @@ real deadline — which is why single-date task systems are poor at planning.
 So `due` is **not** an alias for `start` with a zero duration, and the two are
 never collapsed. All four combinations mean something:
 
-| State | Meaning | On the calendar |
-| --- | --- | --- |
-| `due` only | Only the deadline is known | A deadline marker; a milestone in Gantt |
-| `start` + `duration` only | Time is set aside, with no deadline | An ordinary block or bar |
-| Both | Planned work that also has a deadline | Bar plus marker; an overrun is detectable |
-| Neither | Not scheduled and not due | Not shown |
+| State                     | Meaning                               | On the calendar                           |
+| ------------------------- | ------------------------------------- | ----------------------------------------- |
+| `due` only                | Only the deadline is known            | A deadline marker; a milestone in Gantt   |
+| `start` + `duration` only | Time is set aside, with no deadline   | An ordinary block or bar                  |
+| Both                      | Planned work that also has a deadline | Bar plus marker; an overrun is detectable |
+| Neither                   | Not scheduled and not due             | Not shown                                 |
 
 **`due` is neither derived from nor constrained by `start + duration`.** It is
 an independent constraint, and a calendar may surface the conflict when
