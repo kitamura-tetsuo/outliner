@@ -39,7 +39,7 @@ function onDropOnCell(entry: CalendarEntry, cell: MonthCell) {
 
 function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaDays: number;
+    let deltaDays;
     if (e.key === "ArrowLeft") deltaDays = -1;
     else if (e.key === "ArrowRight") deltaDays = 1;
     else if (e.key === "ArrowUp") deltaDays = -7;
