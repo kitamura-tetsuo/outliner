@@ -559,7 +559,9 @@ export class ItemsRelationProvider implements RelationProvider {
             // calendar keeps working, and the row simply stays out of it.
             logger.warn({ err, itemKey: row.id }, "[itemsRelation] projecting an item failed");
             await db.query(`DELETE FROM ${this.qualifiedName()} WHERE "id" = $1`, [row.id])
-                .catch(() => undefined);
+                .catch((delErr) =>
+                    logger.warn({ err: delErr, itemKey: row.id }, "[itemsRelation] failed to delete unprojectable item")
+                );
         }
     }
 

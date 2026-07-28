@@ -255,7 +255,9 @@ function sweep(): void {
     for (const entry of [...entries.values()]) {
         if (reachable.has(entry.key)) continue;
         entries.delete(entry.key);
-        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch(() => undefined);
+        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch((err) =>
+            logger.warn({ err }, "[tableEngine] destroying entry failed")
+        );
     }
 }
 
@@ -353,7 +355,9 @@ export async function resetTableEngineForTests(): Promise<void> {
     const all = [...entries.values()];
     entries.clear();
     for (const entry of all) {
-        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch(() => undefined);
+        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch((err) =>
+            logger.warn({ err }, "[tableEngine] destroying entry failed")
+        );
     }
     await pendingWork;
 }
