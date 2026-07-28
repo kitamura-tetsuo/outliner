@@ -1,5 +1,8 @@
 import { rrulestr } from "rrule";
 import { parseWallTime } from "../utils/zonedTime.js";
+import { getLogger } from "../logger.js";
+const logger = getLogger("calendarRecurrenceValidation");
+
 
 // Validation for calendar-item recurrence (RRULE/DTSTART/timezone on an
 // `Item`, per docs/crdt-sql-architecture.md §6.2). Deliberately not shared
@@ -31,7 +34,8 @@ export function validateRecurrenceTimezone(timezone: string): { valid: boolean; 
     try {
         Intl.DateTimeFormat(undefined, { timeZone: timezone });
         return { valid: true };
-    } catch {
+    } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
         return { valid: false, error: "Invalid IANA timezone" };
     }
 }

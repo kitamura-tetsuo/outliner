@@ -1,4 +1,6 @@
 import { rrulestr } from "rrule";
+import { getLogger } from "../logger.js";
+const logger = getLogger("calendarRecurrenceExpansion");
 import {
     floatingDateToWallTime,
     formatWallTime,
@@ -67,7 +69,8 @@ export function expandRecurrence(
     let parsed;
     try {
         parsed = rrulestr(rule.rrule, { dtstart: floatingDtstart });
-    } catch {
+    } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
         return [];
     }
 
