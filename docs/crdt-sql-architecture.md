@@ -1,7 +1,8 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §4 is implemented except for the shared undo stack (§4.6)
-and the calendar UI itself.
+Status: accepted. §4 is implemented. What remains is the calendar UI itself,
+and the two write affordances it owns: the INSERT destination picker and the
+DELETE prompt (§4.3).
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -176,19 +177,31 @@ SQL name is reserved, so a user table can never claim it.
 
 ### 4.6 Undo
 
-_Planned._
+_Implemented_ — `UndoRouter` (`client/src/services/undo/undoRouter.ts`).
 
 There is one undo/redo stack, and it delegates.
 
-Today there are already two scopes: the outline's `orderedTree` manager
+There are two kinds of scope: the outline's `orderedTree` manager
 (`client/src/stores/store.svelte.ts`) and a per-table manager
-(`client/src/services/yjstable/tableDocs.ts`). A single global stack records
-which scope each operation was applied to, and undo pops that stack and calls
-undo on the corresponding scope.
+(`client/src/services/yjstable/tableDocs.ts`). The router does not replace
+them — it records, per operation, which scope the operation was applied to,
+and undo pops that stack and calls undo on the corresponding scope. Because
+each `Y.UndoManager` pops its own internal stack in LIFO order, popping the
+router's stack addresses exactly the next operation in reverse chronological
+order.
 
 The hazard to respect: each `Y.UndoManager` keeps its own internal stack, so the
 global stack must be the **only** entry point. Any path that calls undo directly
-on a scope desynchronizes the two.
+on a scope desynchronizes the two. The router detects such a call and repairs
+itself, but the correct fix is always to route the call through it.
+
+Two details the implementation must keep: Yjs merges consecutive operations of
+one manager into a single stack item while it is still capturing, so recording
+an operation closes the capture window of the _other_ scopes — otherwise one
+entry would stand for two operations separated in time by an edit elsewhere.
+And a destroyed scope's entries are dropped rather than revived: a torn-down
+table cannot replay its inverse operations, so its history leaves the global
+stack with it.
 
 ## 5. Implementation shape
 
