@@ -97,7 +97,13 @@ describe("buildCalendarEntries", () => {
     it("leaves start/allDay/duration undefined when the relevant role is unassigned", () => {
         const [entry] = buildCalendarEntries(
             { columns: ["title"], rows: [{ title: "Bare" }] },
-            { roleTitle: "title", roleStart: undefined, roleAllDay: undefined, roleDuration: undefined, roleDue: undefined },
+            {
+                roleTitle: "title",
+                roleStart: undefined,
+                roleAllDay: undefined,
+                roleDuration: undefined,
+                roleDue: undefined,
+            },
         );
         expect(entry.startMs).toBeUndefined();
         expect(entry.allDay).toBeUndefined();

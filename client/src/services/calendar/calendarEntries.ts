@@ -10,8 +10,8 @@
 // from the query text, by calendarColumnWritability.ts — see
 // calendarEntryWrite.ts for why those two must not be conflated.
 
-import { parsePgIntervalMs } from "./pgInterval";
 import type { CalendarSettings } from "./calendarService";
+import { parsePgIntervalMs } from "./pgInterval";
 
 export interface CalendarEntry {
     /** Stable identity across a requery: `source_kind:source_id`, or the row index as a last resort. */

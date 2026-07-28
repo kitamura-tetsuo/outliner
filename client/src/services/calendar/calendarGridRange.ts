@@ -10,7 +10,12 @@
 // already built for recurrence expansion (#4343), rather than the runtime's
 // own `Date` methods (which are always in the *runtime's* local zone).
 
-import { floatingDateToWallTime, utcMsToWallTime, wallTimeToFloatingDate, wallTimeToUtcMs } from "$shared/utils/zonedTime";
+import {
+    floatingDateToWallTime,
+    utcMsToWallTime,
+    wallTimeToFloatingDate,
+    wallTimeToUtcMs,
+} from "$shared/utils/zonedTime";
 
 export type CalendarViewType = "day" | "days" | "week" | "month";
 

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-    computeViewRange,
-    resolveCalendarTimeZone,
-    shiftAnchor,
-} from "./calendarGridRange";
+import { computeViewRange, resolveCalendarTimeZone, shiftAnchor } from "./calendarGridRange";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;

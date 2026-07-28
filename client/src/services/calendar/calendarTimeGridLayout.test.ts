@@ -45,9 +45,24 @@ describe("layoutTimeGrid", () => {
     });
 
     it("keeps a third, disjoint cluster on the same day at full width", () => {
-        const overlapA = entry({ key: "a", allDay: false, startMs: RANGE_START + 9 * 3_600_000, durationMs: 3_600_000 });
-        const overlapB = entry({ key: "b", allDay: false, startMs: RANGE_START + 9 * 3_600_000, durationMs: 3_600_000 });
-        const disjoint = entry({ key: "c", allDay: false, startMs: RANGE_START + 18 * 3_600_000, durationMs: 3_600_000 });
+        const overlapA = entry({
+            key: "a",
+            allDay: false,
+            startMs: RANGE_START + 9 * 3_600_000,
+            durationMs: 3_600_000,
+        });
+        const overlapB = entry({
+            key: "b",
+            allDay: false,
+            startMs: RANGE_START + 9 * 3_600_000,
+            durationMs: 3_600_000,
+        });
+        const disjoint = entry({
+            key: "c",
+            allDay: false,
+            startMs: RANGE_START + 18 * 3_600_000,
+            durationMs: 3_600_000,
+        });
         const layout = layoutTimeGrid([overlapA, overlapB, disjoint], RANGE_START, RANGE_END);
         const disjointPlacement = layout.timed.find((p) => p.entry.key === "c")!;
         expect(disjointPlacement.columnCount).toBe(1);
