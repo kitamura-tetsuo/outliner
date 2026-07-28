@@ -246,6 +246,11 @@ function handleContextMenuAction(action: string) {
             handleComponentTypeChange(newType);
             break;
         }
+        case 'toggle-calendar-type': {
+            const newType = (componentType ?? compTypeValue) === 'calendar' ? 'none' : 'calendar';
+            handleComponentTypeChange(newType);
+            break;
+        }
     }
 }
 

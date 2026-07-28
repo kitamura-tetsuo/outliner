@@ -398,6 +398,17 @@ Nothing about the existing scheduler changes.
 
 ### 6.3 The query contract
 
+_Implemented (role assignment)_ — the `calendars` registry
+(`client/src/services/calendar/calendarService.ts`), the role-assignment editor
+(`client/src/components/calendar/CalendarRoleEditor.svelte`, candidates driven
+by the query's live result columns via
+`client/src/services/calendar/calendarRoleCandidates.ts`, never a schema), and
+the `source_kind`/`source_id` read-only rule
+(`client/src/services/calendar/calendarEditability.ts`), tracked by #4344.
+Group *lanes* — rendering entries by axis and writability-gated drops between
+them — are #4348; this section's role assignment only decides which column is
+the grouping axis.
+
 A calendar is a query plus a **role assignment over its result columns**, held
 in the calendar's UI Definition. The roles are title, start, duration, all-day,
 and the grouping axes. Candidates are the columns the query actually returns —
@@ -460,6 +471,16 @@ The reasons the timezone cannot stay implicit:
 - Tests would otherwise assert against the runner's ambient zone.
 
 ### 6.6 Where a calendar lives
+
+_Implemented_ — the `calendars` `Y.Map` on the project doc
+(`client/src/services/calendar/calendarService.ts`), undo-routed via a lazily
+created `Y.UndoManager` (§4.6); the embedded block (`componentType`
+"calendar", `client/src/components/calendar/CalendarBlock.svelte`) and the
+standalone route (`client/src/routes/calendars/[project]/[calendar]/+page.svelte`)
+render the same `CalendarView.svelte`, tracked by #4344. The day / week / month
+/ Gantt grid views (§6.1's block above says "still to come") read the assigned
+roles once #4347/#4350 land; for now `CalendarView` renders a plain result
+preview.
 
 A calendar has a query and view settings, and **no data of its own**. It does
 not need a table's three-structure subdoc; a `calendars` `Y.Map` on the project

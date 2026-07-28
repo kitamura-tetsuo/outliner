@@ -8,6 +8,7 @@ import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
 import type {
+    CalendarValueType,
     CommentValueType,
     ItemValueType,
     PlainItemData,
@@ -385,6 +386,17 @@ export class Item {
     }
     set yjsTableId(v: string | undefined) {
         this.value.set("yjsTableId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Id of the calendar (an entry in the project's `calendars` map) embedded
+    // by this item (componentType "calendar"). Unlike a table, a calendar has
+    // no subdoc of its own to reference — this is a plain id lookup.
+    get calendarId(): string | undefined {
+        return this.value.get("calendarId") as string | undefined;
+    }
+    set calendarId(v: string | undefined) {
+        this.value.set("calendarId", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -937,6 +949,13 @@ export class Project {
     // Schedules directly under project root
     get schedules(): Y.Map<Y.Map<ScheduleRuleValueType>> {
         return this.ydoc.getMap("schedules") as Y.Map<Y.Map<ScheduleRuleValueType>>;
+    }
+
+    // Calendars directly under project root, in the same id -> Y.Map shape as
+    // `schedules`. A calendar has a query and view settings and no data of its
+    // own, so it needs no subdoc (docs/crdt-sql-architecture.md §6.6).
+    get calendars(): Y.Map<Y.Map<CalendarValueType>> {
+        return this.ydoc.getMap("calendars") as Y.Map<Y.Map<CalendarValueType>>;
     }
 
     // Items directly under root (parent key 'root')

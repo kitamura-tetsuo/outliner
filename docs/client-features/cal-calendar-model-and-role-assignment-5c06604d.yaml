@@ -1,0 +1,17 @@
+id: FTR-5c06604d
+title: Calendar model and UI Definition: registry, query, and role assignment
+title-ja: カレンダーモデルとUI定義：レジストリ、クエリ、ロール割り当て
+description: 'A calendar has a query and view settings and no data of its own, so unlike a table it needs no subdoc: a `calendars` Y.Map on the project doc (id -> Y.Map of settings), in the same shape `schedules` already uses, holds it. A calendar is a query plus a role assignment over its result columns (title, start, all-day, duration, and zero or more group axes); candidates are the columns the query actually returns, in result order, never a schema''s columns, and changing the query never prunes an existing assignment for a column that is temporarily absent. A query missing either `source_kind` or `source_id` is read-only and the role editor says so plainly rather than letting the user discover it by dragging. Settings changes (query edits, role assignment, group axes) route through the global `UndoRouter`, so reconfiguring a calendar is undoable like any other edit. A calendar is reachable both as a block embedded in an outliner item (componentType "calendar", the item storing only the calendar id) and as a standalone route, and the same calendar embedded in more than one item stays in sync since both read the same `calendars` map entry reactively via `observeDeep` (no polling). Running the query reuses the table engine''s relation-materialize-and-retry loop, so a calendar query can reference `outline_items` or any project table the same way a table''s own query can. This issue delivers the registry, query execution, and role-assignment editor; the day/week/month/Gantt grid views over the assigned roles are later work.
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/cal-calendar-model-and-role-assignment-5c06604d.spec.ts
+- client/src/components/calendar/CalendarRoleEditor.test.ts
+- client/src/services/calendar/calendarBinding.test.ts
+- client/src/services/calendar/calendarEditability.test.ts
+- client/src/services/calendar/calendarQueryRunner.test.ts
+- client/src/services/calendar/calendarRoleCandidates.test.ts
+- client/src/services/calendar/calendarService.test.ts
+- client/src/services/yjstable/queryResultFormatting.test.ts
