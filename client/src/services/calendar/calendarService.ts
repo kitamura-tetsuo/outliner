@@ -10,6 +10,7 @@ import type { CalendarValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
 import { globalUndoRouter } from "../undo/undoRouter";
+import { isValidIanaTimeZone } from "./calendarTimezone";
 
 export const DEFAULT_CALENDAR_VIEW_TYPE = "week";
 
@@ -127,7 +128,7 @@ export function createCalendar(
     calendarMap.set("name", options.name);
     calendarMap.set("query", options.query ?? "");
     calendarMap.set("viewType", options.viewType ?? DEFAULT_CALENDAR_VIEW_TYPE);
-    if (options.timezone) calendarMap.set("timezone", options.timezone);
+    if (options.timezone) calendarMap.set("timezone", assertValidTimezone(options.timezone));
     if (options.roleTitle) calendarMap.set("roleTitle", options.roleTitle);
     if (options.roleStart) calendarMap.set("roleStart", options.roleStart);
     if (options.roleAllDay) calendarMap.set("roleAllDay", options.roleAllDay);
@@ -159,6 +160,17 @@ function setOrClearNumber(calendarMap: Y.Map<CalendarValueType>, key: string, va
     else calendarMap.set(key, value);
 }
 
+/**
+ * Reject an unrecognized IANA zone at edit time (§6.5's acceptance criteria),
+ * rather than storing a value that only fails later, inside a query's
+ * `SET LOCAL`. An absent/empty timezone is not validated here — it means
+ * "viewer-local" and is handled by `setOrClear`/`resolveCalendarTimezone`.
+ */
+function assertValidTimezone(timezone: string): string {
+    if (!isValidIanaTimeZone(timezone)) throw new Error(`Invalid timezone: ${timezone}`);
+    return timezone;
+}
+
 function ensureGroupAxesArray(calendarMap: Y.Map<CalendarValueType>): Y.Array<string> {
     const existing = calendarMap.get("groupAxes");
     if (existing instanceof Y.Array) return existing as Y.Array<string>;
@@ -186,7 +198,9 @@ export function updateCalendar(
         if (updates.name !== undefined) calendarMap.set("name", updates.name);
         if (updates.query !== undefined) calendarMap.set("query", updates.query);
         if (updates.viewType !== undefined) calendarMap.set("viewType", updates.viewType);
-        if (updates.timezone !== undefined) setOrClear(calendarMap, "timezone", updates.timezone);
+        if (updates.timezone !== undefined) {
+            setOrClear(calendarMap, "timezone", updates.timezone === "" ? "" : assertValidTimezone(updates.timezone));
+        }
         if (updates.roleTitle !== undefined) setOrClear(calendarMap, "roleTitle", updates.roleTitle);
         if (updates.roleStart !== undefined) setOrClear(calendarMap, "roleStart", updates.roleStart);
         if (updates.roleAllDay !== undefined) setOrClear(calendarMap, "roleAllDay", updates.roleAllDay);

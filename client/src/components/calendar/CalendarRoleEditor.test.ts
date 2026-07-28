@@ -101,6 +101,52 @@ describe("CalendarRoleEditor", () => {
         expect(getCalendar(project, calendarId)?.roleDue).toBe("due");
     });
 
+    it("warns when the query references neither view.range_start nor view.range_end", () => {
+        const { getByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                query: "SELECT id, text AS title, due FROM outline_items",
+                resultColumns: ["id", "title", "due"],
+                roles: { groupAxes: [] },
+                readOnly: false,
+            },
+        });
+
+        expect(getByTestId("calendar-range-warning").textContent).toMatch(/view\.range_start/);
+    });
+
+    it("does not warn when the query references view.range_start", () => {
+        const { queryByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                query:
+                    "SELECT id FROM outline_items WHERE start_at >= current_setting('view.range_start')::timestamptz",
+                resultColumns: ["id"],
+                roles: { groupAxes: [] },
+                readOnly: false,
+            },
+        });
+
+        expect(queryByTestId("calendar-range-warning")).toBeNull();
+    });
+
+    it("does not warn on an empty query", () => {
+        const { queryByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                query: "",
+                resultColumns: [],
+                roles: { groupAxes: [] },
+                readOnly: false,
+            },
+        });
+
+        expect(queryByTestId("calendar-range-warning")).toBeNull();
+    });
+
     it("toggles a group axis on and off", async () => {
         const { getByTestId } = render(CalendarRoleEditor, {
             props: {

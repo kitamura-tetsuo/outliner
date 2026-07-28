@@ -1,0 +1,15 @@
+id: FTR-840bea57
+title: 'Calendar timezone: explicit view property with SQL session parity'
+title-ja: カレンダーのタイムゾーン：明示的なビュー設定とSQLセッションの整合
+description: 'A calendar''s timezone is now an explicit, visible view setting rather than an ambient one: it defaults to the viewer''s local zone (resolved via `Intl.DateTimeFormat().resolvedOptions().timeZone`, never left implicit) and can be switched to a fixed IANA zone, shown and edited from the calendar''s toolbar. `computeViewRange`/`shiftAnchor` now compute the visible window and navigation in that timezone''s wall clock (using `$shared/utils/zonedTime`, the same DST-safe conversion built for calendar recurrence) instead of the runtime''s ambient zone, so two collaborators viewing a calendar with a fixed timezone see the same window regardless of either viewer''s own local zone, and a day/week/month boundary is correct across a DST transition. The calendar''s own query runner sets the SQL session timezone to the same value, transaction-locally (`SELECT set_config(''timezone'', ...)`), alongside the visible-range injection — mirroring how the scheduler sets its session timezone in `server/src/scheduler/worker.ts` — so a `date_trunc(...)`/`::date` grouping expression buckets identically for every viewer of a calendar with a fixed timezone. An unrecognized IANA zone is rejected at edit time, both from the picker (built from `Intl.supportedValuesOf(''timeZone'')` when available) and from direct API calls.
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/cal-calendar-timezone-view-property-840bea57.spec.ts
+- client/src/components/calendar/CalendarView.svelte
+- client/src/services/calendar/calendarQueryRunner.test.ts
+- client/src/services/calendar/calendarService.test.ts
+- client/src/services/calendar/calendarTimezone.test.ts
+- client/src/services/calendar/calendarViewRange.test.ts

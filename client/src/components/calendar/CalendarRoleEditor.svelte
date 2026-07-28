@@ -15,6 +15,11 @@
 import type { Project } from "$shared/app-schema";
 import { mergeCandidates } from "../../services/calendar/calendarRoleCandidates";
 import { updateCalendar } from "../../services/calendar/calendarService";
+import {
+    VIEW_RANGE_END_SETTING,
+    VIEW_RANGE_START_SETTING,
+    queryReferencesViewRange,
+} from "../../services/calendar/calendarViewRange";
 
 interface RoleAssignment {
     roleTitle?: string;
@@ -28,13 +33,23 @@ interface RoleAssignment {
 interface Props {
     project: Project;
     calendarId: string;
+    /** The calendar's own query text, used only for the range-reference warning below. */
+    query?: string;
     resultColumns: string[];
     roles: RoleAssignment;
     readOnly: boolean;
     readOnlyReason?: string;
 }
 
-let { project, calendarId, resultColumns, roles, readOnly, readOnlyReason }: Props = $props();
+let { project, calendarId, query = "", resultColumns, roles, readOnly, readOnlyReason }: Props = $props();
+
+// A query that never reads the injected window (§6.4) silently takes the
+// slow path — it filters nothing, so it re-reads every matching row on every
+// navigation. This is a warning, not an error: the query still runs, and a
+// small table or a query that genuinely wants everything is a legitimate
+// choice. Detection is textual and deliberately shallow, per
+// `queryReferencesViewRange`.
+const showRangeWarning = $derived(query.trim() !== "" && !queryReferencesViewRange(query));
 
 const ROLE_FIELDS: { key: "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" | "roleDue"; label: string; }[] = [
     { key: "roleTitle", label: "Title" },
@@ -71,6 +86,15 @@ function toggleGroupAxis(column: string, checked: boolean) {
 <div class="calendar-role-editor" data-testid="calendar-role-editor">
     {#if readOnly}
         <p class="read-only-banner" data-testid="calendar-read-only-banner">{readOnlyReason}</p>
+    {/if}
+
+    {#if showRangeWarning}
+        <p class="range-warning-banner" data-testid="calendar-range-warning">
+            This query does not reference "{VIEW_RANGE_START_SETTING}" or "{VIEW_RANGE_END_SETTING}", so it reads
+            every matching row instead of just what is on screen. Add an overlap predicate, e.g.
+            <code>start_at &lt; current_setting('{VIEW_RANGE_END_SETTING}')::timestamptz AND start_at + duration
+            &gt; current_setting('{VIEW_RANGE_START_SETTING}')::timestamptz</code>.
+        </p>
     {/if}
 
     <p class="editor-label">Role assignment</p>
@@ -129,6 +153,22 @@ function toggleGroupAxis(column: string, checked: boolean) {
     padding: 6px 8px;
     font-size: 0.8rem;
     margin: 0 0 4px;
+}
+
+.range-warning-banner {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    margin: 0 0 4px;
+}
+
+.range-warning-banner code {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+    padding: 0 2px;
 }
 
 .editor-label {

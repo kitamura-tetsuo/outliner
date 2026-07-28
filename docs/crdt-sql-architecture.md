@@ -492,16 +492,44 @@ this is precisely why tags are not parsed out of item text.
 
 ### 6.4 The visible range is a query parameter
 
+_Implemented_ — `client/src/services/calendar/calendarViewRange.ts`
+(`computeViewRange`, `shiftAnchor`, `queryReferencesViewRange`), injection in
+`client/src/services/calendar/calendarQueryRunner.ts`, navigation and the
+warning banner in `CalendarView.svelte` / `CalendarRoleEditor.svelte`,
+conventions in `docs/calendar-sql-conventions.md`, tracked by #4345.
+
 The client injects the view's window as settings — `view.range_start` and
 `view.range_end` — mirroring how the scheduler injects `job.occurrence`, so a
 query filters with `current_setting(...)` and the engine returns only what is on
 screen. Without this, a month or Gantt view over a table that has accumulated
 years of generated rows reads all of them to draw thirty days.
 
+The window is a half-open interval — `[range_start, range_end)` — the same
+exclusive-end convention as an all-day entry (§6.1), so an instant exactly on
+a boundary lands in exactly one window. Values are injected transaction-locally
+(`set_config`'s third argument) and as query parameters, never
+string-concatenated; injection is scoped to the calendar's own query runner; a
+table's own query (`TableSyncAdapter.executeQuery`) never receives a range.
+
+Filtering stays the query's own job — injection only sets the values. A query
+that references neither setting still runs (it simply reads every matching
+row), and the calendar's role-assignment editor warns in that case, naming the
+overlap idiom (`docs/calendar-sql-conventions.md`) rather than only reporting
+the absence.
+
 The range is computed in the view's timezone (§6.5), so the window and the
 drawing agree at the boundaries.
 
 ### 6.5 Timezone
+
+_Implemented_ — `client/src/services/calendar/calendarTimezone.ts`
+(`resolveCalendarTimezone`, `isValidIanaTimeZone`, `listSupportedTimeZones`);
+the zone-aware rewrite of `computeViewRange`/`shiftAnchor`
+(`client/src/services/calendar/calendarViewRange.ts`, on
+`$shared/utils/zonedTime`); session-timezone injection alongside the range
+(`client/src/services/calendar/calendarQueryRunner.ts`); the visible
+timezone label and switcher in `CalendarView.svelte`; timezone validation at
+edit time in `calendarService.ts`; tracked by #4346.
 
 **The view's timezone is an explicit, visible property.** It defaults to the
 viewer's local zone and can be switched to a fixed IANA zone. What is rejected

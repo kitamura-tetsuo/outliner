@@ -9,7 +9,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         const authHeader = request.headers.get("authorization");
         const idToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-        const body = await request.json().catch(() => ({}));
+        const body = await request.json().catch((err) => {
+            logger.warn({ err }, "[list-schedules] Failed to parse request JSON");
+            return {};
+        });
         const pageId = body.pageId;
 
         if (!idToken || !pageId) {

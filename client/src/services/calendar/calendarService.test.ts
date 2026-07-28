@@ -161,6 +161,28 @@ describe("calendarService", () => {
         expect(getCalendar(project, calendarId)?.name).toBe("Renamed");
     });
 
+    it("stores and updates an explicit timezone, and clears it back to viewer-local with an empty string", () => {
+        const calendarId = createCalendar(project, { name: "Cal", timezone: "Asia/Tokyo" });
+        expect(getCalendar(project, calendarId)?.timezone).toBe("Asia/Tokyo");
+
+        updateCalendar(project, calendarId, { timezone: "America/New_York" });
+        expect(getCalendar(project, calendarId)?.timezone).toBe("America/New_York");
+
+        updateCalendar(project, calendarId, { timezone: "" });
+        expect(getCalendar(project, calendarId)?.timezone).toBeUndefined();
+    });
+
+    it("rejects an unrecognized timezone at create time", () => {
+        expect(() => createCalendar(project, { name: "Cal", timezone: "Not/A_Zone" })).toThrow(/[Ii]nvalid timezone/);
+    });
+
+    it("rejects an unrecognized timezone at update time", () => {
+        const calendarId = createCalendar(project, { name: "Cal" });
+        expect(() => updateCalendar(project, calendarId, { timezone: "Not/A_Zone" })).toThrow(/[Ii]nvalid timezone/);
+        // The rejected update leaves the calendar's stored timezone untouched.
+        expect(getCalendar(project, calendarId)?.timezone).toBeUndefined();
+    });
+
     it("the same calendar can be embedded in more than one item and stays in sync", () => {
         // Modeled by two independent readers of the same registry entry: both
         // observe the same Y.Map, so a write from either is visible to both.
