@@ -87,7 +87,6 @@ let queryInput = $state("");
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let writeError = $state<string | undefined>(undefined);
-// svelte-ignore state_referenced_locally
 let anchorUtcMs = $state(Date.now());
 let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides());
 
