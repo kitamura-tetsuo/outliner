@@ -15,14 +15,19 @@ test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () 
     });
 
     test("attaches a calendar to an item, runs a query, and assigns roles", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (handleContextMenu returns early for isPageTitle); use the
+        // seeded item below it instead.
+        const item = page.locator(".outliner-item").nth(1);
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
         await page.waitForTimeout(300);
 
         // Attach a calendar via the item's context menu.
         await item.click({ button: "right" });
-        await page.getByRole("menuitem", { name: "Change to Calendar" }).click();
+        const contextMenu = page.locator(".context-menu");
+        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
