@@ -68,10 +68,12 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         await expect(workLane).toBeVisible({ timeout: 15000 });
         await expect(urgentLane).toBeVisible({ timeout: 15000 });
 
+        // toContainText, not toHaveText: the entry also renders the lane-drag
+        // handle ("⠿") as sibling text content.
         const workEntry = workLane.locator('[data-testid^="calendar-entry-outline_items:"]').first();
-        await expect(workEntry).toHaveText("Work item");
+        await expect(workEntry).toContainText("Work item");
         const urgentEntry = urgentLane.locator('[data-testid^="calendar-entry-outline_items:"]').first();
-        await expect(urgentEntry).toHaveText("Urgent item");
+        await expect(urgentEntry).toContainText("Urgent item");
 
         // Drag the "Work item" entry's lane handle onto the "urgent" lane —
         // a plain drop replaces its tag set.
