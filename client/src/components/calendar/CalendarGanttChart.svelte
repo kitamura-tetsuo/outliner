@@ -11,6 +11,7 @@
 // project doc (§6.7): folding a subtree here must not fold it for anyone
 // else, and it is not worth an undo entry.
 
+import { SvelteSet } from "svelte/reactivity";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { ganttInstantFraction, type GanttRow, layoutGantt, placeGanttBar } from "../../services/calendar/calendarGanttLayout";
 import type { GanttSubtreeShiftAnalysis } from "../../services/calendar/calendarGanttWrite";
@@ -67,15 +68,13 @@ let {
     onSubtreeDragEnd,
 }: Props = $props();
 
-let collapsedKeys = $state<Set<string>>(new Set());
+const collapsedKeys = new SvelteSet<string>();
 
 const layout = $derived(layoutGantt(entries, groupAxes, collapsedKeys));
 
 function toggleCollapse(key: string) {
-    const next = new Set(collapsedKeys);
-    if (next.has(key)) next.delete(key);
-    else next.add(key);
-    collapsedKeys = next;
+    if (collapsedKeys.has(key)) collapsedKeys.delete(key);
+    else collapsedKeys.add(key);
 }
 
 function tickFraction(tick: GanttTick): number {
@@ -190,7 +189,7 @@ function onPointerCancel(e: PointerEvent) {
 
 /** Keyboard: Left/Right shift a writable leaf bar or a shiftable subtree by one day. */
 function onRowKeydown(row: GanttRow, e: KeyboardEvent) {
-    let deltaMs = 0;
+    let deltaMs: number;
     if (e.key === "ArrowLeft") deltaMs = -DAY_MS;
     else if (e.key === "ArrowRight") deltaMs = DAY_MS;
     else return;
