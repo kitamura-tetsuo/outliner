@@ -21,28 +21,15 @@ import {
     setRoomSyncState,
 } from "./roomSyncState";
 
-const registries = [
-    {
-        name: "RoomSyncState",
-        set: setRoomSyncState,
-        get: getRoomSyncState,
-        subscribe: onRoomSyncStateChange,
-        clear: clearRoomSyncStates,
-        val1: "pending" as RoomSyncState,
-        val2: "synced" as RoomSyncState,
-    },
-    {
-        name: "RoomPersistenceError",
-        set: setRoomPersistenceError,
-        get: getRoomPersistenceError,
-        subscribe: onRoomPersistenceErrorChange,
-        clear: clearRoomPersistenceErrorStates,
-        val1: false as RoomPersistenceError,
-        val2: true as RoomPersistenceError,
-    },
-];
-
-registries.forEach(({ name, set, get, subscribe, clear, val1, val2 }) => {
+function runTests<T>(
+    name: string,
+    set: (room: string, state: T) => void,
+    get: (room: string) => T | undefined,
+    subscribe: (room: string, listener: (state: T) => void) => () => void,
+    clear: () => void,
+    val1: T,
+    val2: T,
+) {
     describe(name, () => {
         beforeEach(() => {
             clear();
@@ -118,4 +105,24 @@ registries.forEach(({ name, set, get, subscribe, clear, val1, val2 }) => {
             expect(get("room-100")).toBe(val1);
         });
     });
-});
+}
+
+runTests<RoomSyncState>(
+    "RoomSyncState",
+    setRoomSyncState,
+    getRoomSyncState,
+    onRoomSyncStateChange,
+    clearRoomSyncStates,
+    "pending",
+    "synced",
+);
+
+runTests<RoomPersistenceError>(
+    "RoomPersistenceError",
+    setRoomPersistenceError,
+    getRoomPersistenceError,
+    onRoomPersistenceErrorChange,
+    clearRoomPersistenceErrorStates,
+    false,
+    true,
+);
