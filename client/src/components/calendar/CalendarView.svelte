@@ -143,10 +143,16 @@ function goToToday() {
     scheduleRequery();
 }
 
-/** Switch the calendar's timezone; empty value clears it back to viewer-local. */
+/**
+ * Switch the calendar's timezone; an empty value clears it back to
+ * viewer-local. Pass the empty string through as-is rather than `undefined`
+ * — `updateCalendar` only touches a field when the update object mentions it
+ * (`!== undefined`), and uses an empty string as the "clear" signal
+ * (`setOrClear`), so `{ timezone: undefined }` here would be silently
+ * ignored instead of clearing anything.
+ */
 function commitTimezone(e: Event) {
-    const value = (e.target as HTMLSelectElement).value;
-    updateCalendar(project, calendarId, { timezone: value === "" ? undefined : value });
+    updateCalendar(project, calendarId, { timezone: (e.target as HTMLSelectElement).value });
 }
 
 const mirrorObserver = () => refreshMirror();
