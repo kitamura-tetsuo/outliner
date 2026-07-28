@@ -152,7 +152,10 @@ function createTableEntry(
                 // built from a half-loaded document.
                 const sync = await connection
                     .waitForInitialSync(INITIAL_SYNC_TIMEOUT_MS)
-                    .catch(() => ({ synced: false }));
+                    .catch((err) => {
+                        logger.warn({ err, tableId }, "[tableEngine] waitForInitialSync failed");
+                        return { synced: false };
+                    });
                 remoteSynced = sync.synced;
             } catch (err) {
                 logger.warn({ err, tableId }, "[tableEngine] table doc connection failed; continuing offline");
