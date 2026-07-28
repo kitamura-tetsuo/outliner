@@ -923,7 +923,7 @@ function handleCopy(event: ClipboardEvent) {
         event.clipboardData.setData('text/plain', rectText);
       }
       if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
-        (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch(() => {});
+        (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(rectText).catch((err) => { logger.warn({ error: err }, "Failed to write to navigator.clipboard"); });
       }
       if (typeof window !== 'undefined') {
         (window as Window & typeof globalThis & { lastCopiedText?: string }).lastCopiedText = rectText;
@@ -1039,11 +1039,7 @@ function handleCopy(event: ClipboardEvent) {
 
     // Also write to navigator.clipboard API (for compatibility in test environment)
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(selectedText).catch((err) => {
-        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-          logger.debug(`Failed to write to navigator.clipboard: ${err}`);
-        }
-      });
+      navigator.clipboard.writeText(selectedText).catch((err) => { logger.warn({ error: err }, "Failed to write to navigator.clipboard"); });
     }
 
     // Debug info
@@ -1079,7 +1075,7 @@ function handleCopy(event: ClipboardEvent) {
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
     if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
-      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch(() => {});
+      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(selectedText).catch((err) => { logger.warn({ error: err }, "Failed to write to navigator.clipboard"); });
     }
 
     // Always update hidden textarea to maintain test focus
@@ -1210,7 +1206,7 @@ function handleCopy(event: ClipboardEvent) {
     }
     // Write to navigator.clipboard as well (for Playwright compatibility)
     if (typeof navigator !== 'undefined' && !!(navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard?.writeText) {
-      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch(() => {});
+      (navigator as Navigator & { clipboard?: { writeText?: (text: string) => Promise<void> } }).clipboard!.writeText(combinedText).catch((err) => { logger.warn({ error: err }, "Failed to write to navigator.clipboard"); });
     }
     // Save to global variable (for E2E test environment only)
     // Not used in production, but needed to verify copy content in E2E tests
