@@ -53,8 +53,14 @@ test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () 
         await queryInput.blur();
         await expect(page.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 15000 });
 
+        // Options inside a closed <select> are never "visible" to Playwright
+        // (matching browser semantics), so poll their text content instead —
+        // the same pattern the database-table e2e test uses for CHECK options.
         const titleRoleSelect = page.getByTestId("calendar-role-roleTitle").first();
-        await expect(titleRoleSelect.locator("option", { hasText: "title" })).toBeVisible({ timeout: 15000 });
+        await expect(titleRoleSelect).toBeVisible({ timeout: 15000 });
+        await expect
+            .poll(async () => titleRoleSelect.locator("option").allTextContents(), { timeout: 15000 })
+            .toContain("title");
         await titleRoleSelect.selectOption("title");
         await expect(titleRoleSelect).toHaveValue("title");
 
