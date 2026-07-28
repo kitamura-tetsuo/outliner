@@ -33,7 +33,7 @@ describe("Service Worker", () => {
         await import("../../service-worker");
         const fetchCall = mockAddEventListener.mock.calls.find(call => call[0] === "fetch");
         expect(fetchCall).toBeDefined();
-        fetchHandler = fetchCall[1];
+        fetchHandler = fetchCall![1];
     });
 
     beforeEach(() => {

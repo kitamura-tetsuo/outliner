@@ -21,7 +21,17 @@ import {
     setRoomSyncState,
 } from "./roomSyncState";
 
-const registries = [
+interface RegistryTest<T> {
+    name: string;
+    set: (room: string, state: T) => void;
+    get: (room: string) => T | undefined;
+    subscribe: (room: string, listener: (state: T) => void) => () => void;
+    clear: () => void;
+    val1: T;
+    val2: T;
+}
+
+const registries: (RegistryTest<RoomSyncState> | RegistryTest<RoomPersistenceError>)[] = [
     {
         name: "RoomSyncState",
         set: setRoomSyncState,
@@ -42,7 +52,8 @@ const registries = [
     },
 ];
 
-registries.forEach(({ name, set, get, subscribe, clear, val1, val2 }) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+registries.forEach(({ name, set, get, subscribe, clear, val1, val2 }: any) => {
     describe(name, () => {
         beforeEach(() => {
             clear();
