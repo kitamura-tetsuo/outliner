@@ -197,7 +197,7 @@ itself, but the correct fix is always to route the call through it.
 
 Two details the implementation must keep: Yjs merges consecutive operations of
 one manager into a single stack item while it is still capturing, so recording
-an operation closes the capture window of the *other* scopes — otherwise one
+an operation closes the capture window of the _other_ scopes — otherwise one
 entry would stand for two operations separated in time by an edit elsewhere.
 And a destroyed scope's entries are dropped rather than revived: a torn-down
 table cannot replay its inverse operations, so its history leaves the global
