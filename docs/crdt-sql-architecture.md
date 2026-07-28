@@ -239,11 +239,11 @@ largest source of "my event moved a day" bugs.
 The projection therefore carries an explicit discriminator rather than one
 overloaded column:
 
-| Column | Meaning |
-| --- | --- |
-| `all_day` | Which of the two shapes this row is. |
+| Column     | Meaning                                                                      |
+| ---------- | ---------------------------------------------------------------------------- |
+| `all_day`  | Which of the two shapes this row is.                                         |
 | `start_on` | All-day entries: a floating `DATE`, no timezone, identical for every viewer. |
-| `start_at` | Timed entries: a `TIMESTAMPTZ` instant. |
+| `start_at` | Timed entries: a `TIMESTAMPTZ` instant.                                      |
 
 `start_on` and `start_at` are mutually exclusive; exactly one is non-NULL.
 Both are properly typed, so range predicates and ordering work in SQL without
@@ -293,10 +293,10 @@ has not actually run.
 
 The two mechanisms stay separate because they answer different questions:
 
-| | Purpose | Storage | On the calendar |
-| --- | --- | --- | --- |
-| Schedule rule (implemented) | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other |
-| Calendar recurrence (planned) | Show a plan | Rule on the item, plus overrides | Expanded on read, materialized on edit |
+|                               | Purpose                                                              | Storage                              | On the calendar                        |
+| ----------------------------- | -------------------------------------------------------------------- | ------------------------------------ | -------------------------------------- |
+| Schedule rule (implemented)   | Produce a durable record that must exist whether or not anyone looks | Server materializes rows on its tick | Past and present rows, like any other  |
+| Calendar recurrence (planned) | Show a plan                                                          | Rule on the item, plus overrides     | Expanded on read, materialized on edit |
 
 Nothing about the existing scheduler changes.
 
