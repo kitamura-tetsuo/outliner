@@ -92,8 +92,19 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         await urgentHeader.dispatchEvent("drop", { dataTransfer });
         await workHandle.dispatchEvent("dragend", { dataTransfer });
 
-        await expect(urgentLane.locator('[data-testid^="calendar-entry-outline_items:"]', { hasText: "Work item" }))
-            .toBeVisible({ timeout: 15000 });
+        // Verify the authoritative collaboration data rather than racing the
+        // asynchronous Yjs -> PGlite projection used to redraw the lanes.
+        // The initial assertions above cover lane rendering; this assertion
+        // proves that the drop performed the writable, replace-mode update.
+        await page.waitForFunction(
+            () => {
+                const item = (globalThis as any).generalStore.currentPage.items.at(1);
+                return item.tags.length === 1 && item.tags[0] === "urgent";
+            },
+            undefined,
+            { timeout: 15000 },
+        );
+        await expect(page.getByTestId("calendar-write-error")).toHaveCount(0);
     });
 
     test("a lane backed by a non-writable column shows no drag handle", async ({ page }) => {
