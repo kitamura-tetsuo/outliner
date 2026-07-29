@@ -73,17 +73,14 @@ export async function seedDemo(options: { force?: boolean; throwOnError?: boolea
             }
         }
     } catch (seedErr) {
-        if (options.throwOnError && seedErr instanceof SeedDemoError) {
-            throw seedErr;
-        } else if (options.throwOnError && seedErr instanceof Error && seedErr.message !== "Failed to fetch") {
-            throw seedErr;
-        } else if (options.throwOnError && seedErr instanceof Error) {
-            // Re-throw if it was an error we created, otherwise it might be network fetch error
-            if (!seedErr.message.includes("fetch")) {
+        if (options.throwOnError) {
+            if (seedErr instanceof SeedDemoError) {
                 throw seedErr;
-            } else {
+            }
+            if (seedErr instanceof TypeError) {
                 throw new Error(`Failed to connect to the server: ${seedErr.message}`, { cause: seedErr });
             }
+            throw seedErr;
         }
         logger.warn(`Error seeding demo ${seedErr}`);
     }
