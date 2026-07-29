@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { seedDemo, SeedDemoError } from "./demoSeed";
 
 describe("seedDemo", () => {
@@ -17,7 +17,7 @@ describe("seedDemo", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: false,
             statusText: "Too Many Requests",
-            json: async () => ({ rateLimitMs: 5000, message: "Rate limited" })
+            json: async () => ({ rateLimitMs: 5000, message: "Rate limited" }),
         } as Response);
 
         await expect(seedDemo({ throwOnError: true })).rejects.toThrow(SeedDemoError);
@@ -33,7 +33,7 @@ describe("seedDemo", () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: false,
             statusText: "Bad Request",
-            json: async () => ({ error: "Invalid data" })
+            json: async () => ({ error: "Invalid data" }),
         } as Response);
 
         await expect(seedDemo({ throwOnError: true })).rejects.toThrow("Invalid data");
