@@ -7,7 +7,7 @@ import { addRecord, createTable, getTableHandles, setSchemaText } from "./tableD
 import { TableRelationProvider } from "./tableRelationProvider";
 import { TableSyncAdapter } from "./tableSyncAdapter";
 
-const SCHEMA = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, points INTEGER)";
+const SCHEMA = "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT, points INTEGER, labels TEXT)";
 
 function makeProvider() {
     const projectDoc = new Y.Doc();
@@ -49,6 +49,48 @@ describe("TableRelationProvider", { timeout: 30000 }, () => {
 
             await provider.applyWrite({ op: "DELETE", rowId: recordId });
             expect(handles.data.has(recordId)).toBe(false);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
+    it("appends to a JSON-array-encoded column via UPDATE_APPEND (grouping-lane 'add' drop)", async () => {
+        const { handles, adapter, provider } = makeProvider();
+        try {
+            await provider.materialize();
+            const recordId = addRecord(handles, { title: "first", points: 1, labels: JSON.stringify(["work"]) });
+
+            await provider.applyWrite({ op: "UPDATE_APPEND", rowId: recordId, column: "labels", value: "urgent" });
+            expect(JSON.parse(String(handles.data.get(recordId)?.get("labels")))).toEqual(["work", "urgent"]);
+
+            // Appending an already-present value is a no-op, not a duplicate.
+            await provider.applyWrite({ op: "UPDATE_APPEND", rowId: recordId, column: "labels", value: "work" });
+            expect(JSON.parse(String(handles.data.get(recordId)?.get("labels")))).toEqual(["work", "urgent"]);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
+    it("creates the array when UPDATE_APPEND targets a column with no existing value", async () => {
+        const { handles, adapter, provider } = makeProvider();
+        try {
+            await provider.materialize();
+            const recordId = addRecord(handles, { title: "first", points: 1 });
+
+            await provider.applyWrite({ op: "UPDATE_APPEND", rowId: recordId, column: "labels", value: "new" });
+            expect(JSON.parse(String(handles.data.get(recordId)?.get("labels")))).toEqual(["new"]);
+        } finally {
+            adapter.dispose();
+        }
+    });
+
+    it("rejects UPDATE_APPEND for a record that does not exist", async () => {
+        const { adapter, provider } = makeProvider();
+        try {
+            await provider.materialize();
+            await expect(
+                provider.applyWrite({ op: "UPDATE_APPEND", rowId: "missing", column: "labels", value: "x" }),
+            ).rejects.toThrow(RelationWriteError);
         } finally {
             adapter.dispose();
         }

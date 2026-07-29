@@ -161,4 +161,94 @@ describe("items relation tags projection", { timeout: 30000 }, () => {
             f.provider.dispose();
         }
     });
+
+    describe("UPDATE_APPEND (grouping-lane 'add' drop, §6.3)", () => {
+        it("adds a tag without disturbing the existing set", async () => {
+            const f = makeProject();
+            const page = f.add("root", "Page");
+            const key = f.add(page, "Card", "2026-08-02T09:00:00Z", ["work"]);
+            expect(await f.provider.materialize()).toBe(true);
+            try {
+                await f.provider.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "tags", value: "urgent" });
+                const value = f.tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                expect((value.get("tags") as Y.Array<string>).toArray()).toEqual(["work", "urgent"]);
+            } finally {
+                f.provider.dispose();
+            }
+        });
+
+        it("creates the tag array when appending to an untagged item", async () => {
+            const f = makeProject();
+            const page = f.add("root", "Page");
+            const key = f.add(page, "Card", "2026-08-02T09:00:00Z");
+            expect(await f.provider.materialize()).toBe(true);
+            try {
+                await f.provider.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "tags", value: "new" });
+                const value = f.tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                expect((value.get("tags") as Y.Array<string>).toArray()).toEqual(["new"]);
+            } finally {
+                f.provider.dispose();
+            }
+        });
+
+        it("does not duplicate a tag already present", async () => {
+            const f = makeProject();
+            const page = f.add("root", "Page");
+            const key = f.add(page, "Card", "2026-08-02T09:00:00Z", ["work"]);
+            expect(await f.provider.materialize()).toBe(true);
+            try {
+                await f.provider.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "tags", value: "work" });
+                const value = f.tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                expect((value.get("tags") as Y.Array<string>).toArray()).toEqual(["work"]);
+            } finally {
+                f.provider.dispose();
+            }
+        });
+
+        it("refuses UPDATE_APPEND on a column other than tags", async () => {
+            const f = makeProject();
+            const page = f.add("root", "Page");
+            const key = f.add(page, "Card", "2026-08-02T09:00:00Z");
+            expect(await f.provider.materialize()).toBe(true);
+            try {
+                await expect(
+                    f.provider.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "text", value: "x" }),
+                ).rejects.toThrow(RelationWriteError);
+            } finally {
+                f.provider.dispose();
+            }
+        });
+
+        it("merges concurrent UPDATE_APPEND calls from two clients instead of one clobbering the other", async () => {
+            const f = makeProject();
+            const page = f.add("root", "Page");
+            const key = f.add(page, "Card", "2026-08-02T09:00:00Z", ["base"]);
+
+            const doc2 = new Y.Doc({ guid: `${f.projectDoc.guid}-mirror` });
+            Y.applyUpdate(doc2, Y.encodeStateAsUpdate(f.projectDoc));
+            const tree2 = new YTree(doc2.getMap("orderedTree"));
+            const provider2 = new ItemsRelationProvider({ projectDoc: doc2, pgSchema: f.pgSchema });
+
+            try {
+                // Two concurrent, unsynchronized appends from two clients.
+                await f.provider.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "tags", value: "work" });
+                await provider2.applyWrite({ op: "UPDATE_APPEND", rowId: key, column: "tags", value: "urgent" });
+
+                Y.applyUpdate(doc2, Y.encodeStateAsUpdate(f.projectDoc));
+                Y.applyUpdate(f.projectDoc, Y.encodeStateAsUpdate(doc2));
+
+                const value1 = f.tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+                const value2 = tree2.getNodeValueFromKey(key) as Y.Map<unknown>;
+                expect(new Set((value1.get("tags") as Y.Array<string>).toArray())).toEqual(
+                    new Set(["base", "work", "urgent"]),
+                );
+                expect(new Set((value2.get("tags") as Y.Array<string>).toArray())).toEqual(
+                    new Set(["base", "work", "urgent"]),
+                );
+            } finally {
+                f.provider.dispose();
+                provider2.dispose();
+            }
+        });
+    });
 });

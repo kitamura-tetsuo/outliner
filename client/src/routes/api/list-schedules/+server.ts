@@ -40,7 +40,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
         if (!headers["x-forwarded-for"]) {
             try {
                 headers["x-forwarded-for"] = getClientAddress();
-            } catch (_e) {}
+            } catch (_e) {
+                logger.warn({ err: _e }, "Failed to get client address");
+            }
         }
 
         const response = await fetch(`${apiBaseUrl}/api/list-schedules`, {

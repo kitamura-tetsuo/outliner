@@ -26,7 +26,9 @@ export const GET: RequestHandler = async ({ request, getClientAddress, fetch }) 
         if (!headers.has("x-forwarded-for")) {
             try {
                 headers.set("x-forwarded-for", getClientAddress());
-            } catch (_e) {}
+            } catch (_e) {
+                logger.warn({ err: _e }, "Failed to get client address");
+            }
         }
 
         const response = await fetch(getFirebaseFunctionUrl("azureHealthCheck"), {

@@ -35,6 +35,17 @@ export interface CalendarEntry {
     durationMs?: number;
     /** Epoch ms deadline, when the row carries a due role value. */
     dueMs?: number;
+    /**
+     * `Item.id` of the recurring item this row overrides, when the row is a
+     * materialized recurrence override (`recurrenceEditing.ts`'s
+     * `createRecurrenceOverride`) — structural, like `sourceKind`/`sourceId`,
+     * so it is read whenever the query's SELECT carries the column
+     * regardless of role assignment. Deleting such a row means deleting one
+     * occurrence of a plan, not the plan itself (see `calendarEntryDelete.ts`).
+     */
+    recurrenceParentId?: string;
+    /** The occurrence this override replaces, paired with `recurrenceParentId`. */
+    recurrenceOccurrenceId?: string;
     /** The raw row, for anything a caller needs beyond the typed fields above. */
     raw: Record<string, unknown>;
 }
@@ -86,6 +97,9 @@ export function buildCalendarEntries(
         const dueParsed = dueRaw !== undefined ? Date.parse(dueRaw) : NaN;
         const dueMs = Number.isNaN(dueParsed) ? undefined : dueParsed;
 
+        const recurrenceParentId = toStringValue(row["recurrence_parent_id"]);
+        const recurrenceOccurrenceId = toStringValue(row["recurrence_occurrence_id"]);
+
         entries.push({
             key,
             sourceKind,
@@ -96,6 +110,8 @@ export function buildCalendarEntries(
             startMs,
             durationMs,
             dueMs,
+            recurrenceParentId,
+            recurrenceOccurrenceId,
             raw: row,
         });
     });

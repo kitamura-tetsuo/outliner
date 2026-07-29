@@ -471,7 +471,10 @@ describe("Demo seed content", () => {
         const template = demoCalendars[0];
         expect(/\bjoin\b/i.test(template.query)).to.equal(false);
         expect(/\bgroup\s+by\b/i.test(template.query)).to.equal(false);
-        expect(template.query).to.contain("'item' AS source_kind");
+        // The value must be the reserved relation name (ITEMS_RELATION_NAME),
+        // not a descriptive label — that is what a drag/drop write resolves
+        // against (client's tableEngine.ts resolveRelationInternal).
+        expect(template.query).to.contain("'outline_items' AS source_kind");
         expect(template.query).to.contain("id AS source_id");
         expect(template.query).to.contain("FROM outline_items");
     });
@@ -516,5 +519,22 @@ describe("Demo seed content", () => {
         const frontend = findChildByText(build!.items, "Frontend");
         expect(backend, "Backend grandchild exists").to.not.equal(undefined);
         expect(frontend, "Frontend grandchild exists").to.not.equal(undefined);
+    });
+
+    it("the demo calendar's query returns tags, matching its tags group axis (#4348)", () => {
+        const template = demoCalendars[0];
+        expect(template.query).to.contain("tags");
+        expect(template.groupAxes).to.deep.equal(["tags"]);
+    });
+
+    it("seeds tags on the Calendars page entries so grouping lanes have something to show (#4348)", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const timed = findChildByText(calendarsPage!.items, "Scheduled today");
+        expect(timed!.tags).to.deep.equal(["work"]);
+
+        const allDay = findChildByText(calendarsPage!.items, "All-day conference");
+        expect(allDay!.tags).to.deep.equal(["work", "travel"]);
     });
 });

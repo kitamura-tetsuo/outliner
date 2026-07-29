@@ -10,7 +10,7 @@
 // by name and applying the write is exactly how a cross-relation query
 // materializes a sibling relation — see `tableSyncAdapter.ts`.
 
-import type { RelationProvider, RelationValue } from "./relationProvider";
+import type { RelationDeleteDisposition, RelationProvider, RelationValue } from "./relationProvider";
 import { RelationWriteError } from "./relationProvider";
 
 export interface RelationResolver {
@@ -35,4 +35,44 @@ export async function applyUnionedRowEdit(
         throw new RelationWriteError(`Unknown relation "${sourceKind}" for a unioned row edit`);
     }
     await provider.applyWrite({ op: "UPDATE", rowId: sourceId, column, value });
+}
+
+/**
+ * Apply a DELETE to the relation named by `sourceKind`, addressing the row by
+ * `sourceId`. Mirrors `applyUnionedRowEdit`: re-resolves the relation and
+ * lets its own `applyWrite`/`assertWriteAllowed` decide whether `disposition`
+ * is required and honored (§4.3 — a calendar's delete prompt is the caller
+ * that supplies it, never a bypass of the capability declaration).
+ */
+export async function applyUnionedRowDelete(
+    resolver: RelationResolver,
+    sourceKind: string,
+    sourceId: string,
+    disposition?: RelationDeleteDisposition,
+): Promise<void> {
+    const provider = await resolver.resolveRelation(sourceKind);
+    if (!provider) {
+        throw new RelationWriteError(`Unknown relation "${sourceKind}" for a unioned row delete`);
+    }
+    await provider.applyWrite({ op: "DELETE", rowId: sourceId, disposition });
+}
+
+/**
+ * Add one value to a multi-valued column of a unioned row (e.g. a
+ * `Ctrl`/`Cmd`-drop onto a tag lane, docs/crdt-sql-architecture.md §6.3),
+ * without replacing the rest of the set. See `RelationWrite`'s
+ * `UPDATE_APPEND` variant for why this is not the same as `applyUnionedRowEdit`.
+ */
+export async function applyUnionedRowAppend(
+    resolver: RelationResolver,
+    sourceKind: string,
+    sourceId: string,
+    column: string,
+    value: string,
+): Promise<void> {
+    const provider = await resolver.resolveRelation(sourceKind);
+    if (!provider) {
+        throw new RelationWriteError(`Unknown relation "${sourceKind}" for a unioned row edit`);
+    }
+    await provider.applyWrite({ op: "UPDATE_APPEND", rowId: sourceId, column, value });
 }

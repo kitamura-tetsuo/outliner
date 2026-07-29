@@ -233,7 +233,7 @@ export class DataValidationHelpers {
         const fsPromises = await import("fs/promises");
         // Write snapshots in the client directory to match test expectations
         const outDir = path.resolve(process.cwd(), "e2e-snapshots");
-        await fsPromises.mkdir(outDir, { recursive: true }).catch(() => {});
+        await fsPromises.mkdir(outDir, { recursive: true }).catch(e => console.warn("Promise rejected:", e));
         const yjsPath = path.join(outDir, `${label}-yjs.json`);
         if (!result.yjsJson) throw new Error("Yjs snapshot missing");
         await fsPromises.writeFile(yjsPath, result.yjsJson);

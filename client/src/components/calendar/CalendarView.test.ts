@@ -2,7 +2,7 @@
 // as calendarQueryRunner.test.ts — outline_items needs no `connect` override
 // since it never goes through a table subdoc connector.
 
-import { fireEvent, render, waitFor } from "@testing-library/svelte";
+import { configure, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
@@ -11,6 +11,11 @@ import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import CalendarView from "./CalendarView.svelte";
+
+// Every wait below is on a real PGlite query round-trip (the module comment
+// above), which routinely outlasts testing-library's 1s default on a loaded
+// runner — the describe already budgets 30s per test.
+configure({ asyncUtilTimeout: 15000 });
 
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
@@ -152,6 +157,186 @@ describe("CalendarView", { timeout: 30000 }, () => {
             const el = getByTestId(`calendar-entry-${item.key}`);
             expect(el.className).toContain("not-writable");
         });
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("creates a new item under the chosen destination via the New entry dialog", async () => {
+        const projectId = "proj-calendar-view-create";
+        const { projectDoc, project, page } = seedProject(projectId);
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_on, "
+                + "'item' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_on",
+            roleAllDay: "all_day",
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId("calendar-new-entry")).toBeTruthy());
+
+        await fireEvent.click(getByTestId("calendar-new-entry"));
+        await waitFor(() => expect(getByTestId("calendar-create-dialog")).toBeTruthy());
+
+        await fireEvent.input(getByTestId("calendar-create-title-input"), { target: { value: "Ship it" } });
+        await fireEvent.change(getByTestId("calendar-create-destination-select"), { target: { value: page.key } });
+        await fireEvent.click(getByTestId("calendar-create-submit"));
+
+        await waitFor(() => {
+            const created = [...new Items(projectDoc, project.tree, page.key)]
+                .find((child) => child.text === "Ship it");
+            expect(created).toBeDefined();
+        });
+        // The dialog closes and the grid picks up the new entry on the next requery.
+        await waitFor(() => expect(() => getByTestId("calendar-create-dialog")).toThrow());
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("deletes an item through the delete-disposition prompt", async () => {
+        const projectId = "proj-calendar-view-delete";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Standup";
+        item.start = `${todayIso()}T09:00:00.000Z`;
+        item.allDay = false;
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
+
+        await fireEvent.click(getByTestId(`calendar-entry-delete-outline_items:${item.key}`));
+        await waitFor(() => expect(getByTestId("calendar-delete-dialog")).toBeTruthy());
+
+        await fireEvent.click(getByTestId("calendar-delete-source"));
+
+        await waitFor(() => {
+            expect([...new Items(projectDoc, project.tree, page.key)].some((i) => i.key === item.key)).toBe(false);
+        });
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("groups entries into tag swimlanes in the week view (#4348)", async () => {
+        const projectId = "proj-calendar-view-lanes-week";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const workItem = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        workItem.text = "Work item";
+        workItem.start = `${todayIso()}T09:00:00.000Z`;
+        workItem.allDay = false;
+        workItem.tags = ["work"];
+        const urgentItem = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        urgentItem.text = "Urgent item";
+        urgentItem.start = `${todayIso()}T10:00:00.000Z`;
+        urgentItem.allDay = false;
+        urgentItem.tags = ["urgent"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(getByTestId("calendar-lane-time-grid")).toBeTruthy());
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${workItem.key}`)).toBeTruthy());
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${urgentItem.key}`)).toBeTruthy());
+
+        // Each entry appears under its own tag's lane header.
+        const workLane = getByTestId("calendar-lane-work");
+        const urgentLane = getByTestId("calendar-lane-urgent");
+        expect(workLane.querySelector(`[data-testid="calendar-entry-outline_items:${workItem.key}"]`)).toBeTruthy();
+        expect(urgentLane.querySelector(`[data-testid="calendar-entry-outline_items:${urgentItem.key}"]`))
+            .toBeTruthy();
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("dragging an entry's lane handle onto another lane replaces its tag (#4348)", async () => {
+        const projectId = "proj-calendar-view-lane-drop";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Movable";
+        item.start = `${todayIso()}T09:00:00.000Z`;
+        item.allDay = false;
+        item.tags = ["work"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+            laneOrder: ["work", "urgent"],
+            showEmptyLanes: true,
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`)).toBeTruthy());
+
+        const handle = getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`);
+        await fireEvent.dragStart(handle);
+        await fireEvent.drop(getByTestId("calendar-lane-urgent"));
+
+        await waitFor(() => expect(item.tags).toEqual(["urgent"]));
+        // The write alone isn't enough — commitLaneDrop has no optimistic
+        // placement of its own, so the requery it triggers is what has to
+        // move the card into its new lane's DOM.
+        await waitFor(() =>
+            expect(
+                getByTestId("calendar-lane-urgent").querySelector(
+                    `[data-testid="calendar-entry-outline_items:${item.key}"]`,
+                ),
+            ).toBeTruthy()
+        );
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("shows a lane filter and colour-codes entries in month view when grouping is active (#4348)", async () => {
+        const projectId = "proj-calendar-view-lanes-month";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Conference";
+        item.start = todayIso();
+        item.allDay = true;
+        item.tags = ["work"];
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            viewType: "month",
+            query: "SELECT id, text AS title, all_day, start_on, tags, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_on",
+            roleAllDay: "all_day",
+            groupAxes: ["tags"],
+        });
+
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
+        expect(getByTestId("calendar-month-lane-filter")).toBeTruthy();
+        const entryEl = getByTestId(`calendar-entry-outline_items:${item.key}`);
+        expect(entryEl.getAttribute("style")).toMatch(/background/);
 
         destroyCalendarUndoManager(projectDoc);
     });

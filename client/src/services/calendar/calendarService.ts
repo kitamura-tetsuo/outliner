@@ -35,6 +35,15 @@ export interface CalendarSettings {
     roleDue?: string;
     /** Zero or more result columns to group entries by. */
     groupAxes: string[];
+    /**
+     * Preferred lane order for the top-level grouping axis, most-preferred
+     * value first (docs/crdt-sql-architecture.md §6.3). Configured through a
+     * dropdown on the calendar rather than inferred, so it is undoable and
+     * shared with the calendar like any other view setting.
+     */
+    laneOrder: string[];
+    /** Whether a lane with no current entries is still rendered (default false). */
+    showEmptyLanes?: boolean;
     /** 0 (Sunday) .. 6 (Saturday). Undefined means "use the locale's default". */
     weekStart?: number;
     /** Minutes from midnight where the time-grid's initial scroll lands. */
@@ -86,6 +95,7 @@ export function getCalendarMap(project: Project, calendarId: string): Y.Map<Cale
 
 function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSettings {
     const groupAxesValue = calendarMap.get("groupAxes");
+    const laneOrderValue = calendarMap.get("laneOrder");
     return {
         name: String(calendarMap.get("name") ?? ""),
         query: String(calendarMap.get("query") ?? ""),
@@ -97,6 +107,8 @@ function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSe
         roleDuration: calendarMap.get("roleDuration") as string | undefined,
         roleDue: calendarMap.get("roleDue") as string | undefined,
         groupAxes: groupAxesValue instanceof Y.Array ? groupAxesValue.toArray() : [],
+        laneOrder: laneOrderValue instanceof Y.Array ? laneOrderValue.toArray() : [],
+        showEmptyLanes: calendarMap.get("showEmptyLanes") as boolean | undefined,
         weekStart: calendarMap.get("weekStart") as number | undefined,
         workingHoursStartMinutes: calendarMap.get("workingHoursStartMinutes") as number | undefined,
         workingHoursEndMinutes: calendarMap.get("workingHoursEndMinutes") as number | undefined,
@@ -145,10 +157,15 @@ export function createCalendar(
         calendarMap.set("workingHoursEndMinutes", options.workingHoursEndMinutes);
     }
     if (options.ganttScale) calendarMap.set("ganttScale", options.ganttScale);
+    if (options.showEmptyLanes !== undefined) calendarMap.set("showEmptyLanes", options.showEmptyLanes);
 
     const groupAxes = new Y.Array<string>();
     if (options.groupAxes && options.groupAxes.length > 0) groupAxes.push(options.groupAxes);
     calendarMap.set("groupAxes", groupAxes);
+
+    const laneOrder = new Y.Array<string>();
+    if (options.laneOrder && options.laneOrder.length > 0) laneOrder.push(options.laneOrder);
+    calendarMap.set("laneOrder", laneOrder);
 
     project.calendars.set(calendarId, calendarMap);
     return calendarId;
@@ -160,6 +177,11 @@ function setOrClear(calendarMap: Y.Map<CalendarValueType>, key: string, value: s
 }
 
 function setOrClearNumber(calendarMap: Y.Map<CalendarValueType>, key: string, value: number | undefined): void {
+    if (value === undefined) calendarMap.delete(key);
+    else calendarMap.set(key, value);
+}
+
+function setOrClearBoolean(calendarMap: Y.Map<CalendarValueType>, key: string, value: boolean | undefined): void {
     if (value === undefined) calendarMap.delete(key);
     else calendarMap.set(key, value);
 }
@@ -181,6 +203,14 @@ function ensureGroupAxesArray(calendarMap: Y.Map<CalendarValueType>): Y.Array<st
     const groupAxes = new Y.Array<string>();
     calendarMap.set("groupAxes", groupAxes);
     return groupAxes;
+}
+
+function ensureLaneOrderArray(calendarMap: Y.Map<CalendarValueType>): Y.Array<string> {
+    const existing = calendarMap.get("laneOrder");
+    if (existing instanceof Y.Array) return existing as Y.Array<string>;
+    const laneOrder = new Y.Array<string>();
+    calendarMap.set("laneOrder", laneOrder);
+    return laneOrder;
 }
 
 /**
@@ -222,6 +252,14 @@ export function updateCalendar(
             const groupAxes = ensureGroupAxesArray(calendarMap);
             if (groupAxes.length > 0) groupAxes.delete(0, groupAxes.length);
             if (updates.groupAxes.length > 0) groupAxes.push(updates.groupAxes);
+        }
+        if (updates.laneOrder !== undefined) {
+            const laneOrder = ensureLaneOrderArray(calendarMap);
+            if (laneOrder.length > 0) laneOrder.delete(0, laneOrder.length);
+            if (updates.laneOrder.length > 0) laneOrder.push(updates.laneOrder);
+        }
+        if (updates.showEmptyLanes !== undefined) {
+            setOrClearBoolean(calendarMap, "showEmptyLanes", updates.showEmptyLanes);
         }
     });
 }
