@@ -21,7 +21,7 @@ async function editTitleCell(row: Locator, grid: Locator, value: string): Promis
         const input = row.locator('td[data-col="title"] input');
         await expect(input).toBeVisible({ timeout: 5000 });
         await input.fill(value);
-        await input.press("Enter", { timeout: 3000 }).catch(() => {});
+        await input.press("Enter", { timeout: 3000 }).catch(e => console.warn("Promise rejected:", e));
         if (await committedCell.isVisible({ timeout: 5000 }).catch(() => false)) return;
     }
     await expect(committedCell).toBeVisible({ timeout: 15000 });
