@@ -1,0 +1,13 @@
+id: ENV-3e6b41c7
+title: CI builds the server container images on every pull request
+description: The CI entry workflow builds server/Dockerfile and server/Dockerfile.debug on pull requests without pushing, and runs the built server image to prove its natively compiled modules (better-sqlite3) load, so image breakage is caught before it reaches main instead of only in the main-only push-and-publish workflow.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-docker-build.yml
+- .github/workflows/ci.yml
+- server/Dockerfile
+- server/Dockerfile.debug
+tests:
+- scripts/tests/env-ci-docker-image-build-3e6b41c7.spec.ts
+title-ja: CI builds the server container images on every pull request

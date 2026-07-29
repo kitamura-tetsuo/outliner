@@ -66,6 +66,13 @@ jobs:
     uses: ./.github/workflows/ci-test-e2e.yml
     secrets: inherit
 
+  docker-build:
+    name: Docker Build
+    needs: format
+    if: needs.format.outputs.changes_pushed != 'true'
+    uses: ./.github/workflows/ci-docker-build.yml
+    secrets: inherit
+
   eslint-client:
     name: Lint Code with ESLint
     uses: ./.github/workflows/ci-eslint.yml
