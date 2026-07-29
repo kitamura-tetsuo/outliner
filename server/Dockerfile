@@ -9,9 +9,16 @@ WORKDIR /usr/src/app
 # Framework-neutral schema shared with the client, compiled into the server build.
 COPY shared/ ./shared/
 
-# Install server dependencies (use npm ci for clean reproducible builds)
+# Install server dependencies (use npm ci for clean reproducible builds).
+# better-sqlite3 has no prebuilt binary for this image's Node build, so node-gyp
+# compiles it from source: python3/make/g++ are needed during install only and are
+# purged in the same layer to keep the image small.
 COPY server/package*.json ./server/
-RUN cd server && npm ci
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && (cd server && npm ci) \
+    && apt-get purge -y --auto-remove python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy the rest of the server's code and build the TypeScript
 # (emits dist/server/src and dist/shared/src)
