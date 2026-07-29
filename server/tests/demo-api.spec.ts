@@ -97,7 +97,7 @@ describe("Demo API", () => {
 
         const failResponse = await request(app)
             .post("/api/seed-demo")
-            .set('X-Forwarded-For', '1.1.1.1')
+            .set("X-Forwarded-For", "1.1.1.1")
             .send({ force: true });
 
         expect(failResponse.status).toBe(500);
@@ -105,7 +105,7 @@ describe("Demo API", () => {
         // Immediate retry should not be rate limited
         const successResponse = await request(app)
             .post("/api/seed-demo")
-            .set('X-Forwarded-For', '1.1.1.1')
+            .set("X-Forwarded-For", "1.1.1.1")
             .send({ force: true });
 
         expect(successResponse.status).toBe(200);
@@ -118,7 +118,9 @@ describe("Demo API", () => {
         app.use("/api", createDemoRouter(mockHocuspocus));
 
         // Start a normal reset (not force) that takes some time to resolve
-        mockHocuspocus.openDirectConnection.mockReturnValueOnce(new Promise(resolve => setTimeout(() => resolve(mockDirectConnection), 100)));
+        mockHocuspocus.openDirectConnection.mockReturnValueOnce(
+            new Promise(resolve => setTimeout(() => resolve(mockDirectConnection), 100)),
+        );
 
         // Make the document empty so a normal reset is triggered
         mockDoc.transact(() => {
@@ -126,13 +128,17 @@ describe("Demo API", () => {
             meta.set("lastReset", 0); // Force a reset
         });
 
-        const normalReqPromise = request(app).post("/api/seed-demo").set('X-Forwarded-For', '2.2.2.2').send({ force: false }).then(r => r);
+        const normalReqPromise = request(app).post("/api/seed-demo").set("X-Forwarded-For", "2.2.2.2").send({
+            force: false,
+        }).then(r => r);
 
         // While that is in flight, send a force request. It should be deduplicated.
         // We need to wait a tiny bit to ensure the first request has set the inFlightResets entry.
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        const forceReqPromise = request(app).post("/api/seed-demo").set('X-Forwarded-For', '2.2.2.2').send({ force: true }).then(r => r);
+        const forceReqPromise = request(app).post("/api/seed-demo").set("X-Forwarded-For", "2.2.2.2").send({
+            force: true,
+        }).then(r => r);
 
         // Now resolve the connection so both complete
 
@@ -141,12 +147,12 @@ describe("Demo API", () => {
 
         expect(normalRes.status).toBe(200);
         expect(forceRes.status).toBe(200);
-                expect(forceRes.body.reset).toBe(false); // Because it deduplicated
+        expect(forceRes.body.reset).toBe(false); // Because it deduplicated
 
         // Now an immediate genuine force reset should NOT be rate limited
         const genuineForceRes = await request(app)
             .post("/api/seed-demo")
-            .set('X-Forwarded-For', '2.2.2.2')
+            .set("X-Forwarded-For", "2.2.2.2")
             .send({ force: true });
 
         expect(genuineForceRes.status).toBe(200);
