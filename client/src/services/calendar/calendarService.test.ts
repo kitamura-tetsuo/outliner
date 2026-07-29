@@ -39,6 +39,7 @@ describe("calendarService", () => {
             roleAllDay: undefined,
             roleDuration: undefined,
             groupAxes: [],
+            laneOrder: [],
         });
 
         expect(listCalendars(project)).toEqual([{ id: calendarId, settings: calendar }]);
@@ -181,6 +182,40 @@ describe("calendarService", () => {
         expect(() => updateCalendar(project, calendarId, { timezone: "Not/A_Zone" })).toThrow(/[Ii]nvalid timezone/);
         // The rejected update leaves the calendar's stored timezone untouched.
         expect(getCalendar(project, calendarId)?.timezone).toBeUndefined();
+    });
+
+    it("stores and updates the lane order and empty-lane toggle, independent of group axes", () => {
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            groupAxes: ["tags"],
+            laneOrder: ["urgent", "work"],
+            showEmptyLanes: true,
+        });
+
+        expect(getCalendar(project, calendarId)).toMatchObject({
+            groupAxes: ["tags"],
+            laneOrder: ["urgent", "work"],
+            showEmptyLanes: true,
+        });
+
+        updateCalendar(project, calendarId, { laneOrder: ["work"], showEmptyLanes: false });
+        expect(getCalendar(project, calendarId)).toMatchObject({
+            groupAxes: ["tags"],
+            laneOrder: ["work"],
+            showEmptyLanes: false,
+        });
+
+        updateCalendar(project, calendarId, { laneOrder: [] });
+        expect(getCalendar(project, calendarId)?.laneOrder).toEqual([]);
+    });
+
+    it("never prunes the lane order when only group axes are updated, and vice versa", () => {
+        const calendarId = createCalendar(project, { name: "Cal", groupAxes: ["tags"], laneOrder: ["a", "b"] });
+        updateCalendar(project, calendarId, { groupAxes: ["source_kind"] });
+        expect(getCalendar(project, calendarId)?.laneOrder).toEqual(["a", "b"]);
+
+        updateCalendar(project, calendarId, { laneOrder: ["c"] });
+        expect(getCalendar(project, calendarId)?.groupAxes).toEqual(["source_kind"]);
     });
 
     it("the same calendar can be embedded in more than one item and stays in sync", () => {

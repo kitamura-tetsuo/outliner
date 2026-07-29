@@ -11,7 +11,7 @@ import { resetPgliteForTests } from "./pgliteService";
 import { analyzeQueryEditability } from "./queryAnalysis";
 import type { RelationProvider, RelationWrite } from "./relationProvider";
 import { RelationWriteError, TABLE_RELATION_CAPABILITIES } from "./relationProvider";
-import { applyUnionedRowDelete, applyUnionedRowEdit } from "./relationRowWrite";
+import { applyUnionedRowAppend, applyUnionedRowDelete, applyUnionedRowEdit } from "./relationRowWrite";
 import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 import { createTableEngineSession, resetTableEngineForTests, type TableDocConnector } from "./tableEngine";
 
@@ -107,6 +107,40 @@ describe("applyUnionedRowDelete (resolver dispatch)", () => {
     it("rejects a source_kind the project has no relation for", async () => {
         const resolver = { resolveRelation: async () => undefined };
         await expect(applyUnionedRowDelete(resolver, "nowhere", "row-1", "delete-source"))
+            .rejects.toThrow(RelationWriteError);
+    });
+});
+
+describe("applyUnionedRowAppend (resolver dispatch)", () => {
+    class RecordingProvider implements RelationProvider {
+        readonly sqlName = "recorded";
+        readonly capabilities = TABLE_RELATION_CAPABILITIES;
+        writes: RelationWrite[] = [];
+        async materialize() {
+            return true;
+        }
+        async applyWrite(write: RelationWrite) {
+            this.writes.push(write);
+        }
+        dispose() {}
+    }
+
+    it("resolves the relation named by source_kind and appends to the row named by source_id", async () => {
+        const provider = new RecordingProvider();
+        const resolver = {
+            resolveRelation: async (sqlName: string) => sqlName === "widgets" ? provider : undefined,
+        };
+
+        await applyUnionedRowAppend(resolver, "widgets", "row-7", "tags", "urgent");
+
+        expect(provider.writes).toEqual([
+            { op: "UPDATE_APPEND", rowId: "row-7", column: "tags", value: "urgent" },
+        ]);
+    });
+
+    it("rejects a source_kind the project has no relation for", async () => {
+        const resolver = { resolveRelation: async () => undefined };
+        await expect(applyUnionedRowAppend(resolver, "nowhere", "row-1", "tags", "x"))
             .rejects.toThrow(RelationWriteError);
     });
 });

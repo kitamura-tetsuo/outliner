@@ -276,6 +276,11 @@ export class ItemsRelationProvider implements RelationProvider {
                     touched.push(write.rowId);
                     return;
                 }
+                case "UPDATE_APPEND": {
+                    this.appendField(write.rowId, write.column, write.value);
+                    touched.push(write.rowId);
+                    return;
+                }
                 case "INSERT": {
                     const parentKey = write.destination!.parentKey;
                     if (!this.hasNode(parentKey)) {
@@ -382,6 +387,44 @@ export class ItemsRelationProvider implements RelationProvider {
             return;
         }
         nodeValue.set(field, field === "done" ? this.toBoolean(value) : String(value));
+    }
+
+    /**
+     * Add one value to a multi-valued column without replacing the rest of
+     * the set (the `Ctrl`/`Cmd`-drop "add" mode of a grouping lane,
+     * docs/crdt-sql-architecture.md §6.3). Only `tags` supports this today —
+     * it is the only multi-valued, writable column the items relation
+     * projects.
+     */
+    private appendField(itemKey: string, column: string, value: string): void {
+        const field = COLUMN_TO_FIELD[column];
+        if (field !== "tags") {
+            throw new RelationWriteError(
+                `Column "${column}" of the items relation does not support UPDATE_APPEND`,
+            );
+        }
+        const nodeValue = this.nodeValue(itemKey);
+        if (!nodeValue) {
+            throw new RelationWriteError(`Item "${itemKey}" does not exist in this project`);
+        }
+        this.appendTag(nodeValue, value);
+    }
+
+    /**
+     * Push `tag` onto the item's own `Y.Array`, deduplicated — the same
+     * merge-safe operation `Item.addTag` performs, kept here so a write
+     * addressed through the relation (by `source_kind`/`source_id`) does not
+     * have to round-trip through the `Item` wrapper to get it.
+     */
+    private appendTag(nodeValue: Y.Map<unknown>, tag: string): void {
+        const trimmed = tag.trim();
+        if (!trimmed) return;
+        let arr = nodeValue.get("tags") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            nodeValue.set("tags", arr);
+        }
+        if (!arr.toArray().includes(trimmed)) arr.push([trimmed]);
     }
 
     /**

@@ -7,6 +7,7 @@
 // original wall-clock time-of-day and only its calendar date moves.
 
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
+import { laneColor } from "../../services/calendar/calendarLaneColor";
 import type { MonthCell } from "../../services/calendar/calendarMonthGridLayout";
 
 const DAY_MS = 86_400_000;
@@ -21,6 +22,12 @@ interface Props {
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    /**
+     * A lane is "not a layout" in month view (docs/crdt-sql-architecture.md
+     * §6.3) — grouping shows up as a colour per entry instead. Absent when no
+     * grouping axis is assigned.
+     */
+    laneLabel?: (entry: CalendarEntry) => string;
 }
 
 let {
@@ -32,6 +39,7 @@ let {
     onKeyboardMove,
     onDeleteRequest,
     isDeletable = () => false,
+    laneLabel,
 }: Props = $props();
 
 const weekdayHeaders = $derived(
@@ -147,6 +155,8 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         class:not-writable={!isStartWritable(entry)}
                         draggable={isStartWritable(entry)}
                         data-testid={`calendar-entry-${entry.key}`}
+                        data-lane={laneLabel?.(entry)}
+                        style={laneLabel && isStartWritable(entry) ? `background: ${laneColor(laneLabel(entry))}` : undefined}
                         ondragstart={(e) => onDragStart(entry, e)}
                         onkeydown={(e) => onCellKeydown(entry, e)}
                     >

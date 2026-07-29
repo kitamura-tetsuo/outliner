@@ -43,7 +43,7 @@ function setupSubscription(currentItem: Item) {
                     }
                 };
                 t.observe(h1);
-                unsubs.push(() => { try { t.unobserve?.(h1); } catch {} });
+                unsubs.push(() => { try { t.unobserve?.(h1); } catch (err) { logger.warn("Silenced error", { err }); } });
                 h1(); // Initial reflection
             } else {
                 textString = (currentItem as Item).text || "";

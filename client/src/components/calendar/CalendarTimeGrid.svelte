@@ -11,6 +11,14 @@
 // component never writes Yjs itself, it only reports "moved to instant X" /
 // "resized to length Y" and lets the parent decide whether that write is
 // allowed and how to reconcile it.
+//
+// The optional lane handle (#4348) is a *separate* small element, deliberately
+// not the entry body itself: the body's `pointerdown` already calls
+// `setPointerCapture` for the reschedule drag above, which would suppress the
+// browser's native HTML5 drag-and-drop the moment both lived on the same
+// node. A dedicated `draggable` handle lets `CalendarLaneTimeGrid.svelte`
+// implement cross-lane drops with native DnD (mirroring `CalendarMonthGrid`'s
+// existing pattern) without touching reschedule at all.
 
 import { onMount } from "svelte";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
@@ -36,6 +44,9 @@ interface Props {
     /** Requests the delete-disposition prompt for an entry; addressability (not writability) gates this. */
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    /** Present only when this grid is one lane band of `CalendarLaneTimeGrid.svelte` (#4348). */
+    isLaneWritable?: (entry: CalendarEntry) => boolean;
+    onLaneDragStart?: (entry: CalendarEntry, e: DragEvent) => void;
 }
 
 let {
@@ -53,6 +64,8 @@ let {
     onKeyboardMove,
     onDeleteRequest,
     isDeletable = () => false,
+    isLaneWritable,
+    onLaneDragStart,
 }: Props = $props();
 
 const dayHeightPx = 24 * ROW_HEIGHT_PX;
@@ -275,6 +288,17 @@ onMount(() => {
                             onpointerdown={(e) => beginDrag("resize", p.entry, e)}
                         ></div>
                     {/if}
+                    {#if isLaneWritable?.(p.entry)}
+                        <div
+                            role="button"
+                            tabindex="-1"
+                            aria-label={`Move ${p.entry.title} to another lane`}
+                            class="lane-handle"
+                            draggable="true"
+                            data-testid={`calendar-entry-lane-handle-${p.entry.key}`}
+                            ondragstart={(e) => onLaneDragStart?.(p.entry, e)}
+                        >⠿</div>
+                    {/if}
                 </div>
             {/each}
         </div>
@@ -423,5 +447,16 @@ onMount(() => {
     position: absolute;
     top: 1px;
     right: 2px;
+}
+
+/* Sits opposite the delete affordance so the two never overlap. */
+.lane-handle {
+    position: absolute;
+    top: 1px;
+    left: 2px;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: grab;
+    opacity: 0.85;
 }
 </style>

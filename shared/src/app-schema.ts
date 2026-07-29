@@ -66,14 +66,18 @@ export class Comments {
         c.set("lastChanged", time);
         try {
             logger.info("[Comments.addComment] pushing comment to Y.Array");
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         if (this._ensureInitialized) {
             this.yArray = this._ensureInitialized();
         }
         this.yArray.push([c]);
         try {
             logger.info("[Comments.addComment] pushed. current length=", this.yArray.length);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         return { id: c.get("id") as string };
     }
 
@@ -105,7 +109,8 @@ export class Comments {
         try {
             if (!this.yArray || !this.yArray.doc) return 0;
             return this.yArray.length;
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return 0;
         }
     }
@@ -200,7 +205,8 @@ export class Item {
     private get value(): Y.Map<ItemValueType> {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return DUMMY_MAP;
         }
     }
@@ -529,7 +535,8 @@ export class Item {
         try {
             const parsed = JSON.parse(raw);
             return Array.isArray(parsed) ? (parsed as string[]) : [];
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return [];
         }
     }
@@ -719,7 +726,9 @@ export class Item {
                             if (cand && String(cand.id) === String(mappedId)) {
                                 try {
                                     cand.addAttachment(url);
-                                } catch {}
+                                } catch (_e) {
+                                    logger.warn({ err: _e }, "Silenced error");
+                                }
                                 throw new Error("__DONE__");
                             }
                         }
@@ -734,7 +743,9 @@ export class Item {
                                 if (ct === text) {
                                     try {
                                         cand.addAttachment(url);
-                                    } catch {}
+                                    } catch (_e) {
+                                        logger.warn({ err: _e }, "Silenced error");
+                                    }
                                     break;
                                 }
                             }
@@ -742,7 +753,9 @@ export class Item {
                     }
                 }
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
 
         // 2) Add to this node itself as usual
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
@@ -752,7 +765,9 @@ export class Item {
         }
         try {
             logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
 
         arr.push([url]);
         this.value.set("lastChanged", Date.now());
@@ -762,7 +777,9 @@ export class Item {
                     new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
     }
 
     removeAttachment(url: string) {
@@ -816,7 +833,9 @@ export class Item {
     addComment(author: string, text: string) {
         try {
             logger.info("[Item.addComment] id=", this.id);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
             arr = new Y.Array<Y.Map<CommentValueType>>();

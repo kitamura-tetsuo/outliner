@@ -1,3 +1,4 @@
+import { logger } from "./logger.js";
 const SEGMENT_RE = /^[A-Za-z0-9_-]{1,128}$/;
 
 export interface RoomInfo {
@@ -30,7 +31,8 @@ export function parseRoom(path: string): RoomInfo | undefined {
                 return { project, table };
             }
         }
-    } catch {
+    } catch (_e) {
+        logger.warn({ err: _e }, "Silenced error");
         return undefined;
     }
     return undefined;
