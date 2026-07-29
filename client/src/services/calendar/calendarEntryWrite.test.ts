@@ -74,6 +74,7 @@ describe("writeCalendarEntryStart", () => {
             { sourceKind: "item", sourceId: "42", allDay: false },
             "start_at",
             Date.parse("2026-03-16T09:30:00Z"),
+            "UTC",
         );
         expect(provider.writes).toEqual([
             { op: "UPDATE", rowId: "42", column: "start_at", value: "2026-03-16T09:30:00.000Z" },
@@ -88,6 +89,27 @@ describe("writeCalendarEntryStart", () => {
             { sourceKind: "item", sourceId: "42", allDay: true },
             "start_on",
             Date.parse("2026-08-01T00:00:00Z"),
+            "UTC",
+        );
+        expect(provider.writes).toEqual([
+            { op: "UPDATE", rowId: "42", column: "start_on", value: "2026-08-01" },
+        ]);
+    });
+
+    // The inverse of `buildCalendarEntries`' floating-date read: dropping an
+    // all-day entry on a day cell must store *that* day. Formatting the
+    // instant as a UTC date instead stored the neighbouring day whenever the
+    // calendar's zone had a non-zero offset.
+    it("names the day in the calendar's zone when writing an all-day start", async () => {
+        const provider = new RecordingProvider();
+        const resolver = resolverFor(provider, "item");
+        await writeCalendarEntryStart(
+            resolver,
+            { sourceKind: "item", sourceId: "42", allDay: true },
+            "start_on",
+            // Midnight of 2026-08-01 in Asia/Tokyo.
+            Date.parse("2026-07-31T15:00:00Z"),
+            "Asia/Tokyo",
         );
         expect(provider.writes).toEqual([
             { op: "UPDATE", rowId: "42", column: "start_on", value: "2026-08-01" },
@@ -98,7 +120,7 @@ describe("writeCalendarEntryStart", () => {
         const provider = new RecordingProvider();
         const resolver = resolverFor(provider, "item");
         await expect(
-            writeCalendarEntryStart(resolver, { allDay: false }, "start_at", Date.now()),
+            writeCalendarEntryStart(resolver, { allDay: false }, "start_at", Date.now(), "UTC"),
         ).rejects.toThrow(/writable origin/);
         expect(provider.writes).toHaveLength(0);
     });

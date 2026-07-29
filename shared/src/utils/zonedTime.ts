@@ -112,3 +112,36 @@ export function wallTimeExists(w: WallTime, timeZone: string): boolean {
     const roundTrip = utcMsToWallTime(wallTimeToUtcMs(w, timeZone), timeZone);
     return formatWallTime(roundTrip) === formatWallTime(w);
 }
+
+const FLOATING_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * The UTC instant at which `timeZone`'s wall clock reaches midnight of the
+ * floating date `YYYY-MM-DD`.
+ *
+ * An all-day entry is a floating date, not an instant
+ * (docs/crdt-sql-architecture.md §6.1) — it only becomes a point on the
+ * timeline once a zone is chosen, and the zone that must be chosen is the
+ * view's (§6.5), never the runtime's ambient one and never UTC. Anchoring
+ * such a date at UTC midnight instead puts it on the wrong day, or across
+ * two days, for every viewer whose zone has a non-zero offset.
+ *
+ * Returns `undefined` for anything that is not a bare `YYYY-MM-DD`, so a
+ * caller can fall back to instant parsing. In a zone whose midnight does not
+ * exist on that date (a spring-forward gap that starts at 00:00, as in
+ * America/Santiago), `wallTimeToUtcMs` lands on the first instant that day
+ * does have.
+ */
+export function floatingDateToUtcMs(date: string, timeZone: string): number | undefined {
+    const m = FLOATING_DATE_RE.exec(date.trim());
+    if (!m) return undefined;
+    return wallTimeToUtcMs(
+        { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]), hour: 0, minute: 0, second: 0 },
+        timeZone,
+    );
+}
+
+/** Inverse of `floatingDateToUtcMs`: `timeZone`'s calendar date at `utcMs`. */
+export function utcMsToFloatingDate(utcMs: number, timeZone: string): string {
+    return formatWallTime(utcMsToWallTime(utcMs, timeZone)).slice(0, 10);
+}

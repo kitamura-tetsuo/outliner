@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+    floatingDateToUtcMs,
     floatingDateToWallTime,
     formatWallTime,
     parseWallTime,
+    utcMsToFloatingDate,
     utcMsToWallTime,
     wallTimeExists,
     wallTimeToFloatingDate,
@@ -56,6 +58,31 @@ describe("zonedTime", () => {
 
         const ordinary = { year: 2026, month: 3, day: 8, hour: 9, minute: 0, second: 0 };
         expect(wallTimeExists(ordinary, "America/New_York")).toBe(true);
+    });
+
+    it("resolves a floating date to that zone's midnight, and back", () => {
+        expect(floatingDateToUtcMs("2026-08-01", "UTC")).toBe(Date.parse("2026-08-01T00:00:00Z"));
+        expect(floatingDateToUtcMs("2026-08-01", "Asia/Tokyo")).toBe(Date.parse("2026-07-31T15:00:00Z"));
+        expect(floatingDateToUtcMs("2026-08-01", "America/New_York")).toBe(Date.parse("2026-08-01T04:00:00Z"));
+
+        for (const zone of ["UTC", "Asia/Tokyo", "America/New_York", "Australia/Adelaide"]) {
+            expect(utcMsToFloatingDate(floatingDateToUtcMs("2026-08-01", zone)!, zone)).toBe("2026-08-01");
+        }
+    });
+
+    it("rejects anything that is not a bare YYYY-MM-DD", () => {
+        expect(floatingDateToUtcMs("2026-08-01T00:00:00Z", "UTC")).toBeUndefined();
+        expect(floatingDateToUtcMs("2026-8-1", "UTC")).toBeUndefined();
+        expect(floatingDateToUtcMs("", "UTC")).toBeUndefined();
+    });
+
+    it("keeps the date across a DST transition, in both directions", () => {
+        // US spring-forward 2026-03-08 and fall-back 2026-11-01 both start at
+        // an hour other than midnight, so the day itself still has one.
+        for (const date of ["2026-03-08", "2026-11-01"]) {
+            const ms = floatingDateToUtcMs(date, "America/New_York")!;
+            expect(utcMsToFloatingDate(ms, "America/New_York")).toBe(date);
+        }
     });
 
     it("converts between a wall time and rrule's floating-Date shape", () => {

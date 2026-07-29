@@ -67,7 +67,7 @@
         "@vitest/coverage-v8": "^4.1.10",
         "@vitest/ui": "^4.1.8",
         "chokidar-cli": "^3.0.0",
-        "concurrently": "^10.0.3",
+        "concurrently": "^10.0.4",
         "dprint": "^0.55.2",
         "eslint": "^10.8.0",
         "eslint-formatter-unix": "^9.0.1",

@@ -23,6 +23,7 @@ const FORCE_RESET_RATE_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 
 const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolean; }>>();
 const forceRateLimits = new Map<string, number>();
+let lastGlobalForceReset = 0;
 
 export interface DemoResetState {
     isEmpty: boolean;
@@ -68,6 +69,15 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 }
                 if (now - lastForce < FORCE_RESET_RATE_LIMIT_MS) {
                     logger.warn({ event: "seed_demo_rate_limit_exceeded", ip: clientIp });
+                    res.status(429).json({
+                        error: "Too Many Requests",
+                        message: "Force reset is rate limited",
+                        rateLimitMs: FORCE_RESET_RATE_LIMIT_MS,
+                    });
+                    return;
+                }
+                if (now - lastGlobalForceReset < FORCE_RESET_RATE_LIMIT_MS) {
+                    logger.warn({ event: "seed_demo_global_rate_limit_exceeded", ip: clientIp });
                     res.status(429).json({
                         error: "Too Many Requests",
                         message: "Force reset is rate limited",
@@ -266,7 +276,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                 const result = await resetPromise;
                 if (force && result.reset) {
                     const clientIp = getClientIp(req);
-                    forceRateLimits.set(clientIp, Date.now());
+                    const finishTime = Date.now();
+                    forceRateLimits.set(clientIp, finishTime);
+                    lastGlobalForceReset = finishTime;
                 }
                 res.json(result);
             } finally {

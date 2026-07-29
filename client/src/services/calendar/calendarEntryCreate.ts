@@ -12,6 +12,7 @@
 // job is to shape `values` and dispatch through the same `applyWrite` every
 // other write goes through, so nothing here bypasses that capability check.
 
+import { utcMsToFloatingDate } from "$shared/utils/zonedTime";
 import { ITEMS_RELATION_NAME } from "../yjstable/itemsRelation";
 import type { RelationInsertDestination, RelationValue } from "../yjstable/relationProvider";
 import { RelationWriteError } from "../yjstable/relationProvider";
@@ -25,10 +26,17 @@ export interface NewCalendarEntryInput {
     startMs?: number;
     /** Epoch ms deadline; independent of `startMs` (§6.1 — `due` is never derived from `start`). */
     dueMs?: number;
+    /**
+     * The calendar's timezone (§6.5), in which an all-day value's floating
+     * date is derived. Without it a new all-day entry created near either end
+     * of the viewer's day would be stored on the UTC day rather than the day
+     * the user picked.
+     */
+    timeZone: string;
 }
 
-function formatDate(ms: number, allDay: boolean): string {
-    return allDay ? new Date(ms).toISOString().slice(0, 10) : new Date(ms).toISOString();
+function formatDate(ms: number, allDay: boolean, timeZone: string): string {
+    return allDay ? utcMsToFloatingDate(ms, timeZone) : new Date(ms).toISOString();
 }
 
 /**
@@ -51,10 +59,10 @@ export async function createCalendarEntry(
     const values: Record<string, RelationValue> = { text: input.title };
     if (input.startMs !== undefined) {
         values.all_day = input.allDay;
-        values[input.allDay ? "start_on" : "start_at"] = formatDate(input.startMs, input.allDay);
+        values[input.allDay ? "start_on" : "start_at"] = formatDate(input.startMs, input.allDay, input.timeZone);
     }
     if (input.dueMs !== undefined) {
-        values.due = formatDate(input.dueMs, input.allDay);
+        values.due = formatDate(input.dueMs, input.allDay, input.timeZone);
     }
 
     await provider.applyWrite({ op: "INSERT", values, destination });

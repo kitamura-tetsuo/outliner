@@ -181,9 +181,9 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         </p>
     </div>
 
-    {#if (isLoading || (yjsStore.notYetSynced && !store.currentPage)) && !error && !pageNotFound}
+    {#if (isLoading || (yjsStore.notYetSynced && !yjsStore.syncError && !store.currentPage)) && !error && !pageNotFound}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
-    {:else if error}
+    {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
                 <div class="flex-shrink-0">
@@ -192,11 +192,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 <div class="ml-3">
                     <h2 class="text-sm font-medium text-red-800">An error occurred</h2>
                     <div class="mt-2 text-sm text-red-700">
-                        <p>{error}</p>
+                        <p>{error || "Connection to the real-time server failed or timed out."}</p>
                     </div>
                     <div class="mt-4">
                         <button type="button"
-                            onclick={() => loadDemoPage()}
+                            onclick={() => { if (yjsStore.syncError) void yjsStore.reconnect(); void loadDemoPage(); }}
                             class="rounded-md bg-red-100 px-2 py-1.5 text-sm font-medium text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
                         >
                             Retry

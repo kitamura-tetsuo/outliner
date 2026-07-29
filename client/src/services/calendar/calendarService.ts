@@ -50,6 +50,8 @@ export interface CalendarSettings {
     workingHoursStartMinutes?: number;
     /** Minutes from midnight where the working-hours band ends. */
     workingHoursEndMinutes?: number;
+    /** Gantt's own axis granularity (#4350): day / week / month / quarter. Undefined means "day". */
+    ganttScale?: string;
 }
 
 export interface CalendarListEntry {
@@ -110,6 +112,7 @@ function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSe
         weekStart: calendarMap.get("weekStart") as number | undefined,
         workingHoursStartMinutes: calendarMap.get("workingHoursStartMinutes") as number | undefined,
         workingHoursEndMinutes: calendarMap.get("workingHoursEndMinutes") as number | undefined,
+        ganttScale: calendarMap.get("ganttScale") as string | undefined,
     };
 }
 
@@ -153,6 +156,7 @@ export function createCalendar(
     if (options.workingHoursEndMinutes !== undefined) {
         calendarMap.set("workingHoursEndMinutes", options.workingHoursEndMinutes);
     }
+    if (options.ganttScale) calendarMap.set("ganttScale", options.ganttScale);
     if (options.showEmptyLanes !== undefined) calendarMap.set("showEmptyLanes", options.showEmptyLanes);
 
     const groupAxes = new Y.Array<string>();
@@ -243,6 +247,7 @@ export function updateCalendar(
         if (updates.workingHoursEndMinutes !== undefined) {
             setOrClearNumber(calendarMap, "workingHoursEndMinutes", updates.workingHoursEndMinutes);
         }
+        if (updates.ganttScale !== undefined) setOrClear(calendarMap, "ganttScale", updates.ganttScale);
         if (updates.groupAxes !== undefined) {
             const groupAxes = ensureGroupAxesArray(calendarMap);
             if (groupAxes.length > 0) groupAxes.delete(0, groupAxes.length);

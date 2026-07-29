@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { computeViewRange, resolveCalendarTimeZone, shiftAnchor } from "./calendarGridRange";
+import {
+    computeGanttRange,
+    computeGanttTicks,
+    computeViewRange,
+    resolveCalendarTimeZone,
+    shiftAnchor,
+    shiftGanttAnchor,
+} from "./calendarGridRange";
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
@@ -121,5 +128,84 @@ describe("shiftAnchor", () => {
         const next = shiftAnchor(anchor, "day", 0, "America/New_York", 1);
         // 2024-03-10T00:00 local time, which is -05:00 (still EST at midnight).
         expect(next).toBe(Date.parse("2024-03-10T00:00:00-05:00"));
+    });
+});
+
+describe("computeGanttRange — each scale asks the engine for its own span, not everything (#4350)", () => {
+    it("day scale spans 30 days from local midnight", () => {
+        const anchor = Date.parse("2026-03-15T14:30:00Z");
+        const range = computeGanttRange(anchor, "day", "UTC");
+        expect(range.start).toBe(Date.parse("2026-03-15T00:00:00Z"));
+        expect(range.end).toBe(Date.parse("2026-04-14T00:00:00Z"));
+    });
+
+    it("week scale spans 90 days", () => {
+        const anchor = Date.parse("2026-03-15T14:30:00Z");
+        const range = computeGanttRange(anchor, "week", "UTC");
+        expect(range.end - range.start).toBe(90 * DAY);
+    });
+
+    it("month scale spans 365 days", () => {
+        const anchor = Date.parse("2026-03-15T14:30:00Z");
+        const range = computeGanttRange(anchor, "month", "UTC");
+        expect(range.end - range.start).toBe(365 * DAY);
+    });
+
+    it("quarter scale spans 730 days", () => {
+        const anchor = Date.parse("2026-03-15T14:30:00Z");
+        const range = computeGanttRange(anchor, "quarter", "UTC");
+        expect(range.end - range.start).toBe(730 * DAY);
+    });
+});
+
+describe("shiftGanttAnchor", () => {
+    it("day scale steps by one day", () => {
+        const anchor = Date.parse("2026-03-15T14:00:00Z");
+        expect(shiftGanttAnchor(anchor, "day", "UTC", 1)).toBe(Date.parse("2026-03-16T00:00:00Z"));
+        expect(shiftGanttAnchor(anchor, "day", "UTC", -1)).toBe(Date.parse("2026-03-14T00:00:00Z"));
+    });
+
+    it("week scale steps by seven days", () => {
+        const anchor = Date.parse("2026-03-15T00:00:00Z");
+        expect(shiftGanttAnchor(anchor, "week", "UTC", 1)).toBe(Date.parse("2026-03-22T00:00:00Z"));
+    });
+
+    it("month scale steps by a calendar month", () => {
+        const anchor = Date.parse("2026-03-15T00:00:00Z");
+        expect(shiftGanttAnchor(anchor, "month", "UTC", 1)).toBe(Date.parse("2026-04-15T00:00:00Z"));
+    });
+});
+
+describe("computeGanttTicks", () => {
+    it("day scale produces one tick per calendar day", () => {
+        const ticks = computeGanttTicks(
+            Date.parse("2026-03-15T00:00:00Z"),
+            Date.parse("2026-03-18T00:00:00Z"),
+            "day",
+            "UTC",
+        );
+        expect(ticks.map((t) => t.label)).toEqual(["3/15", "3/16", "3/17"]);
+    });
+
+    it("month scale snaps ticks to real calendar-month starts", () => {
+        const ticks = computeGanttTicks(
+            Date.parse("2026-01-15T00:00:00Z"),
+            Date.parse("2026-04-01T00:00:00Z"),
+            "month",
+            "UTC",
+        );
+        expect(ticks.map((t) => t.label)).toEqual(["2026-01", "2026-02", "2026-03"]);
+        expect(ticks[1].startUtcMs).toBe(Date.parse("2026-02-01T00:00:00Z"));
+    });
+
+    it("quarter scale labels and wraps across a year boundary", () => {
+        const ticks = computeGanttTicks(
+            Date.parse("2025-10-01T00:00:00Z"),
+            Date.parse("2026-04-01T00:00:00Z"),
+            "quarter",
+            "UTC",
+        );
+        expect(ticks.map((t) => t.label)).toEqual(["Q4 2025", "Q1 2026"]);
+        expect(ticks[1].startUtcMs).toBe(Date.parse("2026-01-01T00:00:00Z"));
     });
 });

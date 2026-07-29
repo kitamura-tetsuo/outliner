@@ -10,6 +10,7 @@
 // from the query text, by calendarColumnWritability.ts — see
 // calendarEntryWrite.ts for why those two must not be conflated.
 
+import { floatingDateToUtcMs } from "$shared/utils/zonedTime";
 import type { CalendarSettings } from "./calendarService";
 import { parsePgIntervalMs } from "./pgInterval";
 
@@ -18,10 +19,23 @@ export interface CalendarEntry {
     key: string;
     sourceKind?: string;
     sourceId?: string;
+    /**
+     * The outline parent of this row's item, when the query's SELECT carries
+     * a `parent_id` column (Gantt's hierarchy, #4350 — `outline_items`
+     * already carries it, so nesting means exactly what it means in the
+     * outline). Only ever set for items-relation rows; a table-derived row
+     * has no `parent_id` and so never nests.
+     */
+    parentId?: string;
     title: string;
     /** True for a floating-date entry, false for an instant, undefined when the row has no start at all. */
     allDay?: boolean;
-    /** Epoch ms: UTC midnight of the date for an all-day entry, the instant for a timed one. */
+    /**
+     * Epoch ms: for an all-day entry, the instant the calendar's timezone
+     * reaches midnight of its floating date; for a timed one, the instant
+     * itself. Both are therefore directly comparable with the grid range
+     * (calendarGridRange.ts), which is computed in that same timezone.
+     */
     startMs?: number;
     /** Epoch ms length, when present. */
     durationMs?: number;
@@ -54,15 +68,33 @@ function toBooleanValue(v: unknown): boolean | undefined {
     return Boolean(v);
 }
 
-/** Parse a role's start value: `YYYY-MM-DD` for all-day, an ISO instant otherwise. */
-function parseStartMs(raw: string, allDay: boolean): number | undefined {
-    const ms = allDay ? Date.parse(`${raw}T00:00:00Z`) : Date.parse(raw);
+/**
+ * Parse a role's start value: a floating `YYYY-MM-DD` for all-day (resolved
+ * against `timeZone`, see `floatingDateToUtcMs`), an ISO instant otherwise.
+ */
+function parseStartMs(raw: string, allDay: boolean, timeZone: string): number | undefined {
+    if (allDay) return floatingDateToUtcMs(raw, timeZone);
+    const ms = Date.parse(raw);
+    return Number.isNaN(ms) ? undefined : ms;
+}
+
+/**
+ * A `due` value is a deadline that may be written either way round: `due`
+ * projects whatever the item stored, so a bare date is floating (and belongs
+ * to the view's zone, like any all-day value) while a full timestamp is
+ * already an instant.
+ */
+function parseDueMs(raw: string, timeZone: string): number | undefined {
+    const floating = floatingDateToUtcMs(raw, timeZone);
+    if (floating !== undefined) return floating;
+    const ms = Date.parse(raw);
     return Number.isNaN(ms) ? undefined : ms;
 }
 
 export function buildCalendarEntries(
     result: { columns: string[]; rows: Record<string, unknown>[]; },
     settings: Pick<CalendarSettings, "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" | "roleDue">,
+    timeZone: string,
 ): CalendarEntry[] {
     const entries: CalendarEntry[] = [];
 
@@ -71,13 +103,14 @@ export function buildCalendarEntries(
         const sourceId = toStringValue(row["source_id"]);
         const idFallback = toStringValue(row["id"]);
         const key = sourceKind && sourceId ? `${sourceKind}:${sourceId}` : idFallback ?? `row:${index}`;
+        const parentId = toStringValue(row["parent_id"]);
 
         const title = settings.roleTitle ? toStringValue(row[settings.roleTitle]) ?? "" : "";
 
         const allDayRaw = settings.roleAllDay ? toBooleanValue(row[settings.roleAllDay]) : undefined;
         const startRaw = settings.roleStart ? toStringValue(row[settings.roleStart]) : undefined;
         const allDay = startRaw !== undefined ? (allDayRaw ?? false) : undefined;
-        const startMs = startRaw !== undefined ? parseStartMs(startRaw, allDay === true) : undefined;
+        const startMs = startRaw !== undefined ? parseStartMs(startRaw, allDay === true, timeZone) : undefined;
 
         const durationRaw = settings.roleDuration ? row[settings.roleDuration] : undefined;
         const durationMs = typeof durationRaw === "string"
@@ -85,8 +118,7 @@ export function buildCalendarEntries(
             : undefined;
 
         const dueRaw = settings.roleDue ? toStringValue(row[settings.roleDue]) : undefined;
-        const dueParsed = dueRaw !== undefined ? Date.parse(dueRaw) : NaN;
-        const dueMs = Number.isNaN(dueParsed) ? undefined : dueParsed;
+        const dueMs = dueRaw !== undefined ? parseDueMs(dueRaw, timeZone) : undefined;
 
         const recurrenceParentId = toStringValue(row["recurrence_parent_id"]);
         const recurrenceOccurrenceId = toStringValue(row["recurrence_occurrence_id"]);
@@ -95,6 +127,7 @@ export function buildCalendarEntries(
             key,
             sourceKind,
             sourceId,
+            parentId,
             title,
             allDay,
             startMs,
