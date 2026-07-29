@@ -88,6 +88,24 @@ describe("createRecurrenceOverride", () => {
         expect(override.start).toBe("2026-08-03");
         expect(override.allDay).toBe(true);
     });
+
+    // The override must land on the day the occurrence was generated for, in
+    // the rule's own zone. Deriving that date from the occurrence's UTC
+    // instant instead named the previous day for any zone ahead of UTC, so
+    // the override rendered a day off the occurrence it replaces.
+    it("names an all-day override's date in the rule's zone, not UTC", () => {
+        const { tree, source } = makeProject();
+        source.allDay = true;
+        source.recurrenceTimezone = "Asia/Tokyo";
+        source.recurrenceDtstart = "2026-08-03T00:00:00";
+        const [occurrence] = expandItemOccurrences(source, RANGE_START, RANGE_END);
+
+        // 2026-08-03 00:00 in Asia/Tokyo is 2026-08-02T15:00Z.
+        expect(occurrence.startUtcMs).toBe(Date.parse("2026-08-02T15:00:00Z"));
+
+        const override = createRecurrenceOverride(tree, source, occurrence);
+        expect(override.start).toBe("2026-08-03");
+    });
 });
 
 describe("deleteOccurrence", () => {

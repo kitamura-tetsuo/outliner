@@ -48,16 +48,26 @@ export function createRecurrenceOverride(
     override.tags = source.tags;
     override.allDay = allDay;
     override.duration = edits.duration ?? source.duration;
-    override.start = formatOccurrenceStart(occurrence.startUtcMs, allDay);
+    override.start = formatOccurrenceStart(occurrence, allDay);
     override.recurrenceParentId = source.id;
     override.recurrenceOccurrenceId = occurrence.occurrenceId;
     return override;
 }
 
-function formatOccurrenceStart(startUtcMs: number, allDay: boolean | undefined): string {
-    const iso = new Date(startUtcMs).toISOString();
-    if (allDay) return iso.slice(0, 10);
-    return iso.replace(/\.\d{3}Z$/, "Z");
+/**
+ * An all-day override stores a floating date (§6.1), and the date it must
+ * store is the occurrence's own wall-clock one — which `occurrenceId`, the
+ * local dtstart the rule generated, already carries. Deriving it from
+ * `startUtcMs` instead would name whatever day UTC was on at that instant,
+ * putting the override a day off the occurrence it replaces in every zone
+ * with a non-zero offset. A timed override keeps the instant.
+ */
+function formatOccurrenceStart(
+    occurrence: { occurrenceId: string; startUtcMs: number; },
+    allDay: boolean | undefined,
+): string {
+    if (allDay) return occurrence.occurrenceId.slice(0, 10);
+    return new Date(occurrence.startUtcMs).toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 /**

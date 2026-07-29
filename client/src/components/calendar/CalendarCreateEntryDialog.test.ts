@@ -46,6 +46,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-1",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {},
                 onCancel: () => {},
             },
@@ -62,6 +63,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-1",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {},
                 onCancel: () => {},
             },
@@ -81,6 +83,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-1",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {},
                 onCancel: () => {
                     cancelled = true;
@@ -101,6 +104,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-history",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {
                     created = true;
                 },
@@ -119,6 +123,41 @@ describe("CalendarCreateEntryDialog", () => {
         expect(getDestinationHistory("proj-history")).toEqual([{ parentKey: pageA.key, label: "Tasks" }]);
     });
 
+    // Every field in this dialog is a wall-clock reading in the calendar's
+    // zone (§6.5): the day the user picks is the day that gets stored, not
+    // the day UTC (or the runtime's own zone) happened to be on.
+    it("stores an all-day start on the day picked, in the calendar's zone", async () => {
+        const provider = new RecordingProvider();
+        let created = false;
+        const { getByTestId } = render(CalendarCreateEntryDialog, {
+            props: {
+                project,
+                projectId: "proj-tz",
+                resolver: resolverFor(provider),
+                defaultAllDay: true,
+                timeZone: "Asia/Tokyo",
+                onCreated: () => {
+                    created = true;
+                },
+                onCancel: () => {},
+            },
+        });
+
+        await fireEvent.input(getByTestId("calendar-create-title-input"), { target: { value: "Conference" } });
+        await fireEvent.input(getByTestId("calendar-create-start-input"), { target: { value: "2026-08-01" } });
+        await fireEvent.change(getByTestId("calendar-create-destination-select"), { target: { value: pageA.key } });
+        await fireEvent.click(getByTestId("calendar-create-submit"));
+
+        await waitFor(() => expect(created).toBe(true));
+        expect(provider.writes).toEqual([
+            {
+                op: "INSERT",
+                values: { text: "Conference", all_day: true, start_on: "2026-08-01" },
+                destination: { parentKey: pageA.key },
+            },
+        ]);
+    });
+
     it("offers a previously recorded destination as Recent, ahead of the plain page list", () => {
         // Simulate a prior successful create by seeding history directly, the
         // way `recordDestination` would have left it.
@@ -132,6 +171,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-recent",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {},
                 onCancel: () => {},
             },
@@ -153,6 +193,7 @@ describe("CalendarCreateEntryDialog", () => {
                 project,
                 projectId: "proj-err",
                 resolver: resolverFor(provider),
+                timeZone: "UTC",
                 onCreated: () => {
                     created = true;
                 },

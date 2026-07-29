@@ -10,6 +10,7 @@
 
 import { onDestroy, onMount } from "svelte";
 import type { Project } from "$shared/app-schema";
+import { utcMsToFloatingDate } from "$shared/utils/zonedTime";
 import * as Y from "yjs";
 import { analyzeCalendarEditability } from "../../services/calendar/calendarEditability";
 import { analyzeCalendarColumnWritability } from "../../services/calendar/calendarColumnWritability";
@@ -145,7 +146,7 @@ const ganttTicks = $derived(isGantt ? computeGanttTicks(range.start, range.end, 
 // grid keeps working in UTC millis; only the SQL boundary needs Dates.
 const queryRange = $derived({ start: new Date(range.start), end: new Date(range.end) });
 
-const rawEntries = $derived(buildCalendarEntries(result, settings));
+const rawEntries = $derived(buildCalendarEntries(result, settings, timeZone));
 const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
 const entryByKey = $derived(new Map(placedEntries.map((e) => [e.key, e])));
 
@@ -253,7 +254,7 @@ async function runQuery() {
         // The query result is authoritative: drop any optimistic placement
         // whose row has now come back, whether or not it agrees with the
         // local guess (a concurrent remote move wins either way).
-        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings));
+        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone));
     } else {
         queryError = outcome.error;
     }
@@ -323,10 +324,11 @@ function goNext() {
     scheduleRequery();
 }
 
+// The range boundaries are instants at the *calendar zone's* midnight, so
+// the label must read them back in that zone; `toISOString` would name the
+// UTC day, which is the previous one for any zone ahead of UTC.
 const rangeLabel = $derived(
-    `${new Date(range.start).toISOString().slice(0, 10)} – ${
-        new Date(range.end - 1).toISOString().slice(0, 10)
-    } (${timeZone})`,
+    `${utcMsToFloatingDate(range.start, timeZone)} – ${utcMsToFloatingDate(range.end - 1, timeZone)} (${timeZone})`,
 );
 
 // --- Write dispatch: drag/resize/keyboard all funnel through here. ---
@@ -350,7 +352,7 @@ async function commitStart(entry: CalendarEntry, newStartMs: number) {
     const column = startColumn();
     if (!column) return;
     try {
-        await writeCalendarEntryStart(session, entry, column, newStartMs);
+        await writeCalendarEntryStart(session, entry, column, newStartMs, timeZone);
         writeError = undefined;
     } catch (err) {
         optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
@@ -391,7 +393,7 @@ function commitSubtreeShift(_row: GanttRow, deltaMs: number, analysis: GanttSubt
     }
     optimisticOverrides = next;
     try {
-        applyGanttSubtreeShift(project, analysis.members, deltaMs);
+        applyGanttSubtreeShift(project, analysis.members, deltaMs, timeZone);
         writeError = undefined;
     } catch (err) {
         for (const member of analysis.members) {
@@ -646,6 +648,7 @@ onDestroy(() => {
         resolver={session}
         defaultStartMs={createDefaultStartMs}
         defaultAllDay={viewType === "month"}
+        {timeZone}
         onCreated={onEntryCreated}
         onCancel={onCreateCancelled}
     />

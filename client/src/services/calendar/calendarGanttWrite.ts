@@ -29,6 +29,7 @@
 
 import type { Project } from "$shared/app-schema";
 import { Item } from "$shared/app-schema";
+import { utcMsToFloatingDate } from "$shared/utils/zonedTime";
 import type { CalendarEntry } from "./calendarEntries";
 import { resolveCalendarEntryWritability } from "./calendarEntryWrite";
 import type { GanttRow } from "./calendarGanttLayout";
@@ -93,15 +94,24 @@ export function analyzeGanttSubtreeShift(
  * authoritative" posture the optimistic-placement model already takes for a
  * single entry (calendarOptimisticPlacement.ts).
  */
-export function applyGanttSubtreeShift(project: Project, members: GanttSubtreeMember[], deltaMs: number): void {
+export function applyGanttSubtreeShift(
+    project: Project,
+    members: GanttSubtreeMember[],
+    deltaMs: number,
+    timeZone: string,
+): void {
     if (members.length === 0 || deltaMs === 0) return;
     project.ydoc.transact(() => {
         for (const member of members) {
             if (!hasNode(project, member.key)) continue;
             const item = new Item(project.ydoc, project.tree, member.key);
             const newStartMs = member.startMs + deltaMs;
+            // An all-day member's floating date is derived in the calendar's
+            // own timezone, matching how `buildCalendarEntries` read it — see
+            // `writeCalendarEntryStart`, whose single-entry write this is the
+            // subtree equivalent of.
             item.start = member.allDay
-                ? new Date(newStartMs).toISOString().slice(0, 10)
+                ? utcMsToFloatingDate(newStartMs, timeZone)
                 : new Date(newStartMs).toISOString();
         }
     });

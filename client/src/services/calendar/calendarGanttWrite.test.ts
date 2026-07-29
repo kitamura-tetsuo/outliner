@@ -142,13 +142,40 @@ describe("applyGanttSubtreeShift — real Yjs project, one undo entry per drag",
         child2.allDay = true;
         child2.start = "2026-03-05";
 
-        applyGanttSubtreeShift(project, [
-            { key: child1.key, allDay: false, startMs: T0 },
-            { key: child2.key, allDay: true, startMs: Date.parse("2026-03-05T00:00:00Z") },
-        ], 2 * DAY);
+        applyGanttSubtreeShift(
+            project,
+            [
+                { key: child1.key, allDay: false, startMs: T0 },
+                { key: child2.key, allDay: true, startMs: Date.parse("2026-03-05T00:00:00Z") },
+            ],
+            2 * DAY,
+            "UTC",
+        );
 
         expect(child1.start).toBe(new Date(T0 + 2 * DAY).toISOString());
         expect(child2.start).toBe("2026-03-07");
+    });
+
+    // Same inverse as `writeCalendarEntryStart`: an all-day member's shifted
+    // date is named in the calendar's zone, so a two-day drag moves it exactly
+    // two days regardless of the viewer's offset from UTC.
+    it("names a shifted all-day date in the calendar's zone", () => {
+        const project = Project.createInstance("Test");
+        const child = project.items.addNode("tester");
+        child.allDay = true;
+        child.start = "2026-03-05";
+
+        applyGanttSubtreeShift(
+            project,
+            [
+                // Midnight of 2026-03-05 in Asia/Tokyo.
+                { key: child.key, allDay: true, startMs: Date.parse("2026-03-04T15:00:00Z") },
+            ],
+            2 * DAY,
+            "Asia/Tokyo",
+        );
+
+        expect(child.start).toBe("2026-03-07");
     });
 
     it("is a no-op for an empty member list or a zero delta", () => {
@@ -156,10 +183,10 @@ describe("applyGanttSubtreeShift — real Yjs project, one undo entry per drag",
         const item = project.items.addNode("tester");
         item.start = new Date(T0).toISOString();
 
-        applyGanttSubtreeShift(project, [], 5 * DAY);
+        applyGanttSubtreeShift(project, [], 5 * DAY, "UTC");
         expect(item.start).toBe(new Date(T0).toISOString());
 
-        applyGanttSubtreeShift(project, [{ key: item.key, allDay: false, startMs: T0 }], 0);
+        applyGanttSubtreeShift(project, [{ key: item.key, allDay: false, startMs: T0 }], 0, "UTC");
         expect(item.start).toBe(new Date(T0).toISOString());
     });
 
@@ -170,10 +197,15 @@ describe("applyGanttSubtreeShift — real Yjs project, one undo entry per drag",
         const deletedKey = "not-a-real-key";
 
         expect(() =>
-            applyGanttSubtreeShift(project, [
-                { key: deletedKey, allDay: false, startMs: T0 },
-                { key: survivor.key, allDay: false, startMs: T0 },
-            ], DAY)
+            applyGanttSubtreeShift(
+                project,
+                [
+                    { key: deletedKey, allDay: false, startMs: T0 },
+                    { key: survivor.key, allDay: false, startMs: T0 },
+                ],
+                DAY,
+                "UTC",
+            )
         ).not.toThrow();
         expect(survivor.start).toBe(new Date(T0 + DAY).toISOString());
     });
@@ -190,10 +222,15 @@ describe("applyGanttSubtreeShift — real Yjs project, one undo entry per drag",
         // Mirrors store.svelte.ts's outline undo manager: default (null) origin only.
         const undoManager = new Y.UndoManager(project.ydoc.getMap("orderedTree"), { trackedOrigins: new Set([null]) });
         try {
-            applyGanttSubtreeShift(project, [
-                { key: child1.key, allDay: false, startMs: T0 },
-                { key: child2.key, allDay: false, startMs: T0 + DAY },
-            ], 3 * DAY);
+            applyGanttSubtreeShift(
+                project,
+                [
+                    { key: child1.key, allDay: false, startMs: T0 },
+                    { key: child2.key, allDay: false, startMs: T0 + DAY },
+                ],
+                3 * DAY,
+                "UTC",
+            );
 
             expect(undoManager.undoStack.length).toBe(1);
 

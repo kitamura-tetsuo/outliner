@@ -12,6 +12,14 @@
 
 import { onMount } from "svelte";
 import type { Project } from "$shared/app-schema";
+import {
+    floatingDateToUtcMs,
+    formatWallTime,
+    parseWallTime,
+    utcMsToFloatingDate,
+    utcMsToWallTime,
+    wallTimeToUtcMs,
+} from "$shared/utils/zonedTime";
 import { isDestinationResolvable, listDestinationCandidates } from "../../services/calendar/calendarDestinationCandidates";
 import {
     type CalendarDestinationHistoryEntry,
@@ -28,19 +36,26 @@ interface Props {
     /** Prefills the start field — e.g. the day/slot the user clicked. */
     defaultStartMs?: number;
     defaultAllDay?: boolean;
+    /**
+     * The calendar's timezone (§6.5). Every field here is a wall-clock
+     * reading in it — the day the user clicked is the day they see on the
+     * grid, not the day the runtime's own zone (or UTC) happens to be on.
+     */
+    timeZone: string;
     onCreated: () => void;
     onCancel: () => void;
 }
 
-let { project, projectId, resolver, defaultStartMs, defaultAllDay = false, onCreated, onCancel }: Props = $props();
+let { project, projectId, resolver, defaultStartMs, defaultAllDay = false, timeZone, onCreated, onCancel }: Props =
+    $props();
 
 function toDateInputValue(ms: number): string {
-    return new Date(ms).toISOString().slice(0, 10);
+    return utcMsToFloatingDate(ms, timeZone);
 }
 function toDateTimeInputValue(ms: number): string {
-    const d = new Date(ms);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    // `datetime-local` takes minutes precision; the seconds `formatWallTime`
+    // emits would be rejected by the input.
+    return formatWallTime(utcMsToWallTime(ms, timeZone)).slice(0, 16);
 }
 
 let title = $state("");
@@ -78,8 +93,11 @@ function toggleAllDay(next: boolean) {
 
 function parseStartInput(value: string, wasAllDay: boolean): number | undefined {
     if (!value) return undefined;
-    const ms = wasAllDay ? Date.parse(`${value}T00:00:00Z`) : new Date(value).getTime();
-    return Number.isNaN(ms) ? undefined : ms;
+    if (wasAllDay) return floatingDateToUtcMs(value, timeZone);
+    // A `datetime-local` value is a wall-clock reading with no zone of its
+    // own; it is the calendar's zone that gives it one.
+    const wall = parseWallTime(value.length === 16 ? `${value}:00` : value);
+    return wall ? wallTimeToUtcMs(wall, timeZone) : undefined;
 }
 
 async function submit(e: Event) {
@@ -92,12 +110,13 @@ async function submit(e: Event) {
     error = undefined;
     try {
         const startMs = parseStartInput(startValue, allDay);
-        const dueMs = dueValue ? Date.parse(`${dueValue}T00:00:00Z`) : undefined;
+        const dueMs = dueValue ? floatingDateToUtcMs(dueValue, timeZone) : undefined;
         await createCalendarEntry(resolver, { parentKey }, {
             title: title.trim(),
             allDay,
             startMs,
-            dueMs: Number.isNaN(dueMs) ? undefined : dueMs,
+            dueMs,
+            timeZone,
         });
         const chosen = candidates.find((c) => c.parentKey === parentKey) ?? history.find((h) => h.parentKey === parentKey);
         if (chosen) recordDestination(projectId, chosen);

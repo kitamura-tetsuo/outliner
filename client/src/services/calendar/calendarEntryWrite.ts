@@ -14,6 +14,7 @@
 // (derived from that same resolved shape when the row was built) decides
 // only how the value is formatted, not which column receives it.
 
+import { utcMsToFloatingDate } from "$shared/utils/zonedTime";
 import type { RelationResolver } from "../yjstable/relationRowWrite";
 import { applyUnionedRowEdit } from "../yjstable/relationRowWrite";
 import type { CalendarEntry } from "./calendarEntries";
@@ -57,16 +58,22 @@ function requireOrigin(
  * Write a new start instant for `entry` through the relation named by
  * `writableStartColumn` (the resolved underlying column for the calendar's
  * `roleStart`, from `analyzeCalendarColumnWritability`).
+ *
+ * `timeZone` is the calendar's own (§6.5) and is what an all-day entry's
+ * floating date is derived in — the exact inverse of how `buildCalendarEntries`
+ * read it, so dropping an entry on a day cell writes back that day rather
+ * than whatever day UTC happened to be on at that instant.
  */
 export async function writeCalendarEntryStart(
     resolver: RelationResolver,
     entry: Pick<CalendarEntry, "sourceKind" | "sourceId" | "allDay">,
     writableStartColumn: string,
     newStartMs: number,
+    timeZone: string,
 ): Promise<void> {
     const { sourceKind, sourceId } = requireOrigin(entry);
     const value = entry.allDay
-        ? new Date(newStartMs).toISOString().slice(0, 10)
+        ? utcMsToFloatingDate(newStartMs, timeZone)
         : new Date(newStartMs).toISOString();
     await applyUnionedRowEdit(resolver, sourceKind, sourceId, writableStartColumn, value);
 }
