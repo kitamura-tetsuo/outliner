@@ -6,11 +6,12 @@ import { onMount } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
 import { getCurrentContent } from "../../../../services";
+import { userManager } from "../../../../auth/UserManager";
 
 let project = $state("");
 let pageTitle = $state("");
 let content = $state("");
-let user = "user";
+let user = $derived(userManager.getCurrentUser()?.name ?? "Guest");
 
 onMount(() => {
     try {
