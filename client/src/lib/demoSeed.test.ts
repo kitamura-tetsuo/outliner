@@ -23,9 +23,11 @@ describe("seedDemo", () => {
         await expect(seedDemo({ throwOnError: true })).rejects.toThrow(SeedDemoError);
         try {
             await seedDemo({ throwOnError: true });
-        } catch (err: any) {
-            expect(err.rateLimitMs).toBe(5000);
-            expect(err.message).toBe("Rate limited");
+        } catch (err) {
+            expect(err).toBeInstanceOf(SeedDemoError);
+            const seedErr = err as SeedDemoError;
+            expect(seedErr.rateLimitMs).toBe(5000);
+            expect(seedErr.message).toBe("Rate limited");
         }
     });
 
