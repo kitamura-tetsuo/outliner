@@ -24,6 +24,7 @@ describe("buildCalendarEntries", () => {
                 }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.key).toBe("item:abc");
         expect(entry.title).toBe("Standup");
@@ -32,7 +33,7 @@ describe("buildCalendarEntries", () => {
         expect(entry.durationMs).toBe(30 * 60 * 1000);
     });
 
-    it("builds an all-day entry, parsing the floating date as UTC midnight", () => {
+    it("builds an all-day entry, parsing the floating date as midnight in the calendar's zone", () => {
         const [entry] = buildCalendarEntries(
             {
                 columns: ["title", "start", "all_day", "source_kind", "source_id"],
@@ -45,9 +46,50 @@ describe("buildCalendarEntries", () => {
                 }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.allDay).toBe(true);
         expect(entry.startMs).toBe(Date.parse("2026-08-01T00:00:00Z"));
+    });
+
+    // An all-day entry is a floating date (§6.1) and only becomes an instant
+    // once a zone is chosen — the view's (§6.5). Anchoring it at UTC midnight
+    // instead left `startMs` misaligned with the grid range, which
+    // `calendarGridRange.ts` computes at the zone's own midnight, so
+    // `layoutMonthGrid` placed a one-day entry in two adjacent day cells.
+    it("resolves an all-day floating date against the calendar's zone, not UTC", () => {
+        const row = {
+            columns: ["title", "start", "all_day", "source_kind", "source_id"],
+            rows: [{ title: "Conference", start: "2026-08-01", all_day: true, source_kind: "item", source_id: "xyz" }],
+        };
+
+        const [tokyo] = buildCalendarEntries(row, SETTINGS, "Asia/Tokyo");
+        expect(tokyo.startMs).toBe(Date.parse("2026-07-31T15:00:00Z"));
+
+        const [newYork] = buildCalendarEntries(row, SETTINGS, "America/New_York");
+        expect(newYork.startMs).toBe(Date.parse("2026-08-01T04:00:00Z"));
+    });
+
+    it("resolves a bare due date against the calendar's zone, but leaves a due instant alone", () => {
+        const [floating] = buildCalendarEntries(
+            {
+                columns: ["title", "due", "source_kind", "source_id"],
+                rows: [{ title: "File taxes", due: "2026-04-15", source_kind: "item", source_id: "d2" }],
+            },
+            SETTINGS,
+            "Asia/Tokyo",
+        );
+        expect(floating.dueMs).toBe(Date.parse("2026-04-14T15:00:00Z"));
+
+        const [instant] = buildCalendarEntries(
+            {
+                columns: ["title", "due", "source_kind", "source_id"],
+                rows: [{ title: "File taxes", due: "2026-04-15T09:00:00.000Z", source_kind: "item", source_id: "d3" }],
+            },
+            SETTINGS,
+            "Asia/Tokyo",
+        );
+        expect(instant.dueMs).toBe(Date.parse("2026-04-15T09:00:00.000Z"));
     });
 
     it("builds a due-only entry with no start", () => {
@@ -57,6 +99,7 @@ describe("buildCalendarEntries", () => {
                 rows: [{ title: "File taxes", due: "2026-04-15T00:00:00.000Z", source_kind: "item", source_id: "d1" }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.startMs).toBeUndefined();
         expect(entry.dueMs).toBe(Date.parse("2026-04-15T00:00:00.000Z"));
@@ -66,6 +109,7 @@ describe("buildCalendarEntries", () => {
         const [entry] = buildCalendarEntries(
             { columns: ["id", "title"], rows: [{ id: "row-1", title: "Untracked" }] },
             SETTINGS,
+            "UTC",
         );
         expect(entry.key).toBe("row-1");
         expect(entry.sourceKind).toBeUndefined();
@@ -75,6 +119,7 @@ describe("buildCalendarEntries", () => {
         const [entry] = buildCalendarEntries(
             { columns: ["title"], rows: [{ title: "No identity" }] },
             SETTINGS,
+            "UTC",
         );
         expect(entry.key).toBe("row:0");
     });
@@ -89,6 +134,7 @@ describe("buildCalendarEntries", () => {
                 ],
             },
             SETTINGS,
+            "UTC",
         );
         expect(rows[0].allDay).toBe(true);
         expect(rows[1].allDay).toBe(false);
@@ -107,6 +153,7 @@ describe("buildCalendarEntries", () => {
                 }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.parentId).toBe("parent-1");
     });
@@ -118,6 +165,7 @@ describe("buildCalendarEntries", () => {
                 rows: [{ title: "Root", source_kind: "item", source_id: "r1" }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.parentId).toBeUndefined();
     });
@@ -143,6 +191,7 @@ describe("buildCalendarEntries", () => {
                 }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.recurrenceParentId).toBe("series-item-id");
         expect(entry.recurrenceOccurrenceId).toBe("2026-03-16T09:00:00");
@@ -155,6 +204,7 @@ describe("buildCalendarEntries", () => {
                 rows: [{ title: "Plain", source_kind: "item", source_id: "p1" }],
             },
             SETTINGS,
+            "UTC",
         );
         expect(entry.recurrenceParentId).toBeUndefined();
         expect(entry.recurrenceOccurrenceId).toBeUndefined();
@@ -170,6 +220,7 @@ describe("buildCalendarEntries", () => {
                 roleDuration: undefined,
                 roleDue: undefined,
             },
+            "UTC",
         );
         expect(entry.startMs).toBeUndefined();
         expect(entry.allDay).toBeUndefined();

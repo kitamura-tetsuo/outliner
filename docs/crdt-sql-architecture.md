@@ -305,6 +305,19 @@ overloaded column:
 Both are properly typed, so range predicates and ordering work in SQL without
 casting text.
 
+**A floating date becomes an instant only at the view boundary, and only in
+the view's timezone (§6.5).** Grid geometry works in epoch milliseconds, so
+`start_on` has to be resolved somewhere; the one zone it may be resolved in
+is the calendar's own, because that is the zone the visible range is computed
+in. Resolving it as UTC midnight instead misaligns it with the range by the
+viewer's offset, which puts a one-day entry in two adjacent day cells — the
+"my event moved a day" bug this section exists to prevent, reintroduced at
+the rendering layer instead of the storage one. Both directions of the
+conversion are `floatingDateToUtcMs` / `utcMsToFloatingDate`
+(`shared/src/utils/zonedTime.ts`); no other code may parse or format an
+all-day date. Writes are the exact inverse: the day a drag or a create names
+is the day the user saw, not the day UTC was on at that instant.
+
 **Ends are exclusive.** An all-day entry on 8/1 ends 8/2. This is the RFC's
 convention, and departing from it means every interval comparison in every view
 needs a special case.

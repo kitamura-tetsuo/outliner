@@ -36,6 +36,7 @@ describe("createCalendarEntry (values shape)", () => {
         await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
             title: "Untitled task",
             allDay: false,
+            timeZone: "UTC",
         });
         expect(provider.writes).toEqual([
             { op: "INSERT", values: { text: "Untitled task" }, destination: { parentKey: "page-1" } },
@@ -48,6 +49,7 @@ describe("createCalendarEntry (values shape)", () => {
             title: "Conference",
             allDay: true,
             startMs: Date.parse("2026-08-01T00:00:00Z"),
+            timeZone: "UTC",
         });
         expect(provider.writes).toEqual([
             {
@@ -64,6 +66,7 @@ describe("createCalendarEntry (values shape)", () => {
             title: "Standup",
             allDay: false,
             startMs: Date.parse("2026-08-01T09:00:00Z"),
+            timeZone: "UTC",
         });
         expect(provider.writes).toEqual([
             {
@@ -80,6 +83,7 @@ describe("createCalendarEntry (values shape)", () => {
             title: "File taxes",
             allDay: true,
             dueMs: Date.parse("2026-04-15T00:00:00Z"),
+            timeZone: "UTC",
         });
         expect(provider.writes).toEqual([
             {
@@ -90,9 +94,33 @@ describe("createCalendarEntry (values shape)", () => {
         ]);
     });
 
+    // The date stored for an all-day entry is the day the user picked in the
+    // calendar's zone, not the day UTC was on at that instant.
+    it("derives an all-day start_on in the calendar's zone", async () => {
+        const provider = new RecordingProvider();
+        await createCalendarEntry(resolverFor(provider), { parentKey: "page-1" }, {
+            title: "Conference",
+            allDay: true,
+            // Midnight of 2026-08-01 in Asia/Tokyo.
+            startMs: Date.parse("2026-07-31T15:00:00Z"),
+            timeZone: "Asia/Tokyo",
+        });
+        expect(provider.writes).toEqual([
+            {
+                op: "INSERT",
+                values: { text: "Conference", all_day: true, start_on: "2026-08-01" },
+                destination: { parentKey: "page-1" },
+            },
+        ]);
+    });
+
     it("throws when the items relation is not available", async () => {
         await expect(
-            createCalendarEntry(resolverFor(undefined), { parentKey: "page-1" }, { title: "X", allDay: false }),
+            createCalendarEntry(resolverFor(undefined), { parentKey: "page-1" }, {
+                title: "X",
+                allDay: false,
+                timeZone: "UTC",
+            }),
         ).rejects.toThrow(RelationWriteError);
     });
 });
@@ -115,6 +143,7 @@ describe("createCalendarEntry (real ItemsRelationProvider)", { timeout: 30000 },
                 title: "Plan launch",
                 allDay: true,
                 startMs: Date.parse("2026-08-01T00:00:00Z"),
+                timeZone: "UTC",
             });
 
             const created = [...new Items(projectDoc, project.tree, page.key)]
@@ -136,6 +165,7 @@ describe("createCalendarEntry (real ItemsRelationProvider)", { timeout: 30000 },
                 createCalendarEntry(resolverFor(provider), { parentKey: "no-such-item" }, {
                     title: "X",
                     allDay: false,
+                    timeZone: "UTC",
                 }),
             ).rejects.toThrow(RelationWriteError);
         } finally {
