@@ -1,9 +1,9 @@
+import { expect } from "chai";
 import express from "express";
 import request from "supertest";
-import { createDemoRouter } from "../src/demo-api.js";
-import { expect } from "chai";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { createDemoRouter } from "../src/demo-api.js";
 import { shouldResetDemo } from "../src/demo-api.js";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
@@ -85,7 +85,6 @@ describe("Demo reseed keeps the shared document tree valid", () => {
     });
 });
 
-
 describe("Demo manual reset rate limit", () => {
     it("enforces a global cooldown across different IPs", async () => {
         const app = express();
@@ -97,7 +96,7 @@ describe("Demo manual reset rate limit", () => {
                 document: new Y.Doc(),
                 transact: (cb) => cb(new Y.Doc()),
                 disconnect: async () => {},
-            })
+            }),
         };
         app.use("/api", createDemoRouter(mockHocuspocus as any));
 
