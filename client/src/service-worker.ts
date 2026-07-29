@@ -12,8 +12,21 @@ const ASSETS = [
     ...files,
 ];
 
+// Type definitions to avoid no-undef errors
 // Import idb in Service Worker environment
-declare const self: ServiceWorkerGlobalScope;
+
+interface SyncServiceWorkerGlobalScope {
+    clients: { claim(): Promise<void>; };
+    skipWaiting(): Promise<void>;
+    addEventListener(type: "install", listener: (event: { waitUntil(p: Promise<unknown>): void; }) => void): void;
+    addEventListener(type: "activate", listener: (event: { waitUntil(p: Promise<unknown>): void; }) => void): void;
+    addEventListener(
+        type: "fetch",
+        listener: (event: { request: Request; respondWith(r: Promise<Response> | Response): void; }) => void,
+    ): void;
+}
+
+declare const self: SyncServiceWorkerGlobalScope;
 
 self.addEventListener("install", event => {
     event.waitUntil(
