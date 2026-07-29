@@ -136,10 +136,7 @@ function revert() {
 
 onMount(() => {
     refresh();
-    if (project === "demo" && window.location.pathname.startsWith('/demo/') && snapshots.length === 0) {
-        addSnapshot(project, page, "This is the initial seeded content for " + page + ".\n\nIt was created when the demo was last reset.", "seed-server");
-        refresh();
-    }
+
 });
 
 $effect(() => {
