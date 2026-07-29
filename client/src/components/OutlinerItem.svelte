@@ -2229,8 +2229,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         />
     {/if}
 
-    {#if showDeleteConfirm}
-        <ConfirmDialog
+    <ConfirmDialog
             bind:isOpen={showDeleteConfirm}
             title="Delete Item"
             message="Are you sure you want to delete this item? This action will also delete all of its children."
@@ -2238,7 +2237,6 @@ export function setSelectionPosition(start: number, end: number = start) {
             isDestructive={true}
             onConfirm={confirmDelete} onCancel={() => showDeleteConfirm = false}
         />
-    {/if}
 </div>
 
 <style>

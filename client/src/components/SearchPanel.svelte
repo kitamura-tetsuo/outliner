@@ -415,11 +415,10 @@ const logger = getLogger("SearchPanel");
     </div>
 {/if}
 
-{#if showRenameConfirm && pendingRename}
-    <ConfirmDialog
+<ConfirmDialog
         bind:isOpen={showRenameConfirm}
         title="Rename pages?"
-        message={renameMessage(pendingRename.pages)}
+        message={renameMessage(pendingRename?.pages || [])}
         confirmText="Rename and Replace"
         isDestructive={true}
         onConfirm={() => {
@@ -433,18 +432,15 @@ const logger = getLogger("SearchPanel");
             pendingRename = undefined;
         }}
     />
-{/if}
 
-{#if showReplaceAllConfirm}
-    <ConfirmDialog
+<ConfirmDialog
         bind:isOpen={showReplaceAllConfirm}
         title="Replace All"
         message="Are you sure you want to replace all occurrences? This action cannot be undone."
         confirmText="Replace All"
         isDestructive={true}
-        onConfirm={confirmReplaceAll} onCancel={() => showReplaceAllConfirm = false}
+        onConfirm={confirmReplaceAll}    onCancel={() => showReplaceAllConfirm = false}
     />
-{/if}
 
 <style>
     .search-panel {
