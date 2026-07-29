@@ -1,0 +1,19 @@
+name: Uptime Monitor
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check-health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Yjs server health
+        run: |
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://outliner-yjs-ws.outliner-online.com/health)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "::error::Yjs server health endpoint returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Yjs server is up (HTTP 200)"
