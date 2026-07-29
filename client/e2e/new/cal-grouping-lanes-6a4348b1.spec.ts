@@ -77,14 +77,20 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
 
         // Drag the "Work item" entry's lane handle onto the urgent lane's
         // header. Targeting the header (rather than the whole, scrollable lane
-        // band) gives Playwright an unambiguous drop point while exercising
-        // the browser's real HTML5 drag sequence and the band's bubbled drop
-        // handler. A plain drop replaces the item's tag set.
+        // band) gives Playwright an unambiguous drop point. Dispatch each
+        // HTML5 event in its own browser task so Svelte processes drag state
+        // between events; one synchronous page.evaluate sequence can collapse
+        // the delegated handlers. A plain drop replaces the item's tag set.
         const workHandle = workEntry.locator('[data-testid^="calendar-entry-lane-handle-outline_items:"]');
         const urgentHeader = page.getByTestId("calendar-lane-header-urgent").first();
         await expect(workHandle).toBeVisible();
         await expect(urgentHeader).toBeVisible();
-        await workHandle.dragTo(urgentHeader);
+        const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+        await workHandle.dispatchEvent("dragstart", { dataTransfer });
+        await urgentHeader.dispatchEvent("dragenter", { dataTransfer });
+        await urgentHeader.dispatchEvent("dragover", { dataTransfer });
+        await urgentHeader.dispatchEvent("drop", { dataTransfer });
+        await workHandle.dispatchEvent("dragend", { dataTransfer });
 
         await expect(urgentLane.locator('[data-testid^="calendar-entry-outline_items:"]', { hasText: "Work item" }))
             .toBeVisible({ timeout: 15000 });
