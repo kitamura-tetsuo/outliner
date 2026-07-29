@@ -60,6 +60,7 @@ function handleCancel(_e?: Event) {
     aria-labelledby={`confirm-dialog-title-${dialogId}`}
     aria-describedby={`confirm-dialog-message-${dialogId}`}
 >
+    {#if isOpen}
     <div class="bg-white rounded-lg max-w-sm w-full" onmousedown={(e) => e.stopPropagation()} onclick={(e) => e.stopPropagation()} onpointerdown={(e) => e.stopPropagation()} onmouseup={(e) => e.stopPropagation()} role="presentation">
         <div class="p-4 sm:p-6">
             <h3 id={`confirm-dialog-title-${dialogId}`} class="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
@@ -83,6 +84,7 @@ function handleCancel(_e?: Event) {
             </div>
         </div>
     </div>
+{/if}
 </dialog>
 
 <style>

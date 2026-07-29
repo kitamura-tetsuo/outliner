@@ -141,7 +141,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         const firstItemText = await page.locator(".outliner-item .item-content").first().innerText();
         expect(firstItemText).toBe("ImportedPage");
         // Check if Child item exists and try to expand it if collapsed
-        const childItem = page.locator(".outliner-item", { hasText: "Child" });
+        const childItem = page.locator(".outliner-item", { hasText: "Child" }).first();
         try {
             await expect(childItem).toBeVisible({ timeout: 10000 });
         } catch (e) {
