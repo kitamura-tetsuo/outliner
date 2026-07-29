@@ -75,4 +75,31 @@ test.describe("Accessible outline tree semantics", () => {
         // Ensure the element actually contains the full text
         await expect(firstItem).toContainText(longText);
     });
+
+    test("zero-count comment button is hidden from accessibility tree on desktop", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+            "Item with no comments",
+        ]);
+        await TestHelpers.waitForOutlinerItems(page, 1);
+
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+        const commentButton = firstItem.locator(".comment-button");
+
+        // Assert that the button is in the DOM but not visible
+        await expect(commentButton).toBeAttached();
+
+        // The default view is desktop (>768px), so visibility: hidden should apply
+        await expect(commentButton).toBeHidden();
+
+        // Assert that the element is hidden due to visibility (in Playwright toBeHidden covers visibility: hidden)
+        // Let's also check the actual computed style just to be sure it's visibility: hidden and not display: none
+        const display = await commentButton.evaluate(el => getComputedStyle(el).display);
+        const visibility = await commentButton.evaluate(el => getComputedStyle(el).visibility);
+
+        expect(display).not.toBe("none"); // Still reserves space
+        expect(visibility).toBe("hidden"); // But hidden from a11y tree
+    });
 });

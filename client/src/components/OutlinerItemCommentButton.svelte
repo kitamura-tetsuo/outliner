@@ -27,14 +27,18 @@ let { modelId, commentCount, isVisible, onToggle }: Props = $props();
 
 <style>
 .comment-button {
+    visibility: hidden;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: visibility 0s 0.2s, opacity 0.2s;
 }
 
 :global(.outliner-item:hover) .comment-button,
 :global(.outliner-item:focus-within) .comment-button,
+:global(.outliner-item[data-active="true"]) .comment-button,
 .comment-button.has-count {
+    visibility: visible;
     opacity: 1;
+    transition: visibility 0s 0s, opacity 0.2s;
 }
 
 .comment-count {

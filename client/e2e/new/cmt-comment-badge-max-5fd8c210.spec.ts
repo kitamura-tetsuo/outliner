@@ -78,6 +78,7 @@ test.describe("CMT-5fd8c210: comment badge reflects Yjs count", () => {
         if (!itemId) throw new Error("item id not found");
 
         // Click the comment button to show the thread (ensures OutlinerItem subscription is more reliable)
+        await page.hover(`[data-item-id="${itemId}"] .item-content`);
         await page.click(`[data-item-id="${itemId}"] [data-testid="comment-button-${itemId}"]`);
         await expect(page.locator('[data-testid="comment-thread"]')).toBeVisible();
 
