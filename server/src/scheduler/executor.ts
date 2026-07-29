@@ -77,7 +77,7 @@ export class JobExecutor {
                     this.startWorker();
                     r.reject(new Error("Job timeout"));
                 }
-            }, 10000);
+            }, 20000); // 20s timeout
 
             this.resolvers.set(id, {
                 resolve: (val) => {
