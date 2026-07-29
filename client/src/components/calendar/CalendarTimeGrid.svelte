@@ -187,7 +187,7 @@ onMount(() => {
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
                     onkeydown={(e) => onEntryKeydown(p.entry, e)}
                 >
-                    <span class="entry-title">{p.entry.title}</span>
+                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
                     {#if isDeletable(p.entry)}
                         <button
                             type="button"
@@ -211,7 +211,7 @@ onMount(() => {
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
                     onkeydown={(e) => onEntryKeydown(m.entry, e)}
                 >
-                    <span class="entry-title">◆ {m.entry.title}</span>
+                    <span class="entry-title" data-testid="calendar-entry-title">◆ {m.entry.title}</span>
                     {#if isDeletable(m.entry)}
                         <button
                             type="button"
@@ -265,7 +265,7 @@ onMount(() => {
                     onpointerdown={(e) => beginDrag("move", p.entry, e)}
                     onkeydown={(e) => onEntryKeydown(p.entry, e)}
                 >
-                    <span class="entry-title">{p.entry.title}</span>
+                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
                     {#if isDeletable(p.entry)}
                         <button
                             type="button"

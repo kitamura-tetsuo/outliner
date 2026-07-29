@@ -132,7 +132,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         data-testid={`calendar-entry-milestone-${m.key}`}
                         onkeydown={(e) => onCellKeydown(m, e)}
                     >
-                        <span class="chip-title">◆ {m.title}</span>
+                        <span class="chip-title" data-testid="calendar-entry-title">◆ {m.title}</span>
                         {#if isDeletable(m)}
                             <button
                                 type="button"
@@ -160,7 +160,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         ondragstart={(e) => onDragStart(entry, e)}
                         onkeydown={(e) => onCellKeydown(entry, e)}
                     >
-                        <span class="chip-title">{entry.title}</span>
+                        <span class="chip-title" data-testid="calendar-entry-title">{entry.title}</span>
                         {#if isDeletable(entry)}
                             <button
                                 type="button"

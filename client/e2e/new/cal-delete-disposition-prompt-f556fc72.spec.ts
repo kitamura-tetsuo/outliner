@@ -35,11 +35,17 @@ test.describe("FTR-ac999163: deleting a calendar entry always prompts for the di
 
         const queryInput = page.getByTestId("calendar-query-input").first();
         await queryInput.fill(
-            "SELECT id, text AS title, all_day, start_on, "
+            "SELECT id, text AS title, all_day, start_at, "
                 + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
         );
         await queryInput.blur();
         await expect(page.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 15000 });
+
+        // Without roles the query result is not placeable, so no card would
+        // ever render for the entries created below.
+        await page.getByTestId("calendar-role-roleTitle").first().selectOption("title");
+        await page.getByTestId("calendar-role-roleStart").first().selectOption("start_at");
+        await page.getByTestId("calendar-role-roleAllDay").first().selectOption("all_day");
     }
 
     async function createEntry(page: import("@playwright/test").Page, title: string) {

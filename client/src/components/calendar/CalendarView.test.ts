@@ -2,7 +2,7 @@
 // as calendarQueryRunner.test.ts — outline_items needs no `connect` override
 // since it never goes through a table subdoc connector.
 
-import { fireEvent, render, waitFor } from "@testing-library/svelte";
+import { configure, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
@@ -11,6 +11,11 @@ import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import CalendarView from "./CalendarView.svelte";
+
+// Every wait below is on a real PGlite query round-trip (the module comment
+// above), which routinely outlasts testing-library's 1s default on a loaded
+// runner — the describe already budgets 30s per test.
+configure({ asyncUtilTimeout: 15000 });
 
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);

@@ -87,8 +87,10 @@ test.describe("FTR-ac999163: creating a calendar entry always requires an explic
         // Reopening the dialog offers the just-used destination as Recent.
         await page.getByTestId("calendar-new-entry").first().click();
         await expect(dialog).toBeVisible({ timeout: 10000 });
-        await expect(page.locator('[data-testid^="calendar-create-destination-recent-"]').first())
-            .toBeVisible({ timeout: 10000 });
+        // An <option> inside a closed <select> is never "visible" to Playwright,
+        // so assert the just-used destination is present in the Recent group.
+        await expect(page.locator(`[data-testid="calendar-create-destination-recent-${firstPageValue}"]`))
+            .toHaveCount(1, { timeout: 10000 });
         await page.getByTestId("calendar-create-cancel").first().click();
     });
 });
