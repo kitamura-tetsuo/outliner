@@ -1,3 +1,6 @@
+import { getLogger } from "../../../lib/logger";
+const logger = getLogger("API");
+
 import { getFirebaseFunctionUrl } from "$lib/firebaseFunctionsUrl";
 import type { RequestEvent, RequestHandler } from "./$types";
 
@@ -38,7 +41,9 @@ const proxyRequest = async (event: RequestEvent) => {
     if (!headers.has("x-forwarded-for")) {
         try {
             headers.set("x-forwarded-for", event.getClientAddress());
-        } catch (_e) {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Failed to get client address");
+        }
     }
 
     const response = await fetch(targetUrl, {
