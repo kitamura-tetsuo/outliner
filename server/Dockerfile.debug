@@ -8,6 +8,13 @@ COPY shared/ ./shared/
 
 COPY server/package*.json ./server/
 
+# better-sqlite3 is compiled from source (no prebuilt binary for this Node build),
+# so keep the node-gyp toolchain available for the install step. This debug image
+# already carries extra tooling, so the build deps are left in place.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN cd server && npm install
 
 COPY server/ ./server/
