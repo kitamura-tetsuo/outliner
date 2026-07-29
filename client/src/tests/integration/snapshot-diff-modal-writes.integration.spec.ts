@@ -15,11 +15,11 @@ vi.mock("../../services", () => {
 describe("SnapshotDiffModal", () => {
     it("performs no writes on mount", () => {
         // Mock window.location to trigger the original buggy condition
-        Object.defineProperty(window, 'location', {
+        Object.defineProperty(window, "location", {
             value: {
-                pathname: '/demo/test-page/diff',
+                pathname: "/demo/test-page/diff",
             },
-            writable: true
+            writable: true,
         });
 
         render(SnapshotDiffModal, {
@@ -28,7 +28,7 @@ describe("SnapshotDiffModal", () => {
                 page: "test-page",
                 currentContent: "content",
                 author: "user",
-            }
+            },
         });
 
         expect(addSnapshot).not.toHaveBeenCalled();
