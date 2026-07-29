@@ -25,7 +25,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "title", "start_at"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -41,7 +41,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "title", "start_at"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -58,7 +58,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "title"],
-                roles: { roleStart: "start_at", groupAxes: [] },
+                roles: { roleStart: "start_at", groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -75,7 +75,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "title"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: true,
                 readOnlyReason: "Read-only calendar: missing source_kind/source_id",
             },
@@ -90,7 +90,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "due"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -108,7 +108,7 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 query: "SELECT id, text AS title, due FROM outline_items",
                 resultColumns: ["id", "title", "due"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -124,7 +124,7 @@ describe("CalendarRoleEditor", () => {
                 query:
                     "SELECT id FROM outline_items WHERE start_at >= current_setting('view.range_start')::timestamptz",
                 resultColumns: ["id"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -139,7 +139,7 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 query: "",
                 resultColumns: [],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -153,7 +153,7 @@ describe("CalendarRoleEditor", () => {
                 project,
                 calendarId,
                 resultColumns: ["id", "tags"],
-                roles: { groupAxes: [] },
+                roles: { groupAxes: [], laneOrder: [] },
                 readOnly: false,
             },
         });
@@ -164,5 +164,62 @@ describe("CalendarRoleEditor", () => {
 
         await fireEvent.click(checkbox);
         expect(getCalendar(project, calendarId)?.groupAxes).toEqual([]);
+    });
+
+    it("lists the configured lane order plus any not-yet-ordered known value", () => {
+        const { getByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                resultColumns: ["id", "tags"],
+                roles: { groupAxes: ["tags"], laneOrder: ["urgent"] },
+                readOnly: false,
+                knownLaneValues: ["urgent", "work"],
+            },
+        });
+
+        const list = getByTestId("calendar-lane-order");
+        expect(list.textContent).toContain("urgent");
+        expect(list.textContent).toContain("work");
+        // Configured order first, then the not-yet-ordered known value.
+        expect(list.textContent!.indexOf("urgent")).toBeLessThan(list.textContent!.indexOf("work"));
+    });
+
+    it("moves a lane up/down and persists the reordered list", async () => {
+        const props = {
+            project,
+            calendarId,
+            resultColumns: ["id", "tags"],
+            roles: { groupAxes: ["tags"], laneOrder: ["urgent", "work"] },
+            readOnly: false,
+            knownLaneValues: ["urgent", "work"],
+        };
+        const { getByTestId, rerender } = render(CalendarRoleEditor, { props });
+
+        await fireEvent.click(getByTestId("calendar-lane-order-down-urgent"));
+        expect(getCalendar(project, calendarId)?.laneOrder).toEqual(["work", "urgent"]);
+
+        // Re-render with the persisted order, as CalendarView.svelte's reactive
+        // mirror would after the Yjs write above.
+        await rerender({ ...props, roles: { groupAxes: ["tags"], laneOrder: ["work", "urgent"] } });
+        expect((getByTestId("calendar-lane-order-up-work") as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("toggles the show-empty-lanes setting", async () => {
+        const { getByTestId } = render(CalendarRoleEditor, {
+            props: {
+                project,
+                calendarId,
+                resultColumns: ["id", "tags"],
+                roles: { groupAxes: ["tags"], laneOrder: [] },
+                readOnly: false,
+            },
+        });
+
+        const checkbox = getByTestId("calendar-show-empty-lanes") as HTMLInputElement;
+        expect(checkbox.checked).toBe(false);
+
+        await fireEvent.click(checkbox);
+        expect(getCalendar(project, calendarId)?.showEmptyLanes).toBe(true);
     });
 });

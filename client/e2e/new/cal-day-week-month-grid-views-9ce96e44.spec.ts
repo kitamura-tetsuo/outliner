@@ -27,6 +27,9 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
     });
 
     test("shows the entry in the week grid, and again after switching to month view", async ({ page }) => {
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (handleContextMenu returns early for isPageTitle); use the
+        // seeded item below it instead.
         const item = page.locator(".outliner-item").nth(1);
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
@@ -78,6 +81,9 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
     });
 
     test("an entry backed by a calculated (non-writable) column shows no drag affordance", async ({ page }) => {
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (handleContextMenu returns early for isPageTitle); use the
+        // seeded item below it instead.
         const item = page.locator(".outliner-item").nth(1);
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();

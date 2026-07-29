@@ -9,6 +9,7 @@ import {
 } from "./relationProvider";
 
 const UPDATE: RelationWrite = { op: "UPDATE", rowId: "r1", column: "due", value: "2026-08-01" };
+const UPDATE_APPEND: RelationWrite = { op: "UPDATE_APPEND", rowId: "r1", column: "tags", value: "work" };
 const INSERT: RelationWrite = { op: "INSERT", values: { due: "2026-08-01" } };
 const DELETE: RelationWrite = { op: "DELETE", rowId: "r1" };
 
@@ -19,7 +20,7 @@ describe("declared capabilities", () => {
             insert: { requiresDestination: false },
             delete: { requiresDisposition: false },
         });
-        for (const write of [UPDATE, INSERT, DELETE]) {
+        for (const write of [UPDATE, UPDATE_APPEND, INSERT, DELETE]) {
             expect(() => assertWriteAllowed(TABLE_RELATION_CAPABILITIES, write, "tasks")).not.toThrow();
         }
     });
@@ -67,6 +68,7 @@ describe("assertWriteAllowed", () => {
     it("refuses operations a relation does not declare at all", () => {
         const readOnly: RelationCapabilities = { update: false };
         expect(() => assertWriteAllowed(readOnly, UPDATE, "report")).toThrow(/does not accept UPDATE/);
+        expect(() => assertWriteAllowed(readOnly, UPDATE_APPEND, "report")).toThrow(/does not accept UPDATE_APPEND/);
         expect(() => assertWriteAllowed(readOnly, INSERT, "report")).toThrow(/does not accept INSERT/);
         expect(() => assertWriteAllowed(readOnly, DELETE, "report")).toThrow(/does not accept DELETE/);
     });

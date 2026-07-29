@@ -36,3 +36,23 @@ export async function applyUnionedRowEdit(
     }
     await provider.applyWrite({ op: "UPDATE", rowId: sourceId, column, value });
 }
+
+/**
+ * Add one value to a multi-valued column of a unioned row (e.g. a
+ * `Ctrl`/`Cmd`-drop onto a tag lane, docs/crdt-sql-architecture.md §6.3),
+ * without replacing the rest of the set. See `RelationWrite`'s
+ * `UPDATE_APPEND` variant for why this is not the same as `applyUnionedRowEdit`.
+ */
+export async function applyUnionedRowAppend(
+    resolver: RelationResolver,
+    sourceKind: string,
+    sourceId: string,
+    column: string,
+    value: string,
+): Promise<void> {
+    const provider = await resolver.resolveRelation(sourceKind);
+    if (!provider) {
+        throw new RelationWriteError(`Unknown relation "${sourceKind}" for a unioned row edit`);
+    }
+    await provider.applyWrite({ op: "UPDATE_APPEND", rowId: sourceId, column, value });
+}

@@ -25,6 +25,13 @@ import {
     todayAnchor,
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
+import {
+    collapseLanePath,
+    entryAxisValues,
+    groupCalendarEntries,
+    isMultiValuedAxis,
+} from "../../services/calendar/calendarGrouping";
+import { isLaneDropWritable, writeCalendarLaneDrop } from "../../services/calendar/calendarLaneWrite";
 import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale";
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
 import {
@@ -52,6 +59,7 @@ import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import CalendarLaneTimeGrid from "./CalendarLaneTimeGrid.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
 import CalendarTimeGrid from "./CalendarTimeGrid.svelte";
@@ -69,6 +77,7 @@ const EMPTY_SETTINGS: CalendarSettings = {
     query: "",
     viewType: DEFAULT_CALENDAR_VIEW_TYPE,
     groupAxes: [],
+    laneOrder: [],
 };
 
 const VIEW_TYPE_OPTIONS: { value: CalendarViewType; label: string; }[] = [
@@ -115,10 +124,47 @@ const queryRange = $derived({ start: new Date(range.start), end: new Date(range.
 const rawEntries = $derived(buildCalendarEntries(result, settings));
 const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
 
-const timeGridLayout = $derived(
-    viewType === "month" ? undefined : layoutTimeGrid(placedEntries, range.start, range.end),
+// Grouping is a client-side operation over result rows, never SQL GROUP BY
+// (docs/crdt-sql-architecture.md §6.3). The time-grid swimlane/lane-drop
+// wiring below groups by the *first* configured axis only — a calendar's
+// lane-order/show-empty-lanes settings expose one ordered list, and
+// multi-level nesting inside a single swimlane stack would need its own
+// per-level UI; deeper axes remain available to `groupCalendarEntries`
+// directly (e.g. a future Gantt row-section view, #4350) but are not yet
+// rendered as nested swimlanes here.
+const groupAxis = $derived(settings.groupAxes[0] as string | undefined);
+const groupingActive = $derived(groupAxis !== undefined);
+const lanes = $derived(
+    groupAxis
+        ? groupCalendarEntries(placedEntries, [groupAxis], {
+            laneOrder: settings.laneOrder,
+            showEmptyLanes: settings.showEmptyLanes,
+        })
+        : undefined,
 );
-const monthCells = $derived(viewType === "month" ? layoutMonthGrid(placedEntries, range.start, range.end) : undefined);
+const knownLaneValues = $derived(
+    lanes?.map((lane) => lane.value).filter((v): v is string => v !== undefined) ?? [],
+);
+
+function laneLabelForEntry(entry: CalendarEntry): string {
+    if (!groupAxis) return "";
+    return collapseLanePath([entryAxisValues(entry, groupAxis)[0]]);
+}
+
+const monthLaneFilterOptions = $derived(lanes?.map((lane) => collapseLanePath(lane.path)) ?? []);
+let monthLaneFilter = $state<string | undefined>(undefined);
+const monthFilteredEntries = $derived(
+    groupingActive && monthLaneFilter !== undefined
+        ? placedEntries.filter((entry) => laneLabelForEntry(entry) === monthLaneFilter)
+        : placedEntries,
+);
+
+const timeGridLayout = $derived(
+    viewType === "month" || groupingActive ? undefined : layoutTimeGrid(placedEntries, range.start, range.end),
+);
+const monthCells = $derived(
+    viewType === "month" ? layoutMonthGrid(monthFilteredEntries, range.start, range.end) : undefined,
+);
 
 function isStartWritable(entry: CalendarEntry): boolean {
     return resolveCalendarEntryWritability(entry, settings, writableColumns).startWritable;
@@ -126,11 +172,15 @@ function isStartWritable(entry: CalendarEntry): boolean {
 function isDurationWritable(entry: CalendarEntry): boolean {
     return resolveCalendarEntryWritability(entry, settings, writableColumns).durationWritable;
 }
+function isLaneWritable(entry: CalendarEntry): boolean {
+    return isLaneDropWritable(entry, groupAxis, writableColumns);
+}
 
 function readSettingsFromMap(): CalendarSettings | undefined {
     const map = getCalendarMap(project, calendarId);
     if (!map) return undefined;
     const groupAxesValue = map.get("groupAxes");
+    const laneOrderValue = map.get("laneOrder");
     return {
         name: String(map.get("name") ?? ""),
         query: String(map.get("query") ?? ""),
@@ -142,6 +192,8 @@ function readSettingsFromMap(): CalendarSettings | undefined {
         roleDuration: map.get("roleDuration") as string | undefined,
         roleDue: map.get("roleDue") as string | undefined,
         groupAxes: groupAxesValue instanceof Y.Array ? groupAxesValue.toArray() : [],
+        laneOrder: laneOrderValue instanceof Y.Array ? laneOrderValue.toArray() : [],
+        showEmptyLanes: map.get("showEmptyLanes") as boolean | undefined,
         weekStart: map.get("weekStart") as number | undefined,
         workingHoursStartMinutes: map.get("workingHoursStartMinutes") as number | undefined,
         workingHoursEndMinutes: map.get("workingHoursEndMinutes") as number | undefined,
@@ -275,6 +327,35 @@ function cancelDrag(entry: CalendarEntry) {
     optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
 }
 
+/**
+ * Drop `entry` onto a lane (#4348). Mirror the target membership
+ * optimistically: the Yjs -> PGlite projection is asynchronous, so waiting
+ * for its query round-trip would leave a successfully dropped card in the
+ * old lane. The next authoritative query result reconciles the mirror.
+ */
+async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefined, mode: "replace" | "add") {
+    if (!groupAxis) return;
+    const column = writableColumns.get(groupAxis);
+    if (!column) return;
+    const multiValued = isMultiValuedAxis(entry, groupAxis);
+    const currentValues = entryAxisValues(entry, groupAxis).filter((value): value is string => value !== undefined);
+    const nextValues = mode === "add" && laneValue !== undefined
+        ? Array.from(new Set([...currentValues, laneValue]))
+        : laneValue === undefined ? [] : [laneValue];
+    const optimisticValue = multiValued ? JSON.stringify(nextValues) : laneValue;
+    optimisticOverrides = setOptimisticOverride(optimisticOverrides, entry.key, {
+        raw: { [groupAxis]: optimisticValue },
+    });
+    try {
+        await writeCalendarLaneDrop(session, entry, groupAxis, column, laneValue, mode);
+        writeError = undefined;
+        scheduleRequery();
+    } catch (err) {
+        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        writeError = err instanceof Error ? err.message : String(err);
+    }
+}
+
 onMount(() => {
     ensureCalendarUndoManager(project);
     refreshMirror();
@@ -354,9 +435,12 @@ onDestroy(() => {
             roleDuration: settings.roleDuration,
             roleDue: settings.roleDue,
             groupAxes: settings.groupAxes,
+            laneOrder: settings.laneOrder,
+            showEmptyLanes: settings.showEmptyLanes,
         }}
         readOnly={!editability.editable}
         readOnlyReason={editability.readOnlyReason}
+        {knownLaneValues}
     />
 
     {#if !editability.editable}
@@ -364,6 +448,24 @@ onDestroy(() => {
     {/if}
 
     {#if viewType === "month" && monthCells}
+        {#if groupingActive}
+            <label class="lane-filter-control">
+                <span>Lane</span>
+                <select
+                    data-testid="calendar-month-lane-filter"
+                    value={monthLaneFilter ?? ""}
+                    onchange={(e) => {
+                        const value = (e.target as HTMLSelectElement).value;
+                        monthLaneFilter = value === "" ? undefined : value;
+                    }}
+                >
+                    <option value="">All lanes</option>
+                    {#each monthLaneFilterOptions as label (label)}
+                        <option value={label}>{label}</option>
+                    {/each}
+                </select>
+            </label>
+        {/if}
         <CalendarMonthGrid
             cells={monthCells}
             {weekStart}
@@ -371,6 +473,25 @@ onDestroy(() => {
             {isStartWritable}
             onDragEnd={commitStart}
             onKeyboardMove={commitStart}
+            laneLabel={groupingActive ? laneLabelForEntry : undefined}
+        />
+    {:else if groupingActive && lanes}
+        <CalendarLaneTimeGrid
+            {lanes}
+            rangeStart={range.start}
+            rangeEnd={range.end}
+            workingHoursStartMinutes={workingHoursStart}
+            workingHoursEndMinutes={workingHoursEnd}
+            {isStartWritable}
+            {isDurationWritable}
+            {isLaneWritable}
+            onDragMove={previewStart}
+            onDragEnd={commitStart}
+            onDragCancel={cancelDrag}
+            onResizeMove={previewDuration}
+            onResizeEnd={commitDuration}
+            onKeyboardMove={commitStart}
+            onLaneDrop={commitLaneDrop}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -448,6 +569,14 @@ onDestroy(() => {
 
 .timezone-control select {
     font-size: 0.8rem;
+}
+
+.lane-filter-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    color: #374151;
 }
 
 .active-timezone {
