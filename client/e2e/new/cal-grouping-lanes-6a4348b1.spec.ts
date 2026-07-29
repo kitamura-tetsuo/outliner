@@ -107,8 +107,13 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         // proves that the drop performed the writable, replace-mode update.
         await page.waitForFunction(
             () => {
-                const item = (globalThis as any).generalStore.currentPage.items.at(1);
-                return item.tags.length === 1 && item.tags[0] === "urgent";
+                // Converting the anchor into a calendar can change flattened
+                // item positions, so resolve the source row by its stable
+                // seeded text rather than retaining an array index.
+                const item = (globalThis as any).generalStore.currentPage.items.find(
+                    (candidate: any) => candidate.text === "Work item",
+                );
+                return item?.tags.length === 1 && item.tags[0] === "urgent";
             },
             undefined,
             { timeout: 15000 },
