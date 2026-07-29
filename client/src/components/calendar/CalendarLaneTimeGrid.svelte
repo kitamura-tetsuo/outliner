@@ -94,6 +94,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
 <div class="lane-time-grid" data-testid="calendar-lane-time-grid">
     {#each bands as { lane, layout } (laneTestId(lane.value))}
         <div
+            role="group"
             class="lane-band"
             class:lane-drop-target={hoveredLane === laneTestId(lane.value)}
             class:lane-drop-add={hoveredLane === laneTestId(lane.value) && hoveredMode === "add"}
@@ -102,7 +103,19 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
             ondragleave={() => onBandDragLeave(lane)}
             ondrop={(e) => onBandDrop(lane, e)}
         >
-            <div class="lane-header" data-testid={`calendar-lane-header-${laneTestId(lane.value)}`}>
+            <div
+                role="group"
+                class="lane-header"
+                data-testid={`calendar-lane-header-${laneTestId(lane.value)}`}
+                ondragover={(e) => {
+                    e.stopPropagation();
+                    onBandDragOver(lane, e);
+                }}
+                ondrop={(e) => {
+                    e.stopPropagation();
+                    onBandDrop(lane, e);
+                }}
+            >
                 {collapseLanePath(lane.path)}
                 {#if hoveredLane === laneTestId(lane.value)}
                     <span class="lane-drop-hint">{hoveredMode === "add" ? "add" : "move here"}</span>
