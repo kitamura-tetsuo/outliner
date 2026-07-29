@@ -68,7 +68,12 @@ test.describe("FTR-e3a9f2b1: Gantt view", () => {
         await expect(page.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 15000 });
 
         await page.getByTestId("calendar-role-roleTitle").first().selectOption("title");
-        await page.getByTestId("calendar-role-roleStart").first().selectOption("start_at");
+        // The "Design" child is an all-day, multi-day task, so itemsRelation
+        // projects its start into `start_on` and leaves `start_at` NULL — the
+        // two are mutually exclusive (itemsRelation.ts:687). Assigning the
+        // start role to `start_at` would leave every row without a startMs and
+        // so without a bar to roll up.
+        await page.getByTestId("calendar-role-roleStart").first().selectOption("start_on");
         await page.getByTestId("calendar-role-roleAllDay").first().selectOption("all_day");
         await page.getByTestId("calendar-role-roleDuration").first().selectOption("duration");
         await page.getByTestId("calendar-role-roleDue").first().selectOption("due");
@@ -78,17 +83,17 @@ test.describe("FTR-e3a9f2b1: Gantt view", () => {
 
         // The parent row shows a rolled-up bar (from its child) and its own
         // due marker; the child renders as its own nested, indented row.
-        const parentBar = page.locator('[data-testid^="calendar-gantt-bar-item:"]').first();
+        const parentBar = page.locator('[data-testid^="calendar-gantt-bar-outline_items:"]').first();
         await expect(parentBar).toBeVisible({ timeout: 15000 });
         await expect(parentBar).toHaveClass(/rollup/);
-        const parentRow = page.locator('[data-testid^="calendar-gantt-row-item:"]').first();
-        await expect(parentRow.locator('[data-testid^="calendar-gantt-milestone-item:"]')).toBeVisible();
+        const parentRow = page.locator('[data-testid^="calendar-gantt-row-outline_items:"]').first();
+        await expect(parentRow.locator('[data-testid^="calendar-gantt-milestone-outline_items:"]')).toBeVisible();
 
-        const childRow = page.locator('[data-testid^="calendar-gantt-row-item:"]').nth(1);
+        const childRow = page.locator('[data-testid^="calendar-gantt-row-outline_items:"]').nth(1);
         await expect(childRow).toContainText("Design");
 
         // Collapsing the parent hides the child row but keeps the parent's own row.
-        await page.locator('[data-testid^="calendar-gantt-collapse-item:"]').first().click();
+        await page.locator('[data-testid^="calendar-gantt-collapse-outline_items:"]').first().click();
         await expect(childRow).toHaveCount(0);
         await expect(parentRow).toBeVisible();
     });
