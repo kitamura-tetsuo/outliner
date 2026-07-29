@@ -1,3 +1,6 @@
+import express from "express";
+import request from "supertest";
+import { createDemoRouter } from "../src/demo-api.js";
 import { expect } from "chai";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
@@ -79,5 +82,37 @@ describe("Demo reseed keeps the shared document tree valid", () => {
         const tree = new YTree(synced.getMap("orderedTree") as Y.Map<Y.Map<unknown>>);
         const rootChildren = tree.getNodeChildrenFromKey("root");
         expect(rootChildren.length).to.equal(demoPages.length);
+    });
+});
+
+
+describe("Demo manual reset rate limit", () => {
+    it("enforces a global cooldown across different IPs", async () => {
+        const app = express();
+        app.use(express.json());
+
+        // Setup minimal mock Hocuspocus instance
+        const mockHocuspocus = {
+            openDirectConnection: async () => ({
+                document: new Y.Doc(),
+                transact: (cb) => cb(new Y.Doc()),
+                disconnect: async () => {},
+            })
+        };
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
+
+        // First request succeeds
+        const res1 = await request(app)
+            .post("/api/seed-demo")
+            .set("cf-connecting-ip", "1.1.1.1")
+            .send({ force: true });
+        expect(res1.status).to.equal(200);
+
+        // Second request with different IP fails due to global limit
+        const res2 = await request(app)
+            .post("/api/seed-demo")
+            .set("cf-connecting-ip", "2.2.2.2")
+            .send({ force: true });
+        expect(res2.status).to.equal(429);
     });
 });
