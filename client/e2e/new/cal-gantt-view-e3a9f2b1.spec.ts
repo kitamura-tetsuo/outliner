@@ -37,7 +37,15 @@ test.describe("FTR-e3a9f2b1: Gantt view", () => {
     });
 
     test("renders a parent's rolled-up bar spanning its child, plus its own due marker", async ({ page }) => {
-        const item = page.locator(".outliner-item").first();
+        // .outliner-item.first() is the page title row, whose context menu is
+        // a no-op (OutlinerItem's handleContextMenu returns early for
+        // isPageTitle); use the seeded "Calendar anchor" row below it. The
+        // "Launch plan" row and its "Design" child stay outline items — they
+        // are the data this calendar's query reads.
+        const item = page.locator(".outliner-item").nth(1);
+        await expect(item).toBeVisible({ timeout: 10000 });
+        await item.click();
+        await page.waitForTimeout(300);
         await item.click({ button: "right" });
         const contextMenu = page.locator(".context-menu");
         await expect(contextMenu).toBeVisible({ timeout: 10000 });
