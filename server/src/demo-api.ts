@@ -75,7 +75,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     });
                     return;
                 }
-                forceRateLimits.set(clientIp, now);
             }
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
@@ -265,6 +264,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             inFlightResets.set(projectRoom, resetPromise);
             try {
                 const result = await resetPromise;
+                if (force && result.reset) {
+                    const clientIp = getClientIp(req);
+                    forceRateLimits.set(clientIp, Date.now());
+                }
                 res.json(result);
             } finally {
                 inFlightResets.delete(projectRoom);

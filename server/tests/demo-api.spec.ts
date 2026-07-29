@@ -86,4 +86,70 @@ describe("Demo API", () => {
         expect(response.body.reset).toBe(true);
         expect(response.body.success).toBe(true);
     });
+
+    it("should not consume force rate limit on failed reset", async () => {
+        // First request fails
+        mockHocuspocus.openDirectConnection.mockRejectedValueOnce(new Error("Demo seeding failed"));
+
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+
+        const failResponse = await request(app)
+            .post("/api/seed-demo")
+            .set('X-Forwarded-For', '1.1.1.1')
+            .send({ force: true });
+
+        expect(failResponse.status).toBe(500);
+
+        // Immediate retry should not be rate limited
+        const successResponse = await request(app)
+            .post("/api/seed-demo")
+            .set('X-Forwarded-For', '1.1.1.1')
+            .send({ force: true });
+
+        expect(successResponse.status).toBe(200);
+        expect(successResponse.body.reset).toBe(true);
+    });
+
+    it("should not consume force rate limit on deduplicated request", async () => {
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+
+        // Start a normal reset (not force) that takes some time to resolve
+        mockHocuspocus.openDirectConnection.mockReturnValueOnce(new Promise(resolve => setTimeout(() => resolve(mockDirectConnection), 100)));
+
+        // Make the document empty so a normal reset is triggered
+        mockDoc.transact(() => {
+            const meta = mockDoc.getMap("metadata");
+            meta.set("lastReset", 0); // Force a reset
+        });
+
+        const normalReqPromise = request(app).post("/api/seed-demo").set('X-Forwarded-For', '2.2.2.2').send({ force: false }).then(r => r);
+
+        // While that is in flight, send a force request. It should be deduplicated.
+        // We need to wait a tiny bit to ensure the first request has set the inFlightResets entry.
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const forceReqPromise = request(app).post("/api/seed-demo").set('X-Forwarded-For', '2.2.2.2').send({ force: true }).then(r => r);
+
+        // Now resolve the connection so both complete
+
+        const normalRes = await normalReqPromise;
+        const forceRes = await forceReqPromise;
+
+        expect(normalRes.status).toBe(200);
+        expect(forceRes.status).toBe(200);
+                expect(forceRes.body.reset).toBe(false); // Because it deduplicated
+
+        // Now an immediate genuine force reset should NOT be rate limited
+        const genuineForceRes = await request(app)
+            .post("/api/seed-demo")
+            .set('X-Forwarded-For', '2.2.2.2')
+            .send({ force: true });
+
+        expect(genuineForceRes.status).toBe(200);
+        expect(genuineForceRes.body.reset).toBe(true);
+    });
 });
