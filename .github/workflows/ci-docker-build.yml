@@ -1,0 +1,80 @@
+name: Docker Build
+
+# The "Build and Push Server Container" workflow (build-server.yml) only runs on
+# pushes to main, so a Dockerfile- or dependency-level breakage was invisible
+# until after merge. These jobs build the same images on every PR (without
+# pushing) so image breakage is caught before it reaches main.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: docker-build-${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server-image:
+    name: Build server image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          # Build from the repo root, matching build-server.yml: the server
+          # compiles the framework-neutral schema from ../shared into its build,
+          # so shared/ must be in context.
+          context: .
+          file: ./server/Dockerfile
+          push: false
+          load: true
+          tags: yjs-ws-server:ci
+          cache-from: type=gha,scope=server-image
+          cache-to: type=gha,mode=max,scope=server-image
+
+      - name: Verify native modules load in the built image
+        # better-sqlite3 is compiled from source during the image build. A
+        # successful build does not prove the binding loads, so exercise it.
+        run: |
+          docker run --rm -w /usr/src/app/server yjs-ws-server:ci node -e "
+            const Database = require('better-sqlite3');
+            const db = new Database(':memory:');
+            db.exec('CREATE TABLE t (a INTEGER)');
+            db.prepare('INSERT INTO t VALUES (1)').run();
+            const { c } = db.prepare('SELECT COUNT(*) AS c FROM t').get();
+            if (c !== 1) throw new Error('unexpected row count: ' + c);
+            console.log('better-sqlite3 binding OK');
+          "
+
+  server-debug-image:
+    name: Build server debug image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build server debug image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./server/Dockerfile.debug
+          push: false
+          cache-from: type=gha,scope=server-debug-image
+          cache-to: type=gha,mode=max,scope=server-debug-image
