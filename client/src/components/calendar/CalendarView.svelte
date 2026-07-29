@@ -59,6 +59,8 @@ import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import CalendarCreateEntryDialog from "./CalendarCreateEntryDialog.svelte";
+import CalendarDeleteEntryDialog from "./CalendarDeleteEntryDialog.svelte";
 import CalendarLaneTimeGrid from "./CalendarLaneTimeGrid.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
@@ -94,6 +96,9 @@ let queryError = $state<string | undefined>(undefined);
 let writeError = $state<string | undefined>(undefined);
 let anchorUtcMs = $state(Date.now());
 let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides());
+let showCreateDialog = $state(false);
+let createDefaultStartMs = $state<number | undefined>(undefined);
+let deletingEntry = $state<CalendarEntry | undefined>(undefined);
 
 const editability = $derived(analyzeCalendarEditability(result.columns));
 const writableColumns = $derived(analyzeCalendarColumnWritability(settings.query));
@@ -172,6 +177,15 @@ function isStartWritable(entry: CalendarEntry): boolean {
 function isDurationWritable(entry: CalendarEntry): boolean {
     return resolveCalendarEntryWritability(entry, settings, writableColumns).durationWritable;
 }
+/**
+ * Whether a delete affordance should show at all for `entry` — addressability
+ * (source_kind/source_id present), not column writability: `assertWriteAllowed`
+ * makes the final call once the user actually chooses a disposition.
+ */
+function isDeletable(entry: CalendarEntry): boolean {
+    return Boolean(entry.sourceKind && entry.sourceId);
+}
+
 function isLaneWritable(entry: CalendarEntry): boolean {
     return isLaneDropWritable(entry, groupAxis, writableColumns);
 }
@@ -203,7 +217,9 @@ function readSettingsFromMap(): CalendarSettings | undefined {
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
+// svelte-ignore state_referenced_locally
 const pgSchema = projectSchemaName(projectId);
+// svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {
@@ -327,6 +343,33 @@ function cancelDrag(entry: CalendarEntry) {
     optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
 }
 
+// --- New entry / delete: #4349. ---
+
+function openCreateDialog() {
+    createDefaultStartMs = anchorUtcMs;
+    showCreateDialog = true;
+}
+function onEntryCreated() {
+    showCreateDialog = false;
+    writeError = undefined;
+    scheduleRequery();
+}
+function onCreateCancelled() {
+    showCreateDialog = false;
+}
+
+function requestDelete(entry: CalendarEntry) {
+    deletingEntry = entry;
+}
+function onEntryDeleted() {
+    deletingEntry = undefined;
+    writeError = undefined;
+    scheduleRequery();
+}
+function onDeleteCancelled() {
+    deletingEntry = undefined;
+}
+
 /**
  * Drop `entry` onto a lane (#4348). Mirror the target membership
  * optimistically: the Yjs -> PGlite projection is asynchronous, so waiting
@@ -388,6 +431,7 @@ onDestroy(() => {
             {/each}
         </select>
         <div class="undo-controls">
+            <button type="button" data-testid="calendar-new-entry" onclick={openCreateDialog}>New entry</button>
             <button type="button" data-testid="calendar-undo" onclick={() => globalUndoRouter.undo()}>Undo</button>
             <button type="button" data-testid="calendar-redo" onclick={() => globalUndoRouter.redo()}>Redo</button>
         </div>
@@ -473,6 +517,8 @@ onDestroy(() => {
             {isStartWritable}
             onDragEnd={commitStart}
             onKeyboardMove={commitStart}
+            {isDeletable}
+            onDeleteRequest={requestDelete}
             laneLabel={groupingActive ? laneLabelForEntry : undefined}
         />
     {:else if groupingActive && lanes}
@@ -492,6 +538,8 @@ onDestroy(() => {
             onResizeEnd={commitDuration}
             onKeyboardMove={commitStart}
             onLaneDrop={commitLaneDrop}
+            {isDeletable}
+            onDeleteRequest={requestDelete}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -507,9 +555,33 @@ onDestroy(() => {
             onResizeMove={previewDuration}
             onResizeEnd={commitDuration}
             onKeyboardMove={commitStart}
+            {isDeletable}
+            onDeleteRequest={requestDelete}
         />
     {/if}
 </div>
+
+{#if showCreateDialog}
+    <CalendarCreateEntryDialog
+        {project}
+        projectId={projectId ?? pgSchema}
+        resolver={session}
+        defaultStartMs={createDefaultStartMs}
+        defaultAllDay={viewType === "month"}
+        onCreated={onEntryCreated}
+        onCancel={onCreateCancelled}
+    />
+{/if}
+
+{#if deletingEntry}
+    <CalendarDeleteEntryDialog
+        {project}
+        resolver={session}
+        entry={deletingEntry}
+        onDeleted={onEntryDeleted}
+        onCancel={onDeleteCancelled}
+    />
+{/if}
 
 <style>
 .calendar-view {

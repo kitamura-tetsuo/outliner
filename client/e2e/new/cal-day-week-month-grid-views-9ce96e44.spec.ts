@@ -64,7 +64,9 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
         const timedEntry = page.locator('[data-testid^="calendar-entry-item:"]').first();
         await expect(timedEntry).toBeVisible({ timeout: 15000 });
-        await expect(timedEntry).toHaveText("Standup");
+        // The card also carries a delete affordance now (#4349), so assert on
+        // the title element rather than the card's whole text content.
+        await expect(timedEntry.getByTestId("calendar-entry-title")).toHaveText("Standup");
         await expect(timedEntry).not.toHaveClass(/not-writable/);
 
         // Switching to month view keeps showing the same entry, laid out in
@@ -73,7 +75,7 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         await expect(page.getByTestId("calendar-month-grid").first()).toBeVisible({ timeout: 15000 });
         const monthEntry = page.locator('[data-testid^="calendar-entry-item:"]').first();
         await expect(monthEntry).toBeVisible({ timeout: 15000 });
-        await expect(monthEntry).toHaveText("Standup");
+        await expect(monthEntry.getByTestId("calendar-entry-title")).toHaveText("Standup");
 
         // Reload: the view-type choice is a Yjs write and survives it.
         await page.reload();

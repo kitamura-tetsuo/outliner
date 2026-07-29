@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 26;
+export const DEMO_TEMPLATE_VERSION = 27;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -987,6 +987,10 @@ export const demoPages: DemoPageTemplate[] = [
                     {
                         text:
                             "Grouping by \"tags\" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry's small handle onto another lane to replace its tag set; hold Ctrl (Cmd on macOS) while dropping to add the lane's tag instead of replacing.",
+                    },
+                    {
+                        text:
+                            '"New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.',
                     },
                 ],
             },

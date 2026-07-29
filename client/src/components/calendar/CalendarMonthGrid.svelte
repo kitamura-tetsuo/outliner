@@ -20,6 +20,8 @@ interface Props {
     isStartWritable: (entry: CalendarEntry) => boolean;
     onDragEnd: (entry: CalendarEntry, newStartMs: number) => void;
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
+    onDeleteRequest?: (entry: CalendarEntry) => void;
+    isDeletable?: (entry: CalendarEntry) => boolean;
     /**
      * A lane is "not a layout" in month view (docs/crdt-sql-architecture.md
      * §6.3) — grouping shows up as a colour per entry instead. Absent when no
@@ -28,7 +30,17 @@ interface Props {
     laneLabel?: (entry: CalendarEntry) => string;
 }
 
-let { cells, weekStart, todayUtcMs, isStartWritable, onDragEnd, onKeyboardMove, laneLabel }: Props = $props();
+let {
+    cells,
+    weekStart,
+    todayUtcMs,
+    isStartWritable,
+    onDragEnd,
+    onKeyboardMove,
+    onDeleteRequest,
+    isDeletable = () => false,
+    laneLabel,
+}: Props = $props();
 
 const weekdayHeaders = $derived(
     Array.from({ length: 7 }, (_, i) => WEEKDAY_LABELS[(weekStart + i) % 7]),
@@ -44,14 +56,23 @@ function onDropOnCell(entry: CalendarEntry, cell: MonthCell) {
     onDragEnd(entry, newStart);
 }
 
+function keyToDeltaDays(key: string): number | undefined {
+    if (key === "ArrowLeft") return -1;
+    if (key === "ArrowRight") return 1;
+    if (key === "ArrowUp") return -7;
+    if (key === "ArrowDown") return 7;
+    return undefined;
+}
+
 function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
+        e.preventDefault();
+        onDeleteRequest?.(entry);
+        return;
+    }
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaDays: number;
-    if (e.key === "ArrowLeft") deltaDays = -1;
-    else if (e.key === "ArrowRight") deltaDays = 1;
-    else if (e.key === "ArrowUp") deltaDays = -7;
-    else if (e.key === "ArrowDown") deltaDays = 7;
-    else return;
+    const deltaDays = keyToDeltaDays(e.key);
+    if (deltaDays === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaDays * DAY_MS);
 }
@@ -104,7 +125,27 @@ function onDrop(cell: MonthCell, e: DragEvent) {
             >
                 <div class="cell-date">{new Date(cell.dateUtcMs).getUTCDate()}</div>
                 {#each cell.milestones as m (m.key)}
-                    <div class="milestone-chip" data-testid={`calendar-entry-milestone-${m.key}`}>◆ {m.title}</div>
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="milestone-chip"
+                        data-testid={`calendar-entry-milestone-${m.key}`}
+                        onkeydown={(e) => onCellKeydown(m, e)}
+                    >
+                        <span class="chip-title" data-testid="calendar-entry-title">◆ {m.title}</span>
+                        {#if isDeletable(m)}
+                            <button
+                                type="button"
+                                class="delete-button"
+                                aria-label={`Delete ${m.title}`}
+                                data-testid={`calendar-entry-delete-${m.key}`}
+                                onclick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteRequest?.(m);
+                                }}
+                            >×</button>
+                        {/if}
+                    </div>
                 {/each}
                 {#each cell.entries as { entry } (entry.key)}
                     <div
@@ -119,7 +160,19 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         ondragstart={(e) => onDragStart(entry, e)}
                         onkeydown={(e) => onCellKeydown(entry, e)}
                     >
-                        {entry.title}
+                        <span class="chip-title" data-testid="calendar-entry-title">{entry.title}</span>
+                        {#if isDeletable(entry)}
+                            <button
+                                type="button"
+                                class="delete-button"
+                                aria-label={`Delete ${entry.title}`}
+                                data-testid={`calendar-entry-delete-${entry.key}`}
+                                onclick={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteRequest?.(entry);
+                                }}
+                            >×</button>
+                        {/if}
                     </div>
                 {/each}
             </div>
@@ -173,15 +226,23 @@ function onDrop(cell: MonthCell, e: DragEvent) {
 
 .entry-chip,
 .milestone-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
     background: #2563eb;
     color: white;
     border-radius: 3px;
     padding: 1px 4px;
     font-size: 0.7rem;
     overflow: hidden;
+    cursor: grab;
+}
+
+.chip-title {
+    overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    cursor: grab;
 }
 
 .entry-chip.not-writable {
@@ -193,5 +254,21 @@ function onDrop(cell: MonthCell, e: DragEvent) {
     background: transparent;
     color: #b45309;
     cursor: default;
+}
+
+.delete-button {
+    flex: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    opacity: 0.8;
+    cursor: pointer;
+    font-size: 0.8rem;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.delete-button:hover {
+    opacity: 1;
 }
 </style>

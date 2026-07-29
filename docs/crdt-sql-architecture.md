@@ -1,9 +1,10 @@
 # CRDT and SQL: division of responsibilities
 
-Status: accepted. §1–§5 are implemented. §6 records the contract the calendar
-UI is to be built against and is not implemented yet; it also covers the two
-write affordances the calendar owns — the INSERT destination picker and the
-DELETE prompt (§4.3).
+Status: accepted. §1–§5 are implemented, including the calendar's own INSERT
+destination picker and DELETE prompt (§4.3) — the two write affordances the
+calendar owns. §6 records the contract the rest of the calendar UI is built
+against; most of it is implemented (see each subsection's own status line),
+with the Gantt view (§6.7) still outstanding.
 
 This document records _why_ documents are CRDT-centric while tabular data is
 SQL-centric, and how a surface that has to show both — a calendar of tasks — is
@@ -121,16 +122,18 @@ _Implemented_ — `RelationCapabilities` and `assertWriteAllowed`
 (`client/src/services/yjstable/relationProvider.ts`). The declaration is
 binding: a caller cannot INSERT without a destination, or DELETE without
 choosing between removing the item and clearing its date. The destination
-picker and the delete prompt themselves are UI, still to come.
+picker and the delete prompt (`CalendarCreateEntryDialog.svelte`,
+`CalendarDeleteEntryDialog.svelte`, both #4349) are the UI that supplies those
+decisions for the calendar; nothing bypasses `assertWriteAllowed` to get there.
 
 The items relation is deliberately asymmetric with real tables, because the
 inverse mapping is asymmetric:
 
-| Operation | Behavior                                                                                                                                                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UPDATE`  | Writes the mapped field of the item's node value. This is the drag-to-reschedule path.                                                                                    |
-| `INSERT`  | Allowed. The destination (page and parent) is **chosen explicitly at each creation**, with previously chosen destinations offered as history. There is no implicit inbox. |
-| `DELETE`  | Prompts each time: delete the item itself, or only clear its date so it leaves the calendar. Never silently destructive.                                                  |
+| Operation | Behavior                                                                                                                                                                                                                                                                                       |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UPDATE`  | Writes the mapped field of the item's node value. This is the drag-to-reschedule path.                                                                                                                                                                                                         |
+| `INSERT`  | Allowed. The destination (a page) is **chosen explicitly at each creation** (`calendarEntryCreate.ts`), with previously chosen destinations offered as history (`calendarDestinationHistory.ts`, per-user/per-project local storage, never the project doc). There is no implicit inbox.       |
+| `DELETE`  | Prompts each time: delete the item itself, or only clear its date so it leaves the calendar (`calendarEntryDelete.ts`). One occurrence of a recurring plan is a third outcome — it records an exception on the source item (§6.2) rather than either of the above. Never silently destructive. |
 
 Capabilities are a property of the relation, expressed explicitly, in the same
 spirit as the editability rules in `queryAnalysis.ts` (a result is read-only
@@ -157,9 +160,16 @@ query already uses to materialize a sibling relation — and applies the write
 addressed by `source_id`. `TableGrid.svelte` routes a cell edit through this
 path when the query result carries `source_kind`/`source_id`, and through
 the direct Data Storage write when it carries a bare `id`, unchanged from
-before. INSERT and DELETE on a unioned result are not covered here — the
-destination picker and delete prompt they need (§4.3) are still to come — so
-the grid only offers row add/remove for the single-table case.
+before. DELETE on a unioned result follows the same shape, via the sibling
+`applyUnionedRowDelete` — the calendar's delete prompt (§4.3) is what supplies
+the required `disposition`. INSERT has no `source_kind` to re-resolve (the row
+does not exist yet); the calendar's "new entry" flow instead targets the items
+relation directly by its reserved name (`calendarEntryCreate.ts`), since
+creating a calendar entry always means creating an outline item regardless of
+what the calendar's own query happens to select. `TableGrid.svelte` still only
+offers row add/remove for the single-table case — a unioned INSERT would need
+a per-branch destination concept a plain table union does not have, and
+nothing in this repo needs it yet.
 
 The same generalization serves any union of several tables, not only the
 items case.

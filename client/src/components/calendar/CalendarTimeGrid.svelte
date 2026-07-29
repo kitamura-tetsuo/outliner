@@ -41,6 +41,9 @@ interface Props {
     onResizeMove: (entry: CalendarEntry, newDurationMs: number) => void;
     onResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
+    /** Requests the delete-disposition prompt for an entry; addressability (not writability) gates this. */
+    onDeleteRequest?: (entry: CalendarEntry) => void;
+    isDeletable?: (entry: CalendarEntry) => boolean;
     /** Present only when this grid is one lane band of `CalendarLaneTimeGrid.svelte` (#4348). */
     isLaneWritable?: (entry: CalendarEntry) => boolean;
     onLaneDragStart?: (entry: CalendarEntry, e: DragEvent) => void;
@@ -59,6 +62,8 @@ let {
     onResizeMove,
     onResizeEnd,
     onKeyboardMove,
+    onDeleteRequest,
+    isDeletable = () => false,
     isLaneWritable,
     onLaneDragStart,
 }: Props = $props();
@@ -138,15 +143,24 @@ function onPointerCancel(e: PointerEvent) {
     drag = undefined;
 }
 
+function keyToDeltaMs(key: string): number | undefined {
+    if (key === "ArrowUp") return -15 * 60_000;
+    if (key === "ArrowDown") return 15 * 60_000;
+    if (key === "ArrowLeft") return -DAY_MS;
+    if (key === "ArrowRight") return DAY_MS;
+    return undefined;
+}
+
 /** Arrow-key moves: Up/Down = 15 minutes, Left/Right = 1 day. Immediate, one write per press. */
 function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
+        e.preventDefault();
+        onDeleteRequest?.(entry);
+        return;
+    }
     if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    let deltaMs: number;
-    if (e.key === "ArrowUp") deltaMs = -15 * 60_000;
-    else if (e.key === "ArrowDown") deltaMs = 15 * 60_000;
-    else if (e.key === "ArrowLeft") deltaMs = -DAY_MS;
-    else if (e.key === "ArrowRight") deltaMs = DAY_MS;
-    else return;
+    const deltaMs = keyToDeltaMs(e.key);
+    if (deltaMs === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaMs);
 }
@@ -165,21 +179,51 @@ onMount(() => {
         <div class="band-row" data-testid="calendar-all-day-band" style={`grid-template-columns: repeat(${layout.dayCount}, 1fr)`}>
             {#each layout.allDay as p (p.entry.key)}
                 <div
+                    role="button"
+                    tabindex="0"
                     class="all-day-entry"
                     class:not-writable={!isStartWritable(p.entry)}
                     style={`grid-column: ${p.dayIndex + 1} / span ${p.spanDays}`}
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
+                    onkeydown={(e) => onEntryKeydown(p.entry, e)}
                 >
-                    {p.entry.title}
+                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
+                    {#if isDeletable(p.entry)}
+                        <button
+                            type="button"
+                            class="delete-button"
+                            aria-label={`Delete ${p.entry.title}`}
+                            data-testid={`calendar-entry-delete-${p.entry.key}`}
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRequest?.(p.entry);
+                            }}
+                        >×</button>
+                    {/if}
                 </div>
             {/each}
             {#each layout.milestones as m (m.entry.key)}
                 <div
+                    role="button"
+                    tabindex="0"
                     class="milestone-entry"
                     style={`grid-column: ${m.dayIndex + 1}`}
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
+                    onkeydown={(e) => onEntryKeydown(m.entry, e)}
                 >
-                    ◆ {m.entry.title}
+                    <span class="entry-title" data-testid="calendar-entry-title">◆ {m.entry.title}</span>
+                    {#if isDeletable(m.entry)}
+                        <button
+                            type="button"
+                            class="delete-button"
+                            aria-label={`Delete ${m.entry.title}`}
+                            data-testid={`calendar-entry-delete-${m.entry.key}`}
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRequest?.(m.entry);
+                            }}
+                        >×</button>
+                    {/if}
                 </div>
             {/each}
         </div>
@@ -221,7 +265,20 @@ onMount(() => {
                     onpointerdown={(e) => beginDrag("move", p.entry, e)}
                     onkeydown={(e) => onEntryKeydown(p.entry, e)}
                 >
-                    <span class="entry-title">{p.entry.title}</span>
+                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
+                    {#if isDeletable(p.entry)}
+                        <button
+                            type="button"
+                            class="delete-button"
+                            aria-label={`Delete ${p.entry.title}`}
+                            data-testid={`calendar-entry-delete-${p.entry.key}`}
+                            onpointerdown={(e) => e.stopPropagation()}
+                            onclick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRequest?.(p.entry);
+                            }}
+                        >×</button>
+                    {/if}
                     {#if isDurationWritable(p.entry)}
                         <div
                             role="separator"
@@ -267,11 +324,21 @@ onMount(() => {
 
 .all-day-entry,
 .milestone-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
     background: #dbeafe;
     color: #1e3a8a;
     border-radius: 3px;
     padding: 2px 6px;
     font-size: 0.75rem;
+    overflow: hidden;
+}
+
+.all-day-entry .entry-title,
+.milestone-entry .entry-title {
+    pointer-events: auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -360,10 +427,33 @@ onMount(() => {
     touch-action: none;
 }
 
-.lane-handle {
+.delete-button {
+    flex: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    opacity: 0.75;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.delete-button:hover {
+    opacity: 1;
+}
+
+.timed-entry .delete-button {
     position: absolute;
     top: 1px;
     right: 2px;
+}
+
+/* Sits opposite the delete affordance so the two never overlap. */
+.lane-handle {
+    position: absolute;
+    top: 1px;
+    left: 2px;
     font-size: 0.7rem;
     line-height: 1;
     cursor: grab;
