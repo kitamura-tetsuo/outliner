@@ -85,7 +85,16 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
         const urgentHeader = page.getByTestId("calendar-lane-header-urgent").first();
         await expect(workHandle).toBeVisible();
         await expect(urgentHeader).toBeVisible();
-        const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+        const entryTestId = await workEntry.getAttribute("data-testid");
+        expect(entryTestId).toBeTruthy();
+        const entryKey = entryTestId!.replace("calendar-entry-", "");
+        const dataTransfer = await page.evaluateHandle((key) => {
+            const transfer = new DataTransfer();
+            // Seed the standard payload explicitly. This also verifies the
+            // drop target's recovery path if a redraw loses local drag state.
+            transfer.setData("text/plain", key);
+            return transfer;
+        }, entryKey);
         await workHandle.dispatchEvent("dragstart", { dataTransfer });
         await urgentHeader.dispatchEvent("dragenter", { dataTransfer });
         await urgentHeader.dispatchEvent("dragover", { dataTransfer });
