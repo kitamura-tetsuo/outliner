@@ -77,6 +77,7 @@ describe("Demo Page View", () => {
 
         // Ensure notYetSynced is false initially so we don't wait forever
         yjsStore.notYetSynced = false;
+        yjsStore.syncError = null;
     });
 
     it("should show loading state initially", async () => {
@@ -129,5 +130,47 @@ describe("Demo Page View", () => {
 
         const elements = screen.getAllByText("TestPage");
         expect(elements.length).toBeGreaterThan(0);
+    });
+
+    it("should render error state when sync times out", async () => {
+        const { getYjsClientByProjectTitle } = await import("../../../services");
+        (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
+            containerId: "mock-container",
+            getProject: () => {
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const Y = require("yjs");
+                const doc = new Y.Doc();
+                doc.getMap("metadata").set("title", "demo");
+                doc.getMap("metadata").set("lastReset", 0);
+                return { ydoc: doc };
+            },
+            dispose: vi.fn(),
+        });
+
+        const { findPageByName } = await import("../../../utils/pageUtils");
+        (findPageByName as Mock).mockReturnValue(undefined);
+
+        // We can just set the property before rendering
+        // But loadDemoPage will execute and overwrite it?
+        // Let's use Object.defineProperty to make syncError read-only for this test.
+        Object.defineProperty(yjsStore, "syncError", {
+            get: () => "timed-out",
+            set: () => {},
+            configurable: true,
+        });
+
+        render(DemoPageView);
+
+        await vi.waitFor(() => {
+            expect(screen.getByText("An error occurred")).toBeInTheDocument();
+        }, { timeout: 2000, interval: 50 });
+
+        expect(screen.getByText("Connection to the real-time server failed or timed out.")).toBeInTheDocument();
+
+        const retryButton = screen.getByRole("button", { name: "Retry" });
+        expect(retryButton).toBeInTheDocument();
+
+        // Restore
+        Object.defineProperty(yjsStore, "syncError", { value: null, writable: true, configurable: true });
     });
 });
