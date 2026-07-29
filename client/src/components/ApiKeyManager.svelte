@@ -164,8 +164,7 @@
     {/if}
 </div>
 
-{#if showRevokeConfirm}
-    <ConfirmDialog
+<ConfirmDialog
         bind:isOpen={showRevokeConfirm}
         title="Revoke API Key"
         message="Are you sure you want to revoke this API key? This action cannot be undone."
@@ -174,4 +173,3 @@
         onConfirm={confirmRevoke}
         onCancel={() => { showRevokeConfirm = false; keyIdToRevoke = null; }}
     />
-{/if}

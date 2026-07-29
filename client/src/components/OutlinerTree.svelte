@@ -2181,8 +2181,7 @@
     />
 {/if}
 
-{#if showDeleteConfirm}
-    <ConfirmDialog
+<ConfirmDialog
         bind:isOpen={showDeleteConfirm}
         title="Delete Item"
         message="Are you sure you want to delete this item? This action will also delete all of its children."
@@ -2191,7 +2190,6 @@
         onConfirm={confirmDelete}
         onCancel={() => { showDeleteConfirm = false; deleteConfirmItemId = null; }}
     />
-{/if}
 
 <style>
     .outliner {

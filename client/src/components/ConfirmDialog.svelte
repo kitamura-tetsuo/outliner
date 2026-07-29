@@ -30,6 +30,7 @@ onMount(() => {
 
 $effect(() => {
     if (dialogElement) {
+        if (!dialogElement.showModal || !dialogElement.close) return;
         if (isOpen) {
             dialogElement.showModal();
         } else {
@@ -43,7 +44,8 @@ function handleConfirm() {
     onConfirm();
 }
 
-function handleCancel() {
+function handleCancel(_e?: Event) {
+
     isOpen = false;
     if (onCancel) onCancel();
 }
@@ -51,7 +53,7 @@ function handleCancel() {
 
 <dialog
     bind:this={dialogElement}
-    onclose={handleCancel}
+    oncancel={handleCancel}
     class="backdrop:bg-black backdrop:bg-opacity-50 p-0 rounded-lg shadow-xl border border-gray-200"
     role="alertdialog"
     aria-modal="true"
