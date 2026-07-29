@@ -130,6 +130,7 @@ test.describe("CMT-0001: comment threads", () => {
         if (!firstId) throw new Error("item id not found after retry");
 
         // First, wait for the comment button to be visible and ready
+        await page.hover(`[data-item-id="${firstId}"] .item-content`);
         const commentButton = page.locator(`[data-item-id="${firstId}"] [data-testid="comment-button-${firstId}"]`);
         await expect(commentButton).toBeVisible();
 
