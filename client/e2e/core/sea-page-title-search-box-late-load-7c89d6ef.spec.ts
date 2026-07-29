@@ -127,7 +127,7 @@ test.describe("SEA-0001: page title search box", () => {
                         await page.evaluate(() => {
                             const store = (globalThis as any).generalStore;
                             if (store) store.pagesVersion++;
-                        }).catch(() => {});
+                        }).catch(e => console.warn("Promise rejected:", e));
                     }
                     return count;
                 }, { timeout: 10000 }).toBeGreaterThan(0);

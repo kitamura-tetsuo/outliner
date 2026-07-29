@@ -9,6 +9,18 @@ import { expect, test } from "@playwright/test";
 
 import { TestHelpers } from "../utils/testHelpers";
 
+const countCursors = (page: import("@playwright/test").Page) =>
+    page.evaluate(() => document.querySelectorAll(".editor-overlay .cursor").length);
+
+/**
+ * The overlay mirrors the cursor store into the DOM through a ~16ms debounce, so a
+ * single read right after an interaction can observe the previous render. Poll until
+ * the caret count settles instead of sampling once.
+ */
+const expectCursorCountAtMost = async (page: import("@playwright/test").Page, max: number, label: string) => {
+    await expect.poll(() => countCursors(page), { message: label }).toBeLessThanOrEqual(max);
+};
+
 test.describe("Cursor management tests", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
@@ -33,10 +45,12 @@ test.describe("Cursor management tests", () => {
         // Wait for the cursor to be visible
         await TestHelpers.waitForCursorVisible(page);
 
-        // Check initial cursor count
-        const initialCursorCount = await page.evaluate(() => {
-            return document.querySelectorAll(".editor-overlay .cursor").length;
-        });
+        // Check initial cursor count. The caret must already be rendered here: a baseline
+        // of 0 would make every later comparison fail even though the cursor count never
+        // actually grew.
+        await expect.poll(() => countCursors(page), { message: "initial caret rendered" })
+            .toBeGreaterThanOrEqual(1);
+        const initialCursorCount = await countCursors(page);
         console.log(`Initial cursor count: ${initialCursorCount}`);
 
         // Add a new item
@@ -45,47 +59,26 @@ test.describe("Cursor management tests", () => {
         await page.keyboard.press("Escape"); // Exit edit mode
 
         // Check cursor count after Enter
-        const cursorCountAfterEnter = await page.evaluate(() => {
-            return document.querySelectorAll(".editor-overlay .cursor").length;
-        });
-        console.log(`Cursor count after Enter: ${cursorCountAfterEnter}`);
+        console.log(`Cursor count after Enter: ${await countCursors(page)}`);
 
         // Click the first item
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click({ force: true });
 
-        // Check cursor count after clicking the first item
-        const cursorCountAfterFirstClick = await page.evaluate(() => {
-            return document.querySelectorAll(".editor-overlay .cursor").length;
-        });
-        console.log(`Cursor count after clicking the first item: ${cursorCountAfterFirstClick}`);
-
         // Verify that cursor count has not increased
-        expect(cursorCountAfterFirstClick).toBeLessThanOrEqual(initialCursorCount);
+        await expectCursorCountAtMost(page, initialCursorCount, "after clicking the first item");
 
         // Click the second item
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
 
-        // Check cursor count after clicking the second item
-        const cursorCountAfterSecondClick = await page.evaluate(() => {
-            return document.querySelectorAll(".editor-overlay .cursor").length;
-        });
-        console.log(`Cursor count after clicking the second item: ${cursorCountAfterSecondClick}`);
-
         // Verify that cursor count has not increased
-        expect(cursorCountAfterSecondClick).toBeLessThanOrEqual(initialCursorCount);
+        await expectCursorCountAtMost(page, initialCursorCount, "after clicking the second item");
 
         // Click the first item again
         await firstItem.locator(".item-content").click({ force: true });
 
-        // Check cursor count after clicking again
-        const cursorCountAfterThirdClick = await page.evaluate(() => {
-            return document.querySelectorAll(".editor-overlay .cursor").length;
-        });
-        console.log(`Cursor count after clicking again: ${cursorCountAfterThirdClick}`);
-
         // Verify that cursor count has not increased
-        expect(cursorCountAfterThirdClick).toBeLessThanOrEqual(initialCursorCount);
+        await expectCursorCountAtMost(page, initialCursorCount, "after clicking again");
     });
 });

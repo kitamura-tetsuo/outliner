@@ -47,10 +47,10 @@ try {
     if (hasDebug(logger)) {
         const __origDebug = logger.debug?.bind?.(logger);
         logger.debug = (...args: unknown[]) => {
-            if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch {} }
+            if (DEBUG_LOG && __origDebug) { try { __origDebug(...args); } catch (err) { logger.warn("Silenced error", { err }); } }
         };
     }
-} catch {}
+} catch (err) { logger.warn("Silenced error", { err }); }
 
 
 import { handleFileUploadFromDrop } from "../services";
@@ -60,7 +60,7 @@ import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 onMount(() => {
     try {
         logger.debug(undefined, "[OutlinerItem] compTypeValue on mount: " + compTypeValue + " id=" + model?.id);
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
 });
 
 
@@ -246,6 +246,11 @@ function handleContextMenuAction(action: string) {
             handleComponentTypeChange(newType);
             break;
         }
+        case 'toggle-calendar-type': {
+            const newType = (componentType ?? compTypeValue) === 'calendar' ? 'none' : 'calendar';
+            handleComponentTypeChange(newType);
+            break;
+        }
     }
 }
 
@@ -373,7 +378,7 @@ function attachCommentObserver(): (() => void) | null {
         let detachArray: (() => void) | null = null;
 
         const attachToArray = () => {
-            try { detachArray?.(); } catch {}
+            try { detachArray?.(); } catch (err) { logger.warn("Silenced error", { err }); }
             detachArray = null;
             const arr: unknown[] = ensureCommentsArray();
             if (hasObserve(arr)) {
@@ -407,10 +412,10 @@ function attachCommentObserver(): (() => void) | null {
         }
 
         return () => {
-            try { detachArray?.(); } catch {}
-            try { detachMap?.(); } catch {}
+            try { detachArray?.(); } catch (err) { logger.warn("Silenced error", { err }); }
+            try { detachMap?.(); } catch (err) { logger.warn("Silenced error", { err }); }
         };
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
     return null;
     }
 
@@ -427,7 +432,7 @@ onMount(() => {
 
     return () => {
         for (const fn of cleanup) {
-            try { fn(); } catch {}
+            try { fn(); } catch (err) { logger.warn("Silenced error", { err }); }
         }
     };
 });
@@ -470,16 +475,16 @@ onMount(() => {
                         if (!event || (event.keysChanged && event.keysChanged.has && event.keysChanged.has('aliasTargetId'))) {
                             aliasTargetId = ymap.get?.('aliasTargetId');
                         }
-                    } catch {}
+                    } catch (err) { logger.warn("Silenced error", { err }); }
                 };
                 ymap.observe(obs);
                 // Initial reflection
                 obs();
-                return () => { try { ymap?.unobserve?.(obs); } catch {} };
+                return () => { try { ymap?.unobserve?.(obs); } catch (err) { logger.warn("Silenced error", { err }); } };
 
             }
         }
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
 });
 const aliasTargetIdEffective = $derived.by(() => {
 
@@ -522,7 +527,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
                 }
-            } catch {}
+            } catch (err) { logger.warn("Silenced error", { err }); }
         }
     }
     if (isTest && typeof window !== "undefined") {
@@ -530,7 +535,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             window.dispatchEvent(new CustomEvent('item-attachments-changed', {
                 detail: { id: String(cand.id) }
             }));
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
     }
 }
 
@@ -560,7 +565,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                         }
                     }
                 }
-            } catch {}
+            } catch (err) { logger.warn("Silenced error", { err }); }
 
             // Always trigger change event for test environment stabilization with the targetId
             if (IS_TEST && typeof window !== "undefined") {
@@ -568,7 +573,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                     window.dispatchEvent(new CustomEvent('item-attachments-changed', {
                         detail: { id: String(targetId) }
                     }));
-                } catch {}
+                } catch (err) { logger.warn("Silenced error", { err }); }
             }
         } else {
             // No target found in DOM, default to current model
@@ -599,14 +604,14 @@ function handleComponentTypeChange(newType: string) {
                 if (key !== "lastChanged") m.set("lastChanged", Date.now());
                 return true;
             }
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
         return false;
     };
 
     const value = newType === "none" ? undefined : newType;
     // Use setter preferentially if app-schema
     if (item && typeof item === "object" && "componentType" in item) {
-        try { if (hasComponentType(item)) { item.componentType = value; } } catch {}
+        try { if (hasComponentType(item)) { item.componentType = value; } } catch (err) { logger.warn("Silenced error", { err }); }
     }
     // yjs-schema / fallback
     setMapField(item, "componentType", value);
@@ -638,7 +643,7 @@ $effect(() => {
                     textString = "";
                 }
             };
-            t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch {} });
+            t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch (err) { logger.warn("Silenced error", { err }); } });
             // Initial reflection
             h1();
         }
@@ -648,17 +653,17 @@ $effect(() => {
                         if (!e || (e.keysChanged && e.keysChanged.has && e.keysChanged.has('componentType'))) {
                             compTypeValue = m.get?.("componentType") as string | undefined;
                         }
-                    } catch {}
+                    } catch (err) { logger.warn("Silenced error", { err }); }
                 };
-                m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch {} });
+                m.observe(h2); unsubs.push(() => { try { m.unobserve?.(h2); } catch (err) { logger.warn("Silenced error", { err }); } });
                 h2();
             } else {
                 // Fallback: direct acquisition
-                try { if (hasComponentType(item)) { compTypeValue = item.componentType; } } catch {}
+                try { if (hasComponentType(item)) { compTypeValue = item.componentType; } } catch (err) { logger.warn("Silenced error", { err }); }
             }
         }
-    } catch {}
-    return () => { for (const fn of unsubs) { try { fn(); } catch {} } };
+    } catch (err) { logger.warn("Silenced error", { err }); }
+    return () => { for (const fn of unsubs) { try { fn(); } catch (err) { logger.warn("Silenced error", { err }); } } };
 });
 
 // Reactively resubscribe to editor overlay store changes to update focus state
@@ -671,7 +676,7 @@ onMount(() => {
     };
     updateActive(); // Initial update
     const unsubscribe = editorOverlayStore.subscribe(updateActive);
-    return () => { try { unsubscribe(); } catch {} };
+    return () => { try { unsubscribe(); } catch (err) { logger.warn("Silenced error", { err }); } };
 });
 
 // Memoize formatting operations to avoid unnecessary recalculations during render
@@ -1001,13 +1006,13 @@ function toggleComments() {
     if (hasOpenComment(generalStore)) {
         if (generalStore.openCommentItemId === model.id) {
             generalStore.openCommentItemId = null;
-            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch {}
+            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> false'); } catch (err) { logger.warn("Silenced error", { err }); }
         } else {
             // Force the real backing Y.Array to exist before the thread mounts, so its
             // observer doesn't attach to the throwaway empty-array stub (see Item.ensureComments).
-            try { item.ensureComments?.(); } catch {}
+            try { item.ensureComments?.(); } catch (err) { logger.warn("Silenced error", { err }); }
             generalStore.openCommentItemId = model.id;
-            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch {}
+            try { logger.debug(undefined, '[OutlinerItem] toggleComments id=' + model.id + ' -> true index=' + index); } catch (err) { logger.warn("Silenced error", { err }); }
         }
     }
 }
@@ -1072,7 +1077,7 @@ function handleContentClick(e: MouseEvent) {
 
     const btn = el.closest('button.comment-button');
     if (btn) {
-        try { logger.debug(undefined, '[OutlinerItem] handleContentClick toggling comments for id=' + model.id); } catch {}
+        try { logger.debug(undefined, '[OutlinerItem] handleContentClick toggling comments for id=' + model.id); } catch (err) { logger.warn("Silenced error", { err }); }
         e.stopPropagation();
         toggleComments();
     }
@@ -1524,7 +1529,7 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
                 }
                 window.lastCopiedText = lines.join('\n');
             }
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
 
         // Set cursor position
         editorOverlayStore.setCursor({
@@ -1582,7 +1587,7 @@ function handleDragStart(event: DragEvent) {
         // Use the whole item row as the drag image for clearer feedback
         try {
             if (itemRef) event.dataTransfer.setDragImage(itemRef, 0, 0);
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
     }
 
     // Set drag source flag (drives the visual "dragging" state)
@@ -1659,7 +1664,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
         logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
         event.preventDefault?.();
-        try { event.stopPropagation?.(); (event as Event).stopImmediatePropagation?.(); } catch {}
+        try { event.stopPropagation?.(); (event as Event).stopImmediatePropagation?.(); } catch (err) { logger.warn("Silenced error", { err }); }
 
         isDropTarget = false;
 
@@ -1686,7 +1691,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     logger.debug(undefined, "OutlinerItem handleDrop: event received " + !!event);
     // Prevent default action
     event.preventDefault();
-    try { event.stopPropagation(); (event as Event).stopImmediatePropagation?.(); } catch {}
+    try { event.stopPropagation(); (event as Event).stopImmediatePropagation?.(); } catch (err) { logger.warn("Silenced error", { err }); }
 
 
     // Clear drop target flag
@@ -1793,7 +1798,7 @@ onMount(() => {
         (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dragOverHandler = dragOverHandler;
         (itemRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
 
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
     return () => {
         try {
             const displayDropHandler = (displayRef as HTMLElement & { _dropHandler?: EventListener })?._dropHandler;
@@ -1818,7 +1823,7 @@ onMount(() => {
                 itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: true } as EventListenerOptions);
                 itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: false } as EventListenerOptions);
             }
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
     };
 });
 // E2E: Receive direct notification from dispatchEvent hook, execute handleDrop if target element is under own displayRef
@@ -1834,7 +1839,7 @@ onMount(() => {
                 if (displayRef && (el === displayRef || displayRef.contains(el))) {
                     handleDrop(ev);
                 }
-            } catch {}
+            } catch (err) { logger.warn("Silenced error", { err }); }
         };
         if (import.meta.env.MODE === "test" || anyWin.__E2E__) {
             anyWin.__E2E_DROP_HANDLERS__?.push(fn);
@@ -1848,14 +1853,14 @@ onMount(() => {
                         const ev = new DragEvent('drop', { bubbles: true, cancelable: true } as DragEventInit);
                         handleDrop(ev);
                     }
-                } catch {}
+                } catch (err) { logger.warn("Silenced error", { err }); }
             };
             if (!(anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__) {
-                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch {} };
+                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { selfInvoker(el); } catch (err) { logger.warn("Silenced error", { err }); } };
             } else {
 
                 const prev = (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__;
-                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev?.(el); } catch {} ; try { selfInvoker(el); } catch {} };
+                (anyWin as E2EWindow).__E2E_FORCE_HANDLE_DROP__ = (el: Element) => { try { prev?.(el); } catch (err) { logger.warn("Silenced error", { err }); } ; try { selfInvoker(el); } catch (err) { logger.warn("Silenced error", { err }); } };
             }
 
             // E2E: Test-only helper to add attachment directly (deterministically reproduce final result of DnD)
@@ -1865,16 +1870,16 @@ onMount(() => {
                         const blob = new Blob([text ?? 'e2e'], { type: 'text/plain' });
                         const localUrl = URL.createObjectURL(blob);
                         addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
-                        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch {}
+                        try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch (err) { logger.warn("Silenced error", { err }); }
                     }
-                } catch {}
+                } catch (err) { logger.warn("Silenced error", { err }); }
             };
             if (!(anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__) {
-                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch {} };
+                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { selfAdd(el, text); } catch (err) { logger.warn("Silenced error", { err }); } };
             } else {
 
                 const prevAdd = (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__;
-                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd?.(el, text); } catch {}; try { selfAdd(el, text); } catch {} };
+                (anyWin as E2EWindow).__E2E_ADD_ATTACHMENT__ = (el: Element, text?: string) => { try { prevAdd?.(el, text); } catch (err) { logger.warn("Silenced error", { err }); }; try { selfAdd(el, text); } catch (err) { logger.warn("Silenced error", { err }); } };
             }
         }
 
@@ -1887,9 +1892,9 @@ onMount(() => {
                         if (i >= 0) arr.splice(i, 1);
                     }
                 }
-            } catch {}
+            } catch (err) { logger.warn("Silenced error", { err }); }
         };
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
 });
 
 
@@ -1905,7 +1910,7 @@ onMount(() => {
         displayRef?.addEventListener?.('dragover', dragOverHandler, { capture: false } as AddEventListenerOptions);
         itemRef?.addEventListener?.('drop', dropHandler, { capture: true } as AddEventListenerOptions);
         itemRef?.addEventListener?.('drop', dropHandler, { capture: false } as AddEventListenerOptions);
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
 
     // E2E file drop support removed - use proper Playwright file drop API instead
     // If tests fail, update the test to use page.setInputFiles() or proper drag-and-drop simulation
@@ -1920,7 +1925,7 @@ onMount(() => {
             displayRef?.removeEventListener?.('dragover', dragOverHandler, { capture: false } as EventListenerOptions);
             itemRef?.removeEventListener?.('drop', dropHandler, { capture: true } as EventListenerOptions);
             itemRef?.removeEventListener?.('drop', dropHandler, { capture: false } as EventListenerOptions);
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
     };
 });
 
@@ -1936,10 +1941,10 @@ onMount(() => {
                 logger.debug(undefined, "[doc-capture] forwarding to handleDrop");
                 handleDrop(e as DragEvent);
             }
-        } catch {}
+        } catch (err) { logger.warn("Silenced error", { err }); }
     };
-    try { document.addEventListener('drop', handler, true); } catch {}
-    return () => { try { document.removeEventListener('drop', handler, true); } catch {}; };
+    try { document.addEventListener('drop', handler, true); } catch (err) { logger.warn("Silenced error", { err }); }
+    return () => { try { document.removeEventListener('drop', handler, true); } catch (err) { logger.warn("Silenced error", { err }); }; };
 });
 
 /**
@@ -2118,8 +2123,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch {} }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch {} }}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (err) { logger.warn("Silenced error", { err }); } }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (err) { logger.warn("Silenced error", { err }); } }}
                 >
                     <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
                     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -2203,7 +2208,7 @@ export function setSelectionPosition(start: number, end: number = start) {
     {#if isCommentsVisible}
         <!-- XSS-safe: This only returns an empty string, used to trigger reactivity on item.comments -->
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-        { (() => { try { void item.comments; } catch {} return ''; })() }
+        { (() => { try { void item.comments; } catch (err) { logger.warn("Silenced error", { err }); } return ''; })() }
         <CommentThread
             comments={ensuredComments}
             item={item}

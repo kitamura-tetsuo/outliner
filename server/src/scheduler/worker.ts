@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
 import { parentPort } from "node:worker_threads";
+import { logger } from "../logger.js";
 import { JobData } from "./worker-types.js";
 
 async function executeJob(data: JobData) {
@@ -21,7 +22,8 @@ async function executeJob(data: JobData) {
     if (timezone) {
         try {
             Intl.DateTimeFormat(undefined, { timeZone: timezone });
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return { success: false, error: "Invalid timezone" };
         }
     }
@@ -97,7 +99,9 @@ async function executeJob(data: JobData) {
     } catch (error: unknown) {
         try {
             await db.exec("ROLLBACK;");
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
     } finally {

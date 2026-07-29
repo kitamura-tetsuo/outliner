@@ -185,6 +185,11 @@ export default defineConfig(async ({ mode }) => {
                         include: [
                             "src/tests/unit/**/*{.svelte,}.{test,spec}.{js,ts}",
                             "src/**/*{.svelte,}.{test,spec}.{js,ts}",
+                            // The framework-neutral schema lives in ../shared (see the
+                            // resolve.alias note above): its own tests are discovered
+                            // from here too, since `shared/package.json` has no test
+                            // runner of its own.
+                            "../shared/tests/**/*{.test,.spec}.{js,ts}",
                         ],
                         exclude: [
                             "src/lib/server/**",

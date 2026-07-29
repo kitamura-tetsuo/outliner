@@ -8,6 +8,7 @@ import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
 import type {
+    CalendarValueType,
     CommentValueType,
     ItemValueType,
     PlainItemData,
@@ -65,14 +66,18 @@ export class Comments {
         c.set("lastChanged", time);
         try {
             logger.info("[Comments.addComment] pushing comment to Y.Array");
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         if (this._ensureInitialized) {
             this.yArray = this._ensureInitialized();
         }
         this.yArray.push([c]);
         try {
             logger.info("[Comments.addComment] pushed. current length=", this.yArray.length);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         return { id: c.get("id") as string };
     }
 
@@ -104,7 +109,8 @@ export class Comments {
         try {
             if (!this.yArray || !this.yArray.doc) return 0;
             return this.yArray.length;
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return 0;
         }
     }
@@ -174,6 +180,10 @@ export class Item {
 
             value.set("attachments", new Y.Array<string>());
             value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+            // Initialized eagerly, like votes/attachments: two clients adding
+            // different tags to the same item concurrently must merge into one
+            // array rather than race to create it (see Item#addTag).
+            value.set("tags", new Y.Array<string>());
 
             nextTree.createNode("root", nodeKey, value);
 
@@ -195,7 +205,8 @@ export class Item {
     private get value(): Y.Map<ItemValueType> {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return DUMMY_MAP;
         }
     }
@@ -244,6 +255,231 @@ export class Item {
         this.updateText(v ?? "");
     }
 
+    get due(): string | undefined {
+        return this.value.get("due") as string | undefined;
+    }
+
+    set due(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("due");
+        } else {
+            this.value.set("due", v);
+        }
+    }
+
+    get done(): boolean | undefined {
+        return this.value.get("done") as boolean | undefined;
+    }
+
+    set done(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("done");
+        } else {
+            this.value.set("done", v);
+        }
+    }
+
+    /**
+     * Which of the two time shapes `start` is: a floating date (all-day) or
+     * an instant (timed). Absent means `start` carries no shape yet — see
+     * docs/crdt-sql-architecture.md §6.1.
+     */
+    get allDay(): boolean | undefined {
+        return this.value.get("allDay") as boolean | undefined;
+    }
+
+    set allDay(v: boolean | undefined) {
+        if (v === undefined) {
+            this.value.delete("allDay");
+        } else {
+            this.value.set("allDay", v);
+        }
+    }
+
+    /**
+     * When this entry is worked on: a floating date (`YYYY-MM-DD`) when
+     * `allDay` is true, an ISO instant otherwise. Distinct from `due`, which
+     * answers when the item must be finished rather than when it is worked
+     * on — the two are never collapsed (§6.1).
+     */
+    get start(): string | undefined {
+        return this.value.get("start") as string | undefined;
+    }
+
+    set start(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("start");
+        } else {
+            this.value.set("start", v);
+        }
+    }
+
+    /**
+     * Length of the entry, as an ISO-8601 duration string (e.g. `PT1H30M`).
+     * Never a stored end: RFC 5545 forbids carrying both, and duration is the
+     * shape that survives a DST boundary, where a stored end would drift.
+     */
+    get duration(): string | undefined {
+        return this.value.get("duration") as string | undefined;
+    }
+
+    set duration(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("duration");
+        } else {
+            this.value.set("duration", v);
+        }
+    }
+
+    /**
+     * Tags stored as a `Y.Array<string>` rather than a delimited string:
+     * concurrent additions from two clients both survive the merge, where a
+     * delimited string would let one client's write clobber the other's.
+     */
+    get tags(): string[] {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Replace the whole tag set. Used by the items-relation write-back. */
+    set tags(v: string[] | undefined) {
+        const clean = Array.from(
+            new Set((v ?? []).map((t) => t.trim()).filter((t) => t !== "")),
+        );
+        const existing = this.value.get("tags") as Y.Array<string> | undefined;
+        if (clean.length === 0) {
+            if (existing) this.value.delete("tags");
+            return;
+        }
+        const arr = existing ?? new Y.Array<string>();
+        if (!existing) this.value.set("tags", arr);
+        else if (arr.length > 0) arr.delete(0, arr.length);
+        arr.push(clean);
+    }
+
+    /** Add one tag, merging concurrently with additions from another client. */
+    addTag(tag: string): void {
+        const t = tag.trim();
+        if (!t) return;
+        let arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("tags", arr);
+        }
+        if (!arr.toArray().includes(t)) arr.push([t]);
+    }
+
+    /** Remove one tag, if present. */
+    removeTag(tag: string): void {
+        const arr = this.value.get("tags") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(tag);
+        if (idx >= 0) arr.delete(idx, 1);
+    }
+
+    /**
+     * RFC 5545 `RRULE` body (no `RRULE:` prefix — same bare-string convention
+     * as `ScheduleRule.rrule`). Paired with `recurrenceDtstart` /
+     * `recurrenceTimezone`; see docs/crdt-sql-architecture.md §6.2.
+     */
+    get rrule(): string | undefined {
+        return this.value.get("rrule") as string | undefined;
+    }
+    set rrule(v: string | undefined) {
+        if (v === undefined) {
+            this.value.delete("rrule");
+            return;
+        }
+        this.value.set("rrule", v);
+        // Created here rather than eagerly for every item (unlike `tags`):
+        // only a recurring item needs it, but from this point on it must
+        // exist before any concurrent `addRecurrenceExdate` call, for the
+        // same merge-safety reason `tags` is eager (see `Items.addNode`).
+        if (!this.value.get("recurrenceExdate")) {
+            this.value.set("recurrenceExdate", new Y.Array<string>());
+        }
+    }
+
+    /**
+     * First occurrence, as a local wall-clock datetime string
+     * (`YYYY-MM-DDTHH:MM:SS`, no offset) — the RRULE's `DTSTART`. Recurring
+     * plans store wall clock plus zone, not a UTC instant, so an occurrence
+     * stays at the same local time across a DST boundary (§6.1).
+     */
+    get recurrenceDtstart(): string | undefined {
+        return this.value.get("recurrenceDtstart") as string | undefined;
+    }
+    set recurrenceDtstart(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceDtstart");
+        else this.value.set("recurrenceDtstart", v);
+    }
+
+    /** IANA zone `recurrenceDtstart` (and every generated occurrence) is read in. */
+    get recurrenceTimezone(): string | undefined {
+        return this.value.get("recurrenceTimezone") as string | undefined;
+    }
+    set recurrenceTimezone(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceTimezone");
+        else this.value.set("recurrenceTimezone", v);
+    }
+
+    /**
+     * Cancelled occurrences, identified by their local wall-clock dtstart —
+     * the same value a `RECURRENCE-ID` would carry. A `Y.Array<string>` for
+     * the same reason as `tags`: two clients cancelling different occurrences
+     * concurrently must merge into one exception set, not race to create it.
+     */
+    get recurrenceExdate(): string[] {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        return arr ? arr.toArray() : [];
+    }
+
+    /** Record one occurrence as cancelled, if not already. */
+    addRecurrenceExdate(occurrenceId: string): void {
+        const id = occurrenceId.trim();
+        if (!id) return;
+        let arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) {
+            arr = new Y.Array<string>();
+            this.value.set("recurrenceExdate", arr);
+        }
+        if (!arr.toArray().includes(id)) arr.push([id]);
+    }
+
+    /** Un-cancel a previously excluded occurrence, if present. */
+    removeRecurrenceExdate(occurrenceId: string): void {
+        const arr = this.value.get("recurrenceExdate") as Y.Array<string> | undefined;
+        if (!arr) return;
+        const idx = arr.toArray().indexOf(occurrenceId);
+        if (idx >= 0) arr.delete(idx, 1);
+    }
+
+    /**
+     * Set on an override item only: the `id` of the recurring item whose
+     * occurrence this overrides. A virtual occurrence becomes this — an
+     * ordinary item — the moment the user edits it (§6.2).
+     */
+    get recurrenceParentId(): string | undefined {
+        return this.value.get("recurrenceParentId") as string | undefined;
+    }
+    set recurrenceParentId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceParentId");
+        else this.value.set("recurrenceParentId", v);
+    }
+
+    /**
+     * Set on an override item only: the local wall-clock dtstart of the
+     * virtual occurrence it replaces — what `RECURRENCE-ID` identifies in
+     * RFC 5545. Read together with `recurrenceParentId`.
+     */
+    get recurrenceOccurrenceId(): string | undefined {
+        return this.value.get("recurrenceOccurrenceId") as string | undefined;
+    }
+    set recurrenceOccurrenceId(v: string | undefined) {
+        if (v === undefined) this.value.delete("recurrenceOccurrenceId");
+        else this.value.set("recurrenceOccurrenceId", v);
+    }
+
     // componentType stored in Y.Map ("table" | "chart" | undefined)
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
@@ -259,6 +495,17 @@ export class Item {
     }
     set yjsTableId(v: string | undefined) {
         this.value.set("yjsTableId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
+    // Id of the calendar (an entry in the project's `calendars` map) embedded
+    // by this item (componentType "calendar"). Unlike a table, a calendar has
+    // no subdoc of its own to reference — this is a plain id lookup.
+    get calendarId(): string | undefined {
+        return this.value.get("calendarId") as string | undefined;
+    }
+    set calendarId(v: string | undefined) {
+        this.value.set("calendarId", v);
         this.value.set("lastChanged", Date.now());
     }
 
@@ -288,7 +535,8 @@ export class Item {
         try {
             const parsed = JSON.parse(raw);
             return Array.isArray(parsed) ? (parsed as string[]) : [];
-        } catch {
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
             return [];
         }
     }
@@ -478,7 +726,9 @@ export class Item {
                             if (cand && String(cand.id) === String(mappedId)) {
                                 try {
                                     cand.addAttachment(url);
-                                } catch {}
+                                } catch (_e) {
+                                    logger.warn({ err: _e }, "Silenced error");
+                                }
                                 throw new Error("__DONE__");
                             }
                         }
@@ -493,7 +743,9 @@ export class Item {
                                 if (ct === text) {
                                     try {
                                         cand.addAttachment(url);
-                                    } catch {}
+                                    } catch (_e) {
+                                        logger.warn({ err: _e }, "Silenced error");
+                                    }
                                     break;
                                 }
                             }
@@ -501,7 +753,9 @@ export class Item {
                     }
                 }
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
 
         // 2) Add to this node itself as usual
         let arr = this.value.get("attachments") as Y.Array<string> | undefined;
@@ -511,7 +765,9 @@ export class Item {
         }
         try {
             logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
 
         arr.push([url]);
         this.value.set("lastChanged", Date.now());
@@ -521,7 +777,9 @@ export class Item {
                     new CustomEvent("item-attachments-changed", { detail: { id: this.id, count: arr.length } }),
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
     }
 
     removeAttachment(url: string) {
@@ -575,7 +833,9 @@ export class Item {
     addComment(author: string, text: string) {
         try {
             logger.info("[Item.addComment] id=", this.id);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
             arr = new Y.Array<Y.Map<CommentValueType>>();
@@ -731,6 +991,9 @@ export class Items implements Iterable<Item> {
         value.set("votes", new Y.Array<string>());
         value.set("attachments", new Y.Array<string>());
         value.set("comments", new Y.Array<Y.Map<CommentValueType>>());
+        // Eagerly initialized so concurrent `addTag` calls from two clients
+        // merge into one shared array instead of racing to create it.
+        value.set("tags", new Y.Array<string>());
 
         this.tree.createNode(this.parentKey, nodeKey, value);
 
@@ -808,6 +1071,13 @@ export class Project {
     // Schedules directly under project root
     get schedules(): Y.Map<Y.Map<ScheduleRuleValueType>> {
         return this.ydoc.getMap("schedules") as Y.Map<Y.Map<ScheduleRuleValueType>>;
+    }
+
+    // Calendars directly under project root, in the same id -> Y.Map shape as
+    // `schedules`. A calendar has a query and view settings and no data of its
+    // own, so it needs no subdoc (docs/crdt-sql-architecture.md §6.6).
+    get calendars(): Y.Map<Y.Map<CalendarValueType>> {
+        return this.ydoc.getMap("calendars") as Y.Map<Y.Map<CalendarValueType>>;
     }
 
     // Items directly under root (parent key 'root')

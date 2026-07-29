@@ -1,3 +1,4 @@
+import { logger } from "../logger.js";
 export function sanitizeUrl(urlStr: string | undefined): string {
     if (!urlStr) return "";
     try {
@@ -14,7 +15,8 @@ export function sanitizeUrl(urlStr: string | undefined): string {
         }
 
         return url.pathname + url.search;
-    } catch {
+    } catch (_e) {
+        logger.warn({ err: _e }, "Silenced error");
         return urlStr;
     }
 }

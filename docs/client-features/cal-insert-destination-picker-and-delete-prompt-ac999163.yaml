@@ -1,0 +1,20 @@
+id: FTR-ac999163
+title: INSERT destination picker and DELETE prompt for the calendar
+title-ja: カレンダーのINSERT先ピッカーとDELETE確認プロンプト
+description: 'Creating a calendar entry always creates a new outline item, and there is no implicit inbox (docs/crdt-sql-architecture.md §4.3): a "New entry" dialog requires picking a destination page before the item can be created, and cancelling creates nothing. Previously used destinations are offered back first, most recent first, from a per-user/per-project local-storage history (never the project doc, so it creates no CRDT churn or undo entries); a remembered destination that no longer resolves is dropped rather than offered again. Deleting an entry always prompts between two dispositions — delete-source (remove the item) and clear-projected-field (keep the item, clear the date that put it on the calendar) — with no "don''t ask again", so an ordinary keystroke never silently destroys writing. A materialized recurrence override is a third case: deleting it records an exception on the source recurring item and removes only the override, leaving the rule and every other occurrence untouched, so its dialog offers only that one, correct outcome instead of the other two. Both flows dispatch through the relation''s existing write path (RelationProvider.applyWrite / assertWriteAllowed), so nothing here bypasses the capability declaration, and both land as ordinary Yjs writes the outline''s existing undo manager already covers.
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/cal-delete-disposition-prompt-f556fc72.spec.ts
+- client/e2e/new/cal-insert-destination-picker-ac999163.spec.ts
+- client/src/components/calendar/CalendarCreateEntryDialog.test.ts
+- client/src/components/calendar/CalendarDeleteEntryDialog.test.ts
+- client/src/components/calendar/CalendarView.test.ts
+- client/src/services/calendar/calendarDestinationCandidates.test.ts
+- client/src/services/calendar/calendarDestinationHistory.test.ts
+- client/src/services/calendar/calendarEntries.test.ts
+- client/src/services/calendar/calendarEntryCreate.test.ts
+- client/src/services/calendar/calendarEntryDelete.test.ts
+- client/src/services/yjstable/relationRowWrite.test.ts

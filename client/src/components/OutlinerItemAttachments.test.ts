@@ -8,6 +8,7 @@ vi.mock("../lib/logger", () => ({
     getLogger: () => ({
         debug: vi.fn(),
         error: vi.fn(),
+        warn: vi.fn(),
     }),
 }));
 

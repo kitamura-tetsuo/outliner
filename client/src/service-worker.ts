@@ -13,7 +13,6 @@ const ASSETS = [
 ];
 
 // Type definitions to avoid no-undef errors
-
 // Import idb in Service Worker environment
 
 interface SyncServiceWorkerGlobalScope {

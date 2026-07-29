@@ -85,12 +85,12 @@ onMount(() => {
                 }
             };
             yarr.observeDeep(handler);
-            unobserve = () => { try { yarr.unobserveDeep(handler); } catch {} };
+            unobserve = () => { try { yarr.unobserveDeep(handler); } catch (err) { logger.warn("Silenced error", { err }); } };
             // Initial reflection
             handler();
         }
-    } catch {}
-    return () => { try { unobserve?.(); } catch {} };
+    } catch (err) { logger.warn("Silenced error", { err }); }
+    return () => { try { unobserve?.(); } catch (err) { logger.warn("Silenced error", { err }); } };
 });
 
 
@@ -155,7 +155,7 @@ function add() {
         const optimistic: Comment = { id, author: user, text: newText, created: time, lastChanged: time };
         localComments = [...localComments, optimistic];
 
-    } catch {}
+    } catch (err) { logger.warn("Silenced error", { err }); }
 
 
     // Normal path: Sync state after Yjs addition and notify parent with exact count
@@ -174,13 +174,13 @@ function add() {
                         countNow = itemComments.length;
                     }
                 }
-            } catch {}
+            } catch (err) { logger.warn("Silenced error", { err }); }
         }
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
             // Notify parent (OutlinerItem) via props callback only
-            try { onCountChanged?.(countNow); } catch {}
+            try { onCountChanged?.(countNow); } catch (err) { logger.warn("Silenced error", { err }); }
         }
     } catch (e) {
         logger.error({ error: e as Error }, '[CommentThread] failed to sync after add');
@@ -213,14 +213,14 @@ function remove(id: string) {
         }
     }
     try { commentsObj?.deleteComment?.(id); } catch (e) { logger.error({ error: e as Error }, '[CommentThread] deleteComment error'); }
-    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after delete error'); }
+    try { /* Yjs  derived updates; no direct assignment to commentsList */ } catch (e) { logger.error({ error: e as Error }, '[CommentThread] toPlain after delete error'); }
     localComments = localComments.filter(c => c.id !== id);
 
     const countNow = renderCommentsState.length;
     // Only notify if count actually changed to prevent infinite loops
     if (countNow !== lastNotifiedCount) {
         lastNotifiedCount = countNow;
-        try { onCountChanged?.(countNow); } catch {}
+        try { onCountChanged?.(countNow); } catch (err) { logger.warn("Silenced error", { err }); }
     }
 }
 

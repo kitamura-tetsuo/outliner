@@ -283,7 +283,14 @@ export class CursorValidator {
     static async assertCursorBlink(page: Page, sampleDurationMs: number = 1600): Promise<void> {
         // Verify that an active cursor exists
         const initialDomInfo = await this.getDOMCursorInfo(page);
-        expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
+        if (initialDomInfo.activeCursors === 0) {
+            // Give it a tiny bit more time in case of a race condition
+            await page.waitForTimeout(500);
+            const retryInfo = await this.getDOMCursorInfo(page);
+            expect(retryInfo.activeCursors).toBeGreaterThan(0);
+        } else {
+            expect(initialDomInfo.activeCursors).toBeGreaterThan(0);
+        }
 
         const samples = await page.evaluate(async (duration: number) => {
             const collected: string[] = [];

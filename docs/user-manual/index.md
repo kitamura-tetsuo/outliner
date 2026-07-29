@@ -7,13 +7,14 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 1. [Basic Operations](#basic-operations)
 2. [Text Editing and Formatting](#text-editing-and-formatting)
 3. [Item Manipulation](#item-manipulation)
-4. [Links](#links)
-5. [Search and Commands](#search-and-commands)
-6. [Selection and Clipboard](#selection-and-clipboard)
-7. [Attachments](#attachments)
-8. [Advanced Features](#advanced-features)
-9. [Database Tables](#database-tables)
-10. [Keyboard Shortcuts](#keyboard-shortcuts)
+4. [Undo and Redo](#undo-and-redo)
+5. [Links](#links)
+6. [Search and Commands](#search-and-commands)
+7. [Selection and Clipboard](#selection-and-clipboard)
+8. [Attachments](#attachments)
+9. [Advanced Features](#advanced-features)
+10. [Database Tables](#database-tables)
+11. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -84,6 +85,19 @@ Easily reorder items using drag and drop.
 
 ---
 
+## Undo and Redo
+
+Undo and redo run off a single history for the whole project.
+
+### Shortcuts
+
+- `Ctrl+Z` undoes the most recent change.
+- `Ctrl+Shift+Z` or `Ctrl+Y` redoes it.
+
+The outline and every database table each keep their own change history internally, but you never have to think about which one you are in. Changes made by other people editing at the same time are never undone by you.
+
+---
+
 ## Links
 
 Create links to other pages within Outliner or external websites.
@@ -131,6 +145,15 @@ Select a rectangular area across items.
 - Mouse: `Alt + Shift + Drag`
 - Keyboard: `Alt + Shift + Arrow keys`
 
+### Actions on Selection
+
+With an active selection you can:
+
+- Copy and paste it, even when it spans multiple items.
+- Delete the whole selection in one step.
+- Drag and drop the selected text to move it.
+- Apply formatting such as bold or italic to the selected range.
+
 ---
 
 ## Attachments
@@ -151,8 +174,8 @@ Outliner includes advanced capabilities like aliases and scheduling.
 - **Schedule:** The Schedule view shows date-tagged items as a timeline.
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
 - **Comments and Votes:** Discuss and vote on items, with live seeded threads and votes.
-- **Publishing and Sharing:** Read-only sharing, scheduled publishing, and snapshots.
-- **Collaboration:** Real-time editing with other users.
+- **Publishing and Sharing:** Read-only sharing (tokens), scheduled publishing, and snapshots (snapshot diff viewer).
+- **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
 ---
 
@@ -193,13 +216,15 @@ Databases are stored the same way as other outliner data, so data changes and sc
 
 You can also access a complete list of shortcuts by clicking the **Keyboard & accessibility help** link in the document toolbar.
 
-| Action                  | Windows/Linux         | Mac                      |
-| ----------------------- | --------------------- | ------------------------ |
-| Add new item            | `Enter`               | `Enter`                  |
-| Select entire line      | `Ctrl + L`            | `Cmd + L`                |
-| Select to start of line | `Shift + Home`        | `Shift + Home`           |
-| Select to end of line   | `Shift + End`         | `Shift + End`            |
-| Box selection (Mouse)   | `Alt + Shift + Drag`  | `Option + Shift + Drag`  |
-| Box selection (Key)     | `Alt + Shift + Arrow` | `Option + Shift + Arrow` |
-| Expand selection        | `Shift + Alt + Right` | `Shift + Option + Right` |
-| Shrink selection        | `Shift + Alt + Left`  | `Shift + Option + Left`  |
+| Action                  | Windows/Linux                    | Mac                            |
+| ----------------------- | -------------------------------- | ------------------------------ |
+| Add new item            | `Enter`                          | `Enter`                        |
+| Select entire line      | `Ctrl + L`                       | `Cmd + L`                      |
+| Select to start of line | `Shift + Home`                   | `Shift + Home`                 |
+| Select to end of line   | `Shift + End`                    | `Shift + End`                  |
+| Box selection (Mouse)   | `Alt + Shift + Drag`             | `Option + Shift + Drag`        |
+| Box selection (Key)     | `Alt + Shift + Arrow`            | `Option + Shift + Arrow`       |
+| Expand selection        | `Shift + Alt + Right`            | `Shift + Option + Right`       |
+| Shrink selection        | `Shift + Alt + Left`             | `Shift + Option + Left`        |
+| Undo                    | `Ctrl + Z`                       | `Cmd + Z`                      |
+| Redo                    | `Ctrl + Shift + Z` or `Ctrl + Y` | `Cmd + Shift + Z` or `Cmd + Y` |

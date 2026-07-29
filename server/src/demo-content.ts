@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 23;
+export const DEMO_TEMPLATE_VERSION = 27;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -27,10 +27,15 @@ export interface DemoItem {
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "yjstable";
+    componentType?: "yjstable" | "calendar";
     // For "yjstable" components: id of the demo table (see demoTables below)
     // this item embeds.
     yjsTableId?: string;
+    // For "calendar" components: id of the demo calendar (see demoCalendars
+    // below) this item embeds. A calendar has no subdoc of its own, so unlike
+    // a table there is no separate room to seed — registerDemoCalendars
+    // writes it straight into the project doc's `calendars` map.
+    calendarId?: string;
     // Seed votes from these voter ids.
     votes?: string[];
     // Seed a comment thread.
@@ -41,6 +46,16 @@ export interface DemoItem {
     ref?: string;
     // Make this item an alias mirroring the item declared with `ref: <aliasTo>`.
     aliasTo?: string;
+    // Calendar time model (#4341): a floating date (`YYYY-MM-DD`) when
+    // `allDay` is true, an ISO instant otherwise.
+    start?: string;
+    allDay?: boolean;
+    // ISO 8601 duration (`Item.duration`'s own format), e.g. "PT30M".
+    duration?: string;
+    // Deadline, independent of `start`/`duration` (#4341).
+    due?: string;
+    // Structured tags (#4342), grouped into calendar lanes by #4348.
+    tags?: string[];
     // Nested child items.
     children?: DemoItem[];
 }
@@ -522,6 +537,69 @@ export function registerDemoScheduleRules(projectDoc: Y.Doc): void {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Demo calendars (the calendars registry: query + role assignment, no data of
+// its own — docs/crdt-sql-architecture.md §6.6). Unlike a table, a calendar
+// has no subdoc, so it is written straight into the project doc's
+// `calendars` map, in the same id -> Y.Map shape `schedules` already uses.
+// ---------------------------------------------------------------------------
+
+export interface DemoCalendarTemplate {
+    // Fixed id so a reseed replaces the calendar instead of adding a copy.
+    calendarId: string;
+    name: string;
+    query: string;
+    roleTitle?: string;
+    roleStart?: string;
+    roleAllDay?: string;
+    roleDuration?: string;
+    roleDue?: string;
+    groupAxes?: string[];
+}
+
+export const DEMO_CALENDAR_ID = "demo-calendar-tasks";
+
+export const demoCalendars: DemoCalendarTemplate[] = [
+    {
+        calendarId: DEMO_CALENDAR_ID,
+        name: "Tasks Calendar",
+        // source_kind/source_id make every row addressable for a write
+        // (docs/crdt-sql-architecture.md §4.4, §6.3), so this calendar is not
+        // read-only the moment a grid view is built on top of it. The value
+        // must be the reserved relation name (`ITEMS_RELATION_NAME`,
+        // `outline_items`) — that is what a drag/drop write resolves against
+        // (tableEngine.ts's `resolveRelationInternal`), not a descriptive label.
+        query: "SELECT id, text AS title, due, all_day, start_on, start_at, duration, tags, "
+            + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+        roleTitle: "title",
+        roleStart: "start_at",
+        roleAllDay: "all_day",
+        roleDuration: "duration",
+        roleDue: "due",
+        groupAxes: ["tags"],
+    },
+];
+
+/** Write the demo's calendars into the project doc's `calendars` map. */
+export function registerDemoCalendars(projectDoc: Y.Doc): void {
+    const calendars = projectDoc.getMap<Y.Map<unknown>>("calendars");
+    for (const template of demoCalendars) {
+        const calendarMap = new Y.Map<unknown>();
+        calendars.set(template.calendarId, calendarMap);
+        calendarMap.set("name", template.name);
+        calendarMap.set("query", template.query);
+        calendarMap.set("viewType", "week");
+        if (template.roleTitle) calendarMap.set("roleTitle", template.roleTitle);
+        if (template.roleStart) calendarMap.set("roleStart", template.roleStart);
+        if (template.roleAllDay) calendarMap.set("roleAllDay", template.roleAllDay);
+        if (template.roleDuration) calendarMap.set("roleDuration", template.roleDuration);
+        if (template.roleDue) calendarMap.set("roleDue", template.roleDue);
+        const groupAxes = new Y.Array<string>();
+        if (template.groupAxes && template.groupAxes.length > 0) groupAxes.push(template.groupAxes);
+        calendarMap.set("groupAxes", groupAxes);
+    }
+}
+
 /**
  * Register every demo table in the project doc: a registry entry (display
  * name + subdoc reference) per table. The subdoc guid is deterministic so all
@@ -593,6 +671,7 @@ export const demoPages: DemoPageTemplate[] = [
             "  [Advanced Features]: live database tables with charts, aliases, and attachments.",
             "  [Tasks and Habits]: task management and habit tracking built on database tables.",
             "  [Recurring Tasks]: daily and weekly tasks generated by recurring SQL execution.",
+            "  [Calendars]: a query plus a role assignment over its result columns, no data of its own.",
             "  [Schedule Rules]: automate database operations",
             "Give it a try! Everything in this project is editable.",
         ],
@@ -879,6 +958,75 @@ export const demoPages: DemoPageTemplate[] = [
             },
         ],
     },
+    {
+        title: "Calendars",
+        items: [
+            {
+                text:
+                    "A calendar is a query plus a role assignment over its result columns — which column is the title, the start, the all-day flag, the duration, and which columns are grouping axes. It has no data of its own.",
+            },
+            {
+                text: "How it works:",
+                children: [
+                    {
+                        text:
+                            "Candidates are the columns the query actually returns, in result order — never a fixed schema. Changing the query never discards an existing role assignment for a column that is temporarily missing from the new result.",
+                    },
+                    {
+                        text:
+                            'A query must SELECT both "source_kind" and "source_id" for its rows to be writable; otherwise the calendar is read-only and says so.',
+                    },
+                    {
+                        text:
+                            "Reassigning a role, editing the query, or changing group axes are all undoable, on the same shared history as everything else (see [Undo and Redo]).",
+                    },
+                    {
+                        text:
+                            "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month with the toolbar select; Gantt is a later feature.",
+                    },
+                    {
+                        text:
+                            "Grouping by \"tags\" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry's small handle onto another lane to replace its tag set; hold Ctrl (Cmd on macOS) while dropping to add the lane's tag instead of replacing.",
+                    },
+                    {
+                        text:
+                            '"New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.',
+                    },
+                ],
+            },
+            {
+                text:
+                    "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
+                componentType: "calendar",
+                calendarId: DEMO_CALENDAR_ID,
+            },
+            {
+                text: "Scheduled today",
+                start: `${demoUtcDate(0)}T09:00:00.000Z`,
+                allDay: false,
+                duration: "PT30M",
+                tags: ["work"],
+            },
+            {
+                text: "Scheduled tomorrow, longer block",
+                start: `${demoUtcDate(1)}T13:00:00.000Z`,
+                allDay: false,
+                duration: "PT2H",
+                tags: ["urgent"],
+            },
+            {
+                text: "All-day conference",
+                start: demoUtcDate(2),
+                allDay: true,
+                duration: "P2D",
+                tags: ["work", "travel"],
+            },
+            {
+                text: "Deadline only, no start — renders as a marker, not a block",
+                due: `${demoUtcDate(3)}T17:00:00.000Z`,
+            },
+        ],
+    },
 ];
 
 // Populate an existing, empty project with the demo template pages.
@@ -902,6 +1050,10 @@ export function populateDemoProject(project: Project, author = "seed-server"): v
     // Recurring SQL execution against the routine occurrences table (see the
     // "Recurring Tasks" page).
     registerDemoScheduleRules(project.ydoc);
+
+    // The calendars registry (query + role assignment, no subdoc of its own;
+    // see the "Calendars" page).
+    registerDemoCalendars(project.ydoc);
 
     for (const pageTemplate of demoPages) {
         const page = project.addPage(pageTemplate.title, author);
@@ -941,6 +1093,12 @@ function addDemoItems(
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
         if (def.yjsTableId !== undefined) node.yjsTableId = def.yjsTableId;
+        if (def.calendarId !== undefined) node.calendarId = def.calendarId;
+        if (def.start !== undefined) node.start = def.start;
+        if (def.allDay !== undefined) node.allDay = def.allDay;
+        if (def.duration !== undefined) node.duration = def.duration;
+        if (def.due !== undefined) node.due = def.due;
+        if (def.tags) node.tags = def.tags;
         if (def.votes) {
             for (const voter of def.votes) node.toggleVote(voter);
         }

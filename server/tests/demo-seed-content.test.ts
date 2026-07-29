@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import {
     buildDemoProject,
     buildDemoScheduleRules,
+    DEMO_CALENDAR_ID,
     DEMO_DAILY_RULE_ID,
     DEMO_HABITS_TABLE_ID,
     DEMO_LANDING_PAGE_TITLE,
@@ -12,6 +13,7 @@ import {
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
     DEMO_WEEKLY_RULE_ID,
+    demoCalendars,
     demoPages,
     demoRoutineTemplates,
     demoTables,
@@ -404,5 +406,91 @@ describe("Demo seed content", () => {
             expect(sql).to.contain("INSERT INTO routine_occurrences");
             expect(sql).to.contain("FROM routine_templates t");
         }
+    });
+
+    it("seeds a live calendar component bound to the demo calendar", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const calendarItem = findChildByText(
+            calendarsPage!.items,
+            "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles "
+                + "and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
+        );
+        expect(calendarItem, "calendar item exists").to.not.equal(undefined);
+        expect(calendarItem!.componentType).to.equal("calendar");
+        expect(calendarItem!.calendarId).to.equal(DEMO_CALENDAR_ID);
+    });
+
+    it("registers the demo calendar in the project doc's calendars map", () => {
+        const calendars = project.ydoc.getMap("calendars");
+        expect(calendars.size).to.equal(demoCalendars.length);
+
+        for (const template of demoCalendars) {
+            const calendarMap = calendars.get(template.calendarId) as Y.Map<unknown> | undefined;
+            expect(calendarMap, `calendar ${template.calendarId} is registered`).to.not.equal(undefined);
+            expect(calendarMap!.get("name")).to.equal(template.name);
+            expect(calendarMap!.get("query")).to.equal(template.query);
+            expect(calendarMap!.get("roleTitle")).to.equal(template.roleTitle);
+            expect(calendarMap!.get("roleStart")).to.equal(template.roleStart);
+            expect(calendarMap!.get("roleAllDay")).to.equal(template.roleAllDay);
+            expect(calendarMap!.get("roleDuration")).to.equal(template.roleDuration);
+            expect(calendarMap!.get("roleDue")).to.equal(template.roleDue);
+            const groupAxes = calendarMap!.get("groupAxes") as Y.Array<string>;
+            expect(groupAxes.toArray()).to.deep.equal(template.groupAxes);
+        }
+    });
+
+    it("seeds concrete calendar entries on the Calendars page so the grid views have something to draw", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const timed = findChildByText(calendarsPage!.items, "Scheduled today");
+        expect(timed, "timed entry exists").to.not.equal(undefined);
+        expect(timed!.allDay).to.equal(false);
+        expect(timed!.start).to.be.a("string");
+        expect(timed!.duration).to.equal("PT30M");
+
+        const allDay = findChildByText(calendarsPage!.items, "All-day conference");
+        expect(allDay, "all-day entry exists").to.not.equal(undefined);
+        expect(allDay!.allDay).to.equal(true);
+        expect(allDay!.duration).to.equal("P2D");
+
+        const dueOnly = findChildByText(
+            calendarsPage!.items,
+            "Deadline only, no start — renders as a marker, not a block",
+        );
+        expect(dueOnly, "due-only entry exists").to.not.equal(undefined);
+        expect(dueOnly!.due).to.be.a("string");
+        expect(dueOnly!.start).to.equal(undefined);
+    });
+
+    it("the demo calendar's query is a plain, addressable SELECT (source_kind/source_id present)", () => {
+        const template = demoCalendars[0];
+        expect(/\bjoin\b/i.test(template.query)).to.equal(false);
+        expect(/\bgroup\s+by\b/i.test(template.query)).to.equal(false);
+        // The value must be the reserved relation name (ITEMS_RELATION_NAME),
+        // not a descriptive label — that is what a drag/drop write resolves
+        // against (client's tableEngine.ts resolveRelationInternal).
+        expect(template.query).to.contain("'outline_items' AS source_kind");
+        expect(template.query).to.contain("id AS source_id");
+        expect(template.query).to.contain("FROM outline_items");
+    });
+
+    it("the demo calendar's query returns tags, matching its tags group axis (#4348)", () => {
+        const template = demoCalendars[0];
+        expect(template.query).to.contain("tags");
+        expect(template.groupAxes).to.deep.equal(["tags"]);
+    });
+
+    it("seeds tags on the Calendars page entries so grouping lanes have something to show (#4348)", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const timed = findChildByText(calendarsPage!.items, "Scheduled today");
+        expect(timed!.tags).to.deep.equal(["work"]);
+
+        const allDay = findChildByText(calendarsPage!.items, "All-day conference");
+        expect(allDay!.tags).to.deep.equal(["work", "travel"]);
     });
 });

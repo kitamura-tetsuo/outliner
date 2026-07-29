@@ -48,6 +48,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
     const router = express.Router();
 
     router.use(cors({ origin: true, credentials: true }));
+    router.options("/seed-demo", cors({ origin: true, credentials: true }));
 
     router.post("/seed-demo", async (req, res): Promise<void> => {
         try {
@@ -200,6 +201,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                                 const schedules = ydoc.getMap("schedules");
                                 Array.from(schedules.keys()).forEach(key => {
                                     schedules.delete(key);
+                                });
+
+                                // Same for calendars: the template's own
+                                // calendars are re-registered by populateDemoProject.
+                                const calendars = ydoc.getMap("calendars");
+                                Array.from(calendars.keys()).forEach(key => {
+                                    calendars.delete(key);
                                 });
 
                                 // Re-initialize metadata

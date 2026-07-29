@@ -11,15 +11,17 @@
 // reference sibling tables by their plain SQL name and Postgres resolves the
 // join itself. Relations that are not materialized yet are reported by the
 // engine as `relation "x" does not exist`; the adapter asks the registry port
-// to materialize them and retries, so a cross-table result is either complete
-// or an error — never a silently partial one.
+// to resolve them into relation providers and retries, so a cross-relation
+// result is either complete or an error — never a silently partial one.
 
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
+import { formatQueryDateFields } from "./queryResultFormatting";
+import type { RelationProvider } from "./relationProvider";
 import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff } from "./schemaIntrospection";
-import { quoteIdent } from "./sqlNames";
+import { quoteIdent, reservedRelationNameError } from "./sqlNames";
 import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
 
@@ -49,33 +51,38 @@ export const MAX_RELATION_RESOLUTION_ROUNDS = 16;
 
 /**
  * The project-level context an adapter needs but must not reach for itself:
- * name uniqueness, publishing the applied SQL name, and materializing sibling
- * tables a query references.
+ * name uniqueness, publishing the applied SQL name, and materializing the
+ * sibling relations a query references.
+ *
+ * Sibling relations are resolved as `RelationProvider`s rather than as tables:
+ * a query may reference another table's Data Storage or the system `items`
+ * projection, and from here they are the same thing — a relation that can be
+ * materialized into the shared schema and written back to.
  */
-export interface TableRegistryPort {
+export interface RelationRegistryPort {
     /** Message when another table of the project already uses `sqlName`. */
     checkSqlNameConflict?(tableId: string, sqlName: string): string | undefined;
     /** Publish the identifier of the schema that was just applied. */
     recordSqlName?(tableId: string, sqlName: string): void;
     /**
-     * Load and materialize a sibling table into the shared schema. Resolves
-     * true when the relation is now available, false when the project has no
-     * table with that name.
+     * Resolve the provider of a relation a query referenced and materialize it
+     * into the shared schema. Resolves undefined when the project has no
+     * relation with that name.
      */
-    materializeRelation?(sqlName: string): Promise<boolean>;
+    resolveRelation?(sqlName: string): Promise<RelationProvider | undefined>;
 }
 
 export interface TableSyncOptions {
     /** Shared Postgres schema holding every table of the project. */
     pgSchema: string;
-    registry?: TableRegistryPort;
+    registry?: RelationRegistryPort;
 }
 
 export class TableSyncAdapter {
     private readonly handles: TableHandles;
     private readonly listeners = new Set<TableSyncCallbacks>();
     private readonly pgSchema: string;
-    private readonly registry: TableRegistryPort | undefined;
+    private readonly registry: RelationRegistryPort | undefined;
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
@@ -195,9 +202,21 @@ export class TableSyncAdapter {
      */
     async prepareSchemaChange(sql: string): Promise<{ parsed: ParsedTableSchema; diff: SchemaDiff; }> {
         const parsed = await parseCreateTable(sql);
-        const conflict = this.registry?.checkSqlNameConflict?.(this.handles.tableId, parsed.tableName);
-        if (conflict) throw new TableSqlError("schema", conflict);
+        this.assertNameAvailable(parsed.tableName);
         return { parsed, diff: diffSchemas(this.schema, parsed) };
+    }
+
+    /**
+     * A table name must be free of both kinds of clash: another table of the
+     * project, and a system-defined relation nobody authors. The reserved
+     * check does not go through the registry — it holds for every adapter,
+     * with or without a project context.
+     */
+    private assertNameAvailable(tableName: string): void {
+        const reserved = reservedRelationNameError(tableName);
+        if (reserved) throw new TableSqlError("schema", reserved);
+        const conflict = this.registry?.checkSqlNameConflict?.(this.handles.tableId, tableName);
+        if (conflict) throw new TableSqlError("schema", conflict);
     }
 
     /**
@@ -206,8 +225,7 @@ export class TableSyncAdapter {
      * by the caller), rebuild the PGlite table and reload every record.
      */
     async applySchema(parsed: ParsedTableSchema): Promise<void> {
-        const conflict = this.registry?.checkSqlNameConflict?.(this.handles.tableId, parsed.tableName);
-        if (conflict) throw new TableSqlError("schema", conflict);
+        this.assertNameAvailable(parsed.tableName);
         const diff = diffSchemas(this.schema, parsed);
         this.handles.doc.transact(() => {
             setSchemaText(this.handles, parsed.createSql);
@@ -227,6 +245,11 @@ export class TableSyncAdapter {
         }
         try {
             const parsed = await parseCreateTable(sql);
+            // Also checked here, not only on apply: the schema text may arrive
+            // from another client, and a reserved name must never shadow the
+            // system relation of the same name.
+            const reserved = reservedRelationNameError(parsed.tableName);
+            if (reserved) throw new TableSqlError("schema", reserved);
             await this.rebuild(parsed);
         } catch (err) {
             this.schema = undefined;
@@ -448,12 +471,13 @@ export class TableSyncAdapter {
                     const relation = missingRelationName(err);
                     if (
                         !relation
-                        || !this.registry?.materializeRelation
+                        || !this.registry?.resolveRelation
                         || round >= MAX_RELATION_RESOLUTION_ROUNDS
                     ) throw err;
                     // Resolving runs its own writes, so it must happen outside
                     // the execution lock the query itself holds.
-                    if (!await this.registry.materializeRelation(relation)) throw err;
+                    const provider = await this.registry.resolveRelation(relation);
+                    if (!provider) throw err;
                     if (this.disposed) return undefined;
                 }
             }
@@ -478,43 +502,9 @@ export class TableSyncAdapter {
                 const res = await db.query<Record<string, unknown>>(selectSql);
                 await db.exec("COMMIT");
 
-                const DATE_OID = 1082;
-                const TIMESTAMP_OID = 1114;
-                const TIMESTAMPTZ_OID = 1184;
-                const dateFields = new Set(res.fields.filter(f => f.dataTypeID === DATE_OID).map(f => f.name));
-                const tsNoTzFields = new Set(
-                    res.fields.filter(f => f.dataTypeID === TIMESTAMP_OID).map(f => f.name),
-                );
-                const tsTzFields = new Set(
-                    res.fields.filter(f => f.dataTypeID === TIMESTAMPTZ_OID).map(f => f.name),
-                );
-                const pad = (n: number) => String(n).padStart(2, "0");
-
-                const rows = res.rows.map((row) => {
-                    const newRow = { ...row };
-                    for (const [key, value] of Object.entries(newRow)) {
-                        if (value instanceof Date) {
-                            if (dateFields.has(key)) {
-                                newRow[key] = `${value.getUTCFullYear()}-${pad(value.getUTCMonth() + 1)}-${
-                                    pad(value.getUTCDate())
-                                }`;
-                            } else if (tsNoTzFields.has(key)) {
-                                newRow[key] = `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${
-                                    pad(value.getDate())
-                                }T${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}.${
-                                    String(value.getMilliseconds()).padStart(3, "0")
-                                }Z`;
-                            } else if (tsTzFields.has(key)) {
-                                newRow[key] = value.toISOString();
-                            }
-                        }
-                    }
-                    return newRow;
-                });
-
                 return {
                     columns: res.fields.map((f) => f.name),
-                    rows,
+                    rows: formatQueryDateFields(res.fields, res.rows),
                 };
             } catch (err) {
                 try {
