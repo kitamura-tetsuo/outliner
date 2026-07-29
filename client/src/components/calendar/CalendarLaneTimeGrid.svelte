@@ -84,9 +84,15 @@ function onBandDragLeave(lane: CalendarLane) {
 function onBandDrop(lane: CalendarLane, e: DragEvent) {
     e.preventDefault();
     hoveredLane = undefined;
-    if (!draggingEntry) return;
+    // `draggingEntry` is the fast path. Recover from the standard
+    // DataTransfer payload as well: a reactive redraw between dragover and
+    // drop must not turn a valid browser drag into a no-op.
+    const draggedKey = e.dataTransfer?.getData("text/plain");
+    const entry = draggingEntry
+        ?? (draggedKey ? lanes.flatMap((candidate) => candidate.entries).find(({ key }) => key === draggedKey) : undefined);
+    if (!entry) return;
     const mode = e.ctrlKey || e.metaKey ? "add" : "replace";
-    onLaneDrop(draggingEntry, lane.value, mode);
+    onLaneDrop(entry, lane.value, mode);
     draggingEntry = undefined;
 }
 </script>
