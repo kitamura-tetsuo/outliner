@@ -110,7 +110,7 @@ test.describe("FTR-6a4348b1: grouping lanes", () => {
                 // Converting the anchor into a calendar can change flattened
                 // item positions, so resolve the source row by its stable
                 // seeded text rather than retaining an array index.
-                const item = (globalThis as any).generalStore.currentPage.items.find(
+                const item = Array.from((globalThis as any).generalStore.currentPage.items).find(
                     (candidate: any) => candidate.text === "Work item",
                 );
                 return item?.tags.length === 1 && item.tags[0] === "urgent";
