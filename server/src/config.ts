@@ -14,6 +14,8 @@ const ConfigSchema = z.object({
     RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
     RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(1000),
     SENTRY_DSN: z.string().optional(),
+    TRUST_PROXY_HEADERS: z.preprocess((val) => val === "true" || val === true, z.boolean()).default(false),
+    TRUSTED_PROXY_HOPS: z.coerce.number().default(1),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

@@ -11,6 +11,7 @@ import {
     populateDemoProject,
     seedDemoTableDoc,
 } from "./demo-content.js";
+import { type Config } from "./config.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { getClientIp } from "./utils/ip.js";
@@ -45,7 +46,7 @@ export function shouldResetDemo(state: DemoResetState): boolean {
         || state.missingTemplatePages;
 }
 
-export function createDemoRouter(hocuspocus: HocuspocusInstance) {
+export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config) {
     const router = express.Router();
 
     router.use(cors({ origin: true, credentials: true }));
@@ -57,7 +58,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             logger.info({ event: "seed_demo_request", force });
 
             if (force) {
-                const clientIp = getClientIp(req);
+                const clientIp = getClientIp(req, config);
                 const lastForce = forceRateLimits.get(clientIp) || 0;
                 const now = Date.now();
 
