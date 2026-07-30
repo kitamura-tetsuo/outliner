@@ -186,10 +186,18 @@ function onDrop(cell: MonthCell, e: DragEvent) {
     flex-direction: column;
     border: 1px solid #e5e7eb;
     border-radius: 4px;
-    overflow: hidden;
+    overflow: clip;
 }
 
-.weekday-header,
+.weekday-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #fff;
+}
+
 .cells {
     display: grid;
     grid-template-columns: repeat(7, 1fr);

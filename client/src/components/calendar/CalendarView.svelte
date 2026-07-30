@@ -61,6 +61,7 @@ import {
     getCalendarMap,
     updateCalendar,
 } from "../../services/calendar/calendarService";
+import { computeDayHeaders } from "../../services/calendar/calendarDayHeaders";
 import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import { listSupportedTimeZones, resolveCalendarTimezone } from "../../services/calendar/calendarTimezone";
 import { globalUndoRouter } from "../../services/undo/undoRouter";
@@ -189,6 +190,11 @@ const timeGridLayout = $derived(
     isGantt || viewType === "month" || groupingActive
         ? undefined
         : layoutTimeGrid(placedEntries, range.start, range.end),
+);
+const dayHeaders = $derived(
+    isGantt || viewType === "month"
+        ? undefined
+        : computeDayHeaders(range.start, timeGridLayout?.dayCount ?? lanes?.[0]?.layout?.dayCount ?? 1, timeZone)
 );
 const monthCells = $derived(
     !isGantt && viewType === "month" ? layoutMonthGrid(monthFilteredEntries, range.start, range.end) : undefined,
@@ -607,6 +613,8 @@ onDestroy(() => {
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
             {lanes}
+            {dayHeaders}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             rangeStart={range.start}
             rangeEnd={range.end}
             workingHoursStartMinutes={workingHoursStart}
@@ -627,6 +635,8 @@ onDestroy(() => {
     {:else if timeGridLayout}
         <CalendarTimeGrid
             layout={timeGridLayout}
+            {dayHeaders}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             rangeStart={range.start}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}

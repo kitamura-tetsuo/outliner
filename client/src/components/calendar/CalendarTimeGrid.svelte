@@ -21,15 +21,19 @@
 // existing pattern) without touching reschedule at all.
 
 import { onMount } from "svelte";
+import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { TimeGridLayout } from "../../services/calendar/calendarTimeGridLayout";
 
 const DAY_MS = 86_400_000;
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MIN_DURATION_MS = 5 * 60 * 1000;
 const ROW_HEIGHT_PX = 48; // pixels per hour
 
 interface Props {
     layout: TimeGridLayout;
+    dayHeaders?: DayHeader[];
+    todayUtcMs?: number;
     rangeStart: number;
     workingHoursStartMinutes: number;
     workingHoursEndMinutes: number;
@@ -51,6 +55,8 @@ interface Props {
 
 let {
     layout,
+    dayHeaders,
+    todayUtcMs,
     rangeStart,
     workingHoursStartMinutes,
     workingHoursEndMinutes,
@@ -175,6 +181,23 @@ onMount(() => {
 <svelte:window onpointermove={onPointerMove} onpointerup={onPointerUp} onpointercancel={onPointerCancel} />
 
 <div class="time-grid" data-testid="calendar-time-grid">
+    {#if dayHeaders}
+        <div class="day-header-row" style={`grid-template-columns: 3.5rem repeat(${layout.dayCount}, 1fr)`}>
+            <div class="header-spacer"></div>
+            {#each dayHeaders as header (header.dayIndex)}
+                <div
+                    class="day-header-cell"
+                    class:is-today={header.dateUtcMs === todayUtcMs}
+                    class:is-weekend={header.weekday === 0 || header.weekday === 6}
+                    data-testid={`calendar-day-header-${header.dayIndex}`}
+                    data-date={header.isoDate}
+                >
+                    {WEEKDAY_LABELS[header.weekday]} {header.month}/{header.dayOfMonth}
+                </div>
+            {/each}
+        </div>
+    {/if}
+
     {#if layout.allDay.length > 0 || layout.milestones.length > 0}
         <div class="band-row" data-testid="calendar-all-day-band" style={`grid-template-columns: repeat(${layout.dayCount}, 1fr)`}>
             {#each layout.allDay as p (p.entry.key)}
@@ -311,7 +334,34 @@ onMount(() => {
     flex-direction: column;
     border: 1px solid #e5e7eb;
     border-radius: 4px;
-    overflow: hidden;
+    overflow: clip;
+}
+
+.day-header-row {
+    display: grid;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.day-header-cell {
+    padding: 4px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    border-left: 1px solid #f3f4f6;
+}
+
+.day-header-cell.is-today {
+    color: #2563eb;
+}
+
+.day-header-cell.is-weekend {
+    color: #6b7280;
+    background: #f9fafb;
 }
 
 .band-row {

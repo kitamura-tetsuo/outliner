@@ -13,14 +13,19 @@
 // own `ctrlKey`/`metaKey`), and what keeps this from fighting the reschedule
 // drag's `setPointerCapture` for the same pointer gesture.
 
+import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { CalendarLane } from "../../services/calendar/calendarGrouping";
 import { collapseLanePath } from "../../services/calendar/calendarGrouping";
 import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import CalendarTimeGrid from "./CalendarTimeGrid.svelte";
 
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 interface Props {
     lanes: CalendarLane[];
+    dayHeaders?: DayHeader[];
+    todayUtcMs?: number;
     rangeStart: number;
     rangeEnd: number;
     workingHoursStartMinutes: number;
@@ -42,6 +47,8 @@ interface Props {
 
 let {
     lanes,
+    dayHeaders,
+    todayUtcMs,
     rangeStart,
     rangeEnd,
     workingHoursStartMinutes,
@@ -103,6 +110,23 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
 </script>
 
 <div class="lane-time-grid" data-testid="calendar-lane-time-grid">
+    {#if dayHeaders && bands.length > 0}
+        <div class="day-header-row" style={`grid-template-columns: 3.5rem repeat(${bands[0].layout.dayCount}, 1fr)`}>
+            <div class="header-spacer"></div>
+            {#each dayHeaders as header (header.dayIndex)}
+                <div
+                    class="day-header-cell"
+                    class:is-today={header.dateUtcMs === todayUtcMs}
+                    class:is-weekend={header.weekday === 0 || header.weekday === 6}
+                    data-testid={`calendar-day-header-${header.dayIndex}`}
+                    data-date={header.isoDate}
+                >
+                    {WEEKDAY_LABELS[header.weekday]} {header.month}/{header.dayOfMonth}
+                </div>
+            {/each}
+        </div>
+    {/if}
+
     {#each bands as { lane, layout } (laneTestId(lane.value))}
         <div
             role="group"
@@ -159,6 +183,33 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.day-header-row {
+    display: grid;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.day-header-cell {
+    padding: 4px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+    border-left: 1px solid #f3f4f6;
+}
+
+.day-header-cell.is-today {
+    color: #2563eb;
+}
+
+.day-header-cell.is-weekend {
+    color: #6b7280;
+    background: #f9fafb;
 }
 
 .lane-band {
