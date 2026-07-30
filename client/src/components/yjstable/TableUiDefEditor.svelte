@@ -14,10 +14,10 @@ interface Props {
     schema: ParsedTableSchema | undefined;
     /** Mirror of the UI Definition (kept in sync by the parent view). */
     query: string;
-    componentTypes: Record<string, string | undefined>;
+    columnConfigs: Record<string, { type?: string; label?: string }>;
 }
 
-let { handles, schema, query, componentTypes }: Props = $props();
+let { handles, schema, query, columnConfigs }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -52,6 +52,21 @@ function setComponentType(column: string, type: string) {
         components.set(column, cfg);
     }
 }
+
+function setColumnLabel(column: string, label: string) {
+    handles.doc.transact(() => {
+        const components = componentsMap();
+        const trimmed = label.trim();
+        const existing = components.get(column);
+        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
+        if (!(existing instanceof Y.Map)) components.set(column, cfg);
+
+        // Empty means "no override": delete the key so the fallback is the SQL
+        // name, rather than storing "" and rendering a blank header.
+        if (trimmed === "") cfg.delete("label");
+        else cfg.set("label", trimmed);
+    }, "local");
+}
 </script>
 
 <div class="ui-def-editor" data-testid="yjs-table-ui-editor">
@@ -72,10 +87,18 @@ function setComponentType(column: string, type: string) {
                 <div class="component-row">
                     <span class="column-name">{column.name}</span>
                     <span class="column-type">{column.dataType}</span>
+                    <input
+                        type="text"
+                        class="column-label"
+                        placeholder={column.name}
+                        data-testid={`yjs-table-label-${column.name}`}
+                        value={columnConfigs[column.name]?.label ?? ""}
+                        onchange={(e) => setColumnLabel(column.name, (e.target as HTMLInputElement).value)}
+                    />
                     <select
                         data-testid={`yjs-table-component-${column.name}`}
-                        value={isCellComponentType(componentTypes[column.name])
-                        ? componentTypes[column.name]
+                        value={isCellComponentType(columnConfigs[column.name]?.type)
+                        ? columnConfigs[column.name]?.type
                         : "auto"}
                         onchange={(e) => setComponentType(column.name, (e.target as HTMLSelectElement).value)}
                     >
@@ -136,6 +159,10 @@ select {
 .column-name {
     min-width: 8rem;
     font-family: ui-monospace, monospace;
+}
+
+.column-label {
+    width: 10rem;
 }
 
 .column-type {

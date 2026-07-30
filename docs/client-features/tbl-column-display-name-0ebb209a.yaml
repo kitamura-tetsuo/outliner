@@ -1,0 +1,14 @@
+id: tbl-column-display-name-0ebb209a
+title: Grid columns need a configurable header display name, separate from the SQL column name
+title-ja: グリッドの列には、SQLの列名とは別に設定可能なヘッダー表示名が必要
+description: >-
+  Grid headers render SQL identifiers by default. This feature allows users
+  to configure a human-readable display name for each column in the UI Definition editor,
+  without modifying the underlying SQL structure.
+status: active
+components:
+  - client/src/components/yjstable/TableGrid.svelte
+  - client/src/components/yjstable/TableUiDefEditor.svelte
+  - client/src/components/yjstable/YjsTableView.svelte
+tests:
+  - client/e2e/new/tbl-column-display-name-0ebb209a.spec.ts

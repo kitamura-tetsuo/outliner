@@ -49,7 +49,7 @@ let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let uiQuery = $state("");
-let componentTypes = $state<Record<string, string | undefined>>({});
+let columnConfigs = $state<Record<string, { type?: string; label?: string }>>({});
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 
@@ -87,13 +87,18 @@ const engineCallbacks = {
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
     const components = handles.uiDef.get("components");
-    const next: Record<string, string | undefined> = {};
+    const next: Record<string, { type?: string; label?: string }> = {};
     if (components instanceof Y.Map) {
         components.forEach((cfg, column) => {
-            next[column] = cfg instanceof Y.Map ? (cfg.get("type") as string | undefined) : undefined;
+            if (cfg instanceof Y.Map) {
+                next[column] = {
+                    type: cfg.get("type") as string | undefined,
+                    label: cfg.get("label") as string | undefined,
+                };
+            }
         });
     }
-    componentTypes = next;
+    columnConfigs = next;
 }
 
 const uiMirrorObserver = () => refreshUiMirror();
@@ -222,7 +227,7 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} />
+            <TableUiDefEditor {handles} {schema} query={uiQuery} {columnConfigs} />
         </section>
     {/if}
 
@@ -258,7 +263,7 @@ onDestroy(() => {
                     {schema}
                     query={uiQuery}
                     {result}
-                    {componentTypes}
+                    {columnConfigs}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

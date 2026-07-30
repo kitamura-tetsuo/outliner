@@ -27,17 +27,23 @@ interface Props {
     query: string;
     result: TableQueryResult;
     /** Component type per column from the UI Definition mirror. */
-    componentTypes: Record<string, string | undefined>;
+    columnConfigs: Record<string, { type?: string; label?: string }>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, loading = false, session }: Props = $props();
+let { handles, schema, query, result, columnConfigs, loading = false, session }: Props = $props();
 
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
+
+/** Presentation label for a column; falls back to the SQL name. */
+function headerLabel(column: string): string {
+    const label = columnConfigs[column]?.label;
+    return label !== undefined && label !== "" ? label : column;
+}
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
@@ -107,8 +113,8 @@ function deleteRow(recordId: string) {
             <thead>
                 <tr>
                     {#each result.columns as column (column)}
-                        <th scope="col">
-                            {column}
+                        <th scope="col" title={columnConfigs[column]?.label ? column : undefined} data-col={column}>
+                            {headerLabel(column)}
                             {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
                                 <span class="readonly-mark" title="Read-only column">RO</span>
                             {/if}
@@ -126,7 +132,7 @@ function deleteRow(recordId: string) {
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
                         {#each result.columns as column (column)}
                             {@const schemaColumn = columnByName.get(column)}
-                            {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
+                            {@const CellComponent = cellComponentFor(columnConfigs[column]?.type, schemaColumn)}
                             <td data-record-id={recordId} data-col={column}>
                                 <CellComponent
                                     value={row[column]}
