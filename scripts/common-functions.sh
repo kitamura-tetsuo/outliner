@@ -371,6 +371,13 @@ install_os_utilities() {
 # as launchOptions.executablePath. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH overrides
 # both.
 PLAYWRIGHT_BROWSERS_RESOLVED=""
+
+# The @playwright/test version resolved in client/package-lock.json, i.e. the
+# one the E2E suite runs with. Empty when it cannot be read.
+playwright_pinned_version() {
+  node -p "require('${ROOT_DIR}/client/package-lock.json').packages['node_modules/@playwright/test'].version" 2>/dev/null || true
+}
+
 ensure_playwright_browsers() {
   local marker="${ROOT_DIR}/.playwright-chromium-path"
 
@@ -381,13 +388,28 @@ ensure_playwright_browsers() {
   fi
 
   cd "${ROOT_DIR}/client"
-  echo "Installing Playwright chromium..."
-  if PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 npx --yes playwright install chromium; then
+
+  # Pin the CLI to the Playwright the tests actually run with. An unpinned
+  # `npx --yes playwright` fetches the newest release, and `install` prunes
+  # every browser outside that release's registry -- so a newer Playwright on
+  # npm silently deletes the revision @playwright/test needs and installs one
+  # it cannot use, breaking every E2E shard with "Executable doesn't exist".
+  local pinned
+  pinned="$(playwright_pinned_version)"
+  local cli="playwright"
+  if [ -n "$pinned" ]; then
+    cli="playwright@${pinned}"
+  else
+    echo "Warning: could not read the pinned Playwright version; falling back to the latest CLI." >&2
+  fi
+
+  echo "Installing Playwright chromium (${cli})..."
+  if PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 npx --yes "$cli" install chromium; then
     rm -f "$marker"
     PLAYWRIGHT_BROWSERS_RESOLVED="download"
     if apt_is_available; then
       echo "Installing Playwright dependencies..."
-      npx --yes playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
+      npx --yes "$cli" install-deps chromium || echo "Playwright deps install failed, continuing..."
     fi
     cd "${ROOT_DIR}"
     return 0

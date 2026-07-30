@@ -1,12 +1,13 @@
 id: ENV-5b9d7e04
 title: Test container Playwright image matches the locked Playwright version
-description: The E2E test container built from .github/container/Dockerfile is based on mcr.microsoft.com/playwright at exactly the version client/package-lock.json resolves for @playwright/test, because the image ships the browser bundle for that release only. When the two drift apart every E2E shard fails at browserType.launch with "Executable doesn't exist", so scripts/check-playwright-version.mjs enforces the match and runs as a dedicated CI job before the E2E shards start.
+description: Everything that provisions Playwright browsers agrees on one version. The E2E test container built from .github/container/Dockerfile is based on mcr.microsoft.com/playwright at exactly the version client/package-lock.json resolves for @playwright/test, and the browser install in scripts/common-functions.sh invokes the CLI as playwright@<pinned version> rather than unpinned. An unpinned CLI fetches the newest release and prunes every browser outside its own registry, deleting the revision the test runner needs. Either drift makes every E2E shard fail at browserType.launch with "Executable doesn't exist", so scripts/check-playwright-version.mjs enforces both and runs as a dedicated CI job before the E2E shards start.
 category: environment
 status: implemented
 components:
 - .github/container/Dockerfile
 - client/package-lock.json
 - scripts/check-playwright-version.mjs
+- scripts/common-functions.sh
 - .github/workflows/ci-playwright-version.yml
 - .github/workflows/ci.yml
 tests:

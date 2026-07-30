@@ -25,6 +25,18 @@ test("the versions currently in the repository agree", () => {
     expect(output).toMatch(/Playwright versions agree/);
 });
 
+test("the browser install pins the CLI to the version the tests run with", () => {
+    // `playwright install` prunes browsers outside the CLI's own registry, so an
+    // unpinned CLI deletes the revision @playwright/test needs the moment a
+    // newer Playwright ships on npm.
+    const shell = read("scripts", "common-functions.sh");
+
+    expect(shell).toMatch(/playwright_pinned_version\(\)/);
+    expect(shell).toMatch(/cli="playwright@\$\{pinned\}"/);
+    expect(shell).toMatch(/npx --yes "\$cli" install chromium/);
+    expect(shell).toMatch(/npx --yes "\$cli" install-deps chromium/);
+});
+
 test("a dedicated CI job runs the check on every pull request", () => {
     const workflow = read(".github", "workflows", "ci-playwright-version.yml");
     expect(workflow).toMatch(/workflow_call:/);
