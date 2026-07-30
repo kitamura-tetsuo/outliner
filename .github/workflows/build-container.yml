@@ -3,7 +3,6 @@ name: Build Test Container
 on:
   push:
     branches:
-      - main
       - develop
     paths:
       - '.github/container/Dockerfile'
