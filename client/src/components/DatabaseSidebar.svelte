@@ -43,7 +43,7 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
 });
 </script>
 
-<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar">
+<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar" inert={!isOpen} aria-hidden={!isOpen}>
     <div class="sidebar-content">
         <div class="header">
             <h2 class="sidebar-title">Databases</h2>
@@ -78,15 +78,18 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
         top: 4rem; /* Below the toolbar */
         background-color: white;
         border-left: 1px solid #e5e7eb;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, visibility 0s linear 0.3s;
         overflow-y: auto;
         z-index: 9;
         transform: translateX(100%);
+        visibility: hidden;
         box-shadow: -2px 0 5px rgba(0,0,0,0.05);
     }
 
     .sidebar.open {
         transform: translateX(0);
+        visibility: visible;
+        transition: transform 0.3s ease, visibility 0s linear 0s;
     }
 
     .sidebar-content {

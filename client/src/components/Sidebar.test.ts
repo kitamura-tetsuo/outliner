@@ -207,6 +207,22 @@ describe("Sidebar", () => {
             expect(sidebarElement).toHaveClass("open");
         });
 
+        it("should not have focusable descendants when closed", () => {
+            const { container } = render(Sidebar, { isOpen: false });
+
+            const sidebarElement = container.querySelector("aside.sidebar");
+            expect((sidebarElement as HTMLElement)?.inert || sidebarElement?.hasAttribute("inert")).toBe(true);
+            expect(sidebarElement?.getAttribute("aria-hidden")).toBe("true");
+        });
+
+        it("should have focusable descendants when open", () => {
+            const { container } = render(Sidebar, { isOpen: true });
+
+            const sidebarElement = container.querySelector("aside.sidebar");
+            expect((sidebarElement as HTMLElement)?.inert || sidebarElement?.hasAttribute("inert")).toBe(false);
+            expect(sidebarElement?.getAttribute("aria-hidden")).toBe("false");
+        });
+
         it("should render the sidebar with correct classes when closed", () => {
             const { container } = render(Sidebar, { isOpen: false });
 

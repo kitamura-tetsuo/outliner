@@ -1,4 +1,5 @@
 <script lang="ts">
+import { tick } from "svelte";
 import { browser } from "$app/environment";
 import SvelteSEO from "svelte-seo";
 import { getLogger } from "$lib/logger";
@@ -43,8 +44,11 @@ const logger = getLogger("AppLayout");
 let isAuthenticated = $state(false);
 
 // Sidebar state management - starts closed by default
+// Sidebar state management - starts closed by default
 let isSidebarOpen = $state(false);
 let isDatabaseSidebarOpen = $state(false);
+
+let sidebarToggleBtn: HTMLButtonElement | null = $state(null);
 
 // Initialization error state
 let initError: string | null = $state(null);
@@ -172,8 +176,21 @@ onDestroy(async () => {
 
     <!-- Sidebar toggle button -->
     <button type="button"
+        bind:this={sidebarToggleBtn}
         class="sidebar-toggle"
-        onclick={() => (isSidebarOpen = !isSidebarOpen)}
+        onclick={async () => {
+        isSidebarOpen = !isSidebarOpen;
+        await tick();
+        if (isSidebarOpen) {
+            const sidebar = document.querySelector('aside.sidebar[aria-label="Main Sidebar"]');
+            if (sidebar) {
+                const firstFocusable = sidebar.querySelector('a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+                firstFocusable?.focus();
+            }
+        } else {
+            sidebarToggleBtn?.focus();
+        }
+    }}
         aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
         title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
     >
