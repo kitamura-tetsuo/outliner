@@ -29,7 +29,7 @@ describe("computeDayHeaders", () => {
 
         expect(headers[0].isMonthStart).toBe(false); // Aug 30
         expect(headers[1].isMonthStart).toBe(false); // Aug 31
-        expect(headers[2].isMonthStart).toBe(true);  // Sep 1
+        expect(headers[2].isMonthStart).toBe(true); // Sep 1
         expect(headers[2].isoDate).toBe("2026-09-01");
         expect(headers[3].isMonthStart).toBe(false); // Sep 2
     });
