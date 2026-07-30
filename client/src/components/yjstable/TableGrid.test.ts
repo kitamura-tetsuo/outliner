@@ -51,6 +51,7 @@ describe("TableGrid", () => {
                 query: "SELECT id, col_a, col_b, col_c FROM test",
                 result,
                 componentTypes: {},
+                columnLabels: { col_a: "Column A Label" },
                 columnOrder,
                 session: mockSession,
             },
@@ -67,7 +68,15 @@ describe("TableGrid", () => {
 
         // Remove the action column if it exists in the query result or editable layout
         // In our case, the action column doesn't have .th-label, it has .sr-only
-        expect(headers.filter(Boolean)).toEqual(expectedOrder);
+        const expectedHeaders = ["col_c", "Column A Label", "col_b", "id"];
+        expect(headers.filter(Boolean)).toEqual(expectedHeaders);
+
+        const ths = container.querySelectorAll("th[data-col]");
+        const thA = Array.from(ths).find((th) => th.getAttribute("data-col") === "col_a");
+        expect(thA?.getAttribute("title")).toBe("col_a");
+
+        const thB = Array.from(ths).find((th) => th.getAttribute("data-col") === "col_b");
+        expect(thB?.getAttribute("title")).toBeNull();
 
         const firstRowCells = Array.from(container.querySelectorAll("tbody tr:first-child td[data-col]"));
         const dataCols = firstRowCells.map(td => td.getAttribute("data-col"));

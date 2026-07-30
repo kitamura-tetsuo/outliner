@@ -32,13 +32,15 @@ interface Props {
     componentTypes: Record<string, string | undefined>;
     /** The column order stored in UI Definition. */
     columnOrder: string[];
+    /** Display labels for columns. */
+    columnLabels: Record<string, string | undefined>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, columnOrder, loading = false, session }: Props = $props();
+let { handles, schema, query, result, componentTypes, columnOrder, columnLabels, loading = false, session }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -49,6 +51,12 @@ const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
 const displayColumns = $derived(orderColumns(result.columns, columnOrder));
+
+/** Presentation label for a column; falls back to the SQL name. */
+function headerLabel(column: string): string {
+    const label = columnLabels[column];
+    return label !== undefined && label !== "" ? label : column;
+}
 
 let dropTargetColumn = $state<{ column: string; position: "left" | "right" } | undefined>(undefined);
 
@@ -133,6 +141,8 @@ function handleCancelDelete() {
                             scope="col"
                             draggable="true"
                             tabindex="0"
+                            data-col={column}
+                            title={columnLabels[column] ? column : undefined}
                             class:drop-target-left={dropTargetColumn?.column === column && dropTargetColumn.position === "left"}
                             class:drop-target-right={dropTargetColumn?.column === column && dropTargetColumn.position === "right"}
                             ondragstart={(e) => {
@@ -185,7 +195,7 @@ function handleCancelDelete() {
                             }}
                         >
                             <span class="th-label">
-                                {column}
+                                {headerLabel(column)}
                                 {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
                                     <span class="readonly-mark" title="Read-only column">RO</span>
                                 {/if}
