@@ -100,14 +100,14 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         const initialRowCount = await grid.locator("tbody tr").count();
 
         // Click delete button
-        const deleteButton = row.locator('.delete-row');
+        const deleteButton = row.locator(".delete-row");
         await expect(deleteButton).toBeVisible();
         await deleteButton.click();
 
         // Dialog appears, cancel it
-        const dialog = page.getByRole('alertdialog', { name: 'Delete row' });
+        const dialog = page.getByRole("alertdialog", { name: "Delete row" });
         await expect(dialog).toBeVisible();
-        await dialog.getByRole('button', { name: 'Cancel' }).click();
+        await dialog.getByRole("button", { name: "Cancel" }).click();
 
         // Ensure dialog is closed and row is still there
         await expect(dialog).not.toBeVisible();
@@ -118,7 +118,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
 
         // Dialog appears, confirm it
         await expect(dialog).toBeVisible();
-        await dialog.getByRole('button', { name: 'Delete' }).click();
+        await dialog.getByRole("button", { name: "Delete" }).click();
 
         // Ensure dialog is closed and row is gone
         await expect(dialog).not.toBeVisible();
