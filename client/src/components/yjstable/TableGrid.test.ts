@@ -1,9 +1,9 @@
 import { render } from "@testing-library/svelte";
 import { describe, expect, it } from "vitest";
-import TableGrid from "./TableGrid.svelte";
-import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
+import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import TableGrid from "./TableGrid.svelte";
 
 describe("TableGrid column labels", () => {
     it("renders column label when provided, and preserves data-col", () => {
@@ -12,16 +12,16 @@ describe("TableGrid column labels", () => {
             createSql: "CREATE TABLE test (due_at DATE, is_done BOOLEAN);",
             columns: [
                 { name: "due_at", kind: "date", dataType: "date", isNullable: true, isPrimaryKey: false },
-                { name: "is_done", kind: "boolean", dataType: "boolean", isNullable: true, isPrimaryKey: false }
-            ]
+                { name: "is_done", kind: "boolean", dataType: "boolean", isNullable: true, isPrimaryKey: false },
+            ],
         };
         const result: TableQueryResult = {
             columns: ["due_at", "is_done"],
-            rows: []
+            rows: [],
         };
         const columnLabels = {
             due_at: "Due Date",
-            is_done: "" // Empty label falls back to column name
+            is_done: "", // Empty label falls back to column name
         };
         const session = {} as any; // mock
         const handles = {} as TableHandles;
@@ -34,8 +34,8 @@ describe("TableGrid column labels", () => {
                 result,
                 componentTypes: {},
                 columnLabels,
-                session
-            }
+                session,
+            },
         });
 
         const headers = container.querySelectorAll("th");

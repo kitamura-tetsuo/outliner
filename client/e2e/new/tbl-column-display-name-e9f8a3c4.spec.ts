@@ -1,7 +1,7 @@
 /** @feature FTR-e9f8a3c4 */
 import { expect, test } from "@playwright/test";
-import { TestHelpers } from "../utils/testHelpers";
 import { SeedClient } from "../utils/seedClient";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Table column display names", () => {
     test.beforeEach(async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe("Table column display names", () => {
         await TestHelpers.seedProjectDataOnly(page, testInfo, ["Line 1"], {
             projectName: projectId,
             pageName: pageId,
-            skipSeed: false
+            skipSeed: false,
         });
 
         // Open the page
@@ -33,7 +33,7 @@ test.describe("Table column display names", () => {
         // Wait for connection to settle
         await page.waitForTimeout(1000);
 
-        const item = page.locator('.outliner-item:not(.is-title) .item-text').first();
+        const item = page.locator(".outliner-item:not(.is-title) .item-text").first();
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
 
@@ -74,9 +74,9 @@ test.describe("Table column display names", () => {
         await expect(labelInput).toBeVisible({ timeout: 10000 });
         await labelInput.fill("Custom Label");
         // Need to simulate a real change event as Playwright .fill() doesn't always trigger it correctly for Svelte
-        await labelInput.press('Enter');
+        await labelInput.press("Enter");
         await page.waitForTimeout(500);
-        await labelInput.evaluate(node => node.dispatchEvent(new Event('change', { bubbles: true })));
+        await labelInput.evaluate(node => node.dispatchEvent(new Event("change", { bubbles: true })));
         await page.waitForTimeout(1000);
 
         // 5. Verify the grid header updated immediately
@@ -99,8 +99,8 @@ test.describe("Table column display names", () => {
         const reloadedInput = page.locator('[data-testid="yjs-table-label-title"]');
         await expect(reloadedInput).toBeVisible({ timeout: 10000 });
         await reloadedInput.fill("  "); // empty/spaces
-        await reloadedInput.press('Enter');
-        await reloadedInput.evaluate(node => node.dispatchEvent(new Event('change', { bubbles: true })));
+        await reloadedInput.press("Enter");
+        await reloadedInput.evaluate(node => node.dispatchEvent(new Event("change", { bubbles: true })));
         await page.waitForTimeout(1000);
 
         await expect(reloadedHeader).toContainText("title", { timeout: 10000 });
