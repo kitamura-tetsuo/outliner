@@ -6,6 +6,6 @@ description: Nightly script archives server data and uploads via rclone with ret
 category: server
 status: implemented
 components:
-- server/scripts/rclone-backup.js
+- server/src/scripts/rclone-backup.ts
 tests:
 - client/e2e/core/server-backup-script-runs-dc38b81a.spec.ts
