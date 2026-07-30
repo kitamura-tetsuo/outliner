@@ -398,6 +398,8 @@ class AliasPickerStore {
 export const aliasPickerStore = $state(new AliasPickerStore());
 
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore; }).aliasPickerStore =
-        aliasPickerStore;
+    if (import.meta.env.MODE !== "production") {
+        (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore; }).aliasPickerStore =
+            aliasPickerStore;
+    }
 }

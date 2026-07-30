@@ -89,9 +89,11 @@ if (
 } else {
     registry = new Registry();
     if (typeof window !== "undefined") {
-        window.__YJS_CLIENT_REGISTRY__ = registry;
-        // Legacy alias for components still reading FLUID registry
-        window.__FLUID_CLIENT_REGISTRY__ = registry;
+        if (import.meta.env.MODE !== "production") {
+            window.__YJS_CLIENT_REGISTRY__ = registry;
+            // Legacy alias for components still reading FLUID registry
+            window.__FLUID_CLIENT_REGISTRY__ = registry;
+        }
     }
 }
 

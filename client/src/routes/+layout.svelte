@@ -72,10 +72,12 @@ async function toggleSidebar() {
 
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser && typeof window !== "undefined") {
-    window.generalStore =
-        window.generalStore || appStore;
-    window.appStore =
-        window.appStore || appStore;
+    if (import.meta.env.MODE !== "production") {
+        window.generalStore =
+            window.generalStore || appStore;
+        window.appStore =
+            window.appStore || appStore;
+    }
 }
 
 

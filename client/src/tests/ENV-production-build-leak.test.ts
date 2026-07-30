@@ -16,6 +16,14 @@ describe("ENV-* Production Build Security Guard", () => {
         }
 
         const forbiddenStrings = [
+
+            { pattern: "window.editorOverlayStore=", readable: "editorOverlayStore leak" },
+            { pattern: "window.__YJS_STORE__=", readable: "__YJS_STORE__ leak" },
+            { pattern: "window.__FLUID_CLIENT_REGISTRY__=", readable: "__FLUID_CLIENT_REGISTRY__ leak" },
+            { pattern: "window.__YJS_CLIENT_REGISTRY__=", readable: "__YJS_CLIENT_REGISTRY__ leak" },
+            { pattern: "window.presenceStore=", readable: "presenceStore leak" },
+            { pattern: "window.commandPaletteStore=", readable: "commandPaletteStore leak" },
+            { pattern: "window.aliasPickerStore=", readable: "aliasPickerStore leak" },
             { pattern: 'alg:"none"', readable: "alg:none mock token generator" },
             { pattern: 'alg: "none"', readable: "alg:none mock token generator" },
             { pattern: "127.0.0.1:57070", readable: "Localhost Firebase function URL" },
@@ -44,6 +52,7 @@ describe("ENV-* Production Build Security Guard", () => {
             const content = fs.readFileSync(file, "utf8");
             for (const rule of forbiddenStrings) {
                 if (content.includes(rule.pattern)) {
+
                     leaks.push(
                         `Found prohibited string "${rule.pattern}" (${rule.readable}) in production bundle: ${
                             path.relative(process.cwd(), file)

@@ -1977,13 +1977,15 @@ export const editorOverlayStore = $state(new EditorOverlayStore());
 
 // Expose to global scope for testing
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & {
-        DEBUG_MODE?: boolean;
-        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+    if (import.meta.env.MODE !== "production") {
+        (window as Window & typeof globalThis & {
+            DEBUG_MODE?: boolean;
+            generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
 
-        itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-        appStore?: { currentPage?: { id?: string; }; };
-        editorOverlayStore?: unknown;
-    }).editorOverlayStore = editorOverlayStore;
+            itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
+            editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+            appStore?: { currentPage?: { id?: string; }; };
+            editorOverlayStore?: unknown;
+        }).editorOverlayStore = editorOverlayStore;
+    }
 }
