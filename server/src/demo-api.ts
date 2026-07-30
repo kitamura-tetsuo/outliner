@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
+import { type Config } from "./config.js";
 import {
     DEMO_PROJECT_TITLE,
     DEMO_TEMPLATE_VERSION,
@@ -11,7 +12,6 @@ import {
     populateDemoProject,
     seedDemoTableDoc,
 } from "./demo-content.js";
-import { type Config } from "./config.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { getClientIp } from "./utils/ip.js";
