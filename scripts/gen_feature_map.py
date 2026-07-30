@@ -97,6 +97,12 @@ def load_features():
         data["__source__"] = str(path.relative_to(ROOT))
         features[fid] = data
 
+    # Check that non-removed features have non-empty tests list
+    for fid, data in features.items():
+        if data.get("status") != "removed" and not data.get("tests", []):
+            logger.error(f"Feature {fid} has no tests recorded in {data.get('__source__')}. Please ensure coverage and link the test.")
+            raise SystemExit(1)
+
     return features
 
 
