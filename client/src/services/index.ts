@@ -19,15 +19,7 @@ export {
 } from "../lib/yjsService.svelte";
 
 // SnapshotService
-export {
-    addSnapshot,
-    getCurrentContent,
-    getSnapshot,
-    listSnapshots,
-    replaceWithSnapshot,
-    setCurrentContent,
-    type Snapshot,
-} from "./snapshotService";
+export { addSnapshot, getSnapshot, listSnapshots, replaceWithSnapshot, type Snapshot } from "./snapshotService";
 
 // ScheduleService
 export {
@@ -41,8 +33,10 @@ export {
 
 // Import/Export Service
 export {
+    exportItemToMarkdown,
     exportProjectToMarkdown,
     exportProjectToOpml,
+    importMarkdownIntoItem,
     importMarkdownIntoProject,
     importOpmlIntoProject,
 } from "./importExportService";

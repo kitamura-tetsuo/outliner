@@ -1,5 +1,5 @@
 import { getLogger } from "../lib/logger";
-import { Items, Project } from "../schema/app-schema";
+import { Item, Items, Project } from "../schema/app-schema";
 
 const logger = getLogger("importExportService");
 
@@ -28,6 +28,20 @@ export function exportProjectToOpml(project: Project): string {
     walk(project.items as Items);
     out += "</body></opml>";
     return out;
+}
+
+export function exportItemToMarkdown(item: Item): string {
+    const lines: string[] = [];
+    const walk = (items: Items, depth = 0) => {
+        for (const child of items) {
+            lines.push(`${"  ".repeat(depth)}- ${child.text}`);
+            walk(child.items as Items, depth + 1);
+        }
+    };
+    if (item.items) {
+        walk(item.items as Items);
+    }
+    return lines.join("\n");
 }
 
 export function exportProjectToMarkdown(project: Project): string {
@@ -165,5 +179,43 @@ export function importMarkdownIntoProject(md: string, project: Project) {
                 } children`,
             );
         }
+    }
+}
+
+export function importMarkdownIntoItem(md: string, item: Item) {
+    logger.debug(undefined, "importMarkdownIntoItem: Starting import with markdown:", md);
+
+    const rootItems = item.items as Items;
+    while (rootItems.length > 0) {
+        rootItems.removeAt(rootItems.length - 1);
+    }
+    const lines = md.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length === 0) return;
+
+    logger.debug(undefined, "importMarkdownIntoItem: Lines to process:", lines);
+
+    const stack: { indent: number; items: Items; }[] = [
+        { indent: -1, items: item.items as Items },
+    ];
+
+    for (const line of lines) {
+        const m = line.match(/^(\s*)-\s+(.*)$/);
+        if (!m) continue;
+        const indent = m[1].length;
+        const text = m[2];
+
+        while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+            stack.pop();
+        }
+
+        const parentInfo = stack[stack.length - 1];
+
+        const node = parentInfo.items.addNode("import");
+        node.updateText(text);
+
+        stack.push({
+            indent,
+            items: node.items as Items,
+        });
     }
 }

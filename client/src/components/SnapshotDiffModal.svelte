@@ -15,8 +15,9 @@ interface Props {
     page: string;
     currentContent: string;
     author: string;
+    onRevert?: (content: string) => void;
 }
-let { project, page, currentContent = $bindable(), author }: Props = $props();
+let { project, page, currentContent = $bindable(), author, onRevert }: Props = $props();
 
 let snapshots = $state<Snapshot[]>([]);
 let selectedId = $state("");
@@ -129,6 +130,7 @@ function revert() {
     const snap = replaceWithSnapshot(project, page, selectedId);
     if (snap) {
         currentContent = snap.content;
+        if (onRevert) onRevert(snap.content);
         refresh();
         showDiff(selectedId);
     }
