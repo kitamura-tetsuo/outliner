@@ -3,7 +3,7 @@
         "@dotenvx/dotenvx": "^2.19.1",
         "@electric-sql/pglite": "^0.5.4",
         "@hocuspocus/provider": "^4.4.0",
-        "@sentry/sveltekit": "^10.68.0",
+        "@sentry/sveltekit": "^10.69.0",
         "@sinclair/typebox": "^0.34.52",
         "diff-match-patch": "^1.0.5",
         "echarts": "^6.1.0",
