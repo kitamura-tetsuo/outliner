@@ -42,11 +42,11 @@ scripts/test.sh client/e2e/<path>.spec.ts
 Some environments only allow the npm registry. The setup degrades instead of
 failing:
 
-| Blocked resource | Behavior |
-| --- | --- |
-| apt mirrors | `apt_is_available` probes once; OS package installation is skipped with a warning. Force it with `SKIP_APT_INSTALL=1`. |
+| Blocked resource     | Behavior                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| apt mirrors          | `apt_is_available` probes once; OS package installation is skipped with a warning. Force it with `SKIP_APT_INSTALL=1`.                                                                                                                                                                                                                                      |
 | `cdn.playwright.dev` | `ensure_playwright_browsers` falls back to a Chromium already present in the image (`$PLAYWRIGHT_BROWSERS_PATH/chromium`, `/usr/bin/chromium`, …) and records the path in `.playwright-chromium-path`. `client/playwright.config.ts` reads that file and passes it as `launchOptions.executablePath`; `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` overrides both. |
-| `plugins.dprint.dev` | `scripts/test.sh` reports the formatting failure as a warning and continues. Use `SKIP_DPRINT=1` to skip the attempt. |
+| `plugins.dprint.dev` | `scripts/test.sh` reports the formatting failure as a warning and continues. Use `SKIP_DPRINT=1` to skip the attempt.                                                                                                                                                                                                                                       |
 
 Nothing changes on a machine with unrestricted network access: the browser is
 downloaded as before, `.playwright-chromium-path` is removed, and `dprint fmt`

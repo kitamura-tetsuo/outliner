@@ -38,7 +38,9 @@ describe("degraded network handling", () => {
         expect(functions).toMatch(/apt_is_available\(\)/);
         expect(functions).toMatch(/SKIP_APT_INSTALL/);
         // Both apt consumers must go through the probe instead of failing setup.
-        expect(functions).toMatch(/if apt_is_available; then[\s\S]*install_os_utilities|install_os_utilities[\s\S]*if apt_is_available; then/);
+        expect(functions).toMatch(
+            /if apt_is_available; then[\s\S]*install_os_utilities|install_os_utilities[\s\S]*if apt_is_available; then/,
+        );
         expect(read("scripts/setup.sh")).toMatch(/if apt_is_available; then/);
     });
 
