@@ -64,7 +64,7 @@ if (problems.length > 0) {
         console.error(`- ${problem}`);
     }
     console.error(
-        "\nA mismatch makes every E2E shard fail at browserType.launch with \"Executable doesn't exist\".",
+        '\nA mismatch makes every E2E shard fail at browserType.launch with "Executable doesn\'t exist".',
     );
     process.exit(1);
 }
