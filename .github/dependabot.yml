@@ -42,6 +42,17 @@ updates:
           - "svelte"
           - "@sveltejs/*"
           - "vite"
+      # Keep the Playwright packages on one version. They share a browser
+      # registry, so bumping one alone leaves the runner asking for a browser
+      # revision nothing installed -- every E2E shard then dies at
+      # browserType.launch. Grouping makes Dependabot move them together in a
+      # single PR. @playwright/mcp and mcp-playwright are deliberately excluded:
+      # they version independently of the test runner.
+      playwright:
+        patterns:
+          - "playwright"
+          - "playwright-core"
+          - "@playwright/test"
 
   - package-ecosystem: 'npm'
     directory: '/server'

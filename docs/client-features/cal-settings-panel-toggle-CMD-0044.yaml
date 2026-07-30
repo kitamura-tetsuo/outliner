@@ -1,0 +1,15 @@
+id: CMD-0044
+title: Calendar settings (query, timezone, roles) should be collapsible behind a toggle
+title-ja: Calendar settings (query, timezone, roles) should be collapsible behind a toggle
+status: active
+components:
+  - CalendarView
+tests:
+  - client/e2e/new/cal-settings-panel-toggle.spec.ts
+acceptance-criteria:
+  - A configured calendar renders with the settings panel collapsed; the grid is the first thing under the toolbar.
+  - Clicking calendar-toggle-settings reveals the timezone select, query input and role editor; clicking again hides them. aria-pressed reflects state.
+  - A calendar with an empty query opens with the panel expanded.
+  - Query errors, write errors, the read-only hint and the active timezone remain visible while the panel is collapsed.
+  - Editing a setting with the panel open behaves exactly as today (writes through updateCalendar, re-queries, undoable).
+  - Two clients: opening/closing the panel on one client does not change the other client's panel.

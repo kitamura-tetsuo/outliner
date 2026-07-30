@@ -4,8 +4,10 @@
 
 import { configure, fireEvent, render, waitFor } from "@testing-library/svelte";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { vi } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
+import * as runner from "../../services/calendar/calendarQueryRunner";
 import { createCalendar, destroyCalendarUndoManager, getCalendar } from "../../services/calendar/calendarService";
 import { globalUndoRouter } from "../../services/undo/undoRouter";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
@@ -39,6 +41,38 @@ afterAll(async () => {
 });
 
 describe("CalendarView", { timeout: 30000 }, () => {
+    it("panel absent by default with a non-empty query, present after clicking the toggle, present by default when the query is empty; error paragraphs render while collapsed", async () => {
+        const projectId = "proj-calendar-settings-panel";
+        const { projectDoc, project } = seedProject(projectId);
+
+        // 1. Present by default when the query is empty
+        const emptyCalendarId = createCalendar(project, { name: "Empty", query: "" });
+        let comp = render(CalendarView, { props: { project, projectId, calendarId: emptyCalendarId } });
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeTruthy());
+        comp.unmount();
+
+        // 2. Absent by default with a non-empty query, present after clicking the toggle
+        const calendarId = createCalendar(project, { name: "Configured", query: "SELECT id FROM outline_items" });
+        comp = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy());
+
+        const toggleBtn = comp.getByTestId("calendar-toggle-settings");
+        await fireEvent.click(toggleBtn);
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeTruthy());
+
+        // 3. Error paragraphs render while collapsed
+        await fireEvent.click(toggleBtn); // Collapse again
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy());
+
+        // Set an invalid query to trigger an error
+        const map = projectDoc.getMap("calendars").get(calendarId) as Y.Map<unknown>;
+        map.set("query", "SELECT SYNTAX ERROR");
+
+        // Ensure error is visible even when collapsed
+        await waitFor(() => expect(comp.queryByTestId("calendar-query-error")).toBeTruthy());
+        expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy();
+    });
+
     it("renders a timed entry from the query result in the week time-grid", async () => {
         const projectId = "proj-calendar-view-week";
         const { projectDoc, project, page } = seedProject(projectId);
@@ -147,7 +181,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             roleAllDay: "all_day",
         });
 
-        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => expect(getByTestId("calendar-read-only-banner")).toBeTruthy());
         await waitFor(() => {
@@ -159,6 +193,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
         });
 
         destroyCalendarUndoManager(projectDoc);
+        unmount();
     });
 
     it("creates a new item under the chosen destination via the New entry dialog", async () => {
@@ -339,5 +374,64 @@ describe("CalendarView", { timeout: 30000 }, () => {
         expect(entryEl.getAttribute("style")).toMatch(/background/);
 
         destroyCalendarUndoManager(projectDoc);
+    });
+
+    it("discards a slow earlier query if a newer one starts before it finishes", async () => {
+        const projectId = "proj-calendar-view-query-guard";
+        const { project } = seedProject(projectId);
+        const calendarId = createCalendar(project, { name: "Cal", viewType: "week", query: "SELECT 1" });
+
+        let firstQueryResolve:
+            | ((value: import("../../services/calendar/calendarQueryRunner").CalendarQueryOutcome) => void)
+            | undefined;
+        let secondQueryResolve:
+            | ((value: import("../../services/calendar/calendarQueryRunner").CalendarQueryOutcome) => void)
+            | undefined;
+
+        let callCount = 0;
+
+        const originalRunCalendarQuery = runner.runCalendarQuery;
+        const spy = vi.spyOn(runner, "runCalendarQuery").mockImplementation(async (...args) => {
+            callCount++;
+            if (callCount === 1) {
+                return new Promise(resolve => {
+                    firstQueryResolve = resolve;
+                });
+            } else if (callCount === 2) {
+                return new Promise(resolve => {
+                    secondQueryResolve = resolve;
+                });
+            }
+            return originalRunCalendarQuery(...args);
+        });
+
+        const comp = render(CalendarView, { props: { project, projectId, calendarId } });
+
+        await waitFor(() => expect(callCount).toBe(1));
+
+        await fireEvent.click(comp.getByTestId("calendar-toggle-settings"));
+        await fireEvent.change(comp.getByTestId("calendar-timezone-select"), { target: { value: "Europe/London" } });
+
+        await waitFor(() => expect(callCount).toBeGreaterThanOrEqual(2));
+
+        // Let's resolve the second query with an empty result but no error, just to verify it overrides
+        // Actually, we can check the component's internal state directly?
+        // No, we can check if it sets the error message.
+        secondQueryResolve!({
+            result: undefined,
+            error: "New Error",
+        });
+
+        firstQueryResolve!({
+            result: undefined,
+            error: "Old Error",
+        });
+
+        await waitFor(() => {
+            expect(comp.queryByText("New Error")).toBeTruthy();
+        });
+        expect(comp.queryByText("Old Error")).toBeFalsy();
+
+        spy.mockRestore();
     });
 });

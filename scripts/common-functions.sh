@@ -22,6 +22,37 @@ load_nvm() {
   fi
 }
 
+# Whether OS packages can be installed at all.
+#
+# Sandboxed/cloud dev containers (Claude Code on the web, Codespaces-style
+# images) usually run behind an egress proxy that rejects the distro mirrors, so
+# every `apt-get update` fails on a third-party PPA even though the image
+# already ships the packages the tests need. Probe once, cache the answer, and
+# let callers degrade to a warning instead of aborting the whole setup.
+# Set SKIP_APT_INSTALL=1 to force the degraded path without probing.
+APT_AVAILABLE_CACHE=""
+apt_is_available() {
+  if [ "${SKIP_APT_INSTALL:-0}" = "1" ]; then
+    return 1
+  fi
+  if [ -n "$APT_AVAILABLE_CACHE" ]; then
+    [ "$APT_AVAILABLE_CACHE" = "yes" ]
+    return
+  fi
+  if ! command -v apt-get >/dev/null 2>&1 || ! command -v sudo >/dev/null 2>&1; then
+    APT_AVAILABLE_CACHE="no"
+    return 1
+  fi
+  if sudo apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true update >/dev/null 2>&1; then
+    APT_AVAILABLE_CACHE="yes"
+    return 0
+  fi
+  echo "Warning: apt-get update failed (offline or proxied environment); skipping OS package installation."
+  echo "         Set SKIP_APT_INSTALL=1 to silence this probe."
+  APT_AVAILABLE_CACHE="no"
+  return 1
+}
+
 # Run apt-get with automatic retry and dpkg repair to handle transient failures
 retry_apt_get() {
   local attempts=0
@@ -318,21 +349,97 @@ install_os_utilities() {
   done
 
   if [ "$needs_install" = true ]; then
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends \
-      "${original_deps[@]}" \
-      "${playwright_deps[@]}" \
-      "${CANVAS_NATIVE_DEPS[@]}"
+    if apt_is_available; then
+      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends \
+        "${original_deps[@]}" \
+        "${playwright_deps[@]}" \
+        "${CANVAS_NATIVE_DEPS[@]}"
+    else
+      echo "Skipping OS utility installation; relying on packages already present in the image."
+    fi
   fi
 
-  # Install Playwright browser (system dependencies should be handled by install_os_utilities)
+  ensure_playwright_browsers
+}
+
+# Make a Chromium build available to Playwright.
+#
+# Normally this is just `playwright install chromium`. When the browser CDN is
+# unreachable (sandboxes commonly allow only the npm registry), fall back to a
+# Chromium that is already baked into the image and record its path in
+# .playwright-chromium-path, which client/playwright.config.ts reads and passes
+# as launchOptions.executablePath. PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH overrides
+# both.
+PLAYWRIGHT_BROWSERS_RESOLVED=""
+
+# The @playwright/test version resolved in client/package-lock.json, i.e. the
+# one the E2E suite runs with. Empty when it cannot be read.
+playwright_pinned_version() {
+  node -p "require('${ROOT_DIR}/client/package-lock.json').packages['node_modules/@playwright/test'].version" 2>/dev/null || true
+}
+
+ensure_playwright_browsers() {
+  local marker="${ROOT_DIR}/.playwright-chromium-path"
+
+  # setup.sh reaches this through both install_os_utilities and its own explicit
+  # call; resolving once per run keeps a blocked download from being retried.
+  if [ -n "$PLAYWRIGHT_BROWSERS_RESOLVED" ]; then
+    return 0
+  fi
+
   cd "${ROOT_DIR}/client"
-  echo "Installing Playwright chromium..."
-  npx --yes playwright install chromium || echo "Playwright install failed, continuing..."
-  echo "Installing Playwright dependencies..."
-  npx --yes playwright install-deps chromium || echo "Playwright deps install failed, continuing..."
+
+  # Pin the CLI to the Playwright the tests actually run with. An unpinned
+  # `npx --yes playwright` fetches the newest release, and `install` prunes
+  # every browser outside that release's registry -- so a newer Playwright on
+  # npm silently deletes the revision @playwright/test needs and installs one
+  # it cannot use, breaking every E2E shard with "Executable doesn't exist".
+  local pinned
+  pinned="$(playwright_pinned_version)"
+  local cli="playwright"
+  if [ -n "$pinned" ]; then
+    cli="playwright@${pinned}"
+  else
+    echo "Warning: could not read the pinned Playwright version; falling back to the latest CLI." >&2
+  fi
+
+  echo "Installing Playwright chromium (${cli})..."
+  if PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=0 npx --yes "$cli" install chromium; then
+    rm -f "$marker"
+    PLAYWRIGHT_BROWSERS_RESOLVED="download"
+    if apt_is_available; then
+      echo "Installing Playwright dependencies..."
+      npx --yes "$cli" install-deps chromium || echo "Playwright deps install failed, continuing..."
+    fi
+    cd "${ROOT_DIR}"
+    return 0
+  fi
+
+  echo "Playwright browser download failed; looking for a pre-installed Chromium..."
+  local candidate=""
+  for path in \
+    "${PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH:-}" \
+    "${PLAYWRIGHT_BROWSERS_PATH:-}/chromium" \
+    "${PLAYWRIGHT_BROWSERS_PATH:-}"/chromium-*/chrome-linux/chrome \
+    /usr/bin/chromium \
+    /usr/bin/chromium-browser \
+    /usr/bin/google-chrome; do
+    if [ -n "$path" ] && [ -x "$path" ]; then
+      candidate="$path"
+      break
+    fi
+  done
 
   cd "${ROOT_DIR}"
+  if [ -z "$candidate" ]; then
+    echo "Error: no Chromium available for Playwright (download blocked and none pre-installed)." >&2
+    return 1
+  fi
+
+  echo "Using pre-installed Chromium: ${candidate}"
+  printf '%s\n' "$candidate" > "$marker"
+  PLAYWRIGHT_BROWSERS_RESOLVED="preinstalled"
+  return 0
 }
 
 # Re-run later to enforce node-canvas system requirements even if the main
@@ -346,8 +453,11 @@ ensure_canvas_native_deps() {
   done
 
   if [ ${#missing[@]} -gt 0 ]; then
-    retry_apt_get update
-    DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends "${missing[@]}"
+    if apt_is_available; then
+      DEBIAN_FRONTEND=noninteractive retry_apt_get -y install --no-install-recommends "${missing[@]}"
+    else
+      echo "Skipping node-canvas native dependencies (${missing[*]}); install them manually if canvas fails to build."
+    fi
   fi
 }
 

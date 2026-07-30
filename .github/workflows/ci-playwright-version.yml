@@ -1,0 +1,20 @@
+name: Playwright Version Check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  playwright-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # No dependency install: the check only reads the Dockerfile and the
+      # lockfile, so it stays fast enough to fail before the E2E shards start.
+      - name: Check the test container matches the client's Playwright version
+        run: node scripts/check-playwright-version.mjs
