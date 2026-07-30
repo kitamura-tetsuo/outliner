@@ -74,15 +74,15 @@ const hours = Array.from({ length: 24 }, (_, i) => i);
 let gridEl: HTMLDivElement | undefined = $state();
 let scrollEl: HTMLDivElement | undefined = $state();
 
-let drag: {
-    kind: "move" | "resize";
-    entry: CalendarEntry;
-    pointerId: number;
-    startClientX: number;
-    startClientY: number;
-    originStartMs: number;
-    originDurationMs: number;
-} | undefined;
+let drag = $state<{
+    kind: "move" | "resize"
+    entry: CalendarEntry
+    pointerId: number
+    startClientX: number
+    startClientY: number
+    originStartMs: number
+    originDurationMs: number
+} | undefined>(undefined);
 
 function columnWidthPx(): number {
     if (!gridEl || layout.dayCount === 0) return 0;
@@ -92,6 +92,7 @@ function columnWidthPx(): number {
 function beginDrag(kind: "move" | "resize", entry: CalendarEntry, e: PointerEvent) {
     if (kind === "move" && !isStartWritable(entry)) return;
     if (kind === "resize" && !isDurationWritable(entry)) return;
+    if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     drag = {
@@ -174,7 +175,7 @@ onMount(() => {
 
 <svelte:window onpointermove={onPointerMove} onpointerup={onPointerUp} onpointercancel={onPointerCancel} />
 
-<div class="time-grid" data-testid="calendar-time-grid">
+<div class="time-grid" class:dragging={drag !== undefined} data-testid="calendar-time-grid">
     {#if layout.allDay.length > 0 || layout.milestones.length > 0}
         <div class="band-row" data-testid="calendar-all-day-band" style={`grid-template-columns: repeat(${layout.dayCount}, 1fr)`}>
             {#each layout.allDay as p (p.entry.key)}
@@ -306,6 +307,11 @@ onMount(() => {
 </div>
 
 <style>
+:global(.dragging), :global(.dragging *) {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
 .time-grid {
     display: flex;
     flex-direction: column;
@@ -324,6 +330,8 @@ onMount(() => {
 
 .all-day-entry,
 .milestone-entry {
+    -webkit-user-select: none;
+    user-select: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -396,6 +404,8 @@ onMount(() => {
 }
 
 .timed-entry {
+    -webkit-user-select: none;
+    user-select: none;
     position: absolute;
     background: #2563eb;
     color: white;
@@ -418,6 +428,8 @@ onMount(() => {
 }
 
 .resize-handle {
+    -webkit-user-select: none;
+    user-select: none;
     position: absolute;
     left: 0;
     right: 0;
@@ -451,6 +463,8 @@ onMount(() => {
 
 /* Sits opposite the delete affordance so the two never overlap. */
 .lane-handle {
+    -webkit-user-select: none;
+    user-select: none;
     position: absolute;
     top: 1px;
     left: 2px;
