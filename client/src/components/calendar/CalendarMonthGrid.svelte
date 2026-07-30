@@ -106,7 +106,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
 }
 </script>
 
-<div class="month-grid" data-testid="calendar-month-grid">
+<div class="month-grid" class:dragging={draggingKey !== undefined} data-testid="calendar-month-grid">
     <div class="weekday-header">
         {#each weekdayHeaders as label (label)}
             <div class="weekday-label">{label}</div>
@@ -181,6 +181,11 @@ function onDrop(cell: MonthCell, e: DragEvent) {
 </div>
 
 <style>
+:global(.dragging), :global(.dragging *) {
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
 .month-grid {
     display: flex;
     flex-direction: column;
@@ -226,6 +231,8 @@ function onDrop(cell: MonthCell, e: DragEvent) {
 
 .entry-chip,
 .milestone-chip {
+    -webkit-user-select: none;
+    user-select: none;
     display: flex;
     align-items: center;
     justify-content: space-between;
