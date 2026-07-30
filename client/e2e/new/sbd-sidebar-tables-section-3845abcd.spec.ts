@@ -18,6 +18,7 @@ test.describe("Sidebar Tables Section (SBD-3845abcd)", () => {
         }
 
         const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
+        await page.locator(".sidebar-toggle").click();
         await expect(sidebar).toBeVisible({ timeout: 10000 });
 
         // Ensure tables section is visible

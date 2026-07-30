@@ -16,6 +16,7 @@ test.describe("Sidebar Scheduled SQL Section (SBD-7c1e9a2f)", () => {
             await showBtn.click();
         }
         const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
+        await page.locator(".sidebar-toggle").click();
         await expect(sidebar).toBeVisible({ timeout: 10000 });
         return sidebar;
     }

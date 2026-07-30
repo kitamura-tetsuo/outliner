@@ -57,7 +57,8 @@ test.describe("Sidebar Navigation", () => {
         const { sidebar, toggleButton, open, close, isOpen } = getSidebarHelpers(page);
 
         // Sidebar starts closed (to avoid covering other UI)
-        await expect(sidebar).toBeVisible();
+        await expect(sidebar).toBeAttached();
+        await expect(sidebar).not.toBeVisible();
         expect(await isOpen()).toBe(false);
 
         // Open sidebar
