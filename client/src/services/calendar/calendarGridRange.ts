@@ -67,7 +67,7 @@ function startOfWallDay(utcMs: number, timeZone: string): number {
 }
 
 /** Add `days` calendar days to a wall-clock midnight instant, in `timeZone`. */
-function addWallDays(midnightUtcMs: number, days: number, timeZone: string): number {
+export function addWallDays(midnightUtcMs: number, days: number, timeZone: string): number {
     const w = utcMsToWallTime(midnightUtcMs, timeZone);
     // Wall-clock day arithmetic is done on a "floating" Date (its UTC fields
     // read as the wall-clock fields — see zonedTime.ts) so adding a day never
@@ -80,7 +80,7 @@ function addWallDays(midnightUtcMs: number, days: number, timeZone: string): num
 }
 
 /** 0 (Sunday) .. 6 (Saturday) weekday of a wall-clock midnight instant. */
-function wallWeekday(midnightUtcMs: number, timeZone: string): number {
+export function wallWeekday(midnightUtcMs: number, timeZone: string): number {
     return wallTimeToFloatingDate(utcMsToWallTime(midnightUtcMs, timeZone)).getUTCDay();
 }
 
