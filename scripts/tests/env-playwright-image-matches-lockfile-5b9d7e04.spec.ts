@@ -37,6 +37,28 @@ test("the browser install pins the CLI to the version the tests run with", () =>
     expect(shell).toMatch(/npx --yes "\$cli" install-deps chromium/);
 });
 
+test("Dependabot moves the Playwright packages together", () => {
+    // A lone bump of one of them drifts the required browser revision away from
+    // what the image provides, which is how playwright-core reached 1.62.0
+    // while the runner stayed on 1.61.1.
+    const dependabot = read(".github", "dependabot.yml");
+    const group = dependabot.slice(dependabot.indexOf("      playwright:"));
+
+    expect(group).toMatch(/^ {6}playwright:$/m);
+    for (const pkg of ['"playwright"', '"playwright-core"', '"@playwright/test"']) {
+        expect(group.slice(0, group.indexOf("\n  - package-ecosystem") + 1 || undefined)).toContain(pkg);
+    }
+});
+
+test("playwright-core is not a direct client dependency", () => {
+    // It is imported nowhere, and declaring it hoists a second copy that can
+    // shadow the one the test runner resolves.
+    const pkg = JSON.parse(read("client", "package.json"));
+
+    expect(pkg.dependencies?.["playwright-core"]).toBeUndefined();
+    expect(pkg.devDependencies?.["playwright-core"]).toBeUndefined();
+});
+
 test("a dedicated CI job runs the check on every pull request", () => {
     const workflow = read(".github", "workflows", "ci-playwright-version.yml");
     expect(workflow).toMatch(/workflow_call:/);
