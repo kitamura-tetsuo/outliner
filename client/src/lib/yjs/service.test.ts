@@ -1,30 +1,47 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
-import { yjsService } from "./service";
-import { presenceStore } from "../../stores/PresenceStore.svelte";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { yjsService } from "./service";
 
 vi.mock("../../stores/PresenceStore.svelte", () => ({
     presenceStore: {
         users: {} as Record<string, unknown>,
-        setUser: vi.fn(function(this: any, u: any) { this.users[u.userId] = u; }),
-        removeUser: vi.fn(function(this: any, id: string) { delete this.users[id]; }),
-        reset: vi.fn(function(this: any) { this.users = {}; })
-    }
+        setUser: vi.fn(function(this: any, u: any) {
+            this.users[u.userId] = u;
+        }),
+        removeUser: vi.fn(function(this: any, id: string) {
+            delete this.users[id];
+        }),
+        reset: vi.fn(function(this: any) {
+            this.users = {};
+        }),
+    },
 }));
 
 vi.mock("../../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         cursors: {} as Record<string, unknown>,
         selections: {} as Record<string, unknown>,
-        setCursor: vi.fn(function(this: any, c: any) { this.cursors[c.userId] = c; }),
-        setSelection: vi.fn(function(this: any, s: any) { this.selections[s.userId] = s; }),
-        clearCursorAndSelection: vi.fn(function(this: any, userId: string) { delete this.cursors[userId]; }),
-        clearSelectionForUser: vi.fn(function(this: any, userId: string) { delete this.selections[userId]; }),
-        reset: vi.fn(function(this: any) { this.cursors = {}; this.selections = {}; })
-    }
+        setCursor: vi.fn(function(this: any, c: any) {
+            this.cursors[c.userId] = c;
+        }),
+        setSelection: vi.fn(function(this: any, s: any) {
+            this.selections[s.userId] = s;
+        }),
+        clearCursorAndSelection: vi.fn(function(this: any, userId: string) {
+            delete this.cursors[userId];
+        }),
+        clearSelectionForUser: vi.fn(function(this: any, userId: string) {
+            delete this.selections[userId];
+        }),
+        reset: vi.fn(function(this: any) {
+            this.cursors = {};
+            this.selections = {};
+        }),
+    },
 }));
 
 describe("yjsService", () => {
