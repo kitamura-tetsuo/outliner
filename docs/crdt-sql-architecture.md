@@ -390,14 +390,15 @@ extension of the iCal export (SCH-5A1C2B3D) to plans straightforward.
 ### 6.2 Recurrence
 
 _Partially implemented_ — the three steps (#4415):
+
 1. Storage is live: `rrule` / `recurrenceDtstart` / `recurrenceTimezone` /
-`recurrenceExdate` on the `Item` class (`shared/src/app-schema.ts`); read-time
-expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
-`rrule` / `recurrence_dtstart` / `recurrence_timezone` /
-`recurrence_parent_id` / `recurrence_occurrence_id` columns of
-`outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
-creation, exception recording and rule splitting in
-`client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
+   `recurrenceExdate` on the `Item` class (`shared/src/app-schema.ts`); read-time
+   expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
+   `rrule` / `recurrence_dtstart` / `recurrence_timezone` /
+   `recurrence_parent_id` / `recurrence_occurrence_id` columns of
+   `outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
+   creation, exception recording and rule splitting in
+   `client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
 
 2. Expansion is live (#4415): `buildCalendarEntries` calls the expansion logic
    and yields one virtual occurrence entry per instance within the visible
