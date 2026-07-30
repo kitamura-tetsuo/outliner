@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it } from "vitest";
 import SnapshotDiffModal from "../../components/SnapshotDiffModal.svelte";
-import { addSnapshot, setCurrentContent } from "../../services";
+import { addSnapshot } from "../../services";
 
 // Minimal regression test: Maintain focus and allow diff display with keyboard operation (Enter)
 
@@ -16,7 +16,6 @@ describe("SnapshotDiffModal A11y: focus & keyboard minimal regression", () => {
         addSnapshot(project, page, "old content", "alice");
         addSnapshot(project, page, "new content", "bob");
         // Current content
-        setCurrentContent(project, page, "current content");
     });
 
     it("Focus on list item, then Enter key displays diff", async () => {
