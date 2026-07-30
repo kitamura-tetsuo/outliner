@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 28;
+export const DEMO_TEMPLATE_VERSION = 29;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -1018,7 +1018,7 @@ export const demoPages: DemoPageTemplate[] = [
             },
             {
                 text:
-                    "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
+                    "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles and grouped by tags. Try dragging the entries below, or click **Settings** to change the query or reassign a role.",
                 componentType: "calendar",
                 calendarId: DEMO_CALENDAR_ID,
             },

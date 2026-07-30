@@ -41,6 +41,38 @@ afterAll(async () => {
 });
 
 describe("CalendarView", { timeout: 30000 }, () => {
+    it("panel absent by default with a non-empty query, present after clicking the toggle, present by default when the query is empty; error paragraphs render while collapsed", async () => {
+        const projectId = "proj-calendar-settings-panel";
+        const { projectDoc, project } = seedProject(projectId);
+
+        // 1. Present by default when the query is empty
+        const emptyCalendarId = createCalendar(project, { name: "Empty", query: "" });
+        let comp = render(CalendarView, { props: { project, projectId, calendarId: emptyCalendarId } });
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeTruthy());
+        comp.unmount();
+
+        // 2. Absent by default with a non-empty query, present after clicking the toggle
+        const calendarId = createCalendar(project, { name: "Configured", query: "SELECT id FROM outline_items" });
+        comp = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy());
+
+        const toggleBtn = comp.getByTestId("calendar-toggle-settings");
+        await fireEvent.click(toggleBtn);
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeTruthy());
+
+        // 3. Error paragraphs render while collapsed
+        await fireEvent.click(toggleBtn); // Collapse again
+        await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy());
+
+        // Set an invalid query to trigger an error
+        const map = projectDoc.getMap("calendars").get(calendarId) as Y.Map<unknown>;
+        map.set("query", "SELECT SYNTAX ERROR");
+
+        // Ensure error is visible even when collapsed
+        await waitFor(() => expect(comp.queryByTestId("calendar-query-error")).toBeTruthy());
+        expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy();
+    });
+
     it("renders a timed entry from the query result in the week time-grid", async () => {
         const projectId = "proj-calendar-view-week";
         const { projectDoc, project, page } = seedProject(projectId);
@@ -377,6 +409,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         await waitFor(() => expect(callCount).toBe(1));
 
+        await fireEvent.click(comp.getByTestId("calendar-toggle-settings"));
         await fireEvent.change(comp.getByTestId("calendar-timezone-select"), { target: { value: "Europe/London" } });
 
         await waitFor(() => expect(callCount).toBeGreaterThanOrEqual(2));
