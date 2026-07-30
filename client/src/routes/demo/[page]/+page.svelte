@@ -22,7 +22,6 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
-    let seedNetworkError = $state(false);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
     let isSearchPanelVisible = $state(false);
@@ -49,17 +48,13 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         try {
             isLoading = true;
             error = undefined;
-            seedNetworkError = false;
             pageNotFound = false;
             store.currentPage = undefined;
 
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (seedResult && !seedResult.ok && seedResult.reason === "network") {
-                    seedNetworkError = true;
-                }
+                await seedDemo();
                 if (isDestroyed) return;
 
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
@@ -186,7 +181,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         </p>
     </div>
 
-    {#if (isLoading || (yjsStore.notYetSynced && !store.currentPage)) && !error && !pageNotFound && !yjsStore.isRetrying && !seedNetworkError}
+    {#if (isLoading || (yjsStore.notYetSynced && !store.currentPage)) && !error && !pageNotFound}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
@@ -210,8 +205,6 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 </div>
             </div>
         </div>
-    {:else if yjsStore.isRetrying || seedNetworkError}
-        <div class="py-8"><Loader message="Reconnecting to Demo Server..." /></div>
     {:else if pageNotFound}
         <div class="rounded-md bg-yellow-50 p-4" role="alert" aria-live="assertive">
             <div class="flex">
