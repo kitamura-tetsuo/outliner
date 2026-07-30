@@ -38,7 +38,7 @@ interface ServerOverrides {
 }
 
 export interface ConnectionContext {
-    user: { uid: string };
+    user: { uid: string; };
     room: import("./room-validator.js").RoomInfo;
     ip?: string;
 }
@@ -241,7 +241,9 @@ export async function startServer(
                     || (data.request as any).socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
-            async onAuthenticate(data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>): Promise<ConnectionContext> {
+            async onAuthenticate(
+                data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>,
+            ): Promise<ConnectionContext> {
                 // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
                 // We cannot do this before handleConnection because the client immediately sends the Auth message
                 // after the WS handshake, and if we await async operations first the message would be lost
