@@ -24,32 +24,6 @@ function childrenKeys(tree: YTree, parentKey: string): string[] {
     }
 }
 
-function resolveOverlayStore(): typeof editorOverlayStore | undefined {
-    return (globalThis as typeof globalThis & {
-        editorOverlayStore?: typeof import("../../stores/EditorOverlayStore.svelte").editorOverlayStore;
-    }).editorOverlayStore ?? editorOverlayStore;
-}
-
-function resolvePresenceStore(): typeof presenceStore | undefined {
-    return (globalThis as typeof globalThis & {
-        presenceStore?: typeof import("../../stores/PresenceStore.svelte").presenceStore;
-    }).presenceStore ?? presenceStore;
-}
-
-function resolveUserColor(userId: string, provided?: string): string {
-    if (provided) return provided;
-    const globalColorForUser = (globalThis as typeof globalThis & { colorForUser?: (id: string) => string; })
-        .colorForUser as ((id: string) => string) | undefined;
-    if (typeof globalColorForUser === "function") {
-        try {
-            return globalColorForUser(userId);
-        } catch (_e) {
-            logger.error(_e);
-        }
-    }
-    return colorForUser(userId);
-}
-
 function applyPresenceToOverlay(
     overlay: typeof editorOverlayStore | undefined,
     user: { userId: string; name?: string; color?: string; },
@@ -61,24 +35,21 @@ function applyPresenceToOverlay(
         }
         | null
         | undefined,
+    currentPageId?: string,
 ) {
     if (!overlay || !user) return;
 
     // Filter out presence that belongs to a different page
-    const currentPage = (window as Window & typeof globalThis & {
-        appStore?: { currentPage?: { id?: string; }; };
-    }).appStore?.currentPage;
-
     // If we're not on any page, or the presence doesn't match the current page, clear it
-    // NOTE: in tests, currentPage may not exist. Allow when presence.pageId is missing
+    // NOTE: in tests, currentPageId may not exist. Allow when presence.pageId is missing
     if (
-        (currentPage?.id === undefined && presence?.pageId) || (presence?.pageId && presence.pageId !== currentPage?.id)
+        (currentPageId === undefined && presence?.pageId) || (presence?.pageId && presence.pageId !== currentPageId)
     ) {
         overlay.clearCursorAndSelection(user.userId, false);
         return;
     }
 
-    const color = resolveUserColor(user.userId, user.color);
+    const color = user.color || colorForUser(user.userId);
     if (presence?.cursor) {
         overlay.setCursor({
             itemId: presence.cursor.itemId,
@@ -234,7 +205,7 @@ export const yjsService = {
         } | undefined;
     },
 
-    bindProjectPresence(awareness: Awareness) {
+    bindProjectPresence(awareness: Awareness, currentPageId?: string) {
         // If already bound, return the existing unbind function
         const existingUnbind = this._boundAwareness.get(awareness);
         if (existingUnbind) {
@@ -244,23 +215,23 @@ export const yjsService = {
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
-            const target = resolvePresenceStore();
+            const target = presenceStore;
             if (!target) return;
             const states = awareness.getStates();
             const clientId = (awareness as Awareness & { clientID: number; }).clientID;
-            const overlay = resolveOverlayStore();
+            const overlay = editorOverlayStore;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
                 clientUserMap.set(id, user);
-                const color = resolveUserColor(user.userId, user.color);
+                const color = user.color || colorForUser(user.userId);
                 // Update synchronously because tests expect immediate reflection.
                 target.setUser({ userId: user.userId, userName: user.name, color });
 
                 if (overlay && id !== clientId) {
-                    applyPresenceToOverlay(overlay, { ...user, color }, s?.presence);
+                    applyPresenceToOverlay(overlay, { ...user, color }, s?.presence, currentPageId);
                 }
             });
 
@@ -271,7 +242,7 @@ export const yjsService = {
                 target.removeUser(user.userId);
 
                 if (overlay && id !== clientId) {
-                    applyPresenceToOverlay(overlay, { ...user }, null);
+                    applyPresenceToOverlay(overlay, { ...user }, null, currentPageId);
                 }
             });
         };
@@ -287,8 +258,8 @@ export const yjsService = {
         return unbind;
     },
 
-    reapplyAllPresences(awareness: Awareness) {
-        const overlay = resolveOverlayStore();
+    reapplyAllPresences(awareness: Awareness, currentPageId?: string) {
+        const overlay = editorOverlayStore;
         if (!overlay) return;
         const states = awareness.getStates();
         const clientId = (awareness as Awareness & { clientID: number; }).clientID;
@@ -297,14 +268,14 @@ export const yjsService = {
             const user = s?.user;
             if (!user) return;
             if (id === clientId) return;
-            applyPresenceToOverlay(overlay, user, s?.presence);
+            applyPresenceToOverlay(overlay, user, s?.presence, currentPageId);
         });
     },
 
-    bindPagePresence(awareness: Awareness) {
+    bindPagePresence(awareness: Awareness, currentPageId?: string) {
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
-            const overlay = resolveOverlayStore();
+            const overlay = editorOverlayStore;
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
             const clientId = (awareness as Awareness & { clientID: number; }).clientID;
@@ -315,7 +286,7 @@ export const yjsService = {
                 if (!user) return;
                 clientUserMap.set(id, user);
                 if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, s?.presence);
+                applyPresenceToOverlay(overlay, user, s?.presence, currentPageId);
             });
 
             removed.forEach((id: number) => {
@@ -323,7 +294,7 @@ export const yjsService = {
                 if (!user) return;
                 clientUserMap.delete(id);
                 if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, null);
+                applyPresenceToOverlay(overlay, user, null, currentPageId);
             });
         };
         awareness.on("change", update);

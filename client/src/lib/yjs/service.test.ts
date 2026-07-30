@@ -1,10 +1,39 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
 import { yjsService } from "./service";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+
+vi.mock("../../stores/PresenceStore.svelte", () => ({
+    presenceStore: {
+        users: {} as Record<string, unknown>,
+        setUser: vi.fn(function(this: any, u: any) { this.users[u.userId] = u; }),
+        removeUser: vi.fn(function(this: any, id: string) { delete this.users[id]; }),
+        reset: vi.fn(function(this: any) { this.users = {}; })
+    }
+}));
+
+vi.mock("../../stores/EditorOverlayStore.svelte", () => ({
+    editorOverlayStore: {
+        cursors: {} as Record<string, unknown>,
+        selections: {} as Record<string, unknown>,
+        setCursor: vi.fn(function(this: any, c: any) { this.cursors[c.userId] = c; }),
+        setSelection: vi.fn(function(this: any, s: any) { this.selections[s.userId] = s; }),
+        clearCursorAndSelection: vi.fn(function(this: any, userId: string) { delete this.cursors[userId]; }),
+        clearSelectionForUser: vi.fn(function(this: any, userId: string) { delete this.selections[userId]; }),
+        reset: vi.fn(function(this: any) { this.cursors = {}; this.selections = {}; })
+    }
+}));
 
 describe("yjsService", () => {
+    beforeEach(() => {
+        (presenceStore as any).reset();
+        (editorOverlayStore as any).reset();
+        vi.clearAllMocks();
+    });
+
     it("adds and reorders items", () => {
         const project = yjsService.createProject("test");
         const a = yjsService.addItem(project, "root", "u1");
@@ -36,53 +65,19 @@ describe("yjsService", () => {
 
     it("binds project presence to store", () => {
         const awareness = new Awareness(new Y.Doc());
-        // Provide a minimal global presence store to avoid importing .svelte.ts
-        const presenceStore = {
-            users: {} as Record<string, unknown>,
-            setUser(u: { userId: string; [key: string]: unknown; }) {
-                this.users = { ...this.users, [u.userId]: u };
-            },
-            removeUser(id: string) {
-                const updatedUsers = { ...this.users };
-                delete updatedUsers[id];
-                this.users = updatedUsers;
-            },
-        };
 
-        (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
+
+        expect((presenceStore as any).users["u1"].userName).toBe("Alice");
+
         awareness.setLocalStateField("user", null);
         unbind();
     });
 
     it("binds page presence to overlay", () => {
         const awareness = new Awareness(new Y.Doc());
-        // Provide a minimal global overlay store
-        type CursorState = { itemId: string; offset: number; userId: string; };
-        const editorOverlayStore = {
-            cursors: {} as Record<string, CursorState>,
-            selections: {} as Record<string, unknown>,
-            setCursor({ itemId, offset, userId }: { itemId: string; offset: number; userId: string; }) {
-                this.cursors[userId] = { itemId, offset, userId };
-            },
-            setSelection({ userId }: { userId: string; }) {
-                this.selections[userId] = { userId };
-            },
-            clearCursorAndSelection(userId: string) {
-                const updatedCursors = { ...this.cursors };
-                delete updatedCursors[userId];
-                this.cursors = updatedCursors;
-            },
-            clearSelectionForUser(userId: string) {
-                const updatedSelections = { ...this.selections };
-                delete updatedSelections[userId];
-                this.selections = updatedSelections;
-            },
-        };
 
-        (globalThis as unknown as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
         // seed local state (ignored by overlay sync)
@@ -101,7 +96,7 @@ describe("yjsService", () => {
             "test",
         ]);
 
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        const cursor = (editorOverlayStore as any).cursors["u2"];
         expect(cursor?.itemId).toBe("i1");
 
         awarenessWithEmit.emit("change", [
