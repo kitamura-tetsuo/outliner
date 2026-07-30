@@ -389,7 +389,8 @@ extension of the iCal export (SCH-5A1C2B3D) to plans straightforward.
 
 ### 6.2 Recurrence
 
-_Implemented_ — `rrule` / `recurrenceDtstart` / `recurrenceTimezone` /
+_Partially implemented_ — the three steps (#4415):
+1. Storage is live: `rrule` / `recurrenceDtstart` / `recurrenceTimezone` /
 `recurrenceExdate` on the `Item` class (`shared/src/app-schema.ts`); read-time
 expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
 `rrule` / `recurrence_dtstart` / `recurrence_timezone` /
@@ -397,15 +398,11 @@ expansion in `shared/src/services/calendarRecurrenceExpansion.ts`; the
 `outline_items` (`client/src/services/yjstable/itemsRelation.ts`); override
 creation, exception recording and rule splitting in
 `client/src/services/calendar/recurrenceEditing.ts`; tracked by #4343. The
-day/multi-day/week/month views drive occurrence expansion from a drag gesture
-as of #4347; Gantt (#4350) reuses the same leaf write path
-(`calendarEntryWrite.ts`) and so shares this same posture, with no
-Gantt-specific occurrence-materialization behavior added. The visible-range
-injection that
-would bound expansion at the SQL level (#4345) has not landed on `main`
-(tracked separately, in flight via #4361) — #4347's grid views clip to the
-visible range client-side in `layoutTimeGrid`/`layoutMonthGrid` in the
-meantime, which is correct but not yet the performance win §6.4 describes.
+
+2. Expansion is live (#4415): `buildCalendarEntries` calls the expansion logic
+   and yields one virtual occurrence entry per instance within the visible
+   range, avoiding materialization while giving grid views draggable entries.
+3. Writes persist exceptions: editing a virtual occurrence materialises an override.
 
 **Recurring entries are not materialized.** The standard model, and the one
 adopted here, is:
