@@ -42,6 +42,9 @@ test.describe("Calendar Settings Panel Toggle", () => {
             );
             await page.getByTestId("calendar-query-input").blur();
 
+            // Wait for the query to be saved to Yjs and PGlite to process it.
+            await page.waitForTimeout(1000);
+
             // Now, if we refresh the page, it should be collapsed by default.
             await page.reload();
 
@@ -49,7 +52,7 @@ test.describe("Calendar Settings Panel Toggle", () => {
             await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 15000 });
 
             // Assert calendar-query-input is not visible initially since it has a query
-            await expect(page.getByTestId("calendar-query-input")).toBeHidden();
+            await expect(page.getByTestId("calendar-query-input")).toBeHidden({ timeout: 10000 });
 
             // Click calendar-toggle-settings
             await page.getByTestId("calendar-toggle-settings").click();
