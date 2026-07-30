@@ -351,8 +351,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         unmount();
     });
 
-
-
     it.skip("discards a slow earlier query if a newer one starts before it finishes", async () => {
         const projectId = "proj-calendar-view-query-guard";
         const { project } = seedProject(projectId);
