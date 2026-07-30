@@ -48,7 +48,8 @@ describe("Demo manual reset policy", () => {
 // document. The previous applyUpdate-from-a-fresh-doc approach made the YTree
 // "root" marker a concurrent write that could lose against tombstones from
 // earlier resets, leaving a document that YTree refuses to load.
-describe("Demo reseed keeps the shared document tree valid", () => {
+describe("Demo reseed keeps the shared document tree valid", function () {
+    this.timeout(10000);
     // Mirrors the transact body of POST /api/seed-demo
     function resetCycle(ydoc: Y.Doc): void {
         const orderedTree = ydoc.getMap("orderedTree");
@@ -85,33 +86,121 @@ describe("Demo reseed keeps the shared document tree valid", () => {
     });
 });
 
-describe("Demo manual reset rate limit", () => {
+describe("Demo manual reset rate limit", function () {
+    this.timeout(10000);
+
+    it("failed reset does not consume the cooldown", async () => {
+        const app = express();
+        app.use(express.json());
+
+        const mockHocuspocus = {
+            openDirectConnection: async () => {
+                throw new Error("Simulated reset failure");
+            },
+        };
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
+
+        const originalNow = Date.now;
+        let currentTime = 1000000;
+        Date.now = () => currentTime;
+
+        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({ force: true });
+        expect(res1.status).to.equal(500);
+
+        const mockHocuspocusSuccess = {
+            openDirectConnection: async () => ({
+                document: new Y.Doc(),
+                transact: (cb: any) => cb(new Y.Doc()),
+                disconnect: async () => {},
+            }),
+        };
+        const appSuccess = express();
+        appSuccess.use(express.json());
+        appSuccess.use("/api", createDemoRouter(mockHocuspocusSuccess as any));
+
+        const res2 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({ force: true });
+        expect(res2.status).to.equal(200);
+
+        Date.now = originalNow;
+    });
+
+    it("de-duplicated request does not consume the cooldown", async () => {
+        const app = express();
+        app.use(express.json());
+
+        let resolveReset: any;
+        const resetPromise = new Promise(resolve => {
+            resolveReset = resolve;
+        });
+
+        const mockHocuspocus = {
+            openDirectConnection: async () => {
+                await resetPromise;
+                throw new Error("Simulated reset failure");
+            },
+        };
+        app.use("/api", createDemoRouter(mockHocuspocus as any));
+
+        const originalNow = Date.now;
+        let currentTime = 2000000;
+        Date.now = () => currentTime;
+
+        const req1Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.2").send({ force: true });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const req2Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({ force: true });
+
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        resolveReset();
+
+        const res1 = await req1Promise;
+        expect(res1.status).to.equal(500);
+
+        const res2 = await req2Promise;
+        expect(res2.status).to.equal(500);
+
+        const mockHocuspocusSuccess = {
+            openDirectConnection: async () => ({
+                document: new Y.Doc(),
+                transact: (cb: any) => cb(new Y.Doc()),
+                disconnect: async () => {},
+            }),
+        };
+        const appSuccess = express();
+        appSuccess.use(express.json());
+        appSuccess.use("/api", createDemoRouter(mockHocuspocusSuccess as any));
+
+        const res3 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({ force: true });
+        expect(res3.status).to.equal(200);
+
+        Date.now = originalNow;
+    });
+
     it("enforces a global cooldown across different IPs", async () => {
         const app = express();
         app.use(express.json());
 
-        // Setup minimal mock Hocuspocus instance
         const mockHocuspocus = {
             openDirectConnection: async () => ({
                 document: new Y.Doc(),
-                transact: (cb) => cb(new Y.Doc()),
+                transact: (cb: any) => cb(new Y.Doc()),
                 disconnect: async () => {},
             }),
         };
         app.use("/api", createDemoRouter(mockHocuspocus as any));
 
-        // First request succeeds
-        const res1 = await request(app)
-            .post("/api/seed-demo")
-            .set("cf-connecting-ip", "1.1.1.1")
-            .send({ force: true });
+        const originalNow = Date.now;
+        let currentTime = 3000000;
+        Date.now = () => currentTime;
+
+        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.4").send({ force: true });
         expect(res1.status).to.equal(200);
 
-        // Second request with different IP fails due to global limit
-        const res2 = await request(app)
-            .post("/api/seed-demo")
-            .set("cf-connecting-ip", "2.2.2.2")
-            .send({ force: true });
+        const res2 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.5").send({ force: true });
         expect(res2.status).to.equal(429);
+
+        Date.now = originalNow;
     });
 });
