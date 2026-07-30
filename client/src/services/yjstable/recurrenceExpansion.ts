@@ -2,8 +2,8 @@
 // `$shared/services/calendarRecurrenceExpansion`. Not wired into
 // `itemsRelation.ts`'s PGlite projection: a recurring item's virtual
 // occurrences must never be materialized as stored rows (§6.2's whole
-// point), and materialization here has no visible-range input yet (that
-// lands with #4340's range-injection sub-issue). Until then, a calendar
+// point). Materialization uses visible-range input injected from
+// #4345/#4361's SQL-level limits or grid view query limits. Until then, a calendar
 // view (or a test) calls this directly with an explicit range.
 
 import type { Item, Items } from "$shared/app-schema";

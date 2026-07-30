@@ -137,9 +137,12 @@ describe("Demo Page View", () => {
         (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
             containerId: "mock-container",
             getProject: () => {
+                // The dynamic require here causes [yjs#509] Not same Y.Doc errors in tests
+                // However, Vite/Oxc refuses top-level await inside the mock function.
+                // We bypass it by getting the `Y` instance that was imported globally in the mock setup.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const Y = require("yjs");
-                const doc = new Y.Doc();
+                const Y_mod = (window as unknown as { Y?: typeof import("yjs"); }).Y || require("yjs");
+                const doc = new Y_mod.Doc();
                 doc.getMap("metadata").set("title", "demo");
                 doc.getMap("metadata").set("lastReset", 0);
                 return { ydoc: doc };
