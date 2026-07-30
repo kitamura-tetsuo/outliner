@@ -28,10 +28,31 @@ describe("TableGrid", () => {
             createSql: "CREATE TABLE test_table (id uuid, col_a text, col_b text, col_c text);",
             columns: [
                 { name: "id", dataType: "uuid", isNullable: false, isPrimaryKey: true, kind: "text", checkOptions: [] },
-                { name: "col_a", dataType: "text", isNullable: true, isPrimaryKey: false, kind: "text", checkOptions: [] },
-                { name: "col_b", dataType: "text", isNullable: true, isPrimaryKey: false, kind: "text", checkOptions: [] },
-                { name: "col_c", dataType: "text", isNullable: true, isPrimaryKey: false, kind: "text", checkOptions: [] },
-            ]
+                {
+                    name: "col_a",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+                {
+                    name: "col_b",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+                {
+                    name: "col_c",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+            ],
         };
 
         const result: TableQueryResult = {
