@@ -65,7 +65,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
         await waitFor(() => expect(comp.queryByTestId("calendar-settings-panel")).toBeFalsy());
 
         // Set an invalid query to trigger an error
-        const map = projectDoc.getMap("calendars").get(calendarId) as Y.Map<any>;
+        const map = projectDoc.getMap("calendars").get(calendarId) as Y.Map<unknown>;
         map.set("query", "SELECT SYNTAX ERROR");
 
         // Ensure error is visible even when collapsed
