@@ -11,7 +11,7 @@ export function resolveCalendarTimezone(timezone?: string): string {
     if (timezone) return timezone;
     try {
         return Intl.DateTimeFormat().resolvedOptions().timeZone;
-    } catch {
+    } catch (_e) {
         return "UTC";
     }
 }
@@ -22,7 +22,7 @@ export function isValidIanaTimeZone(timezone: string): boolean {
     try {
         Intl.DateTimeFormat(undefined, { timeZone: timezone });
         return true;
-    } catch {
+    } catch (_e) {
         return false;
     }
 }
@@ -38,7 +38,7 @@ export function listSupportedTimeZones(): string[] {
     if (typeof supportedValuesOf !== "function") return [];
     try {
         return supportedValuesOf("timeZone");
-    } catch {
+    } catch (_e) {
         return [];
     }
 }

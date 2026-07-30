@@ -72,7 +72,8 @@ onMount(() => {
 const attachments = $derived.by(() => {
     try {
         return attachmentsMirror as string[];
-    } catch {
+    } catch (_e) {
+            logger.warn("Caught error in OutlinerItemAttachments", _e);
         return [] as string[];
     }
 });

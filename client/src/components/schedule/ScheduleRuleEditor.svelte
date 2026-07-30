@@ -26,7 +26,7 @@ if (initialRrule) {
         } else {
             initialIsRaw = true;
         }
-    } catch {
+    } catch (_e) {
         initialIsRaw = true;
     }
 } else {
@@ -121,7 +121,7 @@ let derivedRruleStr = $derived.by(() => {
     try {
         const ruleObj = new RRule(options);
         return ruleObj.toString();
-    } catch {
+    } catch (_e) {
         return "FREQ=DAILY;INTERVAL=1";
     }
 });

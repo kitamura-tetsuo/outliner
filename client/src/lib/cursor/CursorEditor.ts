@@ -545,13 +545,17 @@ export class CursorEditor {
         if (textValue && typeof (textValue as { toString(): string; }).toString === "function") {
             try {
                 return (textValue as { toString(): string; }).toString();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in CursorEditor", _e);
+            }
         }
         if (typeof (item as unknown as { getText(): string; }).getText === "function") {
             try {
                 const result = (item as unknown as { getText(): string; }).getText();
                 if (typeof result === "string") return result;
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in CursorEditor", _e);
+            }
         }
         return "";
     }
@@ -588,7 +592,9 @@ export class CursorEditor {
             if (value && typeof (value as { set: (k: string, v: unknown) => void; }).set === "function") {
                 (value as { set(k: string, v: unknown): void; }).set("lastChanged", Date.now());
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in CursorEditor", _e);
+        }
     }
 
     private deleteItemNode(item: import("../../schema/app-schema").Item) {
@@ -617,7 +623,9 @@ export class CursorEditor {
                 try {
                     (tree as { deleteNodeAndDescendants: (k: string) => void; }).deleteNodeAndDescendants(key);
                     return;
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in CursorEditor", _e);
+                }
             }
         }
     }
@@ -631,7 +639,9 @@ export class CursorEditor {
             try {
                 doc.transact(action);
                 return;
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in CursorEditor", _e);
+            }
         }
 
         action();
@@ -814,7 +824,8 @@ export class CursorEditor {
                     }
                 }, 150);
             }
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in CursorEditor", _e);
             cursor.clearSelection();
             store.startCursorBlink();
             cursor.applyToStore();

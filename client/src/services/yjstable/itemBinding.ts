@@ -22,7 +22,7 @@ function nodeValue(
             get?: (k: string) => unknown;
             set?: (k: string, v: unknown) => void;
         };
-    } catch {
+    } catch (_e) {
         return undefined;
     }
 }

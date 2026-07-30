@@ -31,17 +31,22 @@ export async function resolveUploadContainerId(): Promise<string> {
     let containerId: string | undefined;
     try {
         containerId = await getDefaultContainerId();
-    } catch {}
+    } catch (_e) {
+        logger.warn("Caught error in AttachmentUpload", _e);
+    }
     return containerId || "test-container";
 }
 
 function addAttachmentWithFallback(item: Item, url: string) {
     try {
         item.addAttachment(url);
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in AttachmentUpload", _e);
         try {
             (item as Item & { attachments?: { push: (arr: [string]) => void; }; }).attachments?.push([url]);
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in AttachmentUpload", _e);
+        }
     }
 }
 
@@ -68,7 +73,9 @@ export async function uploadFileToNewItemAtEnd(
                     window.dispatchEvent(
                         new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }),
                     );
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in AttachmentUpload", _e);
+                }
             }
         }
     } catch (e) {
@@ -116,16 +123,22 @@ export async function handleFileUploadFromDrop(
             let containerId: string | undefined = undefined;
             try {
                 containerId = await getDefaultContainerId();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in AttachmentUpload", _e);
+            }
             if (!containerId && typeof window !== "undefined") {
                 try {
                     containerId = window.localStorage?.getItem?.("currentContainerId") ?? undefined;
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in AttachmentUpload", _e);
+                }
                 try {
                     containerId = containerId
                         || (window as Window & typeof globalThis & { __CURRENT_PROJECT_TITLE__?: string; })
                             .__CURRENT_PROJECT_TITLE__;
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in AttachmentUpload", _e);
+                }
             }
             containerId = containerId || "test-container";
 
@@ -197,8 +210,12 @@ export async function handleFileUploadFromDrop(
                                         }
                                     }
                                 }
-                            } catch {}
-                        } catch {}
+                            } catch (_e) {
+                                logger.warn("Caught error in AttachmentUpload", _e);
+                            }
+                        } catch (_e) {
+                            logger.warn("Caught error in AttachmentUpload", _e);
+                        }
                     }
                     logger.error({ error: e as Error }, "attachment upload failed");
                 }
@@ -209,7 +226,9 @@ export async function handleFileUploadFromDrop(
                     const blob = new Blob(["e2e"], { type: "text/plain" });
                     const localUrl = URL.createObjectURL(blob);
                     addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in AttachmentUpload", _e);
+                }
             }
         }
         return true;
@@ -223,7 +242,9 @@ export async function handleFileUploadFromDrop(
             const blob = new Blob(["e2e"], { type: "text/plain" });
             const localUrl = URL.createObjectURL(blob);
             addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in AttachmentUpload", _e);
+        }
         return true;
     }
 

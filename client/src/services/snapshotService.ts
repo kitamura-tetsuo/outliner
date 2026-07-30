@@ -21,7 +21,7 @@ function load(project: string, page: string): Snapshot[] {
     if (!raw) return [];
     try {
         return JSON.parse(raw) as Snapshot[];
-    } catch {
+    } catch (_e) {
         return [];
     }
 }

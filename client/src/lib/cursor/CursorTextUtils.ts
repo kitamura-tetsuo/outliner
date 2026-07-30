@@ -97,7 +97,9 @@ export function resolveItemText(target: { text?: unknown; } | undefined): string
     if (raw && typeof (raw as { toString?: () => string; }).toString === "function") {
         try {
             return (raw as { toString?: () => string; }).toString?.() || "";
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in CursorTextUtils", _e);
+        }
     }
     return raw == null ? "" : String(raw);
 }

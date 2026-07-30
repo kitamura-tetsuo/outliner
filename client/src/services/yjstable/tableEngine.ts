@@ -280,7 +280,8 @@ async function destroyEntry(entry: Entry): Promise<void> {
     }
     try {
         await entry.disposeConnection?.();
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in tableEngine", _e);
         // provider already gone
     }
 }

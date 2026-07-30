@@ -45,7 +45,7 @@ function readRaw(projectId: string): CalendarDestinationHistoryEntry[] {
             (entry): entry is CalendarDestinationHistoryEntry =>
                 Boolean(entry) && typeof entry.parentKey === "string" && typeof entry.label === "string",
         );
-    } catch {
+    } catch (_e) {
         return [];
     }
 }

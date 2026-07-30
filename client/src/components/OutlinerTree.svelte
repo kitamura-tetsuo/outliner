@@ -1743,7 +1743,8 @@
             // Add to existing item
             try {
                 targetItem.addAttachment(url);
-            } catch {
+            } catch (_e) {
+            logger.warn("Caught error in OutlinerTree", _e);
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                     try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
                 }
@@ -1766,7 +1767,8 @@
 
                 try {
                     newItem.addAttachment(url);
-                } catch {
+                } catch (_e) {
+            logger.warn("Caught error in OutlinerTree", _e);
                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                         try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
                     }

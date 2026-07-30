@@ -437,7 +437,7 @@ export class ScrapboxFormatter {
                                 existsClassTokens = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
                                     : "page-not-exists";
-                            } catch {
+                            } catch (_e) {
                                 existsClassTokens = "page-not-exists";
                             }
 
@@ -687,7 +687,7 @@ export class ScrapboxFormatter {
                             existsClass = this.checkPageExists(pageName, projectName)
                                 ? "page-exists"
                                 : "page-not-exists";
-                        } catch {
+                        } catch (_e) {
                             // In case of any error in checkPageExists, default to page-not-exists
                             existsClass = "page-not-exists";
                         }
@@ -774,7 +774,7 @@ export class ScrapboxFormatter {
                                 existsClass = this.checkPageExists(pageName, projectName)
                                     ? "page-exists"
                                     : "page-not-exists";
-                            } catch {
+                            } catch (_e) {
                                 existsClass = "page-not-exists";
                             }
                             const html = `<span class="link-preview-wrapper"><a href="/${
@@ -1193,7 +1193,7 @@ export class ScrapboxFormatter {
             }
 
             return false;
-        } catch {
+        } catch (_e) {
             // If there's an error, assume the page doesn't exist
             return false;
         }

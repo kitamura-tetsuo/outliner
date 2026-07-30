@@ -20,7 +20,7 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
     let targetNameDecoded2 = targetNameRaw;
     try {
         targetNameDecoded2 = decodeURIComponent(String(name).trim()).toLowerCase();
-    } catch {}
+    } catch (_e) {}
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;

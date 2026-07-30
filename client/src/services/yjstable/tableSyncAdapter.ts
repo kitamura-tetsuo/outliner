@@ -287,7 +287,7 @@ export class TableSyncAdapter {
             } catch (err) {
                 try {
                     await db.exec("ROLLBACK;");
-                } catch {
+                } catch (_e) {
                     // no transaction to roll back
                 }
                 throw toTableSqlError("schema", err);
@@ -344,7 +344,7 @@ export class TableSyncAdapter {
         const table = `${quoteIdent(this.pgSchema)}.${quoteIdent(schema.tableName)}`;
         try {
             await db.query(`DELETE FROM ${table}`);
-        } catch {
+        } catch (_e) {
             return;
         }
         this.recordErrors = new Map();
@@ -413,7 +413,7 @@ export class TableSyncAdapter {
         } catch (err) {
             try {
                 await db.exec("ROLLBACK");
-            } catch {
+            } catch (_e) {
                 // no transaction to roll back
             }
             const e = toTableSqlError("write", err, { recordId });
@@ -509,7 +509,7 @@ export class TableSyncAdapter {
             } catch (err) {
                 try {
                     await db.exec("ROLLBACK");
-                } catch {
+                } catch (_e) {
                     // no transaction to roll back
                 }
                 throw toTableSqlError("query", err);

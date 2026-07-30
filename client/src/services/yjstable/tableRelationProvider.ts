@@ -88,7 +88,7 @@ function parseJsonStringArray(value: unknown): string[] {
     try {
         const parsed: unknown = JSON.parse(value);
         return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
-    } catch {
+    } catch (_e) {
         return [];
     }
 }

@@ -258,7 +258,9 @@
             }
             try {
                 capturePageIdForSchedule();
-            } catch {}
+            } catch (_e) {
+            logger.warn("Caught error in +page", _e);
+        }
         }
     }
 
@@ -282,7 +284,9 @@
         void store.pagesVersion;
 
         // E2E Stabilization: capture pageId as needed when page list changes
-        try { capturePageIdForSchedule(); } catch {}
+        try { capturePageIdForSchedule(); } catch (_e) {
+            logger.warn("Caught error in +page", _e);
+        }
 
         if (!__loadingInProgress && !error && store.currentPage && store.project) {
             const findPageEffect = () => {
@@ -317,7 +321,9 @@
                     id,
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in +page", _e);
+        }
     }
 
 

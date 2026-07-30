@@ -37,7 +37,8 @@ function createRoomRegistry<T>(label: string, max = 100) {
             for (const listener of set) {
                 try {
                     listener(state);
-                } catch {
+                } catch (_e) {
+                    logger.warn("Caught error in RoomSyncState", _e);
                     // Listener errors must not break sync-state propagation
                 }
             }

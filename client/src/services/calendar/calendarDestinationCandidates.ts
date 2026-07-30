@@ -31,7 +31,7 @@ export function isDestinationResolvable(project: Project, parentKey: string): bo
     try {
         project.tree.getNodeValueFromKey(parentKey);
         return true;
-    } catch {
+    } catch (_e) {
         return false;
     }
 }

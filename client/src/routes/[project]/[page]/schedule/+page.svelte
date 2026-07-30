@@ -202,7 +202,9 @@ onMount(() => {
                 logger.debug("Schedule page: Found session pinned pageId=", sessionPinnedPageId);
             }
         }
-    } catch {}
+    } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
     // If there is a pageId saved in the session, adopt it with highest priority.
     // However, verify whether the pageId belongs to the page corresponding to the current pageTitle
     if (sessionPinnedPageId) {
@@ -327,7 +329,9 @@ onMount(() => {
                     break;
                 }
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
 
         // Also check store.project.items directly
         if (!foundPageRef) {
@@ -349,7 +353,9 @@ onMount(() => {
                         }
                     }
                 }
-            } catch {}
+            } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
         }
 
         if (foundPageRef) {
@@ -389,7 +395,9 @@ onMount(() => {
         ) {
             pageId = String(store.currentPage?.id ?? "");
         }
-    } catch {}
+    } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
 
     // 2) If currentPage is undetermined, identify the corresponding page from the URL's pageTitle
     if (!pageId) {
@@ -409,7 +417,9 @@ onMount(() => {
             if (found) {
                 pageId = found.id;
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
     }
 
     // 3) Use the session candidate as a last resort (E2E stabilization)
@@ -464,7 +474,9 @@ onMount(() => {
             window.sessionStorage?.setItem(key, String(pageId));
             logger.debug("Schedule page: Saved pageId to sessionStorage:", pageId);
         }
-    } catch {}
+    } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
 
     logger.debug("Schedule page: Final pageId before refresh:", pageId);
     await refresh();

@@ -57,7 +57,9 @@
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             store.currentPage = undefined;
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in DemoGraphView", _e);
+        }
     });
 
 </script>

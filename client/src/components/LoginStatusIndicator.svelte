@@ -48,7 +48,7 @@ function subscribeToManager(next: UserManager | undefined) {
 
     try {
         applyUser(next.getCurrentUser());
-    } catch {
+    } catch (_e) {
         status = "loading";
         currentUser = null;
     }

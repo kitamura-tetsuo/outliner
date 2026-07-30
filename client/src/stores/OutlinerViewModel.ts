@@ -17,7 +17,8 @@ const isItemLike = (obj: unknown): boolean => {
         const txt = (obj as { text?: { toString?: () => string; } | string; })?.text;
         return typeof id === "string" && id.length > 0
             && (typeof txt === "string" || typeof txt?.toString === "function");
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in app", _e);
         return false;
     }
 };
@@ -165,7 +166,8 @@ export class OutlinerViewModel {
                 } else if ("lastChanged" in item) {
                     lastChangedProp = (item as unknown as { lastChanged?: number; }).lastChanged;
                 }
-            } catch {
+            } catch (_e) {
+                logger.warn("Caught error in app", _e);
                 lastChangedProp = "lastChanged" in item
                     ? (item as unknown as { lastChanged?: number; }).lastChanged
                     : undefined;
@@ -216,7 +218,8 @@ export class OutlinerViewModel {
                         } else if ("lastChanged" in item) {
                             lc = (item as unknown as { lastChanged?: number; }).lastChanged;
                         }
-                    } catch {
+                    } catch (_e) {
+                        logger.warn("Caught error in app", _e);
                         lc = (item as unknown as { lastChanged?: number; }).lastChanged;
                     }
                     return typeof lc === "number" ? lc : 0;

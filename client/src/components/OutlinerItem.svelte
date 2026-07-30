@@ -271,7 +271,8 @@ let referringAliases = $derived.by(() => {
     void debouncedTreeVersion;
     try {
         return generalStore.findReferringAliases(model.id) || [];
-    } catch {
+    } catch (_e) {
+            logger.warn("Caught error in OutlinerItem", _e);
         return [];
     }
 });
@@ -326,7 +327,8 @@ function ensureCommentsArray(): unknown[] {
             }
         }
         return arr ?? [];
-    } catch {
+    } catch (_e) {
+            logger.warn("Caught error in OutlinerItem", _e);
         return [];
     }
 }
@@ -521,7 +523,8 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
         } else {
             throw new Error('Method addAttachment not found');
         }
-    } catch {
+    } catch (_e) {
+            logger.warn("Caught error in OutlinerItem", _e);
         if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
@@ -1053,7 +1056,7 @@ function handleContentClick(e: MouseEvent) {
                                 updateParentCheckboxStatus(parentItem);
                             });
                         }
-                    } catch {
+                    } catch (_e) {
                         // ignore errors
                     }
                 }, 0);

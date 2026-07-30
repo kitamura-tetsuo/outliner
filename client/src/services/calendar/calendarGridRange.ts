@@ -51,7 +51,7 @@ export interface ViewRange {
 export function resolveViewerTimeZone(): string {
     try {
         return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-    } catch {
+    } catch (_e) {
         return "UTC";
     }
 }

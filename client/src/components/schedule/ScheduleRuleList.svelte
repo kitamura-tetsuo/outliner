@@ -15,7 +15,7 @@ function getHumanReadable(rruleStr: string) {
     try {
         const rule = rrulestr(rruleStr);
         return rule.toText();
-    } catch {
+    } catch (_e) {
         return rruleStr;
     }
 }
@@ -31,7 +31,7 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
         const now = new Date();
         const next = rule.after(now);
         return next ? formatDateTime(next.getTime()) : "None";
-    } catch {
+    } catch (_e) {
         return "Unknown";
     }
 }

@@ -225,7 +225,9 @@ export class KeyEventHandler {
                         );
                         textSaysAlias = /\/(?:al|ali|alia|alias)$/i.test(before);
                     }
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
 
                 if (isAliasOnly || looksAlias || textSaysAlias) {
                     try {
@@ -238,7 +240,9 @@ export class KeyEventHandler {
                                 ")",
                             );
                         }
-                    } catch {}
+                    } catch (_e) {
+                        logger.warn("Caught error in KeyEventHandler", _e);
+                    }
                     commandPaletteStore.insert("alias");
                     commandPaletteStore.hide();
                     event.preventDefault();
@@ -290,13 +294,17 @@ export class KeyEventHandler {
                         }
                     }
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in KeyEventHandler", _e);
+            }
 
             if (shouldShow && !commandPaletteStore.isVisible) {
                 try {
                     const pos = commandPaletteStore.getCursorScreenPosition();
                     commandPaletteStore.show(pos || { top: 0, left: 0 });
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
             }
         }
 
@@ -367,7 +375,9 @@ export class KeyEventHandler {
                         commandPaletteStore.isVisible,
                     );
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in KeyEventHandler", _e);
+            }
             try {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(
@@ -383,7 +393,9 @@ export class KeyEventHandler {
                         cmd,
                     );
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in KeyEventHandler", _e);
+            }
             if (aliasDetected) {
                 shouldOpenAliasPickerAfterDefault = true;
             }
@@ -457,13 +469,17 @@ export class KeyEventHandler {
                                     "KeyEventHandler Palette Enter: forcing alias insert based on filtered results",
                                 );
                             }
-                        } catch {}
+                        } catch (_e) {
+                            logger.warn("Caught error in KeyEventHandler", _e);
+                        }
                         commandPaletteStore.insert("alias");
                         commandPaletteStore.hide();
                         event.preventDefault();
                         return;
                     }
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
 
                 // Directly handle if text immediately preceding is "/alias"
                 try {
@@ -477,7 +493,9 @@ export class KeyEventHandler {
                         if (typeof window !== "undefined" && window.DEBUG_MODE) {
                             logger.debug("KeyEventHandler Palette Enter: before=", before, " cmd=", cmd);
                         }
-                    } catch {}
+                    } catch (_e) {
+                        logger.warn("Caught error in KeyEventHandler", _e);
+                    }
                     if (/^alias$/i.test(cmd)) {
                         commandPaletteStore.hide();
                         // Remove command string
@@ -511,12 +529,14 @@ export class KeyEventHandler {
                             try {
                                 // addNode returns the new item
                                 newItem = items.addNode(userId);
-                            } catch {
+                            } catch (_e) {
                                 try {
                                     // Fallback if no-arg fails
                                     const prevLen = typeof items.length === "number" ? items.length : 0;
                                     newItem = items.addNode(userId, prevLen);
-                                } catch {}
+                                } catch (_e) {
+                                    logger.warn("Caught error in KeyEventHandler", _e);
+                                }
                             }
 
                             // Fallback if addNode didn't return item (old behavior fallback)
@@ -540,7 +560,9 @@ export class KeyEventHandler {
                                             newItm.id,
                                         );
                                     }
-                                } catch {}
+                                } catch (_e) {
+                                    logger.warn("Caught error in KeyEventHandler", _e);
+                                }
                                 {
                                     const w = typeof window !== "undefined"
                                         ? (window as Window & typeof globalThis & {
@@ -568,7 +590,9 @@ export class KeyEventHandler {
                     // Fallback to confirm if fallback fails
                     try {
                         logger.warn("KeyEventHandler Palette Enter alias handling failed:", e);
-                    } catch {}
+                    } catch (_e) {
+                        logger.warn("Caught error in KeyEventHandler", _e);
+                    }
                 }
                 // Normal palette confirm
                 commandPaletteStore.confirm();
@@ -637,7 +661,9 @@ export class KeyEventHandler {
                             srcCmd,
                         );
                     }
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
 
                 if (aliasDetected) {
                     // NOTE: Skipping '/alias' text removal as it is not mandatory (E2E verifies picker display)
@@ -659,11 +685,14 @@ export class KeyEventHandler {
                         let newItem: unknown = null;
                         try {
                             newItem = items.addNode(userId);
-                        } catch {
+                        } catch (_e) {
+                            logger.warn("Caught error in KeyEventHandler", _e);
                             try {
                                 const prevLen = typeof items.length === "number" ? items.length : 0;
                                 newItem = items.addNode(userId, prevLen);
-                            } catch {}
+                            } catch (_e) {
+                                logger.warn("Caught error in KeyEventHandler", _e);
+                            }
                         }
 
                         // Fallback
@@ -683,7 +712,9 @@ export class KeyEventHandler {
                                         (newItem as { id: string; }).id,
                                     );
                                 }
-                            } catch {}
+                            } catch (_e) {
+                                logger.warn("Caught error in KeyEventHandler", _e);
+                            }
                             {
                                 const w: unknown = typeof window !== "undefined"
                                     ? (window as Window & typeof globalThis & { [key: string]: unknown; })
@@ -767,7 +798,9 @@ export class KeyEventHandler {
                                                     earlyBeforeForLog,
                                                 );
                                             }
-                                        } catch {}
+                                        } catch (_e) {
+                                            logger.warn("Caught error in KeyEventHandler", _e);
+                                        }
                                         return;
                                     }
                                     if (attempt < 10) {
@@ -792,7 +825,9 @@ export class KeyEventHandler {
                             );
                         }
                     }, 0);
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
             }
 
             event.preventDefault();
@@ -846,7 +881,9 @@ export class KeyEventHandler {
                                                     activeId,
                                                 );
                                             }
-                                        } catch {}
+                                        } catch (_e) {
+                                            logger.warn("Caught error in KeyEventHandler", _e);
+                                        }
                                         return;
                                     }
                                     if (attempt < 10) {
@@ -871,7 +908,9 @@ export class KeyEventHandler {
                             );
                         }
                     }, 0);
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in KeyEventHandler", _e);
+                }
             }
         }
 
@@ -899,7 +938,9 @@ export class KeyEventHandler {
         // Ignore input events while Alias Picker is visible
         try {
             if (aliasPickerStore.isVisible) return;
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in KeyEventHandler", _e);
+        }
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {

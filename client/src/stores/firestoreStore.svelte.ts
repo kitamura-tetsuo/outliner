@@ -59,7 +59,9 @@ class GeneralStore {
             if (typeof window !== "undefined" && __isTestEnv) {
                 window.dispatchEvent(new CustomEvent("firestore-uc-changed"));
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in app", _e);
+        }
 
         const nextLength = this.userProject?.accessibleProjectIds?.length ?? 0;
         const nextDefault = this.userProject?.defaultProjectId;

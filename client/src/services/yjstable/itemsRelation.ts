@@ -488,7 +488,8 @@ export class ItemsRelationProvider implements RelationProvider {
                         .filter((t) => t !== ""),
                 ),
             );
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in itemsRelation", _e);
             return [];
         }
     }
@@ -634,7 +635,8 @@ export class ItemsRelationProvider implements RelationProvider {
             if (!this.hasNode(key)) return undefined;
             const value = this.tree.getNodeValueFromKey(key);
             return value instanceof Y.Map ? (value as Y.Map<unknown>) : undefined;
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in itemsRelation", _e);
             return undefined;
         }
     }
@@ -703,7 +705,8 @@ export class ItemsRelationProvider implements RelationProvider {
     private parentOf(key: string): string | undefined {
         try {
             return this.tree.getNodeParentFromKey(key);
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in itemsRelation", _e);
             return undefined;
         }
     }
@@ -729,7 +732,8 @@ export class ItemsRelationProvider implements RelationProvider {
             collected.push(current);
             try {
                 queue.push(...this.tree.getNodeChildrenFromKey(current));
-            } catch {
+            } catch (_e) {
+                logger.warn("Caught error in itemsRelation", _e);
                 // node already gone
             }
         }

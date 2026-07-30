@@ -115,7 +115,8 @@ function getCallerFile(): string {
         }
 
         return "unknown";
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in app", _e);
         return "unknown";
     } finally {
         // Restore original prepareStackTrace
@@ -319,7 +320,8 @@ export function getLogger(componentName?: string, enableConsole: boolean = true)
                                     );
                                 }
                             }
-                        } catch {
+                        } catch (_e) {
+                            logger.warn("Caught error in app", _e);
                             // Display in normal format if style application fails
                             (console[consoleMethod as keyof Console] as (...args: unknown[]) => void)(
                                 `[${file}] [${prop.toUpperCase()}]:`,
@@ -507,7 +509,8 @@ export function setupConsoleSanitizer(): void {
                 ) || "[object]";
             }
             return String(arg);
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in app", _e);
             return "[unserializable-arg]";
         }
     };

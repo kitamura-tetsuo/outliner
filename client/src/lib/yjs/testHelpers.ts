@@ -273,7 +273,7 @@ export async function createMinimalYjsConnection(
             try {
                 // HocuspocusProvider connects automatically, but we can call connect if needed
                 await provider.connect();
-            } catch {}
+            } catch (_e) {}
 
             return true;
         },

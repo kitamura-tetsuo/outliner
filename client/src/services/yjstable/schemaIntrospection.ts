@@ -139,7 +139,7 @@ export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> 
                 // transaction; end it so cleanup and later writes still work.
                 try {
                     await db.exec("ROLLBACK;");
-                } catch {
+                } catch (_e) {
                     // no transaction to roll back
                 }
                 throw err;
@@ -150,7 +150,7 @@ export async function parseCreateTable(sql: string): Promise<ParsedTableSchema> 
         } finally {
             try {
                 await db.exec(`DROP SCHEMA IF EXISTS "${scratchSchema}" CASCADE;`);
-            } catch {
+            } catch (_e) {
                 // scratch cleanup is best-effort
             }
         }

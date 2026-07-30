@@ -98,7 +98,8 @@ const logger = getLogger("SearchPanel");
                 for (const p of iterateItems(pages)) arr.push(p);
             }
             return arr;
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in SearchPanel", _e);
             return [];
         }
     }

@@ -364,7 +364,7 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
     const font = `${fontProperties.fontWeight} ${fontProperties.fontSize} ${fontProperties.fontFamily}`.trim();
     try {
         measureCtx.font = font;
-    } catch {
+    } catch (_e) {
         // Intentionally empty - catch potential errors without further handling
     }
     const m = measureCtx.measureText(text);
@@ -733,7 +733,7 @@ onMount(() => {
                 if (typeof window !== 'undefined' && txt) {
                     (window as typeof window & { lastCopiedText?: string }).lastCopiedText = txt;
                 }
-            } catch {
+            } catch (_e) {
                 // Intentionally empty - catch potential errors without further handling
             }
         }
@@ -793,7 +793,7 @@ onMount(() => {
                             attributes: true,
                             attributeFilter: ['style', 'class']
                         });
-                    } catch {
+                    } catch (_e) {
                         // Intentionally empty - catch potential errors without further handling
                     }
                 }
@@ -803,14 +803,14 @@ onMount(() => {
                 }
                 debouncedUpdatePositionMap();
             }
-        } catch {
+        } catch (_e) {
             // Intentionally empty - catch potential errors without further handling
         }
     };
-    try { window.addEventListener('aliaspicker-visibility', handler as EventListener); } catch {
+    try { window.addEventListener('aliaspicker-visibility', handler as EventListener); } catch (_e) {
         // Intentionally empty - catch potential errors without further handling
     }
-    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as EventListener); } catch {
+    return () => { try { window.removeEventListener('aliaspicker-visibility', handler as EventListener); } catch (_e) {
         // Intentionally empty - catch potential errors without further handling
     } };
 });
@@ -855,7 +855,7 @@ function getTextByItemId(itemId: string): string {
     if (ta && activeId === itemId) {
       return ta.value || "";
     }
-  } catch {
+  } catch (_e) {
     // Intentionally empty - catch potential errors without further handling
   }
 
@@ -873,7 +873,7 @@ function getTextByItemId(itemId: string): string {
         return String(it?.text ?? "");
       }
     }
-  } catch {
+  } catch (_e) {
     // Intentionally empty - catch potential errors without further handling
   }
   return "";
@@ -1364,7 +1364,8 @@ function handlePaste(event: ClipboardEvent) {
     const anySelectionUpdating = $derived.by(() => {
         try {
             return Object.values(store.selections).some((s: SelectionRange & { isUpdating?: boolean }) => !!s?.isUpdating);
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in EditorOverlay", _e);
             return false;
         }
     });
@@ -1384,7 +1385,7 @@ function handlePaste(event: ClipboardEvent) {
                 if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                     logger.debug('EditorOverlay: setupUpdatingFlag set true for', key, 'class=', node.className);
                 }
-            } catch {
+            } catch (_e) {
                 // Intentionally empty - catch potential errors without further handling
             }
         });

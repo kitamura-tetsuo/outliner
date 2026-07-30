@@ -14,7 +14,7 @@ export function resolveDefaultWeekStart(): number {
         const info = (new Intl.Locale(locale) as LocaleWithWeekInfo).weekInfo;
         // `weekInfo.firstDay`: 1=Monday..7=Sunday (ISO). Convert to 0=Sunday..6=Saturday.
         if (info && typeof info.firstDay === "number") return info.firstDay % 7;
-    } catch {
+    } catch (_e) {
         // Unsupported locale/engine: fall through to the default below.
     }
     return 0;

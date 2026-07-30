@@ -12,7 +12,7 @@ export function getProjectTitle(containerId: string): string {
         }
         // Fallback: try metaDoc directly
         return getContainerTitleFromMetaDoc(containerId);
-    } catch {
+    } catch (_e) {
         // Final fallback for tests or when the module isn't available.
         return "";
     }

@@ -126,7 +126,8 @@ export function stableIdFromTitle(title: string): string {
         }
         const hex = h.toString(16);
         return `p${hex}`; // ensure starts with a letter; matches [A-Za-z0-9_-]+
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in yjsService", _e);
         return `p${Math.random().toString(16).slice(2)}`;
     }
 }
@@ -506,7 +507,9 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
 export function cleanupClient() {
     try {
         yjsStore.yjsClient?.dispose();
-    } catch {}
+    } catch (_e) {
+        logger.warn("Caught error in yjsService", _e);
+    }
     yjsStore.yjsClient = undefined;
 }
 
@@ -522,7 +525,9 @@ export function removeClientByProjectId(projectId: string): void {
     if (entry) {
         try {
             entry[0]?.dispose();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsService", _e);
+        }
         registry.delete(key);
     }
 }
@@ -647,7 +652,9 @@ export async function reconnectProject(): Promise<void> {
         const { setRoomSyncState } = await import("./yjs/roomSyncState");
         const { projectRoomPath } = await import("./yjs/roomPath");
         setRoomSyncState(projectRoomPath(projectId), "pending");
-    } catch {}
+    } catch (_e) {
+        logger.warn("Caught error in yjsService", _e);
+    }
 
     removeClientByProjectId(projectId);
 

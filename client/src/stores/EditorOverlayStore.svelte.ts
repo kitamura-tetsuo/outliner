@@ -130,12 +130,16 @@ export class EditorOverlayStore {
         for (const l of Array.from(this.listeners)) {
             try {
                 l();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in EditorOverlayStore", _e);
+            }
         }
         if (typeof window !== "undefined") {
             try {
                 window.dispatchEvent(new CustomEvent("editor-overlay:cursors-changed"));
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in EditorOverlayStore", _e);
+            }
         }
     }
 
@@ -1088,7 +1092,9 @@ export class EditorOverlayStore {
                         if (isForeignInput(document.activeElement)) return;
                         textarea.focus();
                     });
-                } catch {}
+                } catch (_e) {
+                    logger.warn("Caught error in EditorOverlayStore", _e);
+                }
             }
             // Start cursor blinking as well
             this.startCursorBlink();
@@ -1198,7 +1204,8 @@ export class EditorOverlayStore {
                     // Selection range spanning multiple items
                     selectionText = this.getTextFromMultiItemSelection(sel);
                 }
-            } catch {
+            } catch (_e) {
+                logger.warn("Caught error in EditorOverlayStore", _e);
                 // Continue processing even if an error occurs
                 continue;
             }
@@ -1279,7 +1286,7 @@ export class EditorOverlayStore {
 
                 return result;
             }
-        } catch {
+        } catch (_e) {
             // If Yjs store access fails, continue to fallback
         }
 
@@ -1950,7 +1957,8 @@ export class EditorOverlayStore {
 
             // Set to project-level awareness
             yjsService.setPresence(awareness, (!cursor && !selection) ? null : presenceState);
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in EditorOverlayStore", _e);
             // Skip presence sync in environments where Awareness is not available
         }
     }

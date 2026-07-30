@@ -37,7 +37,9 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
                 const count = states?.size ?? 0;
                 const tree = doc.getMap("orderedTree") as import("yjs").Map<unknown>;
                 logger.debug(`[yjs-conn] ${label} awareness.states=${count} tree.size=${tree.size}`);
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in yjs-connection", _e);
+            }
         };
         if (awareness) {
             awareness.on(
@@ -53,7 +55,7 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
             const bytes = u?.length ?? 0;
             logger.debug(`[yjs-conn] ${label} update#${updCount} bytes=${bytes}`);
         });
-    } catch {
+    } catch (_e) {
         // ignore debug wiring errors
     }
 }
@@ -78,7 +80,9 @@ function getWsBase(): string {
                 return `ws://localhost:${port}`;
             }
         }
-    } catch {}
+    } catch (_e) {
+        logger.warn("Caught error in yjs-connection", _e);
+    }
     logger.debug(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
             (isConnDebugEnabled() && typeof window !== "undefined")
@@ -99,7 +103,8 @@ function isAuthRequired(): boolean {
             if (lsVal === "true") return true;
         }
         return envReq;
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in yjs-connection", _e);
         return false;
     }
 }
@@ -357,7 +362,9 @@ async function setupProviderForRoom(
             setRoomSyncState(room, syncState);
             try {
                 provider.disconnect();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in yjs-connection", _e);
+            }
         } else if (code && RETRYABLE_CLOSE_CODES.has(code)) {
             logger.warn(`[yjs-conn] Transient close ${code} for ${room}: will retry via backoff`);
             let syncState: import("./roomSyncState").RoomSyncState = "retrying";
@@ -378,7 +385,9 @@ async function setupProviderForRoom(
             setRoomSyncState(room, "denied");
             try {
                 provider.disconnect();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in yjs-connection", _e);
+            }
         },
     );
     provider.on("stateless", (data: unknown) => {
@@ -392,7 +401,8 @@ async function setupProviderForRoom(
                     );
                     return;
                 }
-            } catch {
+            } catch (_e) {
+                logger.warn("Caught error in yjs-connection", _e);
                 // Not JSON or parse failed
             }
         }
@@ -427,7 +437,7 @@ async function setupProviderForRoom(
                         window.sessionStorage.setItem("outliner_guest_id", anonId);
                     }
                 }
-            } catch {
+            } catch (_e) {
                 // ignore
             }
             awareness.setLocalStateField("user", {
@@ -493,17 +503,25 @@ async function setupProviderForRoom(
     const dispose = async () => {
         try {
             unbindPresence?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
         try {
             unsubTokenRefresh?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
         try {
             provider.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
         if (options.persistence) {
             try {
                 await options.persistence.destroy();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in yjs-connection", _e);
+            }
         }
         deleteRoomSyncState(room);
         deleteRoomPersistenceError(room);
@@ -536,7 +554,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
         throw e;
     }
 
@@ -544,7 +564,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
     };
 
     return { doc, provider, awareness, dispose };
@@ -621,7 +643,9 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-connection", _e);
+        }
     };
     return { doc, provider, dispose };
 }

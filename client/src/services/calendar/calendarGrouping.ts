@@ -67,7 +67,7 @@ function axisValues(raw: unknown): (string | undefined)[] {
                     ).filter((v) => v !== "");
                     return values.length > 0 ? values : [undefined];
                 }
-            } catch {
+            } catch (_e) {
                 // Not actually JSON despite the leading bracket — fall through
                 // and treat the raw text as a single scalar value below.
             }
@@ -95,7 +95,7 @@ export function isMultiValuedAxis(entry: Pick<CalendarEntry, "raw">, axis: strin
     if (!trimmed.startsWith("[")) return false;
     try {
         return Array.isArray(JSON.parse(trimmed));
-    } catch {
+    } catch (_e) {
         return false;
     }
 }

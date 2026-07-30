@@ -15,7 +15,7 @@ export class PresenceStore {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("presence-users-changed"));
             }
-        } catch {}
+        } catch (_e) {}
     }
 
     removeUser(userId: string) {
@@ -25,7 +25,7 @@ export class PresenceStore {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("presence-users-changed"));
             }
-        } catch {}
+        } catch (_e) {}
     }
 
     getUsers(): PresenceUser[] {

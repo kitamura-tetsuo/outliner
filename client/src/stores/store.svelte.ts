@@ -118,7 +118,7 @@ export class GeneralStore {
                             cloneBranch(prevItems, nextItems);
                         }
                     }
-                } catch {
+                } catch (_e) {
                     // Ignore errors during child item migration
                 }
                 */
@@ -127,17 +127,23 @@ export class GeneralStore {
                 this._currentPageSubscribers.forEach(fn => {
                     try {
                         fn();
-                    } catch {}
+                    } catch (_e) {
+                        logger.warn("Caught error in store", _e);
+                    }
                 });
                 return;
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in store", _e);
+        }
         this._currentPage = v;
         // Notify
         this._currentPageSubscribers.forEach(fn => {
             try {
                 fn();
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in store", _e);
+            }
         });
     }
 
@@ -255,10 +261,12 @@ export class GeneralStore {
             if (this._pageNamesCache.has(normalizedName)) return true;
             try {
                 return this._pageNamesCache.has(decodeURIComponent(normalizedName));
-            } catch {
+            } catch (_e) {
+                logger.warn("Caught error in store", _e);
                 return false;
             }
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in store", _e);
             return false;
         }
     }
@@ -320,7 +328,9 @@ export class GeneralStore {
                         snapshotTimeout = null;
                         try {
                             saveProjectSnapshot(project);
-                        } catch {}
+                        } catch (_e) {
+                            logger.warn("Caught error in store", _e);
+                        }
                     }, 3000);
                 }
             }
@@ -342,7 +352,9 @@ export class GeneralStore {
                                             shouldRebuild = true;
                                             break;
                                         }
-                                    } catch {}
+                                    } catch (_e) {
+                                        logger.warn("Caught error in store", _e);
+                                    }
                                 } else if (change.action === "delete") {
                                     // Conservative approach: rebuild on delete as we can't easily check parent
                                     shouldRebuild = true;
@@ -359,11 +371,15 @@ export class GeneralStore {
                                 // It is a page title change
                                 shouldRebuild = true;
                             }
-                        } catch {}
+                        } catch (_e) {
+                            logger.warn("Caught error in store", _e);
+                        }
                     }
                     if (shouldRebuild) break;
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in store", _e);
+            }
 
             if (shouldRebuild) {
                 rebuildPending = true;
@@ -394,7 +410,7 @@ export class GeneralStore {
                     ) => void;
                 }).observeDeep?.(handler as Parameters<Y.Map<unknown>["observeDeep"]>[0]);
             }
-        } catch {
+        } catch (_e) {
             // Ignore errors during observation setup
         }
 
@@ -430,7 +446,7 @@ if (typeof window !== "undefined") {
             (store as { project: Project; }).project = provisional;
             logger.debug("INIT: Provisional Project set in store.svelte.ts", { title });
         }
-    } catch {
+    } catch (_e) {
         // Ignore errors during initial project setup
     }
 }

@@ -117,7 +117,8 @@ function findPath(node: Item, id: string, path: Item[] = []): Item[] | null {
             let child: Item | undefined;
             try {
                 child = (children as unknown as { at?: (idx: number) => Item, [idx: number]: Item }).at ? (children as unknown as { at: (idx: number) => Item }).at(i) : (children as unknown as { [idx: number]: Item })[i];
-            } catch { child = undefined; }
+            } catch (_e) {
+            logger.warn("Caught error in OutlinerItemAlias", _e); child = undefined; }
             if (!child) continue;
             const res = findPath(child, id, [...path, node]);
             if (res) return res;

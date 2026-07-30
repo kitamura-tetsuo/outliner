@@ -43,7 +43,9 @@ function resolveUserColor(userId: string, provided?: string): string {
     if (typeof globalColorForUser === "function") {
         try {
             return globalColorForUser(userId);
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjs-service", _e);
+        }
     }
     return colorForUser(userId);
 }

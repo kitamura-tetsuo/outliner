@@ -32,22 +32,30 @@ class YjsStore {
         // Disable comment thread selection when switching documents and leave it to the default behavior
         try {
             Object.assign(globalStore, { openCommentItemId: null });
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._client = v;
         this.isConnected = !!(v?.isContainerConnected);
 
         try {
             this._unsubWsProvider?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubWsProvider = undefined;
 
         try {
             this._unsubSyncState?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubSyncState = undefined;
         try {
             this._unsubPersistenceError?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubPersistenceError = undefined;
         if (v?.containerId) {
             const room = projectRoomPath(v.containerId);
@@ -163,15 +171,21 @@ class YjsStore {
         this.syncError = null;
         try {
             this._unsubWsProvider?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubWsProvider = undefined;
         try {
             this._unsubSyncState?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubSyncState = undefined;
         try {
             this._unsubPersistenceError?.();
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in yjsStore", _e);
+        }
         this._unsubPersistenceError = undefined;
         this.persistenceError = false;
     }

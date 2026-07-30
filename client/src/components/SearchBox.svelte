@@ -150,7 +150,8 @@ const logger = getLogger("SearchBox");
                             return arr;
                         }
                     }
-                } catch {
+                } catch (_e) {
+            logger.warn("Caught error in SearchBox", _e);
                     // Continue to next source
                     continue;
                 }

@@ -63,8 +63,8 @@ export class YjsClient {
             try {
                 const meta = doc.getMap("metadata") as import("yjs").Map<unknown>;
                 if (title && !uuidRegex.test(title) && !meta.get("title")) meta.set("title", title);
-            } catch {}
-        } catch {}
+            } catch (_e) {}
+        } catch (_e) {}
         const clientId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         return new YjsClient({
             clientId,
@@ -116,7 +116,7 @@ export class YjsClient {
             };
             return unknownP.isSynced || unknownP.status === "connected"
                 || unknownP.websocketProvider?.status === "connected";
-        } catch {
+        } catch (_e) {
             return true;
         }
     }
@@ -226,17 +226,17 @@ export class YjsClient {
         if (this._disposeFunc) {
             try {
                 void this._disposeFunc();
-            } catch {}
+            } catch (_e) {}
         } else {
             try {
                 (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
-            } catch {}
+            } catch (_e) {}
             try {
                 (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
-            } catch {}
+            } catch (_e) {}
         }
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
-        } catch {}
+        } catch (_e) {}
     }
 }

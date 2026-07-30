@@ -11,7 +11,7 @@ function readUsers(): PresenceUser[] {
   try {
     const store = (window as Window).presenceStore;
     return store ? Object.values(store.users || {}) : [];
-  } catch { return []; }
+  } catch (_e) { return []; }
 }
 
 function sync() { users = readUsers(); }

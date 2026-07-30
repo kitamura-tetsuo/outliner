@@ -34,7 +34,9 @@ export function setupGlobalDebugFunctions() {
         } else {
             try {
                 delete win.__SVELTE_GOTO__;
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in app", _e);
+            }
         }
         // Service / Store / User Manager
         win.__FLUID_SERVICE__ = yjsHighService;
@@ -64,7 +66,9 @@ if (process.env.NODE_ENV === "test") {
         // Do not expose __SVELTE_GOTO__ in tests to force page.goto in helpers
         try {
             delete testWin.__SVELTE_GOTO__;
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in app", _e);
+        }
         testWin.__FLUID_SERVICE__ = yjsHighService;
         testWin.__FLUID_STORE__ = yjsStore;
         testWin.__USER_MANAGER__ = userManager;

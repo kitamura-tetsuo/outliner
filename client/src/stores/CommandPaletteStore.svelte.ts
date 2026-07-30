@@ -36,7 +36,9 @@ class CommandPaletteStore {
                     this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Store", _e);
+        }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
     }
 
@@ -140,7 +142,9 @@ class CommandPaletteStore {
                     this.filtered.map(c => c.label),
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Store", _e);
+        }
 
         // Apply cursor
         cursor.applyToStore();
@@ -228,18 +232,24 @@ class CommandPaletteStore {
                     list.map(c => c.label),
                 );
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Store", _e);
+        }
         if (cmd) {
             try {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug("[CommandPaletteStore.confirm] confirming type=", cmd.type);
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
             this.insert(cmd.type);
         } else {
             try {
                 logger.warn("[CommandPaletteStore.confirm] no command at selectedIndex");
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
         }
         this.hide();
     }
@@ -332,7 +342,9 @@ class CommandPaletteStore {
                     if (key !== "lastChanged") m.set("lastChanged", Date.now());
                     return true;
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
             return false;
         };
 
@@ -344,7 +356,9 @@ class CommandPaletteStore {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
             if (n.id) aliasPickerStore.show(n.id);
         } else {
             // Set componentType safely
@@ -374,16 +388,22 @@ class CommandPaletteStore {
         // Prompt immediate rendering immediately after addition (E2E stabilization)
         try {
             window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-        } catch {}
+        } catch (_e) {
+            logger.warn("Caught error in Store", _e);
+        }
         requestAnimationFrame(() => {
             try {
                 window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
         });
         setTimeout(() => {
             try {
                 window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch {}
+            } catch (_e) {
+                logger.warn("Caught error in Store", _e);
+            }
         }, 0);
 
         // Output component type to log for debugging

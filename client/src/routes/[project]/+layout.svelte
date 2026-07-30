@@ -75,7 +75,9 @@ onMount(() => {
             }
         });
         return unsub;
-    } catch {}
+    } catch (_e) {
+            logger.warn("Caught error in Route", _e);
+        }
 });
 </script>
 

@@ -26,7 +26,8 @@ beforeAll(async () => {
         } else {
             logger.debug("✓ SvelteKit server (Production) is running");
         }
-    } catch {
+    } catch (_e) {
+        logger.warn("Caught error in productionSetup", _e);
         logger.warn("⚠️ SvelteKit server (Production) is not running - skipping proxy tests");
     }
 });

@@ -101,11 +101,11 @@ export function saveProjectSnapshot(project: Project | undefined): void {
         const payload = JSON.stringify(snapshot);
         try {
             window.sessionStorage?.setItem(key, payload);
-        } catch {}
+        } catch (_e) {}
         try {
             window.localStorage?.setItem(key, payload);
-        } catch {}
-    } catch {
+        } catch (_e) {}
+    } catch (_e) {
         /* noop */
     }
 }
@@ -122,10 +122,10 @@ export function loadProjectSnapshot(title: string | undefined): ProjectSnapshot 
                 const data = JSON.parse(raw) as ProjectSnapshot;
                 if (!data || !Array.isArray(data.items)) continue;
                 return data;
-            } catch {}
+            } catch (_e) {}
         }
         return null;
-    } catch {
+    } catch (_e) {
         return null;
     }
 }
@@ -226,7 +226,7 @@ export function createSnapshotClient(projectName: string, project: Project): unk
                 registry.set(key, [client, project]);
             }
         }
-    } catch {}
+    } catch (_e) {}
     return client;
 }
 

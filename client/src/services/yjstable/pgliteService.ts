@@ -143,7 +143,8 @@ export async function resetPgliteForTests(): Promise<void> {
         try {
             const db = await pending;
             await db.close();
-        } catch {
+        } catch (_e) {
+            logger.warn("Caught error in pgliteService", _e);
             // Engine never became usable; nothing to close.
         }
     }
