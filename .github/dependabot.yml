@@ -122,6 +122,29 @@ updates:
           - "prettier"
           - "*prettier*"
 
+  # The E2E test container's base image. It ships the browser bundle for exactly
+  # one Playwright release, so it has to move whenever client/package-lock.json
+  # moves -- and until now nothing watched it: the image sat on v1.61.1 while
+  # Dependabot took @playwright/test to 1.62.0, and every E2E shard died at
+  # browserType.launch. Watching the image here means a new Playwright release
+  # shows up as a pull request instead of as a silent drift.
+  #
+  # Dependabot cannot group across ecosystems, so this arrives as its own pull
+  # request alongside the npm `playwright` group above, and neither one passes
+  # scripts/check-playwright-version.mjs on its own -- by design, since either
+  # half alone is the broken state. Land them as one change: apply the base
+  # image bump onto the npm branch, then close this pull request.
+  - package-ecosystem: 'docker'
+    directory: '/.github/container'
+    schedule:
+      interval: 'weekly'
+      time: '13:00' # UTC. Equivalent to 22:00 JST
+    open-pull-requests-limit: 10
+    rebase-strategy: 'auto'
+    labels:
+      - 'dependencies'
+      - 'docker'
+
   - package-ecosystem: 'npm'
     directory: '/scripts/tests'
     schedule:
