@@ -70,6 +70,7 @@ functions/.env.production
 *.swp
 
 .setup-installed
+.playwright-chromium-path
 .e2e-progress
 
 docs/feature-map.md

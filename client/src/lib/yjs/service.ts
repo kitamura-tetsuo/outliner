@@ -13,6 +13,13 @@ interface YTreeWithMove extends YTree {
     moveChildToParent(childKey: string, parentKey: string): void;
 }
 
+function recomputeTree(tree: YTree) {
+    const t = tree as unknown as { recomputeParentsAndChildren?: () => void; };
+    if (typeof t.recomputeParentsAndChildren === "function") {
+        t.recomputeParentsAndChildren();
+    }
+}
+
 function childrenKeys(tree: YTree, parentKey: string): string[] {
     if (typeof tree.hasNode === "function" && !tree.hasNode(parentKey)) return [];
     try {
@@ -131,12 +138,7 @@ export const yjsService = {
             tree.moveChildToParent(itemKey, newParentKey);
 
             // Recompute virtual tree mid-transaction to allow ordering methods to work
-            if (
-                typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; }).recomputeParentsAndChildren
-                    === "function"
-            ) {
-                (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
-            }
+            recomputeTree(tree);
 
             if (index !== undefined) {
                 const siblings = childrenKeys(tree, newParentKey).filter((k: string) => k !== itemKey);
@@ -164,12 +166,7 @@ export const yjsService = {
             if (idx > 0) {
                 const newParent = siblings[idx - 1];
                 tree.moveChildToParent(itemKey, newParent);
-                if (
-                    typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; })
-                        .recomputeParentsAndChildren === "function"
-                ) {
-                    (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
-                }
+                recomputeTree(tree);
                 tree.setNodeOrderToEnd(itemKey);
             }
         }, null);
@@ -183,12 +180,7 @@ export const yjsService = {
             const grand = safeGetNodeParent(tree, parent);
             if (!grand) return;
             tree.moveChildToParent(itemKey, grand);
-            if (
-                typeof (tree as unknown as { recomputeParentsAndChildren?: () => void; }).recomputeParentsAndChildren
-                    === "function"
-            ) {
-                (tree as unknown as { recomputeParentsAndChildren: () => void; }).recomputeParentsAndChildren();
-            }
+            recomputeTree(tree);
             tree.setNodeAfter(itemKey, parent);
         }, null);
     },
@@ -196,6 +188,7 @@ export const yjsService = {
     reorderItem(project: Project, itemKey: string, index: number) {
         project.ydoc.transact(() => {
             const tree = project.tree;
+            recomputeTree(tree);
             const parent = safeGetNodeParent(tree, itemKey);
             if (!parent) return;
             const siblings = childrenKeys(tree, parent).filter((k: string) => k !== itemKey);
@@ -299,35 +292,6 @@ export const yjsService = {
             if (id === clientId) return;
             applyPresenceToOverlay(overlay, user, s?.presence);
         });
-    },
-
-    bindPagePresence(awareness: Awareness) {
-        const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
-        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
-            const overlay = resolveOverlayStore();
-            if (!overlay) return; // no-op when overlay store not present
-            const states = awareness.getStates();
-            const clientId = (awareness as Awareness & { clientID: number; }).clientID;
-
-            [...added, ...updated].forEach((id: number) => {
-                const s = states.get(id);
-                const user = s?.user;
-                if (!user) return;
-                clientUserMap.set(id, user);
-                if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, s?.presence);
-            });
-
-            removed.forEach((id: number) => {
-                const user = clientUserMap.get(id);
-                if (!user) return;
-                clientUserMap.delete(id);
-                if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, null);
-            });
-        };
-        awareness.on("change", update);
-        return () => awareness.off("change", update);
     },
 
     promoteChildren(project: Project, itemKey: string) {

@@ -1,11 +1,11 @@
 id: ATT-0001
 title: Drag and drop attachments
 title-ja: ドラッグ&ドロップで添付
-description: Items accept files via drag-and-drop and show image previews. Access control is based on Fluid Framework container permissions.
+description: Items accept files via drag-and-drop and show image previews. Access control is based on Fluid Framework container permissions. uploadAttachment, listAttachments, deleteAttachment are in functions/index.js.
 category: attachments
 status: implemented
 components:
-- functions/index.js (uploadAttachment, listAttachments, deleteAttachment)
+- functions/index.js
 - src/components/OutlinerItem.svelte
 - src/services/attachmentService.ts
 - storage.rules

@@ -299,7 +299,7 @@ const logger = getLogger("GraphView");
         const onResize = () => {
             try {
                 chart?.resize();
-            } catch (err) { logger.warn("Silenced error", { err }); }
+            } catch (_e) { /* ignore */ }
         };
         window.addEventListener("resize", onResize);
 

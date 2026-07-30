@@ -36,13 +36,13 @@ $effect(() => {
                             logger.debug({ itemId: modelId, newValue }, "OutlinerItemAlias: aliasTargetId updated via observe");
                         }
                     }
-                } catch (err) { logger.warn("Silenced error", { err }); }
+                } catch (_e) { /* ignore */ }
             };
             ymap.observe(obs);
             obs(); // Initial reflection
-            cleanup = () => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch (err) { logger.warn("Silenced error", { err }); } };
+            cleanup = () => { try { (ymap as unknown as { unobserve?: (cb: unknown) => void })?.unobserve?.(obs); } catch (_e) { /* ignore */ } };
         }
-    } catch (err) { logger.warn("Silenced error", { err }); }
+    } catch (_e) { /* ignore */ }
     return cleanup;
 });
 

@@ -257,7 +257,7 @@ interface SetupProviderOptions {
  * pulling in the full presence/auth-refresh machinery there raced with the connection's own
  * initial handshake and made those tests time out.
  */
-async function setupProviderForRoom(
+export async function setupProviderForRoom(
     projectId: string,
     room: string,
     doc: Y.Doc,
@@ -328,27 +328,17 @@ async function setupProviderForRoom(
             logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
         }
 
-        isRetryingCurrentClose = false;
-
-        if (code === 4001 && authRetries < MAX_AUTH_RETRIES) {
-            logger.debug(
-                `[yjs-conn] Auth error 4001 detected for ${room}, forcing token refresh and retrying (${
-                    authRetries + 1
-                }/${MAX_AUTH_RETRIES})...`,
-            );
-            authRetries++;
-            forceTokenRefresh = true;
-            isRetryingCurrentClose = true;
-            void (async () => {
-                try {
-                    await userManager.refreshToken();
-                } catch (e) {
-                    logger.error({ error: e }, `[yjs-conn] 4001 refresh token failed for ${room}`);
-                }
-                provider.connect();
-            })();
+        if (code === 4001) {
+            // Let `authenticationFailed` handle token refresh and terminal close logic.
+            // Only set `isRetryingCurrentClose` if we are sure a retry will happen and hasn't started yet.
+            // If `authenticationFailed` fired first, it already set `isRetryingCurrentClose = true`.
+            if (authRetries < MAX_AUTH_RETRIES && !isRetryingCurrentClose) {
+                isRetryingCurrentClose = true;
+            }
             return;
         }
+
+        isRetryingCurrentClose = false;
 
         if (code === 4003) {
             logger.debug(`[yjs-conn] Auth error 4003 detected for ${room}, forcing token refresh before failing...`);
@@ -377,6 +367,9 @@ async function setupProviderForRoom(
             let syncState: import("./roomSyncState").RoomSyncState = "retrying";
             if (code === 4004) syncState = "rate-limited";
             setRoomSyncState(room, syncState);
+        } else if (!provider.isSynced) {
+            // For other close codes before initial sync is complete, we are retrying.
+            setRoomSyncState(room, "retrying");
         }
     });
 
@@ -389,11 +382,32 @@ async function setupProviderForRoom(
         "authenticationFailed",
         (data: unknown) => {
             logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`);
-            setRoomSyncState(room, "denied");
-            try {
-                provider.disconnect();
-            } catch (_e) {
-                logger.error(_e);
+            if (authRetries < MAX_AUTH_RETRIES) {
+                logger.debug(
+                    `[yjs-conn] Auth error detected for ${room}, forcing token refresh and retrying (${
+                        authRetries + 1
+                    }/${MAX_AUTH_RETRIES})...`,
+                );
+                authRetries++;
+                forceTokenRefresh = true;
+                isRetryingCurrentClose = true;
+                void (async () => {
+                    try {
+                        await userManager.refreshToken();
+                    } catch (e) {
+                        logger.error({ error: e }, `[yjs-conn] refresh token failed for ${room}`);
+                    }
+                    provider.connect();
+                })();
+            } else {
+                isRetryingCurrentClose = false;
+                logger.error(`[yjs-conn] Permanent authentication failure for ${room}: stopping reconnect attempts`);
+                setRoomSyncState(room, "denied");
+                try {
+                    provider.disconnect();
+                } catch (_e) {
+                    logger.error(_e);
+                }
             }
         },
     );
@@ -459,7 +473,7 @@ async function setupProviderForRoom(
         ? attachTokenRefresh(provider as TokenRefreshableProvider)
         : undefined;
 
-    const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
+    const waitForInitialSync = (timeoutMs = 8000): Promise<{ synced: boolean; }> => {
         return new Promise((resolve, reject) => {
             if (provider.isSynced) {
                 logger.debug(`[${label}] Room ${room} already synced`);

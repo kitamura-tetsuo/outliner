@@ -1,0 +1,10 @@
+id: ENV-2f8c41d6
+title: Server container publish cancels superseded runs on main
+description: The "Build and Push Server Container" workflow declares a concurrency group keyed by workflow and ref with cancel-in-progress enabled, so when a newer commit lands on main while an earlier build is still running the stale run is cancelled instead of finishing and overwriting the ghcr.io `latest` tag with an older image.
+category: environment
+status: implemented
+components:
+- .github/workflows/build-server.yml
+tests:
+- scripts/tests/env-build-server-cancels-stale-runs-2f8c41d6.spec.ts
+title-ja: Server container publish cancels superseded runs on main

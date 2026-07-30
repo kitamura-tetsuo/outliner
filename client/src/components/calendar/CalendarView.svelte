@@ -33,6 +33,7 @@ import {
     todayAnchor,
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
+import { computeDayHeaders } from "../../services/calendar/calendarDayHeaders";
 import {
     collapseLanePath,
     entryAxisValues,
@@ -112,6 +113,9 @@ let showCreateDialog = $state(false);
 let createDefaultStartMs = $state<number | undefined>(undefined);
 let deletingEntry = $state<CalendarEntry | undefined>(undefined);
 
+let showSettings = $state(false);
+let isInitialSyncDone = false;
+
 const editability = $derived(analyzeCalendarEditability(result.columns));
 const writableColumns = $derived(analyzeCalendarColumnWritability(settings.query));
 // The view's timezone (§6.5) is an explicit, visible setting: absent means
@@ -146,7 +150,7 @@ const ganttTicks = $derived(isGantt ? computeGanttTicks(range.start, range.end, 
 // grid keeps working in UTC millis; only the SQL boundary needs Dates.
 const queryRange = $derived({ start: new Date(range.start), end: new Date(range.end) });
 
-const rawEntries = $derived(buildCalendarEntries(result, settings, timeZone));
+const rawEntries = $derived(buildCalendarEntries(result, settings, timeZone, project, { startUtcMs: range.start, endUtcMs: range.end }));
 const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
 const entryByKey = $derived(new Map(placedEntries.map((e) => [e.key, e])));
 
@@ -238,6 +242,7 @@ function readSettingsFromMap(): CalendarSettings | undefined {
     };
 }
 
+let queryGeneration = 0;
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
@@ -247,14 +252,16 @@ const pgSchema = projectSchemaName(projectId);
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {
+    const generation = ++queryGeneration;
     const outcome = await runCalendarQuery(session, pgSchema, settings.query, queryRange, timeZone);
+    if (generation !== queryGeneration) return;
     if (outcome.result) {
         result = outcome.result;
         queryError = undefined;
         // The query result is authoritative: drop any optimistic placement
         // whose row has now come back, whether or not it agrees with the
         // local guess (a concurrent remote move wins either way).
-        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone));
+        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone, project, { startUtcMs: range.start, endUtcMs: range.end }));
     } else {
         queryError = outcome.error;
     }
@@ -278,6 +285,12 @@ function refreshMirror() {
     settings = next;
     queryInput = next.query;
     if (queryChanged || viewTypeChanged || timezoneChanged || ganttScaleChanged) scheduleRequery();
+    if (!isInitialSyncDone) {
+        isInitialSyncDone = true;
+        if (!next.query) {
+            showSettings = true;
+        }
+    }
 }
 
 /**
@@ -490,6 +503,14 @@ onDestroy(() => {
                 <option value={opt.value}>{opt.label}</option>
             {/each}
         </select>
+        <button
+            type="button"
+            class:active={showSettings}
+            aria-pressed={showSettings}
+            aria-controls="calendar-settings-panel"
+            data-testid="calendar-toggle-settings"
+            onclick={() => { showSettings = !showSettings; }}
+        >Settings</button>
         <div class="undo-controls">
             <button type="button" data-testid="calendar-new-entry" onclick={openCreateDialog}>New entry</button>
             <button type="button" data-testid="calendar-undo" onclick={() => globalUndoRouter.undo()}>Undo</button>
@@ -497,28 +518,55 @@ onDestroy(() => {
         </div>
     </div>
 
-    <div class="view-toolbar">
-        <label class="timezone-control">
-            <span>Timezone</span>
-            <select data-testid="calendar-timezone-select" value={settings.timezone ?? ""} onchange={commitTimezone}>
-                <option value="">Viewer-local ({resolveCalendarTimezone(undefined)})</option>
-                {#each timeZoneOptions as tz (tz)}
-                    <option value={tz}>{tz}</option>
-                {/each}
-            </select>
-        </label>
+    {#if showSettings}
+        <section class="settings-panel" id="calendar-settings-panel" data-testid="calendar-settings-panel">
+            <div class="view-toolbar">
+                <label class="timezone-control">
+                    <span>Timezone</span>
+                    <select data-testid="calendar-timezone-select" value={settings.timezone ?? ""} onchange={commitTimezone}>
+                        <option value="">Viewer-local ({resolveCalendarTimezone(undefined)})</option>
+                        {#each timeZoneOptions as tz (tz)}
+                            <option value={tz}>{tz}</option>
+                        {/each}
+                    </select>
+                </label>
+            </div>
+
+            <label class="editor-label" for="calendar-query-input">Query (SELECT)</label>
+            <input
+                id="calendar-query-input"
+                data-testid="calendar-query-input"
+                type="text"
+                spellcheck="false"
+                value={queryInput}
+                onchange={commitQuery}
+            />
+
+            <CalendarRoleEditor
+                {project}
+                {calendarId}
+                query={settings.query}
+                resultColumns={result.columns}
+                roles={{
+                    roleTitle: settings.roleTitle,
+                    roleStart: settings.roleStart,
+                    roleAllDay: settings.roleAllDay,
+                    roleDuration: settings.roleDuration,
+                    roleDue: settings.roleDue,
+                    groupAxes: settings.groupAxes,
+                    laneOrder: settings.laneOrder,
+                    showEmptyLanes: settings.showEmptyLanes,
+                }}
+                readOnly={!editability.editable}
+                readOnlyReason={editability.readOnlyReason}
+                {knownLaneValues}
+            />
+        </section>
+    {/if}
+
+    <div class="status-toolbar">
         <span class="active-timezone" data-testid="calendar-active-timezone">{timeZone}</span>
     </div>
-
-    <label class="editor-label" for="calendar-query-input">Query (SELECT)</label>
-    <input
-        id="calendar-query-input"
-        data-testid="calendar-query-input"
-        type="text"
-        spellcheck="false"
-        value={queryInput}
-        onchange={commitQuery}
-    />
 
     {#if queryError}
         <p class="error" data-testid="calendar-query-error">{queryError}</p>
@@ -527,28 +575,8 @@ onDestroy(() => {
         <p class="error" data-testid="calendar-write-error">{writeError}</p>
     {/if}
 
-    <CalendarRoleEditor
-        {project}
-        {calendarId}
-        query={settings.query}
-        resultColumns={result.columns}
-        roles={{
-            roleTitle: settings.roleTitle,
-            roleStart: settings.roleStart,
-            roleAllDay: settings.roleAllDay,
-            roleDuration: settings.roleDuration,
-            roleDue: settings.roleDue,
-            groupAxes: settings.groupAxes,
-            laneOrder: settings.laneOrder,
-            showEmptyLanes: settings.showEmptyLanes,
-        }}
-        readOnly={!editability.editable}
-        readOnlyReason={editability.readOnlyReason}
-        {knownLaneValues}
-    />
-
     {#if !editability.editable}
-        <p class="hint">Grid views below render this query's result, but nothing can be dragged until it is writable.</p>
+        <p class="hint" data-testid="calendar-read-only-banner">Grid views below render this query's result, but nothing can be dragged until it is writable.</p>
     {/if}
 
     {#if isGantt}
@@ -608,6 +636,8 @@ onDestroy(() => {
             rangeEnd={range.end}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}
+            dayHeaders={computeDayHeaders(range.start, Math.round((range.end - range.start) / 86_400_000), timeZone)}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             {isStartWritable}
             {isDurationWritable}
             {isLaneWritable}
@@ -627,6 +657,8 @@ onDestroy(() => {
             rangeStart={range.start}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}
+            dayHeaders={computeDayHeaders(range.start, timeGridLayout.dayCount, timeZone)}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             {isStartWritable}
             {isDurationWritable}
             onDragMove={previewStart}
@@ -703,13 +735,36 @@ onDestroy(() => {
 }
 
 .nav-controls button,
-.undo-controls button {
+.undo-controls button,
+.view-toolbar > button {
     border: 1px solid #d1d5db;
     border-radius: 4px;
     background: white;
     padding: 2px 10px;
     cursor: pointer;
     font-size: 0.8rem;
+}
+
+:global(.view-toolbar > button.active) {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: white;
+}
+
+:global(.settings-panel) {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    padding: 8px;
+    background: #fafafa;
+}
+
+.status-toolbar {
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
 }
 
 .timezone-control {

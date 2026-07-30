@@ -12,13 +12,17 @@ test.describe("Sidebar Tables Section (SBD-3845abcd)", () => {
 
     test("checks the appearance of tables section in the sidebar", async ({ page }) => {
         // Open the sidebar
-        const menuButton = page.locator('button[aria-label="Toggle menu"]');
+        const menuButton = page.locator('button[aria-label="Show sidebar"]');
         if (await menuButton.isVisible()) {
             await menuButton.click();
         }
 
         const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
-        await expect(sidebar).toBeVisible({ timeout: 10000 });
+        // Wait for the toggle button to finish opening the sidebar so it's not inert
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
+        const isInert = await sidebar.evaluate((node) => node.hasAttribute("inert"));
+        expect(isInert).toBe(false);
 
         // Ensure tables section is visible
         const tablesHeader = sidebar.locator('button[aria-label="Toggle tables section"]');

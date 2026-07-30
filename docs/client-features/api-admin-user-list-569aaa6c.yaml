@@ -10,5 +10,5 @@ tests:
 - client/e2e/core/api-admin-user-list-569aaa6c.spec.ts
 - server/tests/log-service.test.ts
 components:
-- server/log-service.js
+- server/src/log-service.ts
 title-ja: 管理者ユーザーリスト

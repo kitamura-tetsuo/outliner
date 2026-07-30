@@ -189,8 +189,11 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   echo "Installing OS utilities..."
   install_os_utilities
   echo "Installing Python packages..."
-  retry_apt_get update
-  retry_apt_get -y install python3-venv python3-pip
+  if apt_is_available; then
+    retry_apt_get -y install python3-venv python3-pip
+  else
+    echo "Skipping python3-venv/python3-pip installation; using the interpreter already in the image."
+  fi
 
   # Create Python virtual environment if it doesn't exist
   ensure_python_env
@@ -224,9 +227,7 @@ if [ "$SKIP_INSTALL" -eq 0 ]; then
   fi
 
   # Install Playwright browser (system dependencies should be handled by install_os_utilities)
-  cd "${ROOT_DIR}/client"
-  npx --yes playwright install chromium
-  cd "${ROOT_DIR}"
+  ensure_playwright_browsers
 
   # Ensure vitest and playwright packages are available for npm test
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
@@ -262,11 +263,18 @@ else
   fi
   if ! python3 -m pip --version >/dev/null 2>&1; then
     echo "pip missing; ensuring python3-pip is installed..."
-    retry_apt_get update
-    retry_apt_get -y install python3-pip
+    if apt_is_available; then
+      retry_apt_get -y install python3-pip
+    fi
   fi
   if [ ! -d "${ROOT_DIR}/client/node_modules" ] || [ ! -d "${ROOT_DIR}/scripts/tests/node_modules" ]; then
     install_all_dependencies
+  fi
+  # A cached setup can still be missing the browser (fresh container, pruned
+  # cache). Skip the re-check only while a recorded fallback binary is valid.
+  if [ ! -s "${ROOT_DIR}/.playwright-chromium-path" ] \
+    || [ ! -x "$(head -n1 "${ROOT_DIR}/.playwright-chromium-path")" ]; then
+    ensure_playwright_browsers
   fi
   if [ ! -f "${ROOT_DIR}/client/node_modules/.bin/vitest" ] || [ ! -f "${ROOT_DIR}/client/node_modules/.bin/playwright" ]; then
     echo "Required test packages missing; installing vitest playwright..."
