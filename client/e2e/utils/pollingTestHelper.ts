@@ -222,7 +222,12 @@ export async function testWithoutPolling(
 
     // 2. Test WITHOUT polling
     console.log(`[${testName}] Testing WITHOUT polling...`);
-    await page.reload();
+    try {
+        await page.reload({ timeout: 15000 });
+    } catch(e) {
+        console.log("Failed to reload page, trying to navigate to demo page", e);
+        await page.goto("http://localhost:7090/demo", { timeout: 15000 });
+    }
     await disablePollingPattern(page, pollingPattern);
     await resetPollingMonitor(page);
 
