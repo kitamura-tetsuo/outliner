@@ -16,6 +16,7 @@
 
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
+import { getLogger } from "../../lib/logger";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
 import { formatQueryDateFields } from "./queryResultFormatting";
@@ -24,6 +25,8 @@ import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff 
 import { quoteIdent, reservedRelationNameError } from "./sqlNames";
 import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
+
+const logger = getLogger("tableSyncAdapter");
 
 export interface RecordSyncError {
     recordId: string;
@@ -295,6 +298,8 @@ export class TableSyncAdapter {
             for (const recordId of recordIds) {
                 await this.applyRecordToDb(db, recordId);
             }
+        }).catch(err => {
+            logger.warn({ err }, "[tableSyncAdapter] Rebuild write queue operation failed");
         });
 
         if (this.disposed) return;
@@ -329,6 +334,8 @@ export class TableSyncAdapter {
                 for (const recordId of ids) {
                     await this.applyRecordToDb(db, recordId);
                 }
+            }).catch(err => {
+                logger.warn({ err }, "[tableSyncAdapter] Flush write queue operation failed");
             }).then(() => {
                 if (this.disposed) return;
                 this.emitRecordErrors();
