@@ -692,7 +692,10 @@ let updatePositionMapTimer: ReturnType<typeof setTimeout>;
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
-        if (!aliasPickerStore.isVisible) updatePositionMap();
+        if (!aliasPickerStore.isVisible) {
+            updatePositionMap();
+            updateTextareaPosition();
+        }
     }, 100);
 }
 

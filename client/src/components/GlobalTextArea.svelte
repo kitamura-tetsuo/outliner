@@ -297,6 +297,8 @@ function handleBlur(event: FocusEvent) {
     height: 1px;
     opacity: 0;
     pointer-events: none;
+    /* Prevent the hidden textarea from extending the document width and causing horizontal scrollbars */
+    contain: layout;
 }
 :global(.ime-input) {
     z-index: 10;
