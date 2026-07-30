@@ -59,7 +59,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         let slowRunStarted = false;
         let fastRunFinished = false;
         let resolveSlowRun: (value: any) => void;
-        const slowRunPromise = new Promise(resolve => { resolveSlowRun = resolve; });
+        const slowRunPromise = new Promise(resolve => {
+            resolveSlowRun = resolve;
+        });
 
         // @ts-expect-error mocking private method
         adapter.executeQuery = async (selectSql: string) => {
@@ -95,7 +97,6 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
 
             // @ts-expect-error accessing private field
             expect(adapter.lastResult.rows[0].id).toBe("fast");
-
         } finally {
             adapter.dispose();
         }
