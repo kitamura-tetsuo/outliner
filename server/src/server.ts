@@ -252,9 +252,7 @@ export async function startServer(
                 const requestHeaders = data.requestHeaders;
                 const token = data.token;
                 logger.debug(
-                    `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
-                        token ? "FOUND" : "MISSING"
-                    }`,
+                    `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`,
                 );
 
                 const room = parseRoom(data.documentName);
