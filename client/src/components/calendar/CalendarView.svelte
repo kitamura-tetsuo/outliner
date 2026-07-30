@@ -238,6 +238,7 @@ function readSettingsFromMap(): CalendarSettings | undefined {
     };
 }
 
+let queryGeneration = 0;
 let requeryTimer: ReturnType<typeof setTimeout> | undefined;
 // project/projectId/calendarId are static within the component lifecycle due
 // to `{#key}` (a prop change remounts the whole view, per AGENTS.md §11).
@@ -247,7 +248,9 @@ const pgSchema = projectSchemaName(projectId);
 const session = createTableEngineSession({ projectDoc: project.ydoc, projectId });
 
 async function runQuery() {
+    const generation = ++queryGeneration;
     const outcome = await runCalendarQuery(session, pgSchema, settings.query, queryRange, timeZone);
+    if (generation !== queryGeneration) return;
     if (outcome.result) {
         result = outcome.result;
         queryError = undefined;
