@@ -35,7 +35,7 @@ export function computeDayHeaders(rangeStart: number, dayCount: number, timeZone
             isoDate: iso,
             month: w.month,
             dayOfMonth: w.day,
-            isMonthStart: w.day === 1 || dayIndex === 0,
+            isMonthStart: w.day === 1 || dayIndex === 0
         });
     }
 
