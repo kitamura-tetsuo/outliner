@@ -314,6 +314,8 @@ export class GeneralStore {
         let rebuildPending = false;
 
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => {
+            /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- This set is local to the event loop, no reactivity needed */
+            const checkboxParentsToUpdate = new Set<string>();
             // Debounce saveProjectSnapshot to avoid O(N) traversal on every transaction
             if (!snapshotTimeout) {
                 // Check if this project provider is still doing its initial sync.
@@ -344,11 +346,13 @@ export class GeneralStore {
                         if (event.changes.keys.size > 0) {
                             // Check if any added key is a page
                             for (const [key, change] of event.changes.keys) {
-                                if (change.action === "add") {
+                                if (change.action === "add" || change.action === "update") {
                                     try {
-                                        if (safeGetNodeParent(project.tree, key) === "root") {
+                                        const parent = safeGetNodeParent(project.tree, key);
+                                        if (parent === "root") {
                                             shouldRebuild = true;
-                                            break;
+                                        } else if (parent) {
+                                            checkboxParentsToUpdate.add(parent);
                                         }
                                     } catch (_e) {
                                         logger.error(_e);
@@ -356,27 +360,54 @@ export class GeneralStore {
                                 } else if (change.action === "delete") {
                                     // Conservative approach: rebuild on delete as we can't easily check parent
                                     shouldRebuild = true;
-                                    break;
                                 }
                             }
                         }
                     } else if (event.path.length === 1 && event.keys.has("text")) {
-                        // Change on a node's property (text)
-                        // path[0] is the node ID
+                        // Change on a node's property (text) (Top level structure event maybe?)
                         const nodeId = String(event.path[0]);
                         try {
-                            if (safeGetNodeParent(project.tree, nodeId) === "root") {
-                                // It is a page title change
+                            const parent = safeGetNodeParent(project.tree, nodeId);
+                            if (parent === "root") {
                                 shouldRebuild = true;
+                            } else if (parent) {
+                                checkboxParentsToUpdate.add(parent);
+                            }
+                        } catch (_e) {
+                            logger.error(_e);
+                        }
+                    } else if (event.path.length >= 2 && event.path[event.path.length - 1] === "text") {
+                        // Text updates inside a node (e.g. path: [nodeId, "value", "text"])
+                        const nodeId = String(event.path[0]);
+                        try {
+                            const parent = safeGetNodeParent(project.tree, nodeId);
+                            if (parent && parent !== "root") {
+                                checkboxParentsToUpdate.add(parent);
                             }
                         } catch (_e) {
                             logger.error(_e);
                         }
                     }
-                    if (shouldRebuild) break;
                 }
             } catch (_e) {
                 logger.error(_e);
+            }
+
+            if (checkboxParentsToUpdate.size > 0 && _tr?.origin !== "checkbox-rollup") {
+                const parents = Array.from(checkboxParentsToUpdate);
+                import("../utils/checkboxHelpers").then(({ updateParentCheckboxStatus }) => {
+                    import("../schema/app-schema").then(({ Item }) => {
+                        project.ydoc.transact(() => {
+                            for (const pid of parents) {
+                                try {
+                                    updateParentCheckboxStatus(new Item(project.ydoc, project.tree, pid));
+                                } catch (_e) {
+                                    logger.error(_e);
+                                }
+                            }
+                        }, "checkbox-rollup");
+                    }).catch(e => logger.warn("Failed to import app-schema", { error: e }));
+                }).catch(e => logger.warn("Failed to import checkboxHelpers", { error: e }));
             }
 
             if (shouldRebuild) {
