@@ -439,4 +439,24 @@ describe("ScrapboxFormatter", () => {
             expect(ScrapboxFormatter.hasFormatting("plain text")).toBe(false);
         });
     });
+
+    describe("formatToHtmlAdvanced checkboxes", () => {
+        it("should format checkboxes correctly and add accessible names", () => {
+            const html = ScrapboxFormatter.formatToHtmlAdvanced("[ ] Task 1");
+            expect(html).toContain('type="checkbox"');
+            expect(html).toContain('class="inline-checkbox"');
+            expect(html).toContain('aria-label="Task 1"');
+            expect(html).not.toContain('checked="checked"');
+
+            const checkedHtml = ScrapboxFormatter.formatToHtmlAdvanced("[x] Task 2");
+            expect(checkedHtml).toContain('type="checkbox"');
+            expect(checkedHtml).toContain('class="inline-checkbox"');
+            expect(checkedHtml).toContain('aria-label="Task 2"');
+            expect(checkedHtml).toContain('checked="checked"');
+
+            // Escaping case for text containing " and <
+            const escapedHtml = ScrapboxFormatter.formatToHtmlAdvanced('[ ] Buy "milk" & <bread>');
+            expect(escapedHtml).toContain('aria-label="Buy &quot;milk&quot; &amp; &lt;bread&gt;"');
+        });
+    });
 });

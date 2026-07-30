@@ -586,10 +586,12 @@ export class ScrapboxFormatter {
         const checkboxMatch = text.match(/^\[([ x])\]\s/);
         if (checkboxMatch) {
             const isChecked = checkboxMatch[1] === "x";
-            leadingCheckboxHtml = `<input type="checkbox" class="inline-checkbox" ${
+            const remainderText = text.substring(checkboxMatch[0].length);
+            const label = ScrapboxFormatter.escapeHtml(remainderText);
+            leadingCheckboxHtml = `<input type="checkbox" class="inline-checkbox" aria-label="${label}" ${
                 isChecked ? 'checked="checked"' : ""
             } /> `;
-            text = text.substring(checkboxMatch[0].length);
+            text = remainderText;
         }
 
         // Temporarily replace underline tags with placeholders
