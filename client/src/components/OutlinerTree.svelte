@@ -77,7 +77,7 @@
                     yjsService.reapplyAllPresences(awareness);
                 }
             }
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
     });
 
     let unsubscribeUser: (() => void) | null = null;
@@ -179,7 +179,7 @@
                                 );
                             });
                         }
-                    } catch (err) { logger.warn("Silenced error", { err }); }
+                    } catch (_e) { /* ignore */ }
 
                     let shouldQueue = false;
 
@@ -221,10 +221,10 @@
                 return () => {
                     try {
                         ymap.unobserveDeep(handler);
-                    } catch (err) { logger.warn("Silenced error", { err }); }
+                    } catch (_e) { /* ignore */ }
                 };
             }
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
     });
 
     // Re-binding on Y.Doc switch is unnecessary: Stabilized by re-mounting with OutlinerBase and {#key} of this component
@@ -340,7 +340,7 @@
         if (files.length === 0) return;
 
         let containerId: string | undefined = undefined;
-        try { containerId = await getDefaultContainerId(); } catch (err) { logger.warn("Silenced error", { err }); }
+        try { containerId = await getDefaultContainerId(); } catch (_e) { /* ignore */ }
 
         // Ensure containerId exists, skip fallback logic if unavailable in production
         if (!containerId && import.meta.env.MODE !== "test") {
@@ -421,7 +421,7 @@
                 key,
                 treeType: (tree as { constructor?: { name?: string } })?.constructor?.name,
             } }, "handleIndent debug");
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
 
         if (
             !tree ||
@@ -460,14 +460,14 @@
                     siblingOrder,
                     currentIndex,
                 } }, "handleIndent parent info");
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
 
         if (currentIndex <= 0) return; // Cannot indent first item
 
         const targetParentKey = siblingOrder[currentIndex - 1];
         try {
             logger.debug({ data: { itemId, targetParentKey, currentIndex } }, "handleIndent moving");
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
         if (!targetParentKey) return;
 
         const run = () => {
@@ -501,7 +501,7 @@
 
                     newParent: safeGetNodeParent(tree, key),
                 } }, "handleIndent new parent");
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
 
         logger.info(
             { itemId, targetParentKey },
@@ -606,13 +606,13 @@
         if (lastToolbarItemId) {
             try {
                 logger.debug({ lastToolbarItemId }, "resolveActiveItemId: using last known id");
-            } catch (err) { logger.warn("Silenced error", { err }); }
+            } catch (_e) { /* ignore */ }
             return lastToolbarItemId;
         }
 
         try {
             logger.debug("resolveActiveItemId: no active item");
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
         return null;
     }
 
@@ -623,7 +623,7 @@
             if (flag === "1" || flag === "true") {
                 window.DEBUG_MODE = true;
             }
-        } catch (err) { logger.warn("Silenced error", { err }); }
+        } catch (_e) { /* ignore */ }
     }
 
     // Item navigation handling
@@ -1745,7 +1745,7 @@
                 targetItem.addAttachment(url);
             } catch {
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
+                    try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (_e) { /* ignore */ }
                 }
             }
         } else {
@@ -1768,7 +1768,7 @@
                     newItem.addAttachment(url);
                 } catch {
                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
-                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (err) { logger.warn("Silenced error", { err }); }
+                        try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (_e) { /* ignore */ }
                     }
                 }
             }
