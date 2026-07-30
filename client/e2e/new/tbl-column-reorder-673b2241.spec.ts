@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 /** @feature TBL-673b2241 */
 test.describe("Table column reordering", () => {
@@ -15,7 +18,8 @@ test.describe("Table column reordering", () => {
         await page.waitForTimeout(500);
 
         // Turn the item into a table block
-        const item = page.locator(".item-row").first();
+        const item = page.locator(".outliner-item").first();
+        await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
         await page.keyboard.press("Escape");
         await page.keyboard.press("Escape"); // Ensure we're out of edit mode
@@ -119,7 +123,8 @@ test.describe("Table column reordering", () => {
         await page.waitForTimeout(500);
 
         // Turn the item into a table block
-        const item = page.locator(".item-row").first();
+        const item = page.locator(".outliner-item").first();
+        await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
         await page.keyboard.press("Escape");
         await page.keyboard.press("Escape"); // Ensure we're out of edit mode
