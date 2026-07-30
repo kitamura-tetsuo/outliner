@@ -23,7 +23,7 @@ describe("TableGrid column labels", () => {
             due_at: "Due Date",
             is_done: "", // Empty label falls back to column name
         };
-        const session = {} as any; // mock
+        const session = {} as import("../../services/yjstable/relationRowWrite").RelationResolver; // mock
         const handles = {} as TableHandles;
 
         const { container } = render(TableGrid, {

@@ -1,6 +1,5 @@
 /** @feature FTR-e9f8a3c4 */
 import { expect, test } from "@playwright/test";
-import { SeedClient } from "../utils/seedClient";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Table column display names", () => {
@@ -17,7 +16,7 @@ test.describe("Table column display names", () => {
         });
     });
 
-    test("configure and persist column display names", async ({ page, context }, testInfo) => {
+    test("configure and persist column display names", async ({ page }, testInfo) => {
         const projectId = `test-col-label-${Date.now()}`;
         const pageId = "p-1";
 
