@@ -78,3 +78,36 @@ export function iterateItemsOrdered(items: unknown): Iterable<Item> {
 
     return [];
 }
+
+/**
+ * Iterates over an Item collection deeply.
+ * Performs a depth-first traversal of the item subtree using an explicit stack
+ * to prevent maximum call stack size issues.
+ *
+ * @param items The item collection to iterate over deeply
+ * @returns An iterable of Items including all descendants
+ */
+export function* iterateItemsDeep(items: unknown): Iterable<Item> {
+    if (!items) return;
+
+    const stack: Iterator<Item>[] = [];
+    const rootIterable = iterateItems(items);
+    stack.push(rootIterable[Symbol.iterator]());
+
+    while (stack.length > 0) {
+        const iterator = stack[stack.length - 1];
+        const result = iterator.next();
+
+        if (result.done) {
+            stack.pop();
+        } else {
+            const item = result.value;
+            yield item;
+
+            if (item && item.items) {
+                const childIterable = iterateItems(item.items);
+                stack.push(childIterable[Symbol.iterator]());
+            }
+        }
+    }
+}

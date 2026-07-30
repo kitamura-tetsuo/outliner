@@ -67,6 +67,45 @@ describe("backlinkCollector", () => {
         expect(result[0].sourceItemId).toBe("item1");
     });
 
+    it("should collect backlinks from deeply nested child items", () => {
+        const mockPages = [
+            {
+                id: "page1",
+                text: "Page 1",
+                items: [
+                    {
+                        id: "item1",
+                        text: "Level 1",
+                        items: [
+                            {
+                                id: "item2",
+                                text: "Level 2 with link to [TargetPage]",
+                                items: [
+                                    {
+                                        id: "item3",
+                                        text: "Level 3 with link to [/project/TargetPage]",
+                                    } as unknown as import("../schema/app-schema").Item,
+                                ] as unknown as Items,
+                            } as unknown as import("../schema/app-schema").Item,
+                        ] as unknown as Items,
+                    } as unknown as import("../schema/app-schema").Item,
+                ] as unknown as Items,
+            } as unknown as import("../schema/app-schema").Item,
+        ];
+        (store.pages as unknown as { current: import("../schema/app-schema").Item[]; }).current = mockPages;
+
+        const result = collectBacklinks("TargetPage");
+        expect(result).toHaveLength(2);
+
+        expect(result[0].sourcePageId).toBe("page1");
+        expect(result[0].sourceItemId).toBe("item2");
+        expect(result[0].sourceItemText).toBe("Level 2 with link to [TargetPage]");
+
+        expect(result[1].sourcePageId).toBe("page1");
+        expect(result[1].sourceItemId).toBe("item3");
+        expect(result[1].sourceItemText).toBe("Level 3 with link to [/project/TargetPage]");
+    });
+
     it("should handle mixed case", () => {
         const mockPages = [
             {
