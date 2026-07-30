@@ -50,6 +50,7 @@ let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let uiQuery = $state("");
 let componentTypes = $state<Record<string, string | undefined>>({});
+let columnLabels = $state<Record<string, string | undefined>>({});
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 
@@ -87,13 +88,21 @@ const engineCallbacks = {
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
     const components = handles.uiDef.get("components");
-    const next: Record<string, string | undefined> = {};
+    const nextTypes: Record<string, string | undefined> = {};
+    const nextLabels: Record<string, string | undefined> = {};
     if (components instanceof Y.Map) {
         components.forEach((cfg, column) => {
-            next[column] = cfg instanceof Y.Map ? (cfg.get("type") as string | undefined) : undefined;
+            if (cfg instanceof Y.Map) {
+                nextTypes[column] = cfg.get("type") as string | undefined;
+                nextLabels[column] = cfg.get("label") as string | undefined;
+            } else {
+                nextTypes[column] = undefined;
+                nextLabels[column] = undefined;
+            }
         });
     }
-    componentTypes = next;
+    componentTypes = nextTypes;
+    columnLabels = nextLabels;
 }
 
 const uiMirrorObserver = () => refreshUiMirror();
@@ -222,7 +231,7 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} />
+            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} {columnLabels} />
         </section>
     {/if}
 
@@ -259,6 +268,7 @@ onDestroy(() => {
                     query={uiQuery}
                     {result}
                     {componentTypes}
+                    {columnLabels}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

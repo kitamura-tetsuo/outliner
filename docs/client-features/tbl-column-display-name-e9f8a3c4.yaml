@@ -1,0 +1,14 @@
+id: FTR-e9f8a3c4
+title: Grid columns need a configurable header display name, separate from the SQL column name
+title-ja: グリッド列には、SQL列名とは別の設定可能なヘッダー表示名が必要です
+description: 'Grid headers print the raw result-set column name. Users configure a human-readable label in the UI Definition editor which is saved in components.<column>.label. The table displays this presentation-only label while retaining the SQL name for queries (discoverable via the header tooltip and preserved in the data-col attribute). Setting a label does not affect the columns cell component type, editability, sorting, or any query behaviour. The SQL identity of the column stays untouched so cell-component configurations and calendar role mappings keep working correctly.'
+category: client
+status: implemented
+components:
+- client/src/components/yjstable/TableGrid.svelte
+- client/src/components/yjstable/TableUiDefEditor.svelte
+- client/src/components/yjstable/YjsTableView.svelte
+tests:
+- client/e2e/new/tbl-column-display-name-e9f8a3c4.spec.ts
+- client/src/components/yjstable/TableGrid.test.ts
+- client/src/components/yjstable/TableUiDefEditor.test.ts

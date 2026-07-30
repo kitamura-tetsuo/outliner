@@ -29,13 +29,15 @@ interface Props {
     result: TableQueryResult;
     /** Component type per column from the UI Definition mirror. */
     componentTypes: Record<string, string | undefined>;
+    /** Presentation label per column from the UI Definition mirror. */
+    columnLabels: Record<string, string | undefined>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, loading = false, session }: Props = $props();
+let { handles, schema, query, result, componentTypes, columnLabels, loading = false, session }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -113,6 +115,12 @@ function handleConfirmDelete() {
 function handleCancelDelete() {
     rowToDelete = null;
 }
+
+/** Presentation label for a column; falls back to the SQL name. */
+function headerLabel(column: string): string {
+    const label = columnLabels[column];
+    return label !== undefined && label !== "" ? label : column;
+}
 </script>
 
 <div class="yjs-table-grid" data-testid="yjs-table-grid">
@@ -123,8 +131,8 @@ function handleCancelDelete() {
             <thead>
                 <tr>
                     {#each result.columns as column (column)}
-                        <th scope="col">
-                            {column}
+                        <th scope="col" title={columnLabels[column] ? column : undefined} data-col={column}>
+                            {headerLabel(column)}
                             {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
                                 <span class="readonly-mark" title="Read-only column">RO</span>
                             {/if}
