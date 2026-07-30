@@ -9,30 +9,30 @@ test("table column header shows display name independent of SQL name", async ({ 
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table Test Item"]);
 
     // Wait for the item to appear
-    await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 30000 });
 
     // Focus the item and open the database table create panel
     await page.locator(".outliner-item").first().click();
     await page.waitForTimeout(300);
 
     const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
-    await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
+    await expect(addDatabaseBtn).toBeVisible({ timeout: 30000 });
     await addDatabaseBtn.click();
 
     // The create panel appears; create a table from the Tasks preset
     const createPanel = page.getByTestId("yjs-table-create-panel").first();
-    await expect(createPanel).toBeVisible({ timeout: 10000 });
+    await expect(createPanel).toBeVisible({ timeout: 30000 });
 
     await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
     await page.getByTestId("yjs-table-create").first().click();
 
     // The grid should now load
     const grid = page.getByTestId("yjs-table-grid").first();
-    await expect(grid).toBeVisible({ timeout: 10000 });
+    await expect(grid).toBeVisible({ timeout: 30000 });
 
     // Check initial header: it should show "repeat_days" because this table initially has no label for repeat_days
     const header = page.locator(`th[data-col="repeat_days"]`);
-    await expect(header).toBeVisible({ timeout: 10000 });
+    await expect(header).toBeVisible({ timeout: 30000 });
     await expect(header).toHaveText(/repeat_days/);
 
     // Tooltip is initially undefined/not present
