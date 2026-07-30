@@ -110,7 +110,6 @@ function setComponentType(column: string, type: string) {
                     }}
                     ondrop={(e) => {
                         e.preventDefault();
-                        dropTargetColumn = undefined;
                         const draggedCol = e.dataTransfer?.getData("text/plain");
                         if (draggedCol && draggedCol !== column.name) {
                             const currentNames = displayColumns.map((c) => c.name);
@@ -125,6 +124,7 @@ function setComponentType(column: string, type: string) {
                                 writeColumnOrder(handles, moveColumn(currentNames, draggedCol, targetIndex));
                             }
                         }
+                        dropTargetColumn = undefined;
                     }}
                 >
                     <div class="drag-handle" aria-hidden="true">⋮⋮</div>

@@ -14,7 +14,7 @@ const mockHandles: TableHandles = {
     schemaText: mockDoc.getText("schemaText"),
     uiDef: mockDoc.getMap("uiDef"),
     data: mockDoc.getMap("data"),
-    undo: { undo: vi.fn(), redo: vi.fn() },
+    undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
 };
 
 const mockSession: RelationResolver = {
@@ -24,14 +24,35 @@ const mockSession: RelationResolver = {
 describe("TableGrid", () => {
     it("renders headers and body cells following columnOrder", () => {
         const schema: ParsedTableSchema = {
+            tableName: "test_table",
+            createSql: "CREATE TABLE test_table (id uuid, col_a text, col_b text, col_c text);",
             columns: [
-                { name: "id", dataType: "uuid", isNullable: false, kind: "text", checkOptions: [] },
-                { name: "col_a", dataType: "text", isNullable: true, kind: "text", checkOptions: [] },
-                { name: "col_b", dataType: "text", isNullable: true, kind: "text", checkOptions: [] },
-                { name: "col_c", dataType: "text", isNullable: true, kind: "text", checkOptions: [] },
+                { name: "id", dataType: "uuid", isNullable: false, isPrimaryKey: true, kind: "text", checkOptions: [] },
+                {
+                    name: "col_a",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+                {
+                    name: "col_b",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
+                {
+                    name: "col_c",
+                    dataType: "text",
+                    isNullable: true,
+                    isPrimaryKey: false,
+                    kind: "text",
+                    checkOptions: [],
+                },
             ],
-            foreignKeys: [],
-            checkConstraints: [],
         };
 
         const result: TableQueryResult = {
