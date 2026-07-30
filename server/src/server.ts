@@ -187,7 +187,7 @@ export async function startServer(
 
     // Rate limiter middleware
     const rateLimiterMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        const clientIp = getClientIp(req);
+        const clientIp = getClientIp(req, config);
 
         if (!checkRateLimit(clientIp)) {
             logger.warn({ event: "http_rate_limit_exceeded", ip: clientIp, path: req.path });
@@ -379,7 +379,7 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Demo API - anonymous access for the public demo page
-    app.use("/api", createDemoRouter(hocuspocus));
+    app.use("/api", createDemoRouter(hocuspocus, config));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
@@ -440,7 +440,7 @@ export async function startServer(
             // and gets silently dropped. Hocuspocus then waits forever → 30-second timeout.
             // All async auth is performed inside the onAuthenticate Hocuspocus hook instead.
 
-            const ip = getClientIp(request);
+            const ip = getClientIp(request, config);
             const origin = request.headers.origin || "";
             if (process.env.NODE_ENV === "production") {
                 logger.debug({ headers: request.headers }, "[DEBUG] Upgrade Headers");
