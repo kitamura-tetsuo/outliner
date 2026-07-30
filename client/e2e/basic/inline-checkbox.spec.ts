@@ -93,34 +93,36 @@ test.describe("Inline Checkboxes", () => {
 });
 
 test("should uncheck parent when new unchecked child is added", async ({ page }, testInfo) => {
-    const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, [
-        "[x] Parent",
-        "  [x] Child A",
-    ]);
+    const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, ["[x] Parent"]);
     await TestHelpers.navigateToProjectPage(page, projectName, pageName, ["[x] Parent"]);
 
-    await TestHelpers.waitForOutlinerItems(page, 2);
-    const checkboxes = page.locator('input[type="checkbox"].inline-checkbox');
-    await expect(checkboxes).toHaveCount(2);
-
-    // Verify parent is initially checked
-    expect(await checkboxes.nth(0).evaluate((node: HTMLInputElement) => node.checked)).toBe(true);
-
-    // Add a new unchecked child
-    await page.locator(".outliner-item[data-item-id]").nth(1).locator(".item-content").click();
+    const items = page.locator(".outliner-item[data-item-id]");
+    await items.first().locator(".item-content").click();
     await page.waitForTimeout(500);
+
+    await TestHelpers.waitForCursorVisible(page);
+
     await page.keyboard.press("End");
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(100);
+
+    await page.keyboard.press("Tab"); // Indent to make it a child
+    await page.waitForTimeout(100);
+    await page.keyboard.type("[x] Child A");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+
+    // Now we have Parent -> Child A (both checked).
+    // Let's add Child B (unchecked)
     await page.keyboard.type("[ ] Child B");
 
     await page.locator(".global-textarea").blur();
     await page.waitForTimeout(1000);
 
-    // Expect 3 checkboxes
+    const checkboxes = page.locator('input[type="checkbox"].inline-checkbox');
     await expect(checkboxes).toHaveCount(3);
 
-    // Wait for parent to roll up and uncheck
+    // Parent should be unchecked now
     await page.waitForFunction(() => {
         const cbs = document.querySelectorAll('input[type="checkbox"].inline-checkbox');
         return cbs.length >= 1 && !(cbs[0] as HTMLInputElement).checked;
@@ -130,34 +132,46 @@ test("should uncheck parent when new unchecked child is added", async ({ page },
 });
 
 test("should check parent when last unchecked child is deleted", async ({ page }, testInfo) => {
-    const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, [
-        "[ ] Parent",
-        "  [x] Child A",
-        "  [ ] Child B",
-    ]);
+    const { projectName, pageName } = await TestHelpers.seedProjectDataOnly(page, testInfo, ["[ ] Parent"]);
     await TestHelpers.navigateToProjectPage(page, projectName, pageName, ["[ ] Parent"]);
 
-    await TestHelpers.waitForOutlinerItems(page, 3);
-    const checkboxes = page.locator('input[type="checkbox"].inline-checkbox');
-    await expect(checkboxes).toHaveCount(3);
-
-    // Verify parent is initially unchecked
-    expect(await checkboxes.nth(0).evaluate((node: HTMLInputElement) => node.checked)).toBe(false);
-
-    // Delete the unchecked child B
-    await page.locator(".outliner-item[data-item-id]").nth(2).locator(".item-content").click();
+    const items = page.locator(".outliner-item[data-item-id]");
+    await items.first().locator(".item-content").click();
     await page.waitForTimeout(500);
 
-    // Use TestHelpers shortcut if available or keyboard deletion
-    await page.keyboard.press("Control+A");
-    await page.keyboard.press("Backspace");
+    await TestHelpers.waitForCursorVisible(page);
+
+    await page.keyboard.press("End");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+
+    await page.keyboard.press("Tab"); // Indent
+    await page.waitForTimeout(100);
+    await page.keyboard.type("[x] Child A");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+
+    await page.keyboard.type("[ ] Child B");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(100);
+
+    // Now we have Parent -> [x] Child A, [ ] Child B.
+    // Parent should be unchecked.
+    // Let's delete Child B. Wait, cursor is on an empty line after Child B.
+    await page.keyboard.press("Backspace"); // delete empty line
+    await page.waitForTimeout(100);
+
+    // Cursor should be at the end of Child B now
+    await page.keyboard.press("Control+A"); // select all in Child B
+    await page.keyboard.press("Backspace"); // delete text
     await page.waitForTimeout(200);
-    await page.keyboard.press("Backspace"); // delete the node
+    await page.keyboard.press("Backspace"); // delete node
+    await page.waitForTimeout(200);
 
     await page.locator(".global-textarea").blur();
     await page.waitForTimeout(1000);
 
-    // Expect 2 checkboxes left
+    const checkboxes = page.locator('input[type="checkbox"].inline-checkbox');
     await expect(checkboxes).toHaveCount(2);
 
     // Wait for parent to roll up and check

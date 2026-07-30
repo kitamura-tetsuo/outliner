@@ -1,2 +1,0 @@
-Okay, all patches are properly applied and in the git index now.
-I'm ready to submit!
