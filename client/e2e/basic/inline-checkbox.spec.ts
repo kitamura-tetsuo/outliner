@@ -162,11 +162,10 @@ test("should check parent when last unchecked child is deleted", async ({ page }
     await page.waitForTimeout(100);
 
     // Cursor should be at the end of Child B now
-    await page.keyboard.press("Control+A"); // select all in Child B
-    await page.keyboard.press("Backspace"); // delete text
+    for (let i = 0; i < 20; i++) await page.keyboard.press("Backspace"); // delete text and node
     await page.waitForTimeout(200);
-    await page.keyboard.press("Backspace"); // delete node
-    await page.waitForTimeout(200);
+    await page.keyboard.press("ArrowUp"); // Ensure focus moves so Svelte updates active item
+    await page.waitForTimeout(100);
 
     await page.locator(".global-textarea").blur();
     await page.waitForTimeout(1000);
