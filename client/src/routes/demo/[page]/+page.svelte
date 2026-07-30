@@ -54,7 +54,12 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
-                await seedDemo();
+                const seedResult = await seedDemo();
+                if (!seedResult.ok) {
+                    if (seedResult.reason === "network") {
+                        throw new Error("Can't reach the demo server — retrying...");
+                    }
+                }
                 if (isDestroyed) return;
 
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
