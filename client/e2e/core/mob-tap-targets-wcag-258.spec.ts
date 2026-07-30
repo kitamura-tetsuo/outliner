@@ -1,8 +1,7 @@
-import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-import { TestHelpers } from "../utils/testHelpers";
-
 registerCoverageHooks();
+import { expect, test } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Mobile Viewport", () => {
     // Setup for mobile viewport
