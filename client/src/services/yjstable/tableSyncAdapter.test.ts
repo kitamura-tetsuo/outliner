@@ -47,6 +47,60 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
+    it("only emits the result of the latest runQueryNow call, ignoring slow older runs", async () => {
+        const { handles, pgSchema } = makeTable();
+        setSchemaText(handles, SCHEMA);
+        const adapter = new TableSyncAdapter(handles, { pgSchema });
+
+        // Mock executeQuery to control execution speed
+        // @ts-expect-error accessing private method for testing
+        const originalExecuteQuery = adapter.executeQuery.bind(adapter);
+
+        let slowRunStarted = false;
+        let fastRunFinished = false;
+        let resolveSlowRun: (value: any) => void;
+        const slowRunPromise = new Promise(resolve => { resolveSlowRun = resolve; });
+
+        // @ts-expect-error mocking private method
+        adapter.executeQuery = async (selectSql: string) => {
+            if (!slowRunStarted) {
+                slowRunStarted = true;
+                await slowRunPromise;
+                return { columns: ["id"], rows: [{ id: "slow" }] };
+            } else {
+                fastRunFinished = true;
+                return { columns: ["id"], rows: [{ id: "fast" }] };
+            }
+        };
+
+        try {
+            await adapter.start();
+            handles.uiDef.set("query", "SELECT id FROM tasks"); // trigger a query
+
+            // start first run (will be slow)
+            const firstRunPromise = adapter.runQueryNow();
+
+            // start second run (will be fast)
+            const secondRunPromise = adapter.runQueryNow();
+            const secondRunResult = await secondRunPromise;
+
+            // let the first run finish now that the second is done
+            resolveSlowRun!(undefined);
+            const firstRunResult = await firstRunPromise;
+
+            // The first run should return undefined because it's stale
+            expect(firstRunResult).toBeUndefined();
+            // The second run should return its result
+            expect(secondRunResult?.rows[0].id).toBe("fast");
+
+            // @ts-expect-error accessing private field
+            expect(adapter.lastResult.rows[0].id).toBe("fast");
+
+        } finally {
+            adapter.dispose();
+        }
+    });
+
     it("syncs incremental record changes (insert, update, delete)", async () => {
         const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);
