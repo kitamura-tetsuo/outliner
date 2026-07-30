@@ -37,6 +37,12 @@ interface ServerOverrides {
     verifyIdTokenCached?: typeof defaultVerifyToken;
 }
 
+export interface ConnectionContext {
+    user: { uid: string; };
+    room: import("./room-validator.js").RoomInfo;
+    ip?: string;
+}
+
 export async function startServer(
     config: Config,
     logger = defaultLogger,
@@ -230,12 +236,14 @@ export async function startServer(
             name: "hocuspocus-fluid-outliner",
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
-            async onConnect(data: any) {
-                const ip = data.context?.ip || data.requestHeaders["x-forwarded-for"]
-                    || data.request.socket?.remoteAddress || "unknown";
+            async onConnect(data: import("@hocuspocus/server").onConnectPayload<ConnectionContext>) {
+                const ip = data.context?.ip || (data.requestHeaders as any)?.["x-forwarded-for"]
+                    || (data.request as any).socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
-            async onAuthenticate(data: any) {
+            async onAuthenticate(
+                data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>,
+            ): Promise<ConnectionContext> {
                 // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
                 // We cannot do this before handleConnection because the client immediately sends the Auth message
                 // after the WS handshake, and if we await async operations first the message would be lost
@@ -323,14 +331,14 @@ export async function startServer(
                     room,
                 };
             },
-            async onAfterAuthenticate(data: any) {
+            async onAfterAuthenticate(data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>) {
                 logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
             },
-            async onLoadDocument(data: any) {
+            async onLoadDocument(data: import("@hocuspocus/server").onLoadDocumentPayload<ConnectionContext>) {
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
             },
-            async afterLoadDocument(data: any) {
+            async afterLoadDocument(data: import("@hocuspocus/server").onLoadDocumentPayload<ConnectionContext>) {
                 if (data.documentName === "projects/demo") {
                     try {
                         const doc = data.document;
@@ -344,7 +352,7 @@ export async function startServer(
                     }
                 }
             },
-            async onStoreDocument(data: any) {
+            async onStoreDocument(data: import("@hocuspocus/server").onStoreDocumentPayload<ConnectionContext>) {
                 if (persistence) {
                     await handleStoreDocumentForSchedules(
                         data,
@@ -352,10 +360,10 @@ export async function startServer(
                     );
                 }
             },
-            async onDisconnect(data: any) {
+            async onDisconnect(data: import("@hocuspocus/server").onDisconnectPayload<ConnectionContext>) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
             },
-        } as unknown as import("@hocuspocus/server").Configuration,
+        } as Partial<import("@hocuspocus/server").Configuration<ConnectionContext>>,
     );
 
     const wss = new WebSocketServer({ noServer: true });
@@ -537,7 +545,7 @@ export async function startServer(
                     method: request.method,
                 });
 
-                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip });
+                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as any); // Partial context initially
 
                 ws.on("message", (data: any) => {
                     recordMessage();
