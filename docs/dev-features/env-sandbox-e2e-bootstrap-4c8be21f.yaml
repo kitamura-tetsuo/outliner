@@ -1,0 +1,14 @@
+id: ENV-4c8be21f
+title: Reproducible E2E bootstrap for restricted environments
+description: scripts/bootstrap-e2e.sh prepares and verifies the Playwright E2E environment in one reproducible run, degrading gracefully when apt mirrors, the Playwright browser CDN, or the dprint plugin CDN are unreachable.
+category: environment
+status: implemented
+components:
+- client/playwright.config.ts
+- scripts/bootstrap-e2e.sh
+- scripts/common-functions.sh
+- scripts/setup.sh
+- scripts/test.sh
+tests:
+- scripts/tests/env-sandbox-e2e-bootstrap-4c8be21f.spec.ts
+title-ja: 制限環境向けの再現可能なE2Eブートストラップ

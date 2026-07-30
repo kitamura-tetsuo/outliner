@@ -54,7 +54,15 @@ cleanup_e2e_coverage() {
 
 cd "$PROJECT_ROOT"
 
-npx dprint fmt
+# dprint downloads its formatting plugins from plugins.dprint.dev on first use.
+# Environments that only allow the npm registry cannot reach it, so treat a
+# formatting failure as a warning instead of blocking the test run. Set
+# SKIP_DPRINT=1 to skip the attempt entirely.
+if [ "${SKIP_DPRINT:-0}" = "1" ]; then
+  echo "Skipping dprint fmt (SKIP_DPRINT=1)"
+elif ! npx dprint fmt; then
+  echo "Warning: dprint fmt failed (plugin download blocked?); continuing without formatting." >&2
+fi
 
 if [ $# -eq 0 ]; then
   cd "$CLIENT_DIR"
