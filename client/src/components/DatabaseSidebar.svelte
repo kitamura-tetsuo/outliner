@@ -108,6 +108,11 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
     }
 
     .close-btn {
+        min-width: 24px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         background: none;
         border: none;
         font-size: 1.5rem;
