@@ -1,11 +1,11 @@
-import { getClientIp } from "../../src/utils/ip.js";
 import { IncomingMessage } from "http";
+import { getClientIp } from "../../src/utils/ip.js";
 
 describe("getClientIp", () => {
     const createReq = (headers: Record<string, string | string[]>, remoteAddress?: string) => {
         return {
             headers,
-            socket: { remoteAddress: remoteAddress || "1.2.3.4" }
+            socket: { remoteAddress: remoteAddress || "1.2.3.4" },
         } as unknown as IncomingMessage;
     };
 
@@ -13,7 +13,7 @@ describe("getClientIp", () => {
         it("should always return socket remote address even if headers are present", () => {
             const req = createReq({
                 "x-forwarded-for": "9.9.9.9",
-                "cf-connecting-ip": "8.8.8.8"
+                "cf-connecting-ip": "8.8.8.8",
             }, "1.1.1.1");
             const ip = getClientIp(req, { TRUST_PROXY_HEADERS: false, TRUSTED_PROXY_HOPS: 1 });
             expect(ip).toBe("1.1.1.1");
@@ -24,7 +24,7 @@ describe("getClientIp", () => {
         it("should prioritize platform headers over X-Forwarded-For", () => {
             const req = createReq({
                 "x-forwarded-for": "9.9.9.9",
-                "cf-connecting-ip": "8.8.8.8"
+                "cf-connecting-ip": "8.8.8.8",
             });
             const ip = getClientIp(req, { TRUST_PROXY_HEADERS: true, TRUSTED_PROXY_HOPS: 1 });
             expect(ip).toBe("8.8.8.8");

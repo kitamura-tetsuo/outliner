@@ -10,7 +10,10 @@ export interface ProxyConfig {
  * Prioritizes headers from trusted platforms (Cloudflare, Fly.io, etc.)
  * which are harder to spoof than standard X-Forwarded-For.
  */
-export function getClientIp(req: IncomingMessage | Request, config: ProxyConfig = { TRUST_PROXY_HEADERS: false, TRUSTED_PROXY_HOPS: 1 }): string {
+export function getClientIp(
+    req: IncomingMessage | Request,
+    config: ProxyConfig = { TRUST_PROXY_HEADERS: false, TRUSTED_PROXY_HOPS: 1 },
+): string {
     const fallbackIp = (req as IncomingMessage).socket?.remoteAddress || "";
 
     if (!config.TRUST_PROXY_HEADERS) {
