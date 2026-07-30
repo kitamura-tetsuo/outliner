@@ -1,3 +1,4 @@
+import { execFileSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -14,30 +15,23 @@ const repoRoot = path.resolve(__dirname, "../..");
 
 const read = (...segments: string[]) => fs.readFileSync(path.join(repoRoot, ...segments), "utf-8");
 
-const imageVersion = () => {
-    const from = read(".github", "container", "Dockerfile").match(
-        /^FROM mcr\.microsoft\.com\/playwright:v(\d+\.\d+\.\d+)-\w+$/m,
-    );
-    expect(from, "Dockerfile must pin an explicit mcr.microsoft.com/playwright version").not.toBeNull();
-    return from![1];
-};
+test("the versions currently in the repository agree", () => {
+    // Exercises the same script CI runs, so the check and the test cannot drift.
+    const output = execFileSync("node", ["scripts/check-playwright-version.mjs"], {
+        cwd: repoRoot,
+        encoding: "utf-8",
+    });
 
-const lockedVersion = (pkg: string) => {
-    const lock = JSON.parse(read("client", "package-lock.json"));
-    const entry = lock.packages[`node_modules/${pkg}`];
-    expect(entry, `${pkg} must be present in client/package-lock.json`).toBeDefined();
-    return entry.version as string;
-};
-
-test("the container image version matches the locked @playwright/test version", () => {
-    // The image ships the browser bundle for exactly its own release. If npm
-    // resolves a different Playwright, every E2E shard dies at
-    // browserType.launch with "Executable doesn't exist".
-    expect(imageVersion()).toBe(lockedVersion("@playwright/test"));
+    expect(output).toMatch(/Playwright versions agree/);
 });
 
-test("the driver package is locked to the same version as the test runner", () => {
-    // @playwright/test and playwright must agree, otherwise matching the image
-    // to one of them still leaves the other looking for absent browsers.
-    expect(lockedVersion("playwright")).toBe(lockedVersion("@playwright/test"));
+test("a dedicated CI job runs the check on every pull request", () => {
+    const workflow = read(".github", "workflows", "ci-playwright-version.yml");
+    expect(workflow).toMatch(/workflow_call:/);
+    expect(workflow).toMatch(/node scripts\/check-playwright-version\.mjs/);
+
+    // The entry workflow must call it, otherwise the check never runs on a PR.
+    const ci = read(".github", "workflows", "ci.yml");
+    expect(ci).toMatch(/uses: \.\/\.github\/workflows\/ci-playwright-version\.yml/);
+    expect(ci).toMatch(/pull_request:/);
 });
