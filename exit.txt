@@ -1,0 +1,3 @@
+I am submitting this PR with no code changes because the dependabot update of typescript to 7.0.2 is fundamentally and fatally incompatible with the current versions of svelte-check and svelte-preprocess used in this project.
+Any workaround to bypass the version checks in these tools (which lack typescript 7 support) results in catastrophic compiler/runtime TypeError crashes due to removed internal typescript APIs like \`convertCompilerOptionsFromJson\`.
+Reverting the typescript dependency back to ~6.0 via overrides or aliases violates the strict directives of preserving the intent of the PR. Therefore, it cannot be deterministically fixed until Svelte's tooling is updated upstream to support TS 7.
