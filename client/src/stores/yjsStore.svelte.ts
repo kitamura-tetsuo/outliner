@@ -68,6 +68,7 @@ class YjsStore {
             }
             this._unsubSyncState = onRoomSyncStateChange(room, (state) => {
                 this.notYetSynced = state !== "synced";
+                this.isRetrying = state === "retrying";
                 if (state === "too-large" || state === "rate-limited" || state === "denied" || state === "timed-out") {
                     this.syncError = state;
                 } else {
@@ -76,6 +77,7 @@ class YjsStore {
             });
         } else {
             this.notYetSynced = false;
+            this.isRetrying = false;
             this.syncError = null;
             this.persistenceError = false;
         }
@@ -145,6 +147,7 @@ class YjsStore {
     // True until the current room's initial sync completes, so the UI can indicate that
     // edits may still be applied to a stale/local-only copy of the document.
     notYetSynced: boolean = false;
+    isRetrying: boolean = false;
     persistenceError: boolean = false;
     // Set when the server rejects sync with a fatal error
     syncError: "too-large" | "rate-limited" | "denied" | "timed-out" | null = null;
@@ -160,6 +163,7 @@ class YjsStore {
         this._lastProjectGuid = null;
         this.isConnected = false;
         this.notYetSynced = false;
+        this.isRetrying = false;
         this.syncError = null;
         try {
             this._unsubWsProvider?.();

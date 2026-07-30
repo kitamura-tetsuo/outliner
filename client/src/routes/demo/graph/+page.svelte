@@ -15,16 +15,21 @@
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
+    let seedNetworkError = $state(false);
     let isDestroyed = false;
 
     async function initializeDemo() {
         try {
             isLoading = true;
             error = undefined;
+            seedNetworkError = false;
 
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
-                await seedDemo();
+                const seedResult = await seedDemo();
+                if (seedResult && !seedResult.ok && seedResult.reason === "network") {
+                    seedNetworkError = true;
+                }
                 if (isDestroyed) return;
 
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
@@ -83,7 +88,7 @@
         </p>
     </div>
 
-    {#if isLoading && !store.project}
+    {#if isLoading && !store.project && !yjsStore.isRetrying && !seedNetworkError}
         <div class="py-8"><Loader message="Loading Demo Graph..." /></div>
     {:else if error}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
@@ -107,6 +112,8 @@
                 </div>
             </div>
         </div>
+    {:else if yjsStore.isRetrying || seedNetworkError}
+        <div class="py-8"><Loader message="Reconnecting to Demo Server..." /></div>
     {:else if store.project}
         <!-- Graph View Component -->
         <div class="graph-container bg-white shadow-sm">

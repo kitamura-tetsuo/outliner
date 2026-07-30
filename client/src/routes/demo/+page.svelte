@@ -17,6 +17,7 @@
     let resetDone = $state(false);
     let resetError: string | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
+    let seedNetworkError = $state(false);
     let isDestroyed = false;
 
     // Reactive page list (depends on store.pagesVersion)
@@ -29,9 +30,13 @@
         try {
             isLoading = true;
             error = undefined;
+            seedNetworkError = false;
 
             // Seed demo project via API (no-op when already seeded)
-            await seedDemo();
+            const seedResult = await seedDemo();
+            if (seedResult && !seedResult.ok && seedResult.reason === "network") {
+                seedNetworkError = true;
+            }
             if (isDestroyed) return;
 
             // Connect to demo room
@@ -148,7 +153,7 @@
         {/if}
     </div>
 
-    {#if isLoading || (yjsStore.notYetSynced && !yjsStore.syncError)}
+    {#if (isLoading || yjsStore.notYetSynced) && !yjsStore.syncError && !yjsStore.isRetrying && !seedNetworkError}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
@@ -172,6 +177,8 @@
                 </div>
             </div>
         </div>
+    {:else if yjsStore.isRetrying || seedNetworkError}
+        <div class="py-8"><Loader message="Reconnecting to Demo Server..." /></div>
     {:else if !isLoading && !error && !yjsStore.syncError && !yjsStore.notYetSynced && store.project && pages}
         <div class="mt-6" data-testid="demo-page-list">
             <PageList

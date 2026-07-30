@@ -363,6 +363,10 @@ async function setupProviderForRoom(
             let syncState: import("./roomSyncState").RoomSyncState = "retrying";
             if (code === 4004) syncState = "rate-limited";
             setRoomSyncState(room, syncState);
+        } else {
+            // Plain connection failure (e.g. backend down)
+            logger.warn(`[yjs-conn] Connection failure for ${room}: will retry via backoff`);
+            setRoomSyncState(room, "retrying");
         }
     });
 
@@ -443,7 +447,7 @@ async function setupProviderForRoom(
         ? attachTokenRefresh(provider as TokenRefreshableProvider)
         : undefined;
 
-    const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
+    const waitForInitialSync = (timeoutMs = 8000): Promise<{ synced: boolean; }> => {
         return new Promise((resolve, reject) => {
             if (provider.isSynced) {
                 logger.debug(`[${label}] Room ${room} already synced`);
