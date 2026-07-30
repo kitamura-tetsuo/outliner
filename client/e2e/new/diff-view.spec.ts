@@ -33,31 +33,29 @@ test.describe("snapshot diff viewer", () => {
             return {
                 projectName: gs?.project?.title || gs?.project?.text || "",
                 pageName: gs?.currentPage?.text || gs?.currentPage?.title || "",
-                hasProject: !!gs?.project,
-                hasCurrentPage: !!gs?.currentPage,
             };
         });
-        console.log("Project data from store:", projectData);
         const { projectName, pageName } = projectData;
-        if (!projectName || !pageName) {
-            throw new Error(`Failed to get project/page names from store: ${JSON.stringify(projectData)}`);
-        }
+
+        // Setup initial state: snapshot="first", current="second"
         await page.evaluate(
-            ({ projectName, pageName }) => {
-                (globalThis as any).__SNAPSHOT_SERVICE__.setCurrentContent(
-                    projectName,
-                    pageName,
-                    "second",
-                );
+            (data: any) => {
                 (globalThis as any).__SNAPSHOT_SERVICE__.addSnapshot(
-                    projectName,
-                    pageName,
+                    data.projectName,
+                    data.pageName,
                     "first",
                     "user",
                 );
             },
-            { projectName, pageName },
+            projectData,
         );
+
+        // Type into the document to set "second"
+        await page.keyboard.type("second");
+
+        // Let Yjs sync state
+        await page.waitForTimeout(500);
+
         await page.goto(`/${projectName}/${pageName}/diff`);
 
         // Wait for the diff page to load without waiting for cursor (diff page may not have cursor)
@@ -135,13 +133,13 @@ test.describe("snapshot diff viewer", () => {
         // Verify that at least one diff element is visible
         await expect(page.locator("ins, del").first()).toBeVisible();
         await page.getByText("Revert").click();
-        const current = await page.evaluate(
-            ({ projectName, pageName }) => {
-                const { getCurrentContent } = (globalThis as any).__SNAPSHOT_SERVICE__;
-                return getCurrentContent(projectName, pageName);
+        const latestSnapshotContent = await page.evaluate(
+            (data: any) => {
+                const snaps = (globalThis as any).__SNAPSHOT_SERVICE__.listSnapshots(data.projectName, data.pageName);
+                return snaps[snaps.length - 1].content;
             },
-            { projectName, pageName },
+            projectData,
         );
-        expect(current).toBe("first");
+        expect(latestSnapshotContent).toBe("first");
     });
 });

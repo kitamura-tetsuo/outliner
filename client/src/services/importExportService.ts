@@ -1,5 +1,5 @@
 import { getLogger } from "../lib/logger";
-import { Items, Project } from "../schema/app-schema";
+import { Item, Items, Project } from "../schema/app-schema";
 
 const logger = getLogger("importExportService");
 
@@ -28,6 +28,20 @@ export function exportProjectToOpml(project: Project): string {
     walk(project.items as Items);
     out += "</body></opml>";
     return out;
+}
+
+export function exportItemToMarkdown(item: Item): string {
+    const lines: string[] = [];
+    const walk = (items: Items, depth = 0) => {
+        for (const child of items) {
+            lines.push(`${"  ".repeat(depth)}- ${child.text}`);
+            walk(child.items as Items, depth + 1);
+        }
+    };
+    if (item.items) {
+        walk(item.items as Items);
+    }
+    return lines.join("\n");
 }
 
 export function exportProjectToMarkdown(project: Project): string {
