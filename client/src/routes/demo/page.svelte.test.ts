@@ -6,7 +6,7 @@ import DemoPage from "./+page.svelte";
 
 // Mock dependencies
 vi.mock("../../lib/demoSeed", () => ({
-    seedDemo: vi.fn().mockResolvedValue(undefined),
+    seedDemo: vi.fn().mockResolvedValue({ ok: true }),
     DEMO_PROJECT_NAME: "demo",
 }));
 

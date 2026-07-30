@@ -369,6 +369,9 @@ async function setupProviderForRoom(
             let syncState: import("./roomSyncState").RoomSyncState = "retrying";
             if (code === 4004) syncState = "rate-limited";
             setRoomSyncState(room, syncState);
+        } else if (!provider.isSynced) {
+            // For other close codes before initial sync is complete, we are retrying.
+            setRoomSyncState(room, "retrying");
         }
     });
 
@@ -451,7 +454,7 @@ async function setupProviderForRoom(
         ? attachTokenRefresh(provider as TokenRefreshableProvider)
         : undefined;
 
-    const waitForInitialSync = (timeoutMs = 30000): Promise<{ synced: boolean; }> => {
+    const waitForInitialSync = (timeoutMs = 8000): Promise<{ synced: boolean; }> => {
         return new Promise((resolve, reject) => {
             if (provider.isSynced) {
                 logger.debug(`[${label}] Room ${room} already synced`);
