@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
+import { YTree } from "yjs-orderedtree";
+import { Project } from "../schema/app-schema";
 import { Items } from "../schema/app-schema";
 import { collectBacklinks, getHighlightSegments } from "./backlinkCollector";
 
@@ -146,5 +149,32 @@ describe("getHighlightSegments", () => {
             { text: "XSS <script>alert(1)</script> ", type: "normal" },
             { text: "[Target]", type: "highlight" },
         ]);
+    });
+});
+
+describe("deep nested items", () => {
+    it("should detect backlinks in deep nested items", () => {
+        const mockDoc = new Y.Doc();
+        const tree = new YTree(mockDoc.getMap("orderedTree"));
+        const project = new Project(mockDoc, tree);
+
+        const _targetPage = project.addPage("TargetPage", "author");
+        const sourcePage = project.addPage("SourcePage", "author");
+
+        // Create a deeply nested structure
+        const item1 = sourcePage.items.addNode("author");
+        item1.updateText("Level 1");
+
+        const item2 = item1.items.addNode("author");
+        item2.updateText("Level 2");
+
+        const item3 = item2.items.addNode("author");
+        item3.updateText("Level 3 - link to [TargetPage]");
+
+        store.pages = { current: project.items };
+
+        const backlinks = collectBacklinks("TargetPage");
+        expect(backlinks.length).toBe(1);
+        expect(backlinks[0].sourceItemText).toBe("Level 3 - link to [TargetPage]");
     });
 });

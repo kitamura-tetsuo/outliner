@@ -50,6 +50,33 @@ export function iterateItems(items: unknown): Iterable<Item> {
  * @param items The item collection to iterate over
  * @returns An iterable of Items sequentially ordered
  */
+
+/**
+ * Iterates over an Item collection deeply (depth-first).
+ * Uses an explicit stack to prevent stack overflows on deep outlines.
+ *
+ * @param items The item collection to iterate over
+ * @returns An iterable of Items traversed depth-first
+ */
+export function* iterateItemsDeep(items: unknown): Iterable<Item> {
+    if (!items) return;
+
+    const initialItems = Array.from(iterateItems(items));
+    const stack = initialItems.reverse();
+
+    while (stack.length > 0) {
+        const item = stack.pop()!;
+        yield item;
+
+        if (item && (item as any).items) {
+            const children = Array.from(iterateItems((item as any).items));
+            for (let i = children.length - 1; i >= 0; i--) {
+                stack.push(children[i]);
+            }
+        }
+    }
+}
+
 export function iterateItemsOrdered(items: unknown): Iterable<Item> {
     if (!items) return [];
 

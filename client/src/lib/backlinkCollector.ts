@@ -6,7 +6,7 @@
 
 import type { Item } from "../schema/app-schema";
 import { store } from "../stores/store.svelte";
-import { iterateItems } from "../utils/itemTraversal";
+import { iterateItems, iterateItemsDeep } from "../utils/itemTraversal";
 import { getLogger } from "./logger";
 
 const logger = getLogger("BacklinkCollector");
@@ -92,10 +92,10 @@ export function collectBacklinks(targetPageName: string): Backlink[] {
                 });
             }
 
-            // Check child items
+            // Check child items deeply
             const items = pageItem.items;
             if (items) {
-                for (const item of iterateItems(items)) {
+                for (const item of iterateItemsDeep(items)) {
                     const text = item.text;
                     // Optimization: skip empty text to avoid expensive toString() (Y.Text deserialization)
                     if (!text || text.length === 0) continue;
