@@ -105,3 +105,7 @@ form so the demo seeds a working instance of it.
 Features that are intentionally not demonstrated (e.g. account management,
 admin tooling, or destructive operations) do not need demo pages; when in
 doubt, record the omission in `docs/NON_GOALS.md`.
+
+## Destructive-action policy
+
+Deleting an entry or record should always prompt between removing it and cancelling the action, so a keystroke never silently discards writing. This applies to both calendar entries and grid rows.
