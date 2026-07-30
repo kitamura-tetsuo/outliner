@@ -583,10 +583,11 @@ export class ScrapboxFormatter {
         /* eslint-enable no-control-regex */
 
         let leadingCheckboxHtml = "";
-        const checkboxMatch = text.match(/^\[([ x])\]\s/);
+        const checkboxMatch = text.match(/^(\s*)\[([ x])\]\s/);
         if (checkboxMatch) {
-            const isChecked = checkboxMatch[1] === "x";
-            leadingCheckboxHtml = `<input type="checkbox" class="inline-checkbox" ${
+            const leadingSpaces = checkboxMatch[1];
+            const isChecked = checkboxMatch[2] === "x";
+            leadingCheckboxHtml = `${leadingSpaces}<input type="checkbox" class="inline-checkbox" ${
                 isChecked ? 'checked="checked"' : ""
             } /> `;
             text = text.substring(checkboxMatch[0].length);
@@ -976,8 +977,8 @@ export class ScrapboxFormatter {
 
         // Checkboxes - display only control characters when cursor is present
         html = html.replace(
-            /^(\[[ x]\]\s)(.*)$/,
-            '<span class="control-char">$1</span>$2',
+            /^(\s*)(\[[ x]\]\s)(.*)$/,
+            '$1<span class="control-char">$2</span>$3',
         );
 
         if (searchQuery) {
@@ -1071,7 +1072,7 @@ export class ScrapboxFormatter {
             /(?<!\[)https?:\/\/[^\s\]]+/.source, // Bare URL
             /\[([^[\]/][^[\]]*?)\]/.source, // Internal link
             /^>\s(.*?)$/m.source, // Quote
-            /^\[[ x]\]\s/.source, // Checkbox
+            /^\s*\[[ x]\]\s/.source, // Checkbox
         ].join("|"),
         "m",
     );
