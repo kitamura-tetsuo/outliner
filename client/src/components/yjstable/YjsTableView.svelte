@@ -49,7 +49,6 @@ let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let uiQuery = $state("");
-let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
@@ -87,8 +86,6 @@ const engineCallbacks = {
 
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
-    const order = handles.uiDef.get("columnOrder");
-    columnOrder = order instanceof Y.Array ? (order.toArray() as string[]) : [];
     const components = handles.uiDef.get("components");
     const next: Record<string, string | undefined> = {};
     if (components instanceof Y.Map) {
@@ -225,7 +222,7 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} {columnOrder} />
+            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} />
         </section>
     {/if}
 
@@ -262,7 +259,6 @@ onDestroy(() => {
                     query={uiQuery}
                     {result}
                     {componentTypes}
-                    {columnOrder}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

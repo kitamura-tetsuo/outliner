@@ -3,7 +3,7 @@ title: Remove Fluid token endpoint
 title-ja: Fluidトークンエンドポイントの削除
 description: Remove legacy Fluid token endpoint and client calls.
 category: backend
-status: removed
+status: experimental
 acceptance:
 - /api/fluidToken returns 404
 - UserManager exposes no Fluid token methods
@@ -17,4 +17,5 @@ validation: 'This legacy endpoint remains disabled via hosting/Vite middleware a
   '
 components:
 - client/src/auth/UserManager.ts
+- client/src/lib/fluidService.svelte.ts
 - functions/index.js

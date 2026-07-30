@@ -106,21 +106,4 @@ test.describe("Demo project feature tour", () => {
             timeout: 30000,
         });
     });
-
-    test("surfaces connection problem quickly when backend is unreachable", async ({ page }) => {
-        // Block the seed request to simulate network failure
-        await page.route("**/api/seed-demo", async (route) => {
-            await route.abort("failed");
-        });
-
-        const startTime = Date.now();
-        await page.goto("/demo");
-
-        // Should show the error quickly (well within 5 seconds), not waiting 30s
-        const errorText = page.getByText("Can't reach the demo server — retrying...", { exact: false });
-        await expect(errorText).toBeVisible({ timeout: 5000 });
-
-        const elapsed = Date.now() - startTime;
-        expect(elapsed).toBeLessThan(10000); // Verify it didn't wait the full timeout
-    });
 });

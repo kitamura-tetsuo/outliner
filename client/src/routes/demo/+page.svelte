@@ -31,12 +31,7 @@
             error = undefined;
 
             // Seed demo project via API (no-op when already seeded)
-            const seedResult = await seedDemo();
-            if (!seedResult.ok) {
-                if (seedResult.reason === "network") {
-                    throw new Error("Can't reach the demo server — retrying...");
-                }
-            }
+            await seedDemo();
             if (isDestroyed) return;
 
             // Connect to demo room

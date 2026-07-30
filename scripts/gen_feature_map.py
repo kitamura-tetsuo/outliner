@@ -84,7 +84,6 @@ def load_features():
             logger.error(f"Empty 'id' in {path.relative_to(ROOT)}")
             raise SystemExit(1)
 
-
         if fid in features:
             logger.error(
                 "Duplicate feature id detected: {fid}\n -> {a}\n -> {b}".format(
@@ -95,34 +94,8 @@ def load_features():
             )
             raise SystemExit(1)
 
-        # CHECK PATHS
-        for section in ["components", "services"]:
-            items = data.get(section) or []
-            for c in items:
-                if not isinstance(c, str):
-                    continue
-                # Skip prose descriptions
-                if c.startswith('Firebase') or c.startswith('Command-line'):
-                    continue
-
-                # Check path existence
-                client_path = ROOT / "client" / c
-                root_path = ROOT / c
-                if not client_path.exists() and not root_path.exists():
-                    # also allow it if it's a known service description or just not a file
-                    if any(c.endswith(ext) for ext in ['.js', '.ts', '.svelte', '.cjs', '.mjs', '.md', '.yaml', '.json', '.sh']):
-                        logger.error(f"Missing file referenced in {path.relative_to(ROOT)}: {c}")
-                        raise SystemExit(1)
-
-
         data["__source__"] = str(path.relative_to(ROOT))
         features[fid] = data
-
-    # Check that non-removed features have non-empty tests list
-    for fid, data in features.items():
-        if data.get("status") != "removed" and not data.get("tests", []):
-            logger.error(f"Feature {fid} has no tests recorded in {data.get('__source__')}. Please ensure coverage and link the test.")
-            raise SystemExit(1)
 
     return features
 

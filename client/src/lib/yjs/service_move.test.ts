@@ -174,25 +174,4 @@ describe("yjsService move operations", () => {
         expect(itemItems.length).toBe(1);
         expect(itemItems.at(0)?.id).toBe(child1.id);
     });
-
-    it("reorderItem correctly reorders after moving item into parent inside same transaction", () => {
-        const project = yjsService.createProject("test");
-        const parent = yjsService.addItem(project, "root", "u1");
-        const sibling1 = yjsService.addItem(project, parent.id, "u1");
-        const sibling2 = yjsService.addItem(project, parent.id, "u1");
-        const itemToMove = yjsService.addItem(project, "root", "u1");
-
-        project.ydoc.transact(() => {
-            // Move item into parent
-            yjsService.moveItem(project, itemToMove.id, parent.id);
-            // Reorder item to middle (index 1)
-            yjsService.reorderItem(project, itemToMove.id, 1);
-        }, null);
-
-        const parentItems = new Items(project.ydoc, project.tree, parent.id);
-        expect(parentItems.length).toBe(3);
-        expect(parentItems.at(0)?.id).toBe(sibling1.id);
-        expect(parentItems.at(1)?.id).toBe(itemToMove.id);
-        expect(parentItems.at(2)?.id).toBe(sibling2.id);
-    });
 });

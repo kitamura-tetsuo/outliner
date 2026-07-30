@@ -95,16 +95,4 @@ describe("ScrapboxFormatter Security", () => {
             expect(finalUrl).not.toBe("javascript:alert(1)");
         }
     });
-
-    it("should safely escape HTML entities in the inline task checkbox aria-label", () => {
-        const input = '[ ] <script>alert("XSS")</script>';
-        const result = ScrapboxFormatter.formatToHtmlAdvanced(input);
-
-        logger.debug("Input: " + input);
-        logger.debug("Output: " + result);
-
-        expect(result).toContain('aria-label="&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;"');
-        // Make sure it doesn't contain raw <script> inside the aria-label
-        expect(result).not.toContain('aria-label="<script>');
-    });
 });

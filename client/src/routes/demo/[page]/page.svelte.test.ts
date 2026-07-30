@@ -6,7 +6,7 @@ import DemoPageView from "./+page.svelte";
 
 // Mock dependencies
 vi.mock("../../../lib/demoSeed", () => ({
-    seedDemo: vi.fn().mockResolvedValue({ ok: true }),
+    seedDemo: vi.fn().mockResolvedValue(undefined),
     DEMO_PROJECT_NAME: "demo",
 }));
 
@@ -133,13 +133,13 @@ describe("Demo Page View", () => {
     });
 
     it("should render error state when sync times out", async () => {
-        const Y_mod = await import("yjs");
         const { getYjsClientByProjectTitle } = await import("../../../services");
         (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
             containerId: "mock-container",
             getProject: () => {
-                // Use the globally available Yjs instance or import it at test level
-                const doc = new Y_mod.Doc();
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const Y = require("yjs");
+                const doc = new Y.Doc();
                 doc.getMap("metadata").set("title", "demo");
                 doc.getMap("metadata").set("lastReset", 0);
                 return { ydoc: doc };

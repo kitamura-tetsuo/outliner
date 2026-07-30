@@ -37,12 +37,6 @@ interface ServerOverrides {
     verifyIdTokenCached?: typeof defaultVerifyToken;
 }
 
-export interface ConnectionContext {
-    user: { uid: string; };
-    room: import("./room-validator.js").RoomInfo;
-    ip?: string;
-}
-
 export async function startServer(
     config: Config,
     logger = defaultLogger,
@@ -187,7 +181,7 @@ export async function startServer(
 
     // Rate limiter middleware
     const rateLimiterMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-        const clientIp = getClientIp(req, config);
+        const clientIp = getClientIp(req);
 
         if (!checkRateLimit(clientIp)) {
             logger.warn({ event: "http_rate_limit_exceeded", ip: clientIp, path: req.path });
@@ -236,14 +230,12 @@ export async function startServer(
             name: "hocuspocus-fluid-outliner",
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
-            async onConnect(data: import("@hocuspocus/server").onConnectPayload<ConnectionContext>) {
-                const ip = data.context?.ip || (data.requestHeaders as any)?.["x-forwarded-for"]
-                    || (data.request as any).socket?.remoteAddress || "unknown";
+            async onConnect(data: any) {
+                const ip = data.context?.ip || data.requestHeaders["x-forwarded-for"]
+                    || data.request.socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
-            async onAuthenticate(
-                data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>,
-            ): Promise<ConnectionContext> {
+            async onAuthenticate(data: any) {
                 // Perform async auth (token verification + access check) HERE inside the Hocuspocus hook.
                 // We cannot do this before handleConnection because the client immediately sends the Auth message
                 // after the WS handshake, and if we await async operations first the message would be lost
@@ -252,7 +244,9 @@ export async function startServer(
                 const requestHeaders = data.requestHeaders;
                 const token = data.token;
                 logger.debug(
-                    `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${token ? "FOUND" : "MISSING"}`,
+                    `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
+                        token ? "FOUND" : "MISSING"
+                    }, data.token=${data.token}`,
                 );
 
                 const room = parseRoom(data.documentName);
@@ -329,14 +323,14 @@ export async function startServer(
                     room,
                 };
             },
-            async onAfterAuthenticate(data: import("@hocuspocus/server").onAuthenticatePayload<ConnectionContext>) {
+            async onAfterAuthenticate(data: any) {
                 logger.debug(`[Hocuspocus] onAfterAuthenticate: room=${data.documentName}`);
             },
-            async onLoadDocument(data: import("@hocuspocus/server").onLoadDocumentPayload<ConnectionContext>) {
+            async onLoadDocument(data: any) {
                 logger.debug(`[Hocuspocus] onLoadDocument: room=${data.documentName}`);
                 return data.document;
             },
-            async afterLoadDocument(data: import("@hocuspocus/server").onLoadDocumentPayload<ConnectionContext>) {
+            async afterLoadDocument(data: any) {
                 if (data.documentName === "projects/demo") {
                     try {
                         const doc = data.document;
@@ -350,7 +344,7 @@ export async function startServer(
                     }
                 }
             },
-            async onStoreDocument(data: import("@hocuspocus/server").onStoreDocumentPayload<ConnectionContext>) {
+            async onStoreDocument(data: any) {
                 if (persistence) {
                     await handleStoreDocumentForSchedules(
                         data,
@@ -358,10 +352,10 @@ export async function startServer(
                     );
                 }
             },
-            async onDisconnect(data: import("@hocuspocus/server").onDisconnectPayload<ConnectionContext>) {
+            async onDisconnect(data: any) {
                 logger.debug(`[Hocuspocus] onDisconnect: room=${data.documentName}`);
             },
-        } as Partial<import("@hocuspocus/server").Configuration<ConnectionContext>>,
+        } as unknown as import("@hocuspocus/server").Configuration,
     );
 
     const wss = new WebSocketServer({ noServer: true });
@@ -379,7 +373,7 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Demo API - anonymous access for the public demo page
-    app.use("/api", createDemoRouter(hocuspocus, config));
+    app.use("/api", createDemoRouter(hocuspocus));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
@@ -440,7 +434,7 @@ export async function startServer(
             // and gets silently dropped. Hocuspocus then waits forever → 30-second timeout.
             // All async auth is performed inside the onAuthenticate Hocuspocus hook instead.
 
-            const ip = getClientIp(request, config);
+            const ip = getClientIp(request);
             const origin = request.headers.origin || "";
             if (process.env.NODE_ENV === "production") {
                 logger.debug({ headers: request.headers }, "[DEBUG] Upgrade Headers");
@@ -543,7 +537,7 @@ export async function startServer(
                     method: request.method,
                 });
 
-                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as any); // Partial context initially
+                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip });
 
                 ws.on("message", (data: any) => {
                     recordMessage();

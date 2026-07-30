@@ -1,5 +1,3 @@
-import { Items, Project } from "../../schema/app-schema";
-
 import { describe, expect, it } from "vitest";
 import { buildCalendarEntries } from "./calendarEntries";
 
@@ -228,44 +226,5 @@ describe("buildCalendarEntries", () => {
         expect(entry.allDay).toBeUndefined();
         expect(entry.durationMs).toBeUndefined();
         expect(entry.dueMs).toBeUndefined();
-    });
-
-    it("expands a recurring item row into virtual occurrences within queryRange", () => {
-        const project = Project.createInstance("test");
-        const items = new Items(project.ydoc, project.tree, "root");
-        const source = items.addNode("author");
-        source.text = "Standup";
-        source.rrule = "FREQ=WEEKLY;BYDAY=MO;COUNT=2";
-        source.recurrenceDtstart = "2026-08-03T09:00:00";
-        source.recurrenceTimezone = "UTC";
-        source.duration = "PT30M";
-
-        const row = {
-            source_kind: "items",
-            source_id: source.key,
-            text: "Standup",
-            rrule: "FREQ=WEEKLY;BYDAY=MO;COUNT=2",
-            recurrence_dtstart: "2026-08-03T09:00:00",
-            recurrence_timezone: "UTC",
-        };
-
-        const range = {
-            startUtcMs: Date.parse("2026-08-01T00:00:00Z"),
-            endUtcMs: Date.parse("2026-08-31T00:00:00Z"),
-        };
-
-        const entries = buildCalendarEntries(
-            { columns: ["source_kind", "source_id", "text", "rrule"], rows: [row] },
-            { roleTitle: "text" },
-            "UTC",
-            project,
-            range,
-        );
-
-        expect(entries).toHaveLength(2);
-        expect(entries[0].title).toBe("Standup");
-        expect(entries[0].startMs).toBe(Date.parse("2026-08-03T09:00:00Z"));
-        expect(entries[1].title).toBe("Standup");
-        expect(entries[1].startMs).toBe(Date.parse("2026-08-10T09:00:00Z"));
     });
 });

@@ -1400,7 +1400,7 @@ function handlePaste(event: ClipboardEvent) {
                 if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                     logger.debug('EditorOverlay: setupUpdatingFlag set false for', key, 'class=', node.className);
                 }
-            } catch (_e) { /* ignore */ }
+            } catch (err) { logger.warn("Silenced error", { err }); }
         }, 1200);
         return {
             destroy() {
@@ -1411,7 +1411,7 @@ function handlePaste(event: ClipboardEvent) {
                     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
                         logger.debug('EditorOverlay: setupUpdatingFlag destroy for', key);
                     }
-                } catch (_e) { /* ignore */ }
+                } catch (err) { logger.warn("Silenced error", { err }); }
             },
         } as const;
     }

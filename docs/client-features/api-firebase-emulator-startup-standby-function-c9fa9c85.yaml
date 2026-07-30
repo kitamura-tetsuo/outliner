@@ -16,5 +16,5 @@ tests:
 - client/e2e/core/api-firebase-emulator-startup-standby-function-c9fa9c85.spec.ts
 - server/tests/log-service-emulator-wait.test.ts
 components:
-- server/src/log-service.ts
+- server/log-service.js
 title-ja: Firebase emulator起動待機機能

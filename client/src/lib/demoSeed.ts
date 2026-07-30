@@ -33,9 +33,7 @@ function resolveApiBaseUrl(): string {
  * Pass `{ force: true }` to trigger the 24h reset manually, regardless of
  * when the demo content was last seeded.
  */
-export async function seedDemo(
-    options: { force?: boolean; throwOnError?: boolean; } = {},
-): Promise<{ ok: boolean; reason?: "network" | "http" | "rate-limit"; }> {
+export async function seedDemo(options: { force?: boolean; throwOnError?: boolean; } = {}): Promise<void> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -73,9 +71,7 @@ export async function seedDemo(
                 }
                 throw new Error(errorMsg);
             }
-            return { ok: false, reason: errorRateLimitMs !== undefined ? "rate-limit" : "http" };
         }
-        return { ok: true };
     } catch (seedErr) {
         if (options.throwOnError) {
             if (seedErr instanceof SeedDemoError) {
@@ -87,9 +83,5 @@ export async function seedDemo(
             throw seedErr;
         }
         logger.warn(`Error seeding demo ${seedErr}`);
-        if (seedErr instanceof TypeError) {
-            return { ok: false, reason: "network" };
-        }
-        return { ok: false, reason: "http" };
     }
 }

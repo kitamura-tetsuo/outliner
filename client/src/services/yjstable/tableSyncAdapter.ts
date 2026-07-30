@@ -16,7 +16,6 @@
 
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
-import { getLogger } from "../../lib/logger";
 import { enqueueWrite, TableSqlError, toTableSqlError } from "./pgliteService";
 import { assertSelectQuery, missingRelationName } from "./queryAnalysis";
 import { formatQueryDateFields } from "./queryResultFormatting";
@@ -25,8 +24,6 @@ import { diffSchemas, parseCreateTable, type ParsedTableSchema, type SchemaDiff 
 import { quoteIdent, reservedRelationNameError } from "./sqlNames";
 import { ADAPTER_ORIGIN, deleteColumnData, setSchemaText, type TableHandles, type TableRecord } from "./tableDocs";
 import { castValueForColumn } from "./valueCasting";
-
-const logger = getLogger("tableSyncAdapter");
 
 export interface RecordSyncError {
     recordId: string;
@@ -99,7 +96,6 @@ export class TableSyncAdapter {
     private requeryTimer: ReturnType<typeof setTimeout> | undefined;
     private disposed = false;
     private started = false;
-    private queryGeneration = 0;
 
     private readonly dataObserver = (
         events: Y.YEvent<Y.AbstractType<unknown>>[],
@@ -299,8 +295,6 @@ export class TableSyncAdapter {
             for (const recordId of recordIds) {
                 await this.applyRecordToDb(db, recordId);
             }
-        }).catch(err => {
-            logger.warn({ err }, "[tableSyncAdapter] Rebuild write queue operation failed");
         });
 
         if (this.disposed) return;
@@ -335,8 +329,6 @@ export class TableSyncAdapter {
                 for (const recordId of ids) {
                     await this.applyRecordToDb(db, recordId);
                 }
-            }).catch(err => {
-                logger.warn({ err }, "[tableSyncAdapter] Flush write queue operation failed");
             }).then(() => {
                 if (this.disposed) return;
                 this.emitRecordErrors();
@@ -460,10 +452,7 @@ export class TableSyncAdapter {
      * included).
      */
     async runQueryNow(): Promise<TableQueryResult | undefined> {
-        const generation = ++this.queryGeneration;
-        const isStale = () => this.disposed || generation !== this.queryGeneration;
-
-        if (isStale()) return undefined;
+        if (this.disposed) return undefined;
         const query = String(this.handles.uiDef.get("query") ?? "").trim();
         if (!query || !this.schema) {
             const empty = { columns: [], rows: [] };
@@ -489,15 +478,15 @@ export class TableSyncAdapter {
                     // the execution lock the query itself holds.
                     const provider = await this.registry.resolveRelation(relation);
                     if (!provider) throw err;
-                    if (isStale()) return undefined;
+                    if (this.disposed) return undefined;
                 }
             }
-            if (isStale()) return undefined;
+            if (this.disposed) return undefined;
             this.emitQueryError(undefined);
             this.emitResult(result);
             return result;
         } catch (err) {
-            if (isStale()) return undefined;
+            if (this.disposed) return undefined;
             const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
             this.emitQueryError(e.message);
             return undefined;

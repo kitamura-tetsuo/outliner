@@ -1,11 +1,11 @@
 id: ADM-0001
 title: Production Data Deletion System
 title-ja: 本番環境データ削除システム
-description: Comprehensive system for safely deleting all production data including Firestore, Firebase Auth, and Firebase Storage with backup and safety checks. deleteAllProductionData endpoint is in functions/index.js.
+description: Comprehensive system for safely deleting all production data including Firestore, Firebase Auth, and Firebase Storage with backup and safety checks.
 category: admin
 status: implemented
 components:
-- functions/index.js
+- functions/index.js (deleteAllProductionData endpoint)
 - scripts/backup-production-data.cjs
 - scripts/check-production-environment.cjs
 - scripts/delete-production-data.cjs

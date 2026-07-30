@@ -67,12 +67,6 @@ test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () 
         // The role assignment is a Yjs write: reload and confirm it persisted.
         await page.reload();
         await expect(page.getByTestId("calendar-view").first()).toBeVisible({ timeout: 15000 });
-
-        // Settings panel is collapsed on load for a configured calendar. Open it.
-        const toggle = page.getByTestId("calendar-toggle-settings").first();
-        await expect(toggle).toBeVisible({ timeout: 15000 });
-        await toggle.click();
-
         await expect(page.getByTestId("calendar-role-roleTitle").first()).toHaveValue("title", { timeout: 15000 });
     });
 });

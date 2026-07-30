@@ -51,7 +51,7 @@ describe("seedDemo", () => {
     it("does not throw if throwOnError is false or omitted", async () => {
         globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Load failed"));
 
-        await expect(seedDemo()).resolves.toEqual({ ok: false, reason: "network" });
-        await expect(seedDemo({ throwOnError: false })).resolves.toEqual({ ok: false, reason: "network" });
+        await expect(seedDemo()).resolves.toBeUndefined();
+        await expect(seedDemo({ throwOnError: false })).resolves.toBeUndefined();
     });
 });

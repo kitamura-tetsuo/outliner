@@ -13,14 +13,11 @@
 // own `ctrlKey`/`metaKey`), and what keeps this from fighting the reschedule
 // drag's `setPointerCapture` for the same pointer gesture.
 
-import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { CalendarLane } from "../../services/calendar/calendarGrouping";
 import { collapseLanePath } from "../../services/calendar/calendarGrouping";
 import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import CalendarTimeGrid from "./CalendarTimeGrid.svelte";
-
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface Props {
     lanes: CalendarLane[];
@@ -28,8 +25,6 @@ interface Props {
     rangeEnd: number;
     workingHoursStartMinutes: number;
     workingHoursEndMinutes: number;
-    dayHeaders?: DayHeader[];
-    todayUtcMs?: number;
     isStartWritable: (entry: CalendarEntry) => boolean;
     isDurationWritable: (entry: CalendarEntry) => boolean;
     isLaneWritable: (entry: CalendarEntry) => boolean;
@@ -51,8 +46,6 @@ let {
     rangeEnd,
     workingHoursStartMinutes,
     workingHoursEndMinutes,
-    dayHeaders,
-    todayUtcMs,
     isStartWritable,
     isDurationWritable,
     isLaneWritable,
@@ -110,25 +103,6 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
 </script>
 
 <div class="lane-time-grid" data-testid="calendar-lane-time-grid">
-    {#if dayHeaders && bands.length > 0}
-        <div class="day-header-row" data-testid="calendar-lane-day-header-row">
-            <div class="hour-gutter"></div>
-            <div class="day-headers-band" style={`grid-template-columns: repeat(${bands[0].layout.dayCount}, 1fr)`}>
-                {#each dayHeaders as header (header.dayIndex)}
-                    <div
-                        class="day-header-cell"
-                        class:is-today={header.dateUtcMs === todayUtcMs}
-                        class:is-weekend={header.weekday === 0 || header.weekday === 6}
-                        data-testid={`calendar-day-header-${header.dayIndex}`}
-                        data-date={header.isoDate}
-                    >
-                        {WEEKDAY_LABELS[header.weekday]} {header.dayOfMonth}
-                    </div>
-                {/each}
-            </div>
-        </div>
-    {/if}
-
     {#each bands as { lane, layout } (laneTestId(lane.value))}
         <div
             role="group"
@@ -185,48 +159,6 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
     display: flex;
     flex-direction: column;
     gap: 8px;
-}
-
-.day-header-row {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background: #fff;
-    display: flex;
-    border-bottom: 1px solid #e5e7eb;
-    margin-bottom: -8px; /* Offset the lane-time-grid gap */
-}
-
-.hour-gutter {
-    flex: none;
-    width: 3.5rem;
-}
-
-.day-headers-band {
-    display: grid;
-    flex: 1;
-}
-
-.day-header-cell {
-    padding: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #374151;
-    text-align: center;
-    border-left: 1px solid transparent; /* Align with column borders */
-}
-
-.day-header-cell:first-child {
-    border-left: none;
-}
-
-.day-header-cell.is-weekend {
-    color: #9ca3af;
-}
-
-.day-header-cell.is-today {
-    color: #2563eb;
-    font-weight: 700;
 }
 
 .lane-band {

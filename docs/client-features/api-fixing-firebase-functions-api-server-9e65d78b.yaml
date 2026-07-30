@@ -21,8 +21,8 @@ tests:
 - client/e2e/core/api-fixing-firebase-functions-api-server-9e65d78b.spec.ts
 - functions/test/firebase-functions.test.js
 components:
-- client/.env.test
+- client/.env.localhost.test
 - firebase.json
-- functions/.env.example
+- functions/.env
 - functions/index.js
 title-ja: Firebase Functions APIサーバーの修正

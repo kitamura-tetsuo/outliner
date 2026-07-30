@@ -439,22 +439,4 @@ describe("ScrapboxFormatter", () => {
             expect(ScrapboxFormatter.hasFormatting("plain text")).toBe(false);
         });
     });
-
-    describe("formatToHtmlAdvanced", () => {
-        it("should format inline task checkbox and include accessible name in aria-label", () => {
-            const input = "[ ] Buy milk";
-            const result = ScrapboxFormatter.formatToHtmlAdvanced(input);
-            expect(result).toContain('<input type="checkbox" class="inline-checkbox" aria-label="Buy milk"  /> ');
-            expect(result).toContain("Buy milk");
-        });
-
-        it("should format checked inline task checkbox and include accessible name in aria-label", () => {
-            const input = "[x] Buy milk";
-            const result = ScrapboxFormatter.formatToHtmlAdvanced(input);
-            expect(result).toContain(
-                '<input type="checkbox" class="inline-checkbox" aria-label="Buy milk" checked="checked" /> ',
-            );
-            expect(result).toContain("Buy milk");
-        });
-    });
 });

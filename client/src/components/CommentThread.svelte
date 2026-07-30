@@ -85,12 +85,12 @@ onMount(() => {
                 }
             };
             yarr.observeDeep(handler);
-            unobserve = () => { try { yarr.unobserveDeep(handler); } catch (_e) { /* ignore */ } };
+            unobserve = () => { try { yarr.unobserveDeep(handler); } catch (err) { logger.warn("Silenced error", { err }); } };
             // Initial reflection
             handler();
         }
-    } catch (_e) { /* ignore */ }
-    return () => { try { unobserve?.(); } catch (_e) { /* ignore */ } };
+    } catch (err) { logger.warn("Silenced error", { err }); }
+    return () => { try { unobserve?.(); } catch (err) { logger.warn("Silenced error", { err }); } };
 });
 
 
@@ -155,7 +155,7 @@ function add() {
         const optimistic: Comment = { id, author: user, text: newText, created: time, lastChanged: time };
         localComments = [...localComments, optimistic];
 
-    } catch (_e) { /* ignore */ }
+    } catch (err) { logger.warn("Silenced error", { err }); }
 
 
     // Normal path: Sync state after Yjs addition and notify parent with exact count
@@ -174,13 +174,13 @@ function add() {
                         countNow = itemComments.length;
                     }
                 }
-            } catch (_e) { /* ignore */ }
+            } catch (err) { logger.warn("Silenced error", { err }); }
         }
         // Only notify if count actually changed to prevent infinite loops
         if (countNow !== lastNotifiedCount) {
             lastNotifiedCount = countNow;
             // Notify parent (OutlinerItem) via props callback only
-            try { onCountChanged?.(countNow); } catch (_e) { /* ignore */ }
+            try { onCountChanged?.(countNow); } catch (err) { logger.warn("Silenced error", { err }); }
         }
     } catch (e) {
         logger.error({ error: e as Error }, '[CommentThread] failed to sync after add');
@@ -220,7 +220,7 @@ function remove(id: string) {
     // Only notify if count actually changed to prevent infinite loops
     if (countNow !== lastNotifiedCount) {
         lastNotifiedCount = countNow;
-        try { onCountChanged?.(countNow); } catch (_e) { /* ignore */ }
+        try { onCountChanged?.(countNow); } catch (err) { logger.warn("Silenced error", { err }); }
     }
 }
 

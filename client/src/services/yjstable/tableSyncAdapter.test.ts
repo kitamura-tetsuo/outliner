@@ -47,58 +47,6 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         }
     });
 
-    it("only emits the result of the latest runQueryNow call, ignoring slow older runs", async () => {
-        const { handles, pgSchema } = makeTable();
-        setSchemaText(handles, SCHEMA);
-        const adapter = new TableSyncAdapter(handles, { pgSchema });
-
-        // Mock executeQuery to control execution speed
-        let slowRunStarted = false;
-        let resolveSlowRun: (value: unknown) => void;
-        const slowRunPromise = new Promise(resolve => {
-            resolveSlowRun = resolve;
-        });
-
-        (adapter as unknown as {
-            executeQuery: (sql: string) => Promise<{ columns: string[]; rows: { id: string; }[]; }>;
-        }).executeQuery = async (_selectSql: string) => {
-            if (!slowRunStarted) {
-                slowRunStarted = true;
-                await slowRunPromise;
-                return { columns: ["id"], rows: [{ id: "slow" }] };
-            } else {
-                return { columns: ["id"], rows: [{ id: "fast" }] };
-            }
-        };
-
-        try {
-            await adapter.start();
-            handles.uiDef.set("query", "SELECT id FROM tasks"); // trigger a query
-
-            // start first run (will be slow)
-            const firstRunPromise = adapter.runQueryNow();
-
-            // start second run (will be fast)
-            const secondRunPromise = adapter.runQueryNow();
-            const secondRunResult = await secondRunPromise;
-
-            // let the first run finish now that the second is done
-            resolveSlowRun!(undefined);
-            const firstRunResult = await firstRunPromise;
-
-            // The first run should return undefined because it's stale
-            expect(firstRunResult).toBeUndefined();
-            // The second run should return its result
-            expect(secondRunResult?.rows[0].id).toBe("fast");
-
-            expect((adapter as unknown as { lastResult: { rows: { id: string; }[]; }; }).lastResult.rows[0].id).toBe(
-                "fast",
-            );
-        } finally {
-            adapter.dispose();
-        }
-    });
-
     it("syncs incremental record changes (insert, update, delete)", async () => {
         const { handles, pgSchema } = makeTable();
         setSchemaText(handles, SCHEMA);

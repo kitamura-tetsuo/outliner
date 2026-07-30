@@ -9,5 +9,5 @@ acceptance:
 tests:
 - server/tests/get-container-users.test.ts
 components:
-- server/src/log-service.ts
+- server/log-service.js
 title-ja: コンテナユーザーリストの管理者チェック

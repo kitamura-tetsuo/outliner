@@ -5,9 +5,11 @@ description: 'Completely eliminate CustomEvent dependency (firestore-user-contai
 
   '
 category: project
-status: removed
+status: implemented
 components:
+- client/src/components/ContainerSelector.svelte
 - client/src/stores/firestoreStore.svelte.ts
+- client/src/tests/components/TestContainerSelector.svelte
 - client/src/tests/fixtures/UserContainerDisplay.svelte
 impact:
 - ContainerSelector depends only on firestoreStore.ucVersion and internal redraw backstop

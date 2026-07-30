@@ -92,7 +92,7 @@ type Drag =
         analysis: GanttSubtreeShiftAnalysis;
     };
 
-let drag = $state<Drag | undefined>(undefined);
+let drag: Drag | undefined;
 let previewDeltaMs = $state<number | undefined>(undefined);
 let previewRowKey = $state<string | undefined>(undefined);
 
@@ -115,7 +115,6 @@ function snapToDay(deltaMs: number): number {
 
 function beginLeafDrag(row: GanttRow, e: PointerEvent) {
     if (row.isRollup || row.barStartMs === undefined || !isLeafStartWritable(row.entry)) return;
-    if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     drag = { kind: "leaf-move", row, pointerId: e.pointerId, startClientX: e.clientX, originStartMs: row.barStartMs };
@@ -123,7 +122,6 @@ function beginLeafDrag(row: GanttRow, e: PointerEvent) {
 
 function beginLeafResize(row: GanttRow, e: PointerEvent) {
     if (row.isRollup || row.barStartMs === undefined || row.barEndMs === undefined || !isLeafDurationWritable(row.entry)) return;
-    if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     drag = {
@@ -139,7 +137,6 @@ function beginSubtreeDrag(row: GanttRow, e: PointerEvent) {
     if (!row.isRollup) return;
     const analysis = analyzeSubtreeShift(row);
     if (!analysis.shiftable || analysis.members.length === 0) return;
-    if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     drag = { kind: "subtree-move", row, pointerId: e.pointerId, startClientX: e.clientX, analysis };
@@ -232,7 +229,7 @@ function pointLeftPct(ms: number | undefined): number | undefined {
 
 <svelte:window onpointermove={onPointerMove} onpointerup={endDrag} onpointercancel={onPointerCancel} />
 
-<div class="gantt-chart" class:dragging={drag !== undefined} data-testid="calendar-gantt-chart">
+<div class="gantt-chart" data-testid="calendar-gantt-chart">
     <div class="gantt-toolbar">
         <label class="scale-control">
             <span>Scale</span>
@@ -339,11 +336,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
 {/snippet}
 
 <style>
-:global(.dragging), :global(.dragging *) {
-    -webkit-user-select: none !important;
-    user-select: none !important;
-}
-
 .gantt-chart {
     display: flex;
     flex-direction: column;
@@ -442,8 +434,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
 }
 
 .label-text {
-    -webkit-user-select: none;
-    user-select: none;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -455,8 +445,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
 }
 
 .gantt-bar {
-    -webkit-user-select: none;
-    user-select: none;
     position: absolute;
     top: 4px;
     height: calc(100% - 8px);
@@ -487,8 +475,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
 }
 
 .resize-handle {
-    -webkit-user-select: none;
-    user-select: none;
     position: absolute;
     top: 0;
     right: 0;

@@ -587,13 +587,10 @@ export class ScrapboxFormatter {
         if (checkboxMatch) {
             const leadingSpaces = checkboxMatch[1];
             const isChecked = checkboxMatch[2] === "x";
-            const remainderText = text.substring(checkboxMatch[0].length);
-            const ariaLabel = ScrapboxFormatter.escapeHtml(remainderText);
-            leadingCheckboxHtml =
-                `${leadingSpaces}<input type="checkbox" class="inline-checkbox" aria-label="${ariaLabel}" ${
-                    isChecked ? 'checked="checked"' : ""
-                } /> `;
-            text = remainderText;
+            leadingCheckboxHtml = `${leadingSpaces}<input type="checkbox" class="inline-checkbox" ${
+                isChecked ? 'checked="checked"' : ""
+            } /> `;
+            text = text.substring(checkboxMatch[0].length);
         }
 
         // Temporarily replace underline tags with placeholders

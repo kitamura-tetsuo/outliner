@@ -1,4 +1,3 @@
-/** @feature TBL-3950a1b2 */
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();

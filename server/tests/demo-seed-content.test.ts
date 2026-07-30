@@ -416,7 +416,7 @@ describe("Demo seed content", () => {
         const calendarItem = findChildByText(
             calendarsPage!.items,
             "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles "
-                + "and grouped by tags. Try dragging the entries below, or click **Settings** to change the query or reassign a role.",
+                + "and grouped by tags. Try dragging the entries below, changing the query, or reassigning a role.",
         );
         expect(calendarItem, "calendar item exists").to.not.equal(undefined);
         expect(calendarItem!.componentType).to.equal("calendar");

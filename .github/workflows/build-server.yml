@@ -5,13 +5,6 @@ on:
     branches:
       - main
 
-# Only the newest commit on main is worth publishing: when a newer commit lands
-# while an earlier build is still running, cancel the stale run so it cannot
-# overwrite the `latest` tag with an older image.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest

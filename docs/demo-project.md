@@ -10,7 +10,7 @@ account.
 - The demo content is defined as a template in
   [`server/src/demo-content.ts`](../server/src/demo-content.ts) (`demoPages`).
 - Each entry in `demoPages` becomes one page of the demo project. The first
-  page (`Welcome`, defined by `DEMO_LANDING_PAGE_TITLE` in `server/src/demo-content.ts`) is the landing page and contains a "Feature tour" list with an
+  page (`Demo`) is the landing page and contains a "Feature tour" list with an
   internal link to every other page.
 - The client calls `POST /api/seed-demo` when the demo route is opened
   ([`client/src/lib/demoSeed.ts`](../client/src/lib/demoSeed.ts)). The server
@@ -105,7 +105,3 @@ form so the demo seeds a working instance of it.
 Features that are intentionally not demonstrated (e.g. account management,
 admin tooling, or destructive operations) do not need demo pages; when in
 doubt, record the omission in `docs/NON_GOALS.md`.
-
-## Destructive-action policy
-
-Deleting an entry or record should always prompt between removing it and cancelling the action, so a keystroke never silently discards writing. This applies to both calendar entries and grid rows.

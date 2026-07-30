@@ -49,27 +49,6 @@ let isDatabaseSidebarOpen = $state(false);
 // Initialization error state
 let initError: string | null = $state(null);
 
-let sidebarToggleBtn: HTMLButtonElement | undefined = $state();
-import { tick } from "svelte";
-
-async function toggleSidebar() {
-    isSidebarOpen = !isSidebarOpen;
-    await tick();
-    if (isSidebarOpen) {
-        // Find first focusable element in sidebar
-        const sidebar = document.querySelector('aside[aria-label="Main Sidebar"]');
-        if (sidebar) {
-            const firstFocusable = sidebar.querySelector('a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])') as HTMLElement;
-            if (firstFocusable) {
-                firstFocusable.focus();
-            }
-        }
-    } else {
-        // Return focus to toggle button
-        sidebarToggleBtn?.focus();
-    }
-}
-
 // Fallback exposure to global (satisfy window.generalStore early)
 if (browser && typeof window !== "undefined") {
     window.generalStore =
@@ -193,9 +172,8 @@ onDestroy(async () => {
 
     <!-- Sidebar toggle button -->
     <button type="button"
-        bind:this={sidebarToggleBtn}
         class="sidebar-toggle"
-        onclick={toggleSidebar}
+        onclick={() => (isSidebarOpen = !isSidebarOpen)}
         aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
         title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
     >

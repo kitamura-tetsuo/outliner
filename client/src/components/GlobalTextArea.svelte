@@ -44,7 +44,7 @@ onMount(() => {
 
     store.setTextareaRef(textareaRef);
     // Keep a reference in generalStore as well (used as a fallback for the command palette)
-    try { generalStore.textareaRef = textareaRef; } catch (_e) { /* ignore */ }
+    try { generalStore.textareaRef = textareaRef; } catch (err) { logger.warn("Silenced error", { err }); }
     if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Textarea reference set in store");
 
     // Expose KeyEventHandler globally (for testing)
@@ -78,7 +78,7 @@ onMount(() => {
 
 onDestroy(() => {
     store.setTextareaRef(null);
-    try { generalStore.textareaRef = null; } catch (_e) { /* ignore */ }
+    try { generalStore.textareaRef = null; } catch (err) { logger.warn("Silenced error", { err }); }
 });
 
 function updateCompositionWidth(text: string) {
@@ -144,7 +144,7 @@ function handleKeyDown(event: KeyboardEvent) {
                 store.startCursorBlink();
             }
         }
-    } catch (_e) { /* ignore */ }
+    } catch (err) { logger.warn("Silenced error", { err }); }
 }
 
 // Delegate input event to KeyEventHandler

@@ -3,7 +3,6 @@ import cors from "cors";
 import express from "express";
 import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
-import { type Config } from "./config.js";
 import {
     DEMO_PROJECT_TITLE,
     DEMO_TEMPLATE_VERSION,
@@ -46,7 +45,7 @@ export function shouldResetDemo(state: DemoResetState): boolean {
         || state.missingTemplatePages;
 }
 
-export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config) {
+export function createDemoRouter(hocuspocus: HocuspocusInstance) {
     const router = express.Router();
 
     router.use(cors({ origin: true, credentials: true }));
@@ -60,7 +59,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
             let clientIpForRateLimit: string | undefined;
 
             if (force) {
-                const clientIp = getClientIp(req, config);
+                const clientIp = getClientIp(req);
                 const lastForce = forceRateLimits.get(clientIp) || 0;
                 const now = Date.now();
 

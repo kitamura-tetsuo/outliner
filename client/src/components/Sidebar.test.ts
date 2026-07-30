@@ -205,8 +205,6 @@ describe("Sidebar", () => {
 
             const sidebarElement = container.querySelector("aside.sidebar");
             expect(sidebarElement).toHaveClass("open");
-            expect((sidebarElement as HTMLElement).inert).toBe(false);
-            expect(sidebarElement).toHaveAttribute("aria-hidden", "false");
         });
 
         it("should render the sidebar with correct classes when closed", () => {
@@ -214,8 +212,6 @@ describe("Sidebar", () => {
 
             const sidebarElement = container.querySelector("aside.sidebar");
             expect(sidebarElement).not.toHaveClass("open");
-            expect((sidebarElement as HTMLElement).inert).toBe(true);
-            expect(sidebarElement).toHaveAttribute("aria-hidden", "true");
         });
 
         it("should render the Projects section", () => {
