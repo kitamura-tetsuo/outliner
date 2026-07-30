@@ -53,24 +53,19 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
         const adapter = new TableSyncAdapter(handles, { pgSchema });
 
         // Mock executeQuery to control execution speed
-        // @ts-expect-error accessing private method for testing
-        const originalExecuteQuery = adapter.executeQuery.bind(adapter);
-
         let slowRunStarted = false;
-        let fastRunFinished = false;
-        let resolveSlowRun: (value: any) => void;
+        let resolveSlowRun: (value: unknown) => void;
         const slowRunPromise = new Promise(resolve => {
             resolveSlowRun = resolve;
         });
 
         // @ts-expect-error mocking private method
-        adapter.executeQuery = async (selectSql: string) => {
+        adapter.executeQuery = async (_selectSql: string) => {
             if (!slowRunStarted) {
                 slowRunStarted = true;
                 await slowRunPromise;
                 return { columns: ["id"], rows: [{ id: "slow" }] };
             } else {
-                fastRunFinished = true;
                 return { columns: ["id"], rows: [{ id: "fast" }] };
             }
         };
