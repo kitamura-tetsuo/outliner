@@ -138,9 +138,17 @@ async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     // Wait for auth to hydrate (e.g., on a cold load before Firebase restores the session).
     // This is reached only for non-demo rooms, which always require auth.
     if (!auth.currentUser) {
-        for (let i = 0; i < 50; i++) { // up to ~5s
-            await new Promise(resolve => setTimeout(resolve, 100));
-            if (auth.currentUser) break;
+        if (typeof (auth as unknown as { authStateReady?: unknown; }).authStateReady === "function") {
+            await Promise.race([
+                (auth as unknown as { authStateReady: () => Promise<void>; }).authStateReady(),
+                new Promise<void>(resolve => setTimeout(resolve, 5000)), // bounded fallback
+            ]);
+        } else {
+            // Fallback for older Firebase versions or if authStateReady is mocked incorrectly
+            for (let i = 0; i < 50; i++) { // up to ~5s
+                await new Promise(resolve => setTimeout(resolve, 100));
+                if (auth.currentUser) break;
+            }
         }
     }
 

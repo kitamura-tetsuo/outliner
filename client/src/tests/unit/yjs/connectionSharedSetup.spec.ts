@@ -123,6 +123,7 @@ describe("yjs connection: shared provider setup", () => {
         mockAuth.currentUser = {
             getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
         } as unknown as User;
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
     });
 
     it("never resolves to the demo dummy token '1' for a non-demo room on failure", async () => {
@@ -157,6 +158,12 @@ describe("yjs connection: shared provider setup", () => {
 
     it("waits for auth.currentUser to hydrate instead of immediately failing", async () => {
         mockAuth.currentUser = null;
+        let resolveAuthState: () => void;
+        (mockAuth as unknown as { authStateReady: () => Promise<void>; }).authStateReady = () => {
+            return new Promise<void>(resolve => {
+                resolveAuthState = resolve;
+            });
+        };
 
         const promise = createProjectConnection("proj-hydrate-test");
         await flushMicrotasks();
@@ -174,6 +181,9 @@ describe("yjs connection: shared provider setup", () => {
                 resolvedToken = t;
             });
 
+            // Need to flush microtasks to let Promise.race and authStateReady() be called
+            await flushMicrotasks();
+
             // Advance time a bit but not enough to timeout the 5s loop
             await vi.advanceTimersByTimeAsync(1000);
 
@@ -185,9 +195,11 @@ describe("yjs connection: shared provider setup", () => {
                 getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
             } as unknown as User;
 
-            // Advance time to allow the loop to see currentUser and break
-            await vi.advanceTimersByTimeAsync(200);
+            // Resolve authStateReady and allow microtasks to process
+            resolveAuthState!();
+            await flushMicrotasks();
 
+            // The loop shouldn't require timers to advance because it listens to authStateReady
             await tokenPromise;
             expect(resolvedToken).toBe("hydrated-token");
         } finally {
