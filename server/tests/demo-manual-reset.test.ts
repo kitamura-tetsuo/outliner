@@ -48,7 +48,7 @@ describe("Demo manual reset policy", () => {
 // document. The previous applyUpdate-from-a-fresh-doc approach made the YTree
 // "root" marker a concurrent write that could lose against tombstones from
 // earlier resets, leaving a document that YTree refuses to load.
-describe("Demo reseed keeps the shared document tree valid", function () {
+describe("Demo reseed keeps the shared document tree valid", function() {
     this.timeout(10000);
     // Mirrors the transact body of POST /api/seed-demo
     function resetCycle(ydoc: Y.Doc): void {
@@ -86,7 +86,7 @@ describe("Demo reseed keeps the shared document tree valid", function () {
     });
 });
 
-describe("Demo manual reset rate limit", function () {
+describe("Demo manual reset rate limit", function() {
     this.timeout(10000);
 
     it("failed reset does not consume the cooldown", async () => {
@@ -104,7 +104,9 @@ describe("Demo manual reset rate limit", function () {
         let currentTime = 1000000;
         Date.now = () => currentTime;
 
-        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({ force: true });
+        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({
+            force: true,
+        });
         expect(res1.status).to.equal(500);
 
         const mockHocuspocusSuccess = {
@@ -118,7 +120,9 @@ describe("Demo manual reset rate limit", function () {
         appSuccess.use(express.json());
         appSuccess.use("/api", createDemoRouter(mockHocuspocusSuccess as any));
 
-        const res2 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({ force: true });
+        const res2 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.1").send({
+            force: true,
+        });
         expect(res2.status).to.equal(200);
 
         Date.now = originalNow;
@@ -145,11 +149,15 @@ describe("Demo manual reset rate limit", function () {
         let currentTime = 2000000;
         Date.now = () => currentTime;
 
-        const req1Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.2").send({ force: true });
+        const req1Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.2").send({
+            force: true,
+        });
 
         await new Promise(resolve => setTimeout(resolve, 50));
 
-        const req2Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({ force: true });
+        const req2Promise = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({
+            force: true,
+        });
 
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -172,7 +180,9 @@ describe("Demo manual reset rate limit", function () {
         appSuccess.use(express.json());
         appSuccess.use("/api", createDemoRouter(mockHocuspocusSuccess as any));
 
-        const res3 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({ force: true });
+        const res3 = await request(appSuccess).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.3").send({
+            force: true,
+        });
         expect(res3.status).to.equal(200);
 
         Date.now = originalNow;
@@ -195,10 +205,14 @@ describe("Demo manual reset rate limit", function () {
         let currentTime = 3000000;
         Date.now = () => currentTime;
 
-        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.4").send({ force: true });
+        const res1 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.4").send({
+            force: true,
+        });
         expect(res1.status).to.equal(200);
 
-        const res2 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.5").send({ force: true });
+        const res2 = await request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.0.0.5").send({
+            force: true,
+        });
         expect(res2.status).to.equal(429);
 
         Date.now = originalNow;
