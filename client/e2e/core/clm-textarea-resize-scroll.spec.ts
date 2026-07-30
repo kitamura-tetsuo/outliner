@@ -1,14 +1,14 @@
-import { test, expect } from '../fixtures/auth';
-import { e2ePageLocator } from '../utils/locator';
-import { getFirstItemId, getTestPageId } from '../utils/pageUtils';
+import { expect, test } from "../fixtures/auth";
+import { e2ePageLocator } from "../utils/locator";
+import { getFirstItemId, getTestPageId } from "../utils/pageUtils";
 
-test('hidden global textarea does not widen document on resize', async ({ page }) => {
+test("hidden global textarea does not widen document on resize", async ({ page }) => {
     // Navigate to a test page
     const pageId = await getTestPageId();
     await page.goto(`/${pageId}`);
 
     // Wait for the app to initialize
-    const appContainer = page.locator('.app-container');
+    const appContainer = page.locator(".app-container");
     await expect(appContainer).toBeVisible();
 
     // Add some long text to make sure we have content
@@ -17,7 +17,8 @@ test('hidden global textarea does not widen document on resize', async ({ page }
     const itemTextLocator = e2ePageLocator(page).getLocatorForItemText(firstItemId);
 
     await itemTextLocator.click();
-    const longText = 'This is a very long text that will surely push the textarea to the right side of the screen when clicked at the end.';
+    const longText =
+        "This is a very long text that will surely push the textarea to the right side of the screen when clicked at the end.";
     await page.keyboard.type(longText);
 
     // Wait for the textarea to be positioned
@@ -31,7 +32,7 @@ test('hidden global textarea does not widen document on resize', async ({ page }
 
     // Dispatch resize event just to be sure
     await page.evaluate(() => {
-        window.dispatchEvent(new Event('resize'));
+        window.dispatchEvent(new Event("resize"));
     });
 
     // Wait for debounce and re-positioning
@@ -46,13 +47,13 @@ test('hidden global textarea does not widen document on resize', async ({ page }
 
     // Specifically check textarea doesn't overflow
     const textareaBounds = await page.evaluate(() => {
-        const ta = document.querySelector('.global-textarea');
+        const ta = document.querySelector(".global-textarea");
         if (!ta) return null;
         const rect = ta.getBoundingClientRect();
         return {
             x: rect.x,
             right: rect.right,
-            width: rect.width
+            width: rect.width,
         };
     });
 
