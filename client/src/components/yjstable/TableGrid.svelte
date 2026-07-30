@@ -156,7 +156,6 @@ function handleCancelDelete() {
                             }}
                             ondrop={(e) => {
                                 e.preventDefault();
-                                dropTargetColumn = undefined;
                                 const draggedCol = e.dataTransfer?.getData("text/plain");
                                 if (draggedCol && draggedCol !== column) {
                                     const draggedIndex = displayColumns.indexOf(draggedCol);
@@ -171,6 +170,7 @@ function handleCancelDelete() {
                                         writeColumnOrder(handles, moveColumn(displayColumns, draggedCol, targetIndex));
                                     }
                                 }
+                                dropTargetColumn = undefined;
                             }}
                             onkeydown={(e) => {
                                 if (e.altKey) {
