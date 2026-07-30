@@ -105,3 +105,56 @@ export function iterateItemsOrdered(items: unknown): Iterable<Item> {
 
     return [];
 }
+
+/**
+ * Iterates over an Item collection deeply.
+ * Performs a depth-first traversal of the item subtree using an explicit stack
+ * to prevent maximum call stack size issues.
+ *
+ * @param items The item collection to iterate over deeply
+ * @returns An iterable of Items including all descendants
+ */
+export function* iterateItemsDeep(items: unknown): Iterable<Item> {
+    if (!items) return;
+
+    const stack: Iterator<Item>[] = [];
+
+    const rootIterable = iterateItems(items);
+    if (!rootIterable) return;
+
+    const rootIterator = Array.from(rootIterable)[Symbol.iterator]();
+    if (!rootIterator) return;
+
+    stack.push(rootIterator);
+
+    while (stack.length > 0) {
+        const iterator = stack[stack.length - 1];
+        const result = iterator.next();
+
+        if (result.done) {
+            stack.pop();
+        } else {
+            const item = result.value;
+            yield item;
+
+            if (item && typeof item === "object") {
+                let childItems: unknown = undefined;
+                if ("items" in item && item.items) {
+                    childItems = (item as any).items;
+                } else if (typeof (item as any).get === "function") {
+                    childItems = (item as any).get("items");
+                }
+
+                if (childItems) {
+                    const childIterable = iterateItems(childItems);
+                    if (childIterable) {
+                        const childArr = Array.from(childIterable);
+                        if (childArr.length > 0) {
+                            stack.push(childArr[Symbol.iterator]());
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
