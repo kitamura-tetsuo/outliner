@@ -130,12 +130,16 @@ export class EditorOverlayStore {
         for (const l of Array.from(this.listeners)) {
             try {
                 l();
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         }
         if (typeof window !== "undefined") {
             try {
                 window.dispatchEvent(new CustomEvent("editor-overlay:cursors-changed"));
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         }
     }
 
@@ -1088,7 +1092,9 @@ export class EditorOverlayStore {
                         if (isForeignInput(document.activeElement)) return;
                         textarea.focus();
                     });
-                } catch {}
+                } catch (_e) {
+                    logger.error(_e);
+                }
             }
             // Start cursor blinking as well
             this.startCursorBlink();

@@ -764,7 +764,9 @@ export class CursorNavigation {
                         (currentTarget as unknown as { tree: import("yjs-orderedtree").YTree; }).tree,
                         parentCollection.parentKey,
                     );
-                } catch {}
+                } catch (_e) {
+                    logger.error(_e);
+                }
             }
             const hasParentToNavigateTo = !prevItem && parentItemInstance && parentItemInstance.id;
 

@@ -1,3 +1,6 @@
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("index");
+
 export interface SearchOptions {
     regex?: boolean;
     caseSensitive?: boolean;
@@ -54,7 +57,9 @@ function toStringSafe(text: unknown): string {
     try {
         const t = text as { toString?: () => string; };
         if (typeof t.toString === "function") return t.toString();
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
     return String(text);
 }
 
@@ -66,7 +71,9 @@ function pushChildren<T>(stack: T[], children: unknown): void {
             for (const ch of (children as Iterable<unknown>)) stack.push(ch as T);
             return;
         }
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
     const arrChildren = children as { length?: unknown; at?: (i: number) => unknown; } & Record<number, unknown>;
     const len = arrChildren.length;
     if (typeof len === "number" && len >= 0) {

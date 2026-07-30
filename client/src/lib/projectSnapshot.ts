@@ -1,3 +1,5 @@
+import { getLogger } from "./logger";
+const logger = getLogger("projectSnapshot");
 import { Project } from "../schema/app-schema";
 
 export type SnapshotItem = {
@@ -101,12 +103,16 @@ export function saveProjectSnapshot(project: Project | undefined): void {
         const payload = JSON.stringify(snapshot);
         try {
             window.sessionStorage?.setItem(key, payload);
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         try {
             window.localStorage?.setItem(key, payload);
-        } catch {}
-    } catch {
-        /* noop */
+        } catch (_e) {
+            logger.error(_e);
+        }
+    } catch (_e) {
+        logger.error(_e);
     }
 }
 
@@ -122,7 +128,9 @@ export function loadProjectSnapshot(title: string | undefined): ProjectSnapshot 
                 const data = JSON.parse(raw) as ProjectSnapshot;
                 if (!data || !Array.isArray(data.items)) continue;
                 return data;
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         }
         return null;
     } catch {
@@ -226,7 +234,9 @@ export function createSnapshotClient(projectName: string, project: Project): unk
                 registry.set(key, [client, project]);
             }
         }
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
     return client;
 }
 

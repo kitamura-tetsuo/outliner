@@ -89,7 +89,7 @@ function getHealthCheckUrl() {
         if ((import.meta.env.MODE === "test" || import.meta.env.VITE_IS_TEST === "true") && typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_YJS_PORT")) {
             port = Number(window.localStorage.getItem("VITE_YJS_PORT"));
         }
-    } catch {}
+    } catch (_e) { logger.error(_e); }
 
     // Prefer explicitly configured HTTP URL if available
     const envHttpUrl = import.meta.env.VITE_YJS_HTTP_URL;

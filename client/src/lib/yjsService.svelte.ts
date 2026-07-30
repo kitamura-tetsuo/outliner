@@ -506,7 +506,9 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
 export function cleanupClient() {
     try {
         yjsStore.yjsClient?.dispose();
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
     yjsStore.yjsClient = undefined;
 }
 
@@ -522,7 +524,9 @@ export function removeClientByProjectId(projectId: string): void {
     if (entry) {
         try {
             entry[0]?.dispose();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         registry.delete(key);
     }
 }
@@ -647,7 +651,9 @@ export async function reconnectProject(): Promise<void> {
         const { setRoomSyncState } = await import("./yjs/roomSyncState");
         const { projectRoomPath } = await import("./yjs/roomPath");
         setRoomSyncState(projectRoomPath(projectId), "pending");
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
 
     removeClientByProjectId(projectId);
 

@@ -75,7 +75,7 @@ onMount(() => {
             }
         });
         return unsub;
-    } catch {}
+    } catch (_e) { logger.error(_e); }
 });
 </script>
 

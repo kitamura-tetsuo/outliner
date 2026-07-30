@@ -131,6 +131,8 @@ if (typeof originalSetUserProject === "function") {
     queueMicrotask(() => {
         try {
             projectStore.syncFromFirestore();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
     });
 }

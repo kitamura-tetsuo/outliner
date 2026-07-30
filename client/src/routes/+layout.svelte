@@ -75,7 +75,7 @@ onMount(() => {
                 window.__E2E_LAYOUT_MOUNTED__ = true;
             }
             document.dispatchEvent(new Event("E2E_LAYOUT_MOUNTED"));
-        } catch {}
+        } catch (_e) { logger.error(_e); }
         // Dynamically import browser-only modules
         let userManager: typeof import("../auth/UserManager").userManager | undefined;
         try {
@@ -139,7 +139,7 @@ onDestroy(async () => {
         try {
             const { cleanupYjsClient } = await import("../services");
             cleanupYjsClient();
-        } catch {}
+        } catch (_e) { logger.error(_e); }
     }
 });
 // HMR Trigger

@@ -1,4 +1,7 @@
 <script lang="ts">
+    import { getLogger } from "../../lib/logger";
+    const logger = getLogger("UserContainerDisplay");
+
 import { firestoreStore as moduleStore } from "../../stores/firestoreStore.svelte";
 import { onMount } from "svelte";
 // Workaround for double loading in Vitest + JSDOM: Use the instance exposed on window if available
@@ -21,15 +24,15 @@ onMount(() => {
             const u = (storeRef as unknown as { userProject?: { accessibleProjectIds?: string[], defaultProjectId?: string } })?.userProject;
             idsLocal = Array.from(u?.accessibleProjectIds ?? []);
             defaultIdLocal = u?.defaultProjectId;
-        } catch {}
+        } catch (_e) { logger.error(_e); }
     };
     // Initial application + update on additional notification
     apply();
-    try { window.addEventListener('firestore-uc-changed', apply); } catch {}
+    try { window.addEventListener('firestore-uc-changed', apply); } catch (_e) { logger.error(_e); }
     // NOTE: This CustomEvent is test-environment only. In production/development,
     // UIs must rely on firestoreStore.ucVersion + $derived for redraws (see AGENTS.md).
 
-    return () => { try { window.removeEventListener('firestore-uc-changed', apply); } catch {} };
+    return () => { try { window.removeEventListener('firestore-uc-changed', apply); } catch (_e) { logger.error(_e); } };
 });
 </script>
 <div>

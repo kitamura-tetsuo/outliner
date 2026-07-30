@@ -45,7 +45,7 @@
                 const childLength = first?.items?.length ?? 0;
                 if (text === "settings" && childLength === 0) return true;
             }
-        } catch {}
+        } catch (_e) { logger.error(_e); }
         return false;
     }
 
@@ -60,17 +60,17 @@
             store.project = hydrated;
             try {
                 store.currentPage = undefined;
-            } catch {}
+            } catch (_e) { logger.error(_e); }
             if (!yjsStore.yjsClient) {
                 try {
                     yjsStore.yjsClient = createSnapshotClient(
                         projectName,
                         hydrated,
                     ) as unknown as YjsClient;
-                } catch {}
+                } catch (_e) { logger.error(_e); }
             }
             project = hydrated;
-        } catch {}
+        } catch (_e) { logger.error(_e); }
     }
 
     function hasMeaningfulContent(content: string | undefined): boolean {
@@ -134,7 +134,7 @@
                 projectForExport = snapshotToProject(snapshot);
                 try {
                     store.project = projectForExport;
-                } catch {}
+                } catch (_e) { logger.error(_e); }
             }
         }
 
@@ -159,7 +159,7 @@
                 if (!projectForExport) {
                     try {
                         store.project = snapshotToProject(snapshot);
-                    } catch {}
+                    } catch (_e) { logger.error(_e); }
                 }
             }
         }
@@ -235,7 +235,7 @@
         // Set the skip flag and keep it active during navigation
         try {
             window.localStorage?.setItem?.("SKIP_TEST_CONTAINER_SEED", "true");
-        } catch {}
+        } catch (_e) { logger.error(_e); }
 
         // Wait for Yjs to sync the changes - increase timeout to ensure proper synchronization
         await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -248,7 +248,7 @@
             if (firstPage) {
                 try {
                     store.currentPage = firstPage;
-                } catch {}
+                } catch (_e) { logger.error(_e); }
 
                 // Get text - handle both Yjs getter and plain property
                 let pageName;

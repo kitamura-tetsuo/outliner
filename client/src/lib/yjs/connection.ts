@@ -37,7 +37,9 @@ function attachConnDebug(label: string, provider: HocuspocusProvider, awareness:
                 const count = states?.size ?? 0;
                 const tree = doc.getMap("orderedTree") as import("yjs").Map<unknown>;
                 logger.debug(`[yjs-conn] ${label} awareness.states=${count} tree.size=${tree.size}`);
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         };
         if (awareness) {
             awareness.on(
@@ -78,7 +80,9 @@ function getWsBase(): string {
                 return `ws://localhost:${port}`;
             }
         }
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
     logger.debug(
         `[yjs-conn] WS Port determination: env=${import.meta.env.VITE_YJS_PORT}, ls=${
             (isConnDebugEnabled() && typeof window !== "undefined")
@@ -357,7 +361,9 @@ async function setupProviderForRoom(
             setRoomSyncState(room, syncState);
             try {
                 provider.disconnect();
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         } else if (code && RETRYABLE_CLOSE_CODES.has(code)) {
             logger.warn(`[yjs-conn] Transient close ${code} for ${room}: will retry via backoff`);
             let syncState: import("./roomSyncState").RoomSyncState = "retrying";
@@ -378,7 +384,9 @@ async function setupProviderForRoom(
             setRoomSyncState(room, "denied");
             try {
                 provider.disconnect();
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         },
     );
     provider.on("stateless", (data: unknown) => {
@@ -493,17 +501,25 @@ async function setupProviderForRoom(
     const dispose = async () => {
         try {
             unbindPresence?.();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         try {
             unsubTokenRefresh?.();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         try {
             provider.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         if (options.persistence) {
             try {
                 await options.persistence.destroy();
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         }
         deleteRoomSyncState(room);
         deleteRoomPersistenceError(room);
@@ -536,7 +552,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         throw e;
     }
 
@@ -544,7 +562,9 @@ export async function createProjectConnection(projectId: string): Promise<Projec
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
     };
 
     return { doc, provider, awareness, dispose };
@@ -621,7 +641,9 @@ export async function createMinimalProjectConnection(projectId: string): Promise
         await disposeProvider();
         try {
             doc.destroy();
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
     };
     return { doc, provider, dispose };
 }
