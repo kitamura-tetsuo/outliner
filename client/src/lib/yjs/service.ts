@@ -301,35 +301,6 @@ export const yjsService = {
         });
     },
 
-    bindPagePresence(awareness: Awareness) {
-        const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
-        const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
-            const overlay = resolveOverlayStore();
-            if (!overlay) return; // no-op when overlay store not present
-            const states = awareness.getStates();
-            const clientId = (awareness as Awareness & { clientID: number; }).clientID;
-
-            [...added, ...updated].forEach((id: number) => {
-                const s = states.get(id);
-                const user = s?.user;
-                if (!user) return;
-                clientUserMap.set(id, user);
-                if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, s?.presence);
-            });
-
-            removed.forEach((id: number) => {
-                const user = clientUserMap.get(id);
-                if (!user) return;
-                clientUserMap.delete(id);
-                if (id === clientId) return;
-                applyPresenceToOverlay(overlay, user, null);
-            });
-        };
-        awareness.on("change", update);
-        return () => awareness.off("change", update);
-    },
-
     promoteChildren(project: Project, itemKey: string) {
         project.ydoc.transact(() => {
             const tree = project.tree;
