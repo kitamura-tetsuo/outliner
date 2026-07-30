@@ -86,23 +86,26 @@ export function isPgliteStarted(): boolean {
 }
 
 /**
- * Run a read-only query against the shared engine. Queries do not go through
- * the write queue; PGlite serializes statement execution internally.
+ * Run a read-only query against the shared engine. The engine uses a single session,
+ * and queued operations hold open transactions on it. Therefore, this function routes
+ * through the write queue so that read queries join the queue rather than executing
+ * inside whatever transaction is currently open.
  */
-export async function runSelect<T = Record<string, unknown>>(
+export function runSelect<T = Record<string, unknown>>(
     sql: string,
     params: unknown[] = [],
 ): Promise<PgQueryResult<T>> {
-    const db = await getPglite();
-    try {
-        const res = await db.query<T>(sql, params);
-        return {
-            rows: res.rows,
-            fields: res.fields.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
-        };
-    } catch (err) {
-        throw toTableSqlError("query", err);
-    }
+    return enqueueWrite(async (db) => {
+        try {
+            const res = await db.query<T>(sql, params);
+            return {
+                rows: res.rows,
+                fields: res.fields.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
+            };
+        } catch (err) {
+            throw toTableSqlError("query", err);
+        }
+    });
 }
 
 /**
@@ -118,17 +121,6 @@ export function enqueueWrite<T>(op: (db: PGlite) => Promise<T>): Promise<T> {
         return undefined;
     });
     return run;
-}
-
-/** Execute a single mutating statement (DDL or DML) through the write queue. */
-export function execWrite(sql: string, params: unknown[] = []): Promise<void> {
-    return enqueueWrite(async (db) => {
-        try {
-            await db.query(sql, params);
-        } catch (err) {
-            throw toTableSqlError("write", err);
-        }
-    });
 }
 
 /**
