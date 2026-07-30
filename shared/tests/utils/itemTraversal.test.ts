@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { iterateItemsDeep } from "../../src/utils/itemTraversal.js";
 import type { Item } from "../../src/app-schema.js";
+import { iterateItemsDeep } from "../../src/utils/itemTraversal.js";
 
 describe("iterateItemsDeep", () => {
     it("should iterate deeply", () => {
