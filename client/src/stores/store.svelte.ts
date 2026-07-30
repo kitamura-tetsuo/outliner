@@ -127,17 +127,23 @@ export class GeneralStore {
                 this._currentPageSubscribers.forEach(fn => {
                     try {
                         fn();
-                    } catch {}
+                    } catch (_e) {
+                        logger.warn({ error: _e as Error }, "Error caught in store");
+                    }
                 });
                 return;
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in store");
+        }
         this._currentPage = v;
         // Notify
         this._currentPageSubscribers.forEach(fn => {
             try {
                 fn();
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in store");
+            }
         });
     }
 
@@ -320,7 +326,9 @@ export class GeneralStore {
                         snapshotTimeout = null;
                         try {
                             saveProjectSnapshot(project);
-                        } catch {}
+                        } catch (_e) {
+                            logger.warn({ error: _e as Error }, "Error caught in store");
+                        }
                     }, 3000);
                 }
             }
@@ -342,7 +350,9 @@ export class GeneralStore {
                                             shouldRebuild = true;
                                             break;
                                         }
-                                    } catch {}
+                                    } catch (_e) {
+                                        logger.warn({ error: _e as Error }, "Error caught in store");
+                                    }
                                 } else if (change.action === "delete") {
                                     // Conservative approach: rebuild on delete as we can't easily check parent
                                     shouldRebuild = true;
@@ -359,11 +369,15 @@ export class GeneralStore {
                                 // It is a page title change
                                 shouldRebuild = true;
                             }
-                        } catch {}
+                        } catch (_e) {
+                            logger.warn({ error: _e as Error }, "Error caught in store");
+                        }
                     }
                     if (shouldRebuild) break;
                 }
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in store");
+            }
 
             if (shouldRebuild) {
                 rebuildPending = true;

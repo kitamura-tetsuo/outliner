@@ -1,4 +1,7 @@
+import { getLogger } from "../lib/logger";
 import { iterateItems } from "./itemTraversal";
+const logger = getLogger("graphUtils");
+
 export interface GraphData {
     nodes: Array<{ id: string; name: string; }>;
     links: Array<{ source: string; target: string; }>;
@@ -16,7 +19,9 @@ function toArray(p: unknown): unknown[] {
     try {
         if (Array.isArray(p)) return p;
         return Array.from(iterateItems(p));
-    } catch {}
+    } catch (_e) {
+        logger.warn({ error: _e as Error }, "Error caught in graphUtils");
+    }
 
     return [];
 }
@@ -33,7 +38,9 @@ function getText(v: unknown): string {
             }
         }
         if (obj && typeof obj.toString === "function") return obj.toString();
-    } catch {}
+    } catch (_e) {
+        logger.warn({ error: _e as Error }, "Error caught in graphUtils");
+    }
     return String(v ?? "");
 }
 

@@ -7,6 +7,9 @@ import { yjsService } from "../lib/yjs/service";
 import { Items, Project } from "../schema/yjs-schema";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 
+import { getLogger } from "../lib/logger";
+const logger = getLogger("YjsClient");
+
 export interface YjsClientParams {
     clientId: string;
     projectId: string;
@@ -63,8 +66,12 @@ export class YjsClient {
             try {
                 const meta = doc.getMap("metadata") as import("yjs").Map<unknown>;
                 if (title && !uuidRegex.test(title) && !meta.get("title")) meta.set("title", title);
-            } catch {}
-        } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+            }
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+        }
         const clientId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         return new YjsClient({
             clientId,
@@ -226,17 +233,25 @@ export class YjsClient {
         if (this._disposeFunc) {
             try {
                 void this._disposeFunc();
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+            }
         } else {
             try {
                 (this._provider as unknown as { destroy?: () => void; })?.destroy?.();
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+            }
             try {
                 (this._doc as unknown as { destroy?: () => void; })?.destroy?.();
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+            }
         }
         try {
             presenceStore.getUsers().forEach(u => presenceStore.removeUser(u.userId));
-        } catch {}
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in YjsClient");
+        }
     }
 }

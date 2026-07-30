@@ -2,6 +2,9 @@ import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
 import { safeDecodeURIComponent } from "./urlUtils";
 
+import { getLogger } from "../lib/logger";
+const logger = getLogger("pageUtils");
+
 export function generateDefaultPageTitle(): string {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -20,7 +23,9 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
     let targetNameDecoded2 = targetNameRaw;
     try {
         targetNameDecoded2 = decodeURIComponent(String(name).trim()).toLowerCase();
-    } catch {}
+    } catch (_e) {
+        logger.warn({ error: _e as Error }, "Error caught in pageUtils");
+    }
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;

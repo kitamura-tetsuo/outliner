@@ -1,5 +1,8 @@
 import { Project } from "../schema/app-schema";
 
+import { getLogger } from "../lib/logger";
+const logger = getLogger("projectSnapshot");
+
 export type SnapshotItem = {
     text: string;
     children: SnapshotItem[];
@@ -101,10 +104,14 @@ export function saveProjectSnapshot(project: Project | undefined): void {
         const payload = JSON.stringify(snapshot);
         try {
             window.sessionStorage?.setItem(key, payload);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in projectSnapshot");
+        }
         try {
             window.localStorage?.setItem(key, payload);
-        } catch {}
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in projectSnapshot");
+        }
     } catch {
         /* noop */
     }
@@ -122,7 +129,9 @@ export function loadProjectSnapshot(title: string | undefined): ProjectSnapshot 
                 const data = JSON.parse(raw) as ProjectSnapshot;
                 if (!data || !Array.isArray(data.items)) continue;
                 return data;
-            } catch {}
+            } catch (_e) {
+                logger.warn({ error: _e as Error }, "Error caught in projectSnapshot");
+            }
         }
         return null;
     } catch {
@@ -226,7 +235,9 @@ export function createSnapshotClient(projectName: string, project: Project): unk
                 registry.set(key, [client, project]);
             }
         }
-    } catch {}
+    } catch (_e) {
+        logger.warn({ error: _e as Error }, "Error caught in projectSnapshot");
+    }
     return client;
 }
 

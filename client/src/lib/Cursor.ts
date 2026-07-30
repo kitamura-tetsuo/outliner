@@ -102,7 +102,9 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     if (f) return f;
                 }
             }
-        } catch {}
+        } catch (_e) {
+            logger.warn({ error: _e as Error }, "Error caught in Cursor");
+        }
         if (typeof window !== "undefined") {
             logger.debug("findTarget: not found", { itemId: this.itemId, rootId: root?.id });
         }
