@@ -46,7 +46,8 @@ Click the hamburger menu in the top-left corner to access the main sidebar navig
 - **Tables:** View and manage database tables.
 - **Scheduled SQL:** Manage automated, recurring queries.
 - **Settings:** Access project configurations.
-- **Docs & GitHub:** Quick links to documentation and the source code.
+- **Docs:** Quick link to the documentation.
+- **GitHub:** Quick link to the source code.
 
 ---
 
@@ -189,7 +190,7 @@ Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
-- **New Table:** enter a table name, select a preset (e.g., Blank Table, Tasks, or Habits), and click **Create**.
+- **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
 - **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 
 Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
