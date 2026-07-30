@@ -56,6 +56,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             const force = req.body?.force === true;
             logger.info({ event: "seed_demo_request", force });
 
+            let clientIpForRateLimit: string | undefined;
+
             if (force) {
                 const clientIp = getClientIp(req);
                 const lastForce = forceRateLimits.get(clientIp) || 0;
@@ -85,8 +87,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
                     });
                     return;
                 }
-                forceRateLimits.set(clientIp, now);
-                lastGlobalForceReset = now;
+                clientIpForRateLimit = clientIp;
             }
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
@@ -276,6 +277,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance) {
             inFlightResets.set(projectRoom, resetPromise);
             try {
                 const result = await resetPromise;
+                if (clientIpForRateLimit && result.reset) {
+                    const finishTime = Date.now();
+                    forceRateLimits.set(clientIpForRateLimit, finishTime);
+                    lastGlobalForceReset = finishTime;
+                }
                 res.json(result);
             } finally {
                 inFlightResets.delete(projectRoom);
