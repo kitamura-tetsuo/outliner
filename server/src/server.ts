@@ -254,7 +254,7 @@ export async function startServer(
                 logger.debug(
                     `[Hocuspocus] onAuthenticate: room=${data.documentName}, token=${
                         token ? "FOUND" : "MISSING"
-                    }, data.token=${data.token}`,
+                    }`,
                 );
 
                 const room = parseRoom(data.documentName);
