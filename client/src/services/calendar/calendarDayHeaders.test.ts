@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { computeDayHeaders } from "./calendarDayHeaders";
 
-const DAY_MS = 86_400_000;
-
 describe("computeDayHeaders", () => {
     it("generates correct headers for a standard week", () => {
         // 2026-08-16 is a Sunday

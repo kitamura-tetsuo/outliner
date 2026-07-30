@@ -10,7 +10,7 @@ test("sticky day/weekday headers in calendar views", async ({ page, context }, t
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
     // Using a seeded project to bypass typing tests
-    const p = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item 1", "item 2"]);
+    const _p = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item 1", "item 2"]);
 
     // Type a calendar
     const item = page.locator(".outliner-item").nth(1);
