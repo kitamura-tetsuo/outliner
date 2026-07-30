@@ -82,10 +82,10 @@ function setComponentType(column: string, type: string) {
 
     {#if schema}
         <p class="editor-label">Cell components</p>
-        <div class="component-rows">
+        <div class="component-rows" role="list">
             {#each displayColumns as column, index (column.name)}
                 <div
-                    class="component-row"
+                    class="component-row" role="listitem"
                     draggable="true"
                     class:drop-target-above={dropTargetColumn?.column === column.name && dropTargetColumn.position === "above"}
                     class:drop-target-below={dropTargetColumn?.column === column.name && dropTargetColumn.position === "below"}
