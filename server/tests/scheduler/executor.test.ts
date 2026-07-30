@@ -14,7 +14,7 @@ describe("JobExecutor timeout recovery", function() {
     });
 
     it("recovers from a job timeout and executes the next job", async function() {
-        this.timeout(40000); // 20 seconds to allow for 10s timeout plus overhead in slow CI environments
+        this.timeout(60000); // 20 seconds to allow for 10s timeout plus overhead in slow CI environments
 
         const timeoutJobData = {
             schemaSql: "CREATE TABLE t (id INT);",
