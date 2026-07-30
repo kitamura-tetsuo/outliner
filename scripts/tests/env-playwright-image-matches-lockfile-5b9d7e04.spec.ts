@@ -50,6 +50,19 @@ test("Dependabot moves the Playwright packages together", () => {
     }
 });
 
+test("Dependabot watches the test container's base image", () => {
+    // Nothing watched the image before, so it stayed on v1.61.1 while the npm
+    // group moved @playwright/test to 1.62.0 -- the drift only surfaced when
+    // every E2E shard failed to launch a browser.
+    const dependabot = read(".github", "dependabot.yml");
+    const start = dependabot.indexOf("  - package-ecosystem: 'docker'");
+    const next = dependabot.indexOf("  - package-ecosystem:", start + 1);
+    const docker = dependabot.slice(start, next === -1 ? undefined : next);
+
+    expect(docker).toMatch(/^ {2}- package-ecosystem: 'docker'$/m);
+    expect(docker).toMatch(/^ {4}directory: '\/\.github\/container'$/m);
+});
+
 test("playwright-core is not a direct client dependency", () => {
     // It is imported nowhere, and declaring it hoists a second copy that can
     // shadow the one the test runner resolves.
