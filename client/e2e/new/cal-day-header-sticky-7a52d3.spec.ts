@@ -1,7 +1,7 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("day/week calendar headers are sticky and display correctly", async ({ page }, testInfo) => {
