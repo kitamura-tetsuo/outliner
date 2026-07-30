@@ -1,6 +1,0 @@
-1. Implement `iterateItemsDeep` in `shared/src/utils/itemTraversal.ts`.
-   - Add a new function `iterateItemsDeep(items: unknown): Iterable<Item>` that performs a depth-first traversal.
-   - It will use an explicit stack to yield each item and recursively process its `items` (children). This prevents maximum call stack size issues.
-
-2. Update `client/src/lib/backlinkCollector.ts`.
-   - Import `iterateItemsDeep` from `../../shared/src/utils/itemTraversal.js` (or correct path for shared workspace). Note that client/src/lib imports it via `../utils/itemTraversal`. Wait, the import in `backlinkCollector.ts` is `import { iterateItems } from "../utils/itemTraversal";`. Let's check `client/src/utils/itemTraversal.ts`.

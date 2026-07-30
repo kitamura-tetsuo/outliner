@@ -83,7 +83,7 @@ describe("backlinkCollector", () => {
                                 items: [
                                     {
                                         id: "item3",
-                                        text: "Level 3 with link to [/project/TargetPage]",
+                                        text: "Level 3 with link to [/TestProject/TargetPage]",
                                     } as unknown as import("../schema/app-schema").Item,
                                 ] as unknown as Items,
                             } as unknown as import("../schema/app-schema").Item,
@@ -103,7 +103,7 @@ describe("backlinkCollector", () => {
 
         expect(result[1].sourcePageId).toBe("page1");
         expect(result[1].sourceItemId).toBe("item3");
-        expect(result[1].sourceItemText).toBe("Level 3 with link to [/project/TargetPage]");
+        expect(result[1].sourceItemText).toBe("Level 3 with link to [/TestProject/TargetPage]");
     });
 
     it("should handle mixed case", () => {
