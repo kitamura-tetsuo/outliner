@@ -58,6 +58,21 @@ if (driver !== test) {
     );
 }
 
+// `playwright install` prunes every browser outside the CLI's own registry, so
+// an unpinned CLI deletes the revision @playwright/test needs as soon as a
+// newer Playwright ships. The browser install must name a version.
+const BROWSER_INSTALL = path.join("scripts", "common-functions.sh");
+const unpinned = read(BROWSER_INSTALL)
+    .split("\n")
+    .filter((line) => /npx .*\bplaywright\b(?!@)[^@\n]*\binstall(-deps)?\b/.test(line) && !line.trim().startsWith("#"));
+if (unpinned.length > 0) {
+    problems.push(
+        `${BROWSER_INSTALL} installs browsers with an unpinned Playwright CLI:\n`
+            + unpinned.map((line) => `      ${line.trim()}`).join("\n")
+            + `\n  Fix: invoke the CLI as playwright@<version> using the version resolved in ${LOCKFILE}.`,
+    );
+}
+
 if (problems.length > 0) {
     console.error("Playwright version mismatch:\n");
     for (const problem of problems) {
