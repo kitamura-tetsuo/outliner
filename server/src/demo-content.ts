@@ -95,7 +95,7 @@ export interface DemoTableTemplate {
     schemaSql: string;
     query: string;
     // Cell component type per column (UI Definition).
-    components: Record<string, string | { type: string; label?: string; }>;
+    components: Record<string, string | { type: string; label?: string }>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
 }
