@@ -142,7 +142,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             yjsStore.yjsClient = undefined;
             store.project = undefined;
             store.currentPage = undefined;
-        } catch {}
+        } catch (_e) { logger.error(_e); }
     });
 </script>
 

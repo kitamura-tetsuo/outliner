@@ -38,10 +38,14 @@ export function refreshAuthAndReconnect(provider: TokenRefreshableProvider): () 
                 logger.debug("[tokenRefresh] No token, forcing reconnect sequence");
                 try {
                     provider.disconnect();
-                } catch {}
+                } catch (_e) {
+                    logger.error(_e);
+                }
                 try {
                     await provider.connect();
-                } catch {}
+                } catch (_e) {
+                    logger.error(_e);
+                }
                 return;
             }
 

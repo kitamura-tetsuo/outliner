@@ -1,3 +1,6 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("pageUtils");
+
 import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
 import { safeDecodeURIComponent } from "./urlUtils";
@@ -20,7 +23,9 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
     let targetNameDecoded2 = targetNameRaw;
     try {
         targetNameDecoded2 = decodeURIComponent(String(name).trim()).toLowerCase();
-    } catch {}
+    } catch (_e) {
+        logger.error(_e);
+    }
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;

@@ -44,7 +44,9 @@ class AliasPickerStore {
                 window.dispatchEvent(new CustomEvent("aliaspicker-visibility", { detail: { visible: true } }));
                 window.dispatchEvent(new CustomEvent("aliaspicker-options", { detail: { options: this.options } }));
             }
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
 
         // DOM presence check (async) for debugging E2E timing
         try {
@@ -52,10 +54,14 @@ class AliasPickerStore {
                 setTimeout(() => {
                     try {
                         document.querySelector(".alias-picker");
-                    } catch {}
+                    } catch (_e) {
+                        logger.error(_e);
+                    }
                 }, 0);
             }
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         // Single-shot refresh using microtask to avoid layout feedback
         queueMicrotask(() => {
             if (this.isVisible) {
@@ -66,7 +72,9 @@ class AliasPickerStore {
                             new CustomEvent("aliaspicker-options", { detail: { options: this.options } }),
                         );
                     }
-                } catch {}
+                } catch (_e) {
+                    logger.error(_e);
+                }
             }
         });
     }
@@ -77,7 +85,9 @@ class AliasPickerStore {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("aliaspicker-visibility", { detail: { visible: false } }));
             }
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
         this.itemId = null;
         this.options = [];
         this.query = "";
@@ -202,7 +212,9 @@ class AliasPickerStore {
                         this.itemId = last.id;
                     }
                 }
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
         }
         // Confirm directly by ID (do not depend on path matching)
         try {

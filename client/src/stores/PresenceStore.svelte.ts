@@ -1,3 +1,6 @@
+import { getLogger } from "../lib/logger";
+const logger = getLogger("PresenceStore.svelte");
+
 export interface PresenceUser {
     userId: string;
     userName: string;
@@ -15,7 +18,9 @@ export class PresenceStore {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("presence-users-changed"));
             }
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
     }
 
     removeUser(userId: string) {
@@ -25,7 +30,9 @@ export class PresenceStore {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("presence-users-changed"));
             }
-        } catch {}
+        } catch (_e) {
+            logger.error(_e);
+        }
     }
 
     getUsers(): PresenceUser[] {

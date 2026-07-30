@@ -1,3 +1,6 @@
+import { getLogger } from "../../lib/logger";
+const logger = getLogger("testHelpers");
+
 /**
  * Yjs Test Helpers
  *
@@ -273,7 +276,9 @@ export async function createMinimalYjsConnection(
             try {
                 // HocuspocusProvider connects automatically, but we can call connect if needed
                 await provider.connect();
-            } catch {}
+            } catch (_e) {
+                logger.error(_e);
+            }
 
             return true;
         },
