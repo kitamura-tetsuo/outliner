@@ -1,3 +1,4 @@
+import { tick } from "svelte";
 // Real PGlite + the real table engine session (AGENTS.md §2), same pattern
 // as calendarQueryRunner.test.ts — outline_items needs no `connect` override
 // since it never goes through a table subdoc connector.
@@ -60,7 +61,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             roleDuration: "duration",
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => {
             expect(getByTestId(`calendar-entry-item:${item.key}`)).toBeTruthy();
@@ -68,7 +69,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         expect(getByTestId("calendar-time-grid")).toBeTruthy();
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("renders an all-day entry in the month view's day cell", async () => {
@@ -89,7 +89,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             roleAllDay: "all_day",
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => {
             expect(getByTestId(`calendar-entry-item:${item.key}`)).toBeTruthy();
@@ -97,7 +97,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         expect(getByTestId("calendar-month-grid")).toBeTruthy();
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("switches viewType through the toolbar select and persists it to the calendar's settings", async () => {
@@ -105,7 +104,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
         const { project } = seedProject(projectId);
         const calendarId = createCalendar(project, { name: "Cal", query: "SELECT 1" });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
         await waitFor(() => expect(getByTestId("calendar-view-type")).toBeTruthy());
 
         await fireEvent.change(getByTestId("calendar-view-type"), { target: { value: "month" } });
@@ -120,7 +119,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
         const { project } = seedProject(projectId);
         const calendarId = createCalendar(project, { name: "Cal", viewType: "day", query: "SELECT 1" });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
         await waitFor(() => expect(getByTestId("calendar-range-label")).toBeTruthy());
 
         const before = getByTestId("calendar-range-label").textContent;
@@ -179,7 +178,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             roleAllDay: "all_day",
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
         await waitFor(() => expect(getByTestId("calendar-new-entry")).toBeTruthy());
 
         await fireEvent.click(getByTestId("calendar-new-entry"));
@@ -198,7 +197,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         await waitFor(() => expect(() => getByTestId("calendar-create-dialog")).toThrow());
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("deletes an item through the delete-disposition prompt", async () => {
@@ -218,7 +216,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             roleAllDay: "all_day",
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
         await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
 
         await fireEvent.click(getByTestId(`calendar-entry-delete-outline_items:${item.key}`));
@@ -231,7 +229,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         });
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("groups entries into tag swimlanes in the week view (#4348)", async () => {
@@ -258,7 +255,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             groupAxes: ["tags"],
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => expect(getByTestId("calendar-lane-time-grid")).toBeTruthy());
         await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${workItem.key}`)).toBeTruthy());
@@ -272,7 +269,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
             .toBeTruthy();
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("dragging an entry's lane handle onto another lane replaces its tag (#4348)", async () => {
@@ -296,7 +292,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             showEmptyLanes: true,
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => expect(getByTestId(`calendar-entry-lane-handle-outline_items:${item.key}`)).toBeTruthy());
 
@@ -317,7 +313,6 @@ describe("CalendarView", { timeout: 30000 }, () => {
         );
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
     it("shows a lane filter and colour-codes entries in month view when grouping is active (#4348)", async () => {
@@ -340,7 +335,7 @@ describe("CalendarView", { timeout: 30000 }, () => {
             groupAxes: ["tags"],
         });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const { getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${item.key}`)).toBeTruthy());
         expect(getByTestId("calendar-month-lane-filter")).toBeTruthy();
@@ -348,10 +343,9 @@ describe("CalendarView", { timeout: 30000 }, () => {
         expect(entryEl.getAttribute("style")).toMatch(/background/);
 
         destroyCalendarUndoManager(projectDoc);
-        unmount();
     });
 
-    it.skip("discards a slow earlier query if a newer one starts before it finishes", async () => {
+    it("discards a slow earlier query if a newer one starts before it finishes", async () => {
         const projectId = "proj-calendar-view-query-guard";
         const { project } = seedProject(projectId);
         const calendarId = createCalendar(project, { name: "Cal", viewType: "week", query: "SELECT 1" });
@@ -388,17 +382,20 @@ describe("CalendarView", { timeout: 30000 }, () => {
 
         await waitFor(() => expect(callCount).toBeGreaterThanOrEqual(2));
 
-        await vi.waitFor(() => expect(secondQueryResolve).toBeDefined());
+        // Let's resolve the second query with an empty result but no error, just to verify it overrides
+        // Actually, we can check the component's internal state directly?
+        // No, we can check if it sets the error message.
         secondQueryResolve!({
             result: undefined,
             error: "New Error",
         });
+        await tick();
 
-        await vi.waitFor(() => expect(firstQueryResolve).toBeDefined());
         firstQueryResolve!({
             result: undefined,
             error: "Old Error",
         });
+        await tick();
 
         await waitFor(() => {
             expect(comp.queryByText("New Error")).toBeTruthy();
@@ -406,6 +403,5 @@ describe("CalendarView", { timeout: 30000 }, () => {
         expect(comp.queryByText("Old Error")).toBeFalsy();
 
         spy.mockRestore();
-        comp.unmount();
     });
 });

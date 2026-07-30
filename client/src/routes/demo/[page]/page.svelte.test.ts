@@ -17,7 +17,8 @@ vi.mock("../../../services", async (importOriginal) => {
         ...actual,
         getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
             getProject: () => {
-                const Y = (window as any).Y || require("yjs");
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                const Y = (window as unknown as { Y: typeof import("yjs"); }).Y || require("yjs");
                 const doc = new Y.Doc();
                 doc.getMap("metadata").set("title", "demo");
                 doc.getMap("metadata").set("lastReset", 0);
@@ -142,7 +143,7 @@ describe("Demo Page View", () => {
                 // However, Vite/Oxc refuses top-level await inside the mock function.
                 // We bypass it by getting the `Y` instance that was imported globally in the mock setup.
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
-                const Y_mod = (window as any).Y || require("yjs");
+                const Y_mod = (window as unknown as { Y: typeof import("yjs"); }).Y || require("yjs");
                 const doc = new Y_mod.Doc();
                 doc.getMap("metadata").set("title", "demo");
                 doc.getMap("metadata").set("lastReset", 0);
