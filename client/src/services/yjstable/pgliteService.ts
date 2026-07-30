@@ -9,10 +9,6 @@
 //   deterministic.
 
 import type { PGlite } from "@electric-sql/pglite";
-import { getLogger } from "../../lib/logger";
-
-const logger = getLogger("pgliteService");
-
 export type TableSqlErrorKind =
     | "init"
     | "schema"
@@ -116,10 +112,7 @@ export function runSelect<T = Record<string, unknown>>(
  */
 export function enqueueWrite<T>(op: (db: PGlite) => Promise<T>): Promise<T> {
     const run = writeQueue.then(async () => op(await getPglite()));
-    writeQueue = run.catch((err) => {
-        logger.warn({ err }, "[pgliteService] Write queue operation failed");
-        return undefined;
-    });
+    writeQueue = run.then(() => undefined, () => undefined);
     return run;
 }
 
