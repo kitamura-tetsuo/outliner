@@ -15,7 +15,7 @@ let pageTitle = $state("");
 let content = $state("");
 let user = $derived(userManager.getCurrentUser()?.name ?? "Guest");
 
-import type { YjsClient } from "../../../../services/yjsService.svelte";
+import type { YjsClient } from "../../../../yjs/YjsClient";
 let currentClient: YjsClient | null = null;
 let updateObserver: (() => void) | null = null;
 let isDestroyed = false;
