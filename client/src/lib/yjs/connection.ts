@@ -249,7 +249,7 @@ interface SetupProviderOptions {
  * pulling in the full presence/auth-refresh machinery there raced with the connection's own
  * initial handshake and made those tests time out.
  */
-export async function setupProviderForRoom(
+async function setupProviderForRoom(
     projectId: string,
     room: string,
     doc: Y.Doc,
@@ -320,17 +320,27 @@ export async function setupProviderForRoom(
             logger.warn(`[yjs-conn] ${room} connection-close code=${code} reason=${reason || "None"}`);
         }
 
-        if (code === 4001) {
-            // Let `authenticationFailed` handle token refresh and terminal close logic.
-            // Only set `isRetryingCurrentClose` if we are sure a retry will happen and hasn't started yet.
-            // If `authenticationFailed` fired first, it already set `isRetryingCurrentClose = true`.
-            if (authRetries < MAX_AUTH_RETRIES && !isRetryingCurrentClose) {
-                isRetryingCurrentClose = true;
-            }
+        isRetryingCurrentClose = false;
+
+        if (code === 4001 && authRetries < MAX_AUTH_RETRIES) {
+            logger.debug(
+                `[yjs-conn] Auth error 4001 detected for ${room}, forcing token refresh and retrying (${
+                    authRetries + 1
+                }/${MAX_AUTH_RETRIES})...`,
+            );
+            authRetries++;
+            forceTokenRefresh = true;
+            isRetryingCurrentClose = true;
+            void (async () => {
+                try {
+                    await userManager.refreshToken();
+                } catch (e) {
+                    logger.error({ error: e }, `[yjs-conn] 4001 refresh token failed for ${room}`);
+                }
+                provider.connect();
+            })();
             return;
         }
-
-        isRetryingCurrentClose = false;
 
         if (code === 4003) {
             logger.debug(`[yjs-conn] Auth error 4003 detected for ${room}, forcing token refresh before failing...`);
@@ -374,32 +384,11 @@ export async function setupProviderForRoom(
         "authenticationFailed",
         (data: unknown) => {
             logger.error({ data }, `[yjs-conn] ${room} authenticationFailed`);
-            if (authRetries < MAX_AUTH_RETRIES) {
-                logger.debug(
-                    `[yjs-conn] Auth error detected for ${room}, forcing token refresh and retrying (${
-                        authRetries + 1
-                    }/${MAX_AUTH_RETRIES})...`,
-                );
-                authRetries++;
-                forceTokenRefresh = true;
-                isRetryingCurrentClose = true;
-                void (async () => {
-                    try {
-                        await userManager.refreshToken();
-                    } catch (e) {
-                        logger.error({ error: e }, `[yjs-conn] refresh token failed for ${room}`);
-                    }
-                    provider.connect();
-                })();
-            } else {
-                isRetryingCurrentClose = false;
-                logger.error(`[yjs-conn] Permanent authentication failure for ${room}: stopping reconnect attempts`);
-                setRoomSyncState(room, "denied");
-                try {
-                    provider.disconnect();
-                } catch (_e) {
-                    logger.error(_e);
-                }
+            setRoomSyncState(room, "denied");
+            try {
+                provider.disconnect();
+            } catch (_e) {
+                logger.error(_e);
             }
         },
     );

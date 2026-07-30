@@ -11,9 +11,6 @@
 // calendarEntryWrite.ts for why those two must not be conflated.
 
 import { floatingDateToUtcMs } from "$shared/utils/zonedTime";
-import { Item, Items } from "../../schema/app-schema";
-import type { Project } from "../../schema/app-schema";
-import { expandItemOccurrencesWithOverrides } from "../yjstable/recurrenceExpansion";
 import type { CalendarSettings } from "./calendarService";
 import { parsePgIntervalMs } from "./pgInterval";
 
@@ -98,8 +95,6 @@ export function buildCalendarEntries(
     result: { columns: string[]; rows: Record<string, unknown>[]; },
     settings: Pick<CalendarSettings, "roleTitle" | "roleStart" | "roleAllDay" | "roleDuration" | "roleDue">,
     timeZone: string,
-    project?: Project,
-    queryRange?: { startUtcMs: number; endUtcMs: number; },
 ): CalendarEntry[] {
     const entries: CalendarEntry[] = [];
 
@@ -127,48 +122,6 @@ export function buildCalendarEntries(
 
         const recurrenceParentId = toStringValue(row["recurrence_parent_id"]);
         const recurrenceOccurrenceId = toStringValue(row["recurrence_occurrence_id"]);
-
-        const rrule = toStringValue(row["rrule"]);
-
-        if (rrule && sourceKind === "items" && sourceId && project && queryRange) {
-            try {
-                const item = new Item(project.ydoc, project.tree, sourceId);
-                const parentKey = project.tree.getNodeParentFromKey(sourceId);
-                if (parentKey) {
-                    const siblings = new Items(project.ydoc, project.tree, parentKey);
-                    const occurrences = expandItemOccurrencesWithOverrides(
-                        item,
-                        siblings,
-                        queryRange.startUtcMs,
-                        queryRange.endUtcMs,
-                    );
-
-                    for (const occ of occurrences) {
-                        entries.push({
-                            key: `${sourceKind}:${sourceId}:${occ.occurrenceId}`,
-                            sourceKind,
-                            sourceId,
-                            parentId,
-                            title,
-                            allDay,
-                            startMs: occ.startUtcMs,
-                            durationMs: occ.endUtcMs - occ.startUtcMs,
-                            dueMs,
-                            recurrenceParentId,
-                            recurrenceOccurrenceId,
-                            raw: {
-                                ...row,
-                                start_at: new Date(occ.startUtcMs).toISOString(),
-                                duration: `${occ.endUtcMs - occ.startUtcMs} ms`,
-                            },
-                        });
-                    }
-                    return; // Returning from the forEach callback, effectively acts as a continue for the loop
-                }
-            } catch (_e) {
-                // Fallback to normal push if item resolution fails
-            }
-        }
 
         entries.push({
             key,

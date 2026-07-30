@@ -278,12 +278,11 @@ describe("yjs connection: shared provider setup", () => {
         const tokenFn = provider.configuration.token;
 
         // First 4001: should force a refresh and connect(), not disconnect()
-        provider.emit("authenticationFailed", { message: "Unauthorized" });
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         await flushMicrotasks();
 
-        await vi.waitFor(() => expect(refreshTokenSpy).toHaveBeenCalledTimes(1));
-        await vi.waitFor(() => expect(connectSpy).toHaveBeenCalledTimes(1));
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
         expect(disconnectSpy).not.toHaveBeenCalled();
 
         getIdTokenSpy.mockResolvedValue("mock-token-retry");
@@ -291,12 +290,11 @@ describe("yjs connection: shared provider setup", () => {
         expect(getIdTokenSpy).toHaveBeenLastCalledWith(true);
 
         // Second 4001: budget exhausted, should disconnect()
-        provider.emit("authenticationFailed", { message: "Unauthorized" });
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         await flushMicrotasks();
 
-        await vi.waitFor(() => expect(connectSpy).toHaveBeenCalledTimes(1)); // not called again
-        await vi.waitFor(() => expect(disconnectSpy).toHaveBeenCalledTimes(1)); // called this time
+        expect(connectSpy).toHaveBeenCalledTimes(1); // not called again
+        expect(disconnectSpy).toHaveBeenCalledTimes(1); // called this time
     });
 
     it.each(
@@ -406,12 +404,11 @@ describe("yjs connection: shared provider setup", () => {
         const tokenFn = provider.configuration.token;
 
         // First 4001: should force a refresh and connect(), not disconnect()
-        provider.emit("authenticationFailed", { message: "Unauthorized" });
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         await flushMicrotasks();
 
-        await vi.waitFor(() => expect(refreshTokenSpy).toHaveBeenCalledTimes(1));
-        await vi.waitFor(() => expect(connectSpy).toHaveBeenCalledTimes(1));
+        expect(refreshTokenSpy).toHaveBeenCalledTimes(1);
+        expect(connectSpy).toHaveBeenCalledTimes(1);
         expect(disconnectSpy).not.toHaveBeenCalled();
 
         getIdTokenSpy.mockResolvedValue("mock-token-retry-1");
@@ -422,7 +419,6 @@ describe("yjs connection: shared provider setup", () => {
         await flushMicrotasks();
 
         // Second 4001: should force another refresh and connect(), budget was reset
-        provider.emit("authenticationFailed", { message: "Unauthorized" });
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         await flushMicrotasks();
 
@@ -434,11 +430,10 @@ describe("yjs connection: shared provider setup", () => {
         await tokenFn();
 
         // Third 4001 (without intervening authenticated): budget exhausted, should disconnect()
-        provider.emit("authenticationFailed", { message: "Unauthorized" });
         provider.emit("close", { code: 4001, reason: "Unauthorized" } satisfies CloseEvent);
         await flushMicrotasks();
 
         expect(connectSpy).toHaveBeenCalledTimes(2); // not called again
-        await vi.waitFor(() => expect(disconnectSpy).toHaveBeenCalledTimes(1)); // called this time
+        expect(disconnectSpy).toHaveBeenCalledTimes(1); // called this time
     });
 });

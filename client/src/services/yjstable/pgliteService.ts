@@ -9,6 +9,10 @@
 //   deterministic.
 
 import type { PGlite } from "@electric-sql/pglite";
+import { getLogger } from "../../lib/logger";
+
+const logger = getLogger("pgliteService");
+
 export type TableSqlErrorKind =
     | "init"
     | "schema"
@@ -82,26 +86,23 @@ export function isPgliteStarted(): boolean {
 }
 
 /**
- * Run a read-only query against the shared engine. The engine uses a single session,
- * and queued operations hold open transactions on it. Therefore, this function routes
- * through the write queue so that read queries join the queue rather than executing
- * inside whatever transaction is currently open.
+ * Run a read-only query against the shared engine. Queries do not go through
+ * the write queue; PGlite serializes statement execution internally.
  */
-export function runSelect<T = Record<string, unknown>>(
+export async function runSelect<T = Record<string, unknown>>(
     sql: string,
     params: unknown[] = [],
 ): Promise<PgQueryResult<T>> {
-    return enqueueWrite(async (db) => {
-        try {
-            const res = await db.query<T>(sql, params);
-            return {
-                rows: res.rows,
-                fields: res.fields.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
-            };
-        } catch (err) {
-            throw toTableSqlError("query", err);
-        }
-    });
+    const db = await getPglite();
+    try {
+        const res = await db.query<T>(sql, params);
+        return {
+            rows: res.rows,
+            fields: res.fields.map((f) => ({ name: f.name, dataTypeID: f.dataTypeID })),
+        };
+    } catch (err) {
+        throw toTableSqlError("query", err);
+    }
 }
 
 /**
@@ -112,8 +113,22 @@ export function runSelect<T = Record<string, unknown>>(
  */
 export function enqueueWrite<T>(op: (db: PGlite) => Promise<T>): Promise<T> {
     const run = writeQueue.then(async () => op(await getPglite()));
-    writeQueue = run.then(() => undefined, () => undefined);
+    writeQueue = run.catch((err) => {
+        logger.warn({ err }, "[pgliteService] Write queue operation failed");
+        return undefined;
+    });
     return run;
+}
+
+/** Execute a single mutating statement (DDL or DML) through the write queue. */
+export function execWrite(sql: string, params: unknown[] = []): Promise<void> {
+    return enqueueWrite(async (db) => {
+        try {
+            await db.query(sql, params);
+        } catch (err) {
+            throw toTableSqlError("write", err);
+        }
+    });
 }
 
 /**

@@ -1,6 +1,3 @@
-# Must match the Playwright version resolved in client/package-lock.json: the
-# image ships the browser bundle for exactly this release, and a mismatch makes
-# every E2E test fail at browserType.launch with "Executable doesn't exist".
 FROM mcr.microsoft.com/playwright:v1.61.1-jammy
 
 # Install Java and OS utilities

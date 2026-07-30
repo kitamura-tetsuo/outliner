@@ -253,18 +253,6 @@ scripts/test.sh
 When using `scripts/test.sh`, manual execution of `scripts/setup.sh` beforehand is not required (it is done automatically).
 If executing by other methods, run `scripts/setup.sh` beforehand to start the local emulators.
 
-### Preparing a New Machine for E2E Tests
-
-On a fresh clone or a fresh cloud container, `scripts/bootstrap-e2e.sh` installs the dependencies, resolves a Chromium for Playwright, starts the services, verifies them, and runs a smoke spec in one reproducible (and repeatable) run.
-
-```bash
-scripts/bootstrap-e2e.sh                     # prepare + smoke test
-scripts/bootstrap-e2e.sh client/e2e/x.spec.ts  # prepare + run these specs
-scripts/bootstrap-e2e.sh --no-test           # prepare only
-```
-
-It also works where only the npm registry is reachable (no apt mirrors, no Playwright browser CDN, no dprint plugin CDN). See [docs/e2e-environment-setup.md](docs/e2e-environment-setup.md).
-
 ### Running Playwright Tests Sequentially
 
 In cloud environments, running multiple E2E tests at once may cause timeouts. Use `scripts/run-e2e-progress.sh 1` to run test files one by one.

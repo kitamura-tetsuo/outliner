@@ -20,7 +20,6 @@ import {
 } from "../../services/yjstable/tableDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { cellComponentFor } from "./cellComponents";
-import ConfirmDialog from "../ConfirmDialog.svelte";
 
 interface Props {
     handles: TableHandles;
@@ -36,9 +35,6 @@ interface Props {
 }
 
 let { handles, schema, query, result, columnConfigs, loading = false, session }: Props = $props();
-
-let rowToDelete: string | null = $state(null);
-let isConfirmDialogOpen: boolean = $state(false);
 
 /** Row-identity columns: metadata about the row, never shown as "read-only data". */
 const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
@@ -105,19 +101,7 @@ function addRow() {
 }
 
 function deleteRow(recordId: string) {
-    rowToDelete = recordId;
-    isConfirmDialogOpen = true;
-}
-
-function handleConfirmDelete() {
-    if (rowToDelete) {
-        deleteRecord(handles, rowToDelete);
-        rowToDelete = null;
-    }
-}
-
-function handleCancelDelete() {
-    rowToDelete = null;
+    deleteRecord(handles, recordId);
 }
 </script>
 
@@ -171,8 +155,7 @@ function handleCancelDelete() {
                                         class="delete-row"
                                         aria-label={`Delete row ${recordId}`}
                                         onclick={() => deleteRow(recordId)}
-                                        title="Delete row"
-                                    >🗑️</button>
+                                    >x</button>
                                 {/if}
                             </td>
                         {/if}
@@ -195,17 +178,6 @@ function handleCancelDelete() {
             + Add row
         </button>
     {/if}
-
-    <ConfirmDialog
-        bind:isOpen={isConfirmDialogOpen}
-        title="Delete row"
-        message={rowToDelete ? `Are you sure you want to delete row ${rowToDelete}?` : "Are you sure you want to delete this row?"}
-        confirmText="Delete"
-        cancelText="Cancel"
-        isDestructive={true}
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-    />
 </div>
 
 <style>

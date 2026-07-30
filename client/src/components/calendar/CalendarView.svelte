@@ -146,7 +146,7 @@ const ganttTicks = $derived(isGantt ? computeGanttTicks(range.start, range.end, 
 // grid keeps working in UTC millis; only the SQL boundary needs Dates.
 const queryRange = $derived({ start: new Date(range.start), end: new Date(range.end) });
 
-const rawEntries = $derived(buildCalendarEntries(result, settings, timeZone, project, { startUtcMs: range.start, endUtcMs: range.end }));
+const rawEntries = $derived(buildCalendarEntries(result, settings, timeZone));
 const placedEntries = $derived(applyOptimisticOverrides(rawEntries, optimisticOverrides));
 const entryByKey = $derived(new Map(placedEntries.map((e) => [e.key, e])));
 
@@ -257,7 +257,7 @@ async function runQuery() {
         // The query result is authoritative: drop any optimistic placement
         // whose row has now come back, whether or not it agrees with the
         // local guess (a concurrent remote move wins either way).
-        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone, project, { startUtcMs: range.start, endUtcMs: range.end }));
+        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone));
     } else {
         queryError = outcome.error;
     }

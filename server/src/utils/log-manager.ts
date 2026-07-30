@@ -154,10 +154,6 @@ if (serverLogStream) {
 export const serverLogger = pino(
     {
         level: process.env.NODE_ENV === "production" ? "info" : "debug",
-        redact: {
-            paths: ["token", "authorization", "idToken", "req.headers.authorization"],
-            censor: "[REDACTED]",
-        },
         timestamp: pino.stdTimeFunctions.isoTime,
     },
     pino.multistream(serverStreams),
