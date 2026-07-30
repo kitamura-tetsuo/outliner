@@ -43,11 +43,11 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
 });
 </script>
 
-<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar">
+<aside class="sidebar" class:open={isOpen} aria-label="Database Sidebar" inert={!isOpen} aria-hidden={!isOpen}>
     <div class="sidebar-content">
         <div class="header">
             <h2 class="sidebar-title">Databases</h2>
-            <button type="button" class="close-btn" onclick={() => (isOpen = false)} aria-label="Close Database Sidebar">×</button>
+            <button type="button" class="close-btn" onclick={() => { isOpen = false; document.querySelector<HTMLElement>('[aria-label="Toggle Databases Sidebar"]')?.focus(); }} aria-label="Close Database Sidebar">×</button>
         </div>
 
         <div class="sidebar-section">
@@ -78,7 +78,8 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
         top: 4rem; /* Below the toolbar */
         background-color: white;
         border-left: 1px solid #e5e7eb;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, visibility 0s linear 0.3s;
+        visibility: hidden;
         overflow-y: auto;
         z-index: 9;
         transform: translateX(100%);
@@ -87,6 +88,8 @@ const tables: TableRegistryEntry[] = $derived.by(() => {
 
     .sidebar.open {
         transform: translateX(0);
+        transition: transform 0.3s ease, visibility 0s linear 0s;
+        visibility: visible;
     }
 
     .sidebar-content {
