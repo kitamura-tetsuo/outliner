@@ -59,8 +59,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
             resolveSlowRun = resolve;
         });
 
-        // @ts-expect-error mocking private method
-        adapter.executeQuery = async (_selectSql: string) => {
+        (adapter as unknown as {
+            executeQuery: (sql: string) => Promise<{ columns: string[]; rows: { id: string; }[]; }>;
+        }).executeQuery = async (_selectSql: string) => {
             if (!slowRunStarted) {
                 slowRunStarted = true;
                 await slowRunPromise;
@@ -90,8 +91,9 @@ describe("TableSyncAdapter", { timeout: 30000 }, () => {
             // The second run should return its result
             expect(secondRunResult?.rows[0].id).toBe("fast");
 
-            // @ts-expect-error accessing private field
-            expect(adapter.lastResult.rows[0].id).toBe("fast");
+            expect((adapter as unknown as { lastResult: { rows: { id: string; }[]; }; }).lastResult.rows[0].id).toBe(
+                "fast",
+            );
         } finally {
             adapter.dispose();
         }
