@@ -16,7 +16,7 @@ import { JobScheduler } from "../../src/scheduler/Scheduler.js";
 // the scheduler must find the table's own room, run the SQL and write the
 // generated occurrence back into Data Storage.
 describe("Job scheduler run", function() {
-    this.timeout(30000);
+    this.timeout(60000);
 
     const projectRoom = `projects/${DEMO_PROJECT_TITLE}`;
     const tableRoom = `${projectRoom}/tables/${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}`;

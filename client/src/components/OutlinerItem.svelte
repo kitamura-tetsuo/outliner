@@ -2279,6 +2279,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 
 .collapse-btn {
+    position: relative;
     background: none;
     border: none;
     padding: 0;
@@ -2604,5 +2605,10 @@ export function setSelectionPosition(start: number, end: number = start) {
 }
 :global(body.dark-mode) .ref-text {
     color: #e2e8f0;
+}
+.collapse-btn::before {
+    content: "";
+    position: absolute;
+    inset: -4px -3px;
 }
 </style>
