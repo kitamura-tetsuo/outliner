@@ -68,4 +68,60 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         expect(options).toContain("open");
         expect(options).toContain("done");
     });
+
+    test("row deletion requires confirmation", async ({ page }) => {
+        await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
+        await page.locator(".outliner-item").first().click();
+        await page.waitForTimeout(300);
+
+        // Insert a Database block from the toolbar
+        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
+        await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
+        await addDatabaseBtn.click();
+
+        // The create panel appears; create a table from the Tasks preset
+        const createPanel = page.getByTestId("yjs-table-create-panel").first();
+        await expect(createPanel).toBeVisible({ timeout: 10000 });
+        await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
+        await page.getByTestId("yjs-table-create").first().click();
+
+        // Wait for the block to render the grid
+        const view = page.getByTestId("yjs-table-view").first();
+        await expect(view).toBeVisible({ timeout: 15000 });
+        const grid = view.getByTestId("yjs-table-grid");
+        await expect(grid.locator("th", { hasText: "title" })).toBeVisible({ timeout: 30000 });
+
+        // Add a row
+        await grid.getByTestId("yjs-table-add-row").click();
+        const row = grid.locator("tbody tr").first();
+        await expect(row).toBeVisible({ timeout: 10000 });
+
+        // Get initial row count
+        const initialRowCount = await grid.locator("tbody tr").count();
+
+        // Click delete button
+        const deleteButton = row.locator('.delete-row');
+        await expect(deleteButton).toBeVisible();
+        await deleteButton.click();
+
+        // Dialog appears, cancel it
+        const dialog = page.getByRole('alertdialog', { name: 'Delete row' });
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+        // Ensure dialog is closed and row is still there
+        await expect(dialog).not.toBeVisible();
+        expect(await grid.locator("tbody tr").count()).toBe(initialRowCount);
+
+        // Click delete again
+        await deleteButton.click();
+
+        // Dialog appears, confirm it
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole('button', { name: 'Delete' }).click();
+
+        // Ensure dialog is closed and row is gone
+        await expect(dialog).not.toBeVisible();
+        await expect.poll(async () => grid.locator("tbody tr").count(), { timeout: 10000 }).toBe(initialRowCount - 1);
+    });
 });
