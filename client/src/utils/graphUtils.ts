@@ -1,7 +1,7 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("graphUtils");
 
-import { iterateItems } from "./itemTraversal";
+import { iterateItems, iterateItemsDeep } from "./itemTraversal";
 export interface GraphData {
     nodes: Array<{ id: string; name: string; }>;
     links: Array<{ source: string; target: string; }>;
@@ -65,10 +65,7 @@ export function buildGraph(pagesMaybe: unknown, projectTitle: string): GraphData
     const links: { source: string; target: string; }[] = [];
 
     for (const src of pages) {
-        const srcText = getText(src).toLowerCase();
-        const childArr = toArray((src as { items?: unknown; }).items || []);
-        const childTexts = childArr.map((i: unknown) => getText(i).toLowerCase());
-        const texts = [srcText, ...childTexts];
+        const texts = Array.from(iterateItemsDeep([src])).map(i => getText(i).toLowerCase());
 
         for (const dst of pageNodes) {
             if ((src as { id: string; }).id === (dst as { id: string; }).id) continue;

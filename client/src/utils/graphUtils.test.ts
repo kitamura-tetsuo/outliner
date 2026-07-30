@@ -58,4 +58,23 @@ describe("buildGraph", () => {
         expect(links).toContainEqual({ source: "1", target: "3" });
         expect(links.length).toBe(2);
     });
+
+    it("detects deep nested links", () => {
+        const pages = [
+            {
+                id: "1",
+                text: "Page1",
+                items: [{
+                    text: "No link here",
+                    items: [{
+                        text: "Link to [Page2]",
+                    }],
+                }],
+            },
+            { id: "2", text: "Page2", items: [] },
+        ];
+        const { links } = buildGraph(pages, "TestProject");
+        expect(links).toContainEqual({ source: "1", target: "2" });
+        expect(links.length).toBe(1);
+    });
 });
