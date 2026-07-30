@@ -397,7 +397,7 @@ class AliasPickerStore {
 
 export const aliasPickerStore = $state(new AliasPickerStore());
 
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
     (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore; }).aliasPickerStore =
         aliasPickerStore;
 }

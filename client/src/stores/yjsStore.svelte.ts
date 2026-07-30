@@ -207,6 +207,6 @@ class YjsStore {
 }
 
 export const yjsStore = $state(new YjsStore());
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
     window.__YJS_STORE__ = yjsStore;
 }

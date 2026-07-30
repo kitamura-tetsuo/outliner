@@ -46,6 +46,6 @@ export class PresenceStore {
 }
 
 export const presenceStore = $state(new PresenceStore());
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
     window.presenceStore = presenceStore;
 }

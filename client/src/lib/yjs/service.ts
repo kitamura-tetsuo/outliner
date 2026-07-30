@@ -4,6 +4,7 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { store as appStore } from "../../stores/store.svelte";
 import { safeGetNodeParent } from "../../utils/treeUtils";
 import { getLogger } from "../logger";
 
@@ -22,18 +23,6 @@ function childrenKeys(tree: YTree, parentKey: string): string[] {
         logger.warn({ parentKey, error: e }, "[service] childrenKeys error fetching children for parentKey");
         return [];
     }
-}
-
-function resolveOverlayStore(): typeof editorOverlayStore | undefined {
-    return (globalThis as typeof globalThis & {
-        editorOverlayStore?: typeof import("../../stores/EditorOverlayStore.svelte").editorOverlayStore;
-    }).editorOverlayStore ?? editorOverlayStore;
-}
-
-function resolvePresenceStore(): typeof presenceStore | undefined {
-    return (globalThis as typeof globalThis & {
-        presenceStore?: typeof import("../../stores/PresenceStore.svelte").presenceStore;
-    }).presenceStore ?? presenceStore;
 }
 
 function resolveUserColor(userId: string, provided?: string): string {
@@ -65,9 +54,7 @@ function applyPresenceToOverlay(
     if (!overlay || !user) return;
 
     // Filter out presence that belongs to a different page
-    const currentPage = (window as Window & typeof globalThis & {
-        appStore?: { currentPage?: { id?: string; }; };
-    }).appStore?.currentPage;
+    const currentPage = appStore.currentPage;
 
     // If we're not on any page, or the presence doesn't match the current page, clear it
     // NOTE: in tests, currentPage may not exist. Allow when presence.pageId is missing
@@ -244,11 +231,11 @@ export const yjsService = {
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
             // Prefer the globally-registered store when running in the browser.
-            const target = resolvePresenceStore();
+            const target = presenceStore;
             if (!target) return;
             const states = awareness.getStates();
             const clientId = (awareness as Awareness & { clientID: number; }).clientID;
-            const overlay = resolveOverlayStore();
+            const overlay = editorOverlayStore;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
@@ -288,7 +275,7 @@ export const yjsService = {
     },
 
     reapplyAllPresences(awareness: Awareness) {
-        const overlay = resolveOverlayStore();
+        const overlay = editorOverlayStore;
         if (!overlay) return;
         const states = awareness.getStates();
         const clientId = (awareness as Awareness & { clientID: number; }).clientID;
@@ -304,7 +291,7 @@ export const yjsService = {
     bindPagePresence(awareness: Awareness) {
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
-            const overlay = resolveOverlayStore();
+            const overlay = editorOverlayStore;
             if (!overlay) return; // no-op when overlay store not present
             const states = awareness.getStates();
             const clientId = (awareness as Awareness & { clientID: number; }).clientID;

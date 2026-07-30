@@ -1976,7 +1976,7 @@ export class EditorOverlayStore {
 export const editorOverlayStore = $state(new EditorOverlayStore());
 
 // Expose to global scope for testing
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
     (window as Window & typeof globalThis & {
         DEBUG_MODE?: boolean;
         generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };

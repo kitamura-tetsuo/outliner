@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
 import { Items } from "../../schema/yjs-schema";
+import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { store as appStore } from "../../stores/store.svelte";
 import { yjsService } from "./service";
 
 describe("yjsService", () => {
@@ -34,80 +37,81 @@ describe("yjsService", () => {
         expect(presence?.cursor?.itemId).toBe("i1");
     });
 
-    it("binds project presence to store", () => {
+    it("binds project presence to store", async () => {
         const awareness = new Awareness(new Y.Doc());
-        // Provide a minimal global presence store to avoid importing .svelte.ts
-        const presenceStore = {
-            users: {} as Record<string, unknown>,
-            setUser(u: { userId: string; [key: string]: unknown; }) {
-                this.users = { ...this.users, [u.userId]: u };
-            },
-            removeUser(id: string) {
-                const updatedUsers = { ...this.users };
-                delete updatedUsers[id];
-                this.users = updatedUsers;
-            },
-        };
+        presenceStore.reset();
 
-        (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
         const unbind = yjsService.bindProjectPresence(awareness);
-        awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
-        awareness.setLocalStateField("user", null);
+
+        // mock remote change emit
+        const awarenessWithEmit = awareness as unknown as { emit: (event: string, args: unknown[]) => void; };
+
+        // We can just add a state via internal mechanisms then trigger the event
+        awareness.getStates().set(1, { user: { userId: "u1", name: "Alice" } });
+        awarenessWithEmit.emit("change", [
+            { added: [1], updated: [], removed: [] },
+            "test",
+        ]);
+
+        await new Promise(r => setTimeout(r, 10));
+
+        const userList = Object.values(presenceStore.users);
+        expect(userList).toHaveLength(1);
+        expect(userList.find(u => u.userId === "u1")?.userName).toBe("Alice");
+
+        awarenessWithEmit.emit("change", [
+            { added: [], updated: [], removed: [1] },
+            "test",
+        ]);
         unbind();
     });
 
-    it("binds page presence to overlay", () => {
+    it("binds page presence to overlay", async () => {
         const awareness = new Awareness(new Y.Doc());
-        // Provide a minimal global overlay store
-        type CursorState = { itemId: string; offset: number; userId: string; };
-        const editorOverlayStore = {
-            cursors: {} as Record<string, CursorState>,
-            selections: {} as Record<string, unknown>,
-            setCursor({ itemId, offset, userId }: { itemId: string; offset: number; userId: string; }) {
-                this.cursors[userId] = { itemId, offset, userId };
-            },
-            setSelection({ userId }: { userId: string; }) {
-                this.selections[userId] = { userId };
-            },
-            clearCursorAndSelection(userId: string) {
-                const updatedCursors = { ...this.cursors };
-                delete updatedCursors[userId];
-                this.cursors = updatedCursors;
-            },
-            clearSelectionForUser(userId: string) {
-                const updatedSelections = { ...this.selections };
-                delete updatedSelections[userId];
-                this.selections = updatedSelections;
-            },
-        };
+        Object.keys(editorOverlayStore.cursors).forEach(k => delete editorOverlayStore.cursors[k]);
 
-        (globalThis as unknown as { editorOverlayStore: unknown; }).editorOverlayStore = editorOverlayStore;
         const unbind = yjsService.bindPagePresence(awareness);
 
-        // seed local state (ignored by overlay sync)
-        awareness.setLocalStateField("user", { userId: "self", name: "Self" });
-        awareness.setLocalStateField("presence", { cursor: { itemId: "root", offset: 0 } });
+        appStore.currentPage = { id: "test-page" } as unknown as import("../../schema/yjs-schema").Item;
 
-        // simulate remote collaborator
-        const states = awareness.getStates();
-        states.set(42, {
-            user: { userId: "u2", name: "Bob" },
-            presence: { cursor: { itemId: "i1", offset: 0 } },
-        });
         const awarenessWithEmit = awareness as unknown as { emit: (event: string, args: unknown[]) => void; };
+
+        awareness.getStates().set(
+            42,
+            {
+                user: { userId: "u2", name: "Bob" },
+                presence: { cursor: { itemId: "i1", offset: 0 } },
+                pageId: "test-page",
+            } as unknown as {
+                user: { userId: string; name: string; color?: string; };
+                presence?: { cursor: { itemId: string; offset: number; }; };
+                pageId?: string;
+            },
+        );
+
         awarenessWithEmit.emit("change", [
-            { added: new Set([42]), updated: new Set(), removed: new Set() },
+            { added: [42], updated: [], removed: [] },
             "test",
         ]);
 
-        const cursor = Object.values(editorOverlayStore.cursors).find(c => c.userId === "u2");
+        await new Promise(r => setTimeout(r, 10));
+
+        const cursor = Object.values(editorOverlayStore.cursors).find((c: unknown) =>
+            (c as { userId: string; }).userId === "u2"
+        ) as { itemId: string; } | undefined;
+
         expect(cursor?.itemId).toBe("i1");
 
         awarenessWithEmit.emit("change", [
-            { added: new Set(), updated: new Set(), removed: new Set([42]) },
+            { added: [], updated: [], removed: [42] },
             "test",
         ]);
+
+        await new Promise(r => setTimeout(r, 10));
+
+        expect(
+            Object.values(editorOverlayStore.cursors).find((c: unknown) => (c as { userId: string; }).userId === "u2"),
+        ).toBeUndefined();
         unbind();
     });
 });

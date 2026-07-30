@@ -50,7 +50,7 @@ let isDatabaseSidebarOpen = $state(false);
 let initError: string | null = $state(null);
 
 // Fallback exposure to global (satisfy window.generalStore early)
-if (browser && typeof window !== "undefined") {
+if (browser && typeof window !== "undefined" && import.meta.env.MODE === "test") {
     window.generalStore =
         window.generalStore || appStore;
     window.appStore =

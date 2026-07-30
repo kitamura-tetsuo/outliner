@@ -1,0 +1,356 @@
+
+> outliner@0.0.1 test:unit
+> vitest run --project unit --coverage src/lib/yjs/service.test.ts
+
+Loading test environment variables from .env.test
+⟐ injected env (36) from .env.test
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ pure: [] }`
+Loading test environment variables from .env.test
+⟐ injected env (0) from .env.test
+Loading test environment variables from .env.test
+⟐ injected env (0) from .env.test
+Loading test environment variables from .env.test
+⟐ injected env (0) from .env.test
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ pure: [] }`
+[sentry-vite-plugin] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+[sentry-vite-plugin] Info: Sending telemetry data on issues and performance to Sentry. To disable telemetry, set `options.telemetry` to `false`.
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.10 [39m[90m/app/client[39m
+      [2mCoverage enabled with [22m[33mv8[39m
+
+{"level":20,"time":1785434247444,"pid":536523,"hostname":"devbox","module":"env","msg":"Using value for VITE_FIREBASE_FUNCTIONS_URL: http://127.0.0.1:57070"}
+{"level":20,"time":1785434247445,"pid":536523,"hostname":"devbox","module":"UserManager.ts","msg":"Initializing..."}
+{"level":30,"time":1785434247447,"pid":536523,"hostname":"devbox","module":"firebase-app.ts","file":"firebase-app.ts","msg":"Firebase app: Initialized new instance"}
+{"level":20,"time":1785434247458,"pid":536523,"hostname":"devbox","module":"UserManager.ts","msg":"Firebase Auth initialized, setting up listener"}
+{"level":20,"time":1785434247458,"pid":536523,"hostname":"devbox","module":"UserManager.ts","isTestEnv":true,"isProduction":false,"useEmulator":true,"VITE_USE_FIREBASE_EMULATOR":"true","VITE_IS_TEST":"true","MODE":"test","DEV":true,"msg":"[DEBUG] UserManager Init"}
+{"level":30,"time":1785434247458,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"Connecting to Auth emulator"}
+{"level":30,"time":1785434247459,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"Connecting to Firebase Auth emulator at 127.0.0.1:59099"}
+{"level":30,"time":1785434247459,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"Successfully connected to Firebase Auth emulator at 127.0.0.1:59099"}
+{"level":30,"time":1785434247459,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"Successfully connected to Auth emulator"}
+{"level":30,"time":1785434247460,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"[UserManager] E2E test environment detected, using Firebase auth emulator with test account"}
+{"level":30,"time":1785434247460,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"[UserManager] Attempting E2E test login with test@example.com"}
+{"level":20,"time":1785434247463,"pid":536523,"hostname":"devbox","module":"UserManager.ts","hasUser":false,"msg":"onIdTokenChanged triggered"}
+{"level":30,"time":1785434247463,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"User signed out via onIdTokenChanged"}
+{"level":20,"time":1785434247463,"pid":536523,"hostname":"devbox","module":"UserManager.ts","msg":"User signed out"}
+{"level":20,"time":1785434247490,"pid":536523,"hostname":"devbox","module":"firebase-app.ts","msg":"Firebase app: Using globalThis cached instance"}
+{"level":20,"time":1785434247490,"pid":536523,"hostname":"devbox","module":"firestoreStore.svelte.ts","msg":"Firebase app initialized via central management"}
+{"level":20,"time":1785434247492,"pid":536523,"hostname":"devbox","module":"firestoreStore.svelte.ts","msg":"Connecting to Firestore emulator at 127.0.0.1:58080"}
+{"level":20,"time":1785434247492,"pid":536523,"hostname":"devbox","module":"firestoreStore.svelte.ts","msg":"Successfully connected to Firestore emulator"}
+{"level":40,"time":1785434247492,"pid":536523,"hostname":"devbox","module":"firestoreStore.svelte.ts","file":"firestoreStore.svelte.ts","msg":"[firestoreStore] Firestore sync is DISABLED because environment is identified as non-E2E test environment. (isProd=false, isTest=true)"}
+{"level":20,"time":1785434247530,"pid":536523,"hostname":"devbox","module":"UserManager.ts","hasUser":true,"userId":"ke8B7gYZZGVspL8AuOw6URuHw1ye","email":"test@example.com","msg":"onIdTokenChanged triggered"}
+{"level":30,"time":1785434247530,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","userId":"ke8B7gYZZGVspL8AuOw6URuHw1ye","msg":"User signed in/token refreshed via onIdTokenChanged"}
+{"level":20,"time":1785434247530,"pid":536523,"hostname":"devbox","module":"UserManager.ts","uid":"ke8B7gYZZGVspL8AuOw6URuHw1ye","msg":"handleUserSignedIn started"}
+{"level":30,"time":1785434247531,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","userId":"ke8B7gYZZGVspL8AuOw6URuHw1ye","listenerCount":0,"msg":"Notifying listeners of successful authentication"}
+{"level":20,"time":1785434247531,"pid":536523,"hostname":"devbox","module":"UserManager.ts","msg":"handleUserSignedIn completed successfully"}
+{"level":30,"time":1785434247531,"pid":536523,"hostname":"devbox","module":"UserManager.ts","file":"UserManager.ts","msg":"[UserManager] Test user login successful"}
+{"level":20,"time":1785434247841,"pid":536523,"hostname":"devbox","module":"store","msg":"INIT: Provisional Project set in store.svelte.ts"}
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/yjs/service.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 118[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 17:57:24
+[2m   Duration [22m 12.53s[2m (transform 1.93s, setup 2.06s, import 596ms, tests 118ms, environment 923ms)[22m
+
+[34m % [39m[2mCoverage report from [22m[33mv8[39m
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |    2.91 |     2.21 |       4 |    3.33 |
+ src               |       0 |      100 |       0 |       0 |
+  hooks.client.ts  |       0 |      100 |     100 |       0 | 4
+  hooks.server.ts  |       0 |      100 |       0 |       0 | 7-20
+  hooks.ts         |       0 |      100 |       0 |       0 | 4-5
+ src/auth          |    39.4 |     36.8 |   46.42 |      40 |
+  UserManager.ts   |    39.4 |     36.8 |   46.42 |      40 | ...75-489,497-534
+ src/components    |       0 |        0 |       0 |       0 |
+  ...Picker.svelte |       0 |        0 |       0 |       0 | 5-142
+  ...anager.svelte |       0 |        0 |       0 |       0 | 9-173
+  ...ponent.svelte |       0 |        0 |       0 |       0 | 34-282
+  ...edHome.svelte |       0 |      100 |       0 |       0 | 14-53
+  ...kPanel.svelte |       0 |        0 |       0 |       0 | 33-162
+  ...dcrumb.svelte |       0 |        0 |       0 |       0 | 23-36
+  Checklist.svelte |       0 |        0 |       0 |       0 | 42-149
+  ...Thread.svelte |       0 |        0 |       0 |       0 | 23-324
+  ...Dialog.svelte |       0 |        0 |       0 |       0 | 27-93
+  ...idebar.svelte |       0 |        0 |       0 |       0 | 16-69
+  ...verlay.svelte |       0 |        0 |       0 |       0 | 5-1757
+  ...bugger.svelte |       0 |        0 |       0 |       0 | 7-80
+  ...xtArea.svelte |       0 |        0 |       0 |       0 | 6-300
+  GraphView.svelte |       0 |        0 |       0 |       0 | 4-342
+  ...ontent.svelte |       0 |      100 |       0 |       0 | 7-30
+  ...review.svelte |       0 |        0 |       0 |       0 | 19-214
+  Loader.svelte    |       0 |      100 |       0 |       0 | 14-19
+  ...icator.svelte |       0 |        0 |       0 |       0 | 39-296
+  ...rAlert.svelte |       0 |        0 |       0 |       0 | 19-39
+  ...erBase.svelte |       0 |        0 |       0 |       0 | 5-114
+  ...erItem.svelte |       0 |        0 |       0 |       0 | 7-2377
+  ...mAlias.svelte |       0 |        0 |       0 |       0 | 24-153
+  ...egment.svelte |       0 |        0 |       0 |       0 | 15-69
+  ...hments.svelte |       0 |        0 |       0 |       0 | 33-103
+  ...Button.svelte |       0 |        0 |       0 |       0 | 19-32
+  ...nderer.svelte |       0 |        0 |       0 |       0 | 19-28
+  ...lector.svelte |       0 |        0 |       0 |       0 | 15-32
+  ...xtMenu.svelte |       0 |        0 |       0 |       0 | 27-113
+  ...eCount.svelte |       0 |      100 |       0 |       0 | 17
+  ...oolbar.svelte |       0 |        0 |       0 |       0 | 64-182
+  ...erTree.svelte |       0 |        0 |       0 |       0 | 52-2315
+  PageList.svelte  |       0 |        0 |       0 |       0 | 51-246
+  ...stItem.svelte |       0 |        0 |       0 |       0 | 5-121
+  ...vatars.svelte |       0 |        0 |       0 |       0 | 13-33
+  ...lector.svelte |       0 |        0 |       0 |       0 | 28-275
+  SearchBox.svelte |       0 |        0 |       0 |       0 | 2-440
+  ...hPanel.svelte |       0 |        0 |       0 |       0 | 4-472
+  Sidebar.svelte   |       0 |        0 |       0 |       0 | 28-561
+  ...alette.svelte |       0 |        0 |       0 |       0 | 7-33
+  ...fModal.svelte |       0 |        0 |       0 |       0 | 38-329
+  Toolbar.svelte   |       0 |        0 |       0 |       0 | 6-189
+ ...nents/calendar |       0 |        0 |       0 |       0 |
+  ...rBlock.svelte |       0 |        0 |       0 |       0 | 57-176
+  ...Dialog.svelte |       0 |        0 |       0 |       0 | 90-266
+  ...Dialog.svelte |       0 |        0 |       0 |       0 | 44-115
+  ...tChart.svelte |       0 |        0 |       0 |       0 | 27-390
+  ...meGrid.svelte |       0 |        0 |       0 |       0 | 108-184
+  ...thGrid.svelte |       0 |        0 |       0 |       0 | 50-205
+  ...Editor.svelte |       0 |        0 |       0 |       0 | 110-263
+  ...meGrid.svelte |       0 |        0 |       0 |       0 | 72-344
+  ...arView.svelte |       0 |        0 |       0 |       0 | 143-749
+ ...nents/schedule |       0 |        0 |       0 |       0 |
+  ...Editor.svelte |       0 |        0 |       0 |       0 | 26-285
+  ...leList.svelte |       0 |        0 |       0 |       0 | 25-97
+ ...nents/yjstable |       0 |        0 |       0 |       0 |
+  ...tPanel.svelte |       0 |        0 |       0 |       0 | 27-93
+  TableGrid.svelte |       0 |        0 |       0 |       0 | 65-199
+  ...ePanel.svelte |       0 |        0 |       0 |       0 | 22-146
+  ...Editor.svelte |       0 |        0 |       0 |       0 | 40-132
+  ...Editor.svelte |       0 |        0 |       0 |       0 | 39-111
+  ...eBlock.svelte |       0 |        0 |       0 |       0 | 70-262
+  ...leView.svelte |       0 |        0 |       0 |       0 | 52-305
+  ...Components.ts |       0 |        0 |       0 |       0 | 22-60
+ ...yjstable/cells |       0 |        0 |       0 |       0 |
+  ...oxCell.svelte |       0 |        0 |       0 |       0 | 20-24
+  DateCell.svelte  |       0 |        0 |       0 |       0 | 19-30
+  ...erCell.svelte |       0 |        0 |       0 |       0 | 18-59
+  ...ctCell.svelte |       0 |        0 |       0 |       0 | 21-48
+  TextCell.svelte  |       0 |        0 |       0 |       0 | 18-50
+ src/lib           |    4.68 |     3.78 |   10.67 |    4.68 |
+  Cursor.ts        |    1.65 |        0 |    2.73 |    1.78 | 49-62,85-1368
+  CustomKeyMap.ts  |      10 |        0 |       0 |   10.71 | 11-84
+  ...entHandler.ts |    0.54 |     0.08 |   19.75 |    0.58 | ...1152,1164-2627
+  TreeDnD.ts       |       0 |        0 |       0 |       0 | 8-159
+  ...kCollector.ts |       0 |        0 |       0 |       0 | 12-223
+  debug.ts         |       0 |        0 |       0 |       0 | 10-139
+  demoSeed.ts      |       0 |        0 |       0 |       0 | 3-85
+  env.ts           |   36.84 |    24.39 |   33.33 |   43.75 | 19,30-53
+  firebase-app.ts  |   57.44 |    38.63 |   83.33 |   57.77 | ...6,83-86,97-125
+  ...nctionsUrl.ts |    5.26 |        0 |       0 |    5.26 | 17-77
+  index.ts         |       0 |        0 |       0 |       0 | 6-28
+  ...iewHandler.ts |       0 |        0 |       0 |       0 | 14-452
+  lock.ts          |       0 |        0 |       0 |       0 | 5-55
+  logger.ts        |   47.16 |    30.33 |   43.33 |   47.29 | ...60-473,486-517
+  ...Doc.svelte.ts |       0 |        0 |       0 |       0 | 2-167
+  pagePreview.ts   |       0 |        0 |       0 |       0 | 2-85
+  ...ingMonitor.ts |       0 |        0 |       0 |       0 | 2-294
+  ...ctSnapshot.ts |   12.76 |    11.82 |   13.33 |    12.6 | ...,78-89,101-270
+  ...leProvider.ts |       0 |        0 |       0 |       0 | 8-17
+  ...ersistence.ts |       0 |        0 |       0 |       0 | 2-72
+  ...ice.svelte.ts |       0 |        0 |       0 |       0 | 11-668
+ src/lib/cursor    |    0.37 |     0.08 |    2.56 |    0.39 |
+  CursorEditor.ts  |    0.52 |     0.25 |    5.88 |    0.56 | 42-984
+  ...Formatting.ts |       0 |        0 |       0 |       0 | 12-221
+  ...ttingUtils.ts |       0 |      100 |       0 |       0 | 7-42
+  ...Navigation.ts |    0.53 |        0 |    5.55 |    0.54 | 21-62,70-977
+  ...ationUtils.ts |       0 |        0 |       0 |       0 | 6-161
+  ...rSelection.ts |       0 |        0 |       0 |       0 | 7-815
+  ...ctionUtils.ts |       0 |        0 |       0 |       0 | 11-96
+  ...rTextUtils.ts |    0.99 |        0 |       0 |    1.12 | 23-225
+  index.ts         |       0 |        0 |       0 |       0 |
+ src/lib/search    |    0.86 |        0 |       0 |    0.95 |
+  index.ts         |    1.04 |        0 |       0 |    1.16 | 32-185
+  projectSearch.ts |       0 |        0 |       0 |       0 | 20-66
+ src/lib/yjs       |   16.92 |    12.42 |   20.93 |   17.53 |
+  connection.ts    |       0 |        0 |       0 |       0 | 3-648
+  roomPath.ts      |       0 |        0 |       0 |       0 | 2-17
+  roomSyncState.ts |   34.04 |     5.88 |   14.28 |   34.78 | 16-72
+  service.ts       |   56.15 |       42 |   59.09 |   62.64 | ...78-287,321-374
+  testHelpers.ts   |       0 |        0 |       0 |       0 | 2-607
+  tokenRefresh.ts  |       0 |        0 |       0 |       0 | 2-105
+ src/routes        |       0 |        0 |       0 |       0 |
+  +layout.svelte   |       0 |        0 |       0 |       0 | 42-262
+  +layout.ts       |       0 |      100 |     100 |       0 | 3-4
+  +page.svelte     |       0 |        0 |       0 |       0 | 11-14
+ ...utes/[project] |       0 |        0 |       0 |       0 |
+  +layout.svelte   |       0 |        0 |       0 |       0 | 4-87
+  +page.svelte     |       0 |        0 |       0 |       0 | 17-222
+ ...roject]/[page] |       0 |        0 |       0 |       0 |
+  +layout.svelte   |       0 |        0 |       0 |       0 | 7-43
+  +layout.ts       |       0 |        0 |     100 |       0 | 1
+  +page.svelte     |       0 |        0 |       0 |       0 | 30-617
+ ...t]/[page]/diff |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 4-111
+ ...page]/schedule |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 4-663
+ ...project]/graph |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 14-35
+  +page.ts         |       0 |      100 |     100 |       0 | 1
+ ...ject]/settings |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 5-313
+ .../api/[...path] |       0 |        0 |       0 |       0 |
+  +server.ts       |       0 |        0 |       0 |       0 | 2-67
+ ...e-health-check |       0 |        0 |       0 |       0 |
+  +server.ts       |       0 |        0 |       0 |       0 | 2-56
+ ...list-schedules |       0 |        0 |       0 |       0 |
+  +server.ts       |       0 |        0 |       0 |       0 | 2-66
+ ...i/save-project |       0 |        0 |       0 |       0 |
+  +server.ts       |       0 |        0 |       0 |       0 | 2-59
+ ...ct]/[calendar] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 20-181
+ ...utes/checklist |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 8-22
+ ...clipboard-test |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 7-395
+  +page.ts         |       0 |      100 |     100 |       0 | 1
+ ...routes/counter |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 |
+ src/routes/debug  |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 25-305
+ ...tes/debug-test |       0 |      100 |       0 |       0 |
+  +page.svelte     |       0 |      100 |       0 |       0 | 13-29
+ src/routes/demo   |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 11-182
+  +page.ts         |       0 |      100 |     100 |       0 | 1-2
+ ...es/demo/[page] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 24-252
+ ...tes/demo/graph |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 16-116
+  +page.ts         |       0 |        0 |     100 |       0 | 1
+ ...demo/paraglide |       0 |      100 |       0 |       0 |
+  +page.svelte     |       0 |      100 |       0 |       0 | 19-35
+  +page.ts         |       0 |      100 |     100 |       0 | 1
+ ...ct-unavailable |       0 |      100 |       0 |       0 |
+  +page.svelte     |       0 |      100 |       0 |       0 | 5-10
+ src/routes/graph  |       0 |      100 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 |
+  +page.ts         |       0 |      100 |     100 |       0 | 1
+ src/routes/min    |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 6-101
+ ...rojects/delete |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 17-154
+ ...s/projects/new |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 23-198
+ ...outes/schedule |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 4-82
+ ...ject]/[ruleId] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 30-252
+ ...outes/settings |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 8-41
+ ...ings/[project] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 5-300
+ .../share/[token] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 11-89
+ ...oject]/[table] |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 21-218
+ ...able]/schedule |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 20-255
+ ...s/yjs-outliner |       0 |        0 |       0 |       0 |
+  +page.svelte     |       0 |        0 |       0 |       0 | 13-48
+ src/schema        |      50 |      100 |       0 |     100 |
+  app-schema.ts    |      50 |      100 |       0 |     100 |
+  yjs-schema.ts    |       0 |        0 |       0 |       0 |
+ src/services      |       0 |        0 |       0 |       0 |
+  apiKeyService.ts |       0 |        0 |       0 |       0 | 4-64
+  ...entService.ts |       0 |        0 |       0 |       0 | 8-40
+  ...mentUpload.ts |       0 |        0 |       0 |       0 | 2-250
+  ...ice.svelte.ts |       0 |        0 |       0 |       0 | 27-338
+  ...ortService.ts |       0 |        0 |       0 |       0 | 4-175
+  index.ts         |       0 |        0 |       0 |       0 |
+  ...uleService.ts |       0 |        0 |       0 |       0 | 5-144
+  ...hotService.ts |       0 |        0 |       0 |       0 | 11-88
+ ...vices/calendar |       0 |        0 |       0 |       0 |
+  ...darBinding.ts |       0 |        0 |       0 |       0 | 18-58
+  ...ritability.ts |       0 |        0 |       0 |       0 | 20-150
+  ...Candidates.ts |       0 |        0 |       0 |       0 | 16-35
+  ...ionHistory.ts |       0 |        0 |       0 |       0 | 30-89
+  ...ditability.ts |       0 |        0 |       0 |       0 | 20-23
+  ...darEntries.ts |       0 |        0 |       0 |       0 | 60-142
+  ...ntryCreate.ts |       0 |        0 |       0 |       0 | 39-68
+  ...ntryDelete.ts |       0 |        0 |       0 |       0 | 38-90
+  ...EntryWrite.ts |       0 |        0 |       0 |       0 | 41-89
+  ...anttLayout.ts |       0 |        0 |       0 |       0 | 42-348
+  ...GanttWrite.ts |       0 |        0 |       0 |       0 | 39-113
+  ...rGridRange.ts |       0 |        0 |       0 |       0 | 31-267
+  ...arGrouping.ts |       0 |        0 |       0 |       0 | 57-188
+  ...rLaneColor.ts |       0 |        0 |       0 |       0 | 10-35
+  ...rLaneWrite.ts |       0 |        0 |       0 |       0 | 31-80
+  ...ndarLocale.ts |       0 |        0 |       0 |       0 | 12-20
+  ...GridLayout.ts |       0 |        0 |       0 |       0 | 10-59
+  ...cPlacement.ts |       0 |        0 |       0 |       0 | 25-92
+  ...ueryRunner.ts |       0 |        0 |       0 |       0 | 27-102
+  ...Candidates.ts |       0 |        0 |       0 |       0 | 20-30
+  ...darService.ts |       0 |        0 |       0 |       0 | 15-280
+  ...GridLayout.ts |       0 |        0 |       0 |       0 | 9-166
+  ...arTimezone.ts |       0 |        0 |       0 |       0 | 11-42
+  ...rViewRange.ts |       0 |        0 |       0 |       0 | 29-135
+  pgInterval.ts    |       0 |        0 |       0 |       0 | 15-82
+  ...nceEditing.ts |       0 |        0 |       0 |       0 | 39-181
+ ...vices/schedule |       0 |        0 |       0 |       0 |
+  ...uleService.ts |       0 |        0 |       0 |       0 | 34-101
+ src/services/undo |   23.18 |     4.16 |    5.55 |   28.57 |
+  undoRouter.ts    |   23.18 |     4.16 |    5.55 |   28.57 | ...,85-89,101-171
+ ...vices/yjstable |       0 |        0 |       0 |       0 |
+  itemBinding.ts   |       0 |        0 |       0 |       0 | 15-55
+  itemsRelation.ts |       0 |        0 |       0 |       0 | 37-746
+  pgliteService.ts |       0 |        0 |       0 |       0 | 14-145
+  queryAnalysis.ts |       0 |        0 |       0 |       0 | 23-139
+  ...Formatting.ts |       0 |        0 |       0 |       0 | 7-43
+  ...eExpansion.ts |       0 |        0 |       0 |       0 | 27-72
+  ...onProvider.ts |       0 |        0 |       0 |       0 | 86-171
+  ...onRowWrite.ts |       0 |        0 |       0 |       0 | 33-77
+  ...rospection.ts |       0 |        0 |       0 |       0 | 51-255
+  sqlNames.ts      |       0 |        0 |       0 |       0 | 16-208
+  tableDocs.ts     |       0 |        0 |       0 |       0 | 18-224
+  tableEngine.ts   |       0 |        0 |       0 |       0 | 35-370
+  tablePresets.ts  |       0 |        0 |       0 |       0 | 25-128
+  ...onProvider.ts |       0 |        0 |       0 |       0 | 21-92
+  ...yncAdapter.ts |       0 |        0 |       0 |       0 | 47-515
+  valueCasting.ts  |       0 |        0 |       0 |       0 | 12-95
+ src/stores        |   11.81 |     7.22 |    9.39 |   12.37 |
+  ...ore.svelte.ts |    5.96 |     2.17 |       0 |    6.22 | 24-27,32-394
+  ...ore.svelte.ts |    5.21 |     2.08 |       0 |    5.74 | 31-411
+  ...ore.svelte.ts |   12.23 |     9.49 |   10.86 |   12.84 | ...1816,1832-1972
+  ...rViewModel.ts |       0 |        0 |       0 |       0 | 5-439
+  ...ore.svelte.ts |       0 |        0 |       0 |       0 | 3-46
+  ...ore.svelte.ts |   83.33 |     62.5 |      75 |   83.33 | 22,34-39
+  ...ore.svelte.ts |       0 |        0 |       0 |       0 | 3-44
+  ...ore.svelte.ts |       0 |        0 |       0 |       0 | 2-71
+  ...ore.svelte.ts |       0 |        0 |       0 |       0 | 4-26
+  colorForUser.ts  |     100 |      100 |     100 |     100 |
+  ...ore.svelte.ts |   16.28 |    12.56 |    3.84 |   16.43 | ...42-531,559-582
+  ...ore.svelte.ts |       0 |        0 |       0 |       0 | 2-135
+  ...ore.svelte.ts |       0 |      100 |       0 |       0 | 2-7
+  store.svelte.ts  |    32.4 |    14.43 |      40 |   33.91 | ...18-395,405,428
+  ...ore.svelte.ts |    8.91 |     5.35 |       0 |       9 | 23-146,160-205
+ src/types         |       0 |        0 |       0 |       0 |
+  global.d.ts      |       0 |        0 |       0 |       0 |
+  ...te5-shim.d.ts |       0 |        0 |       0 |       0 |
+  y-protocols.d.ts |       0 |        0 |       0 |       0 |
+  ...ugmented.d.ts |       0 |        0 |       0 |       0 |
+  ...eredtree.d.ts |       0 |        0 |       0 |       0 |
+  yjs-types.ts     |       0 |        0 |       0 |       0 |
+ src/utils         |    3.09 |     0.21 |   27.27 |    3.32 |
+  ...xFormatter.ts |    4.63 |     0.32 |   48.83 |    4.86 | ...1059,1085-1198
+  ...boxHelpers.ts |       0 |        0 |       0 |       0 | 4-58
+  dateUtils.ts     |       0 |        0 |       0 |       0 | 2-39
+  ...ursorUtils.ts |       0 |        0 |       0 |       0 | 16-54
+  domUtils.ts      |    6.25 |        0 |       0 |    6.66 | 6,12-26
+  graphUtils.ts    |       0 |        0 |       0 |       0 | 2-84
+  itemTraversal.ts |       0 |        0 |       0 |       0 |
+  ...ighlighter.ts |       0 |        0 |       0 |       0 | 7-43
+  pageUtils.ts     |       0 |        0 |       0 |       0 | 2-50
+  pathUtils.ts     |       0 |      100 |       0 |       0 | 8
+  textUtils.ts     |       0 |        0 |       0 |       0 | 14-96
+  treeUtils.ts     |       0 |        0 |       0 |       0 |
+  typeGuards.ts    |       0 |        0 |       0 |       0 | 27-55
+  urlUtils.ts      |       0 |        0 |       0 |       0 | 7-11
+ src/yjs           |       0 |        0 |       0 |       0 |
+  YjsClient.ts     |       0 |        0 |       0 |       0 | 2-254
+-------------------|---------|----------|---------|---------|-------------------

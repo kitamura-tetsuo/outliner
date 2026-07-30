@@ -88,7 +88,7 @@ if (
         || window.__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
         window.__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
         window.__FLUID_CLIENT_REGISTRY__ = registry;

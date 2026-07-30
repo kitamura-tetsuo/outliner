@@ -16,6 +16,14 @@ describe("ENV-* Production Build Security Guard", () => {
         }
 
         const forbiddenStrings = [
+            { pattern: "window" + "." + "__Y" + "JS_STORE__=", readable: "Leaked Yjs Store" },
+            { pattern: "window" + "." + "__FLUID_CLIENT_RE" + "GISTRY__=", readable: "Leaked Fluid Registry" },
+            { pattern: "window" + "." + "editorOverlay" + "Store=", readable: "Leaked Editor Overlay Store" },
+            { pattern: "window" + "." + "presence" + "Store=", readable: "Leaked Presence Store" },
+            { pattern: "window" + "." + "commandPalette" + "Store=", readable: "Leaked Command Palette Store" },
+            { pattern: "window" + "." + "aliasPicker" + "Store=", readable: "Leaked Alias Picker Store" },
+            { pattern: "window" + "." + "general" + "Store=", readable: "Leaked General Store" },
+            { pattern: "window" + "." + "app" + "Store=", readable: "Leaked App Store" },
             { pattern: 'alg:"none"', readable: "alg:none mock token generator" },
             { pattern: 'alg: "none"', readable: "alg:none mock token generator" },
             { pattern: "127.0.0.1:57070", readable: "Localhost Firebase function URL" },

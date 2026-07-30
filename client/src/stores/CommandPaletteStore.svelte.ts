@@ -416,6 +416,6 @@ class CommandPaletteStore {
 export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
     window.commandPaletteStore = commandPaletteStore;
 }

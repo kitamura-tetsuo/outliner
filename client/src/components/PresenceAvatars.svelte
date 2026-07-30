@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onMount } from "svelte";
 // Ensure presence store side-effects (window.presenceStore) are initialized
-import "../stores/PresenceStore.svelte";
+import { presenceStore } from "../stores/PresenceStore.svelte";
 
 type PresenceUser = { userId: string; userName: string; color: string };
 
@@ -9,7 +9,7 @@ let users = $state<PresenceUser[]>([]);
 
 function readUsers(): PresenceUser[] {
   try {
-    const store = (window as Window).presenceStore;
+    const store = presenceStore;
     return store ? Object.values(store.users || {}) : [];
   } catch { return []; }
 }
