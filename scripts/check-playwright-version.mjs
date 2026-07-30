@@ -58,6 +58,43 @@ if (driver !== test) {
     );
 }
 
+// playwright-core owns the browser registry. A direct dependency on it gets
+// hoisted to the top level, where it can shadow the copy the test runner
+// expects -- which is how a lone Dependabot bump of playwright-core drifts the
+// required browser revision away from what the image provides. @playwright/mcp
+// and mcp-playwright pin their own nested copies and version independently, so
+// only the top level and the runner's own copy are checked here.
+const hoistedCore = lock.packages["node_modules/playwright-core"]?.version;
+if (hoistedCore !== undefined && hoistedCore !== test) {
+    problems.push(
+        `${LOCKFILE} hoists playwright-core ${hoistedCore} to the top level while @playwright/test is ${test}.\n`
+            + `  playwright-core is not imported anywhere; it is pulled in as a direct dependency of client/package.json.\n`
+            + `  Fix: drop it (\`npm uninstall playwright-core\` in client/) or align it with @playwright/test.`,
+    );
+}
+const runnerCore = lock.packages["node_modules/playwright/node_modules/playwright-core"]?.version
+    ?? hoistedCore;
+if (runnerCore !== undefined && runnerCore !== test) {
+    problems.push(
+        `${LOCKFILE} resolves the playwright-core behind playwright to ${runnerCore} but @playwright/test to ${test}; they must match.`,
+    );
+}
+
+// `playwright install` prunes every browser outside the CLI's own registry, so
+// an unpinned CLI deletes the revision @playwright/test needs as soon as a
+// newer Playwright ships. The browser install must name a version.
+const BROWSER_INSTALL = path.join("scripts", "common-functions.sh");
+const unpinned = read(BROWSER_INSTALL)
+    .split("\n")
+    .filter((line) => /npx .*\bplaywright\b(?!@)[^@\n]*\binstall(-deps)?\b/.test(line) && !line.trim().startsWith("#"));
+if (unpinned.length > 0) {
+    problems.push(
+        `${BROWSER_INSTALL} installs browsers with an unpinned Playwright CLI:\n`
+            + unpinned.map((line) => `      ${line.trim()}`).join("\n")
+            + `\n  Fix: invoke the CLI as playwright@<version> using the version resolved in ${LOCKFILE}.`,
+    );
+}
+
 if (problems.length > 0) {
     console.error("Playwright version mismatch:\n");
     for (const problem of problems) {

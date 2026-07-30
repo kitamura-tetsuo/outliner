@@ -57,7 +57,9 @@ test.describe("Sidebar Navigation", () => {
         const { sidebar, toggleButton, open, close, isOpen } = getSidebarHelpers(page);
 
         // Sidebar starts closed (to avoid covering other UI)
-        await expect(sidebar).toBeVisible();
+        // Wait for sidebar toggle to close
+        await page.waitForTimeout(500);
+        await expect(sidebar).not.toHaveClass(/open/, { timeout: 10000 });
         expect(await isOpen()).toBe(false);
 
         // Open sidebar
@@ -79,7 +81,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Projects section should be initially expanded
         const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
@@ -108,7 +111,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Pages section should be initially expanded
         const pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
@@ -139,7 +143,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Click on Settings link
         const settingsLink = page.getByRole("link", { name: "Settings" });
@@ -161,7 +166,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Projects section should be expanded
         const projectsHeader = page.locator('[aria-label="Toggle projects section"]').first();
@@ -181,7 +187,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Pages section should be expanded
         const pagesHeader = page.locator('[aria-label="Toggle pages section"]').first();
@@ -199,7 +206,9 @@ test.describe("Sidebar Navigation", () => {
         test.setTimeout(120000);
 
         const { sidebar, open, close } = getSidebarHelpers(page);
-        await expect(sidebar).toBeVisible();
+        // Wait for sidebar to be properly closed
+        await page.waitForTimeout(500);
+        await expect(sidebar).not.toHaveClass(/open/, { timeout: 10000 });
 
         // Main content should not have sidebar margin initially (sidebar closed by default)
         // Use first() to avoid strict mode violation with multiple elements
@@ -226,7 +235,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Toggle button should have aria-label
         const toggleButton = page.locator("button.sidebar-toggle");
@@ -260,7 +270,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Wait for pages to be loaded in store
         console.log("Waiting for pages in store (60s)...");
@@ -355,7 +366,8 @@ test.describe("Sidebar Navigation", () => {
 
         const { sidebar, open } = getSidebarHelpers(page);
         await open();
-        await expect(sidebar).toBeVisible();
+        await page.waitForTimeout(500);
+        await expect(sidebar).toHaveClass(/open/, { timeout: 10000 });
 
         // Focus on settings link
         const settingsLink = page.getByRole("link", { name: "Settings" });
