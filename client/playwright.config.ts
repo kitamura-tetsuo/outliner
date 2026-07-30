@@ -1,6 +1,7 @@
 // Do not add webServer.
 
 import { defineConfig, devices } from "@playwright/test";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -8,6 +9,32 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
+
+// Chromium executable to launch.
+//
+// Undefined (the normal case) lets Playwright use the browser it downloaded
+// itself. Sandboxed environments that cannot reach the browser CDN keep a
+// pre-installed Chromium instead; scripts/setup.sh records its path in
+// .playwright-chromium-path at the repository root, and
+// PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH overrides both.
+function resolveChromiumExecutable(): string | undefined {
+    const fromEnv = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+    if (fromEnv && fs.existsSync(fromEnv)) {
+        return fromEnv;
+    }
+
+    const marker = path.resolve(__dirname, "..", ".playwright-chromium-path");
+    if (fs.existsSync(marker)) {
+        const recorded = fs.readFileSync(marker, "utf8").trim();
+        if (recorded && fs.existsSync(recorded)) {
+            return recorded;
+        }
+    }
+
+    return undefined;
+}
+
+const chromiumExecutablePath = resolveChromiumExecutable();
 
 // -- Estimate whether it is a single spec run -------------------------
 function detectSingleSpec() {
@@ -112,6 +139,7 @@ export default defineConfig({
         launchOptions: {
             // Option to avoid shared memory issues
             args: [...commonArgs, ...debugArgs],
+            ...(chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : {}),
         },
         // Use localhost to enable Clipboard API
         baseURL: `http://${VITE_HOST}:${process.env.TEST_PORT || TEST_PORT}`,
