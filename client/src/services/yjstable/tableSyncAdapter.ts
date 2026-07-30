@@ -99,6 +99,7 @@ export class TableSyncAdapter {
     private requeryTimer: ReturnType<typeof setTimeout> | undefined;
     private disposed = false;
     private started = false;
+    private queryGeneration = 0;
 
     private readonly dataObserver = (
         events: Y.YEvent<Y.AbstractType<unknown>>[],
@@ -459,7 +460,10 @@ export class TableSyncAdapter {
      * included).
      */
     async runQueryNow(): Promise<TableQueryResult | undefined> {
-        if (this.disposed) return undefined;
+        const generation = ++this.queryGeneration;
+        const isStale = () => this.disposed || generation !== this.queryGeneration;
+
+        if (isStale()) return undefined;
         const query = String(this.handles.uiDef.get("query") ?? "").trim();
         if (!query || !this.schema) {
             const empty = { columns: [], rows: [] };
@@ -485,15 +489,15 @@ export class TableSyncAdapter {
                     // the execution lock the query itself holds.
                     const provider = await this.registry.resolveRelation(relation);
                     if (!provider) throw err;
-                    if (this.disposed) return undefined;
+                    if (isStale()) return undefined;
                 }
             }
-            if (this.disposed) return undefined;
+            if (isStale()) return undefined;
             this.emitQueryError(undefined);
             this.emitResult(result);
             return result;
         } catch (err) {
-            if (this.disposed) return undefined;
+            if (isStale()) return undefined;
             const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
             this.emitQueryError(e.message);
             return undefined;
