@@ -6,48 +6,50 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
 import { yjsService } from "./service";
 
-vi.mock("../../stores/PresenceStore.svelte", () => ({
-    presenceStore: {
+vi.mock("../../stores/PresenceStore.svelte", () => {
+    const store = {
         users: {} as Record<string, unknown>,
-        setUser: vi.fn(function(this: any, u: any) {
-            this.users[u.userId] = u;
+        setUser: vi.fn((u: { userId: string; }) => {
+            store.users[u.userId] = u;
         }),
-        removeUser: vi.fn(function(this: any, id: string) {
-            delete this.users[id];
+        removeUser: vi.fn((id: string) => {
+            delete store.users[id];
         }),
-        reset: vi.fn(function(this: any) {
-            this.users = {};
+        reset: vi.fn(() => {
+            store.users = {};
         }),
-    },
-}));
+    };
+    return { presenceStore: store };
+});
 
-vi.mock("../../stores/EditorOverlayStore.svelte", () => ({
-    editorOverlayStore: {
+vi.mock("../../stores/EditorOverlayStore.svelte", () => {
+    const store = {
         cursors: {} as Record<string, unknown>,
         selections: {} as Record<string, unknown>,
-        setCursor: vi.fn(function(this: any, c: any) {
-            this.cursors[c.userId] = c;
+        setCursor: vi.fn((c: { userId: string; }) => {
+            store.cursors[c.userId] = c;
         }),
-        setSelection: vi.fn(function(this: any, s: any) {
-            this.selections[s.userId] = s;
+        setSelection: vi.fn((s: { userId: string; }) => {
+            store.selections[s.userId] = s;
         }),
-        clearCursorAndSelection: vi.fn(function(this: any, userId: string) {
-            delete this.cursors[userId];
+        clearCursorAndSelection: vi.fn((userId: string) => {
+            delete store.cursors[userId];
         }),
-        clearSelectionForUser: vi.fn(function(this: any, userId: string) {
-            delete this.selections[userId];
+        clearSelectionForUser: vi.fn((userId: string) => {
+            delete store.selections[userId];
         }),
-        reset: vi.fn(function(this: any) {
-            this.cursors = {};
-            this.selections = {};
+        reset: vi.fn(() => {
+            store.cursors = {};
+            store.selections = {};
         }),
-    },
-}));
+    };
+    return { editorOverlayStore: store };
+});
 
 describe("yjsService", () => {
     beforeEach(() => {
-        (presenceStore as any).reset();
-        (editorOverlayStore as any).reset();
+        (presenceStore as unknown as { reset: () => void; users: Record<string, { userName?: string; }>; }).reset();
+        (editorOverlayStore as unknown as { reset: () => void; cursors: Record<string, { itemId: string; }>; }).reset();
         vi.clearAllMocks();
     });
 
@@ -86,7 +88,10 @@ describe("yjsService", () => {
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
 
-        expect((presenceStore as any).users["u1"].userName).toBe("Alice");
+        expect(
+            (presenceStore as unknown as { reset: () => void; users: Record<string, { userName?: string; }>; })
+                .users["u1"].userName,
+        ).toBe("Alice");
 
         awareness.setLocalStateField("user", null);
         unbind();
@@ -113,7 +118,9 @@ describe("yjsService", () => {
             "test",
         ]);
 
-        const cursor = (editorOverlayStore as any).cursors["u2"];
+        const cursor =
+            (editorOverlayStore as unknown as { reset: () => void; cursors: Record<string, { itemId: string; }>; })
+                .cursors["u2"];
         expect(cursor?.itemId).toBe("i1");
 
         awarenessWithEmit.emit("change", [

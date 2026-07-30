@@ -74,7 +74,7 @@
                 // Re-apply presences for this new page
                 const awareness = yjsStore.yjsClient?.getAwareness();
                 if (awareness) {
-                    yjsService.reapplyAllPresences(awareness, rootItem.id);
+                    yjsService.reapplyAllPresences(awareness);
                 }
             }
         } catch (err) { logger.warn("Silenced error", { err }); }
