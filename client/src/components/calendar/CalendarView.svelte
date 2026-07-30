@@ -33,6 +33,7 @@ import {
     todayAnchor,
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
+import { computeDayHeaders } from "../../services/calendar/calendarDayHeaders";
 import {
     collapseLanePath,
     entryAxisValues,
@@ -635,6 +636,8 @@ onDestroy(() => {
             rangeEnd={range.end}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}
+            dayHeaders={computeDayHeaders(range.start, Math.round((range.end - range.start) / 86_400_000), timeZone)}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             {isStartWritable}
             {isDurationWritable}
             {isLaneWritable}
@@ -654,6 +657,8 @@ onDestroy(() => {
             rangeStart={range.start}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}
+            dayHeaders={computeDayHeaders(range.start, timeGridLayout.dayCount, timeZone)}
+            todayUtcMs={todayAnchor(timeZone, Date.now())}
             {isStartWritable}
             {isDurationWritable}
             onDragMove={previewStart}

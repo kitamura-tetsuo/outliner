@@ -5,6 +5,7 @@
 // edits to different fields merge cleanly.
 
 import * as Y from "yjs";
+import { moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
@@ -15,11 +16,25 @@ interface Props {
     /** Mirror of the UI Definition (kept in sync by the parent view). */
     query: string;
     componentTypes: Record<string, string | undefined>;
+    /** The column order stored in UI Definition. */
+    columnOrder: string[];
 }
 
-let { handles, schema, query, componentTypes }: Props = $props();
+let { handles, schema, query, componentTypes, columnOrder }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
+
+const displayColumns = $derived.by(() => {
+    if (!schema) return [];
+    const orderedNames = orderColumns(
+        schema.columns.map((c) => c.name),
+        columnOrder,
+    );
+    const colMap = new Map(schema.columns.map((c) => [c.name, c]));
+    return orderedNames.map((name) => colMap.get(name)!).filter(Boolean);
+});
+
+let dropTargetColumn = $state<{ column: string; position: "above" | "below" } | undefined>(undefined);
 
 function commitQuery(e: Event) {
     const value = (e.target as HTMLInputElement).value;
@@ -68,8 +83,51 @@ function setComponentType(column: string, type: string) {
     {#if schema}
         <p class="editor-label">Cell components</p>
         <div class="component-rows">
-            {#each schema.columns as column (column.name)}
-                <div class="component-row">
+            {#each displayColumns as column, index (column.name)}
+                <div
+                    class="component-row"
+                    draggable="true"
+                    class:drop-target-above={dropTargetColumn?.column === column.name && dropTargetColumn.position === "above"}
+                    class:drop-target-below={dropTargetColumn?.column === column.name && dropTargetColumn.position === "below"}
+                    ondragstart={(e) => {
+                        if (e.dataTransfer) {
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", column.name);
+                        }
+                    }}
+                    ondragover={(e) => {
+                        e.preventDefault();
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const isAbove = e.clientY < rect.top + rect.height / 2;
+                        dropTargetColumn = { column: column.name, position: isAbove ? "above" : "below" };
+                        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                    }}
+                    ondragleave={(e) => {
+                        const related = e.relatedTarget as Node | null;
+                        if (!e.currentTarget?.contains(related)) {
+                            dropTargetColumn = undefined;
+                        }
+                    }}
+                    ondrop={(e) => {
+                        e.preventDefault();
+                        const draggedCol = e.dataTransfer?.getData("text/plain");
+                        if (draggedCol && draggedCol !== column.name) {
+                            const currentNames = displayColumns.map((c) => c.name);
+                            const draggedIndex = currentNames.indexOf(draggedCol);
+                            if (draggedIndex !== -1) {
+                                let targetIndex = index;
+                                if (draggedIndex < targetIndex && dropTargetColumn?.position === "above") {
+                                    targetIndex -= 1;
+                                } else if (draggedIndex > targetIndex && dropTargetColumn?.position === "below") {
+                                    targetIndex += 1;
+                                }
+                                writeColumnOrder(handles, moveColumn(currentNames, draggedCol, targetIndex));
+                            }
+                        }
+                        dropTargetColumn = undefined;
+                    }}
+                >
+                    <div class="drag-handle" aria-hidden="true">⋮⋮</div>
                     <span class="column-name">{column.name}</span>
                     <span class="column-type">{column.dataType}</span>
                     <select
@@ -131,6 +189,28 @@ select {
     align-items: center;
     gap: 8px;
     font-size: 0.85rem;
+    padding: 2px 0;
+}
+
+.component-row.drop-target-above {
+    border-top: 2px solid #2563eb;
+}
+
+.component-row.drop-target-below {
+    border-bottom: 2px solid #2563eb;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #9ca3af;
+    user-select: none;
+    font-size: 1.1rem;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 .column-name {
