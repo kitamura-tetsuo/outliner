@@ -7,7 +7,7 @@
         "@hocuspocus/extension-sqlite": "^4.4.0",
         "@hocuspocus/server": "^4.2.0",
         "@sentry/node": "^10.69.0",
-        "better-sqlite3": "^13.0.1",
+        "better-sqlite3": "^13.0.2",
         "cors": "^2.8.6",
         "express": "^5.2.1",
         "find-process": "^2.1.1",
