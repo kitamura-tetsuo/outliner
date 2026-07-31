@@ -448,7 +448,7 @@ export class JobScheduler {
             const mainRoomConn2 = await this.hocuspocus.openDirectConnection(rule.room);
             if (mainRoomConn2.document) {
                 const schedulesMap = mainRoomConn2.document.getMap("schedules");
-                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<any>;
+                const ruleItem = schedulesMap.get(rule.rule_id) as Y.Map<unknown> | undefined;
                 if (ruleItem) {
                     mainRoomConn2.document.transact(() => {
                         // ISO string: the UI parses lastRunAt with new Date(...).
