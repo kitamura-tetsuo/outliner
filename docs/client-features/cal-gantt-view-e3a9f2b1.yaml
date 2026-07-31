@@ -12,3 +12,5 @@ tests:
 - client/src/services/calendar/calendarGanttLayout.test.ts
 - client/src/services/calendar/calendarGanttWrite.test.ts
 - client/src/services/calendar/calendarGridRange.test.ts
+
+- e2e/new/cal-gantt-drag-move.spec.ts

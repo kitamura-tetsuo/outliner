@@ -53,12 +53,28 @@ describe("calendarOptimisticPlacement", () => {
         expect(placed.startMs).toBe(0);
     });
 
-    it("reconciliation drops an override once its entry appears in a fresh result, matching or not", () => {
+    it("reconciliation drops an override once its entry appears in a fresh result matching the override", () => {
         const overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000 });
-        // The fresh result disagrees with the optimistic placement (a
-        // concurrent remote move) — the query result still wins.
-        const next = reconcileOptimisticOverrides(overrides, [entry("a", 9999)]);
+        const next = reconcileOptimisticOverrides(overrides, [entry("a", 1000)]);
         expect(next.has("a")).toBe(false);
+    });
+
+    it("reconciliation keeps an override if the fresh result is stale (disagrees) up to 2 times, then drops on the 3rd", () => {
+        let overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000 });
+
+        // Pass 1: stale
+        overrides = reconcileOptimisticOverrides(overrides, [entry("a", 0)]);
+        expect(overrides.has("a")).toBe(true);
+        expect(overrides.get("a")?.attempts).toBe(1);
+
+        // Pass 2: stale
+        overrides = reconcileOptimisticOverrides(overrides, [entry("a", 0)]);
+        expect(overrides.has("a")).toBe(true);
+        expect(overrides.get("a")?.attempts).toBe(2);
+
+        // Pass 3: stale, drops
+        overrides = reconcileOptimisticOverrides(overrides, [entry("a", 0)]);
+        expect(overrides.has("a")).toBe(false);
     });
 
     it("reconciliation keeps an override whose entry has not reappeared yet", () => {

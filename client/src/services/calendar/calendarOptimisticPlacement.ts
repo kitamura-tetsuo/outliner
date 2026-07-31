@@ -17,6 +17,8 @@ export interface OptimisticOverride {
     durationMs?: number;
     /** Raw query columns changed by a write, such as a grouping axis after a lane drop. */
     raw?: Record<string, unknown>;
+    /** Number of reconciliation passes that disagreed with the override. */
+    attempts?: number;
 }
 
 export type OptimisticOverrides = Map<string, OptimisticOverride>;
@@ -68,13 +70,33 @@ export function reconcileOptimisticOverrides(
         // A relation projection can briefly return the pre-write row while
         // its Yjs observer is still flushing to PGlite. Keep raw-column
         // mirrors through that stale result; clear them once those columns
-        // are actually reflected. Positional overrides retain the original
-        // "fresh query wins" behavior for concurrent drag reconciliation.
+        // are actually reflected.
+        //
+        // Positional overrides (startMs/durationMs) wait until the fresh entry
+        // actually carries the written value (compare on the reconstructed instant),
+        // to avoid a requery that lands between the Yjs write and the PGlite projection
+        // snapping the bar back to its old position.
         const rawMatches = !override.raw
             || Object.entries(override.raw).every(([column, value]) => fresh.raw[column] === value);
-        if (rawMatches) {
+
+        const startMatches = override.startMs === undefined || override.startMs === fresh.startMs;
+        const durationMatches = override.durationMs === undefined || override.durationMs === fresh.durationMs;
+
+        if (rawMatches && startMatches && durationMatches) {
             next.delete(key);
             changed = true;
+        } else {
+            // Guard against a permanently stuck override (e.g. write silently failed,
+            // or remote peer moved it elsewhere): record attempt counter and drop
+            // after 3 passes that disagree, so a genuine concurrent remote move still wins.
+            const attempts = (override.attempts ?? 0) + 1;
+            if (attempts >= 3) {
+                next.delete(key);
+                changed = true;
+            } else {
+                next.set(key, { ...override, attempts });
+                changed = true;
+            }
         }
     }
     return changed ? next : overrides;
