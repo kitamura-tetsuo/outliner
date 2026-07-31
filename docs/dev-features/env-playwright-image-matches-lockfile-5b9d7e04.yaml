@@ -5,11 +5,11 @@ category: environment
 status: implemented
 components:
 - .github/container/Dockerfile
+- .github/workflows/ci-playwright-version.yml
+- .github/workflows/ci.yml
 - client/package-lock.json
 - scripts/check-playwright-version.mjs
 - scripts/common-functions.sh
-- .github/workflows/ci-playwright-version.yml
-- .github/workflows/ci.yml
 tests:
 - scripts/tests/env-playwright-image-matches-lockfile-5b9d7e04.spec.ts
 title-ja: Test container Playwright image matches the locked Playwright version
