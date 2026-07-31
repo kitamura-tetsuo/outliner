@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
@@ -320,18 +321,10 @@ class CommandPaletteStore {
             }
         }
 
-        // Always add to item list of page content
-        const generalStore = (window as Window & typeof globalThis & {
-            generalStore?: { currentPage?: { items?: import("../schema/app-schema").Items; }; };
-        }).generalStore;
-        if (!generalStore?.currentPage?.items) {
-            return;
-        }
-
-        const items = generalStore.currentPage.items;
-        const insertIndex = items.length;
+        // Insert next to the item the command was typed in, not at the end of the page
         const userId = cursor ? cursor.userId : "local";
-        const newItem = items.addNode(userId, insertIndex);
+        const target = cursor && this.commandCursorItemId ? cursor.findTarget() : undefined;
+        const newItem = insertItemAfterTargetOrAppend(target, userId);
         if (!newItem) {
             return;
         }

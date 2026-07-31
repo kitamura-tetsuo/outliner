@@ -7,10 +7,12 @@ status: implemented
 components:
 - client/src/components/SlashCommandPalette.svelte
 tests:
+- client/e2e/core/cmd-palette-insert-at-cursor-3f2a91c6.spec.ts
 - client/e2e/core/slr-slash-command-palette-visibility.spec.ts
 acceptance:
 - Arrow keys move the selection within the palette
 - Pressing Enter on 'table' inserts an inline table
 - Pressing Enter on the filtered command inserts that component
+- The inserted component becomes the next sibling of the item the command was typed in
 - Typing '/' with focus on an item shows the command palette
 - Typing a filter such as 'ch' narrows the command list

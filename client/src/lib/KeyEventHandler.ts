@@ -3,6 +3,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../utils/domUtils";
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
@@ -504,86 +505,43 @@ export class KeyEventHandler {
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
-                        // Add new item to end and show AliasPicker
-                        const w = typeof window !== "undefined"
-                            ? (window as Window & typeof globalThis & {
-                                appStore?: { currentPage?: { items?: unknown[]; }; };
-                                generalStore?: { currentPage?: { items?: unknown[]; }; };
-                            })
-                            : undefined;
-                        const gs = w?.appStore || w?.generalStore;
+                        // Add new item next to the current one and show AliasPicker
+                        const userId = cursor.userId || "local";
+                        const newItem = insertItemAfterTargetOrAppend(node, userId);
 
-                        const items = (gs as {
-                            currentPage?: {
-                                items?: {
-                                    addNode: (userId: string, prevLen?: number) => unknown;
-                                    length: number;
-                                    at: (index: number) => unknown;
-                                    [key: number]: unknown;
-                                };
-                            };
-                        })?.currentPage?.items;
-                        if (items && typeof items.addNode === "function") {
-                            const userId = cursor.userId || "local";
-                            let newItem: unknown = null;
+                        if (newItem) {
+                            newItem.text = "";
+                            newItem.aliasTargetId = undefined;
                             try {
-                                // addNode returns the new item
-                                newItem = items.addNode(userId);
-                            } catch {
-                                try {
-                                    // Fallback if no-arg fails
-                                    const prevLen = typeof items.length === "number" ? items.length : 0;
-                                    newItem = items.addNode(userId, prevLen);
-                                } catch (_e) {
-                                    logger.error(_e);
-                                }
-                            }
-
-                            // Fallback if addNode didn't return item (old behavior fallback)
-                            if (!newItem) {
-                                const lastIndex = (items.length ?? 0) - 1;
-                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
-                            }
-
-                            if (newItem) {
-                                const newItm = newItem as {
-                                    id: string;
-                                    text: string;
-                                    aliasTargetId: string | undefined;
-                                };
-                                newItm.text = "";
-                                newItm.aliasTargetId = undefined;
-                                try {
-                                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                        logger.debug(
-                                            "KeyEventHandler(Palette): showing AliasPicker for",
-                                            newItm.id,
-                                        );
-                                    }
-                                } catch (_e) {
-                                    logger.error(_e);
-                                }
-                                {
-                                    const w = typeof window !== "undefined"
-                                        ? (window as Window & typeof globalThis & {
-                                            aliasPickerStore?: typeof aliasPickerStore;
-                                        })
-                                        : null;
-                                    (w?.aliasPickerStore ?? aliasPickerStore).show(
-                                        newItm.id,
+                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                    logger.debug(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
+                                        newItem.id,
                                     );
                                 }
-                                // Move cursor
-                                store.clearCursorAndSelection(userId);
-                                cursor.itemId = newItm.id;
-                                cursor.offset = 0;
-                                store.setActiveItem(newItm.id);
-                                cursor.applyToStore();
-                                store.startCursorBlink();
-
-                                event.preventDefault();
-                                return;
+                            } catch (_e) {
+                                logger.error(_e);
                             }
+                            {
+                                const w = typeof window !== "undefined"
+                                    ? (window as Window & typeof globalThis & {
+                                        aliasPickerStore?: typeof aliasPickerStore;
+                                    })
+                                    : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(
+                                    newItem.id,
+                                );
+                            }
+                            // Move cursor
+                            store.clearCursorAndSelection(userId);
+                            cursor.itemId = newItem.id;
+                            cursor.offset = 0;
+                            store.setActiveItem(newItem.id);
+                            cursor.applyToStore();
+                            store.startCursorBlink();
+
+                            event.preventDefault();
+                            return;
                         }
                     }
                 } catch (e) {
