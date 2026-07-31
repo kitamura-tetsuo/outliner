@@ -45,7 +45,7 @@ import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale"
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
 import {
     applyOptimisticOverrides,
-    clearOptimisticOverride,
+    clearOptimisticOverrideFields,
     createOptimisticOverrides,
     reconcileOptimisticOverrides,
     setOptimisticOverride,
@@ -368,7 +368,7 @@ async function commitStart(entry: CalendarEntry, newStartMs: number) {
         await writeCalendarEntryStart(session, entry, column, newStartMs, timeZone);
         writeError = undefined;
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["startMs"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
@@ -381,13 +381,13 @@ async function commitDuration(entry: CalendarEntry, newDurationMs: number) {
         await writeCalendarEntryDuration(session, entry, column, newDurationMs);
         writeError = undefined;
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["durationMs"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
 
 function cancelDrag(entry: CalendarEntry) {
-    optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+    optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["startMs"]);
 }
 
 // --- Gantt's own write: a parent roll-up bar has no start column of its
@@ -410,7 +410,7 @@ function commitSubtreeShift(_row: GanttRow, deltaMs: number, analysis: GanttSubt
         writeError = undefined;
     } catch (err) {
         for (const member of analysis.members) {
-            optimisticOverrides = clearOptimisticOverride(optimisticOverrides, member.key);
+            optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, member.key, ["startMs"]);
         }
         writeError = err instanceof Error ? err.message : String(err);
     }
@@ -467,7 +467,7 @@ async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefine
         writeError = undefined;
         scheduleRequery();
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["raw"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }

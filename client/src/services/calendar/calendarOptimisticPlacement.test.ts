@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CalendarEntry } from "./calendarEntries";
 import {
     applyOptimisticOverrides,
-    clearOptimisticOverride,
+    clearOptimisticOverrideFields,
     createOptimisticOverrides,
     reconcileOptimisticOverrides,
     setOptimisticOverride,
@@ -36,20 +36,35 @@ describe("calendarOptimisticPlacement", () => {
         expect(placed.startMs).toBe(0);
     });
 
-    it("replaces a prior pending override for the same entry rather than merging it", () => {
+    it("merges a prior pending override for the same entry", () => {
         let overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000, durationMs: 500 });
         overrides = setOptimisticOverride(overrides, "a", { startMs: 2000 });
         const [placed] = applyOptimisticOverrides([entry("a", 0, 100)], overrides);
         expect(placed.startMs).toBe(2000);
-        // durationMs was not part of the replacing override, so it falls
-        // back to the entry's own value, not the discarded first override.
+        expect(placed.durationMs).toBe(500);
+    });
+
+    it("keeps both raw and startMs on lane drop then move", () => {
+        let overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { raw: { lane: "b" } });
+        overrides = setOptimisticOverride(overrides, "a", { startMs: 2000 });
+        const [placed] = applyOptimisticOverrides([entry("a", 0, 100)], overrides);
+        expect(placed.startMs).toBe(2000);
+        expect(placed.raw).toEqual({ lane: "b" });
+    });
+
+    it("a rejected write clears only the specified field, leaving others intact", () => {
+        let overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000, durationMs: 500 });
+        overrides = clearOptimisticOverrideFields(overrides, "a", ["durationMs"]);
+        const [placed] = applyOptimisticOverrides([entry("a", 0, 100)], overrides);
+        expect(placed.startMs).toBe(1000);
         expect(placed.durationMs).toBe(100);
     });
 
-    it("a rejected write clears the override, reverting the entry to its original position", () => {
+    it("clearing the last field drops the override entirely", () => {
         let overrides = setOptimisticOverride(createOptimisticOverrides(), "a", { startMs: 1000 });
-        overrides = clearOptimisticOverride(overrides, "a");
-        const [placed] = applyOptimisticOverrides([entry("a", 0)], overrides);
+        overrides = clearOptimisticOverrideFields(overrides, "a", ["startMs"]);
+        expect(overrides.has("a")).toBe(false);
+        const [placed] = applyOptimisticOverrides([entry("a", 0, 100)], overrides);
         expect(placed.startMs).toBe(0);
     });
 

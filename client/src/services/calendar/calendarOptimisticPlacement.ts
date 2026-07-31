@@ -25,14 +25,15 @@ export function createOptimisticOverrides(): OptimisticOverrides {
     return new Map();
 }
 
-/** Record an optimistic placement for `key`, replacing any prior pending one for the same entry. */
+/** Record an optimistic placement for `key`, merging it with any prior pending one for the same entry. */
 export function setOptimisticOverride(
     overrides: OptimisticOverrides,
     key: string,
     override: OptimisticOverride,
 ): OptimisticOverrides {
     const next = new Map(overrides);
-    next.set(key, override);
+    const prior = overrides.get(key);
+    next.set(key, prior ? { ...prior, ...override, ...(prior.raw || override.raw ? { raw: { ...prior.raw, ...override.raw } } : {}) } : override);
     return next;
 }
 
@@ -40,10 +41,25 @@ export function setOptimisticOverride(
  * A rejected write reverts visibly: drop the pending override for `key` so
  * the entry's rendered position falls back to the last real query result.
  */
-export function clearOptimisticOverride(overrides: OptimisticOverrides, key: string): OptimisticOverrides {
-    if (!overrides.has(key)) return overrides;
+export function clearOptimisticOverrideFields(
+    overrides: OptimisticOverrides,
+    key: string,
+    fields: (keyof OptimisticOverride)[],
+): OptimisticOverrides {
+    const prior = overrides.get(key);
+    if (!prior) return overrides;
+
+    const nextOverride = { ...prior };
+    for (const field of fields) {
+        delete nextOverride[field];
+    }
+
     const next = new Map(overrides);
-    next.delete(key);
+    if (Object.keys(nextOverride).length === 0) {
+        next.delete(key);
+    } else {
+        next.set(key, nextOverride);
+    }
     return next;
 }
 
