@@ -237,8 +237,9 @@ export async function startServer(
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
             async onConnect(data: import("@hocuspocus/server").onConnectPayload<ConnectionContext>) {
-                const ip = data.context?.ip || (data.requestHeaders as any)?.["x-forwarded-for"]
-                    || (data.request as any).socket?.remoteAddress || "unknown";
+                const ip = data.context?.ip
+                    || (data.requestHeaders as unknown as Record<string, string | undefined>)?.["x-forwarded-for"]
+                    || (data.request as { socket?: { remoteAddress?: string; }; }).socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
             async onAuthenticate(
@@ -543,7 +544,7 @@ export async function startServer(
                     method: request.method,
                 });
 
-                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as any); // Partial context initially
+                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as unknown as ConnectionContext); // Partial context initially
 
                 ws.on("message", (data: any) => {
                     recordMessage();
