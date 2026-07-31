@@ -52,13 +52,18 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
     if (items && typeof items.addNode === "function") {
         let newItem: unknown = null;
         try {
-            newItem = insertIndex !== -1 ? items.addNode(userId, insertIndex) : items.addNode(userId);
-        } catch {
+            newItem = items.addNode(userId, insertIndex !== -1 ? insertIndex : undefined);
+        } catch (e1) {
             try {
-                const prevLen = typeof items.length === "number" ? items.length : 0;
-                newItem = items.addNode(userId, prevLen);
-            } catch (e) {
-                logger.error(e);
+                // If it fails with undefined, maybe it requires it or falls back.
+                newItem = items.addNode(userId);
+            } catch (e2) {
+                try {
+                    const prevLen = typeof items.length === "number" ? items.length : 0;
+                    newItem = items.addNode(userId, prevLen);
+                } catch (e3) {
+                    logger.error("All addNode fallbacks failed", e3);
+                }
             }
         }
 
