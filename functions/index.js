@@ -184,10 +184,8 @@ if (!getApps().length) {
 
   // Confirmation of Admin SDK instance
   try {
-    // eslint-disable-next-line no-unused-vars
-    const auth = require("firebase-admin/auth").getAuth();
-    // eslint-disable-next-line no-unused-vars
-    const firestore = require("firebase-admin/firestore").getFirestore();
+    require("firebase-admin/auth").getAuth();
+    require("firebase-admin/firestore").getFirestore();
 
     if (isEmulatorEnv) {
       logger.info("✅ Firebase Admin Auth instance created for emulator");
