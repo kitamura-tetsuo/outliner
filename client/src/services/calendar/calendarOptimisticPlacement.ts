@@ -33,7 +33,16 @@ export function setOptimisticOverride(
 ): OptimisticOverrides {
     const next = new Map(overrides);
     const prior = overrides.get(key);
-    next.set(key, prior ? { ...prior, ...override, ...(prior.raw || override.raw ? { raw: { ...prior.raw, ...override.raw } } : {}) } : override);
+    next.set(
+        key,
+        prior
+            ? {
+                ...prior,
+                ...override,
+                ...(prior.raw || override.raw ? { raw: { ...prior.raw, ...override.raw } } : {}),
+            }
+            : override,
+    );
     return next;
 }
 
