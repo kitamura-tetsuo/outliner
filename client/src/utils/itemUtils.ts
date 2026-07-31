@@ -53,11 +53,11 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
         let newItem: unknown = null;
         try {
             newItem = items.addNode(userId, insertIndex !== -1 ? insertIndex : undefined);
-        } catch (e1) {
+        } catch (_e1) {
             try {
                 // If it fails with undefined, maybe it requires it or falls back.
                 newItem = items.addNode(userId);
-            } catch (e2) {
+            } catch (_e2) {
                 try {
                     const prevLen = typeof items.length === "number" ? items.length : 0;
                     newItem = items.addNode(userId, prevLen);
