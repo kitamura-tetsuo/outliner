@@ -47,11 +47,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
             async () => {
                 // Test alias feature
                 const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-                await page.goto(
-                    `http://localhost:7090/${encodeURIComponent(projectName)}/${
-                        encodeURIComponent(pageName)
-                    }?isTest=true`,
-                );
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
                 await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
                 const items = await page.locator("[data-item-id]").all();
@@ -76,11 +72,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
             /OutlinerItemAlias\.svelte.*aliasLastConfirmedPulse/,
             async () => {
                 const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-                await page.goto(
-                    `http://localhost:7090/${encodeURIComponent(projectName)}/${
-                        encodeURIComponent(pageName)
-                    }?isTest=true`,
-                );
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
                 await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
                 // Verify alias component is displayed correctly
@@ -100,11 +92,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
             /CommentThread\.svelte.*setInterval/,
             async () => {
                 const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-                await page.goto(
-                    `http://localhost:7090/${encodeURIComponent(projectName)}/${
-                        encodeURIComponent(pageName)
-                    }?isTest=true`,
-                );
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
                 await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
                 // Click comment button
@@ -139,11 +127,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
             /OutlinerItem\.svelte.*__E2E_LAST_FILES__/,
             async () => {
                 const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-                await page.goto(
-                    `http://localhost:7090/${encodeURIComponent(projectName)}/${
-                        encodeURIComponent(pageName)
-                    }?isTest=true`,
-                );
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
                 await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
                 // Verify normal text editing works
@@ -169,11 +153,7 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
             /EditorOverlay\.svelte.*setInterval.*16/,
             async () => {
                 const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-                await page.goto(
-                    `http://localhost:7090/${encodeURIComponent(projectName)}/${
-                        encodeURIComponent(pageName)
-                    }?isTest=true`,
-                );
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
                 await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
                 // Set cursor
@@ -193,10 +173,8 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
 
     test("Check statistics", async ({ page }) => {
         const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info());
-        await page.goto(
-            `http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`,
-        );
-        await page.waitForSelector("[data-item-id]", { timeout: 15000 });
+                await page.goto(`http://localhost:7090/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}?isTest=true`);
+                await page.waitForSelector("[data-item-id]", { timeout: 15000 });
 
         // Wait a bit for polling to run
         await page.waitForTimeout(3000);

@@ -224,7 +224,7 @@ export async function testWithoutPolling(
     console.log(`[${testName}] Testing WITHOUT polling...`);
     try {
         await page.reload({ timeout: 15000 });
-    } catch (e) {
+    } catch(e) {
         console.log("Failed to reload page, trying to navigate to demo page", e);
         await page.goto("http://localhost:7090/demo", { timeout: 15000 });
     }
