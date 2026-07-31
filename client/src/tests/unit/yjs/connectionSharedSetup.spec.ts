@@ -84,6 +84,25 @@ const mockAuth = {
     currentUser: { getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh) } as unknown as User | null,
 };
 
+const { mockOnAuthStateChanged } = vi.hoisted(() => {
+    const fn = vi.fn((auth, cb) => {
+        fn.callbacks.push(cb);
+        if (auth.currentUser) {
+            cb(auth.currentUser);
+        }
+        return () => {
+            const index = fn.callbacks.indexOf(cb);
+            if (index > -1) fn.callbacks.splice(index, 1);
+        };
+    }) as unknown as { callbacks: Array<(user: unknown) => void> };
+    fn.callbacks = [];
+    return { mockOnAuthStateChanged: fn };
+});
+
+vi.mock("firebase/auth", () => ({
+    onAuthStateChanged: (auth: { currentUser: unknown }, callback: (user: unknown) => void) => (mockOnAuthStateChanged as unknown as (a: unknown, c: unknown) => void)(auth, callback)
+}));
+
 vi.mock("../../../auth/UserManager", () => ({
     userManager: {
         get auth() {
@@ -184,6 +203,9 @@ describe("yjs connection: shared provider setup", () => {
             mockAuth.currentUser = {
                 getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
             } as unknown as User;
+
+            // Trigger the onAuthStateChanged callbacks
+            mockOnAuthStateChanged.callbacks.forEach((cb: (user: unknown) => void) => cb(mockAuth.currentUser));
 
             // Advance time to allow the loop to see currentUser and break
             await vi.advanceTimersByTimeAsync(200);
