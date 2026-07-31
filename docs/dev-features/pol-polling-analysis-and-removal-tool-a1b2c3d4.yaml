@@ -79,5 +79,3 @@ related-features:
 - COV-0001: Code coverage reporting
 implementation-date: 2025-10-11
 title-ja: Polling Analysis and Removal Tool
-tests:
-- client/e2e/env/env-polling-analysis-test-removability-a1b2c3d4.spec.ts

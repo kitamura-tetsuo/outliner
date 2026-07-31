@@ -7,7 +7,6 @@ description: 'The four time-grid calendar views share one layout and interaction
 category: client
 status: implemented
 tests:
-- client/e2e/new/cal-day-header-sticky-d6e2.spec.ts
 - client/e2e/new/cal-day-week-month-grid-views-9ce96e44.spec.ts
 - client/src/components/calendar/CalendarView.test.ts
 - client/src/services/calendar/calendarColumnWritability.test.ts
@@ -19,3 +18,4 @@ tests:
 - client/src/services/calendar/calendarOptimisticPlacement.test.ts
 - client/src/services/calendar/calendarTimeGridLayout.test.ts
 - client/src/services/calendar/pgInterval.test.ts
+- client/e2e/new/cal-day-header-sticky-d6e2.spec.ts

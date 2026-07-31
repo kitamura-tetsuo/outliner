@@ -113,9 +113,9 @@ export function* iterateItemsDeep(items: unknown): Iterable<Item> {
             if (item && typeof item === "object") {
                 let childItems: unknown = undefined;
                 if ("items" in item && item.items) {
-                    childItems = (item as unknown as Record<string, unknown>).items;
-                } else if (typeof (item as unknown as { get?: (k: string) => unknown; }).get === "function") {
-                    childItems = (item as unknown as { get: (k: string) => unknown; }).get("items");
+                    childItems = (item as any).items;
+                } else if (typeof (item as any).get === "function") {
+                    childItems = (item as any).get("items");
                 }
 
                 if (childItems) {

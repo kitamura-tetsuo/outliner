@@ -2,8 +2,7 @@ id: ENV-653c593e
 title: Document feature aggregation script
 description: Add instructions to run scripts/aggregate_features.py after adding feature YAML files.
 category: environment
-status: removed
+status: implemented
 components: []
 tests: []
 title-ja: Document feature aggregation script
-removal-note: Superseded by AGENTS.md, which documents docs/client-features.yaml and docs/feature-map.md as generated artifacts.

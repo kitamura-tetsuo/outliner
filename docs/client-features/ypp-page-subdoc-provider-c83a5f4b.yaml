@@ -2,10 +2,9 @@ id: YPP-c83a5f4b
 title: Page subdoc per-page provider
 description: Each project page uses a YJS subdocument connected to its own WebSocket room.
 category: yjs
-status: removed
+status: experimental
 acceptance:
 - Awareness updates are isolated per page
 - Opening two pages in the same project connects to different rooms
 tests: []
 title-ja: ページごとに独立したYJSサブドキュメントとプロバイダー
-removal-note: Superseded by the single project document; per-page rooms were dropped and client/src/lib/yjs/roomPath.ts has no pageRoomPath.

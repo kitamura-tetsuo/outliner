@@ -88,9 +88,7 @@ if (
         || window.__FLUID_CLIENT_REGISTRY__) as Registry;
 } else {
     registry = new Registry();
-    // The literal MODE comparison lets Rollup drop this assignment from the
-    // production bundle (see ENV-production-build-leak.test.ts).
-    if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    if (typeof window !== "undefined") {
         window.__YJS_CLIENT_REGISTRY__ = registry;
         // Legacy alias for components still reading FLUID registry
         window.__FLUID_CLIENT_REGISTRY__ = registry;

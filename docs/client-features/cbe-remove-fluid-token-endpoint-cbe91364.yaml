@@ -15,4 +15,6 @@ validation: 'This legacy endpoint remains disabled via hosting/Vite middleware a
   Behavior is validated by server routing and manual verification in production-like environments.
 
   '
-components: []
+components:
+- client/src/auth/UserManager.ts
+- functions/index.js

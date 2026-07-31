@@ -4,9 +4,9 @@ description: The public /demo route shows a full demo project whose pages each d
 category: demo
 status: implemented
 components:
-- client/src/lib/demoSeed.ts
-- client/src/routes/demo/+page.svelte
-- client/src/routes/demo/[page]/+page.svelte
+- src/lib/demoSeed.ts
+- src/routes/demo/+page.svelte
+- src/routes/demo/[page]/+page.svelte
 services:
 - server/src/demo-api.ts
 - server/src/demo-content.ts

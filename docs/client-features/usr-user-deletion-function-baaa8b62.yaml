@@ -4,11 +4,11 @@ description: Function to delete a user account and its related data
 category: user-management
 status: experimental
 acceptance:
-- Can delete the user account
-- Container information related to the user is deleted
-- Containers where the user was the last accessor are completely deleted
-- User ID is removed from containers the user had access to
-- User account is deleted from Firebase Auth
+  - Can delete the user account
+  - Container information related to the user is deleted
+  - Containers where the user was the last accessor are completely deleted
+  - User ID is removed from containers the user had access to
+  - User account is deleted from Firebase Auth
 title-ja: ユーザー削除機能
 tests:
-- client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts
+  - client/e2e/core/usr-user-deletion-function-baaa8b62.spec.ts

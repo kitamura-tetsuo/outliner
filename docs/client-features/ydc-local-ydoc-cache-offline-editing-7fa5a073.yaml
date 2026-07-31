@@ -7,9 +7,9 @@ description: 'Full Y.Doc content for each container is persisted locally in Inde
 category: persistence
 status: implemented
 components:
-- client/src/lib/metaDoc.svelte.ts
-- client/src/lib/yjsPersistence.ts
-- client/src/lib/yjsService.svelte.ts
+- src/lib/metaDoc.svelte.ts
+- src/lib/yjsPersistence.ts
+- src/lib/yjsService.svelte.ts
 services:
 - y-indexeddb (IndexedDB persistence)
 tests:

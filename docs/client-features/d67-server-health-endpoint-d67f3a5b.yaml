@@ -4,5 +4,4 @@ title-ja: サーバーヘルスエンドポイント
 description: Health check endpoint returns OK.
 category: server
 status: experimental
-tests:
-- client/e2e/basic/debug-health-check.spec.ts
+tests: []

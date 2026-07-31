@@ -10,7 +10,6 @@ describe("checkboxHelpers - updateParentCheckboxStatus", () => {
     it("should do nothing if parentText does not start with [ ] or [x] ", () => {
         const updateText = vi.fn();
         const parentItem = {
-            ydoc: { transact: (fn: () => void) => fn() },
             text: "No checkbox",
             updateText,
             items: [],
@@ -22,7 +21,6 @@ describe("checkboxHelpers - updateParentCheckboxStatus", () => {
     it("should update parent to [x] if all children with checkboxes are checked", () => {
         const updateText = vi.fn();
         const parentItem = {
-            ydoc: { transact: (fn: () => void) => fn() },
             text: "[ ] Parent",
             updateText,
             items: [
@@ -38,7 +36,6 @@ describe("checkboxHelpers - updateParentCheckboxStatus", () => {
     it("should update parent to [ ] if not all children are checked", () => {
         const updateText = vi.fn();
         const parentItem = {
-            ydoc: { transact: (fn: () => void) => fn() },
             text: "[x] Parent",
             updateText,
             items: [
@@ -53,7 +50,6 @@ describe("checkboxHelpers - updateParentCheckboxStatus", () => {
     it("should use iterateUnordered if available", () => {
         const updateText = vi.fn();
         const parentItem = {
-            ydoc: { transact: (fn: () => void) => fn() },
             text: "[ ] Parent",
             updateText,
             items: {

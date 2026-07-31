@@ -35,7 +35,3 @@ verification:
   - Search button exists and is clickable
   - Search panel becomes visible after clicking
   - Entering a query yields at least one match in realistic fixtures
-tests:
-- client/e2e/new/SRE-001-regex.spec.ts
-- client/e2e/new/SRE-001.spec.ts
-- client/e2e/new/SRP-0001.spec.ts

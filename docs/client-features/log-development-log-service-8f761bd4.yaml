@@ -5,7 +5,7 @@ description: Node server used in development and test environments to store logs
 category: api-server
 status: implemented
 components:
-- server/scripts/init-firebase-emulator.js
 - server/src/log-service.ts
+- server/scripts/init-firebase-emulator.js
 tests:
 - client/e2e/core/log-development-log-service-8f761bd4.spec.ts

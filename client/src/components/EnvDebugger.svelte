@@ -9,13 +9,8 @@ let windowEnv = {};
 let firebaseEmulatorInfo = $state({});
 
 onMount(() => {
-    // Get environment variables from import.meta.env.
-    // Enumerating `import.meta.env` forces Vite to inline the *whole* env
-    // snapshot (including whatever is in a developer's local `.env`) into the
-    // chunk. The literal MODE comparison lets Rollup drop the block — and the
-    // inlined snapshot with it — from the production bundle.
-    // See ENV-production-build-leak.test.ts.
-    if (import.meta.env.MODE !== "production" && typeof window !== "undefined" && import.meta?.env) {
+    // Get environment variables from import.meta.env
+    if (typeof window !== "undefined" && import.meta?.env) {
         // Safely copy environment variables (do not display actual values)
         const envVars: Record<string, string> = {};
         Object.keys(import.meta.env).forEach(key => {

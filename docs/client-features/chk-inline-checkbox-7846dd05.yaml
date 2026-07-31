@@ -4,7 +4,6 @@ description: Typing [ ] or [x] at the start of an outline item turns it into an 
 category: formatting
 status: draft
 tests:
-- client/e2e/basic/inline-checkbox-rollup.spec.ts
 - client/e2e/basic/inline-checkbox.spec.ts
 acceptance:
 - Clicking the checkbox toggles the state between [ ] and [x]

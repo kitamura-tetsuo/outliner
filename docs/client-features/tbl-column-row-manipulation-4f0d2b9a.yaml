@@ -3,7 +3,7 @@ title: Table column and row manipulation
 description: Columns can be added via header context menu and reordered along with rows using drag and drop
 category: table
 status: removed
-components: null
+components:
 tests: []
 acceptance:
 - Columns can be reordered by dragging headers

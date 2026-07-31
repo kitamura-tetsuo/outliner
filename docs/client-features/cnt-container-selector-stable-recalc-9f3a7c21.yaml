@@ -14,7 +14,8 @@ description: 'Reduce reliance on CustomEvent for ContainerSelector reactivity an
   '
 category: project
 status: removed
-components: []
+components:
+- client/src/stores/firestoreStore.svelte.ts
 impact:
 - Recalculation on the component side is triggered by dependency on firestoreStore.ucVersion
 - Immediate reflection by ucVersion++ in both setUserContainer replacement path and Proxy destructive changes

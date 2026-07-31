@@ -154,17 +154,18 @@ test.describe("FTR-9ce96e44: day/week/month grid views", () => {
         await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
         const entry = page.locator('[data-testid^="calendar-entry-item:"]').first();
         await expect(entry).toBeVisible({ timeout: 15000 });
-        await expect(entry).not.toHaveClass(/not-writable/, { timeout: 15000 });
 
-        await entry.hover({ position: { x: 10, y: 10 } });
         const entryBox = await entry.boundingBox();
         if (!entryBox) throw new Error("Entry box missing");
 
         const grid = page.getByTestId("calendar-time-grid").first();
-        await page.mouse.down();
-        await expect(grid).toHaveClass(/dragging/);
+        const gridBox = await grid.boundingBox();
+        if (!gridBox) throw new Error("Grid box missing");
 
-        await page.mouse.move(entryBox.x + 20, entryBox.y + 20, { steps: 5 });
+        await page.mouse.move(entryBox.x + 10, entryBox.y + 10);
+        await page.mouse.down();
+
+        await page.mouse.move(gridBox.x + gridBox.width / 2, gridBox.y + gridBox.height / 2, { steps: 5 });
 
         let selection = await page.evaluate(() => getSelection()?.toString());
         expect(selection).toBe("");

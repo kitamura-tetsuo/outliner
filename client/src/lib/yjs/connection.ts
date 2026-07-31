@@ -3,7 +3,6 @@ import { getLogger } from "../logger";
 const logger = getLogger("yjs-connection");
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import { type Auth, onAuthStateChanged } from "firebase/auth";
 import { IndexeddbPersistence } from "y-indexeddb";
 import type { Awareness } from "y-protocols/awareness";
 import * as Y from "yjs";
@@ -109,48 +108,7 @@ function isAuthRequired(): boolean {
     }
 }
 
-// Bounded fallback for the auth-state subscription below: we never block a connect attempt
-// longer than this, even if Firebase never restores a session.
-const AUTH_HYDRATION_TIMEOUT_MS = 5000;
-
-/**
- * Resolves as soon as Firebase Auth reports a signed-in user, or after `timeoutMs` at the latest.
- *
- * Event-driven by design (AGENTS.md §11): `onAuthStateChanged` fires the moment a cold-load session
- * is restored, so the first WebSocket connect is not delayed by a polling tick.
- */
-function waitForAuthUser(auth: Auth, timeoutMs = AUTH_HYDRATION_TIMEOUT_MS): Promise<void> {
-    if (auth.currentUser) return Promise.resolve();
-
-    return new Promise<void>(resolve => {
-        let settled = false;
-        let unsubscribe: (() => void) | undefined;
-
-        const finish = () => {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            unsubscribe?.();
-            resolve();
-        };
-
-        const timer = setTimeout(finish, timeoutMs);
-
-        try {
-            unsubscribe = onAuthStateChanged(auth, user => {
-                if (user) finish();
-            });
-            // The listener can fire synchronously when the auth state is already resolved,
-            // i.e. before `unsubscribe` was assigned above.
-            if (settled) unsubscribe();
-        } catch (e) {
-            logger.error({ error: e }, "[getFreshIdToken] Failed to subscribe to auth state");
-            finish();
-        }
-    });
-}
-
-export async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
+async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     // Wait for auth and fetch an ID token, using Firebase's cache unless a refresh is requested
     const auth = userManager.auth;
     const isTestEnv = import.meta.env.MODE === "test";
@@ -180,7 +138,10 @@ export async function getFreshIdToken(forceRefresh: boolean): Promise<string> {
     // Wait for auth to hydrate (e.g., on a cold load before Firebase restores the session).
     // This is reached only for non-demo rooms, which always require auth.
     if (!auth.currentUser) {
-        await waitForAuthUser(auth);
+        for (let i = 0; i < 50; i++) { // up to ~5s
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (auth.currentUser) break;
+        }
     }
 
     if (!auth.currentUser) {
