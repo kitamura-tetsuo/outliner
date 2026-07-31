@@ -309,7 +309,10 @@ class CommandPaletteStore {
             targetNode = cursor.findTarget() as import("../../../shared/src/app-schema").Item;
         }
 
-        const newItem = insertItemAfterTargetOrAppend(targetNode, userId) as any;
+        const newItem = insertItemAfterTargetOrAppend(targetNode, userId) as
+            | import("../../../shared/src/app-schema").Item
+            | undefined
+            | null;
         if (!newItem) {
             return;
         }

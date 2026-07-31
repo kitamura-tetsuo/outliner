@@ -527,7 +527,7 @@ export class KeyEventHandler {
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
                             const targetNode = node as import("../../../shared/src/app-schema").Item;
-                            let newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
+                            const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
 
                             if (newItem) {
                                 const newItm = newItem as {

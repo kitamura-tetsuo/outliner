@@ -13,7 +13,7 @@ const logger = getLogger("ItemUtils");
  * @returns The newly created item, or null/undefined if insertion fails
  */
 export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | null, userId: string = "local"): unknown {
-    let items: Items | any = null;
+    let items: Items | null = null;
     let insertIndex = -1;
 
     if (targetNode) {
