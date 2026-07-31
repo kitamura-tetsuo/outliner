@@ -291,5 +291,9 @@ export const pollingMonitor = new PollingMonitor();
 
 // Expose globally (for debugging)
 if (typeof window !== "undefined") {
-    (window as unknown as { __pollingMonitor: PollingMonitor; }).__pollingMonitor = pollingMonitor;
+    // The literal MODE comparison lets Rollup drop this assignment from the
+    // production bundle (see ENV-production-build-leak.test.ts).
+    if (import.meta.env.MODE !== "production") {
+        (window as unknown as { __pollingMonitor: PollingMonitor; }).__pollingMonitor = pollingMonitor;
+    }
 }

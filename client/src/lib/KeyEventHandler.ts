@@ -2631,5 +2631,9 @@ export class KeyEventHandler {
 
 // Expose KeyEventHandler globally for testing
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & { [key: string]: unknown; }).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    // The literal MODE comparison lets Rollup drop this assignment from the
+    // production bundle (see ENV-production-build-leak.test.ts).
+    if (import.meta.env.MODE !== "production") {
+        (window as Window & typeof globalThis & { [key: string]: unknown; }).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    }
 }

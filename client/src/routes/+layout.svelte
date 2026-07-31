@@ -70,12 +70,12 @@ async function toggleSidebar() {
     }
 }
 
-// Fallback exposure to global (satisfy window.generalStore early)
-if (browser && typeof window !== "undefined") {
-    window.generalStore =
-        window.generalStore || appStore;
-    window.appStore =
-        window.appStore || appStore;
+// Fallback exposure to global (satisfy window.generalStore early).
+// The literal MODE comparison lets Rollup drop these assignments from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (browser && typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.generalStore = window.generalStore || appStore;
+    window.appStore = window.appStore || appStore;
 }
 
 
