@@ -505,24 +505,18 @@ export class KeyEventHandler {
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
-                        // Insert new item next to the current item and show AliasPicker
+                        // Add new item next to the current one and show AliasPicker
                         const userId = cursor.userId || "local";
-                        const targetNode = node as import("../../../shared/src/app-schema").Item;
-                        const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
+                        const newItem = insertItemAfterTargetOrAppend(node, userId);
 
                         if (newItem) {
-                            const newItm = newItem as {
-                                id: string;
-                                text: string;
-                                aliasTargetId: string | undefined;
-                            };
-                            newItm.text = "";
-                            newItm.aliasTargetId = undefined;
+                            newItem.text = "";
+                            newItem.aliasTargetId = undefined;
                             try {
                                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                                     logger.debug(
                                         "KeyEventHandler(Palette): showing AliasPicker for",
-                                        newItm.id,
+                                        newItem.id,
                                     );
                                 }
                             } catch (_e) {
@@ -535,14 +529,14 @@ export class KeyEventHandler {
                                     })
                                     : null;
                                 (w?.aliasPickerStore ?? aliasPickerStore).show(
-                                    newItm.id,
+                                    newItem.id,
                                 );
                             }
                             // Move cursor
                             store.clearCursorAndSelection(userId);
-                            cursor.itemId = newItm.id;
+                            cursor.itemId = newItem.id;
                             cursor.offset = 0;
-                            store.setActiveItem(newItm.id);
+                            store.setActiveItem(newItem.id);
                             cursor.applyToStore();
                             store.startCursorBlink();
 

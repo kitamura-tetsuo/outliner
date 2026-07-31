@@ -1,85 +1,32 @@
-import type { Item, Items } from "../../../shared/src/app-schema";
-import { getLogger } from "../lib/logger";
-
-const logger = getLogger("ItemUtils");
+import type { Item } from "../schema/app-schema";
+import { store as generalStore } from "../stores/store.svelte";
 
 /**
- * Inserts a new item as a sibling after the specified target node.
- * If the target node or its parent is not found, falls back to appending
- * to the page's root items list.
+ * Inserts a new item as the sibling immediately after `target`.
  *
- * @param targetNode The node after which to insert the new item (e.g. from cursor.findTarget())
- * @param userId The ID of the user performing the action
- * @returns The newly created item, or null/undefined if insertion fails
+ * Mirrors what `OutlinerItem.addNewItem()` does for the Enter key so that items
+ * created from the command palette land next to the cursor instead of at the
+ * bottom of the page. Appends to the current page's item list instead when
+ * there is no usable target — no cursor, an item outside the page tree, or the
+ * page's own root row, whose siblings are other pages rather than items.
+ *
+ * @param target Item the cursor is on, e.g. from `cursor.findTarget()`
+ * @param author User id recorded as the author of the new item
+ * @returns The newly created item, or undefined when there is no page to insert into
  */
-export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | null, userId: string = "local"): unknown {
-    let items: Items | null = null;
-    let insertIndex = -1;
-
-    if (targetNode) {
-        const p = targetNode.parent;
-        if (p && typeof p.addNode === "function") {
-            items = p;
-            const idx = targetNode.indexInParent();
-            if (idx !== -1) {
-                insertIndex = idx + 1;
-            }
-        } else {
-            logger.warn("insertItemAfterTargetOrAppend: targetNode has no parent or addNode is not a function", { p });
+export function insertItemAfterTargetOrAppend(
+    target: Item | undefined,
+    author: string,
+): Item | undefined {
+    const page = generalStore.currentPage;
+    if (target && target.id !== page?.id) {
+        const parent = target.parent;
+        const index = target.indexInParent();
+        if (parent && index !== -1) {
+            return parent.addNode(author, index + 1);
         }
-    } else {
-        logger.warn("insertItemAfterTargetOrAppend: targetNode is null/undefined");
     }
 
-    if (!items) {
-        // Fallback to item list of page content
-        const w = typeof window !== "undefined"
-            ? (window as Window & typeof globalThis & {
-                appStore?: { currentPage?: { items?: unknown[]; }; };
-                generalStore?: { currentPage?: { items?: unknown[]; }; };
-            })
-            : undefined;
-        const gs = w?.appStore || w?.generalStore;
-        items = (gs as {
-            currentPage?: {
-                items?: Items;
-            };
-        })?.currentPage?.items as Items | null;
-        insertIndex = items?.length ?? -1;
-    }
-
-    if (items && typeof items.addNode === "function") {
-        let newItem: unknown = null;
-        try {
-            logger.info("insertItemAfterTargetOrAppend: inserting at index " + insertIndex);
-            // Some signatures of addNode might strictly require just (author), some might optionally take index
-            if (insertIndex !== -1) {
-                newItem = items.addNode(userId, insertIndex);
-            } else {
-                newItem = items.addNode(userId);
-            }
-        } catch (_e1) {
-            try {
-                // Fallback to appending if insertIndex caused an issue
-                newItem = items.addNode(userId);
-            } catch (_e2) {
-                try {
-                    const prevLen = typeof items.length === "number" ? items.length : 0;
-                    newItem = items.addNode(userId, prevLen);
-                } catch (e3) {
-                    logger.error("All addNode fallbacks failed", e3);
-                }
-            }
-        }
-
-        if (!newItem) {
-            const lastIndex = (items.length ?? 0) - 1;
-            newItem = typeof items.at === "function"
-                ? items.at(lastIndex)
-                : (items as unknown as Record<number, unknown>)[lastIndex];
-        }
-        return newItem;
-    }
-
-    return null;
+    const items = page?.items;
+    return items ? items.addNode(author, items.length) : undefined;
 }

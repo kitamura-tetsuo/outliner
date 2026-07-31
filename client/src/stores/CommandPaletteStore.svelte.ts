@@ -321,16 +321,10 @@ class CommandPaletteStore {
             }
         }
 
+        // Insert next to the item the command was typed in, not at the end of the page
         const userId = cursor ? cursor.userId : "local";
-        let targetNode: import("../../../shared/src/app-schema").Item | undefined | null = null;
-        if (cursor && this.commandCursorItemId) {
-            targetNode = cursor.findTarget() as import("../../../shared/src/app-schema").Item;
-        }
-
-        const newItem = insertItemAfterTargetOrAppend(targetNode, userId) as
-            | import("../../../shared/src/app-schema").Item
-            | undefined
-            | null;
+        const target = cursor && this.commandCursorItemId ? cursor.findTarget() : undefined;
+        const newItem = insertItemAfterTargetOrAppend(target, userId);
         if (!newItem) {
             return;
         }
