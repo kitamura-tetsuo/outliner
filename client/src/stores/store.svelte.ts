@@ -7,9 +7,10 @@ import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item, Items } from "../schema/app-schema";
-import { Project } from "../schema/app-schema";
+import type { Items } from "../schema/app-schema";
+import { Item, Project } from "../schema/app-schema";
 import { globalUndoRouter } from "../services/undo/undoRouter";
+import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 export class GeneralStore {
     // Use $state for pages to ensure proper Svelte reactivity
@@ -393,21 +394,25 @@ export class GeneralStore {
                 logger.error(_e);
             }
 
-            if (checkboxParentsToUpdate.size > 0 && _tr?.origin !== "checkbox-rollup") {
+            // Only the client that originated the change rolls up: the resulting parent text
+            // is replicated like any other edit. If every peer recomputed it, they would all
+            // write the same minimal diff concurrently and corrupt the parent's Y.Text.
+            const isLocalChange = _tr?.local ?? true;
+            if (checkboxParentsToUpdate.size > 0 && isLocalChange && _tr?.origin !== CHECKBOX_ROLLUP_ORIGIN) {
                 const parents = Array.from(checkboxParentsToUpdate);
-                import("../utils/checkboxHelpers").then(({ updateParentCheckboxStatus }) => {
-                    import("../schema/app-schema").then(({ Item }) => {
-                        project.ydoc.transact(() => {
-                            for (const pid of parents) {
-                                try {
-                                    updateParentCheckboxStatus(new Item(project.ydoc, project.tree, pid));
-                                } catch (_e) {
-                                    logger.error(_e);
-                                }
+                // Defer out of the observer callback: the roll-up writes back to the same
+                // document, which Yjs does not allow while the current transaction cleans up.
+                queueMicrotask(() => {
+                    project.ydoc.transact(() => {
+                        for (const pid of parents) {
+                            try {
+                                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, pid));
+                            } catch (_e) {
+                                logger.error(_e);
                             }
-                        }, "checkbox-rollup");
-                    }).catch(e => logger.warn("Failed to import app-schema", { error: e }));
-                }).catch(e => logger.warn("Failed to import checkboxHelpers", { error: e }));
+                        }
+                    }, CHECKBOX_ROLLUP_ORIGIN);
+                });
             }
 
             if (shouldRebuild) {

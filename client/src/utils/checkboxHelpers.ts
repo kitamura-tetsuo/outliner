@@ -1,74 +1,67 @@
-import { getLogger } from "../lib/logger";
-import type { Item } from "../schema/app-schema";
+import { Item } from "../schema/app-schema";
 
-const logger = getLogger("checkboxHelpers");
+/**
+ * Origin carried by the transactions that write rolled-up parent state. The tree
+ * observer in `GeneralStore` skips transactions with this origin, so a roll-up
+ * never triggers another roll-up pass.
+ */
+export const CHECKBOX_ROLLUP_ORIGIN = "checkbox-rollup";
 
+/**
+ * Recomputes `parentItem`'s checkbox state from its children and walks up the
+ * ancestor chain. The whole walk runs inside a single Yjs transaction, so a
+ * multi-level roll-up broadcasts one update and costs one undo step.
+ */
 export function updateParentCheckboxStatus(parentItem: Item) {
     if (!parentItem) return;
 
-    parentItem.ydoc.transact(() => {
-        const parentText = String(parentItem.text);
-        if (!parentText.startsWith("[ ] ") && !parentText.startsWith("[x] ")) return;
+    parentItem.ydoc.transact(() => rollUp(parentItem), CHECKBOX_ROLLUP_ORIGIN);
+}
 
-        let allChecked = true;
-        let hasCheckboxes = false;
+function rollUp(parentItem: Item) {
+    const parentText = String(parentItem.text);
+    if (!parentText.startsWith("[ ] ") && !parentText.startsWith("[x] ")) return;
 
-        // Check children
-        const children = parentItem.items;
+    let allChecked = true;
+    let hasCheckboxes = false;
 
-        // Explicitly iterate over children array
-        const iter = "iterateUnordered" in children && typeof children.iterateUnordered === "function"
-            ? children.iterateUnordered()
-            : children;
-        if (iter && typeof iter[Symbol.iterator] === "function") {
-            for (const child of iter) {
-                const childText = String(child.text);
-                if (childText.startsWith("[ ] ")) {
-                    hasCheckboxes = true;
-                    allChecked = false;
-                    break;
-                } else if (childText.startsWith("[x] ")) {
-                    hasCheckboxes = true;
-                }
+    // Check children
+    const children = parentItem.items;
+
+    // Explicitly iterate over children array
+    const iter = "iterateUnordered" in children && typeof children.iterateUnordered === "function"
+        ? children.iterateUnordered()
+        : children;
+    if (iter && typeof iter[Symbol.iterator] === "function") {
+        for (const child of iter) {
+            const childText = String(child.text);
+            if (childText.startsWith("[ ] ")) {
+                hasCheckboxes = true;
+                allChecked = false;
+                break;
+            } else if (childText.startsWith("[x] ")) {
+                hasCheckboxes = true;
             }
         }
+    }
 
-        if (hasCheckboxes) {
-            const isParentChecked = parentText.startsWith("[x] ");
-            if (allChecked && !isParentChecked) {
-                parentItem.updateText("[x] " + parentText.substring(4));
-            } else if (!allChecked && isParentChecked) {
-                parentItem.updateText("[ ] " + parentText.substring(4));
-            }
+    if (!hasCheckboxes) return;
 
-            // Recursively update grandparent
-            const grandparentItems = parentItem.parent;
-            if (grandparentItems && grandparentItems.parentKey && grandparentItems.parentKey !== "root") {
-                const grandparentId = grandparentItems.parentKey;
-                const ydoc = grandparentItems.ydoc;
-                const tree = grandparentItems.tree;
+    const isParentChecked = parentText.startsWith("[x] ");
+    if (allChecked && !isParentChecked) {
+        parentItem.updateText("[x] " + parentText.substring(4));
+    } else if (!allChecked && isParentChecked) {
+        parentItem.updateText("[ ] " + parentText.substring(4));
+    }
 
-                if (ydoc && tree && grandparentId) {
-                    try {
-                        // Try to instantiate grandparent Item dynamically if needed
-                        // For now, since Item is not exported everywhere easily without circular dep, we just use the schema
-                        import("../schema/app-schema").then(({ Item }) => {
-                            const grandparent = new Item(ydoc, tree, grandparentId);
-                            updateParentCheckboxStatus(grandparent);
-                        }).catch((err) => {
-                            logger.error(
-                                { error: err instanceof Error ? err : new Error(String(err)) },
-                                "Failed to dynamically import Item for grandparent checkbox status",
-                            );
-                        });
-                    } catch (e) {
-                        logger.error(
-                            { error: e instanceof Error ? e : new Error(String(e)) },
-                            "Failed to update grandparent checkbox status",
-                        );
-                    }
-                }
-            }
-        }
-    }, "checkbox-rollup");
+    // Recurse into the grandparent so the roll-up reaches the top of the branch.
+    const grandparentItems = parentItem.parent;
+    const grandparentId = grandparentItems?.parentKey;
+    if (!grandparentId || grandparentId === "root") return;
+
+    const ydoc = grandparentItems.ydoc;
+    const tree = grandparentItems.tree;
+    if (!ydoc || !tree) return;
+
+    rollUp(new Item(ydoc, tree, grandparentId));
 }
