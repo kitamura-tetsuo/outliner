@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 29;
+export const DEMO_TEMPLATE_VERSION = 30;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -95,7 +95,7 @@ export interface DemoTableTemplate {
     schemaSql: string;
     query: string;
     // Cell component type per column (UI Definition).
-    components: Record<string, string>;
+    components: Record<string, string | { type: string; label?: string; }>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
 }
@@ -207,7 +207,7 @@ export const demoTables: DemoTableTemplate[] = [
             title: "text",
             status: "select",
             priority: "select",
-            due_date: "date",
+            due_date: { type: "date", label: "Due date" },
             repeat_days: "number",
         },
         records: [
@@ -652,10 +652,15 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
     ui.set("query", template.query);
     const components = new Y.Map<Y.Map<unknown>>();
     ui.set("components", components);
-    for (const [column, type] of Object.entries(template.components)) {
+    for (const [column, def] of Object.entries(template.components)) {
         const cfg = new Y.Map<unknown>();
         components.set(column, cfg);
-        cfg.set("type", type);
+        if (typeof def === "string") {
+            cfg.set("type", def);
+        } else {
+            cfg.set("type", def.type);
+            if (def.label) cfg.set("label", def.label);
+        }
     }
 
     const data = doc.getMap<Y.Map<string | number | boolean | null>>("data");
