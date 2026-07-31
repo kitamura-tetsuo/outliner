@@ -24,7 +24,11 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
             if (idx !== -1) {
                 insertIndex = idx + 1;
             }
+        } else {
+            logger.warn("insertItemAfterTargetOrAppend: targetNode has no parent or addNode is not a function", { p });
         }
+    } else {
+        logger.warn("insertItemAfterTargetOrAppend: targetNode is null/undefined");
     }
 
     if (!items) {
@@ -38,20 +42,16 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
         const gs = w?.appStore || w?.generalStore;
         items = (gs as {
             currentPage?: {
-                items?: {
-                    addNode: (userId: string, prevLen?: number) => unknown;
-                    length: number;
-                    at: (index: number) => unknown;
-                    [key: number]: unknown;
-                };
+                items?: Items;
             };
-        })?.currentPage?.items;
+        })?.currentPage?.items as Items | null;
         insertIndex = items?.length ?? -1;
     }
 
     if (items && typeof items.addNode === "function") {
         let newItem: unknown = null;
         try {
+            logger.info("insertItemAfterTargetOrAppend: inserting at index " + insertIndex);
             // Some signatures of addNode might strictly require just (author), some might optionally take index
             if (insertIndex !== -1) {
                 newItem = items.addNode(userId, insertIndex);
@@ -74,7 +74,7 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
 
         if (!newItem) {
             const lastIndex = (items.length ?? 0) - 1;
-            newItem = items.at ? items.at(lastIndex) : items[lastIndex];
+            newItem = (items as any).at ? (items as any).at(lastIndex) : (items as any)[lastIndex];
         }
         return newItem;
     }

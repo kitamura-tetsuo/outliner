@@ -506,29 +506,11 @@ export class KeyEventHandler {
                         cursor.applyToStore();
 
                         // Insert new item next to the current item and show AliasPicker
-                        const w = typeof window !== "undefined"
-                            ? (window as Window & typeof globalThis & {
-                                appStore?: { currentPage?: { items?: unknown[]; }; };
-                                generalStore?: { currentPage?: { items?: unknown[]; }; };
-                            })
-                            : undefined;
-                        const gs = w?.appStore || w?.generalStore;
+                        const userId = cursor.userId || "local";
+                        const targetNode = node as import("../../../shared/src/app-schema").Item;
+                        const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
 
-                        const items = (gs as {
-                            currentPage?: {
-                                items?: {
-                                    addNode: (userId: string, prevLen?: number) => unknown;
-                                    length: number;
-                                    at: (index: number) => unknown;
-                                    [key: number]: unknown;
-                                };
-                            };
-                        })?.currentPage?.items;
-                        if (items && typeof items.addNode === "function") {
-                            const userId = cursor.userId || "local";
-                            const targetNode = node as import("../../../shared/src/app-schema").Item;
-                            const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
-
+                        if (true) {
                             if (newItem) {
                                 const newItm = newItem as {
                                     id: string;
