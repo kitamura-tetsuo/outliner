@@ -1,0 +1,11 @@
+id: ENV-a61f2c9d
+title: Formatting auto-fix triggers exactly one replacement CI run
+title-ja: フォーマット自動修正後に一つの置換CIだけを起動する
+description: When CI auto-formats and pushes a pull-request branch, the pull_request synchronize event starts the replacement CI run. The formatter does not additionally dispatch ci.yml, preventing two runs for the same commit, while the obsolete run stops its downstream checks after reporting changes_pushed.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-format.yml
+- .github/workflows/ci.yml
+tests:
+- scripts/tests/env-ci-format-single-rerun-a61f2c9d.spec.ts
