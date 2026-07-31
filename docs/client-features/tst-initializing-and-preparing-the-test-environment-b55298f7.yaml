@@ -9,8 +9,10 @@ acceptance:
 - Provide helper functions to initialize the test environment in a consistent way
 - Provide improved helper functions to solve DOM element detection issues
 - Reduce dependencies between tests so that each test can run independently
+- Verify the installed Playwright browser can render, interact, capture WebP screenshots, and cancel operations
 tests:
 - client/e2e/basic/basic.spec.ts
+- client/e2e/core/playwright-sanity.spec.ts
 - client/e2e/helpers.ts
 - client/e2e/utils/linkTestHelpers.ts
 - client/e2e/utils/testHelpers.ts
