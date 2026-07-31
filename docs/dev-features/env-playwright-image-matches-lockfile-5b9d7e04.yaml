@@ -1,9 +1,10 @@
 id: ENV-5b9d7e04
 title: Test container Playwright image matches the locked Playwright version
-description: Everything that provisions Playwright browsers agrees on one version. The E2E test container built from .github/container/Dockerfile is based on mcr.microsoft.com/playwright at exactly the version client/package-lock.json resolves for @playwright/test, and the browser install in scripts/common-functions.sh invokes the CLI as playwright@<pinned version> rather than unpinned. An unpinned CLI fetches the newest release and prunes every browser outside its own registry, deleting the revision the test runner needs. Either drift makes every E2E shard fail at browserType.launch with "Executable doesn't exist", so scripts/check-playwright-version.mjs enforces both and runs as a dedicated CI job before the E2E shards start.
+description: Everything that provisions Playwright browsers agrees on one version. The E2E test container built from .github/container/Dockerfile is based on mcr.microsoft.com/playwright at exactly the version client/package-lock.json resolves for @playwright/test, and the browser install in scripts/common-functions.sh invokes the CLI as playwright@<pinned version> rather than unpinned. An unpinned CLI fetches the newest release and prunes every browser outside its own registry, deleting the revision the test runner needs. Either drift makes every E2E shard fail at browserType.launch with "Executable doesn't exist", so scripts/check-playwright-version.mjs enforces both and runs as a dedicated CI job before the E2E shards start. Dependabot watches both halves so a new Playwright release surfaces as a pull request rather than as silent drift: the npm `playwright` group keeps @playwright/test, playwright and playwright-core on one version, and a docker ecosystem entry for /.github/container watches the base image. The two arrive as separate pull requests because Dependabot cannot group across ecosystems, and neither passes the check alone, so they are landed as one change.
 category: environment
 status: implemented
 components:
+- .github/dependabot.yml
 - .github/container/Dockerfile
 - .github/workflows/ci-playwright-version.yml
 - .github/workflows/ci.yml

@@ -16,11 +16,13 @@ interface Props {
     /** Mirror of the UI Definition (kept in sync by the parent view). */
     query: string;
     componentTypes: Record<string, string | undefined>;
+    /** Display labels for columns. */
+    columnLabels: Record<string, string | undefined>;
     /** The column order stored in UI Definition. */
     columnOrder: string[];
 }
 
-let { handles, schema, query, componentTypes, columnOrder }: Props = $props();
+let { handles, schema, query, componentTypes, columnLabels, columnOrder }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -50,22 +52,46 @@ function componentsMap(): Y.Map<unknown> {
     return components as Y.Map<unknown>;
 }
 
+function setColumnLabel(column: string, label: string) {
+    handles.doc.transact(() => {
+        const components = componentsMap();
+        const trimmed = label.trim();
+        const existing = components.get(column);
+        const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();
+        if (!(existing instanceof Y.Map)) components.set(column, cfg);
+
+        if (trimmed === "") {
+            cfg.delete("label");
+            if (Array.from(cfg.keys()).length === 0) {
+                components.delete(column);
+            }
+        }
+        else cfg.set("label", trimmed);
+    });
+}
+
 function setComponentType(column: string, type: string) {
-    const components = componentsMap();
-    if (type === "auto") {
-        // Deleting the key falls back to the schema-derived default.
-        components.delete(column);
-        return;
-    }
-    if (!isCellComponentType(type)) return;
-    const existing = components.get(column);
-    if (existing instanceof Y.Map) {
-        existing.set("type", type);
-    } else {
-        const cfg = new Y.Map<unknown>();
+    handles.doc.transact(() => {
+        const components = componentsMap();
+        const existing = components.get(column);
+
+        if (type === "auto") {
+            // Delete type. If label is also empty, delete entire entry.
+            if (existing instanceof Y.Map) {
+                existing.delete("type");
+                if (Array.from(existing.keys()).length === 0) {
+                    components.delete(column);
+                }
+            }
+            return;
+        }
+
+        if (!isCellComponentType(type)) return;
+
+        const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();
+        if (!(existing instanceof Y.Map)) components.set(column, cfg);
         cfg.set("type", type);
-        components.set(column, cfg);
-    }
+    });
 }
 </script>
 
@@ -82,10 +108,10 @@ function setComponentType(column: string, type: string) {
 
     {#if schema}
         <p class="editor-label">Cell components</p>
-        <div class="component-rows">
+        <div class="component-rows" role="list">
             {#each displayColumns as column, index (column.name)}
                 <div
-                    class="component-row"
+                    class="component-row" role="listitem"
                     draggable="true"
                     class:drop-target-above={dropTargetColumn?.column === column.name && dropTargetColumn.position === "above"}
                     class:drop-target-below={dropTargetColumn?.column === column.name && dropTargetColumn.position === "below"}
@@ -129,6 +155,14 @@ function setComponentType(column: string, type: string) {
                 >
                     <div class="drag-handle" aria-hidden="true">⋮⋮</div>
                     <span class="column-name">{column.name}</span>
+                    <input
+                        type="text"
+                        class="column-label"
+                        placeholder={column.name}
+                        data-testid={`yjs-table-label-${column.name}`}
+                        value={columnLabels[column.name] ?? ""}
+                        onchange={(e) => setColumnLabel(column.name, (e.target as HTMLInputElement).value)}
+                    />
                     <span class="column-type">{column.dataType}</span>
                     <select
                         data-testid={`yjs-table-component-${column.name}`}
