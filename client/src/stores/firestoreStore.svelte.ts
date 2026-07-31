@@ -253,8 +253,10 @@ const shouldReuseExisting = typeof existingCandidate === "object"
 export const firestoreStore = (shouldReuseExisting ? existingCandidate : __tmpStore) as typeof __tmpStore;
 Object.assign(firestoreStore, { __isRealFirestoreStore: true });
 
-// Expose globally in test environment to allow control from E2E
-if (typeof window !== "undefined") {
+// Expose globally in test environment to allow control from E2E.
+// The literal MODE comparison lets Rollup drop the whole block from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
     const isTestEnv = import.meta.env.MODE === "test"
         || process.env.NODE_ENV === "test"
         || import.meta.env.VITE_IS_TEST === "true"

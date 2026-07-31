@@ -166,34 +166,39 @@ describe("CalendarView", { timeout: 30000 }, () => {
     });
 
     it("a query missing source_kind/source_id shows entries as non-writable", async () => {
-        const projectId = "proj-calendar-view-readonly";
-        const { projectDoc, project, page } = seedProject(projectId);
-        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
-        item.text = "Untracked";
-        item.start = `${todayIso()}T09:00:00.000Z`;
-        item.allDay = false;
+        const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+        try {
+            const projectId = "proj-calendar-view-readonly";
+            const { projectDoc, project, page } = seedProject(projectId);
+            const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+            item.text = "Untracked";
+            item.start = `${todayIso()}T09:00:00.000Z`;
+            item.allDay = false;
 
-        const calendarId = createCalendar(project, {
-            name: "Cal",
-            query: "SELECT id, text AS title, all_day, start_at FROM outline_items",
-            roleTitle: "title",
-            roleStart: "start_at",
-            roleAllDay: "all_day",
-        });
+            const calendarId = createCalendar(project, {
+                name: "Cal",
+                query: "SELECT id, text AS title, all_day, start_at FROM outline_items",
+                roleTitle: "title",
+                roleStart: "start_at",
+                roleAllDay: "all_day",
+            });
 
-        const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
+            const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
 
-        await waitFor(() => expect(getByTestId("calendar-read-only-banner")).toBeTruthy());
-        await waitFor(() => {
-            // No source_kind/source_id: the row falls back to its bare `id`
-            // column for identity (calendarEntries.ts), but is still
-            // non-writable since analyzeCalendarEditability requires both.
-            const el = getByTestId(`calendar-entry-${item.key}`);
-            expect(el.className).toContain("not-writable");
-        });
+            await waitFor(() => expect(getByTestId("calendar-read-only-banner")).toBeTruthy());
+            await waitFor(() => {
+                // No source_kind/source_id: the row falls back to its bare `id`
+                // column for identity (calendarEntries.ts), but is still
+                // non-writable since analyzeCalendarEditability requires both.
+                const el = getByTestId(`calendar-entry-${item.key}`);
+                expect(el.className).toContain("not-writable");
+            });
 
-        destroyCalendarUndoManager(projectDoc);
-        unmount();
+            destroyCalendarUndoManager(projectDoc);
+            unmount();
+        } finally {
+            warnSpy.mockRestore();
+        }
     });
 
     it("creates a new item under the chosen destination via the New entry dialog", async () => {

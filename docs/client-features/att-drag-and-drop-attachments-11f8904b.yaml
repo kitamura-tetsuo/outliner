@@ -5,9 +5,9 @@ description: Items accept files via drag-and-drop and show image previews. Acces
 category: attachments
 status: implemented
 components:
+- client/src/components/OutlinerItem.svelte
+- client/src/services/attachmentService.ts
 - functions/index.js
-- src/components/OutlinerItem.svelte
-- src/services/attachmentService.ts
 - storage.rules
 tests:
 - client/e2e/core/att-drag-and-drop-attachments-11f8904b.spec.ts

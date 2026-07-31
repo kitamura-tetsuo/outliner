@@ -2229,6 +2229,7 @@ export function setSelectionPosition(start: number, end: number = start) {
         />
     {/if}
 
+    {#if showDeleteConfirm}
     <ConfirmDialog
             bind:isOpen={showDeleteConfirm}
             title="Delete Item"
@@ -2237,6 +2238,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             isDestructive={true}
             onConfirm={confirmDelete} onCancel={() => showDeleteConfirm = false}
         />
+    {/if}
 </div>
 
 <style>

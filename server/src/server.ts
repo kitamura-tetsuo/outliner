@@ -3,7 +3,7 @@ import { serverLogger as logger } from "./utils/log-manager.js";
 import { Logger } from "@hocuspocus/extension-logger";
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -201,7 +201,7 @@ export async function startServer(
     app.use(rateLimiterMiddleware);
 
     // Detailed Health/Debug endpoint
-    app.get("/health", (req: any, res: any) => {
+    app.get("/health", (req: Request, res: Response) => {
         const response: any = {
             status: firebaseState === "failed" ? "degraded" : "ok",
             firebase: firebaseState,
@@ -237,8 +237,9 @@ export async function startServer(
             extensions: extensions as unknown as import("@hocuspocus/server").Extension[],
             debounce: 500,
             async onConnect(data: import("@hocuspocus/server").onConnectPayload<ConnectionContext>) {
-                const ip = data.context?.ip || (data.requestHeaders as any)?.["x-forwarded-for"]
-                    || (data.request as any).socket?.remoteAddress || "unknown";
+                const ip = data.context?.ip
+                    || (data.requestHeaders as unknown as Record<string, string | undefined>)?.["x-forwarded-for"]
+                    || (data.request as { socket?: { remoteAddress?: string; }; }).socket?.remoteAddress || "unknown";
                 logger.debug(`[Hocuspocus] onConnect: room=${data.documentName}, ip=${ip}`);
             },
             async onAuthenticate(
@@ -382,7 +383,7 @@ export async function startServer(
     app.use("/api", createDemoRouter(hocuspocus, config));
 
     // Log rotation endpoint
-    app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
+    app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
@@ -543,7 +544,7 @@ export async function startServer(
                     method: request.method,
                 });
 
-                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as any); // Partial context initially
+                clientConnection = hocuspocus.handleConnection(ws, webRequest, { ip } as unknown as ConnectionContext); // Partial context initially
 
                 ws.on("message", (data: any) => {
                     recordMessage();

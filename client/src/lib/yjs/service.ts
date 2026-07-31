@@ -4,6 +4,7 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { updateParentCheckboxStatus } from "../../utils/checkboxHelpers";
 import { safeGetNodeParent } from "../../utils/treeUtils";
 import { getLogger } from "../logger";
 
@@ -89,7 +90,7 @@ function applyPresenceToOverlay(
     if (presence?.cursor) {
         overlay.setCursor({
             itemId: presence.cursor.itemId,
-            offset: presence.cursor.offset,
+            offset: Math.max(0, presence.cursor.offset),
             isActive: false,
             userId: user.userId,
             userName: user.name,
@@ -128,12 +129,17 @@ export const yjsService = {
     addItem(project: Project, parentKey: string, author: string, index?: number): Item {
         return project.ydoc.transact(() => {
             const items = new Items(project.ydoc, project.tree, parentKey);
-            return items.addNode(author, index);
+            const item = items.addNode(author, index);
+            if (parentKey && parentKey !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, parentKey));
+            }
+            return item;
         }, null);
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
         project.ydoc.transact(() => {
+            const oldParentKey = safeGetNodeParent(project.tree, itemKey);
             const tree = project.tree as unknown as YTreeWithMove;
             tree.moveChildToParent(itemKey, newParentKey);
 
@@ -147,12 +153,22 @@ export const yjsService = {
                 else if (clamped >= siblings.length) tree.setNodeOrderToEnd(itemKey);
                 else tree.setNodeAfter(itemKey, siblings[clamped - 1]);
             }
+            if (oldParentKey && oldParentKey !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, oldParentKey));
+            }
+            if (newParentKey && newParentKey !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, newParentKey));
+            }
         }, null);
     },
 
     removeItem(project: Project, itemKey: string) {
         project.ydoc.transact(() => {
+            const parentKey = safeGetNodeParent(project.tree, itemKey);
             project.tree.deleteNodeAndDescendants(itemKey);
+            if (parentKey && parentKey !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, parentKey));
+            }
         }, null);
     },
 
@@ -160,6 +176,7 @@ export const yjsService = {
         project.ydoc.transact(() => {
             const tree = project.tree as unknown as YTreeWithMove;
             const parent = safeGetNodeParent(tree, itemKey);
+            const oldParentKey = parent;
             if (!parent) return;
             const siblings = childrenKeys(tree, parent);
             const idx = siblings.indexOf(itemKey);
@@ -168,6 +185,12 @@ export const yjsService = {
                 tree.moveChildToParent(itemKey, newParent);
                 recomputeTree(tree);
                 tree.setNodeOrderToEnd(itemKey);
+                if (oldParentKey && oldParentKey !== "root") {
+                    updateParentCheckboxStatus(new Item(project.ydoc, project.tree, oldParentKey));
+                }
+                if (newParent && newParent !== "root") {
+                    updateParentCheckboxStatus(new Item(project.ydoc, project.tree, newParent));
+                }
             }
         }, null);
     },
@@ -176,12 +199,19 @@ export const yjsService = {
         project.ydoc.transact(() => {
             const tree = project.tree as unknown as YTreeWithMove;
             const parent = safeGetNodeParent(tree, itemKey);
+            const oldParentKey = parent;
             if (!parent) return;
             const grand = safeGetNodeParent(tree, parent);
             if (!grand) return;
             tree.moveChildToParent(itemKey, grand);
             recomputeTree(tree);
             tree.setNodeAfter(itemKey, parent);
+            if (oldParentKey && oldParentKey !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, oldParentKey));
+            }
+            if (grand && grand !== "root") {
+                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, grand));
+            }
         }, null);
     },
 

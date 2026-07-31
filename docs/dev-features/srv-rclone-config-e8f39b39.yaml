@@ -15,5 +15,7 @@ description: 'Required environment variables:
 category: environment
 status: implemented
 components: []
-tests: []
+tests:
+- server/tests/rclone-backup-create.test.ts
+- server/tests/rclone-backup-prune.test.ts
 title-ja: Document rclone configuration for backups

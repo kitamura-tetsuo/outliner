@@ -1,7 +1,7 @@
 import "@dotenvx/dotenvx";
 import bodyParser from "body-parser";
 import cors from "cors";
-import express from "express";
+import express, { Request, Response } from "express";
 import { getAuth } from "firebase-admin/auth";
 import fs from "fs";
 import jwt from "jsonwebtoken";
@@ -209,7 +209,7 @@ function startLogService() {
         }
     });
 
-    app.post("/api/log", (req, res): any => {
+    app.post("/api/log", (req: Request, res: Response): any => {
         try {
             const logData = req.body;
             if (!logData || !logData.level || !logData.log) {
@@ -261,7 +261,7 @@ function startLogService() {
     });
 
     if (isDevelopment) {
-        app.get("/api/telemetry-logs", (req, res): any => {
+        app.get("/api/telemetry-logs", (req: Request, res: Response): any => {
             try {
                 if (!fs.existsSync(telemetryLogPath)) {
                     return res.status(404).json({ error: "Telemetry log file not found" });

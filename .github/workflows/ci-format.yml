@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      actions: write
     outputs:
       changes_pushed: ${{ steps.auto_fix.outputs.changes_pushed }}
     steps:
@@ -49,8 +48,6 @@ jobs:
       - name: Auto-fix formatting
         id: auto_fix
         if: steps.format_check.outputs.format_needed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
         run: |
           echo "🔧 Auto-fixing formatting issues..."
           npx dprint fmt
@@ -74,9 +71,6 @@ jobs:
           if git push; then
             echo "✅ Changes pushed successfully."
             echo "changes_pushed=true" >> $GITHUB_OUTPUT
-            
-            echo "Re-triggering ci.yml on the new commit..."
-            gh workflow run ci.yml --ref "${{ github.head_ref || github.ref_name }}"
           else
             echo "⚠️ Push failed, likely due to concurrent changes."
             echo "changes_pushed=true" >> $GITHUB_OUTPUT

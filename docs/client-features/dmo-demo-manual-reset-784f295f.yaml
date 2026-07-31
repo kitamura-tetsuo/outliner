@@ -2,10 +2,10 @@ id: FTR-784f295f
 title: Demo Manual Reset Button
 description: The /demo route has a reset button that manually triggers the same demo content reset that otherwise runs automatically every 24 hours.
 category: demo
-status: removed
+status: implemented
 components:
-- src/lib/demoSeed.ts
-- src/routes/demo/+page.svelte
+- client/src/lib/demoSeed.ts
+- client/src/routes/demo/+page.svelte
 services:
 - server/src/demo-api.ts
 tests:
