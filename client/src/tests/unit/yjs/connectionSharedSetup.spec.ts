@@ -94,13 +94,14 @@ const { mockOnAuthStateChanged } = vi.hoisted(() => {
             const index = fn.callbacks.indexOf(cb);
             if (index > -1) fn.callbacks.splice(index, 1);
         };
-    }) as unknown as { callbacks: Array<(user: unknown) => void> };
+    }) as unknown as { callbacks: Array<(user: unknown) => void>; };
     fn.callbacks = [];
     return { mockOnAuthStateChanged: fn };
 });
 
 vi.mock("firebase/auth", () => ({
-    onAuthStateChanged: (auth: { currentUser: unknown }, callback: (user: unknown) => void) => (mockOnAuthStateChanged as unknown as (a: unknown, c: unknown) => void)(auth, callback)
+    onAuthStateChanged: (auth: { currentUser: unknown; }, callback: (user: unknown) => void) =>
+        (mockOnAuthStateChanged as unknown as (a: unknown, c: unknown) => void)(auth, callback),
 }));
 
 vi.mock("../../../auth/UserManager", () => ({
