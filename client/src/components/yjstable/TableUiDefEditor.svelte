@@ -57,7 +57,7 @@ function setColumnLabel(column: string, label: string) {
         const components = componentsMap();
         const trimmed = label.trim();
         const existing = components.get(column);
-        const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();
+        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
         if (!(existing instanceof Y.Map)) components.set(column, cfg);
 
         if (trimmed === "") {
@@ -88,7 +88,7 @@ function setComponentType(column: string, type: string) {
 
         if (!isCellComponentType(type)) return;
 
-        const cfg = existing instanceof Y.Map ? existing : new Y.Map<unknown>();
+        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
         if (!(existing instanceof Y.Map)) components.set(column, cfg);
         cfg.set("type", type);
     });

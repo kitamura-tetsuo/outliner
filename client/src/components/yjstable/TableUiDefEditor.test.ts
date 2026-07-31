@@ -12,16 +12,17 @@ const mockHandles: TableHandles = {
     schemaText: mockDoc.getText("schemaText"),
     uiDef: mockDoc.getMap("uiDef"),
     data: mockDoc.getMap("data"),
-    undo: { undo: vi.fn(), redo: vi.fn() },
+    undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
 };
 
 describe("TableUiDefEditor", () => {
     it("sets and clears column labels in Yjs doc", async () => {
         const schema: ParsedTableSchema = {
+            tableName: "test",
+            createSql: "CREATE TABLE test (col_a text);",
             columns: [
-                { name: "col_a", dataType: "text", isNullable: true, kind: "text", checkOptions: [] },
+                { name: "col_a", dataType: "text", isNullable: true, kind: "text", checkOptions: [], isPrimaryKey: false },
             ],
-            primaryKey: ["id"],
         };
 
         const { getByTestId } = render(TableUiDefEditor, {
