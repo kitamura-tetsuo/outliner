@@ -16,8 +16,6 @@ import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { ganttInstantFraction, type GanttRow, layoutGantt, placeGanttBar } from "../../services/calendar/calendarGanttLayout";
 import type { GanttSubtreeShiftAnalysis } from "../../services/calendar/calendarGanttWrite";
 import type { GanttScale, GanttTick } from "../../services/calendar/calendarGridRange";
-import { formatDragMoveLabel, formatDragResizeLabel, formatSubtreeShiftLabel } from "../../services/calendar/calendarDragLabel";
-import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const ROW_HEIGHT_PX = 28;
 const LABEL_COLUMN_PX = 220;
@@ -48,7 +46,6 @@ interface Props {
     onLeafResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onLeafKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onSubtreeDragEnd: (row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) => void;
-    timeZone?: string;
 }
 
 let {
@@ -69,7 +66,6 @@ let {
     onLeafResizeEnd,
     onLeafKeyboardMove,
     onSubtreeDragEnd,
-    timeZone,
 }: Props = $props();
 
 const collapsedKeys = new SvelteSet<string>();
@@ -85,8 +81,7 @@ function tickFraction(tick: GanttTick): number {
     return (tick.startUtcMs - rangeStart) / (rangeEnd - rangeStart);
 }
 
-type DragBase = { label?: string; clientX?: number; clientY?: number; };
-type Drag = DragBase & (
+type Drag =
     | { kind: "leaf-move"; row: GanttRow; pointerId: number; startClientX: number; originStartMs: number; }
     | { kind: "leaf-resize"; row: GanttRow; pointerId: number; startClientX: number; originDurationMs: number; }
     | {
@@ -95,8 +90,7 @@ type Drag = DragBase & (
         pointerId: number;
         startClientX: number;
         analysis: GanttSubtreeShiftAnalysis;
-    }
-);
+    };
 
 let drag = $state<Drag | undefined>(undefined);
 let previewDeltaMs = $state<number | undefined>(undefined);
@@ -155,12 +149,8 @@ function onPointerMove(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     const rawDeltaMs = (e.clientX - drag.startClientX) * msPerPixel();
 
-    drag.clientX = e.clientX;
-    drag.clientY = e.clientY;
-
     if (drag.kind === "leaf-resize") {
         const newDuration = Math.max(DAY_MS, drag.originDurationMs + snapToDay(rawDeltaMs));
-        if (timeZone) drag.label = formatDragResizeLabel(drag.row.entry, newDuration, timeZone);
         onLeafResizeMove(drag.row.entry, newDuration);
         return;
     }
@@ -168,14 +158,8 @@ function onPointerMove(e: PointerEvent) {
     const deltaMs = snapToDay(rawDeltaMs);
     previewRowKey = drag.row.key;
     previewDeltaMs = deltaMs;
-
     if (drag.kind === "leaf-move") {
-        const newStart = drag.originStartMs + deltaMs;
-        if (timeZone) drag.label = formatDragMoveLabel(drag.row.entry, newStart, timeZone);
-        onLeafDragMove(drag.row.entry, newStart);
-    } else if (drag.kind === "subtree-move") {
-        const newStart = (drag.row.barStartMs ?? 0) + deltaMs;
-        if (timeZone) drag.label = formatSubtreeShiftLabel(deltaMs, newStart, timeZone);
+        onLeafDragMove(drag.row.entry, drag.originStartMs + deltaMs);
     }
 }
 
@@ -245,11 +229,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
     return f === undefined ? undefined : f * 100;
 }
 </script>
-
-{#if drag && drag.label && drag.clientX !== undefined && drag.clientY !== undefined}
-    <CalendarDragTooltip label={drag.label} clientX={drag.clientX} clientY={drag.clientY} />
-{/if}
-
 
 <svelte:window onpointermove={onPointerMove} onpointerup={endDrag} onpointercancel={onPointerCancel} />
 
