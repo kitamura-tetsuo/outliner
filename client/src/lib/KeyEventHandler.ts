@@ -301,7 +301,7 @@ export class KeyEventHandler {
             if (shouldShow && !commandPaletteStore.isVisible) {
                 try {
                     const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
                 } catch (_e) {
                     logger.error(_e);
                 }
@@ -426,7 +426,7 @@ export class KeyEventHandler {
 
                 if (!preventPalette) {
                     const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
                     // Let Slash input process normally (query accumulates in subsequent Input)
                 }
             } catch (e) {
@@ -1004,13 +1004,13 @@ export class KeyEventHandler {
                     } else {
                         // Show command palette
                         const pos = commandPaletteStore.getCursorScreenPosition();
-                        commandPaletteStore.show(pos || { top: 0, left: 0 });
+                        commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
                     }
                 }
             } else {
                 // Show command palette if no cursor
                 const pos = commandPaletteStore.getCursorScreenPosition();
-                commandPaletteStore.show(pos || { top: 0, left: 0 });
+                commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
             }
         } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
             // Hide command palette if [ is entered (start of internal link)

@@ -55,7 +55,7 @@ class CommandPaletteStore {
         return result;
     }
 
-    show(pos: Position) {
+    show(pos: Position, isPostInsert: boolean = false) {
         this.position = pos;
         this.query = "";
         this.selectedIndex = 0;
@@ -67,7 +67,7 @@ class CommandPaletteStore {
             const cursor = cursors[0];
             this.commandCursorItemId = cursor.itemId;
             this.commandCursorOffset = cursor.offset;
-            this.commandStartOffset = cursor.offset - 1; // Position of slash
+            this.commandStartOffset = isPostInsert ? Math.max(0, cursor.offset - 1) : cursor.offset; // Position of slash
         }
     }
 
@@ -113,10 +113,17 @@ class CommandPaletteStore {
         const node = cursor.findTarget();
         if (!node) return;
 
+        if (this.commandStartOffset < 0) {
+            this.hide();
+            return;
+        }
+
         // Extract command part from current text
         const text = String(node.text || "");
-        const beforeSlash = text.slice(0, this.commandStartOffset);
-        const afterCursor = text.slice(cursor.offset);
+        const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
+        const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
+        const beforeSlash = text.slice(0, safeStartOffset);
+        const afterCursor = text.slice(safeCursorOffset);
 
         // Construct new command string
         const newCommandText = this.query + inputData;
@@ -167,18 +174,25 @@ class CommandPaletteStore {
         const node = cursor.findTarget();
         if (!node) return;
 
+        if (this.commandStartOffset < 0) {
+            this.hide();
+            return;
+        }
+
         // If query is empty, delete slash as well and hide command palette
         if (this.query.length === 0) {
             const text = String(node.text || "");
-            const beforeSlash = text.slice(0, this.commandStartOffset);
-            const afterCursor = text.slice(cursor.offset);
+            const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
+            const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
+            const beforeSlash = text.slice(0, safeStartOffset);
+            const afterCursor = text.slice(safeCursorOffset);
 
             // Delete slash
             const newText = beforeSlash + afterCursor;
             node.updateText(newText);
 
             // Return cursor position to slash position
-            cursor.offset = this.commandStartOffset;
+            cursor.offset = safeStartOffset;
             cursor.applyToStore();
 
             this.hide();
@@ -187,8 +201,10 @@ class CommandPaletteStore {
 
         // Delete command part from current text
         const text = String(node.text || "");
-        const beforeSlash = text.slice(0, this.commandStartOffset);
-        const afterCursor = text.slice(cursor.offset);
+        const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
+        const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
+        const beforeSlash = text.slice(0, safeStartOffset);
+        const afterCursor = text.slice(safeCursorOffset);
 
         // Construct new command string (delete last character)
         const newCommandText = this.query.slice(0, -1);
@@ -289,15 +305,17 @@ class CommandPaletteStore {
                 const text = typeof raw === "string"
                     ? raw
                     : ((raw as { toString?: () => string; })?.toString?.() ?? "");
-                const beforeSlash = text.slice(0, this.commandStartOffset);
-                const afterCursor = text.slice(cursor.offset);
+                const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
+                const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
+                const beforeSlash = text.slice(0, safeStartOffset);
+                const afterCursor = text.slice(safeCursorOffset);
 
                 // Delete slash and command string
                 const newText = beforeSlash + afterCursor;
                 node.updateText(newText);
 
                 // Return cursor position to slash position
-                cursor.offset = this.commandStartOffset;
+                cursor.offset = safeStartOffset;
                 cursor.applyToStore();
             }
         }

@@ -20,7 +20,7 @@ const commandPaletteStore = (() => {
     if (g.commandPaletteStore) {
         return g.commandPaletteStore as {
             hide: () => void;
-            show: (pos: unknown) => void;
+            show: (pos: unknown, isPostInsert?: boolean) => void;
             handleCommandInput: (c: string) => void;
             handleCommandBackspace: () => void;
             isVisible: boolean;
@@ -47,7 +47,7 @@ const commandPaletteStore = (() => {
             const q = state.query.toLowerCase();
             return state.commands.filter((c: { label: string; }) => c.label.toLowerCase().includes(q));
         },
-        show(pos: unknown) {
+        show(pos: unknown, isPostInsert = false) {
             state.position = pos;
             state.query = "";
             state.selectedIndex = 0;
@@ -57,7 +57,7 @@ const commandPaletteStore = (() => {
                 const cur = cursors[0];
                 state._cmdItemId = cur.itemId;
                 state._cmdOffset = cur.offset;
-                state._cmdStart = cur.offset - 1;
+                state._cmdStart = isPostInsert ? Math.max(0, cur.offset - 1) : cur.offset;
             }
         },
         hide() {
@@ -152,7 +152,7 @@ describe("CommandPaletteStore", () => {
             mockCursor.offset = 6; // Immediately after slash
 
             // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            commandPaletteStore.show({ top: 100, left: 200 }, true);
 
             commandPaletteStore.handleCommandInput("t");
 
@@ -170,7 +170,7 @@ describe("CommandPaletteStore", () => {
             mockCursor.offset = 6;
 
             // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            commandPaletteStore.show({ top: 100, left: 200 }, true);
 
             commandPaletteStore.handleCommandInput("t");
             commandPaletteStore.handleCommandInput("a");
@@ -195,7 +195,7 @@ describe("CommandPaletteStore", () => {
             mockCursor.offset = 9;
 
             // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            commandPaletteStore.show({ top: 100, left: 200 }, true);
 
             // Set query first
             commandPaletteStore.handleCommandInput("t");
@@ -217,7 +217,7 @@ describe("CommandPaletteStore", () => {
             mockCursor.offset = 6;
 
             // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            commandPaletteStore.show({ top: 100, left: 200 }, true);
 
             commandPaletteStore.handleCommandBackspace();
 
