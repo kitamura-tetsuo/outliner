@@ -510,46 +510,44 @@ export class KeyEventHandler {
                         const targetNode = node as import("../../../shared/src/app-schema").Item;
                         const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
 
-                        if (true) {
-                            if (newItem) {
-                                const newItm = newItem as {
-                                    id: string;
-                                    text: string;
-                                    aliasTargetId: string | undefined;
-                                };
-                                newItm.text = "";
-                                newItm.aliasTargetId = undefined;
-                                try {
-                                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                        logger.debug(
-                                            "KeyEventHandler(Palette): showing AliasPicker for",
-                                            newItm.id,
-                                        );
-                                    }
-                                } catch (_e) {
-                                    logger.error(_e);
-                                }
-                                {
-                                    const w = typeof window !== "undefined"
-                                        ? (window as Window & typeof globalThis & {
-                                            aliasPickerStore?: typeof aliasPickerStore;
-                                        })
-                                        : null;
-                                    (w?.aliasPickerStore ?? aliasPickerStore).show(
+                        if (newItem) {
+                            const newItm = newItem as {
+                                id: string;
+                                text: string;
+                                aliasTargetId: string | undefined;
+                            };
+                            newItm.text = "";
+                            newItm.aliasTargetId = undefined;
+                            try {
+                                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                    logger.debug(
+                                        "KeyEventHandler(Palette): showing AliasPicker for",
                                         newItm.id,
                                     );
                                 }
-                                // Move cursor
-                                store.clearCursorAndSelection(userId);
-                                cursor.itemId = newItm.id;
-                                cursor.offset = 0;
-                                store.setActiveItem(newItm.id);
-                                cursor.applyToStore();
-                                store.startCursorBlink();
-
-                                event.preventDefault();
-                                return;
+                            } catch (_e) {
+                                logger.error(_e);
                             }
+                            {
+                                const w = typeof window !== "undefined"
+                                    ? (window as Window & typeof globalThis & {
+                                        aliasPickerStore?: typeof aliasPickerStore;
+                                    })
+                                    : null;
+                                (w?.aliasPickerStore ?? aliasPickerStore).show(
+                                    newItm.id,
+                                );
+                            }
+                            // Move cursor
+                            store.clearCursorAndSelection(userId);
+                            cursor.itemId = newItm.id;
+                            cursor.offset = 0;
+                            store.setActiveItem(newItm.id);
+                            cursor.applyToStore();
+                            store.startCursorBlink();
+
+                            event.preventDefault();
+                            return;
                         }
                     }
                 } catch (e) {

@@ -74,7 +74,9 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
 
         if (!newItem) {
             const lastIndex = (items.length ?? 0) - 1;
-            newItem = (items as any).at ? (items as any).at(lastIndex) : (items as any)[lastIndex];
+            newItem = typeof items.at === "function"
+                ? items.at(lastIndex)
+                : (items as unknown as Record<number, unknown>)[lastIndex];
         }
         return newItem;
     }
