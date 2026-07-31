@@ -985,6 +985,7 @@ export class EditorOverlayStore {
     setCursor(cursorProps: Omit<CursorPosition, "cursorId">) {
         const userId = cursorProps.userId ?? "local";
         const itemId = cursorProps.itemId;
+        cursorProps.offset = Math.max(0, cursorProps.offset);
 
         // Debug info
         if (

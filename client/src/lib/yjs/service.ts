@@ -90,7 +90,7 @@ function applyPresenceToOverlay(
     if (presence?.cursor) {
         overlay.setCursor({
             itemId: presence.cursor.itemId,
-            offset: presence.cursor.offset,
+            offset: Math.max(0, presence.cursor.offset),
             isActive: false,
             userId: user.userId,
             userName: user.name,
