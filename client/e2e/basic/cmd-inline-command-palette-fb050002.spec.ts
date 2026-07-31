@@ -35,8 +35,7 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         await expect(aliasOption).toBeVisible();
         await expect(dbOption).toBeHidden();
 
-        // Press down arrow, selection moves?
-        // Let's test arrow up/down on the list without query
+        // Test arrow up/down on the list without query
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await expect(palette).toHaveAttribute("data-query", "");
