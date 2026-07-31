@@ -14,7 +14,8 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 8. [Attachments](#attachments)
 9. [Advanced Features](#advanced-features)
 10. [Database Tables](#database-tables)
-11. [Keyboard Shortcuts](#keyboard-shortcuts)
+11. [Calendars](#calendars)
+12. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -108,7 +109,7 @@ Create links to other pages within Outliner or external websites.
 Type `[` once, then enter a page name to create a link to another page (e.g., `[page name]`).
 
 - Links to pages that do not exist yet look different, and the page is only created once you edit it.
-- You can also link to a page in another project with `[project/page]` syntax.
+- You can also link to a page in another project with `[/project/page]` syntax.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
 - **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the page header to access it.
 
@@ -169,10 +170,10 @@ You can upload attachments by dragging and dropping an image or file directly on
 
 ## Advanced Features
 
-Outliner includes advanced capabilities like aliases and scheduling.
+Outliner includes advanced capabilities like aliases and schedule rules.
 
 - **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Schedule:** The Schedule view shows date-tagged items as a timeline.
+- **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks).
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
 - **Comments and Votes:** Discuss and vote on items, with live seeded threads and votes.
 - **Publishing and Sharing:** Read-only sharing (tokens), scheduled publishing, and snapshots (snapshot diff viewer).
@@ -204,12 +205,25 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **Chart:** A visual representation of your data.
   - **Schema:** Allows you to define and edit the SQL schema for your table.
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
-  - **Schedule:** A calendar-like view for date-tagged data.
+  - **Schedule:** Create and manage recurring schedule rules (e.g., adding tasks daily or weekly) for the table.
 - The table toolbar also provides **Undo** and **Redo** buttons specific to the table's data.
 
 ### Collaboration
 
 Databases are stored the same way as other outliner data, so data changes and schema updates sync live to everyone in the project.
+
+---
+
+## Calendars
+
+A calendar is a query plus a role assignment over its result columns — which column is the title, the start, the all-day flag, the duration, and which columns are grouping axes. It has no data of its own.
+
+- **Query and Roles:** Candidates for roles are the columns the query actually returns. Changing the query never discards an existing role assignment for a column that is temporarily missing.
+- **Writeability:** A query must SELECT both `source_kind` and `source_id` for its rows to be writable; otherwise the calendar is read-only.
+- **Views:** Switch between Day, Multi-day, Week, Month, and Gantt views. Gantt view shows one row per entry, nested by the outline's own hierarchy.
+- **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys.
+- **Swimlanes:** Grouping by "tags" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry onto another lane to replace its tag, or hold `Ctrl` (`Cmd` on macOS) while dropping to add the lane's tag instead.
+- **Safe Operations:** "New entry" always asks which page to create it under, and deleting an entry always prompts between removing it and just clearing its date.
 
 ---
 
