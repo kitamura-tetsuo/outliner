@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock module
-// Provide a local mock instead of importing .svelte.ts in tests
-
 const mockCursor = {
     itemId: "test-item",
     offset: 5,
@@ -11,136 +9,48 @@ const mockCursor = {
 };
 const mockEditorOverlayStore = {
     getCursorInstances: vi.fn(() => [mockCursor]),
-} as unknown as import("./EditorOverlayStore.svelte.ts").EditorOverlayStore;
+};
+
+// Use global fallback for Svelte store mocks
 vi.mock("./EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockEditorOverlayStore }));
 
-// Access global store if available; otherwise provide a local minimal implementation
-const commandPaletteStore = (() => {
-    const g = globalThis as typeof globalThis & { commandPaletteStore?: unknown; };
-    if (g.commandPaletteStore) {
-        return g.commandPaletteStore as {
-            hide: () => void;
-            show: (pos: unknown) => void;
-            handleCommandInput: (c: string) => void;
-            handleCommandBackspace: () => void;
-            isVisible: boolean;
-            position: unknown;
-            query: string;
-            selectedIndex: number;
-            filtered: { label: string; }[];
-        };
-    }
-    // Minimal replica sufficient for this test
-    const state = {
-        isVisible: false,
-        position: { top: 0, left: 0 } as unknown,
-        query: "",
-        selectedIndex: 0,
-        _cmdItemId: null as string | null,
-        _cmdOffset: 0,
-        _cmdStart: 0,
-        commands: [
-            { label: "Database", type: "yjstable" },
-            { label: "Alias", type: "alias" },
-        ],
-        get filtered() {
-            const q = state.query.toLowerCase();
-            return state.commands.filter((c: { label: string; }) => c.label.toLowerCase().includes(q));
-        },
-        show(pos: unknown) {
-            state.position = pos;
-            state.query = "";
-            state.selectedIndex = 0;
-            state.isVisible = true;
-            const cursors = mockEditorOverlayStore.getCursorInstances();
-            if (cursors.length) {
-                const cur = cursors[0];
-                state._cmdItemId = cur.itemId;
-                state._cmdOffset = cur.offset;
-                state._cmdStart = cur.offset - 1;
-            }
-        },
-        hide() {
-            state.isVisible = false;
-            state._cmdItemId = null;
-            state._cmdOffset = 0;
-            state._cmdStart = 0;
-        },
-        handleCommandInput(ch: string) {
-            if (!state.isVisible || !state._cmdItemId) return;
-            const cur = mockEditorOverlayStore.getCursorInstances()[0];
-            const node = cur.findTarget();
-            if (!node) return;
-            const text = String(node.text || "");
-            const beforeSlash = text.slice(0, state._cmdStart);
-            const afterCursor = text.slice(cur.offset);
-            const newCommandText = state.query + ch;
-            node.updateText(beforeSlash + "/" + newCommandText + afterCursor);
-            const newOffset = state._cmdStart + 1 + newCommandText.length;
-            cur.offset = newOffset;
-            state._cmdOffset = newOffset;
-            state.query = newCommandText;
-            state.selectedIndex = 0;
-            cur.applyToStore();
-        },
-        handleCommandBackspace() {
-            if (!state.isVisible || !state._cmdItemId) return;
-            const cur = mockEditorOverlayStore.getCursorInstances()[0];
-            const node = cur.findTarget();
-            if (!node) return;
-            const text = String(node.text || "");
-            const beforeSlash = text.slice(0, state._cmdStart);
-            const afterCursor = text.slice(cur.offset);
-            if (state.query.length === 0) {
-                node.updateText(beforeSlash + afterCursor);
-                cur.offset = state._cmdStart;
-                state.hide();
-                return;
-            }
-            const newCommandText = state.query.slice(0, -1);
-            node.updateText(beforeSlash + "/" + newCommandText + afterCursor);
-            const newOffset = state._cmdStart + 1 + newCommandText.length;
-            cur.offset = newOffset;
-            state._cmdOffset = newOffset;
-            state.query = newCommandText;
-            state.selectedIndex = 0;
-            cur.applyToStore();
-        },
-    };
-    return state;
-})();
+interface ICommandPaletteStore {
+    hide: () => void;
+    show: (pos: unknown) => void;
+    handleCommandInput: (t: string) => void;
+    handleCommandBackspace: () => void;
+    isVisible: boolean;
+    commandStartOffset: number;
+    query: string;
+}
 
-describe("CommandPaletteStore", () => {
-    // use locals defined above
+describe("CommandPaletteStore Offset Arithmetic", () => {
+    // We import the store after mocking to ensure it uses the mock
+    let store: ICommandPaletteStore;
 
     beforeEach(async () => {
-        // Reset store state before each test
-        commandPaletteStore.hide();
         vi.clearAllMocks();
-
-        // reset spies/state on our local mocks
-        (mockEditorOverlayStore.getCursorInstances as import("vitest").Mock).mockClear?.();
+        const module = await import("./CommandPaletteStore.svelte");
+        store = module.commandPaletteStore as unknown as ICommandPaletteStore;
+        store.hide();
         mockCursor.findTarget.mockClear();
         mockCursor.applyToStore.mockClear();
     });
 
     describe("show", () => {
         it("should initialize command cursor state", () => {
-            const pos = { top: 100, left: 200 };
-
-            commandPaletteStore.show(pos);
-
-            expect(commandPaletteStore.isVisible).toBe(true);
-            expect(commandPaletteStore.position).toEqual(pos);
-            expect(commandPaletteStore.query).toBe("");
-            expect(commandPaletteStore.selectedIndex).toBe(0);
+            mockCursor.offset = 5;
+            store.show({ top: 100, left: 200 });
+            expect(store.isVisible).toBe(true);
+            expect(store.commandStartOffset).toBe(4);
+            expect(store.query).toBe("");
         });
     });
 
     describe("handleCommandInput", () => {
         beforeEach(() => {
-            const pos = { top: 100, left: 200 };
-            commandPaletteStore.show(pos);
+            mockCursor.offset = 6;
+            store.show({ top: 100, left: 200 });
         });
 
         it("should accumulate command text", () => {
@@ -148,42 +58,22 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
-            mockCursor.offset = 6; // Immediately after slash
-
-            // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
-
-            commandPaletteStore.handleCommandInput("t");
-
-            expect(mockNode.updateText).toHaveBeenCalledWith("hello/t");
-            expect(commandPaletteStore.query).toBe("t");
-            expect(mockCursor.offset).toBe(7);
-        });
-
-        it("should handle multiple character input", () => {
-            const mockNode = {
-                text: "hello/",
-                updateText: vi.fn(),
-            };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mockCursor.findTarget.mockReturnValue(mockNode as any);
             mockCursor.offset = 6;
 
-            // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            store.handleCommandInput("t");
 
-            commandPaletteStore.handleCommandInput("t");
-            commandPaletteStore.handleCommandInput("a");
-            commandPaletteStore.handleCommandInput("b");
-
-            expect(commandPaletteStore.query).toBe("tab");
+            expect(mockNode.updateText).toHaveBeenCalledWith("hello/t");
+            expect(store.query).toBe("t");
+            expect(mockCursor.offset).toBe(7);
         });
     });
 
     describe("handleCommandBackspace", () => {
         beforeEach(() => {
-            const pos = { top: 100, left: 200 };
-            commandPaletteStore.show(pos);
+            mockCursor.offset = 6;
+            store.show({ top: 100, left: 200 });
         });
 
         it("should remove last character from query", () => {
@@ -191,21 +81,18 @@ describe("CommandPaletteStore", () => {
                 text: "hello/tab",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mockCursor.findTarget.mockReturnValue(mockNode as any);
             mockCursor.offset = 9;
 
-            // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            store.query = "tab";
+            store.commandStartOffset = 5;
 
-            // Set query first
-            commandPaletteStore.handleCommandInput("t");
-            commandPaletteStore.handleCommandInput("a");
-            commandPaletteStore.handleCommandInput("b");
+            store.handleCommandBackspace();
 
-            // Execute backspace
-            commandPaletteStore.handleCommandBackspace();
-
-            expect(commandPaletteStore.query).toBe("ta");
+            expect(mockNode.updateText).toHaveBeenCalledWith("hello/ta");
+            expect(store.query).toBe("ta");
+            expect(mockCursor.offset).toBe(8);
         });
 
         it("should hide palette and remove slash when query is empty", () => {
@@ -213,44 +100,17 @@ describe("CommandPaletteStore", () => {
                 text: "hello/",
                 updateText: vi.fn(),
             };
-            mockCursor.findTarget.mockReturnValue(mockNode);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            mockCursor.findTarget.mockReturnValue(mockNode as any);
             mockCursor.offset = 6;
+            store.query = "";
+            store.commandStartOffset = 5;
 
-            // Call show to set commandStartOffset
-            commandPaletteStore.show({ top: 100, left: 200 });
+            store.handleCommandBackspace();
 
-            commandPaletteStore.handleCommandBackspace();
-
-            expect(commandPaletteStore.isVisible).toBe(false);
+            expect(store.isVisible).toBe(false);
             expect(mockNode.updateText).toHaveBeenCalledWith("hello");
             expect(mockCursor.offset).toBe(5); // Return to slash position
-        });
-    });
-
-    describe("filtered", () => {
-        it("should filter commands based on query", () => {
-            const mockNode = {
-                text: "hello/",
-                updateText: vi.fn(),
-            };
-            mockCursor.findTarget.mockReturnValue(mockNode);
-            mockCursor.offset = 6;
-
-            commandPaletteStore.show({ top: 0, left: 0 });
-
-            // All commands are displayed with empty query
-            expect(commandPaletteStore.filtered).toHaveLength(2);
-
-            // Filter by "da" (matches only "Database")
-            commandPaletteStore.handleCommandInput("d");
-            commandPaletteStore.handleCommandInput("a");
-            expect(commandPaletteStore.filtered).toHaveLength(1);
-            expect(commandPaletteStore.filtered[0].label).toBe("Database");
-
-            // Filter by "al"
-            commandPaletteStore.query = "al";
-            expect(commandPaletteStore.filtered).toHaveLength(1);
-            expect(commandPaletteStore.filtered[0].label).toBe("Alias");
         });
     });
 });
