@@ -128,6 +128,11 @@ describe("yjs connection: shared provider setup", () => {
             getIdToken: (forceRefresh: boolean) => getIdTokenSpy(forceRefresh),
         } as unknown as User;
         (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
+        (mockAuth as unknown as { authStateReady: unknown; }).authStateReady = () => Promise.resolve();
     });
 
     it("never resolves to the demo dummy token '1' for a non-demo room on failure", async () => {
@@ -140,7 +145,7 @@ describe("yjs connection: shared provider setup", () => {
         const tokenFn = provider.configuration.token;
         getIdTokenSpy.mockRejectedValue(new Error("Auth failed"));
 
-        vi.useFakeTimers();
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
         try {
             let error: Error | undefined;
             const tokenPromise = tokenFn().catch((e: unknown) => {
@@ -187,7 +192,7 @@ describe("yjs connection: shared provider setup", () => {
             // Need to flush microtasks to let Promise.race and authStateReady() be called
             await flushMicrotasks();
 
-            // Advance slightly to process Promise.race
+            // Do not advance time a lot, just enough to not block Promise.race internals if they use timeouts
             await new Promise(r => setTimeout(r, 10));
 
             // Still waiting
@@ -200,11 +205,12 @@ describe("yjs connection: shared provider setup", () => {
 
             // Resolve authStateReady and allow microtasks to process
             resolveAuthState!();
+
+            // Allow Promise.race to evaluate
             await flushMicrotasks();
             await new Promise(r => setTimeout(r, 10));
             await flushMicrotasks();
 
-            // The loop shouldn't require timers to advance because it listens to authStateReady
             await tokenPromise;
             expect(resolvedToken).toBe("hydrated-token");
         }
@@ -222,7 +228,7 @@ describe("yjs connection: shared provider setup", () => {
         // This causes tokenProvider to retry and eventually throw "Token is empty".
         getIdTokenSpy.mockResolvedValue("");
 
-        vi.useFakeTimers();
+        vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
         try {
             let error: Error | undefined;
             const tokenPromise = tokenFn().catch((e: unknown) => {
@@ -230,7 +236,7 @@ describe("yjs connection: shared provider setup", () => {
             });
 
             // Advance timers enough to trigger all backoff intervals
-            await vi.advanceTimersByTimeAsync(1000); // Attempt 1 wait
+            await vi.advanceTimersByTimeAsync(1); // Attempt 1 wait
             await vi.advanceTimersByTimeAsync(2000); // Attempt 2 wait
             await vi.advanceTimersByTimeAsync(3000); // Attempt 3 wait
 
