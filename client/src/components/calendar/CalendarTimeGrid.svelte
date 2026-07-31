@@ -24,6 +24,8 @@ import { onMount } from "svelte";
 import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { TimeGridLayout } from "../../services/calendar/calendarTimeGridLayout";
+import { formatDragMoveLabel, formatDragResizeLabel } from "../../services/calendar/calendarDragLabel";
+import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const DAY_MS = 86_400_000;
 const MIN_DURATION_MS = 5 * 60 * 1000;
@@ -35,6 +37,7 @@ interface Props {
     rangeStart: number;
     workingHoursStartMinutes: number;
     workingHoursEndMinutes: number;
+    timeZone?: string;
     dayHeaders?: DayHeader[];
     todayUtcMs?: number;
     isStartWritable: (entry: CalendarEntry) => boolean;
@@ -58,6 +61,7 @@ let {
     rangeStart,
     workingHoursStartMinutes,
     workingHoursEndMinutes,
+    timeZone,
     dayHeaders,
     todayUtcMs,
     isStartWritable,
@@ -86,6 +90,9 @@ let drag = $state<{
     pointerId: number
     startClientX: number
     startClientY: number
+    clientX?: number
+    clientY?: number
+    label?: string
     originStartMs: number
     originDurationMs: number
 } | undefined>(undefined);
@@ -117,14 +124,19 @@ function onPointerMove(e: PointerEvent) {
     const colWidth = columnWidthPx();
     const dyMinutes = ((e.clientY - drag.startClientY) / ROW_HEIGHT_PX) * 60;
 
+    drag.clientX = e.clientX;
+    drag.clientY = e.clientY;
+
     if (drag.kind === "resize") {
         const newDuration = Math.max(MIN_DURATION_MS, drag.originDurationMs + dyMinutes * 60_000);
+        if (timeZone) drag.label = formatDragResizeLabel(drag.entry, newDuration, timeZone);
         onResizeMove(drag.entry, newDuration);
         return;
     }
 
     const dxDays = colWidth > 0 ? Math.round((e.clientX - drag.startClientX) / colWidth) : 0;
     const newStart = drag.originStartMs + dxDays * DAY_MS + Math.round(dyMinutes) * 60_000;
+    if (timeZone) drag.label = formatDragMoveLabel(drag.entry, newStart, timeZone);
     onDragMove(drag.entry, newStart);
 }
 
@@ -178,6 +190,11 @@ onMount(() => {
     if (scrollEl) scrollEl.scrollTop = Math.max(0, (workingHoursStartMinutes / 60) * ROW_HEIGHT_PX - ROW_HEIGHT_PX);
 });
 </script>
+
+{#if drag && drag.label && drag.clientX !== undefined && drag.clientY !== undefined}
+    <CalendarDragTooltip label={drag.label} clientX={drag.clientX} clientY={drag.clientY} />
+{/if}
+
 
 <svelte:window onpointermove={onPointerMove} onpointerup={onPointerUp} onpointercancel={onPointerCancel} />
 

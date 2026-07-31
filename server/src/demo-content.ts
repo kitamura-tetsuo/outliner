@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 30;
+export const DEMO_TEMPLATE_VERSION = 31;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -1009,7 +1009,7 @@ export const demoPages: DemoPageTemplate[] = [
                     },
                     {
                         text:
-                            "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month with the toolbar select; Gantt is a later feature.",
+                            "Drag an entry to reschedule it (a tooltip shows exactly where it will land), drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month with the toolbar select; Gantt is a later feature.",
                     },
                     {
                         text:

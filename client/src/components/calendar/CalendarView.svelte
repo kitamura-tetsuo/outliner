@@ -598,6 +598,7 @@ onDestroy(() => {
             onLeafResizeEnd={commitDuration}
             onLeafKeyboardMove={commitStart}
             onSubtreeDragEnd={commitSubtreeShift}
+            timeZone={timeZone}
         />
     {:else if viewType === "month" && monthCells}
         {#if groupingActive}
@@ -628,6 +629,7 @@ onDestroy(() => {
             {isDeletable}
             onDeleteRequest={requestDelete}
             laneLabel={groupingActive ? laneLabelForEntry : undefined}
+            timeZone={timeZone}
         />
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
@@ -650,6 +652,7 @@ onDestroy(() => {
             onLaneDrop={commitLaneDrop}
             {isDeletable}
             onDeleteRequest={requestDelete}
+            timeZone={timeZone}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -669,6 +672,7 @@ onDestroy(() => {
             onKeyboardMove={commitStart}
             {isDeletable}
             onDeleteRequest={requestDelete}
+            timeZone={timeZone}
         />
     {/if}
 </div>

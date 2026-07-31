@@ -9,6 +9,8 @@
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { laneColor } from "../../services/calendar/calendarLaneColor";
 import type { MonthCell } from "../../services/calendar/calendarMonthGridLayout";
+import { formatDragMoveLabel } from "../../services/calendar/calendarDragLabel";
+import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const DAY_MS = 86_400_000;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -28,6 +30,7 @@ interface Props {
      * grouping axis is assigned.
      */
     laneLabel?: (entry: CalendarEntry) => string;
+    timeZone?: string;
 }
 
 let {
@@ -40,6 +43,7 @@ let {
     onDeleteRequest,
     isDeletable = () => false,
     laneLabel,
+    timeZone,
 }: Props = $props();
 
 const weekdayHeaders = $derived(
@@ -78,8 +82,12 @@ function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
 }
 
 let draggingKey: string | undefined = $state();
+let dragLabel = $state<string | undefined>();
+let dragClientX = $state<number>(0);
+let dragClientY = $state<number>(0);
 
 function onDragStart(entry: CalendarEntry, e: DragEvent) {
+    dragLabel = undefined;
     if (!isStartWritable(entry)) {
         e.preventDefault();
         return;
@@ -102,9 +110,34 @@ function onDrop(cell: MonthCell, e: DragEvent) {
     const key = e.dataTransfer?.getData("text/plain") ?? draggingKey;
     const entry = findEntry(key);
     draggingKey = undefined;
+    dragLabel = undefined;
     if (entry) onDropOnCell(entry, cell);
 }
+
+function onDragOverCell(cell: MonthCell, e: DragEvent) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+    dragClientX = e.clientX;
+    dragClientY = e.clientY;
+
+    if (draggingKey && timeZone) {
+        const entry = findEntry(draggingKey);
+        if (entry) {
+            const newStart = entry.allDay ? cell.dateUtcMs : cell.dateUtcMs + timeOfDayMs(entry.startMs ?? 0);
+            dragLabel = formatDragMoveLabel(entry, newStart, timeZone);
+        }
+    }
+}
+
+function clearDragLabel() {
+    dragLabel = undefined;
+}
 </script>
+
+{#if dragLabel !== undefined}
+    <CalendarDragTooltip label={dragLabel} clientX={dragClientX} clientY={dragClientY} />
+{/if}
+
 
 <div class="month-grid" class:dragging={draggingKey !== undefined} data-testid="calendar-month-grid">
     <div class="weekday-header">
@@ -120,7 +153,9 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                 class="month-cell"
                 class:is-today={todayUtcMs !== undefined && cell.dateUtcMs === todayUtcMs}
                 data-testid={`calendar-month-cell-${cell.dayIndex}`}
-                ondragover={(e) => e.preventDefault()}
+                ondragover={(e) => onDragOverCell(cell, e)}
+                ondragleave={clearDragLabel}
+                ondragend={clearDragLabel}
                 ondrop={(e) => onDrop(cell, e)}
             >
                 <div class="cell-date">{new Date(cell.dateUtcMs).getUTCDate()}</div>

@@ -43,6 +43,7 @@ interface Props {
     /** Delete affordance, passed straight through to each lane's grid (#4349). */
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    timeZone?: string;
 }
 
 let {
@@ -65,6 +66,7 @@ let {
     onLaneDrop,
     onDeleteRequest,
     isDeletable = () => false,
+    timeZone,
 }: Props = $props();
 
 const bands = $derived(lanes.map((lane) => ({ lane, layout: layoutTimeGrid(lane.entries, rangeStart, rangeEnd) })));
@@ -175,6 +177,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
                 {onDeleteRequest}
                 isLaneWritable={(entry) => isLaneWritable(entry)}
                 onLaneDragStart={onHandleDragStart}
+                timeZone={timeZone}
             />
         </div>
     {/each}
