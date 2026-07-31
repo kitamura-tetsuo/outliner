@@ -5,9 +5,9 @@ description: Support dragging and dropping images from external applications int
 category: attachments
 status: implemented
 components:
-- src/components/OutlinerItem.svelte
-- src/components/OutlinerTree.svelte
-- src/services/attachmentService.ts
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerTree.svelte
+- client/src/services/attachmentService.ts
 tests:
 - client/e2e/core/att-image-drag-drop-a1b2c3d4.spec.ts
 acceptance:

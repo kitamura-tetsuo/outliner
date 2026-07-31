@@ -5,9 +5,7 @@ description: Removed. We eliminated the thin facade (GlobalStore proxy). UI impo
 category: project
 status: removed
 components: null
-services:
-- src/stores/store.svelte.ts
-- src/stores/firestoreStore.svelte.ts
+services: []
 tests:
 - client/src/tests/integration/globalStore.integration.spec.ts
 acceptance:

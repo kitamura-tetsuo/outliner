@@ -3,11 +3,11 @@ title: Project Deletion Page
 title-ja: プロジェクト削除ページ
 description: Dedicated page listing all user projects with checkboxes to delete inaccessible or unwanted containers.
 category: project
-status: removed
+status: implemented
 components:
-- src/routes/projects/delete/+page.svelte
+- client/src/routes/projects/delete/+page.svelte
 services:
-- src/stores/firestoreStore.svelte.ts
+- client/src/stores/firestoreStore.svelte.ts
 tests:
 - client/e2e/new/DEL-0001.spec.ts
 acceptance:

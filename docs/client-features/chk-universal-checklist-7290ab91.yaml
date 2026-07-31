@@ -4,9 +4,9 @@ description: Checklist supporting shopping, packing and habit modes with optiona
 category: checklist
 status: implemented
 components:
-- src/components/Checklist.svelte
+- client/src/components/Checklist.svelte
 services:
-- src/services/checklistService.svelte.ts
+- client/src/services/checklistService.svelte.ts
 tests:
 - client/e2e/new/CHK-0001.spec.ts
 - client/src/tests/checklistService.test.ts

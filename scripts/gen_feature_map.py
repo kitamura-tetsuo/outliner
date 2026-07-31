@@ -108,12 +108,34 @@ def load_features():
                 # Check path existence
                 client_path = ROOT / "client" / c
                 root_path = ROOT / c
+
+                # Check if it resolves from repo root properly. If it only resolves with 'client/' prepend but
+                # 'client/' isn't in the path, we should fail it as mentioned in issue.
+                if not root_path.exists() and client_path.exists():
+                    logger.error(f"Path '{c}' in {path.relative_to(ROOT)} does not resolve from repo root. Did you mean 'client/{c}'?")
+                    raise SystemExit(1)
+
                 if not client_path.exists() and not root_path.exists():
+
                     # also allow it if it's a known service description or just not a file
                     if any(c.endswith(ext) for ext in ['.js', '.ts', '.svelte', '.cjs', '.mjs', '.md', '.yaml', '.json', '.sh']):
                         logger.error(f"Missing file referenced in {path.relative_to(ROOT)}: {c}")
                         raise SystemExit(1)
 
+
+
+        if data.get("status") == "removed":
+            alive = []
+            for section in ["components", "services"]:
+                for c in (data.get(section) or []):
+                    if isinstance(c, str):
+                        client_path = ROOT / "client" / c
+                        root_path = ROOT / c
+                        if client_path.exists() or root_path.exists():
+                            alive.append(c)
+            if alive:
+                logger.error(f"Feature {fid} is marked 'removed' but components/services still exist: {alive}")
+                raise SystemExit(1)
 
         data["__source__"] = str(path.relative_to(ROOT))
         features[fid] = data

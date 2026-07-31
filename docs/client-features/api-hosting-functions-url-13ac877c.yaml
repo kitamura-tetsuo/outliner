@@ -8,7 +8,5 @@ acceptance:
 - No code paths reference the Functions emulator port directly
 tests:
 - client/src/tests/env-functions-url-default.test.ts
-components:
-- client/src/auth/UserManager.ts
-- client/src/stores/firestoreStore.svelte.ts
+components: []
 title-ja: Firebase Hosting経由のFunctions URLを常時使用
