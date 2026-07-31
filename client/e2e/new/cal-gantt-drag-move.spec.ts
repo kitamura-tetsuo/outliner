@@ -87,7 +87,11 @@ test.describe("Gantt view leaf drag", () => {
         await page.mouse.down();
 
         // Move to right in steps to trigger drag logic
-        await page.mouse.move(initialBox!.x + (initialBox!.width / 2) + dragPixels, initialBox!.y + (initialBox!.height / 2), { steps: 10 });
+        await page.mouse.move(
+            initialBox!.x + (initialBox!.width / 2) + dragPixels,
+            initialBox!.y + (initialBox!.height / 2),
+            { steps: 10 },
+        );
 
         // Wait for optimistic state to update
         await page.waitForTimeout(100);
