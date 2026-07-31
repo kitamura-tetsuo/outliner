@@ -31,7 +31,7 @@ describe("Feature Documentation Test References", () => {
                     if (inTests) {
                         if (line.startsWith("- ")) {
                             tests.push(line.substring(2).trim());
-                        } else if (line.match(/^[a-z]+:/)) {
+                        } else if (line.match(/^[a-z][a-z-]*:/)) {
                             inTests = false;
                         }
                     }

@@ -66,7 +66,11 @@ export class UserPreferencesStore {
 export const userPreferencesStore = $state(new UserPreferencesStore());
 
 if (typeof window !== "undefined") {
-    window.userPreferencesStore = userPreferencesStore;
+    // Debug/test-only handle. The literal MODE comparison lets Rollup drop this
+    // assignment from the production bundle (see ENV-production-build-leak.test.ts).
+    if (import.meta.env.MODE !== "production") {
+        window.userPreferencesStore = userPreferencesStore;
+    }
     // Ensure initial theme is applied on startup
     userPreferencesStore.applyDocumentTheme();
 }

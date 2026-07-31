@@ -2,7 +2,8 @@ id: ENV-a5b6c7d8
 title: Ensure no Fluid service is exposed globally
 description: Verify that the client no longer attaches a Fluid service to the window object after removing Fluid code.
 category: environment
-status: implemented
+status: removed
 components: []
 tests: []
 title-ja: Ensure no Fluid service is exposed globally
+removal-note: One-off check for the completed Fluid removal; the remaining __FLUID_*__ globals in client/src/lib/debug.ts are legacy aliases for Yjs objects.

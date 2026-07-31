@@ -8,4 +8,7 @@ acceptance:
 - Cursor indicators disappear promptly when the collaborator disconnects or closes the session
 - Remote collaborator cursor positions update live when another session moves the caret
 - Remote text selections reuse the collaborator's assigned color across items and box selections
-tests: []
+tests:
+- client/e2e/core/col-displaying-cursors-for-other-users-bedbc307.spec.ts
+- client/e2e/new/prs-cursor-sync-4d2e1b6a.spec.ts
+- client/e2e/new/prs-real-time-presence-indicators-7b6a1ea8.spec.ts

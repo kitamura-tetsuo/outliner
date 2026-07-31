@@ -1,9 +1,10 @@
 id: FTR-db5e7a9c
 slug: db5
 title: LevelDB persistence
-status: experimental
+status: removed
 title-ja: LevelDB 永続化
 description: Persistence layer using LevelDB for local data storage.
 components: []
 category: server
 tests: []
+removal-note: Superseded by the Hocuspocus SQLite extension (server/src/persistence.ts); y-leveldb is no longer a dependency.

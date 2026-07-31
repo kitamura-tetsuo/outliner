@@ -302,7 +302,7 @@ export class KeyEventHandler {
             if (shouldShow && !commandPaletteStore.isVisible) {
                 try {
                     const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
                 } catch (_e) {
                     logger.error(_e);
                 }
@@ -427,7 +427,7 @@ export class KeyEventHandler {
 
                 if (!preventPalette) {
                     const pos = commandPaletteStore.getCursorScreenPosition();
-                    commandPaletteStore.show(pos || { top: 0, left: 0 });
+                    commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
                     // Let Slash input process normally (query accumulates in subsequent Input)
                 }
             } catch (e) {
@@ -505,24 +505,18 @@ export class KeyEventHandler {
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
-                        // Insert new item next to the current item and show AliasPicker
+                        // Add new item next to the current one and show AliasPicker
                         const userId = cursor.userId || "local";
-                        const targetNode = node as import("../../../shared/src/app-schema").Item;
-                        const newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
+                        const newItem = insertItemAfterTargetOrAppend(node, userId);
 
                         if (newItem) {
-                            const newItm = newItem as {
-                                id: string;
-                                text: string;
-                                aliasTargetId: string | undefined;
-                            };
-                            newItm.text = "";
-                            newItm.aliasTargetId = undefined;
+                            newItem.text = "";
+                            newItem.aliasTargetId = undefined;
                             try {
                                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                                     logger.debug(
                                         "KeyEventHandler(Palette): showing AliasPicker for",
-                                        newItm.id,
+                                        newItem.id,
                                     );
                                 }
                             } catch (_e) {
@@ -535,14 +529,14 @@ export class KeyEventHandler {
                                     })
                                     : null;
                                 (w?.aliasPickerStore ?? aliasPickerStore).show(
-                                    newItm.id,
+                                    newItem.id,
                                 );
                             }
                             // Move cursor
                             store.clearCursorAndSelection(userId);
-                            cursor.itemId = newItm.id;
+                            cursor.itemId = newItem.id;
                             cursor.offset = 0;
-                            store.setActiveItem(newItm.id);
+                            store.setActiveItem(newItem.id);
                             cursor.applyToStore();
                             store.startCursorBlink();
 
@@ -968,13 +962,13 @@ export class KeyEventHandler {
                     } else {
                         // Show command palette
                         const pos = commandPaletteStore.getCursorScreenPosition();
-                        commandPaletteStore.show(pos || { top: 0, left: 0 });
+                        commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
                     }
                 }
             } else {
                 // Show command palette if no cursor
                 const pos = commandPaletteStore.getCursorScreenPosition();
-                commandPaletteStore.show(pos || { top: 0, left: 0 });
+                commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
             }
         } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
             // Hide command palette if [ is entered (start of internal link)
@@ -2595,5 +2589,9 @@ export class KeyEventHandler {
 
 // Expose KeyEventHandler globally for testing
 if (typeof window !== "undefined") {
-    (window as Window & typeof globalThis & { [key: string]: unknown; }).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    // The literal MODE comparison lets Rollup drop this assignment from the
+    // production bundle (see ENV-production-build-leak.test.ts).
+    if (import.meta.env.MODE !== "production") {
+        (window as Window & typeof globalThis & { [key: string]: unknown; }).__KEY_EVENT_HANDLER__ = KeyEventHandler;
+    }
 }

@@ -1,0 +1,23 @@
+id: ENV-3f7a2b91
+title: Internal store singletons never reach window in the production bundle
+description: Every debug/test handle the client publishes on window - appStore, generalStore, editorOverlayStore, presenceStore, commandPaletteStore, aliasPickerStore, userPreferencesStore, __YJS_STORE__, __YJS_CLIENT_REGISTRY__, __FLUID_CLIENT_REGISTRY__, __FIRESTORE_STORE__, __KEY_EVENT_HANDLER__ and __pollingMonitor - is written behind a literal `import.meta.env.MODE !== "production"` comparison so Rollup drops the assignment from a production build. A bare `typeof window !== "undefined"` guard is true in every browser build and does not qualify. EnvDebugger is gated the same way because enumerating `import.meta.env` forces Vite to inline the entire env snapshot, including a developer's local `.env`, into the chunk. The guard test runs `npm run build:production` itself rather than inspecting whatever happens to be in the build directory, so it cannot pass without ever looking at production output, and `build:production` passes `--overload` to dotenvx so `.env.production` wins over any local `.env` and the inspected bundle matches what the deploy workflow produces.
+category: environment
+status: implemented
+components:
+- client/package.json
+- client/src/components/EnvDebugger.svelte
+- client/src/lib/KeyEventHandler.ts
+- client/src/lib/pollingMonitor.ts
+- client/src/lib/yjsService.svelte.ts
+- client/src/routes/+layout.svelte
+- client/src/stores/AliasPickerStore.svelte.ts
+- client/src/stores/CommandPaletteStore.svelte.ts
+- client/src/stores/EditorOverlayStore.svelte.ts
+- client/src/stores/PresenceStore.svelte.ts
+- client/src/stores/UserPreferencesStore.svelte.ts
+- client/src/stores/firestoreStore.svelte.ts
+- client/src/stores/store.svelte.ts
+- client/src/stores/yjsStore.svelte.ts
+tests:
+- client/src/tests/ENV-production-build-leak.test.ts
+title-ja: Internal store singletons never reach window in the production bundle

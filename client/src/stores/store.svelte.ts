@@ -7,9 +7,10 @@ import { untrack } from "svelte";
 import { createSubscriber, SvelteSet } from "svelte/reactivity";
 import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
-import type { Item, Items } from "../schema/app-schema";
-import { Project } from "../schema/app-schema";
+import type { Items } from "../schema/app-schema";
+import { Item, Project } from "../schema/app-schema";
 import { globalUndoRouter } from "../services/undo/undoRouter";
+import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 export class GeneralStore {
     // Use $state for pages to ensure proper Svelte reactivity
@@ -314,6 +315,8 @@ export class GeneralStore {
         let rebuildPending = false;
 
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => {
+            /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- This set is local to the event loop, no reactivity needed */
+            const checkboxParentsToUpdate = new Set<string>();
             // Debounce saveProjectSnapshot to avoid O(N) traversal on every transaction
             if (!snapshotTimeout) {
                 // Check if this project provider is still doing its initial sync.
@@ -344,11 +347,13 @@ export class GeneralStore {
                         if (event.changes.keys.size > 0) {
                             // Check if any added key is a page
                             for (const [key, change] of event.changes.keys) {
-                                if (change.action === "add") {
+                                if (change.action === "add" || change.action === "update") {
                                     try {
-                                        if (safeGetNodeParent(project.tree, key) === "root") {
+                                        const parent = safeGetNodeParent(project.tree, key);
+                                        if (parent === "root") {
                                             shouldRebuild = true;
-                                            break;
+                                        } else if (parent) {
+                                            checkboxParentsToUpdate.add(parent);
                                         }
                                     } catch (_e) {
                                         logger.error(_e);
@@ -356,27 +361,58 @@ export class GeneralStore {
                                 } else if (change.action === "delete") {
                                     // Conservative approach: rebuild on delete as we can't easily check parent
                                     shouldRebuild = true;
-                                    break;
                                 }
                             }
                         }
                     } else if (event.path.length === 1 && event.keys.has("text")) {
-                        // Change on a node's property (text)
-                        // path[0] is the node ID
+                        // Change on a node's property (text) (Top level structure event maybe?)
                         const nodeId = String(event.path[0]);
                         try {
-                            if (safeGetNodeParent(project.tree, nodeId) === "root") {
-                                // It is a page title change
+                            const parent = safeGetNodeParent(project.tree, nodeId);
+                            if (parent === "root") {
                                 shouldRebuild = true;
+                            } else if (parent) {
+                                checkboxParentsToUpdate.add(parent);
+                            }
+                        } catch (_e) {
+                            logger.error(_e);
+                        }
+                    } else if (event.path.length >= 2 && event.path[event.path.length - 1] === "text") {
+                        // Text updates inside a node (e.g. path: [nodeId, "value", "text"])
+                        const nodeId = String(event.path[0]);
+                        try {
+                            const parent = safeGetNodeParent(project.tree, nodeId);
+                            if (parent && parent !== "root") {
+                                checkboxParentsToUpdate.add(parent);
                             }
                         } catch (_e) {
                             logger.error(_e);
                         }
                     }
-                    if (shouldRebuild) break;
                 }
             } catch (_e) {
                 logger.error(_e);
+            }
+
+            // Only the client that originated the change rolls up: the resulting parent text
+            // is replicated like any other edit. If every peer recomputed it, they would all
+            // write the same minimal diff concurrently and corrupt the parent's Y.Text.
+            const isLocalChange = _tr?.local ?? true;
+            if (checkboxParentsToUpdate.size > 0 && isLocalChange && _tr?.origin !== CHECKBOX_ROLLUP_ORIGIN) {
+                const parents = Array.from(checkboxParentsToUpdate);
+                // Defer out of the observer callback: the roll-up writes back to the same
+                // document, which Yjs does not allow while the current transaction cleans up.
+                queueMicrotask(() => {
+                    project.ydoc.transact(() => {
+                        for (const pid of parents) {
+                            try {
+                                updateParentCheckboxStatus(new Item(project.ydoc, project.tree, pid));
+                            } catch (_e) {
+                                logger.error(_e);
+                            }
+                        }
+                    }, CHECKBOX_ROLLUP_ORIGIN);
+                });
             }
 
             if (shouldRebuild) {
@@ -428,11 +464,15 @@ export function isProvisionalProject(project: Project | undefined): boolean {
     return !!project?.ydoc && provisionalDocs.has(project.ydoc);
 }
 
-// Make it globally accessible (to be accessed from ScrapboxFormatter.ts)
-if (typeof window !== "undefined") {
-    Object.assign(window, { appStore: store });
-    Object.assign(window, { generalStore: store }); // For compatibility with TestHelpers
+// Make it globally accessible (to be accessed from ScrapboxFormatter.ts).
+// The literal MODE comparison lets Rollup drop these assignments from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.appStore = store;
+    window.generalStore = store; // For compatibility with TestHelpers
+}
 
+if (typeof window !== "undefined") {
     // Prepare a provisional project immediately after startup (yjsStore will replace it when the actual connection arrives)
     // This ensures tests and direct navigation work even before Yjs connection is established
     try {
