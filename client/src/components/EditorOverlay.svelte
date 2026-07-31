@@ -412,6 +412,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
 
         // Find the correct text node and offset for the given character position
         const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
+            if (targetOffset < 0) return null;
             let currentOffset = 0;
             let lastTextNode: Text | null = null;
 
@@ -454,7 +455,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         const textPosition = findTextPosition(textElement, offset);
         if (textPosition) {
             const range = document.createRange();
-            const safeOffset = Math.min(textPosition.offset, textPosition.node.textContent?.length || 0);
+            const safeOffset = Math.max(0, Math.min(textPosition.offset, textPosition.node.textContent?.length || 0));
             range.setStart(textPosition.node, safeOffset);
             range.setEnd(textPosition.node, safeOffset);
             const rects = range.getClientRects();
@@ -481,7 +482,7 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         }
         return { left: relativeLeft, top: relativeTop };
     } catch (error) {
-          logger.error({ error }, "Error calculating cursor position");
+          logger.warn({ error }, "Error calculating cursor position");
         return null;
     }
 }
