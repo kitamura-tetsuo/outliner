@@ -555,10 +555,10 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
                 const gs = typeof window !== "undefined" ? w?.generalStore : undefined;
-                const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
+                const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => { id?: string, addAttachment: (u: string) => void }, [key: number]: { id?: string, addAttachment: (u: string) => void } } } | undefined;
                 if (mappedId && curPage?.items) {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
-                        const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
+                        const cand = curPage.items.at?.(i) || curPage.items[i];
                         if (cand && String(cand?.id) === String(mappedId)) {
                             addAttachmentSafely(cand, url, IS_TEST);
                             break;
