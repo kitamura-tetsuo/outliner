@@ -199,6 +199,8 @@ export class KeyEventHandler {
             if (k === "Backspace") {
                 commandPaletteStore.handleCommandBackspace();
                 event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
                 return;
             }
             if (k === "Enter") {
@@ -597,14 +599,20 @@ export class KeyEventHandler {
                 // Normal palette confirm
                 commandPaletteStore.confirm();
                 event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
                 return;
             } else if (event.key === "Escape") {
                 commandPaletteStore.hide();
                 event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
                 return;
             } else if (event.key === "Backspace") {
                 commandPaletteStore.handleCommandBackspace();
                 event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
                 return;
             }
         }
