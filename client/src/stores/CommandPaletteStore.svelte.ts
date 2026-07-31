@@ -1,8 +1,8 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
-import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 
 export type CommandType = "yjstable" | "alias";
 

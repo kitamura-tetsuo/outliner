@@ -1,9 +1,9 @@
 import { globalUndoRouter } from "../services/undo/undoRouter";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
-import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../utils/domUtils";
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
