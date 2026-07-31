@@ -1,6 +1,7 @@
 import { globalUndoRouter } from "../services/undo/undoRouter";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../utils/domUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
@@ -504,7 +505,7 @@ export class KeyEventHandler {
                         cursor.offset = lastSlash;
                         cursor.applyToStore();
 
-                        // Add new item to end and show AliasPicker
+                        // Insert new item next to the current item and show AliasPicker
                         const w = typeof window !== "undefined"
                             ? (window as Window & typeof globalThis & {
                                 appStore?: { currentPage?: { items?: unknown[]; }; };
@@ -525,25 +526,8 @@ export class KeyEventHandler {
                         })?.currentPage?.items;
                         if (items && typeof items.addNode === "function") {
                             const userId = cursor.userId || "local";
-                            let newItem: unknown = null;
-                            try {
-                                // addNode returns the new item
-                                newItem = items.addNode(userId);
-                            } catch {
-                                try {
-                                    // Fallback if no-arg fails
-                                    const prevLen = typeof items.length === "number" ? items.length : 0;
-                                    newItem = items.addNode(userId, prevLen);
-                                } catch (_e) {
-                                    logger.error(_e);
-                                }
-                            }
-
-                            // Fallback if addNode didn't return item (old behavior fallback)
-                            if (!newItem) {
-                                const lastIndex = (items.length ?? 0) - 1;
-                                newItem = items.at ? items.at(lastIndex) : items[lastIndex];
-                            }
+                            const targetNode = node as import("../../../shared/src/app-schema").Item;
+                            let newItem: unknown = insertItemAfterTargetOrAppend(targetNode, userId);
 
                             if (newItem) {
                                 const newItm = newItem as {

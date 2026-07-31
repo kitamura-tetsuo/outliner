@@ -2,6 +2,7 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
+import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 
 export type CommandType = "yjstable" | "alias";
 
@@ -302,18 +303,13 @@ class CommandPaletteStore {
             }
         }
 
-        // Always add to item list of page content
-        const generalStore = (window as Window & typeof globalThis & {
-            generalStore?: { currentPage?: { items?: import("../schema/app-schema").Items; }; };
-        }).generalStore;
-        if (!generalStore?.currentPage?.items) {
-            return;
+        const userId = cursor ? cursor.userId : "local";
+        let targetNode: import("../../../shared/src/app-schema").Item | undefined | null = null;
+        if (cursor && this.commandCursorItemId) {
+            targetNode = cursor.findTarget() as import("../../../shared/src/app-schema").Item;
         }
 
-        const items = generalStore.currentPage.items;
-        const insertIndex = items.length;
-        const userId = cursor ? cursor.userId : "local";
-        const newItem = items.addNode(userId, insertIndex);
+        const newItem = insertItemAfterTargetOrAppend(targetNode, userId) as any;
         if (!newItem) {
             return;
         }
