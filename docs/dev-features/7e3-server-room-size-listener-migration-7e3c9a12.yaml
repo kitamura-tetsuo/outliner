@@ -3,7 +3,7 @@ slug: 7e3
 title: 'Server: migrate room-size listener to Yjs observeDeep with fallback'
 type: dev
 area: server
-status: implemented
+status: removed
 owner: server
 introduced-in: server/src/update-listeners.ts
 summary:
@@ -43,3 +43,4 @@ future:
     '
 tests: []
 title-ja: 'Server: migrate room-size listener to Yjs observeDeep with fallback'
+removal-note: server/src/update-listeners.ts no longer exists; the room-size listener it migrated is gone.

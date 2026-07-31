@@ -385,27 +385,6 @@ class CommandPaletteStore {
         }
         editorOverlayStore.startCursorBlink();
 
-        // Prompt immediate rendering immediately after addition (E2E stabilization)
-        try {
-            window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-        } catch (_e) {
-            logger.error(_e);
-        }
-        requestAnimationFrame(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch (_e) {
-                logger.error(_e);
-            }
-        });
-        setTimeout(() => {
-            try {
-                window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-            } catch (_e) {
-                logger.error(_e);
-            }
-        }, 0);
-
         // Output component type to log for debugging
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);

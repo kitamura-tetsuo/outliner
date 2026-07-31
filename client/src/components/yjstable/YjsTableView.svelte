@@ -49,7 +49,9 @@ let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
 let uiQuery = $state("");
+let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
+let columnLabels = $state<Record<string, string | undefined>>({});
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 
@@ -86,14 +88,21 @@ const engineCallbacks = {
 
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
+    const order = handles.uiDef.get("columnOrder");
+    columnOrder = order instanceof Y.Array ? (order.toArray() as string[]) : [];
     const components = handles.uiDef.get("components");
-    const next: Record<string, string | undefined> = {};
+    const nextType: Record<string, string | undefined> = {};
+    const nextLabel: Record<string, string | undefined> = {};
     if (components instanceof Y.Map) {
         components.forEach((cfg, column) => {
-            next[column] = cfg instanceof Y.Map ? (cfg.get("type") as string | undefined) : undefined;
+            if (cfg instanceof Y.Map) {
+                nextType[column] = cfg.get("type") as string | undefined;
+                nextLabel[column] = cfg.get("label") as string | undefined;
+            }
         });
     }
-    componentTypes = next;
+    componentTypes = nextType;
+    columnLabels = nextLabel;
 }
 
 const uiMirrorObserver = () => refreshUiMirror();
@@ -222,7 +231,7 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} />
+            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} {columnLabels} {columnOrder} />
         </section>
     {/if}
 
@@ -259,6 +268,8 @@ onDestroy(() => {
                     query={uiQuery}
                     {result}
                     {componentTypes}
+                    {columnOrder}
+                    {columnLabels}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

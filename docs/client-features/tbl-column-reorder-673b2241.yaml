@@ -1,0 +1,21 @@
+id: TBL-673b2241
+title: Table column reordering
+description: Grid columns can be reordered by dragging headers or UI Definition rows. Order is saved to the UI Definition and shared.
+category: table
+status: stable
+components:
+- client/src/components/yjstable/TableGrid.svelte
+- client/src/components/yjstable/TableUiDefEditor.svelte
+- client/src/services/yjstable/columnOrder.ts
+tests:
+- client/e2e/new/tbl-column-reorder-673b2241.spec.ts
+acceptance:
+- A column added to the query later appears at the end and is never hidden; a column removed from the query disappears without corrupting the remaining order, and reappears in its old position if the query is restored.
+- Alt+ArrowLeft / Alt+ArrowRight on a focused header moves that column.
+- Dragging a column header onto another header moves the column to that position; header cells and body cells move together.
+- Dragging a header does not select text.
+- The order persists across reload and is visible to a second client (Yjs-synced).
+- The row-actions column stays last and is not draggable.
+- The same reorder is achievable by dragging a row in the UI Definition editor's column list, and the two views agree at all times.
+- Undo/Redo (yjs-table-undo / yjs-table-redo) reverts a reorder in a single step.
+title-ja: テーブルのカラム並べ替え

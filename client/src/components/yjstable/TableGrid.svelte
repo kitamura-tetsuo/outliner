@@ -11,6 +11,7 @@ import {
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
+import { moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
     deleteRecord,
@@ -29,13 +30,17 @@ interface Props {
     result: TableQueryResult;
     /** Component type per column from the UI Definition mirror. */
     componentTypes: Record<string, string | undefined>;
+    /** The column order stored in UI Definition. */
+    columnOrder: string[];
+    /** Display labels for columns. */
+    columnLabels: Record<string, string | undefined>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, loading = false, session }: Props = $props();
+let { handles, schema, query, result, componentTypes, columnOrder, columnLabels, loading = false, session }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -45,6 +50,15 @@ const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
+const displayColumns = $derived(orderColumns(result.columns, columnOrder));
+
+/** Presentation label for a column; falls back to the SQL name. */
+function headerLabel(column: string): string {
+    const label = columnLabels[column];
+    return label !== undefined && label !== "" ? label : column;
+}
+
+let dropTargetColumn = $state<{ column: string; position: "left" | "right" } | undefined>(undefined);
 
 /** This table's own record id, only meaningful when rows are addressed by `id`. */
 function recordIdOf(row: Record<string, unknown>): string | undefined {
@@ -122,12 +136,70 @@ function handleCancelDelete() {
         <table>
             <thead>
                 <tr>
-                    {#each result.columns as column (column)}
-                        <th scope="col">
-                            {column}
-                            {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
-                                <span class="readonly-mark" title="Read-only column">RO</span>
-                            {/if}
+                    {#each displayColumns as column, index (column)}
+                        <th
+                            scope="col"
+                            draggable="true"
+                            tabindex="0"
+                            data-col={column}
+                            title={columnLabels[column] ? column : undefined}
+                            class:drop-target-left={dropTargetColumn?.column === column && dropTargetColumn.position === "left"}
+                            class:drop-target-right={dropTargetColumn?.column === column && dropTargetColumn.position === "right"}
+                            ondragstart={(e) => {
+                                if (e.dataTransfer) {
+                                    e.dataTransfer.effectAllowed = "move";
+                                    e.dataTransfer.setData("text/plain", column);
+                                }
+                            }}
+                            ondragover={(e) => {
+                                e.preventDefault();
+                                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                const isLeft = e.clientX < rect.left + rect.width / 2;
+                                dropTargetColumn = { column, position: isLeft ? "left" : "right" };
+                                if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                            }}
+                            ondragleave={(e) => {
+                                const related = e.relatedTarget as Node | null;
+                                if (!e.currentTarget?.contains(related)) {
+                                    dropTargetColumn = undefined;
+                                }
+                            }}
+                            ondrop={(e) => {
+                                e.preventDefault();
+                                const draggedCol = e.dataTransfer?.getData("text/plain");
+                                if (draggedCol && draggedCol !== column) {
+                                    const draggedIndex = displayColumns.indexOf(draggedCol);
+                                    if (draggedIndex !== -1) {
+                                        // Target index calculation based on drop side and moving direction
+                                        let targetIndex = index;
+                                        if (draggedIndex < targetIndex && dropTargetColumn?.position === "left") {
+                                            targetIndex -= 1;
+                                        } else if (draggedIndex > targetIndex && dropTargetColumn?.position === "right") {
+                                            targetIndex += 1;
+                                        }
+                                        writeColumnOrder(handles, moveColumn(displayColumns, draggedCol, targetIndex));
+                                    }
+                                }
+                                dropTargetColumn = undefined;
+                            }}
+                            onkeydown={(e) => {
+                                if (e.altKey) {
+                                    if (e.key === "ArrowLeft" && index > 0) {
+                                        e.preventDefault();
+                                        writeColumnOrder(handles, moveColumn(displayColumns, column, index - 1));
+                                    } else if (e.key === "ArrowRight" && index < displayColumns.length - 1) {
+                                        e.preventDefault();
+                                        writeColumnOrder(handles, moveColumn(displayColumns, column, index + 1));
+                                    }
+                                }
+                            }}
+                        >
+                            <span class="th-label">
+                                {headerLabel(column)}
+                                {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
+                                    <span class="readonly-mark" title="Read-only column">RO</span>
+                                {/if}
+                            </span>
                         </th>
                     {/each}
                     {#if editability.editable && editability.rowIdentity === "id"}
@@ -140,7 +212,7 @@ function handleCancelDelete() {
                     {@const recordId = recordIdOf(row)}
                     {@const source = sourceOf(row)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
-                        {#each result.columns as column (column)}
+                        {#each displayColumns as column (column)}
                             {@const schemaColumn = columnByName.get(column)}
                             {@const CellComponent = cellComponentFor(componentTypes[column], schemaColumn)}
                             <td data-record-id={recordId} data-col={column}>
@@ -225,6 +297,25 @@ td {
 th {
     background-color: #f3f4f6;
     font-weight: 600;
+    cursor: grab;
+    user-select: none;
+}
+
+th:active {
+    cursor: grabbing;
+}
+
+th.drop-target-left {
+    border-left: 3px solid #2563eb;
+}
+
+th.drop-target-right {
+    border-right: 3px solid #2563eb;
+}
+
+.th-label {
+    user-select: none;
+    pointer-events: none;
 }
 
 .readonly-mark {
