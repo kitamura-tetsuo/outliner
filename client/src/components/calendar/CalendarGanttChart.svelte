@@ -93,8 +93,8 @@ type Drag =
     };
 
 let drag = $state<Drag | undefined>(undefined);
-let previewDeltaMs = $state<number | undefined>(undefined);
-let previewRowKey = $state<string | undefined>(undefined);
+let subtreePreviewDeltaMs = $state<number | undefined>(undefined);
+let subtreePreviewRowKey = $state<string | undefined>(undefined);
 
 // Every row's `.timeline-cell` shares one horizontal layout (a single
 // column to the right of the fixed-width label column), so any one of them
@@ -156,10 +156,12 @@ function onPointerMove(e: PointerEvent) {
     }
 
     const deltaMs = snapToDay(rawDeltaMs);
-    previewRowKey = drag.row.key;
-    previewDeltaMs = deltaMs;
     if (drag.kind === "leaf-move") {
         onLeafDragMove(drag.row.entry, drag.originStartMs + deltaMs);
+    } else {
+        // A leaf drag is previewed through the optimistic override, never through this shift.
+        subtreePreviewRowKey = drag.row.key;
+        subtreePreviewDeltaMs = deltaMs;
     }
 }
 
@@ -177,16 +179,16 @@ function endDrag(e: PointerEvent) {
         if (deltaMs !== 0) onSubtreeDragEnd(drag.row, deltaMs, drag.analysis);
     }
 
-    previewRowKey = undefined;
-    previewDeltaMs = undefined;
+    subtreePreviewRowKey = undefined;
+    subtreePreviewDeltaMs = undefined;
     drag = undefined;
 }
 
 function onPointerCancel(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     if (drag.kind === "leaf-move") onLeafDragCancel(drag.row.entry);
-    previewRowKey = undefined;
-    previewDeltaMs = undefined;
+    subtreePreviewRowKey = undefined;
+    subtreePreviewDeltaMs = undefined;
     drag = undefined;
 }
 
@@ -213,7 +215,7 @@ function onRowKeydown(row: GanttRow, e: KeyboardEvent) {
 function barLeftPct(row: GanttRow): number {
     const placement = placeGanttBar(row, rangeStart, rangeEnd);
     if (!placement) return 0;
-    const shift = previewRowKey === row.key && previewDeltaMs !== undefined ? previewDeltaMs / (rangeEnd - rangeStart) : 0;
+    const shift = subtreePreviewRowKey === row.key && subtreePreviewDeltaMs !== undefined ? subtreePreviewDeltaMs / (rangeEnd - rangeStart) : 0;
     return Math.max(0, (placement.startFraction + shift) * 100);
 }
 
