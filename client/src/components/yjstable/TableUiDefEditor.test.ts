@@ -21,7 +21,14 @@ describe("TableUiDefEditor", () => {
             tableName: "test",
             createSql: "CREATE TABLE test (col_a text);",
             columns: [
-                { name: "col_a", dataType: "text", isNullable: true, kind: "text", checkOptions: [], isPrimaryKey: false },
+                {
+                    name: "col_a",
+                    dataType: "text",
+                    isNullable: true,
+                    kind: "text",
+                    checkOptions: [],
+                    isPrimaryKey: false,
+                },
             ],
         };
 
