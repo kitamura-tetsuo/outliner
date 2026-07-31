@@ -1976,16 +1976,16 @@ export class EditorOverlayStore {
 export const editorOverlayStore = $state(new EditorOverlayStore());
 
 // Expose to global scope for testing
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        (window as Window & typeof globalThis & {
-            DEBUG_MODE?: boolean;
-            generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
+// The literal MODE comparison lets Rollup drop this assignment from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    (window as Window & typeof globalThis & {
+        DEBUG_MODE?: boolean;
+        generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
 
-            itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-            editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-            appStore?: { currentPage?: { id?: string; }; };
-            editorOverlayStore?: unknown;
-        }).editorOverlayStore = editorOverlayStore;
-    }
+        itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
+        editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
+        appStore?: { currentPage?: { id?: string; }; };
+        editorOverlayStore?: unknown;
+    }).editorOverlayStore = editorOverlayStore;
 }

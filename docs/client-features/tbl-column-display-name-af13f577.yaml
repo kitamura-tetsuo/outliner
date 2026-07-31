@@ -1,6 +1,6 @@
 id: TBL-af13f577
 title: Grid columns need a configurable header display name, separate from the SQL column name
-description: 'A table column can be given a human-readable header label via the UI Definition editor, sharing with collaborators, falling back to SQL column name if not specified. The SQL column identity remains unchanged.'
+description: A table column can be given a human-readable header label via the UI Definition editor, sharing with collaborators, falling back to SQL column name if not specified. The SQL column identity remains unchanged.
 category: client
 status: implemented
 tests:

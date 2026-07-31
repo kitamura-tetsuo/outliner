@@ -207,8 +207,8 @@ class YjsStore {
 }
 
 export const yjsStore = $state(new YjsStore());
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        window.__YJS_STORE__ = yjsStore;
-    }
+// The literal MODE comparison lets Rollup drop this assignment from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.__YJS_STORE__ = yjsStore;
 }

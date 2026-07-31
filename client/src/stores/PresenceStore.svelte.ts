@@ -46,8 +46,8 @@ export class PresenceStore {
 }
 
 export const presenceStore = $state(new PresenceStore());
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        window.presenceStore = presenceStore;
-    }
+// The literal MODE comparison lets Rollup drop this assignment from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.presenceStore = presenceStore;
 }

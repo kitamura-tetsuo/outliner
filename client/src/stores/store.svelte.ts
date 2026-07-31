@@ -464,13 +464,14 @@ export function isProvisionalProject(project: Project | undefined): boolean {
     return !!project?.ydoc && provisionalDocs.has(project.ydoc);
 }
 
-// Make it globally accessible (to be accessed from ScrapboxFormatter.ts)
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        Object.assign(window, { appStore: store });
-        Object.assign(window, { generalStore: store }); // For compatibility with TestHelpers
-    }
+// Make it globally accessible (to be accessed from ScrapboxFormatter.ts).
+// The literal MODE comparison lets Rollup drop these assignments from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.appStore = store;
+    window.generalStore = store; // For compatibility with TestHelpers
 }
+
 if (typeof window !== "undefined") {
     // Prepare a provisional project immediately after startup (yjsStore will replace it when the actual connection arrives)
     // This ensures tests and direct navigation work even before Yjs connection is established

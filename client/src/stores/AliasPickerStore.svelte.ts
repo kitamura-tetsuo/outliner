@@ -397,9 +397,9 @@ class AliasPickerStore {
 
 export const aliasPickerStore = $state(new AliasPickerStore());
 
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore; }).aliasPickerStore =
-            aliasPickerStore;
-    }
+// The literal MODE comparison lets Rollup drop this assignment from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    (window as Window & typeof globalThis & { aliasPickerStore?: AliasPickerStore; }).aliasPickerStore =
+        aliasPickerStore;
 }

@@ -395,8 +395,8 @@ class CommandPaletteStore {
 export const commandPaletteStore = $state(new CommandPaletteStore());
 
 // expose for debugging and test access without importing .svelte.ts
-if (typeof window !== "undefined") {
-    if (import.meta.env.MODE !== "production") {
-        window.commandPaletteStore = commandPaletteStore;
-    }
+// The literal MODE comparison lets Rollup drop this assignment from the
+// production bundle (see ENV-production-build-leak.test.ts).
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+    window.commandPaletteStore = commandPaletteStore;
 }

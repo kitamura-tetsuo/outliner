@@ -100,7 +100,7 @@
     "private": true,
     "scripts": {
         "build": "npm run paraglide:compile && vite build",
-        "build:production": "npm run paraglide:compile && dotenvx run --env-file=.env.production -- vite build",
+        "build:production": "npm run paraglide:compile && dotenvx run --overload --env-file=.env.production -- vite build",
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
         "ci:test:e2e": "env PATH=\"./node_modules/.bin:$PATH\" bash -lc 'npx playwright test' --",
