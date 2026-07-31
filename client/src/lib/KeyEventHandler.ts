@@ -960,15 +960,22 @@ export class KeyEventHandler {
                     if (lastOpenBracket > lastCloseBracket) {
                         // Continue normal input processing
                     } else {
-                        // Show command palette
-                        const pos = commandPaletteStore.getCursorScreenPosition();
-                        commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
+                        // Show command palette.
+                        // The slash has not been applied to the model yet (cursor.onInput runs
+                        // later in this handler), so the cursor offset is still the pre-insert
+                        // one and marks exactly where the slash will land: isPostInsert = false.
+                        // handleKeyDown normally opened the palette already with the same
+                        // offsets, so skip re-recording them while it is visible.
+                        if (!commandPaletteStore.isVisible) {
+                            const pos = commandPaletteStore.getCursorScreenPosition();
+                            commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
+                        }
                     }
                 }
-            } else {
+            } else if (!commandPaletteStore.isVisible) {
                 // Show command palette if no cursor
                 const pos = commandPaletteStore.getCursorScreenPosition();
-                commandPaletteStore.show(pos || { top: 0, left: 0 }, true);
+                commandPaletteStore.show(pos || { top: 0, left: 0 }, false);
             }
         } else if (inputEvent.data === "[" && commandPaletteStore.isVisible) {
             // Hide command palette if [ is entered (start of internal link)
