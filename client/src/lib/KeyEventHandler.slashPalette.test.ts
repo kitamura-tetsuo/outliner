@@ -111,14 +111,30 @@ describe("KeyEventHandler slash command palette", () => {
         expect(node.text).toBe("alpha");
     });
 
-    it("keeps the palette offsets recorded by keydown when the palette is already visible", () => {
+    it("matches the offsets handleKeyDown recorded for the same slash", () => {
         // handleKeyDown opens the palette before the input event fires, with the
-        // same pre-insert offset. The input event must not re-record it.
+        // same pre-insert offset, so re-recording it must be a no-op.
         commandPaletteStore.show({ top: 0, left: 0 }, false);
         typeSlash();
 
         commandPaletteStore.handleCommandInput("d");
 
+        expect(node.text).toBe("alpha/d");
+    });
+
+    it("rebinds to the current cursor when the palette was left open elsewhere", () => {
+        // A palette still visible from another item holds offsets that do not
+        // belong to this slash; the input event must re-record them.
+        cursor.itemId = "stale-item";
+        cursor.offset = 2;
+        commandPaletteStore.show({ top: 0, left: 0 }, false);
+
+        cursor.itemId = "item1";
+        cursor.offset = 5;
+        typeSlash();
+
+        expect(node.text).toBe("alpha/");
+        commandPaletteStore.handleCommandInput("d");
         expect(node.text).toBe("alpha/d");
     });
 });
