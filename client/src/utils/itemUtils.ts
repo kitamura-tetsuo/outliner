@@ -52,10 +52,15 @@ export function insertItemAfterTargetOrAppend(targetNode: Item | undefined | nul
     if (items && typeof items.addNode === "function") {
         let newItem: unknown = null;
         try {
-            newItem = items.addNode(userId, insertIndex !== -1 ? insertIndex : undefined);
+            // Some signatures of addNode might strictly require just (author), some might optionally take index
+            if (insertIndex !== -1) {
+                newItem = items.addNode(userId, insertIndex);
+            } else {
+                newItem = items.addNode(userId);
+            }
         } catch (_e1) {
             try {
-                // If it fails with undefined, maybe it requires it or falls back.
+                // Fallback to appending if insertIndex caused an issue
                 newItem = items.addNode(userId);
             } catch (_e2) {
                 try {
