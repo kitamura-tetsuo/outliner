@@ -9,6 +9,7 @@ status: implemented
 tests:
 - client/e2e/new/cal-day-header-sticky-d6e2.spec.ts
 - client/e2e/new/cal-day-week-month-grid-views-9ce96e44.spec.ts
+- client/e2e/new/cal-month-drag-move-d21aa71e.spec.ts
 - client/src/components/calendar/CalendarView.test.ts
 - client/src/services/calendar/calendarColumnWritability.test.ts
 - client/src/services/calendar/calendarEntries.test.ts
