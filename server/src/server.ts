@@ -3,7 +3,7 @@ import { serverLogger as logger } from "./utils/log-manager.js";
 import { Logger } from "@hocuspocus/extension-logger";
 import { Hocuspocus, Server } from "@hocuspocus/server";
 import cors from "cors";
-import express from "express";
+import express, { type Request, type Response } from "express";
 import helmet from "helmet";
 import http from "http";
 import { WebSocketServer } from "ws";
@@ -201,7 +201,7 @@ export async function startServer(
     app.use(rateLimiterMiddleware);
 
     // Detailed Health/Debug endpoint
-    app.get("/health", (req: any, res: any) => {
+    app.get("/health", (req: Request, res: Response) => {
         const response: any = {
             status: firebaseState === "failed" ? "degraded" : "ok",
             firebase: firebaseState,
@@ -382,7 +382,7 @@ export async function startServer(
     app.use("/api", createDemoRouter(hocuspocus, config));
 
     // Log rotation endpoint
-    app.post("/api/rotate-logs", requireAuth, async (req: any, res: any) => {
+    app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
