@@ -96,6 +96,11 @@ export function isEditorClipboardEvent(event: Event): boolean {
  * Handler that distributes key and input events to each cursor instance
  */
 export class KeyEventHandler {
+    // Browsers may strip non-standard MIME entries while moving a ClipboardEvent
+    // through the operating-system clipboard. Retain the last in-app payload as
+    // a same-tab fallback, but only use it when its plain text still matches.
+    private static lastStructuredClipboard: { encoded: string; plainText: string; } | undefined;
+
     // Maintains the state of box selection
     private static boxSelectionState: {
         active: boolean;
@@ -1281,6 +1286,7 @@ export class KeyEventHandler {
         }
 
         if (structured) selectedText = structured.plainText;
+        KeyEventHandler.lastStructuredClipboard = structured;
 
         // If selection text could be obtained
         if (selectedText) {
@@ -2082,13 +2088,7 @@ export class KeyEventHandler {
         try {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
-            const structured = deserializeClipboardItems(
-                event.clipboardData?.getData(OUTLINER_ITEMS_MIME) || "",
-            );
-            const sameProjectItems = structured && structured.sourceProjectId === generalStore.project?.ydoc?.guid
-                ? structured.items
-                : undefined;
-            if (sameProjectItems) text = clipboardPlainText(structured!);
+            const encodedItems = event.clipboardData?.getData(OUTLINER_ITEMS_MIME) || "";
 
             // Use Clipboard API if not available from event
             if (!text && typeof navigator !== "undefined" && navigator.clipboard) {
@@ -2136,6 +2136,15 @@ export class KeyEventHandler {
             }
 
             if (!text) return;
+
+            const cached = KeyEventHandler.lastStructuredClipboard;
+            const structured = deserializeClipboardItems(
+                encodedItems || (cached?.plainText === text ? cached.encoded : ""),
+            );
+            const sameProjectItems = structured && structured.sourceProjectId === generalStore.project?.ydoc?.guid
+                ? structured.items
+                : undefined;
+            if (sameProjectItems) text = clipboardPlainText(structured!);
 
             // Get VS Code specific metadata
             let vscodeMetadata: unknown = null;
@@ -2539,6 +2548,7 @@ export class KeyEventHandler {
         }
 
         if (structured) selectedText = structured.plainText;
+        KeyEventHandler.lastStructuredClipboard = structured;
 
         // If selection text could be obtained
         if (selectedText) {
