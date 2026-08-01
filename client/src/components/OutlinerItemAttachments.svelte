@@ -23,7 +23,14 @@ interface Props {
 let { modelId, item }: Props = $props();
 
 // Attachment mirror (Yjs->UI)
-let attachmentsMirror = $state<string[]>([]);
+interface AttachmentData {
+    url: string;
+    mime?: string;
+    name?: string;
+    isImageFallback?: boolean;
+}
+
+let attachmentsMirror = $state<AttachmentData[]>([]);
 
 // Subscribe to attachments via Yjs observe
 onMount(() => {
@@ -32,7 +39,13 @@ onMount(() => {
         const read = () => {
             try {
                 const arr = (yArr?.toArray?.() ?? []);
-                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
+                attachmentsMirror = arr.map(u => {
+                    if (Array.isArray(u)) {
+                        if (u.length >= 3) return { url: String(u[0]), mime: String(u[1]), name: String(u[2]) };
+                        return { url: String(u[0]) };
+                    }
+                    return { url: String(u) };
+                });
                 logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][Yjs] attachments observe ->');
             } catch (_e) { /* ignore */ }
         };
@@ -58,7 +71,13 @@ onMount(() => {
             const yArr = (item as unknown as HasObservableAttachments)?.attachments;
             const arr = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
-                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
+                attachmentsMirror = arr.map(u => {
+                    if (Array.isArray(u)) {
+                        if (u.length >= 3) return { url: String(u[0]), mime: String(u[1]), name: String(u[2]) };
+                        return { url: String(u[0]) };
+                    }
+                    return { url: String(u) };
+                });
             }
             logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][TEST] mirror updated ->');
         } catch (_e) { /* ignore */ }
@@ -71,13 +90,14 @@ onMount(() => {
 
 const attachments = $derived.by(() => {
     try {
-        return attachmentsMirror as string[];
+        return attachmentsMirror as AttachmentData[];
     } catch {
-        return [] as string[];
+        return [] as AttachmentData[];
     }
 });
 
-function getAttachmentLabel(url: string): string {
+function getAttachmentLabel(url: string, name?: string): string {
+    if (name) return name;
     try {
         if (!url) return "View attachment";
         if (url.startsWith("data:") || url.startsWith("blob:")) return "View attachment";
@@ -91,24 +111,53 @@ function getAttachmentLabel(url: string): string {
     } catch (_e) { /* ignore */ }
     return "View attachment";
 }
+
+function isImage(att: AttachmentData): boolean {
+    if (att.isImageFallback) return false;
+    if (att.mime && att.mime.startsWith("image/")) return true;
+    try {
+        const urlObj = new URL(att.url, window.location.origin);
+        const pathname = urlObj.pathname.toLowerCase();
+        if (pathname.match(/\.(jpeg|jpg|gif|png|webp|svg|avif)$/)) return true;
+    } catch { /* ignore */ }
+    // If no mime type and no known extension, we still try to render as image for legacy URLs,
+    // and rely on the onerror fallback to mark it as non-image if it fails.
+    return !att.mime;
+}
+
+function handleImageError(att: AttachmentData) {
+    att.isImageFallback = true;
+}
 </script>
 
 {#if attachments.length > 0}
     <div class="attachments">
-        {#each attachments as url (url)}
+        {#each attachments as att (att.url)}
             <a
-                href={url}
+                href={att.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="attachment-link"
-                aria-label={getAttachmentLabel(url)}
-                title={getAttachmentLabel(url)}
+                aria-label={getAttachmentLabel(att.url, att.name)}
+                title={getAttachmentLabel(att.url, att.name)}
                 onmousedown={(e: Event) => e.stopPropagation()}
                 onpointerdown={(e: Event) => e.stopPropagation()}
                 onmouseup={(e: Event) => e.stopPropagation()}
                 onclick={(e: Event) => e.stopPropagation()}
             >
-                <img src={url} class="attachment-preview" alt="" />
+
+                {#if isImage(att)}
+                    <img src={att.url} class="attachment-preview" alt="" onerror={() => handleImageError(att)} />
+                {:else}
+                    <div class="attachment-file-chip">
+                        <svg viewBox="0 0 24 24" class="file-icon" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                        </svg>
+                        <span class="file-name">{getAttachmentLabel(att.url, att.name)}</span>
+                    </div>
+                {/if}
+
             </a>
         {/each}
     </div>
@@ -140,6 +189,41 @@ function getAttachmentLabel(url: string): string {
     object-fit: cover;
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.attachment-file-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    background: var(--bg-secondary, #f9fafb);
+    color: var(--text-primary, #374151);
+    font-size: 13px;
+    height: 40px;
+    box-sizing: border-box;
+    max-width: 200px;
+}
+.file-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--text-secondary, #6b7280);
+}
+.file-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+:global(.dark) .attachment-file-chip {
+    background: var(--bg-secondary, #1f2937);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary, #e5e7eb);
+}
+:global(.dark) .file-icon {
+    color: var(--text-secondary, #9ca3af);
 }
 </style>
 
