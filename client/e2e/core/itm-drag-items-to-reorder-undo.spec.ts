@@ -22,8 +22,6 @@ test.describe("Undo after moving items by dragging", () => {
         await expect(page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`)).toHaveText("Item 2");
         await expect(page.locator(`.outliner-item[data-item-id="${thirdId}"] .item-text`)).toHaveText("Item 3");
 
-        const secondText = await page.locator(`.outliner-item[data-item-id="${secondId}"] .item-text`).textContent();
-
         await page.evaluate(({ secondId, thirdId }) => {
             const sourceContent = document.querySelector<HTMLElement>(`[data-item-id="${secondId}"] .drag-handle`)
                 ?? document.querySelector<HTMLElement>(`[data-item-id="${secondId}"]`);
