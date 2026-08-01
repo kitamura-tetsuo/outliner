@@ -1,24 +1,18 @@
 /** @feature TBL-b4e82a91 */
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { createTasksTableBlock } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
 async function createTasksTable(page: import("@playwright/test").Page, testInfo: import("@playwright/test").TestInfo) {
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table visibility"]);
-    const item = page.locator(".outliner-item").first();
-    await expect(item).toBeVisible({ timeout: 10000 });
-    await item.click();
-
-    await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
-    const createPanel = page.getByTestId("yjs-table-create-panel").first();
-    await expect(createPanel).toBeVisible();
-    await createPanel.getByTestId("yjs-table-preset-select").selectOption("tasks");
-    await createPanel.getByTestId("yjs-table-create").click();
+    await TestHelpers.waitForOutlinerItems(page, 2, 10000);
+    await createTasksTableBlock(page, await TestHelpers.getItemIdByIndex(page, 1));
 
     const view = page.getByTestId("yjs-table-view").first();
-    await expect(view).toBeVisible();
+    await expect(view.locator("th[data-col='priority']")).toBeVisible({ timeout: 30000 });
     return view;
 }
 
