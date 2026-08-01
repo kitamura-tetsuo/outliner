@@ -18,13 +18,14 @@
 
     // URL params
     let projectName = $derived($page.params.project);
-    let tableName = $derived($page.params.table);
+    let routeTableId = $derived($page.params.tableId);
 
     // Page state
     let error: string | undefined = $state(undefined);
     let isAuthenticated = $state(false);
     let notFound = $state(false);
     let isLoading = $state(true);
+    let tableName: string | undefined = $state(undefined);
     let tableId: string | undefined = $state(undefined);
 
     // Editor state
@@ -106,15 +107,17 @@
             });
 
             const registryEntries = listTables(store.project.ydoc);
-            const entry = registryEntries.find(e => e.name === tableName)
-                ?? registryEntries.find(e => e.sqlName === tableName);
+            const entry = registryEntries.find(e => e.tableId === routeTableId)
+                ?? registryEntries.find(e => e.name === routeTableId)
+                ?? registryEntries.find(e => e.sqlName === routeTableId);
             if (!entry) {
-                logger.warn(`Table "${tableName}" not found in project "${projectName}"`);
+                logger.warn(`Table "${routeTableId}" not found in project "${projectName}"`);
                 notFound = true;
                 return;
             }
 
             tableId = entry.tableId;
+            tableName = entry.name;
             loadRules();
 
         } catch (err) {
@@ -126,7 +129,7 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && tableName) {
+        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && routeTableId) {
             loadTable();
         } else if (!isAuthenticated) {
             isLoading = false;
@@ -192,7 +195,7 @@
             { label: "Home", href: "/" },
             { label: projectName || "Project", href: `/${encodeURIComponent(projectName)}` },
             { label: "Tables" },
-            { label: tableName || "Table", href: `/tables/${encodeURIComponent(projectName)}/${encodeURIComponent(tableName)}` },
+            { label: tableName || "Table", href: `/tables/${encodeURIComponent(projectName)}/${encodeURIComponent(routeTableId)}` },
             { label: "Schedule" }
         ]} />
     </div>
