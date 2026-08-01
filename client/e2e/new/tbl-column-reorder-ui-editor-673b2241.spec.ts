@@ -19,12 +19,6 @@ import {
 } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
-/**
- * The editor lists every schema column; the grid only lists the columns the
- * query returns. These two trail the preset's query columns.
- */
-const SCHEMA_ONLY_COLUMNS = ["created_at", "completed_at"];
-
 test.describe("TBL-673b2241: reordering columns in the UI Definition editor", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
@@ -37,15 +31,14 @@ test.describe("TBL-673b2241: reordering columns in the UI Definition editor", ()
     });
 
     test("dragging an editor row reorders the column, and the grid agrees", async ({ page }) => {
-        expect(await uiEditorRowOrder(page)).toEqual([...TASKS_PRESET_COLUMNS, ...SCHEMA_ONLY_COLUMNS]);
+        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(TASKS_PRESET_COLUMNS);
         expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
 
         // Drop "priority" on the top half of "title" so it lands before it.
         await dragUiEditorRow(page, "priority", "title", "above");
 
         const reordered = ["id", "priority", "title", "status", "due_date", "repeat_days"];
-        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 })
-            .toEqual([...reordered, ...SCHEMA_ONLY_COLUMNS]);
+        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(reordered);
         await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
     });
 
@@ -55,19 +48,17 @@ test.describe("TBL-673b2241: reordering columns in the UI Definition editor", ()
 
         const reordered = ["id", "title", "status", "priority", "repeat_days", "due_date"];
         await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
-        // Columns the query does not return keep trailing the stored order.
-        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 })
-            .toEqual([...reordered, ...SCHEMA_ONLY_COLUMNS]);
+        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(reordered);
     });
 
     test("dragging an editor row does not move the outliner item hosting the table", async ({ page }) => {
         const itemIdsBefore = await page.locator(".outliner-item[data-item-id]")
             .evaluateAll((items) => items.map((i) => i.getAttribute("data-item-id") ?? ""));
 
-        await dragUiEditorRow(page, "completed_at", "id", "above");
+        await dragUiEditorRow(page, "priority", "id", "above");
 
         await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 })
-            .toEqual(["completed_at", ...TASKS_PRESET_COLUMNS, "created_at"]);
+            .toEqual(["priority", "id", "title", "status", "due_date", "repeat_days"]);
 
         const itemIdsAfter = await page.locator(".outliner-item[data-item-id]")
             .evaluateAll((items) => items.map((i) => i.getAttribute("data-item-id") ?? ""));

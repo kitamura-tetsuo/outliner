@@ -166,6 +166,7 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
             result,
             componentTypes: {},
             columnLabels: {},
+            hiddenColumns: {},
             columnOrder: [],
             session,
         });
@@ -238,6 +239,8 @@ describe("TableUiDefEditor drag & drop ownership inside an OutlinerItem", () => 
             query: QUERY,
             componentTypes: {},
             columnLabels: {},
+            hiddenColumns: {},
+            resultColumns: COLUMNS,
             columnOrder: [],
         });
     }

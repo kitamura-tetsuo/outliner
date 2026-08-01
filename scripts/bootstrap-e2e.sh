@@ -15,7 +15,9 @@
 #   - OS packages          -> skipped when apt-get is unusable
 #   - Playwright chromium  -> falls back to a pre-installed Chromium and records
 #                             it in .playwright-chromium-path
-#   - dprint fmt           -> warning only (scripts/test.sh)
+#   - dprint fmt           -> uses the wasm plugins committed under
+#                             dprint-plugins/ (Git LFS), so no plugin CDN is
+#                             needed; still warning only (scripts/test.sh)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -52,6 +52,7 @@ let uiQuery = $state("");
 let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
+let hiddenColumns = $state<Record<string, boolean>>({});
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 
@@ -93,16 +94,19 @@ function refreshUiMirror() {
     const components = handles.uiDef.get("components");
     const nextType: Record<string, string | undefined> = {};
     const nextLabel: Record<string, string | undefined> = {};
+    const nextHidden: Record<string, boolean> = {};
     if (components instanceof Y.Map) {
         components.forEach((cfg, column) => {
             if (cfg instanceof Y.Map) {
                 nextType[column] = cfg.get("type") as string | undefined;
                 nextLabel[column] = cfg.get("label") as string | undefined;
+                if (cfg.get("hidden") === true) nextHidden[column] = true;
             }
         });
     }
     componentTypes = nextType;
     columnLabels = nextLabel;
+    hiddenColumns = nextHidden;
 }
 
 const uiMirrorObserver = () => refreshUiMirror();
@@ -231,7 +235,16 @@ onDestroy(() => {
 
     {#if showUiDef}
         <section class="panel">
-            <TableUiDefEditor {handles} {schema} query={uiQuery} {componentTypes} {columnLabels} {columnOrder} />
+            <TableUiDefEditor
+                {handles}
+                {schema}
+                query={uiQuery}
+                {componentTypes}
+                {columnLabels}
+                {hiddenColumns}
+                resultColumns={result.columns}
+                {columnOrder}
+            />
         </section>
     {/if}
 
@@ -270,6 +283,7 @@ onDestroy(() => {
                     {componentTypes}
                     {columnOrder}
                     {columnLabels}
+                    {hiddenColumns}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

@@ -155,6 +155,18 @@ fi
 # start_tinylicious (disabled on Yjs branch)
 # start_api_server   (deprecated; handled by SvelteKit APIs)
 
+# Configure the Git LFS filters for this clone. --manual keeps git-lfs from
+# overwriting the repository's own pre-push hook (scripts/pre_push.sh already
+# calls `git lfs pre-push`).
+if git lfs version >/dev/null 2>&1; then
+  (cd "${ROOT_DIR}" && git lfs install --local --manual >/dev/null 2>&1) || true
+fi
+
+# Materialize the dprint wasm plugins (stored via Git LFS) so formatting works
+# in environments that cannot reach plugins.dprint.dev.
+"${SCRIPT_DIR}/ensure-dprint-plugins.sh" || \
+  echo "Warning: dprint plugins are unavailable; formatting will be skipped." >&2
+
 # Setup pre-push hook
 if [ -d "${ROOT_DIR}/.git/hooks" ]; then
   rm "${ROOT_DIR}/.git/hooks/pre-push" 2>/dev/null || true
