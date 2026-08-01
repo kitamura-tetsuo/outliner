@@ -20,6 +20,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: true
+          # dprint's wasm plugins are stored in Git LFS under dprint-plugins/
+          lfs: true
           # Workflow_call uses the caller's context, so secrets.GITHUB_TOKEN is available if inherited
           # Use GH_PAT if available to trigger subsequent workflows
           token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
