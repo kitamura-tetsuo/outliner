@@ -6,6 +6,10 @@ cd "$ROOT_DIR"
 
 exit_code=0
 
+# dprint's wasm plugins are committed under dprint-plugins/ via Git LFS.
+# Restore them if the clone only has LFS pointer files.
+"${SCRIPT_DIR}/ensure-dprint-plugins.sh" || true
+
 # Check all files in the repository, not just changed files
 echo "Checking formatting for all files in the repository..."
 

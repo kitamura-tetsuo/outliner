@@ -1,8 +1,7 @@
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
 registerCoverageHooks();
 
 test.describe("Calendar view type select has accessible name", () => {

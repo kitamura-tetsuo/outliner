@@ -54,12 +54,15 @@ cleanup_e2e_coverage() {
 
 cd "$PROJECT_ROOT"
 
-# dprint downloads its formatting plugins from plugins.dprint.dev on first use.
-# Environments that only allow the npm registry cannot reach it, so treat a
-# formatting failure as a warning instead of blocking the test run. Set
+# dprint's formatting plugins are committed under dprint-plugins/ (Git LFS), so
+# no download from plugins.dprint.dev is required. Clones made without git-lfs
+# only contain pointer files; ensure-dprint-plugins.sh restores them. A
+# formatting failure stays a warning instead of blocking the test run. Set
 # SKIP_DPRINT=1 to skip the attempt entirely.
 if [ "${SKIP_DPRINT:-0}" = "1" ]; then
   echo "Skipping dprint fmt (SKIP_DPRINT=1)"
+elif ! "${PROJECT_ROOT}/scripts/ensure-dprint-plugins.sh"; then
+  echo "Warning: dprint plugins unavailable; skipping dprint fmt." >&2
 elif ! npx dprint fmt; then
   echo "Warning: dprint fmt failed (plugin download blocked?); continuing without formatting." >&2
 fi
