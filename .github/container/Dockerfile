@@ -5,7 +5,7 @@ FROM mcr.microsoft.com/playwright:v1.62.0-jammy
 
 # Install Java and OS utilities
 RUN apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true && \
-    apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true openjdk-21-jre-headless xvfb lsof netcat-openbsd curl sudo python3-venv python3-pip && \
+    apt-get install -y -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true openjdk-21-jre-headless xvfb lsof netcat-openbsd curl sudo python3-venv python3-pip git-lfs && \
     rm -rf /var/lib/apt/lists/*
 
 # Install global npm packages
