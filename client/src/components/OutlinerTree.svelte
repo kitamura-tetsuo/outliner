@@ -991,7 +991,11 @@
             // Process selection within single item
             const singleItemSelection = selections[0];
             if (singleItemSelection) {
-                handleSingleItemSelectionPaste(singleItemSelection, lines, structuredItems);
+                handleSingleItemSelectionPaste({
+                startItemId: singleItemSelection.startItemId,
+                startOffset: singleItemSelection.startOffset ?? cursor?.offset ?? 0,
+                endOffset: singleItemSelection.endOffset ?? cursor?.offset ?? 0
+            }, lines, structuredItems);
                 return;
             }
         }
@@ -1178,7 +1182,7 @@
     }
 
     // Paste into selection within single item
-    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[], structuredItems?: ClipboardItem[]) {
+    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset?: number, endOffset?: number }, lines: string[], structuredItems?: ClipboardItem[]) {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleSingleItemSelectionPaste called with selection:");
@@ -1187,10 +1191,10 @@
 
         const itemId = selection.startItemId;
         const startOffset = Math.min(
-            selection.startOffset,
-            selection.endOffset,
+            selection.startOffset ?? 0,
+            selection.endOffset ?? 0,
         );
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        const endOffset = Math.max(selection.startOffset ?? 0, selection.endOffset ?? 0);
 
         // Get item index
         const itemIndex = displayItems.findIndex((d) => d.model.id === itemId);
@@ -1540,10 +1544,10 @@
 
         const sourceItemId = selection.startItemId;
         const startOffset = Math.min(
-            selection.startOffset,
-            selection.endOffset,
+            selection.startOffset ?? 0,
+            selection.endOffset ?? 0,
         );
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        const endOffset = Math.max(selection.startOffset ?? 0, selection.endOffset ?? 0);
 
         // Get source and target item indices
         const sourceIndex = displayItems.findIndex(
