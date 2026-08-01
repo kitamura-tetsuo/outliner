@@ -1534,9 +1534,7 @@ export class EditorOverlayStore {
         const localSelection = Object.values(this.selections).find(s => (s.userId || "local") === "local");
         if (localSelection) return;
 
-        const cursors = Object.values(this.cursors).filter(c =>
-            c.itemId === activeId && c.isActive && ((c.userId || "local") === "local")
-        );
+        const cursors = Object.values(this.cursors).filter(c => c.itemId === activeId && c.isActive && ((c.userId || "local") === "local"));
         if (cursors.length === 0) return;
 
         const cursor = cursors[0];

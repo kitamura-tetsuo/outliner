@@ -9,6 +9,7 @@ let mockSelection: import("../stores/EditorOverlayStore.svelte.ts").SelectionRan
 // Mocks for stores
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
+            syncTextareaToActiveItem: vi.fn(),
         subscribe: vi.fn(),
         update: vi.fn(),
         set: vi.fn(),
