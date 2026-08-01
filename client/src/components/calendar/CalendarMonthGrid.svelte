@@ -28,7 +28,6 @@ interface Props {
      * grouping axis is assigned.
      */
     laneLabel?: (entry: CalendarEntry) => string;
-    timeZone: string;
 }
 
 let {
@@ -41,7 +40,7 @@ let {
     onDeleteRequest,
     isDeletable = () => false,
     laneLabel,
-, timeZone }: Props = $props();
+}: Props = $props();
 
 const weekdayHeaders = $derived(
     Array.from({ length: 7 }, (_, i) => WEEKDAY_LABELS[(weekStart + i) % 7]),
@@ -99,7 +98,6 @@ function findEntry(key: string | undefined): CalendarEntry | undefined {
 }
 
 function onDrop(cell: MonthCell, e: DragEvent) {
-        dragTooltip = undefined;
     e.preventDefault();
     const key = e.dataTransfer?.getData("text/plain") ?? draggingKey;
     const entry = findEntry(key);
@@ -180,9 +178,6 @@ function onDrop(cell: MonthCell, e: DragEvent) {
             </div>
         {/each}
     </div>
-    {#if dragTooltip}
-        <CalendarDragTooltip label={dragTooltip.label} clientX={dragTooltip.clientX} clientY={dragTooltip.clientY} />
-    {/if}
 </div>
 
 <style>

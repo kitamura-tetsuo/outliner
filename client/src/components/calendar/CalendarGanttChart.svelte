@@ -46,7 +46,6 @@ interface Props {
     onLeafResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onLeafKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onSubtreeDragEnd: (row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) => void;
-    timeZone: string;
 }
 
 let {
@@ -67,8 +66,6 @@ let {
     onLeafResizeEnd,
     onLeafKeyboardMove,
     onSubtreeDragEnd,
-    timeZone,
-    timeZone,
 }: Props = $props();
 
 const collapsedKeys = new SvelteSet<string>();
@@ -85,17 +82,14 @@ function tickFraction(tick: GanttTick): number {
 }
 
 type Drag =
-    | { kind: "leaf-move"; row: GanttRow; pointerId: number; startClientX: number; originStartMs: number; label?: string; clientX?: number; clientY?: number; }
-    | { kind: "leaf-resize"; row: GanttRow; pointerId: number; startClientX: number; originDurationMs: number; label?: string; clientX?: number; clientY?: number; }
+    | { kind: "leaf-move"; row: GanttRow; pointerId: number; startClientX: number; originStartMs: number; }
+    | { kind: "leaf-resize"; row: GanttRow; pointerId: number; startClientX: number; originDurationMs: number; }
     | {
         kind: "subtree-move";
         row: GanttRow;
         pointerId: number;
         startClientX: number;
         analysis: GanttSubtreeShiftAnalysis;
-        label?: string;
-        clientX?: number;
-        clientY?: number;
     };
 
 let drag = $state<Drag | undefined>(undefined);
@@ -138,8 +132,6 @@ function beginLeafResize(row: GanttRow, e: PointerEvent) {
         pointerId: e.pointerId,
         startClientX: e.clientX,
         originDurationMs: row.barEndMs - row.barStartMs,
-            clientX: e.clientX,
-            clientY: e.clientY,
     };
 }
 
