@@ -56,6 +56,7 @@
     });
 
     onMount(() => {
+        window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         try {
             logger.debug({ props: {
                 pageItem,
@@ -80,6 +81,10 @@
                 }
             }
         } catch (_e) { /* ignore */ }
+    });
+
+    onDestroy(() => {
+        window.removeEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
     });
 
     let unsubscribeUser: (() => void) | null = null;

@@ -56,10 +56,16 @@ test.describe("multi-line clipboard paste at a caret", () => {
         expect(childId).not.toBeNull();
 
         await page.locator(`[data-item-id="${targetId}"] .item-content`).click();
+        await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
+        await expect(page.locator(`[data-item-id="${targetId}"]`)).toHaveAttribute("aria-level", "3");
         await page.locator(`[data-item-id="${childId}"] .item-content`).click();
+        await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
-        await page.locator(`[data-item-id="${targetId}"] button.collapse-btn`).click();
+        const target = page.locator(`[data-item-id="${targetId}"]`);
+        await expect(target).toHaveAttribute("aria-expanded", "true");
+        await target.locator("button.collapse-btn").click();
+        await expect(target).toHaveAttribute("aria-expanded", "false");
 
         await pasteAt(page, context, targetId!, 6, "A\nB\nC");
         await expect.poll(() => visibleTexts(page)).toEqual([

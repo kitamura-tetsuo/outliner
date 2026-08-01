@@ -2381,8 +2381,22 @@ export class KeyEventHandler {
 
             // Treat as multi-item paste if normal multi-line text
             if (text.includes("\n")) {
-                // EditorOverlay's document-level listener owns ordinary
-                // multi-line paste so every line is inserted exactly once.
+                const cursor = store.getLocalCursorInstances().find(value => value.isActive);
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("paste-multi-item", {
+                            detail: {
+                                lines: text.split(/\r?\n/),
+                                selections: Object.values(store.selections).filter(selection =>
+                                    selection.startOffset !== selection.endOffset
+                                    || selection.startItemId !== selection.endItemId
+                                ),
+                                activeItemId: store.getActiveItem(),
+                                cursor,
+                            },
+                        }),
+                    );
+                }
                 return;
             }
 
