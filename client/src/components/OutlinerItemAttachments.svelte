@@ -23,7 +23,7 @@ interface Props {
 let { modelId, item }: Props = $props();
 
 // Attachment mirror (Yjs->UI)
-let attachmentsMirror = $state<string[]>([]);
+let attachmentsMirror = $state<Array<{url: string, mime?: string, name?: string}>>([]);
 
 // Subscribe to attachments via Yjs observe
 onMount(() => {
@@ -32,7 +32,7 @@ onMount(() => {
         const read = () => {
             try {
                 const arr = (yArr?.toArray?.() ?? []);
-                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
+                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? { url: u[0], mime: u[1], name: u[2] } : { url: typeof u === "string" ? u : "" });
                 logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][Yjs] attachments observe ->');
             } catch (_e) { /* ignore */ }
         };
@@ -43,7 +43,7 @@ onMount(() => {
             return () => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch (_e) { /* ignore */ } };
         } else {
             // Fallback: Reflect once even if observe is unavailable
-            attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
+            attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? { url: u[0], mime: u[1], name: u[2] } : { url: typeof u === "string" ? u : "" });
         }
     } catch (_e) { /* ignore */ }
 });
@@ -58,7 +58,7 @@ onMount(() => {
             const yArr = (item as unknown as HasObservableAttachments)?.attachments;
             const arr = (yArr?.toArray?.() ?? []);
             if (arr.length > 0) {
-                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? u[0] : u);
+                attachmentsMirror = arr.map((u: unknown) => Array.isArray(u) ? { url: u[0], mime: u[1], name: u[2] } : { url: typeof u === "string" ? u : "" });
             }
             logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][TEST] mirror updated ->');
         } catch (_e) { /* ignore */ }
@@ -71,9 +71,9 @@ onMount(() => {
 
 const attachments = $derived.by(() => {
     try {
-        return attachmentsMirror as string[];
+        return attachmentsMirror as Array<{url: string, mime?: string, name?: string}>;
     } catch {
-        return [] as string[];
+        return [] as Array<{url: string, mime?: string, name?: string}>;
     }
 });
 
@@ -82,7 +82,7 @@ function getAttachmentLabel(url: string): string {
         if (!url) return "View attachment";
         if (url.startsWith("data:") || url.startsWith("blob:")) return "View attachment";
 
-        const urlObj = new URL(url, window.location.origin); // safe for relative URLs if any
+        const urlObj = new URL(url, "http://localhost"); // safe for relative URLs if any
         const pathname = urlObj.pathname;
         const filename = pathname.split('/').pop();
         if (filename) {
@@ -91,24 +91,53 @@ function getAttachmentLabel(url: string): string {
     } catch (_e) { /* ignore */ }
     return "View attachment";
 }
+
+function isImage(url: string, mime?: string): boolean {
+    if (mime && mime.startsWith('image/')) return true;
+    if (url.startsWith('data:image/')) return true;
+    try {
+        const urlObj = new URL(url, "http://localhost");
+        const pathname = urlObj.pathname.toLowerCase();
+        return pathname.endsWith('.png') || pathname.endsWith('.jpg') || pathname.endsWith('.jpeg') || pathname.endsWith('.gif') || pathname.endsWith('.webp') || pathname.endsWith('.svg');
+    } catch (_e) {
+        return false;
+    }
+}
 </script>
 
 {#if attachments.length > 0}
     <div class="attachments">
-        {#each attachments as url (url)}
+        {#each attachments as att (att.url)}
             <a
-                href={url}
+                href={att.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 class="attachment-link"
-                aria-label={getAttachmentLabel(url)}
-                title={getAttachmentLabel(url)}
+                aria-label={att.name || getAttachmentLabel(att.url)}
+                title={att.name || getAttachmentLabel(att.url)}
                 onmousedown={(e: Event) => e.stopPropagation()}
                 onpointerdown={(e: Event) => e.stopPropagation()}
                 onmouseup={(e: Event) => e.stopPropagation()}
                 onclick={(e: Event) => e.stopPropagation()}
             >
-                <img src={url} class="attachment-preview" alt="" />
+                {#if isImage(att.url, att.mime)}
+                    <img src={att.url} class="attachment-preview" alt="" onerror={(e) => {
+                        const target = e.currentTarget as HTMLElement;
+                        target.style.display = 'none';
+                        if (target.nextElementSibling) {
+                            (target.nextElementSibling as HTMLElement).style.display = 'flex';
+                        }
+                    }} />
+                    <div class="file-chip fallback-chip" style="display: none;">
+                        <span class="file-icon">📄</span>
+                        <span class="file-name">{att.name || getAttachmentLabel(att.url).replace('View attachment: ', '')}</span>
+                    </div>
+                {:else}
+                    <div class="file-chip">
+                        <span class="file-icon">📄</span>
+                        <span class="file-name">{att.name || getAttachmentLabel(att.url).replace('View attachment: ', '')}</span>
+                    </div>
+                {/if}
             </a>
         {/each}
     </div>
@@ -140,6 +169,31 @@ function getAttachmentLabel(url: string): string {
     object-fit: cover;
     border-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.file-chip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 12px;
+    height: 32px;
+    box-sizing: border-box;
+}
+
+.file-icon {
+    font-size: 14px;
+}
+
+.file-name {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 </style>
 

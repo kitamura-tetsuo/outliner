@@ -511,13 +511,13 @@ const aliasTargetIdEffective = $derived.by(() => {
 interface AttachmentTarget {
     id?: string;
     addAttachment?: (url: string) => void;
-    attachments?: string[][] | { push: (arr: string[]) => void };
+    attachments?: string[][] | { push: (arr: any[]) => void };
 }
 
-function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
+function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false, fileType?: string, fileName?: string) {
     try {
         if (cand.addAttachment) {
-            cand.addAttachment(url);
+            (cand.addAttachment as any)(url, fileType, fileName);
         } else {
             throw new Error('Method addAttachment not found');
         }
@@ -525,7 +525,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
         if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
-                    cand.attachments?.push?.([url]);
+                    (cand.attachments as any)?.push?.([[url, fileType || "", fileName || ""]]);
                 }
             } catch (_e) { /* ignore */ }
         }
@@ -540,14 +540,14 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
 }
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
-    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
+    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string, fileType?: string, fileName?: string) {
         // Resolve target item from event or fallback to current model
         const targetEl = (ev?.target as Element | null)?.closest?.(".outliner-item") || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST, fileType, fileName);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -560,7 +560,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) || curPage.items[i];
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            addAttachmentSafely(cand, url, IS_TEST);
+                            addAttachmentSafely(cand as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST, fileType, fileName);
                             break;
                         }
                     }
@@ -1715,7 +1715,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         import.meta.env.MODE === 'test',
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as (modelOriginal: unknown, url: string, isTest: boolean) => void,
+        addAttachmentSafely as (modelOriginal: unknown, url: string, isTest: boolean, fileType?: string, fileName?: string) => void,
         model.original,
         event
     );

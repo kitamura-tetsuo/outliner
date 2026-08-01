@@ -690,7 +690,7 @@ export class Item {
         return arr;
     }
 
-    addAttachment(url: string) {
+    addAttachment(url: string, fileType?: string, fileName?: string) {
         // Reject ephemeral blob:/data: URLs only in a real browser (outside E2E).
         // On the server (window === undefined) this is legitimate demo/seed content,
         // so it must be allowed — the pre-unification server schema had no guard.
@@ -725,7 +725,7 @@ export class Item {
                         for (const cand of iterateItems(items)) {
                             if (cand && String(cand.id) === String(mappedId)) {
                                 try {
-                                    cand.addAttachment(url);
+                                    cand.addAttachment(url, fileType, fileName);
                                 } catch (_e) {
                                     logger.warn({ err: _e }, "Silenced error");
                                 }
@@ -742,7 +742,7 @@ export class Item {
                                 const ct = cand.text;
                                 if (ct === text) {
                                     try {
-                                        cand.addAttachment(url);
+                                        cand.addAttachment(url, fileType, fileName);
                                     } catch (_e) {
                                         logger.warn({ err: _e }, "Silenced error");
                                     }
@@ -769,7 +769,7 @@ export class Item {
             logger.warn({ err: _e }, "Silenced error");
         }
 
-        arr.push([url]);
+        arr.push([[url, fileType || "", fileName || ""]] as any);
         this.value.set("lastChanged", Date.now());
         try {
             if (typeof window !== "undefined") {

@@ -37,12 +37,12 @@ export async function resolveUploadContainerId(): Promise<string> {
     return containerId || "test-container";
 }
 
-function addAttachmentWithFallback(item: Item, url: string) {
+function addAttachmentWithFallback(item: Item, url: string, fileType?: string, fileName?: string) {
     try {
-        item.addAttachment(url);
+        item.addAttachment(url, fileType, fileName);
     } catch {
         try {
-            (item as Item & { attachments?: { push: (arr: [string]) => void; }; }).attachments?.push([url]);
+            (item as Item & { attachments?: { push: (arr: [string[]]) => void; }; }).attachments?.push([[url, fileType || "", fileName || ""]]);
         } catch (_e) {
             logger.error(_e);
         }
@@ -62,12 +62,12 @@ export async function uploadFileToNewItemAtEnd(
         if (!newItem) return;
         try {
             const url = await uploadAttachment(containerId, newItem.id, file);
-            addAttachmentWithFallback(newItem, url);
+            addAttachmentWithFallback(newItem, url, file.type, file.name);
         } catch (uploadErr) {
             logger.error({ error: uploadErr as Error }, "Attachment upload failed, using local fallback");
             if (isTestEnv) {
                 const localUrl = URL.createObjectURL(file);
-                addAttachmentWithFallback(newItem, localUrl);
+                addAttachmentWithFallback(newItem, localUrl, file.type, file.name);
                 try {
                     window.dispatchEvent(
                         new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }),
@@ -97,8 +97,8 @@ export async function handleFileUploadFromDrop(
     dropTargetPosition: string | null,
     isTestEnv: boolean,
     dispatch: (type: "drop", detail: DropEventDetail) => void,
-    addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string) => void,
-    addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean) => void,
+    addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string, fileType?: string, fileName?: string) => void,
+    addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean, fileType?: string, fileName?: string) => void,
     modelOriginal: unknown,
     event: Event | null,
 ): Promise<boolean> {
@@ -146,7 +146,7 @@ export async function handleFileUploadFromDrop(
                     const url = await uploadAttachment(containerId, modelId, file);
 
                     if (!dropTargetPosition || dropTargetPosition === "middle") {
-                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url);
+                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url, file.type, file.name);
                     } else {
                         dispatch("drop", {
                             targetItemId: modelId,
@@ -159,7 +159,7 @@ export async function handleFileUploadFromDrop(
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                addAttachmentSafely(modelOriginal, localUrl, isTestEnv);
+                                addAttachmentSafely(modelOriginal, localUrl, isTestEnv, file.type, file.name);
                             } else {
                                 dispatch("drop", {
                                     targetItemId: modelId,
@@ -204,7 +204,7 @@ export async function handleFileUploadFromDrop(
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
                                         if (cand && String(cand?.id) === String(mappedId)) {
-                                            addAttachmentSafely(cand, localUrl, isTestEnv);
+                                            addAttachmentSafely(cand, localUrl, isTestEnv, file.type, file.name);
                                             break;
                                         }
                                     }
