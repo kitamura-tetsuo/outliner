@@ -1,4 +1,4 @@
-import { render } from "@testing-library/svelte";
+import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
@@ -22,7 +22,7 @@ const mockSession: RelationResolver = {
 };
 
 describe("TableGrid", () => {
-    it("renders headers and body cells following columnOrder", () => {
+    it("renders headers and body cells following columnOrder", async () => {
         const schema: ParsedTableSchema = {
             tableName: "test_table",
             createSql: "CREATE TABLE test_table (id uuid, col_a text, col_b text, col_c text);",
@@ -103,5 +103,15 @@ describe("TableGrid", () => {
         const firstRowCells = Array.from(container.querySelectorAll("tbody tr:first-child td[data-col]"));
         const dataCols = firstRowCells.map(td => td.getAttribute("data-col"));
         expect(dataCols).toEqual(expectedOrder);
+
+        // Reordering visible columns must retain the hidden column in the full
+        // persisted order, so revealing it restores its prior slot.
+        await fireEvent.keyDown(container.querySelector("th[data-col='col_a']")!, {
+            key: "ArrowRight",
+            altKey: true,
+        });
+        const storedOrder = mockHandles.uiDef.get("columnOrder") as Y.Array<string>;
+        expect(storedOrder.toArray()).toEqual(["col_c", "id", "col_b", "col_a"]);
+        expect(storedOrder.toArray().indexOf("col_b")).toBe(2);
     });
 });

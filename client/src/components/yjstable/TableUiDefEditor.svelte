@@ -20,22 +20,20 @@ interface Props {
     columnLabels: Record<string, string | undefined>;
     /** Shared visibility settings from the UI Definition. */
     hiddenColumns: Record<string, boolean>;
+    /** Columns returned by the query, including computed and joined columns. */
+    resultColumns: string[];
     /** The column order stored in UI Definition. */
     columnOrder: string[];
 }
 
-let { handles, schema, query, componentTypes, columnLabels, hiddenColumns, columnOrder }: Props = $props();
+let { handles, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
 const displayColumns = $derived.by(() => {
-    if (!schema) return [];
-    const orderedNames = orderColumns(
-        schema.columns.map((c) => c.name),
-        columnOrder,
-    );
-    const colMap = new Map(schema.columns.map((c) => [c.name, c]));
-    return orderedNames.map((name) => colMap.get(name)!).filter(Boolean);
+    const orderedNames = orderColumns(resultColumns, columnOrder);
+    const colMap = new Map((schema?.columns ?? []).map((c) => [c.name, c]));
+    return orderedNames.map(name => ({ name, schemaColumn: colMap.get(name) }));
 });
 
 let dropTargetColumn = $state<{ column: string; position: "above" | "below" } | undefined>(undefined);
@@ -127,7 +125,7 @@ function setColumnHidden(column: string, hidden: boolean) {
         onchange={commitQuery}
     />
 
-    {#if schema}
+    {#if displayColumns.length > 0}
         <p class="editor-label">Cell components</p>
         <div class="component-rows" role="list">
             {#each displayColumns as column, index (column.name)}
@@ -184,7 +182,7 @@ function setColumnHidden(column: string, hidden: boolean) {
                         value={columnLabels[column.name] ?? ""}
                         onchange={(e) => setColumnLabel(column.name, (e.target as HTMLInputElement).value)}
                     />
-                    <span class="column-type">{column.dataType}</span>
+                    <span class="column-type">{column.schemaColumn?.dataType ?? "query result"}</span>
                     <select
                         data-testid={`yjs-table-component-${column.name}`}
                         value={isCellComponentType(componentTypes[column.name])
@@ -192,7 +190,7 @@ function setColumnHidden(column: string, hidden: boolean) {
                         : "auto"}
                         onchange={(e) => setComponentType(column.name, (e.target as HTMLSelectElement).value)}
                     >
-                        <option value="auto">auto ({defaultCellType(column)})</option>
+                        <option value="auto">auto ({defaultCellType(column.schemaColumn)})</option>
                         {#each COMPONENT_TYPES as type (type)}
                             <option value={type}>{type}</option>
                         {/each}
@@ -210,16 +208,16 @@ function setColumnHidden(column: string, hidden: boolean) {
                         />
                         Hidden
                     </label>
-                    {#if column.checkOptions && column.checkOptions.length > 0}
+                    {#if column.schemaColumn?.checkOptions && column.schemaColumn.checkOptions.length > 0}
                         <span class="check-options" title="Options from CHECK constraint">
-                            [{column.checkOptions.join(", ")}]
+                            [{column.schemaColumn.checkOptions.join(", ")}]
                         </span>
                     {/if}
                 </div>
             {/each}
         </div>
     {:else}
-        <p class="hint">Apply a schema to configure cell components.</p>
+        <p class="hint">Run a query to configure its columns.</p>
     {/if}
 </div>
 

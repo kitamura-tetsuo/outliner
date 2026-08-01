@@ -52,7 +52,17 @@ const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
-const displayColumns = $derived(orderColumns(result.columns, columnOrder).filter(column => hiddenColumns[column] !== true));
+const effectiveColumns = $derived(orderColumns(result.columns, columnOrder));
+const displayColumns = $derived(effectiveColumns.filter(column => hiddenColumns[column] !== true));
+
+/** Persist a visible-column reorder without dropping or moving hidden slots. */
+function writeVisibleColumnOrder(visibleOrder: string[]) {
+    let visibleIndex = 0;
+    const fullOrder = effectiveColumns.map(column =>
+        hiddenColumns[column] === true ? column : visibleOrder[visibleIndex++]
+    );
+    writeColumnOrder(handles, fullOrder);
+}
 
 /** Presentation label for a column; falls back to the SQL name. */
 function headerLabel(column: string): string {
@@ -179,7 +189,7 @@ function handleCancelDelete() {
                                         } else if (draggedIndex > targetIndex && dropTargetColumn?.position === "right") {
                                             targetIndex += 1;
                                         }
-                                        writeColumnOrder(handles, moveColumn(displayColumns, draggedCol, targetIndex));
+                                        writeVisibleColumnOrder(moveColumn(displayColumns, draggedCol, targetIndex));
                                     }
                                 }
                                 dropTargetColumn = undefined;
@@ -188,10 +198,10 @@ function handleCancelDelete() {
                                 if (e.altKey) {
                                     if (e.key === "ArrowLeft" && index > 0) {
                                         e.preventDefault();
-                                        writeColumnOrder(handles, moveColumn(displayColumns, column, index - 1));
+                                        writeVisibleColumnOrder(moveColumn(displayColumns, column, index - 1));
                                     } else if (e.key === "ArrowRight" && index < displayColumns.length - 1) {
                                         e.preventDefault();
-                                        writeColumnOrder(handles, moveColumn(displayColumns, column, index + 1));
+                                        writeVisibleColumnOrder(moveColumn(displayColumns, column, index + 1));
                                     }
                                 }
                             }}

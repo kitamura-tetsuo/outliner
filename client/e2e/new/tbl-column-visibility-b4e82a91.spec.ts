@@ -5,21 +5,26 @@ import { TestHelpers } from "../utils/testHelpers";
 
 registerCoverageHooks();
 
+async function createTasksTable(page: import("@playwright/test").Page, testInfo: import("@playwright/test").TestInfo) {
+    await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table visibility"]);
+    const item = page.locator(".outliner-item").first();
+    await expect(item).toBeVisible({ timeout: 10000 });
+    await item.click();
+
+    await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+    const createPanel = page.getByTestId("yjs-table-create-panel").first();
+    await expect(createPanel).toBeVisible();
+    await createPanel.getByTestId("yjs-table-preset-select").selectOption("tasks");
+    await createPanel.getByTestId("yjs-table-create").click();
+
+    const view = page.getByTestId("yjs-table-view").first();
+    await expect(view).toBeVisible();
+    return view;
+}
+
 test.describe("Table column visibility", () => {
     test("hides, persists, and restores a column in its original position", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table visibility"]);
-        const item = page.locator(".outliner-item").first();
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-
-        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
-        const createPanel = page.getByTestId("yjs-table-create-panel").first();
-        await expect(createPanel).toBeVisible();
-        await createPanel.getByTestId("yjs-table-preset-select").selectOption("tasks");
-        await createPanel.getByTestId("yjs-table-create").click();
-
-        let view = page.getByTestId("yjs-table-view").first();
-        await expect(view).toBeVisible();
+        let view = await createTasksTable(page, testInfo);
         const originalColumns = await view.locator("th[data-col]").evaluateAll(headers =>
             headers.map(header => header.getAttribute("data-col"))
         );
@@ -46,5 +51,28 @@ test.describe("Table column visibility", () => {
             headers.map(header => header.getAttribute("data-col"))
         );
         expect(restoredColumns).toEqual(originalColumns);
+    });
+
+    test("offers and persists visibility for a computed query column", async ({ page }, testInfo) => {
+        let view = await createTasksTable(page, testInfo);
+        await view.getByTestId("yjs-table-toggle-ui").click();
+        const query = view.getByTestId("yjs-table-query-input");
+        await query.fill("SELECT id, title, priority || ' task' AS summary FROM tasks ORDER BY id");
+        await query.evaluate(element => (element as HTMLInputElement).blur());
+
+        const summaryHeader = view.locator("th[data-col='summary']");
+        await expect(summaryHeader).toBeVisible({ timeout: 15000 });
+        const hiddenCheckbox = view.getByTestId("yjs-table-hidden-summary");
+        await expect(hiddenCheckbox).toHaveAccessibleName("Hidden");
+        await hiddenCheckbox.check();
+        await expect(summaryHeader).toHaveCount(0);
+        await expect(view.locator("td[data-col='summary']")).toHaveCount(0);
+
+        await page.reload();
+        view = page.getByTestId("yjs-table-view").first();
+        await expect(view).toBeVisible();
+        await expect(view.locator("th[data-col='summary']")).toHaveCount(0);
+        await view.getByTestId("yjs-table-toggle-ui").click();
+        await expect(view.getByTestId("yjs-table-hidden-summary")).toBeChecked();
     });
 });

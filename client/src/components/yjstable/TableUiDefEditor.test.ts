@@ -40,6 +40,7 @@ describe("TableUiDefEditor", () => {
                 componentTypes: {},
                 columnLabels: {},
                 hiddenColumns: {},
+                resultColumns: ["col_a"],
                 columnOrder: ["col_a"],
             },
         });
@@ -88,6 +89,7 @@ describe("TableUiDefEditor", () => {
                 componentTypes: {},
                 columnLabels: {},
                 hiddenColumns: {},
+                resultColumns: ["col_a"],
                 columnOrder: ["col_a"],
             },
         });
@@ -99,5 +101,34 @@ describe("TableUiDefEditor", () => {
 
         await fireEvent.click(checkbox);
         expect(components.has("col_a")).toBe(false);
+    });
+
+    it("offers visibility controls for computed query columns outside the schema", async () => {
+        const doc = new Y.Doc();
+        const handles: TableHandles = {
+            doc,
+            tableId: "computed-column-table",
+            schemaText: doc.getText("schemaText"),
+            uiDef: doc.getMap("uiDef"),
+            data: doc.getMap("data"),
+            undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
+        };
+        const { getByTestId, getByText } = render(TableUiDefEditor, {
+            props: {
+                handles,
+                schema: undefined,
+                query: "SELECT revenue * 2 AS doubled FROM sales",
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: {},
+                resultColumns: ["doubled"],
+                columnOrder: [],
+            },
+        });
+
+        expect(getByText("query result")).toBeTruthy();
+        await fireEvent.click(getByTestId("yjs-table-hidden-doubled"));
+        const components = handles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
+        expect(components.get("doubled")?.get("hidden")).toBe(true);
     });
 });
