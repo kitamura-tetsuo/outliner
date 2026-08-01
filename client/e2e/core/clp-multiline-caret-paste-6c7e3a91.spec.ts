@@ -70,6 +70,12 @@ test.describe("multi-line clipboard paste at a caret", () => {
         await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
         await page.waitForTimeout(200);
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(200);
+        await expect(page.locator(`[data-item-id="${childId}"]`)).toHaveAttribute(
+            "aria-level",
+            String(parentLevel + 2),
+        );
         const target = page.locator(`[data-item-id="${targetId}"]`);
         await expect(target).toHaveAttribute("aria-expanded", "true");
         await target.locator("button.collapse-btn").click();
