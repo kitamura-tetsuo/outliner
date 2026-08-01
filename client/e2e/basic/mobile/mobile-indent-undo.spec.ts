@@ -43,7 +43,7 @@ test.describe("Mobile Action Toolbar Indent Undo", () => {
             } else if (generalStore && generalStore.undoManager) {
                 generalStore.undoManager.undo();
             } else {
-                 throw new Error('UndoManager not found on window object.');
+                throw new Error("UndoManager not found on window object.");
             }
         });
 
