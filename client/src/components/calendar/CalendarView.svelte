@@ -498,7 +498,7 @@ onDestroy(() => {
             <button type="button" data-testid="calendar-nav-next" onclick={goNext}>›</button>
             <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
         </div>
-        <select data-testid="calendar-view-type" value={viewType} onchange={setViewType}>
+        <select data-testid="calendar-view-type" value={settings.viewType} onchange={setViewType}>
             {#each VIEW_TYPE_OPTIONS as opt (opt.value)}
                 <option value={opt.value}>{opt.label}</option>
             {/each}

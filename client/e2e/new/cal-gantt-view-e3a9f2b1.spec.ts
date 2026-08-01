@@ -80,6 +80,7 @@ test.describe("FTR-e3a9f2b1: Gantt view", () => {
 
         await page.getByTestId("calendar-view-type").first().selectOption("gantt");
         await expect(page.getByTestId("calendar-gantt-chart").first()).toBeVisible({ timeout: 15000 });
+        await expect(page.getByTestId("calendar-view-type").first()).toHaveValue("gantt");
 
         // The parent row shows a rolled-up bar (from its child) and its own
         // due marker; the child renders as its own nested, indented row.
