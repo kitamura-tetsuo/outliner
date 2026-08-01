@@ -103,3 +103,89 @@ describe("ENV-* Production Build Security Guard", () => {
         expect(leaks).toEqual([]);
     }, 600_000);
 });
+
+describe("Production Source-Level Security Guard", () => {
+    it("ensures production code does not read internal stores from window or globalThis", () => {
+        const srcDir = path.resolve(clientDir, "src");
+        const tsFiles: string[] = [];
+
+        function findTsFiles(dir: string) {
+            for (const file of fs.readdirSync(dir)) {
+                const filePath = path.join(dir, file);
+                if (fs.statSync(filePath).isDirectory()) {
+                    if (file !== "tests" && file !== "test") {
+                        findTsFiles(filePath);
+                    }
+                } else if (
+                    (filePath.endsWith(".ts") || filePath.endsWith(".svelte")) && !filePath.endsWith(".test.ts")
+                    && !filePath.endsWith(".spec.ts")
+                ) {
+                    tsFiles.push(filePath);
+                }
+            }
+        }
+
+        findTsFiles(srcDir);
+
+        const illegalReads: string[] = [];
+        // We know these specific valid writers are allowed
+        const allowedLines = {
+            "store.svelte.ts": ["window.appStore = store;", "window.generalStore = store;"],
+            "+layout.svelte": [
+                "window.generalStore = window.generalStore || appStore;",
+                "window.appStore = window.appStore || appStore;",
+            ],
+        };
+
+        // Allowed readers that will be fixed separately in other PRs (grandfathered in)
+        const allowedFiles = [
+            "ScrapboxFormatter.ts",
+            "EditorOverlayStore.svelte.ts",
+            "service.ts", // yjs/service.ts
+            "SearchBox.svelte",
+            "KeyEventHandler.ts",
+            "attachmentUpload.ts",
+            "OutlinerItem.svelte",
+            "SearchPanel.svelte",
+            "testHelpers.ts",
+        ];
+
+        for (const file of tsFiles) {
+            const fileName = path.basename(file);
+            if (allowedFiles.includes(fileName)) {
+                continue;
+            }
+
+            const fileContent = fs.readFileSync(file, "utf8");
+            const lines = fileContent.split("\n");
+
+            lines.forEach((line, index) => {
+                if (
+                    line.match(/(window|globalThis|w)(\?\.|\.)\s*(appStore|generalStore)/)
+                    || line.match(/(appStore|generalStore)\s*=/)
+                ) {
+                    // Check if it's an allowed writer
+                    const isAllowed = Object.entries(allowedLines).some(([allowedFile, allowedLns]) => {
+                        return fileName === allowedFile && allowedLns.some(allowedLine => line.includes(allowedLine));
+                    });
+
+                    if (!isAllowed) {
+                        // ignore comments
+                        if (
+                            !line.trim().startsWith("//") && !line.trim().startsWith("*")
+                            && !line.trim().startsWith("<!--")
+                        ) {
+                            illegalReads.push(
+                                `Found illegal access of internal store in ${path.relative(process.cwd(), file)}:${
+                                    index + 1
+                                }: ${line.trim()}`,
+                            );
+                        }
+                    }
+                }
+            });
+        }
+
+        expect(illegalReads).toEqual([]);
+    });
+});
