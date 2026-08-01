@@ -21,6 +21,9 @@
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
     import { spliceMultiLinePaste } from "../lib/multiLinePaste";
+    import type { ClipboardItem } from "../services/clipboard/itemClipboard";
+    import { setItemCalendarId } from "../services/calendar/calendarBinding";
+    import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
     import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -932,9 +935,26 @@
         }
     }
 
+    function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
+        if (!metadata) return;
+        item.componentType = metadata.componentType;
+        setItemTableId(item, metadata.componentType === "yjstable" ? metadata.yjsTableId : undefined);
+        setItemCalendarId(item, metadata.componentType === "calendar" ? metadata.calendarId : undefined);
+    }
+
     // Add new items when pasting multiple lines
     function handlePasteMultiItem(event: CustomEvent) {
-        const { lines, selections, activeItemId, cursor } = event.detail;
+        const { lines, selections, activeItemId, cursor, structuredItems } = event.detail as {
+            lines: string[];
+            selections: Array<{ startItemId: string; endItemId: string; startOffset?: number; endOffset?: number; }>;
+            activeItemId: string;
+            cursor?: { itemId: string; offset: number; };
+            structuredItems?: ClipboardItem[];
+        };
+
+        const applyStructuredItem = (item: Item, index: number) => {
+            applyClipboardMetadata(item, structuredItems?.[index]);
+        };
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -964,14 +984,14 @@
 
             if (multiItemSelection) {
                 // Process selection spanning multiple items
-                handleMultiItemSelectionPaste(multiItemSelection, lines);
+                handleMultiItemSelectionPaste(multiItemSelection, lines, structuredItems);
                 return;
             }
 
             // Process selection within single item
             const singleItemSelection = selections[0];
             if (singleItemSelection) {
-                handleSingleItemSelectionPaste(singleItemSelection, lines);
+                handleSingleItemSelectionPaste(singleItemSelection, lines, structuredItems);
                 return;
             }
         }
@@ -1005,6 +1025,7 @@
         let lastItemId = firstItemId;
         const run = () => {
             baseOriginal.updateText(splice.firstText);
+            applyStructuredItem(baseOriginal, 0);
             splice.siblingTexts.forEach((siblingText, index) => {
                 const newIndex = baseIndex + index + 1;
                 let newItem = siblings.addNode(currentUser, newIndex);
@@ -1013,6 +1034,7 @@
                 }
                 if (newItem) {
                     newItem.updateText(siblingText);
+                    applyStructuredItem(newItem, index + 1);
                     lastItemId = newItem.id;
                 }
             });
@@ -1035,7 +1057,7 @@
     }
 
     // Paste into selection spanning multiple items
-    function handleMultiItemSelectionPaste(selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number }, lines: string[]) {
+    function handleMultiItemSelectionPaste(selection: { startItemId: string, endItemId: string, startOffset?: number, endOffset?: number }, lines: string[], structuredItems?: ClipboardItem[]) {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleMultiItemSelectionPaste called with selection:");
@@ -1084,6 +1106,7 @@
                 // Do not delete start item, update text instead
                 const startItem = displayItems[i].model.original;
                 startItem.updateText(lines[0] || "");
+                applyClipboardMetadata(startItem, structuredItems?.[0]);
 
                 if (
                     typeof window !== "undefined" &&
@@ -1120,6 +1143,7 @@
             }
             if (newItem) {
                 newItem.updateText(lines[i]);
+                applyClipboardMetadata(newItem, structuredItems?.[i]);
             }
         }
 
@@ -1154,7 +1178,7 @@
     }
 
     // Paste into selection within single item
-    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[]) {
+    function handleSingleItemSelectionPaste(selection: { startItemId: string, startOffset: number, endOffset: number }, lines: string[], structuredItems?: ClipboardItem[]) {
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug({ selection }, "handleSingleItemSelectionPaste called with selection:");
@@ -1197,6 +1221,7 @@
                 lines[0] +
                 text.substring(endOffset);
             item.updateText(newText);
+            applyClipboardMetadata(item, structuredItems?.[0]);
 
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated text to: "${newText}"`);
@@ -1217,6 +1242,7 @@
             // First line replaces selection in current item
             const newFirstText = text.substring(0, startOffset) + lines[0];
             item.updateText(newFirstText);
+            applyClipboardMetadata(item, structuredItems?.[0]);
 
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated first item text to: "${newFirstText}"`);
@@ -1239,6 +1265,7 @@
                     newItem = items.at(newIndex) as import("../schema/app-schema").Item;
                 }
                 if (newItem) {
+                    applyClipboardMetadata(newItem, structuredItems?.[i]);
                     if (i === lines.length - 1) {
                         // For last line, add text following selection
                         const lastItemText =
