@@ -11,6 +11,7 @@ import { ScrapboxFormatter } from "../../../utils/ScrapboxFormatter";
 vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
     const mockStore = {
         updateCursor: vi.fn(),
+        syncTextareaToActiveItem: vi.fn(),
         setCursor: vi.fn(),
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(),

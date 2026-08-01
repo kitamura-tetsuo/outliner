@@ -42,6 +42,30 @@ describe("OutlinerItemAttachments", () => {
         expect(img).toHaveAttribute("alt", ""); // Should be empty
     });
 
+    it("renders non-image attachments as file chips", () => {
+        const item = new Item({ id: "test-id" });
+        item.addAttachment("https://example.com/document.pdf", "application/pdf", "document.pdf");
+
+        const res = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        const link = screen.getByRole("link", { name: "document.pdf" });
+        expect(link).toBeInTheDocument();
+
+        // Assert no img tag is rendered
+        const img = link.querySelector("img");
+        expect(img).not.toBeInTheDocument();
+
+        // Assert file chip elements exist
+        const fileNameSpan = link.querySelector(".file-name");
+        expect(fileNameSpan).toBeInTheDocument();
+        expect(fileNameSpan?.textContent).toBe("document.pdf");
+
+        res.unmount();
+    });
+
     it("renders generic label for data URLs", () => {
         const item = new Item({ id: "test-id" });
         item.addAttachment("data:image/png;base64,abcdef");

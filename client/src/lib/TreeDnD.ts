@@ -138,7 +138,7 @@ export class TreeDnD {
             };
 
             if (typeof doc?.transact === "function") {
-                doc.transact(run, "item-drop-reorder");
+                doc.transact(run, null);
             } else {
                 run();
             }

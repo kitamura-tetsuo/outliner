@@ -16,6 +16,7 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
         clearSelectionForUser: vi.fn(),
         startCursorBlink: vi.fn(),
         triggerOnEdit: vi.fn(),
+        syncTextareaToActiveItem: vi.fn(),
         cursorInstances: new Map(),
         cursors: {}, // Add cursors object
         clearCursorAndSelection: vi.fn(), // Add clearCursorAndSelection method

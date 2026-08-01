@@ -156,6 +156,9 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         if (this.isActive) {
             store.setActiveItem(this.itemId);
 
+            // Keep textarea in sync when we activate it
+            store.syncTextareaToActiveItem();
+
             // Set focus to the global textarea
             const textarea = store.getTextareaRef();
             if (textarea) {

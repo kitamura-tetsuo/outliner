@@ -14,8 +14,13 @@ description: 'Allow pasting text copied outside the app using the native clipboa
 category: editing
 status: implemented
 acceptance:
+- A terminal clipboard newline is treated as a line ending and does not create a stray empty item
+- Multi-line text is split into sibling items at the caret without losing the surrounding text
+- Pasting into a nested item creates siblings in that item's parent collection and can be undone as one operation
 - Text copied in another application can be pasted into an item with Ctrl+V
 - The pasted text appears at the cursor position
 tests:
+- client/e2e/core/clp-multiline-caret-paste-6c7e3a91.spec.ts
 - client/e2e/core/clp-system-clipboard-paste-b6ebf516.spec.ts
+- client/src/lib/multiLinePaste.test.ts
 title-ja: システムクリップボードからのテキストペースト

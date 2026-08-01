@@ -1274,6 +1274,10 @@ function handleCut(event: ClipboardEvent) {
 
 // Notify parent of multi-line paste
 function handlePaste(event: ClipboardEvent) {
+  // GlobalTextArea/KeyEventHandler is authoritative when it already accepted
+  // the paste (including Clipboard API fallback reads).
+  if (event.defaultPrevented) return;
+
   // Provide fallback for paste to temporary textarea (#clipboard-test) for E2E tests
   // This path is for E2E test environment only and is not executed in production
   const target = event.target as HTMLTextAreaElement | null;
@@ -1322,6 +1326,7 @@ function handlePaste(event: ClipboardEvent) {
       lines,
       selections,
       activeItemId: store.getActiveItem(),
+      cursor: store.getLocalCursorInstances().find(cursor => cursor.isActive),
     });
     return;
   }
@@ -1343,6 +1348,7 @@ function handlePaste(event: ClipboardEvent) {
       lines,
       selections,
       activeItemId: store.getActiveItem(),
+      cursor: store.getLocalCursorInstances().find(cursor => cursor.isActive),
     });
     return;
   }

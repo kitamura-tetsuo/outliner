@@ -40,7 +40,7 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### Sidebar Navigation
 
-Click the hamburger menu in the top-left corner to access the main sidebar navigation. The sidebar provides quick access to:
+Click the sidebar toggle button (hamburger menu) in the top-left corner to access the main sidebar navigation. The sidebar provides quick access to:
 
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project.
@@ -83,7 +83,7 @@ Press `Enter` to insert a new item below the current one. Alternatively, click t
 
 ### Moving Items
 
-Easily reorder items using drag and drop.
+Easily reorder items using drag and drop. You can also use `Alt + ↑` and `Alt + ↓` to move the current item (and its children) up or down among its siblings.
 
 ---
 
@@ -243,3 +243,6 @@ You can also access a complete list of shortcuts by clicking the **Keyboard & ac
 | Shrink selection        | `Shift + Alt + Left`             | `Shift + Option + Left`        |
 | Undo                    | `Ctrl + Z`                       | `Cmd + Z`                      |
 | Redo                    | `Ctrl + Shift + Z` or `Ctrl + Y` | `Cmd + Shift + Z` or `Cmd + Y` |
+| Move item up            | `Alt + ↑`                        | `Option + ↑`                   |
+| Move item down          | `Alt + ↓`                        | `Option + ↓`                   |
+| Open context menu       | `Shift + F10` or `Menu`          | `Shift + F10` or `Menu`        |

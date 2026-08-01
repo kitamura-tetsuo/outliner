@@ -4,6 +4,7 @@ import { Item, Items, Project } from "../../schema/yjs-schema";
 import { colorForUser } from "../../stores/colorForUser";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { presenceStore } from "../../stores/PresenceStore.svelte";
+import { store } from "../../stores/store.svelte";
 import { updateParentCheckboxStatus } from "../../utils/checkboxHelpers";
 import { safeGetNodeParent } from "../../utils/treeUtils";
 import { getLogger } from "../logger";
@@ -73,9 +74,7 @@ function applyPresenceToOverlay(
     if (!overlay || !user) return;
 
     // Filter out presence that belongs to a different page
-    const currentPage = (window as Window & typeof globalThis & {
-        appStore?: { currentPage?: { id?: string; }; };
-    }).appStore?.currentPage;
+    const currentPage = store.currentPage;
 
     // If we're not on any page, or the presence doesn't match the current page, clear it
     // NOTE: in tests, currentPage may not exist. Allow when presence.pageId is missing

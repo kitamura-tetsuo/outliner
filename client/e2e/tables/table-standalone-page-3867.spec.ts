@@ -57,7 +57,7 @@ test.describe("Standalone Table Page (#3867)", () => {
         await tableLink.click();
 
         // 3. Verify URL navigation and table rendering
-        await expect(page).toHaveURL(new RegExp(`/tables/.*/${encodeURIComponent(tableName)}`));
+        await expect(page).toHaveURL(new RegExp(`/tables/.*/[a-f0-9-]{36}`));
 
         // Ensure table is rendered on standalone page
         await page.waitForSelector(".yjs-table-grid", { timeout: 10000 });

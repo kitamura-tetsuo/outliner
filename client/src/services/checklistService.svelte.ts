@@ -26,10 +26,8 @@ export interface Checklist {
 class ChecklistService {
     lists = $state<Checklist[]>([]);
     private ydoc: Y.Doc | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private ymap: Y.Map<any> | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private observer: ((events: Y.YEvent<any>[], transaction: Y.Transaction) => void) | null = null;
+    private ymap: Y.Map<unknown> | null = null;
+    private observer: ((events: Y.YEvent<Y.AbstractType<unknown>>[], transaction: Y.Transaction) => void) | null = null;
 
     // ensureBound will bind to the active document dynamically if one exists
     ensureBound() {
@@ -43,8 +41,7 @@ class ChecklistService {
             this.ydoc = doc;
             this.ymap = doc.getMap("checklists");
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.observer = (events: Y.YEvent<any>[], transaction: Y.Transaction) => {
+            this.observer = (events: Y.YEvent<Y.AbstractType<unknown>>[], transaction: Y.Transaction) => {
                 if (transaction.origin !== this) {
                     this.syncFromYjs();
                 }

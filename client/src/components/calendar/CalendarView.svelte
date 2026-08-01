@@ -45,7 +45,7 @@ import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale"
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
 import {
     applyOptimisticOverrides,
-    clearOptimisticOverride,
+    clearOptimisticOverrideFields,
     createOptimisticOverrides,
     reconcileOptimisticOverrides,
     setOptimisticOverride,
@@ -368,7 +368,7 @@ async function commitStart(entry: CalendarEntry, newStartMs: number) {
         await writeCalendarEntryStart(session, entry, column, newStartMs, timeZone);
         writeError = undefined;
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["startMs"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
@@ -381,13 +381,13 @@ async function commitDuration(entry: CalendarEntry, newDurationMs: number) {
         await writeCalendarEntryDuration(session, entry, column, newDurationMs);
         writeError = undefined;
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["durationMs"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
 
 function cancelDrag(entry: CalendarEntry) {
-    optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+    optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["startMs"]);
 }
 
 // --- Gantt's own write: a parent roll-up bar has no start column of its
@@ -410,7 +410,7 @@ function commitSubtreeShift(_row: GanttRow, deltaMs: number, analysis: GanttSubt
         writeError = undefined;
     } catch (err) {
         for (const member of analysis.members) {
-            optimisticOverrides = clearOptimisticOverride(optimisticOverrides, member.key);
+            optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, member.key, ["startMs"]);
         }
         writeError = err instanceof Error ? err.message : String(err);
     }
@@ -467,7 +467,7 @@ async function commitLaneDrop(entry: CalendarEntry, laneValue: string | undefine
         writeError = undefined;
         scheduleRequery();
     } catch (err) {
-        optimisticOverrides = clearOptimisticOverride(optimisticOverrides, entry.key);
+        optimisticOverrides = clearOptimisticOverrideFields(optimisticOverrides, entry.key, ["raw"]);
         writeError = err instanceof Error ? err.message : String(err);
     }
 }
@@ -493,12 +493,12 @@ onDestroy(() => {
     <div class="view-toolbar">
         <span class="calendar-name" data-testid="calendar-name">{settings.name}</span>
         <div class="nav-controls">
-            <button type="button" data-testid="calendar-nav-prev" onclick={goPrev}>‹</button>
+            <button type="button" data-testid="calendar-nav-prev" onclick={goPrev} aria-label="Previous period">‹</button>
             <button type="button" data-testid="calendar-nav-today" onclick={goToday}>Today</button>
-            <button type="button" data-testid="calendar-nav-next" onclick={goNext}>›</button>
+            <button type="button" data-testid="calendar-nav-next" onclick={goNext} aria-label="Next period">›</button>
             <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
         </div>
-        <select data-testid="calendar-view-type" value={viewType} onchange={setViewType}>
+        <select data-testid="calendar-view-type" aria-label={`${settings.name || "Calendar"} view`} value={settings.viewType} onchange={setViewType}>
             {#each VIEW_TYPE_OPTIONS as opt (opt.value)}
                 <option value={opt.value}>{opt.label}</option>
             {/each}

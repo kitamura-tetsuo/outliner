@@ -54,6 +54,7 @@ try {
 
 
 import { handleFileUploadFromDrop } from "../services";
+import { isBlockOwnedDragEvent } from "../services/dnd/blockDndOwnership";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 
@@ -510,19 +511,19 @@ const aliasTargetIdEffective = $derived.by(() => {
 
 interface AttachmentTarget {
     id?: string;
-    addAttachment?: (url: string) => void;
+    addAttachment?: (url: string, mime?: string, name?: string) => void;
     attachments?: string[][] | { push: (arr: string[]) => void };
 }
 
-function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
+function addAttachmentSafely(cand: AttachmentTarget, url: string, mime?: string, name?: string) {
     try {
         if (cand.addAttachment) {
-            cand.addAttachment(url);
+            cand.addAttachment(url, mime, name);
         } else {
             throw new Error('Method addAttachment not found');
         }
     } catch {
-        if (isTest ) {
+        if (IS_TEST) {
             try {
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
@@ -530,7 +531,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             } catch (_e) { /* ignore */ }
         }
     }
-    if (isTest && typeof window !== "undefined") {
+    if (IS_TEST && typeof window !== "undefined") {
         try {
             window.dispatchEvent(new CustomEvent('item-attachments-changed', {
                 detail: { id: String(cand.id) }
@@ -540,14 +541,14 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
 }
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
-    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
+    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string, mime?: string, name?: string) {
         // Resolve target item from event or fallback to current model
         const targetEl = (ev?.target as Element | null)?.closest?.(".outliner-item") || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, mime, name);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -555,12 +556,12 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                 const map = w?.__ITEM_ID_MAP__;
                 const mappedId = map ? map[String(targetId)] : undefined;
                 const gs = typeof window !== "undefined" ? w?.generalStore : undefined;
-                const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => unknown } } | undefined;
+                const curPage = (gs as { currentPage?: unknown })?.currentPage as { items?: { length: number, at?: (i: number) => { id?: string, addAttachment: (u: string) => void }, [key: number]: { id?: string, addAttachment: (u: string) => void } } } | undefined;
                 if (mappedId && curPage?.items) {
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
-                        const cand = curPage.items.at?.(i) as { id?: string, addAttachment: (u: string) => void } | undefined;
+                        const cand = curPage.items.at?.(i) || curPage.items[i];
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            addAttachmentSafely(cand, url, IS_TEST);
+                            addAttachmentSafely(cand, url);
                             break;
                         }
                     }
@@ -577,7 +578,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             }
         } else {
             // No target found in DOM, default to current model
-            addAttachmentSafely(model.original, url, IS_TEST);
+            addAttachmentSafely(model.original, url);
         }
     }
 
@@ -1605,6 +1606,11 @@ function handleDragStart(event: DragEvent) {
  * @param event Drag event
  */
 function handleDragOver(event: DragEvent) {
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator(); // block owns this drag; never show an item drop target for it
+        return;
+    }
+
     // Prevent default action (allow drop)
     event.preventDefault();
 
@@ -1639,11 +1645,25 @@ function handleDragOver(event: DragEvent) {
  * @param event Drag event
  */
 function handleDragEnter(event: DragEvent) {
+    // `dragenter` fires before `dragover`, so it needs the same ownership guard:
+    // otherwise a block-owned drag lights up the item's drop indicator on entry
+    // and the guarded dragover/drop handlers never get to clear it again.
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator();
+        return;
+    }
+
     // Prevent default action
     event.preventDefault();
 
     // Set drop target flag
     isDropTarget = true;
+}
+
+/** Drops the item's drop-target styling and the position it was showing. */
+function clearDropIndicator() {
+    isDropTarget = false;
+    dropTargetPosition = null;
 }
 
 /**
@@ -1660,6 +1680,11 @@ function handleDragLeave() {
  * @param event Drag event
  */
 async function handleDrop(event: DragEvent | CustomEvent) {
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator(); // block owns this drag; leave no stale indicator behind
+        return;
+    }
+
     const maybeCustom = event as CustomEvent;
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {
         logger.debug("OutlinerItem handleDrop: custom event detail", maybeCustom.detail);
@@ -1706,10 +1731,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         dt,
         model.id,
         dropTargetPosition,
-        import.meta.env.MODE === 'test',
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as (modelOriginal: unknown, url: string, isTest: boolean) => void,
+        addAttachmentSafely as (modelOriginal: unknown, url: string, mime?: string, name?: string) => void,
         model.original,
         event
     );
@@ -1869,7 +1893,7 @@ onMount(() => {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
                         const blob = new Blob([text ?? 'e2e'], { type: 'text/plain' });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
+                        addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl, undefined, undefined);
                         try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch (_e) { /* ignore */ }
                     }
                 } catch (_e) { /* ignore */ }

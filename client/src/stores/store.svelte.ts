@@ -10,7 +10,9 @@ import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Items } from "../schema/app-schema";
 import { Item, Project } from "../schema/app-schema";
 import { globalUndoRouter } from "../services/undo/undoRouter";
+import { ITEMS_RELATION_ORIGIN } from "../services/yjstable/itemsRelation";
 import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
+import type { OutlinerViewModel } from "./OutlinerViewModel";
 
 export class GeneralStore {
     // Use $state for pages to ensure proper Svelte reactivity
@@ -35,6 +37,7 @@ export class GeneralStore {
     // Fallback: Also keep the index in case the ID changes, such as when switching connections
     private _project = $state<Project | undefined>(undefined);
     public undoManager: Y.UndoManager | undefined;
+    public activeViewModel: OutlinerViewModel | null = null;
     textareaRef: HTMLTextAreaElement | null = null;
 
     private _subscribeCurrentPage = createSubscriber((update) => {
@@ -296,7 +299,9 @@ export class GeneralStore {
             this.undoManager.destroy();
         }
         /* eslint-disable svelte/prefer-svelte-reactivity -- Y.UndoManager internally uses standard Set which is required by its API */
-        this.undoManager = new Y.UndoManager(v.ydoc.getMap("orderedTree"), { trackedOrigins: new Set([null]) });
+        this.undoManager = new Y.UndoManager(v.ydoc.getMap("orderedTree"), {
+            trackedOrigins: new Set([null, ITEMS_RELATION_ORIGIN]),
+        });
         globalUndoRouter.register(this.undoManager);
         /* eslint-enable svelte/prefer-svelte-reactivity */
 

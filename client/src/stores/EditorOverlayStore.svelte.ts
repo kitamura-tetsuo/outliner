@@ -4,6 +4,7 @@ import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
+import { store } from "./store.svelte";
 import { yjsStore } from "./yjsStore.svelte";
 const logger = getLogger("EditorOverlayStore");
 
@@ -1514,6 +1515,57 @@ export class EditorOverlayStore {
      * @param sel Selection range
      * @returns Text within selection range
      */
+
+    /**
+     * Synchronizes the global textarea's content and selection state with the currently
+     * active item and cursor. This ensures the textarea (which handles IME and keyboard events)
+     * has the correct state when the active item changes programmatically (e.g. on Enter).
+     */
+    syncTextareaToActiveItem() {
+        if (this.isComposing) return;
+
+        const textarea = this.getTextareaRef();
+        if (!textarea) return;
+
+        const activeId = this.getActiveItem();
+        if (!activeId) return;
+
+        // Skip if there is an active selection for the local user, since selection logic
+        // will manage the textarea state
+        const localSelection = Object.values(this.selections).find(s => (s.userId || "local") === "local");
+        if (localSelection) return;
+
+        const cursors = Object.values(this.cursors).filter(c =>
+            c.itemId === activeId && c.isActive && ((c.userId || "local") === "local")
+        );
+        if (cursors.length === 0) return;
+
+        const cursor = cursors[0];
+
+        // Retrieve the item text from the store or DOM
+        let text = "";
+        const originalText = this.getOriginalTextFromItem(activeId);
+        if (originalText !== null) {
+            text = originalText;
+        } else {
+            // fallback to DOM
+            const textEl = document.querySelector(`[data-item-id="${escapeId(activeId)}"] .item-text`) as HTMLElement;
+            if (textEl) {
+                text = this.getPlainTextFromElement(textEl);
+            }
+        }
+
+        if (textarea.value !== text) {
+            textarea.value = text;
+        }
+
+        // Ensure cursor offset is within bounds
+        const safeOffset = Math.min(Math.max(0, cursor.offset), text.length);
+        if (textarea.selectionStart !== safeOffset || textarea.selectionEnd !== safeOffset) {
+            textarea.setSelectionRange(safeOffset, safeOffset);
+        }
+    }
+
     getTextFromSelection(sel: SelectionRange): string {
         // Debug info
         if (
@@ -1921,15 +1973,7 @@ export class EditorOverlayStore {
             }
             logger.debug("[pushPresenceState] Got awareness");
 
-            const currentPage = (window as Window & typeof globalThis & {
-                DEBUG_MODE?: boolean;
-                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-
-                itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: { id?: string; }; };
-                editorOverlayStore?: unknown;
-            }).appStore?.currentPage;
+            const currentPage = store.currentPage;
             const pageId = currentPage?.id;
             if (!pageId) {
                 logger.debug("[pushPresenceState] No pageId", { currentPage });

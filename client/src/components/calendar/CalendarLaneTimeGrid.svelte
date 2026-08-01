@@ -95,6 +95,7 @@ function onBandDragLeave(lane: CalendarLane) {
 
 function onBandDrop(lane: CalendarLane, e: DragEvent) {
     e.preventDefault();
+    e.stopPropagation();
     hoveredLane = undefined;
     // `draggingEntry` is the fast path. Recover from the standard
     // DataTransfer payload as well: a reactive redraw between dragover and
@@ -109,7 +110,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
 }
 </script>
 
-<div class="lane-time-grid" data-testid="calendar-lane-time-grid">
+<div class="lane-time-grid" data-block-dnd-owner="calendar" data-testid="calendar-lane-time-grid">
     {#if dayHeaders && bands.length > 0}
         <div class="day-header-row" data-testid="calendar-lane-day-header-row">
             <div class="hour-gutter"></div>

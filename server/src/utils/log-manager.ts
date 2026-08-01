@@ -14,12 +14,11 @@ const __dirname = path.dirname(__filename);
 // shared schema is compiled in) as well as running from src/ under ts-node.
 function findServerRoot(start: string): string {
     let dir = start;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
+    let parent = "";
+    while (dir !== parent) {
         if (fs.existsSync(path.join(dir, "package.json"))) return dir;
-        const parent = path.dirname(dir);
-        if (parent === dir) break;
-        dir = parent;
+        parent = dir;
+        dir = path.dirname(dir);
     }
     // Fallback to the previous heuristic if no package.json was found.
     let fallback = path.resolve(start, "..", "..");

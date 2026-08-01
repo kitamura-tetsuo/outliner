@@ -1,6 +1,8 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("AttachmentUpload");
 
+const IS_TEST = import.meta.env.MODE === "test";
+
 import type { Item, Items } from "../schema/app-schema";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 import { uploadAttachment } from "./attachmentService";
@@ -37,12 +39,14 @@ export async function resolveUploadContainerId(): Promise<string> {
     return containerId || "test-container";
 }
 
-function addAttachmentWithFallback(item: Item, url: string) {
+function addAttachmentWithFallback(item: Item, url: string, mime?: string, name?: string) {
     try {
-        item.addAttachment(url);
+        item.addAttachment(url, mime, name);
     } catch {
         try {
-            (item as Item & { attachments?: { push: (arr: [string]) => void; }; }).attachments?.push([url]);
+            (item as Item & { attachments?: { push: (arr: unknown[]) => void; }; }).attachments?.push(
+                mime || name ? [[url, mime, name]] : [url],
+            );
         } catch (_e) {
             logger.error(_e);
         }
@@ -55,19 +59,18 @@ export async function uploadFileToNewItemAtEnd(
     currentUser: string,
     containerId: string,
     file: File,
-    isTestEnv: boolean,
 ): Promise<void> {
     try {
         const newItem = items.addNode(currentUser, items.length);
         if (!newItem) return;
         try {
             const url = await uploadAttachment(containerId, newItem.id, file);
-            addAttachmentWithFallback(newItem, url);
+            addAttachmentWithFallback(newItem, url, file.type, file.name);
         } catch (uploadErr) {
             logger.error({ error: uploadErr as Error }, "Attachment upload failed, using local fallback");
-            if (isTestEnv) {
+            if (IS_TEST) {
                 const localUrl = URL.createObjectURL(file);
-                addAttachmentWithFallback(newItem, localUrl);
+                addAttachmentWithFallback(newItem, localUrl, file.type, file.name);
                 try {
                     window.dispatchEvent(
                         new CustomEvent("item-attachments-changed", { detail: { id: String(newItem.id) } }),
@@ -89,16 +92,17 @@ interface DropEventDetail {
     selection?: unknown;
     sourceItemId?: string | null;
     attachmentUrl?: string;
+    attachmentMime?: string;
+    attachmentName?: string;
 }
 
 export async function handleFileUploadFromDrop(
     dt: DataTransfer | null,
     modelId: string,
     dropTargetPosition: string | null,
-    isTestEnv: boolean,
     dispatch: (type: "drop", detail: DropEventDetail) => void,
-    addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string) => void,
-    addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean) => void,
+    addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string, mime?: string, name?: string) => void,
+    addAttachmentSafely: (modelOriginal: unknown, url: string, mime?: string, name?: string) => void,
     modelOriginal: unknown,
     event: Event | null,
 ): Promise<boolean> {
@@ -146,25 +150,34 @@ export async function handleFileUploadFromDrop(
                     const url = await uploadAttachment(containerId, modelId, file);
 
                     if (!dropTargetPosition || dropTargetPosition === "middle") {
-                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url);
+                        addAttachmentToDomTargetOrModel(
+                            event instanceof DragEvent ? event : null,
+                            url,
+                            file.type,
+                            file.name,
+                        );
                     } else {
                         dispatch("drop", {
                             targetItemId: modelId,
                             position: dropTargetPosition,
                             attachmentUrl: url,
+                            attachmentMime: file.type,
+                            attachmentName: file.name,
                         });
                     }
                 } catch (e) {
-                    if (isTestEnv) {
+                    if (IS_TEST) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                addAttachmentSafely(modelOriginal, localUrl, isTestEnv);
+                                addAttachmentSafely(modelOriginal, localUrl, file.type, file.name);
                             } else {
                                 dispatch("drop", {
                                     targetItemId: modelId,
                                     position: dropTargetPosition,
                                     attachmentUrl: localUrl,
+                                    attachmentMime: file.type,
+                                    attachmentName: file.name,
                                 });
                             }
                             try {
@@ -191,12 +204,12 @@ export async function handleFileUploadFromDrop(
                                             ) => {
                                                 id?: string;
                                                 text?: string;
-                                                addAttachment?: (u: string) => void;
+                                                addAttachment?: (u: string, mime?: string, name?: string) => void;
                                             };
                                             [key: number]: {
                                                 id?: string;
                                                 text?: string;
-                                                addAttachment?: (u: string) => void;
+                                                addAttachment?: (u: string, mime?: string, name?: string) => void;
                                             };
                                         };
                                     } | undefined;
@@ -204,7 +217,7 @@ export async function handleFileUploadFromDrop(
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
                                         if (cand && String(cand?.id) === String(mappedId)) {
-                                            addAttachmentSafely(cand, localUrl, isTestEnv);
+                                            addAttachmentSafely(cand, localUrl, file.type, file.name);
                                             break;
                                         }
                                     }
@@ -219,30 +232,6 @@ export async function handleFileUploadFromDrop(
                     logger.error({ error: e as Error }, "attachment upload failed");
                 }
             }
-        } else {
-            if (isTestEnv) {
-                try {
-                    const blob = new Blob(["e2e"], { type: "text/plain" });
-                    const localUrl = URL.createObjectURL(blob);
-                    addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-                } catch (_e) {
-                    logger.error(_e);
-                }
-            }
-        }
-        return true;
-    }
-
-    if (
-        isTestEnv
-        && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))
-    ) {
-        try {
-            const blob = new Blob(["e2e"], { type: "text/plain" });
-            const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-        } catch (_e) {
-            logger.error(_e);
         }
         return true;
     }
