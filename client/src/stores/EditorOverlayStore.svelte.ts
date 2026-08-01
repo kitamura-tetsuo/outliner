@@ -1,4 +1,5 @@
 import { tick } from "svelte";
+import { store } from "./store.svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
@@ -1921,15 +1922,7 @@ export class EditorOverlayStore {
             }
             logger.debug("[pushPresenceState] Got awareness");
 
-            const currentPage = (window as Window & typeof globalThis & {
-                DEBUG_MODE?: boolean;
-                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-
-                itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: { id?: string; }; };
-                editorOverlayStore?: unknown;
-            }).appStore?.currentPage;
+            const currentPage = store.currentPage;
             const pageId = currentPage?.id;
             if (!pageId) {
                 logger.debug("[pushPresenceState] No pageId", { currentPage });
