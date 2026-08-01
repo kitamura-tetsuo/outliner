@@ -96,13 +96,15 @@ export async function dragElementOnto(
             ? Math.floor(targetRect.top + targetRect.height * 0.75)
             : Math.floor(targetRect.top + targetRect.height / 2);
 
-        source.dispatchEvent(new DragEvent("dragstart", {
-            bubbles: true,
-            cancelable: true,
-            dataTransfer,
-            clientX: Math.floor(sourceRect.left + sourceRect.width / 2),
-            clientY: Math.floor(sourceRect.top + sourceRect.height / 2),
-        }));
+        source.dispatchEvent(
+            new DragEvent("dragstart", {
+                bubbles: true,
+                cancelable: true,
+                dataTransfer,
+                clientX: Math.floor(sourceRect.left + sourceRect.width / 2),
+                clientY: Math.floor(sourceRect.top + sourceRect.height / 2),
+            }),
+        );
         const at = { bubbles: true, cancelable: true, dataTransfer, clientX, clientY };
         for (const type of ["dragover", "drop"]) {
             target.dispatchEvent(new DragEvent(type, at));
