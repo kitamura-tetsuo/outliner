@@ -366,10 +366,10 @@ import type * as Y from "yjs";
                         {#each tables as table (table.tableId)}
                             <li>
                                 <a
-                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
+                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
                                     class="page-item table-link"
-                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}`}
-                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.name || "Untitled table")}` ? 'page' : undefined}
+                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
+                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >

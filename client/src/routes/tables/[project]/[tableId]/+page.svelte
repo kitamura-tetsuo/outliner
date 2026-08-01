@@ -18,13 +18,14 @@
 
     // URL params
     let projectName = $derived($page.params.project);
-    let tableName = $derived($page.params.table);
+    let routeTableId = $derived($page.params.tableId);
 
     // Page state
     let error: string | undefined = $state(undefined);
     let isAuthenticated = $state(false);
     let notFound = $state(false);
     let isLoading = $state(true);
+    let tableName: string | undefined = $state(undefined);
     let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
     let tableSqlName: string | undefined = $state(undefined);
     let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
@@ -38,9 +39,9 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
+        if (!projectName || !routeTableId || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
 
-        logger.info(`Loading standalone table: project="${projectName}", table="${tableName}"`);
+        logger.info(`Loading standalone table: project="${projectName}", table="${routeTableId}"`);
         isLoading = true;
         error = undefined;
         notFound = false;
@@ -65,23 +66,24 @@
             const registryEntries = listTables(store.project.ydoc);
             // The route carries the display name; falling back to the SQL name
             // keeps links written against the identifier working too.
-            const entry = registryEntries.find(e => e.name === tableName)
-                ?? registryEntries.find(e => e.sqlName === tableName);
+            const entry = registryEntries.find(e => e.tableId === routeTableId)
+                ?? registryEntries.find(e => e.sqlName === routeTableId);
             if (!entry) {
-                logger.warn(`Table "${tableName}" not found in project "${projectName}"`);
+                logger.warn(`Table "${routeTableId}" not found in project "${projectName}"`);
                 notFound = true;
                 return;
             }
 
             const handles = getTableHandles(store.project.ydoc, entry.tableId);
             if (!handles) {
-                logger.warn(`Handles missing for table "${tableName}" (${entry.tableId})`);
+                logger.warn(`Handles missing for table "${routeTableId}" (${entry.tableId})`);
                 notFound = true;
                 return;
             }
 
             tableHandles = handles;
             tableSqlName = entry.sqlName || undefined;
+            tableName = entry.name;
             // Held explicitly: the engine session needs the registry doc for
             // name lookups and conflict checks.
             tableProjectDoc = store.project.ydoc;
@@ -94,7 +96,7 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && tableName) {
+        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && routeTableId) {
             loadTable();
         } else if (!isAuthenticated) {
             isLoading = false;
