@@ -875,6 +875,11 @@ export const demoPages: DemoPageTemplate[] = [
                 yjsTableId: DEMO_SALES_TABLE_ID,
             },
             {
+                text:
+                    "Clipboard: select this whole database item together with a neighboring item, then copy and paste "
+                    + "to create another live view of the same table. Cut and paste moves the view without deleting its data.",
+            },
+            {
                 text: "Aggregation across tables: this table stores only the monthly targets, "
                     + "but its query joins the Sales table above and compares both series. "
                     + "Every table of a project can be referenced by the name its schema declares.",

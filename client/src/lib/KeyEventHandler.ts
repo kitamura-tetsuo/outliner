@@ -1,12 +1,70 @@
+import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
+import { getCalendar } from "../services/calendar/calendarService";
+import {
+    clipboardPlainText,
+    deserializeClipboardItems,
+    OUTLINER_ITEMS_MIME,
+    serializeClipboardItems,
+} from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter";
+import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
+import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
+import { store as generalStore } from "../stores/store.svelte";
 import { escapeId } from "../utils/domUtils";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
+
+function selectedItemsClipboardData(): { encoded: string; plainText: string; } | undefined {
+    const selection = Object.values(store.selections).find(sel =>
+        !sel.isBoxSelection && sel.startItemId !== sel.endItemId
+    );
+    const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
+    const project = generalStore.project;
+    if (!selection || !project?.ydoc) return undefined;
+    const start = visible.findIndex(entry => entry.model.id === selection.startItemId);
+    const end = visible.findIndex(entry => entry.model.id === selection.endItemId);
+    if (start < 0 || end < 0) return undefined;
+    const first = Math.min(start, end);
+    const last = Math.max(start, end);
+    const lastItem = visible[last].model.original;
+    const lastLength = String(lastItem.text ?? "").length;
+    const startOffset = start <= end ? selection.startOffset : selection.endOffset;
+    const endOffset = start <= end ? selection.endOffset : selection.startOffset;
+    if (startOffset !== 0 || endOffset !== lastLength) return undefined;
+
+    const entries = visible.slice(first, last + 1).map(entry => {
+        const item = entry.model.original;
+        const tableId = getItemTableId(item);
+        const calendarId = getItemCalendarId(item);
+        const fallbackText = tableId
+            ? getTableName(project.ydoc, tableId)
+            : calendarId
+            ? getCalendar(project, calendarId)?.name
+            : undefined;
+        return { item, depth: entry.depth - visible[first].depth, fallbackText };
+    });
+    const encoded = serializeClipboardItems(project.ydoc.guid, entries);
+    const payload = deserializeClipboardItems(encoded);
+    return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
+}
+
+function clearRetainedComponentHost(): void {
+    const selection = Object.values(store.selections).find(sel => sel.startItemId !== sel.endItemId);
+    const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
+    if (!selection) return;
+    const start = visible.findIndex(entry => entry.model.id === selection.startItemId);
+    const end = visible.findIndex(entry => entry.model.id === selection.endItemId);
+    const retained = visible[Math.min(start, end)]?.model.original;
+    if (!retained) return;
+    retained.componentType = undefined;
+    setItemTableId(retained, undefined);
+    setItemCalendarId(retained, undefined);
+}
 
 export function isForeignInput(target: EventTarget | null): boolean {
     if (!target) return false;
@@ -51,6 +109,11 @@ export function isEditorClipboardEvent(event: Event): boolean {
  * Handler that distributes key and input events to each cursor instance
  */
 export class KeyEventHandler {
+    // Browsers may strip non-standard MIME entries while moving a ClipboardEvent
+    // through the operating-system clipboard. Retain the last in-app payload as
+    // a same-tab fallback, but only use it when its plain text still matches.
+    private static lastStructuredClipboard: { encoded: string; plainText: string; } | undefined;
+
     // Maintains the state of box selection
     private static boxSelectionState: {
         active: boolean;
@@ -1204,6 +1267,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCopy = false;
+        const structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
@@ -1234,6 +1298,9 @@ export class KeyEventHandler {
             }
         }
 
+        if (structured) selectedText = structured.plainText;
+        KeyEventHandler.lastStructuredClipboard = structured;
+
         // If selection text could be obtained
         if (selectedText) {
             try {
@@ -1241,6 +1308,7 @@ export class KeyEventHandler {
                 if (event.clipboardData) {
                     // Set plaintext
                     event.clipboardData.setData("text/plain", selectedText);
+                    if (structured) event.clipboardData.setData(OUTLINER_ITEMS_MIME, structured.encoded);
 
                     // Add VS Code compatible metadata
                     if (isBoxSelectionCopy) {
@@ -1284,6 +1352,8 @@ export class KeyEventHandler {
                 // Not used in production, but needed to verify clipboard content in E2E tests
                 if (typeof window !== "undefined") {
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText = selectedText;
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems =
+                        structured?.encoded;
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedIsBoxSelection =
                         isBoxSelectionCopy;
                 }
@@ -1291,7 +1361,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText
+                    && navigator?.clipboard?.writeText && !event.clipboardData
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -1304,14 +1374,16 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                const textarea = document.createElement("textarea");
-                textarea.value = selectedText;
-                textarea.style.position = "absolute";
-                textarea.style.left = "-9999px";
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textarea);
+                if (!event.clipboardData) {
+                    const textarea = document.createElement("textarea");
+                    textarea.value = selectedText;
+                    textarea.style.position = "absolute";
+                    textarea.style.left = "-9999px";
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textarea);
+                }
 
                 // Debug info
                 if (
@@ -2031,6 +2103,7 @@ export class KeyEventHandler {
         try {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
+            const encodedItems = event.clipboardData?.getData(OUTLINER_ITEMS_MIME) || "";
 
             // Use Clipboard API if not available from event
             if (!text && typeof navigator !== "undefined" && navigator.clipboard) {
@@ -2078,6 +2151,15 @@ export class KeyEventHandler {
             }
 
             if (!text) return;
+
+            const cached = KeyEventHandler.lastStructuredClipboard;
+            const structured = deserializeClipboardItems(
+                encodedItems || (cached?.plainText === text ? cached.encoded : ""),
+            );
+            const sameProjectItems = structured && structured.sourceProjectId === generalStore.project?.ydoc?.guid
+                ? structured.items
+                : undefined;
+            if (sameProjectItems) text = clipboardPlainText(structured!);
 
             // Get VS Code specific metadata
             let vscodeMetadata: unknown = null;
@@ -2380,13 +2462,14 @@ export class KeyEventHandler {
             }
 
             // Treat as multi-item paste if normal multi-line text
-            if (text.includes("\n")) {
+            if (text.includes("\n") || sameProjectItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(
                         new CustomEvent("paste-multi-item", {
                             detail: {
                                 lines: text.split(/\r?\n/),
+                                structuredItems: sameProjectItems,
                                 selections: Object.values(store.selections).filter(selection =>
                                     selection.startOffset !== selection.endOffset
                                     || selection.startItemId !== selection.endItemId
@@ -2448,6 +2531,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCut = false;
+        const structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
@@ -2478,6 +2562,9 @@ export class KeyEventHandler {
             }
         }
 
+        if (structured) selectedText = structured.plainText;
+        KeyEventHandler.lastStructuredClipboard = structured;
+
         // If selection text could be obtained
         if (selectedText) {
             try {
@@ -2485,6 +2572,7 @@ export class KeyEventHandler {
                 if (event.clipboardData) {
                     // Set plaintext
                     event.clipboardData.setData("text/plain", selectedText);
+                    if (structured) event.clipboardData.setData(OUTLINER_ITEMS_MIME, structured.encoded);
 
                     // Add VS Code compatible metadata
                     if (isBoxSelectionCut) {
@@ -2528,6 +2616,8 @@ export class KeyEventHandler {
                 // Not used in production, but needed to verify cut content in E2E tests
                 if (typeof window !== "undefined") {
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText = selectedText;
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems =
+                        structured?.encoded;
 
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedIsBoxSelection =
                         isBoxSelectionCut;
@@ -2536,7 +2626,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText
+                    && navigator?.clipboard?.writeText && !event.clipboardData
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -2549,14 +2639,16 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                const textarea = document.createElement("textarea");
-                textarea.value = selectedText;
-                textarea.style.position = "absolute";
-                textarea.style.left = "-9999px";
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textarea);
+                if (!event.clipboardData) {
+                    const textarea = document.createElement("textarea");
+                    textarea.value = selectedText;
+                    textarea.style.position = "absolute";
+                    textarea.style.left = "-9999px";
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textarea);
+                }
 
                 // Debug info
                 if (
@@ -2587,6 +2679,8 @@ export class KeyEventHandler {
                 // Delete selection (cut action)
                 cursor.cutSelectedText();
             });
+
+            if (structured) clearRetainedComponentHost();
 
             // Clear selections
             store.clearSelections();
