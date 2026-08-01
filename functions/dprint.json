@@ -41,8 +41,8 @@
     ".runtimeconfig.json"
   ],
   "plugins": [
-    "https://plugins.dprint.dev/typescript-0.94.0.wasm",
-    "https://plugins.dprint.dev/json-0.20.0.wasm",
-    "https://plugins.dprint.dev/markdown-0.18.0.wasm"
+    "../dprint-plugins/typescript-0.95.5.wasm",
+    "../dprint-plugins/json-0.20.0.wasm",
+    "../dprint-plugins/markdown-0.18.0.wasm"
   ]
 }
