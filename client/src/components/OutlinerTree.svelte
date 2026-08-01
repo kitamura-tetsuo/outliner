@@ -495,7 +495,7 @@
 
         if (typeof doc.transact === "function") {
 
-            doc.transact(run, "mobile-indent");
+            doc.transact(run, null);
         } else {
             run();
         }
@@ -564,7 +564,7 @@
 
         if (typeof doc.transact === "function") {
 
-            doc.transact(run, "mobile-unindent");
+            doc.transact(run, null);
         } else {
             run();
         }
