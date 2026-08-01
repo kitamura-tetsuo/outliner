@@ -40,7 +40,7 @@ test.describe("Image Addition Button (att-image-button-a1b2c3d4)", () => {
 
         // The new item should be at the end
         const newItemId = await TestHelpers.getItemIdByIndex(page, 3);
-        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-preview`);
+        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-link`);
         await expect(attachments).toHaveCount(1, { timeout: 15000 });
     });
 });
