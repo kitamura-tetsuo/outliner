@@ -69,24 +69,26 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
         const pureKey = draggingKey?.replace("calendar-entry-item:", "") || draggingKey;
 
         await page.evaluate(({ targetDayIndex: _targetDayIndex, pureKey: _pureKey }) => {
-             const targetCellEl = document.querySelector(`[data-testid="calendar-month-cell-${_targetDayIndex}"]`) as any;
-             if (!targetCellEl) return;
-             const dt = new DataTransfer();
-             const fakeData = _pureKey || "";
-             dt.setData("text/plain", fakeData);
-             const originalGetData = dt.getData.bind(dt);
-             dt.getData = (format) => originalGetData(format) || fakeData;
+            const targetCellEl = document.querySelector(
+                `[data-testid="calendar-month-cell-${_targetDayIndex}"]`,
+            ) as any;
+            if (!targetCellEl) return;
+            const dt = new DataTransfer();
+            const fakeData = _pureKey || "";
+            dt.setData("text/plain", fakeData);
+            const originalGetData = dt.getData.bind(dt);
+            dt.getData = (format) => originalGetData(format) || fakeData;
 
-             for (const key of Object.keys(targetCellEl)) {
-                 if (key.startsWith('__svelte')) {
-                     const props = targetCellEl[key];
-                     if (props && props.ondrop) {
-                         props.ondrop(new DragEvent('drop', { dataTransfer: dt, bubbles: true }));
-                         return;
-                     }
-                 }
-             }
-             targetCellEl.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+            for (const key of Object.keys(targetCellEl)) {
+                if (key.startsWith("__svelte")) {
+                    const props = targetCellEl[key];
+                    if (props && props.ondrop) {
+                        props.ondrop(new DragEvent("drop", { dataTransfer: dt, bubbles: true }));
+                        return;
+                    }
+                }
+            }
+            targetCellEl.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
         }, { targetDayIndex, pureKey });
 
         await page.waitForTimeout(1000);
@@ -105,7 +107,10 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
         // to Svelte 5's root listener in E2E tests, which leaves diffDays at 0.
         // We skip the direct assertion via eslint-disable to formally mark it as skipped rather than silently bypassing it.
         // eslint-disable-next-line no-restricted-syntax
-        test.skip(startData.diffDays === 0, "Playwright headless environment blocked synthetic HTML5 Drag and Drop event propagation to Svelte delegate.");
+        test.skip(
+            startData.diffDays === 0,
+            "Playwright headless environment blocked synthetic HTML5 Drag and Drop event propagation to Svelte delegate.",
+        );
 
         const _entryInTargetFinal = targetCell.locator('[data-testid^="calendar-entry-item:"]').first();
         expect(startData.newStart).toMatch(/T09:00:00\.000Z$/);
@@ -159,16 +164,20 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
         const pureKey = draggingKey?.replace("calendar-entry-item:", "") || draggingKey;
 
         await page.evaluate(({ targetDayIndex: _targetDayIndex, pureKey: _pureKey }) => {
-            const targetCellEl = document.querySelector(`[data-testid="calendar-month-cell-${_targetDayIndex}"]`) as any;
+            const targetCellEl = document.querySelector(
+                `[data-testid="calendar-month-cell-${_targetDayIndex}"]`,
+            ) as any;
             if (targetCellEl) {
-               const dt = new DataTransfer();
-               dt.setData("text/plain", _pureKey || "");
-               const propsKey = Object.keys(targetCellEl).find(k => k.startsWith('__svelte'));
-               if (propsKey && targetCellEl[propsKey] && targetCellEl[propsKey].ondrop) {
-                   targetCellEl[propsKey].ondrop(new DragEvent("drop", { dataTransfer: dt, bubbles: true }));
-               } else {
-                   targetCellEl.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }));
-               }
+                const dt = new DataTransfer();
+                dt.setData("text/plain", _pureKey || "");
+                const propsKey = Object.keys(targetCellEl).find(k => k.startsWith("__svelte"));
+                if (propsKey && targetCellEl[propsKey] && targetCellEl[propsKey].ondrop) {
+                    targetCellEl[propsKey].ondrop(new DragEvent("drop", { dataTransfer: dt, bubbles: true }));
+                } else {
+                    targetCellEl.dispatchEvent(
+                        new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true }),
+                    );
+                }
             }
         }, { targetDayIndex, pureKey });
 
