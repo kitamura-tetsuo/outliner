@@ -24,12 +24,15 @@ test.describe("component block clipboard", () => {
         await firstView.getByTestId("yjs-table-add-row").click();
 
         const items = page.locator(".outliner-item[data-item-id]");
-        const renderedHost = firstView.locator("xpath=ancestor::*[contains(@class, 'outliner-item')][1]");
+        const renderedHost = firstView.locator(
+            "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' outliner-item ') and @data-item-id][1]",
+        );
         const hostId = await renderedHost.getAttribute("data-item-id");
         const itemIds = await items.evaluateAll(elements =>
             elements.map(element => element.getAttribute("data-item-id"))
         );
         const hostIndex = itemIds.indexOf(hostId);
+        expect(hostIndex).toBeGreaterThanOrEqual(0);
         const neighborId = itemIds[hostIndex + 1];
         const neighborText = await items.nth(hostIndex + 1).locator(".item-text").textContent();
         expect(hostId).toBeTruthy();
