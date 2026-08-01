@@ -32,9 +32,9 @@ test.describe("component block clipboard", () => {
             elements.map(element => element.getAttribute("data-item-id"))
         );
         const hostIndex = itemIds.indexOf(hostId);
-        expect(hostIndex).toBeGreaterThanOrEqual(0);
-        const neighborId = itemIds[hostIndex + 1];
-        const neighborText = await items.nth(hostIndex + 1).locator(".item-text").textContent();
+        expect(hostIndex).toBeGreaterThan(0);
+        const neighborId = itemIds[hostIndex - 1];
+        const hostText = await renderedHost.locator(".item-text").textContent();
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
         await page.locator("textarea.global-textarea").focus();
@@ -49,7 +49,7 @@ test.describe("component block clipboard", () => {
                 endOffset,
                 userId: "local",
             });
-        }, { start: hostId, end: neighborId, endOffset: neighborText?.length ?? 0 });
+        }, { start: neighborId, end: hostId, endOffset: hostText?.length ?? 0 });
         await page.keyboard.press("Control+c");
         await page.evaluate(() => {
             // Copy must leave the selection intact, so explicitly move the
@@ -58,7 +58,7 @@ test.describe("component block clipboard", () => {
             window.editorOverlayStore!.clearSelections();
         });
 
-        const target = items.last();
+        const target = items.nth(1);
         await target.locator(".item-content").click();
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
