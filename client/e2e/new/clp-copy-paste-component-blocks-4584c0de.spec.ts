@@ -28,6 +28,7 @@ test.describe("component block clipboard", () => {
         const neighborId = await items.nth(2).getAttribute("data-item-id");
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
+        await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end }) => {
             // eslint-disable-next-line no-restricted-globals
             const editor = window.editorOverlayStore!;
@@ -40,7 +41,6 @@ test.describe("component block clipboard", () => {
                 userId: "local",
             });
         }, { start: hostId, end: neighborId });
-        await page.locator("textarea.global-textarea").focus();
         await page.keyboard.press("Control+c");
         await page.evaluate(() => {
             // Copy must leave the selection intact, so explicitly move the
@@ -72,6 +72,7 @@ test.describe("component block clipboard", () => {
         const items = page.locator(".outliner-item[data-item-id]");
         const start = await items.nth(1).getAttribute("data-item-id");
         const end = await items.nth(2).getAttribute("data-item-id");
+        await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end }) => {
             // eslint-disable-next-line no-restricted-globals
             window.editorOverlayStore!.setSelection({
@@ -82,8 +83,8 @@ test.describe("component block clipboard", () => {
                 userId: "local",
             });
         }, { start, end });
-        await page.locator("textarea.global-textarea").focus();
         await page.keyboard.press("Control+x");
+        await expect(page.getByTestId("calendar-view")).toHaveCount(0, { timeout: 10000 });
         await page.locator(".outliner-item").last().click();
         await page.keyboard.press("Control+v");
 

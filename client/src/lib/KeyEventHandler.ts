@@ -1,4 +1,4 @@
-import { getItemCalendarId } from "../services/calendar/calendarBinding";
+import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
 import { getCalendar } from "../services/calendar/calendarService";
 import {
     clipboardPlainText,
@@ -7,7 +7,7 @@ import {
     serializeClipboardItems,
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter";
-import { getItemTableId } from "../services/yjstable/itemBinding";
+import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -51,6 +51,19 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     const encoded = serializeClipboardItems(project.ydoc.guid, entries);
     const payload = deserializeClipboardItems(encoded);
     return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
+}
+
+function clearRetainedComponentHost(): void {
+    const selection = Object.values(store.selections).find(sel => sel.startItemId !== sel.endItemId);
+    const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
+    if (!selection) return;
+    const start = visible.findIndex(entry => entry.model.id === selection.startItemId);
+    const end = visible.findIndex(entry => entry.model.id === selection.endItemId);
+    const retained = visible[Math.min(start, end)]?.model.original;
+    if (!retained) return;
+    retained.componentType = undefined;
+    setItemTableId(retained, undefined);
+    setItemCalendarId(retained, undefined);
 }
 
 export function isForeignInput(target: EventTarget | null): boolean {
@@ -2662,6 +2675,8 @@ export class KeyEventHandler {
                 // Delete selection (cut action)
                 cursor.cutSelectedText();
             });
+
+            if (structured) clearRetainedComponentHost();
 
             // Clear selections
             store.clearSelections();
