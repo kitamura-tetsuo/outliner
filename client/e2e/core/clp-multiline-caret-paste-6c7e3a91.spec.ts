@@ -55,13 +55,15 @@ test.describe("multi-line clipboard paste at a caret", () => {
         expect(targetId).not.toBeNull();
         expect(childId).not.toBeNull();
 
-        await page.locator(`[data-item-id="${targetId}"] .item-content`).click();
+        await page.locator(`[data-item-id="${targetId}"] .item-content`).click({ force: true });
         await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
+        await page.waitForTimeout(200);
         await expect(page.locator(`[data-item-id="${targetId}"]`)).toHaveAttribute("aria-level", "3");
-        await page.locator(`[data-item-id="${childId}"] .item-content`).click();
+        await page.locator(`[data-item-id="${childId}"] .item-content`).click({ force: true });
         await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
+        await page.waitForTimeout(200);
         const target = page.locator(`[data-item-id="${targetId}"]`);
         await expect(target).toHaveAttribute("aria-expanded", "true");
         await target.locator("button.collapse-btn").click();

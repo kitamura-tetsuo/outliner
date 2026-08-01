@@ -995,9 +995,12 @@
         const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
         const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
         const splice = spliceMultiLinePaste(text, offset, lines);
-        const siblings = baseOriginal.parent ?? (pageItem.items as Items);
-        const baseIndex = siblings.indexOf(baseOriginal);
-        if (baseIndex < 0) return;
+        const isPageTitle = baseOriginal.id === pageItem.id;
+        const siblings = isPageTitle
+            ? pageItem.items as Items
+            : baseOriginal.parent ?? (pageItem.items as Items);
+        const baseIndex = isPageTitle ? -1 : siblings.indexOf(baseOriginal);
+        if (!isPageTitle && baseIndex < 0) return;
 
         let lastItemId = firstItemId;
         const run = () => {
