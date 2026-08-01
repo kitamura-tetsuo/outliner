@@ -73,6 +73,7 @@ describe("TableGrid", () => {
                 result,
                 componentTypes: {},
                 columnLabels: { col_a: "Column A Label" },
+                hiddenColumns: { col_b: true },
                 columnOrder,
                 session: mockSession,
             },
@@ -81,7 +82,7 @@ describe("TableGrid", () => {
         // The expected order according to orderColumns logic:
         // stored order columns that exist in result: "col_c", "col_a", "col_b"
         // remaining result columns not in stored order: "id"
-        const expectedOrder = ["col_c", "col_a", "col_b", "id"];
+        const expectedOrder = ["col_c", "col_a", "id"];
 
         const headers = Array.from(container.querySelectorAll("th[scope='col'] .th-label")).map(th =>
             th.textContent?.trim().replace(/\s+RO$/, "")
@@ -89,15 +90,15 @@ describe("TableGrid", () => {
 
         // Remove the action column if it exists in the query result or editable layout
         // In our case, the action column doesn't have .th-label, it has .sr-only
-        const expectedHeaders = ["col_c", "Column A Label", "col_b", "id"];
+        const expectedHeaders = ["col_c", "Column A Label", "id"];
         expect(headers.filter(Boolean)).toEqual(expectedHeaders);
 
         const ths = container.querySelectorAll("th[data-col]");
         const thA = Array.from(ths).find((th) => th.getAttribute("data-col") === "col_a");
         expect(thA?.getAttribute("title")).toBe("col_a");
 
-        const thB = Array.from(ths).find((th) => th.getAttribute("data-col") === "col_b");
-        expect(thB?.getAttribute("title")).toBeNull();
+        expect(container.querySelector("th[data-col='col_b']")).toBeNull();
+        expect(container.querySelector("td[data-col='col_b']")).toBeNull();
 
         const firstRowCells = Array.from(container.querySelectorAll("tbody tr:first-child td[data-col]"));
         const dataCols = firstRowCells.map(td => td.getAttribute("data-col"));

@@ -39,6 +39,7 @@ describe("TableUiDefEditor", () => {
                 query: "SELECT col_a FROM test",
                 componentTypes: {},
                 columnLabels: {},
+                hiddenColumns: {},
                 columnOrder: ["col_a"],
             },
         });
@@ -55,5 +56,48 @@ describe("TableUiDefEditor", () => {
         // Clear label
         await fireEvent.change(labelInput, { target: { value: "   " } });
         expect(colACfg.has("label")).toBe(false);
+    });
+
+    it("stores only true hidden values and removes an empty column config", async () => {
+        const schema: ParsedTableSchema = {
+            tableName: "test",
+            createSql: "CREATE TABLE test (col_a text);",
+            columns: [{
+                name: "col_a",
+                dataType: "text",
+                isNullable: true,
+                kind: "text",
+                checkOptions: [],
+                isPrimaryKey: false,
+            }],
+        };
+        const doc = new Y.Doc();
+        const handles: TableHandles = {
+            doc,
+            tableId: "hidden-test-table",
+            schemaText: doc.getText("schemaText"),
+            uiDef: doc.getMap("uiDef"),
+            data: doc.getMap("data"),
+            undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
+        };
+        const { getByTestId } = render(TableUiDefEditor, {
+            props: {
+                handles,
+                schema,
+                query: "SELECT col_a FROM test",
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: {},
+                columnOrder: ["col_a"],
+            },
+        });
+        const checkbox = getByTestId("yjs-table-hidden-col_a");
+
+        await fireEvent.click(checkbox);
+        const components = handles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
+        expect(components.get("col_a")?.get("hidden")).toBe(true);
+
+        await fireEvent.click(checkbox);
+        expect(components.has("col_a")).toBe(false);
     });
 });

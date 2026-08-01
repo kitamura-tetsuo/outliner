@@ -34,13 +34,15 @@ interface Props {
     columnOrder: string[];
     /** Display labels for columns. */
     columnLabels: Record<string, string | undefined>;
+    /** Columns hidden by the shared UI Definition. */
+    hiddenColumns: Record<string, boolean>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, columnOrder, columnLabels, loading = false, session }: Props = $props();
+let { handles, schema, query, result, componentTypes, columnOrder, columnLabels, hiddenColumns, loading = false, session }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -50,7 +52,7 @@ const IDENTITY_COLUMNS = new Set(["id", SOURCE_KIND_COLUMN, SOURCE_ID_COLUMN]);
 
 const editability = $derived(analyzeQueryEditability(query, schema, result.columns));
 const columnByName = $derived(new Map((schema?.columns ?? []).map((c) => [c.name, c])));
-const displayColumns = $derived(orderColumns(result.columns, columnOrder));
+const displayColumns = $derived(orderColumns(result.columns, columnOrder).filter(column => hiddenColumns[column] !== true));
 
 /** Presentation label for a column; falls back to the SQL name. */
 function headerLabel(column: string): string {
