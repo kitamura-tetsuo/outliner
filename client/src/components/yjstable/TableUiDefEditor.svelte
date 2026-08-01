@@ -5,7 +5,7 @@
 // edits to different fields merge cleanly.
 
 import * as Y from "yjs";
-import { moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
+import { COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
@@ -99,8 +99,16 @@ function setComponentType(column: string, type: string) {
     `data-block-dnd-owner`: the column rows below are `draggable`, and OutlinerItem's
     capture-phase `drop`/`dragover` listeners would otherwise consume the drop. The
     marker makes those handlers early-return for targets inside this subtree.
+
+    `data-block-dnd-type` keeps that to the editor's own row drags: text or files
+    dropped on the query input or a label input are not ours to claim.
 -->
-<div class="ui-def-editor" data-testid="yjs-table-ui-editor" data-block-dnd-owner="yjstable">
+<div
+    class="ui-def-editor"
+    data-testid="yjs-table-ui-editor"
+    data-block-dnd-owner="yjstable"
+    data-block-dnd-type={COLUMN_DRAG_TYPE}
+>
     <label class="editor-label" for="yjs-table-query-input">Query (SELECT)</label>
     <input
         id="yjs-table-query-input"
@@ -125,6 +133,9 @@ function setComponentType(column: string, type: string) {
                         if (e.dataTransfer) {
                             e.dataTransfer.effectAllowed = "move";
                             e.dataTransfer.setData("text/plain", column.name);
+                            // Identifies this drag as a column reorder while the
+                            // payload is still unreadable (see blockDndOwnership).
+                            e.dataTransfer.setData(COLUMN_DRAG_TYPE, column.name);
                         }
                     }}
                     ondragover={(e) => {
@@ -142,7 +153,7 @@ function setComponentType(column: string, type: string) {
                     }}
                     ondrop={(e) => {
                         e.preventDefault();
-                        const draggedCol = e.dataTransfer?.getData("text/plain");
+                        const draggedCol = e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
                         if (draggedCol && draggedCol !== column.name) {
                             const currentNames = displayColumns.map((c) => c.name);
                             const draggedIndex = currentNames.indexOf(draggedCol);

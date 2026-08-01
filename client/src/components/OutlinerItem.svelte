@@ -1606,7 +1606,10 @@ function handleDragStart(event: DragEvent) {
  * @param event Drag event
  */
 function handleDragOver(event: DragEvent) {
-    if (isBlockOwnedDragEvent(event)) return; // block owns this drag
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator(); // block owns this drag; never show an item drop target for it
+        return;
+    }
 
     // Prevent default action (allow drop)
     event.preventDefault();
@@ -1642,11 +1645,25 @@ function handleDragOver(event: DragEvent) {
  * @param event Drag event
  */
 function handleDragEnter(event: DragEvent) {
+    // `dragenter` fires before `dragover`, so it needs the same ownership guard:
+    // otherwise a block-owned drag lights up the item's drop indicator on entry
+    // and the guarded dragover/drop handlers never get to clear it again.
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator();
+        return;
+    }
+
     // Prevent default action
     event.preventDefault();
 
     // Set drop target flag
     isDropTarget = true;
+}
+
+/** Drops the item's drop-target styling and the position it was showing. */
+function clearDropIndicator() {
+    isDropTarget = false;
+    dropTargetPosition = null;
 }
 
 /**
@@ -1663,7 +1680,10 @@ function handleDragLeave() {
  * @param event Drag event
  */
 async function handleDrop(event: DragEvent | CustomEvent) {
-    if (isBlockOwnedDragEvent(event)) return; // block owns this drag
+    if (isBlockOwnedDragEvent(event)) {
+        clearDropIndicator(); // block owns this drag; leave no stale indicator behind
+        return;
+    }
 
     const maybeCustom = event as CustomEvent;
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {

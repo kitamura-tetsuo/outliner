@@ -17,6 +17,7 @@ import { isBlockOwnedDragEvent } from "../../services/dnd/blockDndOwnership";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
+import { COLUMN_DRAG_TYPE } from "../../services/yjstable/columnOrder";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
@@ -52,12 +53,18 @@ function storedColumnOrder(): string[] {
     return order instanceof Y.Array ? (order as Y.Array<string>).toArray() : [];
 }
 
-/** Minimal stand-in for `DataTransfer`, which jsdom does not implement. */
-function fakeDataTransfer() {
-    const values = new Map<string, string>();
+/**
+ * Minimal stand-in for `DataTransfer`, which jsdom does not implement. `types`
+ * tracks `setData` the way the real one does, since the ownership guard reads it.
+ */
+function fakeDataTransfer(initial: Record<string, string> = {}) {
+    const values = new Map<string, string>(Object.entries(initial));
     return {
         effectAllowed: "",
         dropEffect: "",
+        get types(): string[] {
+            return Array.from(values.keys());
+        },
         setData: (format: string, value: string) => void values.set(format, value),
         getData: (format: string) => values.get(format) ?? "",
     };
@@ -102,8 +109,8 @@ function dispatchDragEvent(
 
 /**
  * Mounts `component` inside a host that reproduces OutlinerItem's capture-phase
- * drop/dragover listeners. `itemDropHandled` counts the drops the item would
- * have consumed for itself.
+ * dragenter/dragover/drop listeners. Each counter records the events the item
+ * would have consumed for itself.
  */
 function renderInsideOutlinerItem(component: unknown, props: Record<string, unknown>) {
     const host = document.createElement("div");
@@ -113,8 +120,14 @@ function renderInsideOutlinerItem(component: unknown, props: Record<string, unkn
 
     const itemDropHandled = vi.fn();
     const itemDragOverHandled = vi.fn();
+    const itemDragEnterHandled = vi.fn();
 
-    for (const [type, handled] of [["drop", itemDropHandled], ["dragover", itemDragOverHandled]] as const) {
+    const listeners = [
+        ["drop", itemDropHandled],
+        ["dragover", itemDragOverHandled],
+        ["dragenter", itemDragEnterHandled],
+    ] as const;
+    for (const [type, handled] of listeners) {
         host.addEventListener(type, (event: Event) => {
             if (isBlockOwnedDragEvent(event)) return; // block owns this drag
             handled();
@@ -128,7 +141,7 @@ function renderInsideOutlinerItem(component: unknown, props: Record<string, unkn
     const { container } = render(component as any, { props });
     host.appendChild(container);
 
-    return { host, container, itemDropHandled, itemDragOverHandled };
+    return { host, container, itemDropHandled, itemDragOverHandled, itemDragEnterHandled };
 }
 
 beforeEach(() => {
@@ -158,14 +171,15 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
         });
     }
 
-    it("marks the grid root as owning its drags", () => {
+    it("marks the grid root as owning only its own column drags", () => {
         const { container } = renderGrid();
         const grid = container.querySelector(".yjs-table-grid");
         expect(grid?.getAttribute("data-block-dnd-owner")).toBe("yjstable");
+        expect(grid?.getAttribute("data-block-dnd-type")).toBe(COLUMN_DRAG_TYPE);
     });
 
     it("lets a header drop reach the grid handler and write the new column order", () => {
-        const { container, itemDropHandled, itemDragOverHandled } = renderGrid();
+        const { container, itemDropHandled, itemDragOverHandled, itemDragEnterHandled } = renderGrid();
 
         const source = container.querySelector("th[data-col='col_b']")!;
         const target = container.querySelector("th[data-col='col_a']")!;
@@ -173,15 +187,18 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
 
         const dataTransfer = fakeDataTransfer();
         dispatchDragEvent(source, "dragstart", dataTransfer);
-        expect(dataTransfer.getData("text/plain")).toBe("col_b");
+        expect(dataTransfer.getData(COLUMN_DRAG_TYPE)).toBe("col_b");
 
+        // Native order: dragenter fires before dragover, and both must be guarded.
         // clientX in the left half of col_a → insert before it.
+        dispatchDragEvent(target, "dragenter", dataTransfer, { clientX: 110, clientY: 10 });
         dispatchDragEvent(target, "dragover", dataTransfer, { clientX: 110, clientY: 10 });
         dispatchDragEvent(target, "drop", dataTransfer, { clientX: 110, clientY: 10 });
 
         expect(storedColumnOrder()).toEqual(["id", "col_b", "col_a", "col_c"]);
         expect(itemDropHandled).not.toHaveBeenCalled();
         expect(itemDragOverHandled).not.toHaveBeenCalled();
+        expect(itemDragEnterHandled).not.toHaveBeenCalled();
     });
 
     it("still lets the item consume drops that land outside the table block", () => {
@@ -193,6 +210,22 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
         dispatchDragEvent(plainTarget, "drop", fakeDataTransfer());
 
         expect(itemDropHandled).toHaveBeenCalledTimes(1);
+        expect(storedColumnOrder()).toEqual([]);
+    });
+
+    it("still lets the item consume an unrelated drop landing on a body cell", () => {
+        const { container, itemDropHandled, itemDragEnterHandled } = renderGrid();
+
+        // A file or outliner-item drag carries no column payload, so the grid does
+        // not claim it and the host item handles it exactly as it did before.
+        const cell = container.querySelector("td[data-col='col_a']")!;
+        const dataTransfer = fakeDataTransfer({ "text/plain": "some dragged text" });
+
+        dispatchDragEvent(cell, "dragenter", dataTransfer);
+        dispatchDragEvent(cell, "drop", dataTransfer);
+
+        expect(itemDropHandled).toHaveBeenCalledTimes(1);
+        expect(itemDragEnterHandled).toHaveBeenCalledTimes(1);
         expect(storedColumnOrder()).toEqual([]);
     });
 });
@@ -209,10 +242,21 @@ describe("TableUiDefEditor drag & drop ownership inside an OutlinerItem", () => 
         });
     }
 
-    it("marks the editor root as owning its drags", () => {
+    it("marks the editor root as owning only its own column drags", () => {
         const { container } = renderEditor();
         const editor = container.querySelector(".ui-def-editor");
         expect(editor?.getAttribute("data-block-dnd-owner")).toBe("yjstable");
+        expect(editor?.getAttribute("data-block-dnd-type")).toBe(COLUMN_DRAG_TYPE);
+    });
+
+    it("still lets the item consume an unrelated drop landing on the query input", () => {
+        const { container, itemDropHandled } = renderEditor();
+
+        const queryInput = container.querySelector("#yjs-table-query-input")!;
+        dispatchDragEvent(queryInput, "drop", fakeDataTransfer({ "text/plain": "pasted text" }));
+
+        expect(itemDropHandled).toHaveBeenCalledTimes(1);
+        expect(storedColumnOrder()).toEqual([]);
     });
 
     it("lets a column-row drop reach the editor handler and write the new column order", () => {

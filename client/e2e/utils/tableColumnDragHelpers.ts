@@ -10,11 +10,12 @@ import { expect, type Page } from "@playwright/test";
 export const TASKS_PRESET_COLUMNS = ["id", "title", "status", "priority", "due_date", "repeat_days"];
 
 /**
- * Turns the outliner item at `itemIndex` into a Tasks preset table block and
- * waits until the grid has rendered its columns.
+ * Turns the outliner item with `itemId` into a Tasks preset table block and
+ * waits until the grid has rendered its columns. The host is addressed by
+ * `data-item-id` so the scenario never depends on rendered order.
  */
-export async function createTasksTableBlock(page: Page, itemIndex = 0): Promise<void> {
-    const item = page.locator(".outliner-item").nth(itemIndex);
+export async function createTasksTableBlock(page: Page, itemId: string): Promise<void> {
+    const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
     await expect(item).toBeVisible({ timeout: 10000 });
     await item.click();
     await page.waitForTimeout(300);
@@ -58,8 +59,10 @@ export async function uiEditorRowOrder(page: Page): Promise<string[]> {
 }
 
 /**
- * Dispatches a real HTML5 drag sequence (`dragstart` / `dragover` / `drop` /
- * `dragend`) with a genuine `DataTransfer` from one element to another.
+ * Dispatches the full native HTML5 drag sequence (`dragstart` / `dragenter` /
+ * `dragover` / `drop` / `dragend`) with a genuine `DataTransfer` from one
+ * element to another. `dragenter` is included because it fires first in a real
+ * drag and OutlinerItem reacts to it too.
  *
  * The events are dispatched on the elements themselves so that they travel the
  * real capture-then-bubble path: OutlinerItem's capture-phase `drop` listener
@@ -106,7 +109,7 @@ export async function dragElementOnto(
             }),
         );
         const at = { bubbles: true, cancelable: true, dataTransfer, clientX, clientY };
-        for (const type of ["dragover", "drop"]) {
+        for (const type of ["dragenter", "dragover", "drop"]) {
             target.dispatchEvent(new DragEvent(type, at));
         }
         source.dispatchEvent(new DragEvent("dragend", at));

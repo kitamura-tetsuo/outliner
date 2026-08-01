@@ -30,7 +30,8 @@ test.describe("TBL-673b2241: reordering columns in the UI Definition editor", ()
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table host item"]);
         await TestHelpers.waitForOutlinerItems(page, 2, 10000); // Title + 1 seeded item
-        await createTasksTableBlock(page, 1);
+        // Address the host by `data-item-id` so the scenario never depends on rendered order.
+        await createTasksTableBlock(page, await TestHelpers.getItemIdByIndex(page, 1));
         await page.getByTestId("yjs-table-toggle-ui").first().click();
         await expect(page.getByTestId("yjs-table-ui-editor").first()).toBeVisible({ timeout: 10000 });
     });

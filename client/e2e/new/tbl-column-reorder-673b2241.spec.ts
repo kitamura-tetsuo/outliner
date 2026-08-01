@@ -20,14 +20,18 @@ import {
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("TBL-673b2241: reordering columns by dragging grid headers", () => {
+    /** The seeded item the table block is attached to, addressed by `data-item-id`. */
+    let hostItemId: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table host item", "Neighbour item"]);
         await TestHelpers.waitForOutlinerItems(page, 3, 10000); // Title + 2 seeded items
+        hostItemId = await TestHelpers.getItemIdByIndex(page, 1);
     });
 
     test("dragging a header moves the column and persists the order across a reload", async ({ page }) => {
-        await createTasksTableBlock(page, 1);
+        await createTasksTableBlock(page, hostItemId);
 
         expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
 
@@ -50,7 +54,7 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
     });
 
     test("dragging a header does not move the outliner item hosting the table", async ({ page }) => {
-        await createTasksTableBlock(page, 1);
+        await createTasksTableBlock(page, hostItemId);
 
         const itemIdsBefore = await page.locator(".outliner-item[data-item-id]")
             .evaluateAll((items) => items.map((i) => i.getAttribute("data-item-id") ?? ""));
@@ -72,7 +76,7 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
     });
 
     test("Alt+Arrow on a focused header moves that column", async ({ page }) => {
-        await createTasksTableBlock(page, 1);
+        await createTasksTableBlock(page, hostItemId);
 
         const header = page.getByTestId("yjs-table-grid").first().locator("th[data-col='status']");
         await header.focus();
