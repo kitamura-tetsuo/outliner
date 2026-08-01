@@ -1515,8 +1515,6 @@ export class EditorOverlayStore {
      * @returns Text within selection range
      */
 
-
-
     /**
      * Synchronizes the global textarea's content and selection state with the currently
      * active item and cursor. This ensures the textarea (which handles IME and keyboard events)
@@ -1536,7 +1534,9 @@ export class EditorOverlayStore {
         const localSelection = Object.values(this.selections).find(s => (s.userId || "local") === "local");
         if (localSelection) return;
 
-        const cursors = Object.values(this.cursors).filter(c => c.itemId === activeId && c.isActive && ((c.userId || "local") === "local"));
+        const cursors = Object.values(this.cursors).filter(c =>
+            c.itemId === activeId && c.isActive && ((c.userId || "local") === "local")
+        );
         if (cursors.length === 0) return;
 
         const cursor = cursors[0];
