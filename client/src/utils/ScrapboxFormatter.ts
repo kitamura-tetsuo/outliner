@@ -1,3 +1,4 @@
+import { store } from "../stores/store.svelte";
 import { buildRegExp, type SearchOptions } from "../lib/search";
 import { iterateItems } from "./itemTraversal";
 /**
@@ -1115,16 +1116,6 @@ export class ScrapboxFormatter {
             if (pathProjectName) {
                 return "/" + pathProjectName;
             }
-            const store = (window as Window & typeof globalThis & {
-                appStore?: {
-                    project?: import("../schema/app-schema").Project;
-                    pages?: { current?: import("../schema/app-schema").Item[]; };
-                    pageExists?: (name: string) => boolean;
-                };
-            }).appStore
-                || (window as Window & typeof globalThis & {
-                    generalStore?: typeof import("../stores/store.svelte").store;
-                }).generalStore;
             if (store?.project?.title) {
                 return "/" + encodeURIComponent(store.project.title);
             }
@@ -1152,21 +1143,6 @@ export class ScrapboxFormatter {
         if (typeof window === "undefined") return true;
 
         try {
-            // Get page info from global store
-            const store = (window as Window & typeof globalThis & {
-                appStore?: {
-                    project?: import("../schema/app-schema").Project;
-                    pages?: { current?: import("../schema/app-schema").Item[]; };
-                    pageExists?: (name: string) => boolean;
-                };
-            }).appStore
-                || (window as Window & typeof globalThis & {
-                    generalStore?: {
-                        project?: import("../schema/app-schema").Project;
-                        pages?: { current?: import("../schema/app-schema").Item[]; };
-                        pageExists?: (name: string) => boolean;
-                    };
-                }).generalStore;
             if (!store || !store.pages) return false;
 
             // Get current project
@@ -1205,7 +1181,7 @@ export class ScrapboxFormatter {
 }
 
 // Make globally accessible (for access in test environment)
-if (typeof window !== "undefined") {
+if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
     (window as Window & typeof globalThis & { ScrapboxFormatter?: typeof ScrapboxFormatter; }).ScrapboxFormatter =
         ScrapboxFormatter;
 }
