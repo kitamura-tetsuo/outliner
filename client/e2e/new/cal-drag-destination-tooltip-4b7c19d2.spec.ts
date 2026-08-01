@@ -11,8 +11,8 @@ import { TestHelpers } from "../utils/testHelpers";
 /** One hour of the time grid, in pixels (CalendarTimeGrid's ROW_HEIGHT_PX). */
 const HOUR_PX = 48;
 
-async function openWeekCalendar(page: Page) {
-    const item = page.locator(".outliner-item").nth(1);
+async function openWeekCalendar(page: Page, itemId: string) {
+    const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
     await expect(item).toBeVisible({ timeout: 10000 });
     await item.click();
     await page.waitForTimeout(300);
@@ -47,32 +47,38 @@ async function openWeekCalendar(page: Page) {
 }
 
 /** The entry's committed start, read back as `HH:MM` in the calendar's own timezone. */
-async function committedStartLabel(page: Page): Promise<string> {
+async function committedStartLabel(page: Page, itemId: string): Promise<string> {
     const timeZone = (await page.getByTestId("calendar-active-timezone").first().textContent())?.trim() ?? "UTC";
-    return await page.evaluate((tz) => {
+    return await page.evaluate(({ tz, id }) => {
         const items = (globalThis as any).generalStore.currentPage.items;
-        const start = new Date(String(items.at(1).start));
+        const target = [...items].find((item: { id: string; }) => String(item.id) === id);
+        const start = new Date(String(target.start));
         return new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", hour: "2-digit", minute: "2-digit" })
             .format(start);
-    }, timeZone);
+    }, { tz: timeZone, id: itemId });
 }
 
 test.describe("FTR-9ce96e44: drag destination tooltip", () => {
+    /** The seeded "Standup" item — the one given a start, and the one dragged. */
+    let itemId: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar anchor", "Standup"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
-        await page.evaluate(() => {
+        itemId = await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
             const today = new Date().toISOString().slice(0, 10);
-            items.at(1).start = `${today}T09:00:00.000Z`;
-            items.at(1).allDay = false;
-            items.at(1).duration = "PT30M";
+            const target = items.at(1);
+            target.start = `${today}T09:00:00.000Z`;
+            target.allDay = false;
+            target.duration = "PT30M";
+            return String(target.id);
         });
     });
 
     test("a move drag shows the destination instant, and the drop matches it", async ({ page }) => {
-        const entry = await openWeekCalendar(page);
+        const entry = await openWeekCalendar(page, itemId);
         const tooltip = page.getByTestId("calendar-drag-tooltip");
         await expect(tooltip).toHaveCount(0);
 
@@ -95,16 +101,31 @@ test.describe("FTR-9ce96e44: drag destination tooltip", () => {
         const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
         expect((minutes(destinationEnd) - minutes(destinationStart) + 1440) % 1440).toBe(30);
 
+        // Real layout, real size: pushed against the viewport's right/bottom
+        // edge the chip must clamp itself back inside rather than overflow
+        // (the jsdom component test can only see the zero-size fallback).
+        const viewport = page.viewportSize() ?? { width: 1280, height: 720 };
+        await page.mouse.move(viewport.width - 1, viewport.height - 1, { steps: 4 });
+        const chipBox = await tooltip.boundingBox();
+        if (!chipBox) throw new Error("Tooltip box missing");
+        expect(chipBox.width).toBeGreaterThan(0);
+        expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(viewport.width);
+        expect(chipBox.y + chipBox.height).toBeLessThanOrEqual(viewport.height);
+
+        // Back to the one-hour destination before releasing.
+        await page.mouse.move(box.x + 10, box.y + 6 + HOUR_PX, { steps: 8 });
+        await expect(tooltip).toHaveText(label);
+
         await page.mouse.up();
         await expect(tooltip).toHaveCount(0, { timeout: 10000 });
         await expect(page.getByTestId("calendar-write-error")).toHaveCount(0);
 
         // What the tooltip promised is what the drop wrote.
-        await expect.poll(() => committedStartLabel(page), { timeout: 15000 }).toBe(destinationStart);
+        await expect.poll(() => committedStartLabel(page, itemId), { timeout: 15000 }).toBe(destinationStart);
     });
 
     test("a resize drag shows the new span and its duration", async ({ page }) => {
-        await openWeekCalendar(page);
+        await openWeekCalendar(page, itemId);
         const handle = page.locator('[data-testid^="calendar-entry-resize-outline_items:"]').first();
         await expect(handle).toBeAttached({ timeout: 10000 });
 

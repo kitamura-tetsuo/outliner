@@ -9,12 +9,15 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-e3a9f2b1: Gantt drag destination tooltip", () => {
+    /** The dated leaf added under the anchor — the row whose bar is dragged. */
+    let leafItemId: string;
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar anchor"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
-        await page.evaluate(() => {
+        leafItemId = await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
             const today = new Date().toISOString().slice(0, 10);
             const child = items.at(0).items.addNode("tester");
@@ -22,12 +25,13 @@ test.describe("FTR-e3a9f2b1: Gantt drag destination tooltip", () => {
             child.start = today;
             child.allDay = true;
             child.duration = "P1D";
+            return String(child.id);
         });
         await expect(page.getByText("Leaf Task", { exact: true })).toBeVisible({ timeout: 10000 });
     });
 
     test("dragging a bar shows the day-snapped destination date and clears it on drop", async ({ page }) => {
-        const item = page.locator(".outliner-item").nth(1);
+        const item = page.locator(`.outliner-item[data-item-id="${leafItemId}"]`);
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
         await page.waitForTimeout(300);

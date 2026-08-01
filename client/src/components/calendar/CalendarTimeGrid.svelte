@@ -123,11 +123,17 @@ function beginDrag(kind: "move" | "resize", entry: CalendarEntry, e: PointerEven
     };
 }
 
-/** The snapped duration a resize at `e` would commit. */
+/**
+ * The snapped duration a resize at `e` would commit. Snapped to whole
+ * minutes like the move drag below: at 48px/hour an ordinary pixel offset
+ * lands on a fraction of a minute, which would write a duration the
+ * (minute-precision) tooltip cannot show.
+ */
 function resizedDurationMs(e: PointerEvent): number {
     if (!drag) return MIN_DURATION_MS;
     const dyMinutes = ((e.clientY - drag.startClientY) / ROW_HEIGHT_PX) * 60;
-    return Math.max(MIN_DURATION_MS, drag.originDurationMs + dyMinutes * 60_000);
+    const minutes = Math.round((drag.originDurationMs + dyMinutes * 60_000) / 60_000);
+    return Math.max(MIN_DURATION_MS, minutes * 60_000);
 }
 
 /** The snapped start a move at `e` would commit (whole minutes, whole day columns). */

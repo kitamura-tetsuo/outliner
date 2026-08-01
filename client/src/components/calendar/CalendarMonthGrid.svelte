@@ -105,6 +105,17 @@ function clearDragLabel() {
     dragLabel = undefined;
 }
 
+/**
+ * Leaving a cell drops the label. Moving on to the *next* cell re-derives it
+ * from that cell's own `dragover`, which fires immediately afterwards;
+ * leaving the grid entirely (the weekday header, the page around it) has no
+ * such follow-up, and the chip must not keep promising a destination the
+ * release would not write.
+ */
+function onCellDragLeave() {
+    clearDragLabel();
+}
+
 function onDragStart(entry: CalendarEntry, e: DragEvent) {
     if (!isStartWritable(entry)) {
         e.preventDefault();
@@ -164,6 +175,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                 class:is-today={todayUtcMs !== undefined && cell.dateUtcMs === todayUtcMs}
                 data-testid={`calendar-month-cell-${cell.dayIndex}`}
                 ondragover={(e) => onDragOver(cell, e)}
+                ondragleave={onCellDragLeave}
                 ondrop={(e) => onDrop(cell, e)}
             >
                 <div class="cell-date">{new Date(cell.dateUtcMs).getUTCDate()}</div>

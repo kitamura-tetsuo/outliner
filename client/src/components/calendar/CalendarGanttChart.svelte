@@ -123,6 +123,16 @@ function snapToDay(deltaMs: number): number {
     return Math.round(deltaMs / DAY_MS) * DAY_MS;
 }
 
+/**
+ * The whole-day duration a resize would commit. The *result* is snapped, not
+ * just the pointer delta: an entry that arrived here with a sub-day length
+ * would otherwise keep that remainder forever, and this axis — like the
+ * label it feeds — only speaks in whole days.
+ */
+function snappedDurationMs(originDurationMs: number, rawDeltaMs: number): number {
+    return Math.max(DAY_MS, snapToDay(originDurationMs + rawDeltaMs));
+}
+
 function beginLeafDrag(row: GanttRow, e: PointerEvent) {
     if (row.isRollup || row.barStartMs === undefined || !isLeafStartWritable(row.entry)) return;
     if (e.pointerType === "mouse") e.preventDefault();
@@ -162,7 +172,7 @@ function onPointerMove(e: PointerEvent) {
     pointerY = e.clientY;
 
     if (drag.kind === "leaf-resize") {
-        const newDuration = Math.max(DAY_MS, drag.originDurationMs + snapToDay(rawDeltaMs));
+        const newDuration = snappedDurationMs(drag.originDurationMs, rawDeltaMs);
         dragLabel = formatDragResizeLabel(drag.row.entry, newDuration, timeZone, {
             granularity: "day",
             startMs: drag.row.barStartMs,
@@ -193,8 +203,7 @@ function endDrag(e: PointerEvent) {
     const rawDeltaMs = (e.clientX - drag.startClientX) * msPerPixel();
 
     if (drag.kind === "leaf-resize") {
-        const newDuration = Math.max(DAY_MS, drag.originDurationMs + snapToDay(rawDeltaMs));
-        onLeafResizeEnd(drag.row.entry, newDuration);
+        onLeafResizeEnd(drag.row.entry, snappedDurationMs(drag.originDurationMs, rawDeltaMs));
     } else if (drag.kind === "leaf-move") {
         onLeafDragEnd(drag.row.entry, drag.originStartMs + snapToDay(rawDeltaMs));
     } else {
