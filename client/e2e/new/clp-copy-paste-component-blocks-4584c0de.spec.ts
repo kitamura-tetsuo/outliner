@@ -42,6 +42,12 @@ test.describe("component block clipboard", () => {
         }, { start: hostId, end: neighborId });
         await page.locator("textarea.global-textarea").focus();
         await page.keyboard.press("Control+c");
+        await page.evaluate(() => {
+            // Copy must leave the selection intact, so explicitly move the
+            // editor to the independent paste destination used by this test.
+            // eslint-disable-next-line no-restricted-globals
+            window.editorOverlayStore!.clearSelections();
+        });
 
         const target = items.nth(3);
         await target.locator(".item-content").click();
