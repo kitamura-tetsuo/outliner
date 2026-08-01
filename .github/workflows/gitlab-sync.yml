@@ -11,6 +11,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # ← Disable shallow clone
+          lfs: true # Fetch Git LFS objects (dprint-plugins/*.wasm) so they can be mirrored
 
       # 2. Git user identity
       - name: Git identity
@@ -31,3 +32,8 @@ jobs:
           # Force overwrite even if GitLab history has diverged
           echo "🔄 Force pushing to GitLab main branch"
           git push --force-with-lease gitlab HEAD:main
+
+          # Mirror the Git LFS objects (dprint-plugins/*.wasm). Without this the
+          # GitLab side only receives pointer files and `git lfs pull` there fails.
+          echo "🔄 Pushing Git LFS objects to GitLab"
+          git lfs push --all gitlab main

@@ -26,6 +26,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           clean: true
+          # dprint's wasm plugins are stored in Git LFS under dprint-plugins/
+          lfs: true
           # When called from another workflow, we inherit the ref context
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -58,6 +60,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          # dprint's wasm plugins are stored in Git LFS under dprint-plugins/
+          lfs: true
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-test-env

@@ -45,6 +45,14 @@ fi
 echo "dprint plugins are not materialized (${#missing[@]} file(s) are Git LFS pointers or missing)."
 
 if command -v git-lfs >/dev/null 2>&1 || git lfs version >/dev/null 2>&1; then
+  # Configure the LFS filters for this clone if they are missing, so the
+  # restored binaries are cleaned back into pointers and the working tree stays
+  # clean. --manual keeps git-lfs from overwriting scripts/pre_push.sh, which is
+  # symlinked as .git/hooks/pre-push and already calls `git lfs pre-push`.
+  if ! (cd "$ROOT_DIR" && git config --get filter.lfs.process >/dev/null 2>&1); then
+    (cd "$ROOT_DIR" && git lfs install --local --manual >/dev/null 2>&1) || true
+  fi
+
   echo "Restoring dprint-plugins/ from Git LFS ..."
   # Fetch the objects for this path, then expand each pointer through the LFS
   # smudge filter. Expanding explicitly also works when the clone never had the
@@ -95,6 +103,21 @@ Could not materialize every dprint plugin. Install git-lfs and run:
 Until then, formatting commands will fail; set SKIP_DPRINT=1 to skip them.
 EOS
   exit 1
+fi
+
+# When a working LFS clean filter is in place git turns the downloaded binaries
+# back into the pointer files recorded in the index and the tree stays clean.
+# Without it git reports all eight as modified, and `git add -A` would then stage
+# multi-megabyte blobs as ordinary Git objects. Detect that case from git's own
+# verdict and mark the paths skip-worktree. (Undo with:
+#   git update-index --no-skip-worktree dprint-plugins/*.wasm)
+dirty="$(cd "$ROOT_DIR" && git status --porcelain -- dprint-plugins 2>/dev/null)"
+if [ -n "$dirty" ]; then
+  for entry in "${PLUGIN_URLS[@]}"; do
+    name="${entry%%|*}"
+    (cd "$ROOT_DIR" && git update-index --skip-worktree "dprint-plugins/${name}" >/dev/null 2>&1) || true
+  done
+  echo "Git LFS is not usable here; dprint-plugins/*.wasm marked skip-worktree to keep the tree clean."
 fi
 
 echo "dprint plugins restored via download."
