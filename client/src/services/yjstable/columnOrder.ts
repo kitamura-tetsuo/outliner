@@ -1,6 +1,14 @@
 import * as Y from "yjs";
 import type { TableHandles } from "./tableDocs";
 
+/**
+ * `DataTransfer` type carried by a column-reorder drag, in the grid and in the
+ * UI Definition editor alike. It identifies the drag as the table block's own
+ * (see `services/dnd/blockDndOwnership`) while the payload is still unreadable,
+ * so unrelated drops inside the table keep reaching the host outliner item.
+ */
+export const COLUMN_DRAG_TYPE = "application/x-yjstable-column";
+
 /** Stored order, reconciled against the columns the query actually returned. */
 export function orderColumns(resultColumns: string[], storedOrder: string[]): string[] {
     const resultColSet = new Set(resultColumns);

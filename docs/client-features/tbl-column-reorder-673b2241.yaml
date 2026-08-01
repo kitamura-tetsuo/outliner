@@ -6,13 +6,18 @@ status: stable
 components:
 - client/src/components/yjstable/TableGrid.svelte
 - client/src/components/yjstable/TableUiDefEditor.svelte
+- client/src/services/dnd/blockDndOwnership.ts
 - client/src/services/yjstable/columnOrder.ts
 tests:
 - client/e2e/new/tbl-column-reorder-673b2241.spec.ts
+- client/e2e/new/tbl-column-reorder-ui-editor-673b2241.spec.ts
+- client/src/components/yjstable/TableDndOwnership.test.ts
+- client/src/services/dnd/blockDndOwnership.test.ts
 acceptance:
 - A column added to the query later appears at the end and is never hidden; a column removed from the query disappears without corrupting the remaining order, and reappears in its old position if the query is restored.
 - Alt+ArrowLeft / Alt+ArrowRight on a focused header moves that column.
 - Dragging a column header onto another header moves the column to that position; header cells and body cells move together.
+- Dragging a column header or a UI Definition editor row never moves the outliner item hosting the table; the table block claims the gesture with `data-block-dnd-owner`, so OutlinerItem's capture-phase drop handler leaves it alone.
 - Dragging a header does not select text.
 - The order persists across reload and is visible to a second client (Yjs-synced).
 - The row-actions column stays last and is not draggable.
