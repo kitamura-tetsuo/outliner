@@ -1352,6 +1352,8 @@ export class KeyEventHandler {
                 // Not used in production, but needed to verify clipboard content in E2E tests
                 if (typeof window !== "undefined") {
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText = selectedText;
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems =
+                        structured?.encoded;
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedIsBoxSelection =
                         isBoxSelectionCopy;
                 }
@@ -2614,6 +2616,8 @@ export class KeyEventHandler {
                 // Not used in production, but needed to verify cut content in E2E tests
                 if (typeof window !== "undefined") {
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText = selectedText;
+                    (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems =
+                        structured?.encoded;
 
                     (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedIsBoxSelection =
                         isBoxSelectionCut;

@@ -61,7 +61,22 @@ test.describe("component block clipboard", () => {
         const target = items.nth(1);
         await target.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+v");
+        await page.evaluate(async () => {
+            // The copy above uses the real system clipboard. Dispatch the
+            // browser paste event with the captured custom MIME as Chromium
+            // may strip non-standard formats when Clipboard.read() is disabled.
+            // eslint-disable-next-line no-restricted-globals
+            const text = await navigator.clipboard.readText();
+            // eslint-disable-next-line no-restricted-globals
+            const encoded = (window as Window & { lastCopiedStructuredItems?: string; }).lastCopiedStructuredItems;
+            if (!encoded) throw new Error("Copy did not produce an Outliner item payload");
+            const data = new DataTransfer();
+            data.setData("text/plain", text);
+            data.setData("application/x-outliner-items", encoded);
+            document.querySelector("textarea.global-textarea")!.dispatchEvent(
+                new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
+            );
+        });
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
         const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
