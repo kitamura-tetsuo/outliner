@@ -44,7 +44,9 @@ function addAttachmentWithFallback(item: Item, url: string, mime?: string, name?
         item.addAttachment(url, mime, name);
     } catch {
         try {
-            (item as Item & { attachments?: { push: (arr: any) => void; }; }).attachments?.push(mime || name ? [[url, mime, name]] : [url]);
+            (item as Item & { attachments?: { push: (arr: any) => void; }; }).attachments?.push(
+                mime || name ? [[url, mime, name]] : [url],
+            );
         } catch (_e) {
             logger.error(_e);
         }
@@ -148,7 +150,12 @@ export async function handleFileUploadFromDrop(
                     const url = await uploadAttachment(containerId, modelId, file);
 
                     if (!dropTargetPosition || dropTargetPosition === "middle") {
-                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url, file.type, file.name);
+                        addAttachmentToDomTargetOrModel(
+                            event instanceof DragEvent ? event : null,
+                            url,
+                            file.type,
+                            file.name,
+                        );
                     } else {
                         dispatch("drop", {
                             targetItemId: modelId,
