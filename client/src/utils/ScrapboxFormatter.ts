@@ -1,5 +1,5 @@
-import { store } from "../stores/store.svelte";
 import { buildRegExp, type SearchOptions } from "../lib/search";
+import { store } from "../stores/store.svelte";
 import { iterateItems } from "./itemTraversal";
 /**
  * Interface representing a format token
