@@ -11,7 +11,7 @@ import {
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import { moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
+import { COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
     deleteRecord,
@@ -129,7 +129,22 @@ function handleCancelDelete() {
 }
 </script>
 
-<div class="yjs-table-grid" data-testid="yjs-table-grid">
+<!--
+    `data-block-dnd-owner` marks this subtree as owning its own drag & drop.
+    OutlinerItem registers capture-phase `drop`/`dragover` listeners on the item
+    root and would otherwise swallow the column-header drop before the `th`'s own
+    bubble-phase handler runs; it early-returns for targets inside this marker.
+
+    `data-block-dnd-type` narrows that to the grid's own column drags, which carry
+    COLUMN_DRAG_TYPE. Files, outliner items and text dropped on a body cell are
+    not the grid's business and keep reaching the host item's handlers.
+-->
+<div
+    class="yjs-table-grid"
+    data-testid="yjs-table-grid"
+    data-block-dnd-owner="yjstable"
+    data-block-dnd-type={COLUMN_DRAG_TYPE}
+>
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
@@ -149,6 +164,9 @@ function handleCancelDelete() {
                                 if (e.dataTransfer) {
                                     e.dataTransfer.effectAllowed = "move";
                                     e.dataTransfer.setData("text/plain", column);
+                                    // Identifies this drag as a column reorder while the
+                                    // payload is still unreadable (see blockDndOwnership).
+                                    e.dataTransfer.setData(COLUMN_DRAG_TYPE, column);
                                 }
                             }}
                             ondragover={(e) => {
@@ -166,7 +184,7 @@ function handleCancelDelete() {
                             }}
                             ondrop={(e) => {
                                 e.preventDefault();
-                                const draggedCol = e.dataTransfer?.getData("text/plain");
+                                const draggedCol = e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
                                 if (draggedCol && draggedCol !== column) {
                                     const draggedIndex = displayColumns.indexOf(draggedCol);
                                     if (draggedIndex !== -1) {
