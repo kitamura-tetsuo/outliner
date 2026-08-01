@@ -31,7 +31,6 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     if (start < 0 || end < 0) return undefined;
     const first = Math.min(start, end);
     const last = Math.max(start, end);
-    const firstItem = visible[first].model.original;
     const lastItem = visible[last].model.original;
     const lastLength = String(lastItem.text ?? "").length;
     const startOffset = start <= end ? selection.startOffset : selection.endOffset;
