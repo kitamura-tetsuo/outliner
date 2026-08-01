@@ -38,6 +38,10 @@ test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () 
         const view = page.getByTestId("calendar-view").first();
         await expect(view).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId("calendar-name").first()).toHaveText("My Calendar");
+        await expect(page.getByRole("combobox", { name: /view/i }).first()).toBeVisible();
+        await expect(page.getByRole("button", { name: "Previous period" }).first()).toBeVisible();
+        await expect(page.getByRole("button", { name: "Next period" }).first()).toBeVisible();
+
 
         // A query missing source_kind/source_id is read-only, and says so.
         const queryInput = page.getByTestId("calendar-query-input").first();

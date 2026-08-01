@@ -493,12 +493,12 @@ onDestroy(() => {
     <div class="view-toolbar">
         <span class="calendar-name" data-testid="calendar-name">{settings.name}</span>
         <div class="nav-controls">
-            <button type="button" data-testid="calendar-nav-prev" onclick={goPrev}>‹</button>
+            <button type="button" data-testid="calendar-nav-prev" onclick={goPrev} aria-label="Previous period">‹</button>
             <button type="button" data-testid="calendar-nav-today" onclick={goToday}>Today</button>
-            <button type="button" data-testid="calendar-nav-next" onclick={goNext}>›</button>
+            <button type="button" data-testid="calendar-nav-next" onclick={goNext} aria-label="Next period">›</button>
             <span class="range-label" data-testid="calendar-range-label">{rangeLabel}</span>
         </div>
-        <select data-testid="calendar-view-type" value={viewType} onchange={setViewType}>
+        <select data-testid="calendar-view-type" aria-label={`${settings.name || "Calendar"} view`} value={viewType} onchange={setViewType}>
             {#each VIEW_TYPE_OPTIONS as opt (opt.value)}
                 <option value={opt.value}>{opt.label}</option>
             {/each}
