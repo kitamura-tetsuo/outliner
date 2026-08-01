@@ -71,7 +71,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
         await simulateFileDrop(page, selector, "test.png", "middle");
 
         // Check for attachment preview
-        const attachments = page.locator(`[data-item-id="${itemId}"] .attachment-preview`);
+        const attachments = page.locator(`[data-item-id="${itemId}"] .attachment-link`);
         await expect(attachments).toHaveCount(1, { timeout: 15000 });
     });
 
@@ -92,7 +92,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
         expect(newItemId).not.toBe(itemId2);
 
         // The new item should have the attachment
-        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-preview`);
+        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-link`);
         await expect(attachments).toHaveCount(1, { timeout: 15000 });
     });
 
@@ -127,7 +127,7 @@ test.describe("Image Drag and Drop (att-image-drag-drop-a1b2c3d4)", () => {
 
         // The new item should be at the end
         const newItemId = await TestHelpers.getItemIdByIndex(page, 3);
-        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-preview`);
+        const attachments = page.locator(`[data-item-id="${newItemId}"] .attachment-link`);
         await expect(attachments).toHaveCount(1, { timeout: 15000 });
     });
 });

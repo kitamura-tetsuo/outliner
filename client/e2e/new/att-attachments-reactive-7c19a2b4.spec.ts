@@ -55,7 +55,7 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
         }, [itemId, url1]);
 
         // 1 preview displayed
-        await expect(page.locator(`${selector} .attachments img`)).toHaveCount(1);
+        await expect(page.locator(`${selector} .attachments .attachment-link`)).toHaveCount(1);
 
         // Add 2nd attachment
         const url2 = "https://example.com/b.png";
@@ -72,7 +72,7 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
             }
         }, [itemId, url2]);
 
-        await expect(page.locator(`${selector} .attachments img`)).toHaveCount(2);
+        await expect(page.locator(`${selector} .attachments .attachment-link`)).toHaveCount(2);
 
         // Remove 1 attachment
         await page.evaluate(([id, url]) => {
@@ -88,6 +88,6 @@ test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
             }
         }, [itemId, url1]);
 
-        await expect(page.locator(`${selector} .attachments img`)).toHaveCount(1);
+        await expect(page.locator(`${selector} .attachments .attachment-link`)).toHaveCount(1);
     });
 });
