@@ -116,6 +116,29 @@ describe("nothing vendors the plugins anymore", () => {
         expect(script, "Git LFS recovery is gone").not.toMatch(/git lfs pull|skip-worktree/);
     });
 
+    test("the guard compares installed versions against the pins, not just file presence", () => {
+        const script = read("scripts/ensure-dprint-plugins.sh");
+        // node_modules/<pkg>/plugin.wasm has no version in it, so a stale plugin
+        // left by a branch switch sits at exactly the path the config points at.
+        expect(script, "must read the installed version").toMatch(/node_modules\/\$\{package\}\/package\.json/);
+        expect(script, "must read the pinned version").toMatch(/devDependencies\['\$\{package\}'\]/);
+        expect(script, "the CLI is pinned too and must be checked").toMatch(/CHECKED_PACKAGES=\("dprint"/);
+    });
+
+    test("the guard never runs npm ci over an existing node_modules", () => {
+        const script = read("scripts/ensure-dprint-plugins.sh");
+        // npm ci deletes node_modules before fetching, so a failed install would
+        // take playwright/pm2/vitepress with it. npm install converges on the
+        // same exact pins without clearing the tree.
+        const branch = script.match(
+            /if \[ -d "\$\{ROOT_DIR\}\/node_modules" \]; then\n([\s\S]*?)\nelse\n([\s\S]*?)\nfi/,
+        );
+        expect(branch, "expected a node_modules-exists branch around the install").not.toBeNull();
+        expect(branch![1], "existing tree must be updated with npm install").toMatch(/npm install/);
+        expect(branch![1], "existing tree must not be wiped by npm ci").not.toMatch(/npm ci/);
+        expect(branch![2], "a fresh tree has nothing to lose, so npm ci is right").toMatch(/npm ci/);
+    });
+
     test("formatting commands use the pinned local CLI, not a floating npx download", () => {
         for (const file of ["scripts/check_format.sh", "scripts/pre_push.sh", "scripts/test.sh"]) {
             expect(read(file), `${file} must not run npx --yes dprint`).not.toMatch(/npx --yes dprint/);

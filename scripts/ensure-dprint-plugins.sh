@@ -32,47 +32,72 @@ PLUGIN_PACKAGES=(
   "dprint-plugin-yaml"
 )
 
+# The CLI is pinned the same way and decides formatting output just as much, so
+# it is verified alongside the plugins.
+CHECKED_PACKAGES=("dprint" "${PLUGIN_PACKAGES[@]}")
+
 # A wasm module starts with the magic bytes 0x00 'a' 's' 'm'.
 is_wasm() {
   [ -f "$1" ] && [ "$(head -c 4 "$1" | od -An -tx1 | tr -d ' \n')" = "0061736d" ]
 }
 
-missing_count() {
-  local package count=0
-  for package in "${PLUGIN_PACKAGES[@]}"; do
-    is_wasm "${ROOT_DIR}/node_modules/${package}/plugin.wasm" || count=$((count + 1))
-  done
-  echo "$count"
+json_field() {
+  node -p "try{require(process.argv[1])[process.argv[2]]??''}catch(e){''}" "$1" "$2" 2>/dev/null
 }
 
-if [ "$(missing_count)" -eq 0 ]; then
-  exit 0
-fi
+# Names of packages that are absent, or whose installed version differs from the
+# exact pin in the root package.json, one per line.
+#
+# The version check is the point: node_modules/<package>/plugin.wasm carries no
+# version, so after a branch switch or a plugin bump the old bytes sit at exactly
+# the path the config points at. A presence-only check would happily format with
+# them and disagree with CI.
+stale_packages() {
+  local package pinned installed
+  for package in "${CHECKED_PACKAGES[@]}"; do
+    pinned="$(node -p \
+      "try{require('${ROOT_DIR}/package.json').devDependencies['${package}']??''}catch(e){''}" 2>/dev/null)"
+    installed="$(json_field "${ROOT_DIR}/node_modules/${package}/package.json" version)"
+    if [ -z "$installed" ] || { [ -n "$pinned" ] && [ "$installed" != "$pinned" ]; }; then
+      echo "$package"
+    elif [ "$package" != "dprint" ] && ! is_wasm "${ROOT_DIR}/node_modules/${package}/plugin.wasm"; then
+      echo "$package"
+    fi
+  done
+}
 
-echo "dprint plugins are not installed ($(missing_count) of ${#PLUGIN_PACKAGES[@]} missing); running npm ci in the repository root ..."
-
-if ! command -v npm >/dev/null 2>&1; then
-  echo "npm is not on PATH, so the dprint plugins cannot be installed." >&2
+if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+  echo "Node.js and npm are required for dprint (the CLI is fetched with npx)." >&2
   echo "Install Node.js and run 'npm ci' in ${ROOT_DIR}, or set SKIP_DPRINT=1 to skip formatting." >&2
   exit 1
 fi
 
-# `npm ci` reproduces package-lock.json exactly, which is what keeps every clone
-# on identical plugin bytes. Fall back to `npm install` only if the lockfile is
-# absent, which should not happen in a normal clone.
-if [ -f "${ROOT_DIR}/package-lock.json" ]; then
-  (cd "$ROOT_DIR" && npm_config_proxy="" npm_config_https_proxy="" npm ci --no-audit --no-fund) || true
-else
-  (cd "$ROOT_DIR" && npm_config_proxy="" npm_config_https_proxy="" npm install --no-audit --no-fund) || true
+stale="$(stale_packages)"
+if [ -z "$stale" ]; then
+  exit 0
 fi
 
-if [ "$(missing_count)" -ne 0 ]; then
-  cat >&2 <<EOS
-Could not install every dprint plugin. Run 'npm ci' in ${ROOT_DIR} and check the
-output; until then, formatting commands will fail. Set SKIP_DPRINT=1 to skip them.
-EOS
+echo "dprint packages are missing or out of date; installing the repository-root dependencies ..."
+echo "$stale" | sed 's/^/  - /'
+
+# `npm ci` wipes node_modules before it fetches anything, so a failed install
+# would take Playwright, pm2 and vitepress down with it. Only use it when there
+# is nothing to lose; otherwise `npm install`, which converges on the same exact
+# pins (package.json holds no ranges for these) without clearing the tree first.
+if [ -d "${ROOT_DIR}/node_modules" ]; then
+  (cd "$ROOT_DIR" && npm_config_proxy="" npm_config_https_proxy="" npm install --no-audit --no-fund) || true
+else
+  (cd "$ROOT_DIR" && npm_config_proxy="" npm_config_https_proxy="" npm ci --no-audit --no-fund) || true
+fi
+
+stale="$(stale_packages)"
+if [ -n "$stale" ]; then
+  echo "Could not install every dprint package. Still missing or mismatched:" >&2
+  echo "$stale" | sed 's/^/  - /' >&2
+  echo "Run 'npm ci' in ${ROOT_DIR} and check the output; until then, formatting" >&2
+  echo "commands will fail. Set SKIP_DPRINT=1 to skip them." >&2
   exit 1
 fi
 
-echo "dprint plugins installed."
+echo "dprint CLI and plugins installed at their pinned versions."
 exit 0
