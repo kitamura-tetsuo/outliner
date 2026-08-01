@@ -1,0 +1,15 @@
+id: ENV-060bbae6
+title: dprint CLI and plugins come from pinned npm devDependencies
+description: The dprint CLI and its eight wasm plugins are exact-pinned devDependencies of the repository root, and dprint.json / functions/dprint.json reference the plugins out of node_modules/. package-lock.json integrity hashes give every clone identical bytes, so nothing is fetched from plugins.dprint.dev and no plugin binaries are vendored through Git LFS. Upgrading a plugin is a single npm install because no version appears in any path.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-eslint.yml
+- .github/workflows/ci-format.yml
+- dprint.json
+- functions/dprint.json
+- package.json
+- scripts/ensure-dprint-plugins.sh
+tests:
+- scripts/tests/env-dprint-plugins-from-npm-060bbae6.spec.ts
+title-ja: dprint本体とプラグインを固定版のnpm devDependenciesから取得

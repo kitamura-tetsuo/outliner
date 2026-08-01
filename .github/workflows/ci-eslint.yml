@@ -8,13 +8,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          # `npm run lint` starts with `dprint fmt`, whose wasm plugins live in
-          # Git LFS under dprint-plugins/
-          lfs: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # `npm run lint` starts with `dprint fmt`, whose CLI and wasm plugins are
+      # root devDependencies referenced out of node_modules/.
+      - name: Install root dependencies
+        run: npm ci --no-audit --no-fund
       - name: Install dependencies
         working-directory: client
         run: npm install --no-audit --no-fund
