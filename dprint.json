@@ -31,13 +31,13 @@
     "malva": {},
     "markup": {},
     "plugins": [
-        "./dprint-plugins/typescript-0.95.5.wasm",
-        "./dprint-plugins/json-0.20.0.wasm",
-        "./dprint-plugins/markdown-0.18.0.wasm",
-        "./dprint-plugins/toml-0.7.0.wasm",
-        "./dprint-plugins/dockerfile-0.3.2.wasm",
-        "./dprint-plugins/malva-v0.11.2.wasm",
-        "./dprint-plugins/markup_fmt-v0.19.1.wasm",
-        "./dprint-plugins/pretty_yaml-v0.5.0.wasm"
+        "./node_modules/@dprint/typescript/plugin.wasm",
+        "./node_modules/@dprint/json/plugin.wasm",
+        "./node_modules/@dprint/markdown/plugin.wasm",
+        "./node_modules/@dprint/toml/plugin.wasm",
+        "./node_modules/@dprint/dockerfile/plugin.wasm",
+        "./node_modules/dprint-plugin-malva/plugin.wasm",
+        "./node_modules/dprint-plugin-markup/plugin.wasm",
+        "./node_modules/dprint-plugin-yaml/plugin.wasm"
     ]
 }

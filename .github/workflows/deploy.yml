@@ -22,8 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          clean: true             # wipe workspace before fetch
-          lfs: true               # dprint wasm plugins live in Git LFS
+          clean: true # wipe workspace before fetch
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

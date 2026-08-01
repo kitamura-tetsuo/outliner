@@ -6,18 +6,18 @@ cd "$ROOT_DIR"
 
 exit_code=0
 
-# dprint's wasm plugins are committed under dprint-plugins/ via Git LFS.
-# Restore them if the clone only has LFS pointer files.
+# dprint's wasm plugins are root devDependencies; install them if node_modules
+# has not been populated yet.
 "${SCRIPT_DIR}/ensure-dprint-plugins.sh" || true
 
 # Check all files in the repository, not just changed files
 echo "Checking formatting for all files in the repository..."
 
 # Get all files that dprint should check and run check on them
-file_paths=$(npx --yes dprint output-file-paths 2>/dev/null || true)
+file_paths=$(npx dprint output-file-paths 2>/dev/null || true)
 
 if [ -n "$file_paths" ]; then
-    echo "$file_paths" | xargs npx --yes dprint check || exit_code=1
+    echo "$file_paths" | xargs npx dprint check || exit_code=1
 else
     echo "No files found to check."
 fi

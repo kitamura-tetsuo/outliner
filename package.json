@@ -1,6 +1,15 @@
 {
     "type": "module",
     "devDependencies": {
+        "@dprint/dockerfile": "0.3.2",
+        "@dprint/json": "0.20.0",
+        "@dprint/markdown": "0.18.0",
+        "@dprint/toml": "0.7.0",
+        "@dprint/typescript": "0.95.5",
+        "dprint": "0.55.2",
+        "dprint-plugin-malva": "0.11.2",
+        "dprint-plugin-markup": "0.19.1",
+        "dprint-plugin-yaml": "0.5.0",
         "patch-package": "^8.0.1",
         "playwright": "^1.62.0",
         "pm2": "^7.0.3",

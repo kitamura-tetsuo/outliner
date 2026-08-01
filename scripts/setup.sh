@@ -155,15 +155,8 @@ fi
 # start_tinylicious (disabled on Yjs branch)
 # start_api_server   (deprecated; handled by SvelteKit APIs)
 
-# Configure the Git LFS filters for this clone. --manual keeps git-lfs from
-# overwriting the repository's own pre-push hook (scripts/pre_push.sh already
-# calls `git lfs pre-push`).
-if git lfs version >/dev/null 2>&1; then
-  (cd "${ROOT_DIR}" && git lfs install --local --manual >/dev/null 2>&1) || true
-fi
-
-# Materialize the dprint wasm plugins (stored via Git LFS) so formatting works
-# in environments that cannot reach plugins.dprint.dev.
+# Install the repository-root devDependencies, which is where the dprint CLI and
+# its wasm plugins live. dprint.json references the plugins out of node_modules/.
 "${SCRIPT_DIR}/ensure-dprint-plugins.sh" || \
   echo "Warning: dprint plugins are unavailable; formatting will be skipped." >&2
 
