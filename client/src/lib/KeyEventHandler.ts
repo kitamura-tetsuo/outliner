@@ -2381,24 +2381,22 @@ export class KeyEventHandler {
 
             // Treat as multi-item paste if normal multi-line text
             if (text.includes("\n")) {
-                const lines = text.split(/\r?\n/);
-
-                // Debug info
-                if (
-                    typeof window !== "undefined"
-                    && window.DEBUG_MODE
-                ) {
-                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                        logger.debug(`Multi-line paste detected, lines:`, lines);
-                    }
+                const cursor = store.getLocalCursorInstances().find(value => value.isActive);
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(
+                        new CustomEvent("paste-multi-item", {
+                            detail: {
+                                lines: text.split(/\r?\n/),
+                                selections: Object.values(store.selections).filter(selection =>
+                                    selection.startOffset !== selection.endOffset
+                                    || selection.startItemId !== selection.endItemId
+                                ),
+                                activeItemId: store.getActiveItem(),
+                                cursor,
+                            },
+                        }),
+                    );
                 }
-
-                // Process multi-line text
-                // If multiple cursors, insert first line to each cursor
-                // If single cursor, insert only first line
-                const firstLine = lines[0] || "";
-                const cursorInstances = store.getLocalCursorInstances();
-                cursorInstances.forEach(cursor => cursor.insertText(firstLine));
                 return;
             }
 
