@@ -12,10 +12,12 @@
 // else, and it is not worth an undo entry.
 
 import { SvelteSet } from "svelte/reactivity";
+import { formatDragMoveLabel, formatDragResizeLabel, formatSubtreeShiftLabel } from "../../services/calendar/calendarDragLabel";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { ganttInstantFraction, type GanttRow, layoutGantt, placeGanttBar } from "../../services/calendar/calendarGanttLayout";
 import type { GanttSubtreeShiftAnalysis } from "../../services/calendar/calendarGanttWrite";
 import type { GanttScale, GanttTick } from "../../services/calendar/calendarGridRange";
+import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const ROW_HEIGHT_PX = 28;
 const LABEL_COLUMN_PX = 220;
@@ -35,6 +37,8 @@ interface Props {
     rangeEnd: number;
     ticks: GanttTick[];
     scale: GanttScale;
+    /** The calendar's own timezone (§6.5) — the drag tooltip formats in it, never viewer-local. */
+    timeZone: string;
     onScaleChange: (scale: GanttScale) => void;
     isLeafStartWritable: (entry: CalendarEntry) => boolean;
     isLeafDurationWritable: (entry: CalendarEntry) => boolean;
@@ -55,6 +59,7 @@ let {
     rangeEnd,
     ticks,
     scale,
+    timeZone,
     onScaleChange,
     isLeafStartWritable,
     isLeafDurationWritable,
@@ -93,6 +98,11 @@ type Drag =
     };
 
 let drag = $state<Drag | undefined>(undefined);
+// Destination tooltip (#4535): always the day-snapped value a release would
+// commit, never the raw pointer position.
+let dragLabel = $state<string | undefined>(undefined);
+let pointerX = $state(0);
+let pointerY = $state(0);
 let subtreePreviewDeltaMs = $state<number | undefined>(undefined);
 let subtreePreviewRowKey = $state<string | undefined>(undefined);
 
@@ -148,17 +158,30 @@ function beginSubtreeDrag(row: GanttRow, e: PointerEvent) {
 function onPointerMove(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     const rawDeltaMs = (e.clientX - drag.startClientX) * msPerPixel();
+    pointerX = e.clientX;
+    pointerY = e.clientY;
 
     if (drag.kind === "leaf-resize") {
         const newDuration = Math.max(DAY_MS, drag.originDurationMs + snapToDay(rawDeltaMs));
+        dragLabel = formatDragResizeLabel(drag.row.entry, newDuration, timeZone, {
+            granularity: "day",
+            startMs: drag.row.barStartMs,
+        });
         onLeafResizeMove(drag.row.entry, newDuration);
         return;
     }
 
     const deltaMs = snapToDay(rawDeltaMs);
     if (drag.kind === "leaf-move") {
-        onLeafDragMove(drag.row.entry, drag.originStartMs + deltaMs);
+        const newStartMs = drag.originStartMs + deltaMs;
+        dragLabel = formatDragMoveLabel(drag.row.entry, newStartMs, timeZone, { granularity: "day" });
+        onLeafDragMove(drag.row.entry, newStartMs);
     } else {
+        // A roll-up bar spans its descendants, so the subtree's new start is
+        // the bar's own start shifted — falling back to the earliest member
+        // for a row whose bar is off-range and therefore unplaced.
+        const subtreeStartMs = drag.row.barStartMs ?? Math.min(...drag.analysis.members.map((m) => m.startMs));
+        dragLabel = formatSubtreeShiftLabel(deltaMs, subtreeStartMs + deltaMs, timeZone);
         // A leaf drag is previewed through the optimistic override, never through this shift.
         subtreePreviewRowKey = drag.row.key;
         subtreePreviewDeltaMs = deltaMs;
@@ -182,6 +205,7 @@ function endDrag(e: PointerEvent) {
     subtreePreviewRowKey = undefined;
     subtreePreviewDeltaMs = undefined;
     drag = undefined;
+    dragLabel = undefined;
 }
 
 function onPointerCancel(e: PointerEvent) {
@@ -190,6 +214,7 @@ function onPointerCancel(e: PointerEvent) {
     subtreePreviewRowKey = undefined;
     subtreePreviewDeltaMs = undefined;
     drag = undefined;
+    dragLabel = undefined;
 }
 
 /** Keyboard: Left/Right shift a writable leaf bar or a shiftable subtree by one day. */
@@ -283,6 +308,10 @@ function pointLeftPct(ms: number | undefined): number | undefined {
         {/if}
     </div>
 </div>
+
+{#if dragLabel}
+    <CalendarDragTooltip label={dragLabel} clientX={pointerX} clientY={pointerY} />
+{/if}
 
 {#snippet ganttRow(row: GanttRow)}
     <div class="gantt-row" style={`height: ${ROW_HEIGHT_PX}px`} data-testid={`calendar-gantt-row-${row.key}`}>

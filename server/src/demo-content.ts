@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 31;
+export const DEMO_TEMPLATE_VERSION = 32;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -1010,6 +1010,10 @@ export const demoPages: DemoPageTemplate[] = [
                     {
                         text:
                             "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month / Gantt with the toolbar select.",
+                    },
+                    {
+                        text:
+                            "While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land — \"Thu, Aug 3 09:15 – 09:45\" for a move, \"09:00 – 10:30 (1h30m)\" for a resize, a date alone in Month and Gantt — formatted in the calendar's own timezone and snapped the same way the drop is, so the label never promises something different from what gets written.",
                     },
                     {
                         text:

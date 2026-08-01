@@ -22,8 +22,10 @@
 
 import { onMount } from "svelte";
 import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
+import { formatDragMoveLabel, formatDragResizeLabel } from "../../services/calendar/calendarDragLabel";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { TimeGridLayout } from "../../services/calendar/calendarTimeGridLayout";
+import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const DAY_MS = 86_400_000;
 const MIN_DURATION_MS = 5 * 60 * 1000;
@@ -37,6 +39,8 @@ interface Props {
     workingHoursEndMinutes: number;
     dayHeaders?: DayHeader[];
     todayUtcMs?: number;
+    /** The calendar's own timezone (§6.5) — the drag tooltip formats in it, never viewer-local. */
+    timeZone: string;
     isStartWritable: (entry: CalendarEntry) => boolean;
     isDurationWritable: (entry: CalendarEntry) => boolean;
     onDragMove: (entry: CalendarEntry, newStartMs: number) => void;
@@ -60,6 +64,7 @@ let {
     workingHoursEndMinutes,
     dayHeaders,
     todayUtcMs,
+    timeZone,
     isStartWritable,
     isDurationWritable,
     onDragMove,
@@ -90,6 +95,12 @@ let drag = $state<{
     originDurationMs: number
 } | undefined>(undefined);
 
+// Destination tooltip (#4535): the label is the *snapped* value the drag
+// would commit right now, so it always agrees with what a release writes.
+let dragLabel = $state<string | undefined>(undefined);
+let pointerX = $state(0);
+let pointerY = $state(0);
+
 function columnWidthPx(): number {
     if (!gridEl || layout.dayCount === 0) return 0;
     return gridEl.getBoundingClientRect().width / layout.dayCount;
@@ -112,42 +123,56 @@ function beginDrag(kind: "move" | "resize", entry: CalendarEntry, e: PointerEven
     };
 }
 
-function onPointerMove(e: PointerEvent) {
-    if (!drag || e.pointerId !== drag.pointerId) return;
+/** The snapped duration a resize at `e` would commit. */
+function resizedDurationMs(e: PointerEvent): number {
+    if (!drag) return MIN_DURATION_MS;
+    const dyMinutes = ((e.clientY - drag.startClientY) / ROW_HEIGHT_PX) * 60;
+    return Math.max(MIN_DURATION_MS, drag.originDurationMs + dyMinutes * 60_000);
+}
+
+/** The snapped start a move at `e` would commit (whole minutes, whole day columns). */
+function movedStartMs(e: PointerEvent): number {
+    if (!drag) return rangeStart;
     const colWidth = columnWidthPx();
     const dyMinutes = ((e.clientY - drag.startClientY) / ROW_HEIGHT_PX) * 60;
+    const dxDays = colWidth > 0 ? Math.round((e.clientX - drag.startClientX) / colWidth) : 0;
+    return drag.originStartMs + dxDays * DAY_MS + Math.round(dyMinutes) * 60_000;
+}
+
+function onPointerMove(e: PointerEvent) {
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    pointerX = e.clientX;
+    pointerY = e.clientY;
 
     if (drag.kind === "resize") {
-        const newDuration = Math.max(MIN_DURATION_MS, drag.originDurationMs + dyMinutes * 60_000);
+        const newDuration = resizedDurationMs(e);
+        dragLabel = formatDragResizeLabel(drag.entry, newDuration, timeZone);
         onResizeMove(drag.entry, newDuration);
         return;
     }
 
-    const dxDays = colWidth > 0 ? Math.round((e.clientX - drag.startClientX) / colWidth) : 0;
-    const newStart = drag.originStartMs + dxDays * DAY_MS + Math.round(dyMinutes) * 60_000;
+    const newStart = movedStartMs(e);
+    dragLabel = formatDragMoveLabel(drag.entry, newStart, timeZone);
     onDragMove(drag.entry, newStart);
 }
 
 function onPointerUp(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
-    const colWidth = columnWidthPx();
-    const dyMinutes = ((e.clientY - drag.startClientY) / ROW_HEIGHT_PX) * 60;
 
     if (drag.kind === "resize") {
-        const newDuration = Math.max(MIN_DURATION_MS, drag.originDurationMs + dyMinutes * 60_000);
-        onResizeEnd(drag.entry, newDuration);
+        onResizeEnd(drag.entry, resizedDurationMs(e));
     } else {
-        const dxDays = colWidth > 0 ? Math.round((e.clientX - drag.startClientX) / colWidth) : 0;
-        const newStart = drag.originStartMs + dxDays * DAY_MS + Math.round(dyMinutes) * 60_000;
-        onDragEnd(drag.entry, newStart);
+        onDragEnd(drag.entry, movedStartMs(e));
     }
     drag = undefined;
+    dragLabel = undefined;
 }
 
 function onPointerCancel(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     onDragCancel(drag.entry);
     drag = undefined;
+    dragLabel = undefined;
 }
 
 function keyToDeltaMs(key: string): number | undefined {
@@ -330,6 +355,10 @@ onMount(() => {
         </div>
     </div>
 </div>
+
+{#if dragLabel}
+    <CalendarDragTooltip label={dragLabel} clientX={pointerX} clientY={pointerY} />
+{/if}
 
 <style>
 :global(.dragging), :global(.dragging *) {
