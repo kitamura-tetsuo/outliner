@@ -510,14 +510,14 @@ const aliasTargetIdEffective = $derived.by(() => {
 
 interface AttachmentTarget {
     id?: string;
-    addAttachment?: (url: string) => void;
+    addAttachment?: (url: string, mime?: string, name?: string) => void;
     attachments?: string[][] | { push: (arr: string[]) => void };
 }
 
-function addAttachmentSafely(cand: AttachmentTarget, url: string) {
+function addAttachmentSafely(cand: AttachmentTarget, url: string, mime?: string, name?: string) {
     try {
         if (cand.addAttachment) {
-            cand.addAttachment(url);
+            cand.addAttachment(url, mime, name);
         } else {
             throw new Error('Method addAttachment not found');
         }
@@ -540,14 +540,14 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string) {
 }
 
 // Identify drop target outliner-item from DOM and add attachment to that Item (top-level definition)
-    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string) {
+    function addAttachmentToDomTargetOrModel(ev: DragEvent | null, url: string, mime?: string, name?: string) {
         // Resolve target item from event or fallback to current model
         const targetEl = (ev?.target as Element | null)?.closest?.(".outliner-item") || null;
         const targetId: string | null = targetEl?.getAttribute?.('data-item-id') ?? null;
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, mime, name);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -1714,7 +1714,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         dropTargetPosition,
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as (modelOriginal: unknown, url: string) => void,
+        addAttachmentSafely as (modelOriginal: unknown, url: string, mime?: string, name?: string) => void,
         model.original,
         event
     );
@@ -1874,7 +1874,7 @@ onMount(() => {
                     if (displayRef && (el === displayRef || displayRef.contains(el))) {
                         const blob = new Blob([text ?? 'e2e'], { type: 'text/plain' });
                         const localUrl = URL.createObjectURL(blob);
-                        addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl);
+                        addAttachmentToDomTargetOrModel(new DragEvent('drop'), localUrl, undefined, undefined);
                         try { if (IS_TEST) { window.dispatchEvent(new CustomEvent('item-attachments-changed', { detail: { id: String(model.id) } })); } } catch (_e) { /* ignore */ }
                     }
                 } catch (_e) { /* ignore */ }

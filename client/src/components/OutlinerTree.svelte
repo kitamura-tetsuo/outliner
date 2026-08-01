@@ -1732,7 +1732,9 @@
     function handleExternalAttachmentDrop(
         targetItemId: string,
         position: string,
-        url: string
+        url: string,
+        attachmentMime?: string,
+        attachmentName?: string
     ) {
         // Resolve target index
         const targetIndex = displayItems.findIndex(
@@ -1747,7 +1749,7 @@
         if (position === "middle") {
             // Add to existing item
             try {
-                targetItem.addAttachment(url);
+                targetItem.addAttachment(url, attachmentMime, attachmentName);
             } catch {
                 if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                     try { (targetItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (_e) { /* ignore */ }
@@ -1770,7 +1772,7 @@
                 }
 
                 try {
-                    newItem.addAttachment(url);
+                    newItem.addAttachment(url, attachmentMime, attachmentName);
                 } catch {
                     if (import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__)) {
                         try { (newItem as import("../schema/app-schema").Item & { attachments?: { push: (arr: [string]) => void } }).attachments?.push([url]); } catch (_e) { /* ignore */ }

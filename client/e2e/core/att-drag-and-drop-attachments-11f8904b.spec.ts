@@ -43,7 +43,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             (globalThis as any).__E2E_ADD_ATTACHMENT__?.(el, "hello");
         });
         // Wait for preview to appear on DOM (depends on pure Yjs display)
-        await page.locator(".attachment-preview").first().waitFor({ state: "visible", timeout: 10000 });
+        await page.locator(".attachment-link").first().waitFor({ state: "visible", timeout: 10000 });
 
         // Ensure synchronization of Yjs -> UI mirror reflection with test-specific event
         await page.evaluate(() =>
@@ -65,7 +65,7 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             })
         );
 
-        await expect(item.locator(".attachment-preview").first()).toBeVisible();
+        await expect(item.locator(".attachment-link").first()).toBeVisible();
     });
 
     test("multiple attachments can be added to same item", async ({ page }) => {
@@ -81,6 +81,6 @@ test.describe("ATT-0001: Drag and drop attachments", () => {
             (globalThis as any).__E2E_ADD_ATTACHMENT__?.(el, "b");
         });
         // Wait for DOM reflection (at least 2 previews should be displayed in the same item)
-        await expect(item.locator(".attachment-preview")).toHaveCount(2, { timeout: 10000 });
+        await expect(item.locator(".attachment-link")).toHaveCount(2, { timeout: 10000 });
     });
 });
