@@ -30,6 +30,8 @@ interface Props {
     workingHoursEndMinutes: number;
     dayHeaders?: DayHeader[];
     todayUtcMs?: number;
+    /** The calendar's own timezone, forwarded to each band's drag tooltip (#4535). */
+    timeZone: string;
     isStartWritable: (entry: CalendarEntry) => boolean;
     isDurationWritable: (entry: CalendarEntry) => boolean;
     isLaneWritable: (entry: CalendarEntry) => boolean;
@@ -53,6 +55,7 @@ let {
     workingHoursEndMinutes,
     dayHeaders,
     todayUtcMs,
+    timeZone,
     isStartWritable,
     isDurationWritable,
     isLaneWritable,
@@ -162,6 +165,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
             <CalendarTimeGrid
                 {layout}
                 {rangeStart}
+                {timeZone}
                 {workingHoursStartMinutes}
                 {workingHoursEndMinutes}
                 {isStartWritable}

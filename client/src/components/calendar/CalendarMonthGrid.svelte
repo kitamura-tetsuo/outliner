@@ -6,9 +6,11 @@
 // only — a month cell has no time-of-day axis, so a timed entry keeps its
 // original wall-clock time-of-day and only its calendar date moves.
 
+import { formatDragMoveLabel } from "../../services/calendar/calendarDragLabel";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import { laneColor } from "../../services/calendar/calendarLaneColor";
 import type { MonthCell } from "../../services/calendar/calendarMonthGridLayout";
+import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const DAY_MS = 86_400_000;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -17,6 +19,8 @@ interface Props {
     cells: MonthCell[];
     weekStart: number;
     todayUtcMs?: number;
+    /** The calendar's own timezone (§6.5) — the drag tooltip formats in it, never viewer-local. */
+    timeZone: string;
     isStartWritable: (entry: CalendarEntry) => boolean;
     onDragEnd: (entry: CalendarEntry, newStartMs: number) => void;
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
@@ -34,6 +38,7 @@ let {
     cells,
     weekStart,
     todayUtcMs,
+    timeZone,
     isStartWritable,
     onDragEnd,
     onKeyboardMove,
@@ -50,9 +55,20 @@ function timeOfDayMs(startMs: number): number {
     return ((startMs % DAY_MS) + DAY_MS) % DAY_MS;
 }
 
+/**
+ * The start `entry` would land on if dropped in `cell`: the cell's date,
+ * plus the entry's own preserved time-of-day when it is a timed entry.
+ * Undefined when the drop is not writable, which is also when the
+ * destination tooltip must stay hidden.
+ */
+function destinationStartMs(entry: CalendarEntry, cell: MonthCell): number | undefined {
+    if (!isStartWritable(entry) || entry.startMs === undefined) return undefined;
+    return entry.allDay ? cell.dateUtcMs : cell.dateUtcMs + timeOfDayMs(entry.startMs);
+}
+
 function onDropOnCell(entry: CalendarEntry, cell: MonthCell) {
-    if (!isStartWritable(entry) || entry.startMs === undefined) return;
-    const newStart = entry.allDay ? cell.dateUtcMs : cell.dateUtcMs + timeOfDayMs(entry.startMs);
+    const newStart = destinationStartMs(entry, cell);
+    if (newStart === undefined) return;
     onDragEnd(entry, newStart);
 }
 
@@ -79,6 +95,27 @@ function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
 
 let draggingKey: string | undefined = $state();
 
+// Destination tooltip (#4535). Native HTML5 DnD gives no pointer capture, so
+// the hovered cell — not a pointer delta — is what the label is derived from.
+let dragLabel = $state<string | undefined>(undefined);
+let pointerX = $state(0);
+let pointerY = $state(0);
+
+function clearDragLabel() {
+    dragLabel = undefined;
+}
+
+/**
+ * Leaving a cell drops the label. Moving on to the *next* cell re-derives it
+ * from that cell's own `dragover`, which fires immediately afterwards;
+ * leaving the grid entirely (the weekday header, the page around it) has no
+ * such follow-up, and the chip must not keep promising a destination the
+ * release would not write.
+ */
+function onCellDragLeave() {
+    clearDragLabel();
+}
+
 function onDragStart(entry: CalendarEntry, e: DragEvent) {
     if (!isStartWritable(entry)) {
         e.preventDefault();
@@ -97,12 +134,28 @@ function findEntry(key: string | undefined): CalendarEntry | undefined {
     return undefined;
 }
 
+function onDragOver(cell: MonthCell, e: DragEvent) {
+    e.preventDefault();
+    // `dataTransfer` payloads are not readable during dragover, so the label
+    // can only follow the card the local drag started with.
+    const entry = findEntry(draggingKey);
+    const newStart = entry ? destinationStartMs(entry, cell) : undefined;
+    if (!entry || newStart === undefined) {
+        dragLabel = undefined;
+        return;
+    }
+    pointerX = e.clientX;
+    pointerY = e.clientY;
+    dragLabel = formatDragMoveLabel(entry, newStart, timeZone);
+}
+
 function onDrop(cell: MonthCell, e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
     const key = e.dataTransfer?.getData("text/plain") ?? draggingKey;
     const entry = findEntry(key);
     draggingKey = undefined;
+    dragLabel = undefined;
     if (entry) onDropOnCell(entry, cell);
 }
 </script>
@@ -121,7 +174,8 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                 class="month-cell"
                 class:is-today={todayUtcMs !== undefined && cell.dateUtcMs === todayUtcMs}
                 data-testid={`calendar-month-cell-${cell.dayIndex}`}
-                ondragover={(e) => e.preventDefault()}
+                ondragover={(e) => onDragOver(cell, e)}
+                ondragleave={onCellDragLeave}
                 ondrop={(e) => onDrop(cell, e)}
             >
                 <div class="cell-date">{new Date(cell.dateUtcMs).getUTCDate()}</div>
@@ -159,6 +213,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         data-lane={laneLabel?.(entry)}
                         style={laneLabel && isStartWritable(entry) ? `background: ${laneColor(laneLabel(entry))}` : undefined}
                         ondragstart={(e) => onDragStart(entry, e)}
+                        ondragend={clearDragLabel}
                         onkeydown={(e) => onCellKeydown(entry, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">{entry.title}</span>
@@ -180,6 +235,10 @@ function onDrop(cell: MonthCell, e: DragEvent) {
         {/each}
     </div>
 </div>
+
+{#if dragLabel}
+    <CalendarDragTooltip label={dragLabel} clientX={pointerX} clientY={pointerY} />
+{/if}
 
 <style>
 :global(.dragging), :global(.dragging *) {

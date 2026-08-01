@@ -587,6 +587,7 @@ onDestroy(() => {
             rangeEnd={range.end}
             ticks={ganttTicks}
             scale={ganttScale}
+            {timeZone}
             onScaleChange={commitGanttScale}
             isLeafStartWritable={isStartWritable}
             isLeafDurationWritable={isDurationWritable}
@@ -621,6 +622,7 @@ onDestroy(() => {
         <CalendarMonthGrid
             cells={monthCells}
             {weekStart}
+            {timeZone}
             todayUtcMs={todayAnchor(timeZone, Date.now())}
             {isStartWritable}
             onDragEnd={commitStart}
@@ -632,6 +634,7 @@ onDestroy(() => {
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
             {lanes}
+            {timeZone}
             rangeStart={range.start}
             rangeEnd={range.end}
             workingHoursStartMinutes={workingHoursStart}
@@ -654,6 +657,7 @@ onDestroy(() => {
     {:else if timeGridLayout}
         <CalendarTimeGrid
             layout={timeGridLayout}
+            {timeZone}
             rangeStart={range.start}
             workingHoursStartMinutes={workingHoursStart}
             workingHoursEndMinutes={workingHoursEnd}
