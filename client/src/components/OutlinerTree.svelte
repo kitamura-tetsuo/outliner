@@ -11,6 +11,7 @@
     import { yjsService } from "../lib/yjs/service";
     import { Item, Items } from "../schema/app-schema";
     import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+    import { store as generalStore } from "../stores/store.svelte";
     import type { DisplayItem } from "../stores/OutlinerViewModel";
     import { OutlinerViewModel } from "../stores/OutlinerViewModel";
     import { userManager } from "../auth/UserManager";
@@ -84,6 +85,7 @@
 
     // Create view store
     const viewModel = new OutlinerViewModel();
+    generalStore.activeViewModel = viewModel;
 
     let treeContainer = $state<HTMLDivElement | null>(null);
     let showScrollTop = $state(false);
@@ -306,6 +308,10 @@
 
         // Clear onEdit callback
         editorOverlayStore.setOnEditCallback(null);
+
+        if (generalStore.activeViewModel === viewModel) {
+            generalStore.activeViewModel = null;
+        }
 
         // Release resources
         viewModel.dispose();
