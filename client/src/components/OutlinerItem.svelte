@@ -54,6 +54,7 @@ try {
 
 
 import { handleFileUploadFromDrop } from "../services";
+import { isBlockOwnedDragEvent } from "../services/dnd/blockDndOwnership";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 
@@ -1605,8 +1606,7 @@ function handleDragStart(event: DragEvent) {
  * @param event Drag event
  */
 function handleDragOver(event: DragEvent) {
-    const target = (event as Event).target as Element | null;
-    if (target?.closest?.("[data-block-dnd-owner]")) return; // block owns this drag
+    if (isBlockOwnedDragEvent(event)) return; // block owns this drag
 
     // Prevent default action (allow drop)
     event.preventDefault();
@@ -1663,8 +1663,7 @@ function handleDragLeave() {
  * @param event Drag event
  */
 async function handleDrop(event: DragEvent | CustomEvent) {
-    const target = (event as Event).target as Element | null;
-    if (target?.closest?.("[data-block-dnd-owner]")) return; // block owns this drag
+    if (isBlockOwnedDragEvent(event)) return; // block owns this drag
 
     const maybeCustom = event as CustomEvent;
     if (maybeCustom?.detail && typeof maybeCustom.detail === "object" && "targetItemId" in maybeCustom.detail) {

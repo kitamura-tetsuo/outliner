@@ -95,7 +95,12 @@ function setComponentType(column: string, type: string) {
 }
 </script>
 
-<div class="ui-def-editor" data-testid="yjs-table-ui-editor">
+<!--
+    `data-block-dnd-owner`: the column rows below are `draggable`, and OutlinerItem's
+    capture-phase `drop`/`dragover` listeners would otherwise consume the drop. The
+    marker makes those handlers early-return for targets inside this subtree.
+-->
+<div class="ui-def-editor" data-testid="yjs-table-ui-editor" data-block-dnd-owner="yjstable">
     <label class="editor-label" for="yjs-table-query-input">Query (SELECT)</label>
     <input
         id="yjs-table-query-input"
@@ -112,6 +117,7 @@ function setComponentType(column: string, type: string) {
             {#each displayColumns as column, index (column.name)}
                 <div
                     class="component-row" role="listitem"
+                    data-col={column.name}
                     draggable="true"
                     class:drop-target-above={dropTargetColumn?.column === column.name && dropTargetColumn.position === "above"}
                     class:drop-target-below={dropTargetColumn?.column === column.name && dropTargetColumn.position === "below"}

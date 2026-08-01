@@ -129,7 +129,13 @@ function handleCancelDelete() {
 }
 </script>
 
-<div class="yjs-table-grid" data-testid="yjs-table-grid">
+<!--
+    `data-block-dnd-owner` marks this subtree as owning its own drag & drop.
+    OutlinerItem registers capture-phase `drop`/`dragover` listeners on the item
+    root and would otherwise swallow the column-header drop before the `th`'s own
+    bubble-phase handler runs; it early-returns for targets inside this marker.
+-->
+<div class="yjs-table-grid" data-testid="yjs-table-grid" data-block-dnd-owner="yjstable">
     {#if loading}
         <p class="loading-state" data-testid="yjs-table-loading">Loading table...</p>
     {:else if result.columns.length > 0}
