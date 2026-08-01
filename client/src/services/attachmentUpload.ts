@@ -44,7 +44,7 @@ function addAttachmentWithFallback(item: Item, url: string, mime?: string, name?
         item.addAttachment(url, mime, name);
     } catch {
         try {
-            (item as Item & { attachments?: { push: (arr: any) => void; }; }).attachments?.push(
+            (item as Item & { attachments?: { push: (arr: unknown[]) => void; }; }).attachments?.push(
                 mime || name ? [[url, mime, name]] : [url],
             );
         } catch (_e) {

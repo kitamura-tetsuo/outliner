@@ -1395,7 +1395,7 @@
 
     // Item drop event handler
     function handleItemDrop(event: CustomEvent) {
-        const { targetItemId, position, text, selection, sourceItemId, attachmentUrl, attachmentMime, attachmentName } =
+        const { targetItemId, position, text, selection, sourceItemId, attachmentUrl } =
             event.detail;
 
 
