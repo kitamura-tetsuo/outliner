@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/svelte";
-import Page from "./+page.svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
+import Page from "./+page.svelte";
 
 // Mock minimal dependencies
 vi.mock("$app/stores", () => ({
@@ -9,15 +9,15 @@ vi.mock("$app/stores", () => ({
         subscribe: (fn: any) => {
             fn({ params: { page: "Test Page" } });
             return () => {};
-        }
-    }
+        },
+    },
 }));
 
 vi.mock("$lib/logger", () => ({
     getLogger: () => ({
         debug: vi.fn(),
         error: vi.fn(),
-    })
+    }),
 }));
 
 vi.mock("../../../../services", () => ({
@@ -28,7 +28,7 @@ vi.mock("../../../../services", () => ({
 
 vi.mock("../../../../lib/demoSeed", () => ({
     DEMO_PROJECT_NAME: "demo",
-    seedDemo: vi.fn().mockResolvedValue({ ok: true })
+    seedDemo: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
 describe("Demo Diff Page", () => {
