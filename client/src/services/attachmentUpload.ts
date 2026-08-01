@@ -56,7 +56,7 @@ export async function uploadFileToNewItemAtEnd(
     items: Items,
     currentUser: string,
     containerId: string,
-    file: File
+    file: File,
 ): Promise<void> {
     try {
         const newItem = items.addNode(currentUser, items.length);
@@ -222,7 +222,6 @@ export async function handleFileUploadFromDrop(
         }
         return true;
     }
-
 
     return false;
 }
