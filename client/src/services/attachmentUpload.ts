@@ -42,7 +42,11 @@ function addAttachmentWithFallback(item: Item, url: string, fileType?: string, f
         item.addAttachment(url, fileType, fileName);
     } catch {
         try {
-            (item as Item & { attachments?: { push: (arr: [string[]]) => void; }; }).attachments?.push([[url, fileType || "", fileName || ""]]);
+            (item as Item & { attachments?: { push: (arr: [string[]]) => void; }; }).attachments?.push([[
+                url,
+                fileType || "",
+                fileName || "",
+            ]]);
         } catch (_e) {
             logger.error(_e);
         }
@@ -98,7 +102,13 @@ export async function handleFileUploadFromDrop(
     isTestEnv: boolean,
     dispatch: (type: "drop", detail: DropEventDetail) => void,
     addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string, fileType?: string, fileName?: string) => void,
-    addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean, fileType?: string, fileName?: string) => void,
+    addAttachmentSafely: (
+        modelOriginal: unknown,
+        url: string,
+        isTest: boolean,
+        fileType?: string,
+        fileName?: string,
+    ) => void,
     modelOriginal: unknown,
     event: Event | null,
 ): Promise<boolean> {
@@ -146,7 +156,12 @@ export async function handleFileUploadFromDrop(
                     const url = await uploadAttachment(containerId, modelId, file);
 
                     if (!dropTargetPosition || dropTargetPosition === "middle") {
-                        addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, url, file.type, file.name);
+                        addAttachmentToDomTargetOrModel(
+                            event instanceof DragEvent ? event : null,
+                            url,
+                            file.type,
+                            file.name,
+                        );
                     } else {
                         dispatch("drop", {
                             targetItemId: modelId,
