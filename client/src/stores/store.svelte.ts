@@ -11,6 +11,7 @@ import type { Items } from "../schema/app-schema";
 import { Item, Project } from "../schema/app-schema";
 import { globalUndoRouter } from "../services/undo/undoRouter";
 import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
+import type { OutlinerViewModel } from "./OutlinerViewModel";
 
 export class GeneralStore {
     // Use $state for pages to ensure proper Svelte reactivity
@@ -35,6 +36,7 @@ export class GeneralStore {
     // Fallback: Also keep the index in case the ID changes, such as when switching connections
     private _project = $state<Project | undefined>(undefined);
     public undoManager: Y.UndoManager | undefined;
+    public activeViewModel: OutlinerViewModel | null = null;
     textareaRef: HTMLTextAreaElement | null = null;
 
     private _subscribeCurrentPage = createSubscriber((update) => {

@@ -3,6 +3,9 @@ import type { Item } from "../../schema/app-schema";
 import { store as generalStore } from "../../stores/store.svelte";
 
 function collectChildren(node: Item): Item[] {
+    if (generalStore.activeViewModel && generalStore.activeViewModel.isCollapsed(node.id)) {
+        return [];
+    }
     const children: Item[] = [];
     for (const child of iterateItemsOrdered(node.items)) {
         children.push(child);
