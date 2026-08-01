@@ -581,6 +581,8 @@ onDestroy(() => {
 
     {#if isGantt}
         <CalendarGanttChart
+            timeZone={timeZone}
+            timeZone={timeZone}
             entries={placedEntries}
             groupAxes={settings.groupAxes}
             rangeStart={range.start}
@@ -619,6 +621,7 @@ onDestroy(() => {
             </label>
         {/if}
         <CalendarMonthGrid
+            timeZone={timeZone}
             cells={monthCells}
             {weekStart}
             todayUtcMs={todayAnchor(timeZone, Date.now())}
@@ -631,6 +634,8 @@ onDestroy(() => {
         />
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
+            timeZone={timeZone}
+            timeZone={timeZone}
             {lanes}
             rangeStart={range.start}
             rangeEnd={range.end}
@@ -653,6 +658,8 @@ onDestroy(() => {
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
+            timeZone={timeZone}
+            timeZone={timeZone}
             layout={timeGridLayout}
             rangeStart={range.start}
             workingHoursStartMinutes={workingHoursStart}

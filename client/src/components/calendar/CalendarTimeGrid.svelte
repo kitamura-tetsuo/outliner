@@ -51,6 +51,7 @@ interface Props {
     /** Present only when this grid is one lane band of `CalendarLaneTimeGrid.svelte` (#4348). */
     isLaneWritable?: (entry: CalendarEntry) => boolean;
     onLaneDragStart?: (entry: CalendarEntry, e: DragEvent) => void;
+    timeZone: string;
 }
 
 let {
@@ -72,7 +73,7 @@ let {
     isDeletable = () => false,
     isLaneWritable,
     onLaneDragStart,
-}: Props = $props();
+, timeZone }: Props = $props();
 
 const dayHeightPx = 24 * ROW_HEIGHT_PX;
 const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -88,8 +89,10 @@ let drag = $state<{
     startClientY: number
     originStartMs: number
     originDurationMs: number
+    label?: string
+    clientX?: number
+    clientY?: number
 } | undefined>(undefined);
-
 function columnWidthPx(): number {
     if (!gridEl || layout.dayCount === 0) return 0;
     return gridEl.getBoundingClientRect().width / layout.dayCount;
@@ -109,6 +112,8 @@ function beginDrag(kind: "move" | "resize", entry: CalendarEntry, e: PointerEven
         startClientY: e.clientY,
         originStartMs: entry.startMs ?? rangeStart,
         originDurationMs: entry.durationMs ?? MIN_DURATION_MS,
+            clientX: e.clientX,
+            clientY: e.clientY,
     };
 }
 
@@ -329,6 +334,9 @@ onMount(() => {
             {/each}
         </div>
     </div>
+    {#if drag && drag.label && drag.clientX !== undefined && drag.clientY !== undefined}
+        <CalendarDragTooltip label={drag.label} clientX={drag.clientX} clientY={drag.clientY} />
+    {/if}
 </div>
 
 <style>
