@@ -60,8 +60,7 @@ test.describe("component block clipboard", () => {
 
         const target = items.nth(1);
         await target.locator(".item-content").click();
-        await page.keyboard.press("End");
-        await page.keyboard.press("Enter");
+        await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
