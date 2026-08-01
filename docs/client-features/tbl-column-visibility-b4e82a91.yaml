@@ -1,0 +1,20 @@
+id: TBL-b4e82a91
+title: Table column visibility
+title-ja: テーブルのカラム表示設定
+description: Columns can be hidden from a table Grid without changing its query, and restored in their previous order.
+category: table
+status: stable
+components:
+- client/src/components/yjstable/TableUiDefEditor.svelte
+- client/src/components/yjstable/YjsTableView.svelte
+- client/src/components/yjstable/TableGrid.svelte
+tests:
+- client/e2e/new/tbl-column-visibility-b4e82a91.spec.ts
+acceptance:
+- Each query column has an accessible Hidden checkbox in the UI Definition editor.
+- Hiding a column removes its header and every body cell without changing the stored column order.
+- Unhiding a column restores it to its previous position.
+- Hidden state persists across reloads and is a shared UI Definition setting visible to every client.
+- Turning visibility back on deletes the hidden key, and an otherwise empty per-column configuration is removed.
+- Any column, including an identity column, can be hidden without affecting record writes.
+- The demo Sales table hides its identity column and lets visitors restore it from the UI panel.

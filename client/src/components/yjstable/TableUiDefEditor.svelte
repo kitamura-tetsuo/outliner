@@ -18,22 +18,22 @@ interface Props {
     componentTypes: Record<string, string | undefined>;
     /** Display labels for columns. */
     columnLabels: Record<string, string | undefined>;
+    /** Shared visibility settings from the UI Definition. */
+    hiddenColumns: Record<string, boolean>;
+    /** Columns returned by the query, including computed and joined columns. */
+    resultColumns: string[];
     /** The column order stored in UI Definition. */
     columnOrder: string[];
 }
 
-let { handles, schema, query, componentTypes, columnLabels, columnOrder }: Props = $props();
+let { handles, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
 const displayColumns = $derived.by(() => {
-    if (!schema) return [];
-    const orderedNames = orderColumns(
-        schema.columns.map((c) => c.name),
-        columnOrder,
-    );
-    const colMap = new Map(schema.columns.map((c) => [c.name, c]));
-    return orderedNames.map((name) => colMap.get(name)!).filter(Boolean);
+    const orderedNames = orderColumns(resultColumns, columnOrder);
+    const colMap = new Map((schema?.columns ?? []).map((c) => [c.name, c]));
+    return orderedNames.map(name => ({ name, schemaColumn: colMap.get(name) }));
 });
 
 let dropTargetColumn = $state<{ column: string; position: "above" | "below" } | undefined>(undefined);
@@ -93,6 +93,25 @@ function setComponentType(column: string, type: string) {
         cfg.set("type", type);
     });
 }
+
+function setColumnHidden(column: string, hidden: boolean) {
+    handles.doc.transact(() => {
+        const components = componentsMap();
+        const existing = components.get(column);
+
+        if (!hidden) {
+            if (existing instanceof Y.Map) {
+                existing.delete("hidden");
+                if (Array.from(existing.keys()).length === 0) components.delete(column);
+            }
+            return;
+        }
+
+        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
+        if (!(existing instanceof Y.Map)) components.set(column, cfg);
+        cfg.set("hidden", true);
+    });
+}
 </script>
 
 <!--
@@ -119,7 +138,7 @@ function setComponentType(column: string, type: string) {
         onchange={commitQuery}
     />
 
-    {#if schema}
+    {#if displayColumns.length > 0}
         <p class="editor-label">Cell components</p>
         <div class="component-rows" role="list">
             {#each displayColumns as column, index (column.name)}
@@ -180,7 +199,7 @@ function setComponentType(column: string, type: string) {
                         value={columnLabels[column.name] ?? ""}
                         onchange={(e) => setColumnLabel(column.name, (e.target as HTMLInputElement).value)}
                     />
-                    <span class="column-type">{column.dataType}</span>
+                    <span class="column-type">{column.schemaColumn?.dataType ?? "query result"}</span>
                     <select
                         data-testid={`yjs-table-component-${column.name}`}
                         value={isCellComponentType(componentTypes[column.name])
@@ -188,21 +207,34 @@ function setComponentType(column: string, type: string) {
                         : "auto"}
                         onchange={(e) => setComponentType(column.name, (e.target as HTMLSelectElement).value)}
                     >
-                        <option value="auto">auto ({defaultCellType(column)})</option>
+                        <option value="auto">auto ({defaultCellType(column.schemaColumn)})</option>
                         {#each COMPONENT_TYPES as type (type)}
                             <option value={type}>{type}</option>
                         {/each}
                     </select>
-                    {#if column.checkOptions && column.checkOptions.length > 0}
+                    <label class="visibility-setting">
+                        <input
+                            type="checkbox"
+                            data-testid={`yjs-table-hidden-${column.name}`}
+                            checked={hiddenColumns[column.name] === true}
+                            onchange={(e) => setColumnHidden(column.name, (e.target as HTMLInputElement).checked)}
+                            ondragstart={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                        />
+                        Hidden
+                    </label>
+                    {#if column.schemaColumn?.checkOptions && column.schemaColumn.checkOptions.length > 0}
                         <span class="check-options" title="Options from CHECK constraint">
-                            [{column.checkOptions.join(", ")}]
+                            [{column.schemaColumn.checkOptions.join(", ")}]
                         </span>
                     {/if}
                 </div>
             {/each}
         </div>
     {:else}
-        <p class="hint">Apply a schema to configure cell components.</p>
+        <p class="hint">Run a query to configure its columns.</p>
     {/if}
 </div>
 
@@ -273,6 +305,17 @@ select {
     color: #6b7280;
     font-size: 0.75rem;
     min-width: 6rem;
+}
+
+.visibility-setting {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.visibility-setting input {
+    margin: 0;
 }
 
 .check-options {

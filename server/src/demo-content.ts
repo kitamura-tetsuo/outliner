@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 31;
+export const DEMO_TEMPLATE_VERSION = 32;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -95,7 +95,7 @@ export interface DemoTableTemplate {
     schemaSql: string;
     query: string;
     // Cell component type per column (UI Definition).
-    components: Record<string, string | { type: string; label?: string; }>;
+    components: Record<string, string | { type: string; label?: string; hidden?: boolean; }>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
 }
@@ -154,7 +154,7 @@ export const demoTables: DemoTableTemplate[] = [
             + "  revenue INTEGER\n"
             + ")",
         query: "SELECT id, month, revenue FROM sales ORDER BY id",
-        components: { month: "text", revenue: "number" },
+        components: { id: { type: "text", hidden: true }, month: "text", revenue: "number" },
         records: [
             { id: "demo-sales-1", values: { month: "Jan", revenue: 120 } },
             { id: "demo-sales-2", values: { month: "Feb", revenue: 180 } },
@@ -660,6 +660,7 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
         } else {
             cfg.set("type", def.type);
             if (def.label) cfg.set("label", def.label);
+            if (def.hidden) cfg.set("hidden", true);
         }
     }
 

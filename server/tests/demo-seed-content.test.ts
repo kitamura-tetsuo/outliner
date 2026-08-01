@@ -213,6 +213,7 @@ describe("Demo seed content", () => {
         const ui = doc.getMap("ui");
         expect(ui.get("query")).to.equal(template.query);
         const components = ui.get("components") as Y.Map<Y.Map<unknown>>;
+        expect(components.get("id")!.get("hidden")).to.equal(true);
         expect(components.get("revenue")!.get("type")).to.equal("number");
 
         const data = doc.getMap("data");
