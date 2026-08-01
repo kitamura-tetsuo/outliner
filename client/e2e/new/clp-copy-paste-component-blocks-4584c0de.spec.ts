@@ -24,12 +24,18 @@ test.describe("component block clipboard", () => {
         await firstView.getByTestId("yjs-table-add-row").click();
 
         const items = page.locator(".outliner-item[data-item-id]");
-        const hostId = await items.nth(1).getAttribute("data-item-id");
-        const neighborId = await items.nth(2).getAttribute("data-item-id");
+        const renderedHost = firstView.locator("xpath=ancestor::*[contains(@class, 'outliner-item')][1]");
+        const hostId = await renderedHost.getAttribute("data-item-id");
+        const itemIds = await items.evaluateAll(elements =>
+            elements.map(element => element.getAttribute("data-item-id"))
+        );
+        const hostIndex = itemIds.indexOf(hostId);
+        const neighborId = itemIds[hostIndex + 1];
+        const neighborText = await items.nth(hostIndex + 1).locator(".item-text").textContent();
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
         await page.locator("textarea.global-textarea").focus();
-        await page.evaluate(({ start, end }) => {
+        await page.evaluate(({ start, end, endOffset }) => {
             // eslint-disable-next-line no-restricted-globals
             const editor = window.editorOverlayStore!;
             editor.clearSelections();
@@ -37,10 +43,10 @@ test.describe("component block clipboard", () => {
                 startItemId: start!,
                 startOffset: 0,
                 endItemId: end!,
-                endOffset: "Neighbor".length,
+                endOffset,
                 userId: "local",
             });
-        }, { start: hostId, end: neighborId });
+        }, { start: hostId, end: neighborId, endOffset: neighborText?.length ?? 0 });
         await page.keyboard.press("Control+c");
         await page.evaluate(() => {
             // Copy must leave the selection intact, so explicitly move the
@@ -49,7 +55,7 @@ test.describe("component block clipboard", () => {
             window.editorOverlayStore!.clearSelections();
         });
 
-        const target = items.nth(3);
+        const target = items.last();
         await target.locator(".item-content").click();
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
