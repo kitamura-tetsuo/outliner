@@ -1009,7 +1009,7 @@ export const demoPages: DemoPageTemplate[] = [
                     },
                     {
                         text:
-                            "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month with the toolbar select; Gantt is a later feature.",
+                            "Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month / Gantt with the toolbar select.",
                     },
                     {
                         text:

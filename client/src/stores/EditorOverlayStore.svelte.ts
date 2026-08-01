@@ -4,6 +4,7 @@ import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
+import { store } from "./store.svelte";
 import { yjsStore } from "./yjsStore.svelte";
 const logger = getLogger("EditorOverlayStore");
 
@@ -1921,15 +1922,7 @@ export class EditorOverlayStore {
             }
             logger.debug("[pushPresenceState] Got awareness");
 
-            const currentPage = (window as Window & typeof globalThis & {
-                DEBUG_MODE?: boolean;
-                generalStore?: { currentPage?: { items?: { iterateUnordered?: () => Iterable<unknown>; }; }; };
-
-                itemsStore?: { allItems?: { id: string; text?: unknown; [key: string]: unknown; }[]; };
-                editorStore?: { currentItems?: { id: string; [key: string]: unknown; }[]; };
-                appStore?: { currentPage?: { id?: string; }; };
-                editorOverlayStore?: unknown;
-            }).appStore?.currentPage;
+            const currentPage = store.currentPage;
             const pageId = currentPage?.id;
             if (!pageId) {
                 logger.debug("[pushPresenceState] No pageId", { currentPage });

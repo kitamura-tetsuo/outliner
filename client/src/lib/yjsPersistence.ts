@@ -15,8 +15,8 @@ export type PersistenceLike = {
     synced: boolean;
     once: (eventName: "synced", callback: () => void) => void;
     off?: (eventName: "synced", callback: () => void) => void;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    _db?: Promise<any>;
+
+    _db?: Promise<IDBDatabase>;
     destroy?: () => void | Promise<void>;
 };
 

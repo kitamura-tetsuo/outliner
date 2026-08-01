@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import { render } from "@testing-library/svelte";
 import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 describe("CalendarDragTooltip", () => {
+    beforeAll(() => {
+        global.ResizeObserver = class ResizeObserver {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        } as any;
+    });
+
+    afterAll(() => {
+        delete (global as any).ResizeObserver;
+    });
+
     it("renders label and applies coordinates", () => {
         const { getByTestId, unmount } = render(CalendarDragTooltip, {
             label: "Test Label",

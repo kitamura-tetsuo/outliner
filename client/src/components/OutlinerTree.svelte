@@ -351,10 +351,9 @@
         containerId = containerId || "test-container";
 
         const items = pageItem.items as Items;
-        const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__);
 
         for (const file of files) {
-            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv ?? false);
+            await uploadFileToNewItemAtEnd(items, currentUser, containerId, file);
         }
 
         if (target) {
@@ -1915,10 +1914,9 @@
         if (files.length > 0) {
             const containerId = await resolveUploadContainerId();
             const items = pageItem.items as Items;
-            const isTestEnv = import.meta.env.MODE === 'test' || (typeof window !== 'undefined' && !!window.__E2E__);
 
             for (const file of files) {
-                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file, isTestEnv ?? false);
+                await uploadFileToNewItemAtEnd(items, currentUser, containerId, file);
             }
             __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
         } else {

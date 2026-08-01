@@ -1,18 +1,24 @@
 id: CMD-0001
 title: Inline Command Palette
 title-ja: インラインコマンドパレット
-description: Type '/' within an item to open a palette for inserting tables or charts.
+description: Type '/' within an item to open a palette for inserting a Database or Alias.
 category: editing
 status: implemented
 components:
 - client/src/components/SlashCommandPalette.svelte
 tests:
 - client/e2e/core/cmd-palette-insert-at-cursor-3f2a91c6.spec.ts
+- client/e2e/core/cmd-palette-keeps-text-before-slash-8c6d40b1.spec.ts
 - client/e2e/core/slr-slash-command-palette-visibility.spec.ts
+- client/src/lib/KeyEventHandler.slashPalette.test.ts
+- client/e2e/basic/cmd-inline-command-palette-fb050002.spec.ts
 acceptance:
 - Arrow keys move the selection within the palette
-- Pressing Enter on 'table' inserts an inline table
 - Pressing Enter on the filtered command inserts that component
 - The inserted component becomes the next sibling of the item the command was typed in
+- Typing '/' and a command leaves the existing item text unchanged, including the character immediately before the slash
 - Typing '/' with focus on an item shows the command palette
-- Typing a filter such as 'ch' narrows the command list
+- Typing a filter such as 'al' narrows the command list to 'Alias'
+- Pressing Escape closes the palette without modifying the item text
+- Pressing Backspace with an empty query closes the palette and restores the item text to exactly its state before '/' was typed
+- Typing '/' immediately after '[' does not open the palette
