@@ -99,6 +99,7 @@ function findEntry(key: string | undefined): CalendarEntry | undefined {
 
 function onDrop(cell: MonthCell, e: DragEvent) {
     e.preventDefault();
+    e.stopPropagation();
     const key = e.dataTransfer?.getData("text/plain") ?? draggingKey;
     const entry = findEntry(key);
     draggingKey = undefined;
@@ -106,7 +107,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
 }
 </script>
 
-<div class="month-grid" class:dragging={draggingKey !== undefined} data-testid="calendar-month-grid">
+<div class="month-grid" data-block-dnd-owner="calendar" class:dragging={draggingKey !== undefined} data-testid="calendar-month-grid">
     <div class="weekday-header">
         {#each weekdayHeaders as label (label)}
             <div class="weekday-label">{label}</div>
