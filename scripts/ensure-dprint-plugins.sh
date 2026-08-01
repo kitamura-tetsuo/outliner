@@ -110,7 +110,16 @@ if command -v npm >/dev/null 2>&1; then
       echo "  npm pack ${spec} failed" >&2
       continue
     fi
-    tarball="$(find "$npm_tmp" -maxdepth 1 -name '*.tgz' | head -n 1)"
+    # The directory was just emptied, so the pack produced exactly one tarball.
+    # A glob keeps this to shell builtins: `find -maxdepth` is implemented by
+    # both GNU and BSD find but is not in POSIX, and globbing needs no such bet.
+    tarball=""
+    for candidate in "$npm_tmp"/*.tgz; do
+      if [ -f "$candidate" ]; then
+        tarball="$candidate"
+        break
+      fi
+    done
     if [ -n "$tarball" ] \
       && tar -xzf "$tarball" -C "$npm_tmp" package/plugin.wasm 2>/dev/null \
       && is_wasm "${npm_tmp}/package/plugin.wasm"; then
