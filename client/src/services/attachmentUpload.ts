@@ -1,6 +1,8 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("AttachmentUpload");
 
+const IS_TEST = import.meta.env.MODE === "test";
+
 import type { Item, Items } from "../schema/app-schema";
 import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
 import { uploadAttachment } from "./attachmentService";
@@ -54,8 +56,7 @@ export async function uploadFileToNewItemAtEnd(
     items: Items,
     currentUser: string,
     containerId: string,
-    file: File,
-    isTestEnv: boolean,
+    file: File
 ): Promise<void> {
     try {
         const newItem = items.addNode(currentUser, items.length);
@@ -65,7 +66,7 @@ export async function uploadFileToNewItemAtEnd(
             addAttachmentWithFallback(newItem, url);
         } catch (uploadErr) {
             logger.error({ error: uploadErr as Error }, "Attachment upload failed, using local fallback");
-            if (isTestEnv) {
+            if (IS_TEST) {
                 const localUrl = URL.createObjectURL(file);
                 addAttachmentWithFallback(newItem, localUrl);
                 try {
@@ -95,10 +96,9 @@ export async function handleFileUploadFromDrop(
     dt: DataTransfer | null,
     modelId: string,
     dropTargetPosition: string | null,
-    isTestEnv: boolean,
     dispatch: (type: "drop", detail: DropEventDetail) => void,
     addAttachmentToDomTargetOrModel: (ev: DragEvent | null, url: string) => void,
-    addAttachmentSafely: (modelOriginal: unknown, url: string, isTest: boolean) => void,
+    addAttachmentSafely: (modelOriginal: unknown, url: string) => void,
     modelOriginal: unknown,
     event: Event | null,
 ): Promise<boolean> {
@@ -155,11 +155,11 @@ export async function handleFileUploadFromDrop(
                         });
                     }
                 } catch (e) {
-                    if (isTestEnv) {
+                    if (IS_TEST) {
                         try {
                             const localUrl = URL.createObjectURL(file);
                             if (!dropTargetPosition || dropTargetPosition === "middle") {
-                                addAttachmentSafely(modelOriginal, localUrl, isTestEnv);
+                                addAttachmentSafely(modelOriginal, localUrl);
                             } else {
                                 dispatch("drop", {
                                     targetItemId: modelId,
@@ -204,7 +204,7 @@ export async function handleFileUploadFromDrop(
                                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                                         const cand = curPage.items?.at ? curPage.items.at(i) : curPage.items?.[i];
                                         if (cand && String(cand?.id) === String(mappedId)) {
-                                            addAttachmentSafely(cand, localUrl, isTestEnv);
+                                            addAttachmentSafely(cand, localUrl);
                                             break;
                                         }
                                     }
@@ -219,33 +219,10 @@ export async function handleFileUploadFromDrop(
                     logger.error({ error: e as Error }, "attachment upload failed");
                 }
             }
-        } else {
-            if (isTestEnv) {
-                try {
-                    const blob = new Blob(["e2e"], { type: "text/plain" });
-                    const localUrl = URL.createObjectURL(blob);
-                    addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-                } catch (_e) {
-                    logger.error(_e);
-                }
-            }
         }
         return true;
     }
 
-    if (
-        isTestEnv
-        && (!dt || (((dt as DataTransfer).files?.length ?? 0) === 0 && ((dt as DataTransfer).items?.length ?? 0) === 0))
-    ) {
-        try {
-            const blob = new Blob(["e2e"], { type: "text/plain" });
-            const localUrl = URL.createObjectURL(blob);
-            addAttachmentToDomTargetOrModel(event instanceof DragEvent ? event : null, localUrl);
-        } catch (_e) {
-            logger.error(_e);
-        }
-        return true;
-    }
 
     return false;
 }
