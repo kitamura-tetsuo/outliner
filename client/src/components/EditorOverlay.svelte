@@ -1322,6 +1322,7 @@ function handlePaste(event: ClipboardEvent) {
       lines,
       selections,
       activeItemId: store.getActiveItem(),
+      cursor: store.getLocalCursorInstances().find(cursor => cursor.isActive),
     });
     return;
   }
@@ -1343,6 +1344,7 @@ function handlePaste(event: ClipboardEvent) {
       lines,
       selections,
       activeItemId: store.getActiveItem(),
+      cursor: store.getLocalCursorInstances().find(cursor => cursor.isActive),
     });
     return;
   }

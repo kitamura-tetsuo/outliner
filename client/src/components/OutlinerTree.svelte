@@ -20,6 +20,7 @@
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
+    import { spliceMultiLinePaste } from "../lib/multiLinePaste";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
     import ConfirmDialog from "./ConfirmDialog.svelte";
@@ -928,7 +929,7 @@
 
     // Add new items when pasting multiple lines
     function handlePasteMultiItem(event: CustomEvent) {
-        const { lines, selections, activeItemId } = event.detail;
+        const { lines, selections, activeItemId, cursor } = event.detail;
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -985,24 +986,44 @@
             return;
         }
 
-        const items = pageItem.items as Items;
-
-        // Update existing selected item
         const baseOriginal = displayItems[itemIndex].model.original;
-        baseOriginal.updateText(lines[0] || "");
+        const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
+        const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
+        const splice = spliceMultiLinePaste(text, offset, lines);
+        const siblings = baseOriginal.parent ?? (pageItem.items as Items);
+        const baseIndex = siblings.indexOf(baseOriginal);
+        if (baseIndex < 0) return;
 
-        // Add items with remaining lines
-        for (let i = 1; i < lines.length; i++) {
-            const newIndex = itemIndex + i;
-            let newItem = items.addNode(currentUser, newIndex);
-            if (!newItem) {
-
-                newItem = items.at(newIndex) as import("../schema/app-schema").Item;
-            }
-            if (newItem) {
-                newItem.updateText(lines[i]);
-            }
+        let lastItemId = firstItemId;
+        const run = () => {
+            baseOriginal.updateText(splice.firstText);
+            splice.siblingTexts.forEach((siblingText, index) => {
+                const newIndex = baseIndex + index + 1;
+                let newItem = siblings.addNode(currentUser, newIndex);
+                if (!newItem) {
+                    newItem = siblings.at(newIndex) as import("../schema/app-schema").Item;
+                }
+                if (newItem) {
+                    newItem.updateText(siblingText);
+                    lastItemId = newItem.id;
+                }
+            });
+        };
+        const doc = baseOriginal.ydoc;
+        if (doc) {
+            doc.transact(run, null);
+        } else {
+            run();
         }
+
+        editorOverlayStore.setCursor({
+            itemId: lastItemId,
+            offset: splice.cursorOffset,
+            isActive: true,
+            userId: "local",
+        });
+        editorOverlayStore.setActiveItem(lastItemId);
+        editorOverlayStore.clearSelections();
     }
 
     // Paste into selection spanning multiple items
