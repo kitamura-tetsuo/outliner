@@ -514,7 +514,7 @@ interface AttachmentTarget {
     attachments?: string[][] | { push: (arr: string[]) => void };
 }
 
-function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false) {
+function addAttachmentSafely(cand: AttachmentTarget, url: string) {
     try {
         if (cand.addAttachment) {
             cand.addAttachment(url);
@@ -522,7 +522,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             throw new Error('Method addAttachment not found');
         }
     } catch {
-        if (isTest ) {
+        if (IS_TEST) {
             try {
                 if (hasAttachments(cand)) {
                     cand.attachments?.push?.([url]);
@@ -530,7 +530,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             } catch (_e) { /* ignore */ }
         }
     }
-    if (isTest && typeof window !== "undefined") {
+    if (IS_TEST && typeof window !== "undefined") {
         try {
             window.dispatchEvent(new CustomEvent('item-attachments-changed', {
                 detail: { id: String(cand.id) }
@@ -547,7 +547,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
 
         if (targetId && String(targetId) === String(model.id)) {
             // Target is this item
-            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url, IS_TEST);
+            addAttachmentSafely(model.original as Parameters<typeof addAttachmentSafely>[0], url);
         } else if (targetId) {
             // Target is another item, find it in the global state (E2E fallback)
             try {
@@ -560,7 +560,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
                     for (let i = 0; i < (curPage.items.length || 0); i++) {
                         const cand = curPage.items.at?.(i) || curPage.items[i];
                         if (cand && String(cand?.id) === String(mappedId)) {
-                            addAttachmentSafely(cand, url, IS_TEST);
+                            addAttachmentSafely(cand, url);
                             break;
                         }
                     }
@@ -577,7 +577,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
             }
         } else {
             // No target found in DOM, default to current model
-            addAttachmentSafely(model.original, url, IS_TEST);
+            addAttachmentSafely(model.original, url);
         }
     }
 
@@ -1712,10 +1712,9 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         dt,
         model.id,
         dropTargetPosition,
-        import.meta.env.MODE === 'test',
         dispatch,
         addAttachmentToDomTargetOrModel,
-        addAttachmentSafely as (modelOriginal: unknown, url: string, isTest: boolean) => void,
+        addAttachmentSafely as (modelOriginal: unknown, url: string) => void,
         model.original,
         event
     );
