@@ -1013,7 +1013,7 @@ export const demoPages: DemoPageTemplate[] = [
                     },
                     {
                         text:
-                            "While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land — \"Thu, Aug 3 09:15 – 09:45\" for a move, \"09:00 – 10:30 (1h30m)\" for a resize, a date alone in Month and Gantt — formatted in the calendar's own timezone and snapped the same way the drop is, so the label never promises something different from what gets written.",
+                            'While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land — "Thu, Aug 3 09:15 – 09:45" for a move, "09:00 – 10:30 (1h30m)" for a resize, a date alone in Month and Gantt — formatted in the calendar\'s own timezone and snapped the same way the drop is, so the label never promises something different from what gets written.',
                     },
                     {
                         text:
