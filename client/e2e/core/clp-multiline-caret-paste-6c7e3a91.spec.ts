@@ -50,8 +50,10 @@ test.describe("multi-line clipboard paste at a caret", () => {
     test("keeps pasted lines beside a nested collapsed target", async ({ page, context }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Parent", "Hello World", "Hidden child", "After"]);
         await TestHelpers.waitForItemCount(page, 5);
+        const parentId = await TestHelpers.getItemIdByIndex(page, 1);
         const targetId = await TestHelpers.getItemIdByIndex(page, 2);
         const childId = await TestHelpers.getItemIdByIndex(page, 3);
+        expect(parentId).not.toBeNull();
         expect(targetId).not.toBeNull();
         expect(childId).not.toBeNull();
 
@@ -59,7 +61,11 @@ test.describe("multi-line clipboard paste at a caret", () => {
         await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
         await page.waitForTimeout(200);
-        await expect(page.locator(`[data-item-id="${targetId}"]`)).toHaveAttribute("aria-level", "3");
+        const parentLevel = Number(await page.locator(`[data-item-id="${parentId}"]`).getAttribute("aria-level"));
+        await expect(page.locator(`[data-item-id="${targetId}"]`)).toHaveAttribute(
+            "aria-level",
+            String(parentLevel + 1),
+        );
         await page.locator(`[data-item-id="${childId}"] .item-content`).click({ force: true });
         await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
         await page.keyboard.press("Tab");
