@@ -1,12 +1,11 @@
 import { render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
 import Page from "./+page.svelte";
 
 // Mock minimal dependencies
 vi.mock("$app/stores", () => ({
     page: {
-        subscribe: (fn: any) => {
+        subscribe: (fn: (val: { params: { page: string; }; }) => void) => {
             fn({ params: { page: "Test Page" } });
             return () => {};
         },
