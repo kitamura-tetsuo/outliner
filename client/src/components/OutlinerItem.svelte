@@ -510,14 +510,14 @@ const aliasTargetIdEffective = $derived.by(() => {
 
 interface AttachmentTarget {
     id?: string;
-    addAttachment?: (url: string) => void;
-    attachments?: string[][] | { push: (arr: any[]) => void };
+    addAttachment?: (url: string, fileType?: string, fileName?: string) => void;
+    attachments?: unknown;
 }
 
 function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolean = false, fileType?: string, fileName?: string) {
     try {
         if (cand.addAttachment) {
-            (cand.addAttachment as any)(url, fileType, fileName);
+            (cand.addAttachment as (url: string, fileType?: string, fileName?: string) => void)(url, fileType, fileName);
         } else {
             throw new Error('Method addAttachment not found');
         }
@@ -525,7 +525,7 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, isTest: boolea
         if (isTest ) {
             try {
                 if (hasAttachments(cand)) {
-                    (cand.attachments as any)?.push?.([[url, fileType || "", fileName || ""]]);
+                    (cand.attachments as { push: (arr: unknown[]) => void })?.push?.([[url, fileType || "", fileName || ""]]);
                 }
             } catch (_e) { /* ignore */ }
         }
