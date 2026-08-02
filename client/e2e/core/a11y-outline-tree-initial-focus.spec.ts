@@ -21,7 +21,7 @@ test.describe("Accessible outline tree initial focus", () => {
         await page.waitForTimeout(500);
 
         // The hidden textarea should NOT have focus
-        const textareaFocused = await page.evaluate(() => document.activeElement?.tagName.toLowerCase() === 'textarea');
+        const textareaFocused = await page.evaluate(() => document.activeElement?.tagName.toLowerCase() === "textarea");
         expect(textareaFocused).toBe(false);
 
         // At this point, tab should put focus on the first item (with index 1)
