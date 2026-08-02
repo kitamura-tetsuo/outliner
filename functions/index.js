@@ -696,20 +696,42 @@ exports.createTestUser = onRequest(
       return res.status(405).json({ error: "Method Not Allowed" });
     }
 
-    // Production environment check
-    const isProduction = !process.env.FUNCTIONS_EMULATOR &&
-      !process.env.FIRESTORE_EMULATOR_HOST &&
-      process.env.NODE_ENV === "production";
-
-    if (isProduction) {
-      logger.warn("Attempted to create test user in production environment");
+    // Fail closed: Explicit opt-in required
+    if (process.env.ALLOW_TEST_USERS !== "true") {
+      logger.warn(
+        "Attempted to create test user without ALLOW_TEST_USERS=true",
+      );
       return res.status(403).json({
-        error: "Test user creation is disabled in production",
+        error: "Test user creation is disabled",
       });
     }
 
     try {
-      const { email, password, displayName } = req.body;
+      const { email, password, displayName, idToken } = req.body;
+
+      // In production, require an admin token
+      if (
+        process.env.NODE_ENV === "production" && !process.env.FUNCTIONS_EMULATOR
+      ) {
+        if (!idToken) {
+          return res.status(400).json({
+            error: "ID token is required in production",
+          });
+        }
+        let decodedToken;
+        try {
+          decodedToken = await require("firebase-admin/auth").getAuth()
+            .verifyIdToken(idToken);
+          if (!decodedToken || !decodedToken.uid) {
+            return res.status(401).json({ error: "Authentication failed" });
+          }
+        } catch (authError) {
+          return res.status(401).json({ error: "Authentication failed" });
+        }
+        if (!isAdmin(decodedToken)) {
+          return res.status(403).json({ error: "Admin privileges required" });
+        }
+      }
       if (!email || !password) {
         return res.status(400).json({
           error: "Email and password are required",
