@@ -11,7 +11,7 @@ import * as Y from "yjs";
 import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
-import { createDemoRouter } from "./demo-api.js";
+import { checkMissingTemplatePages, createDemoRouter, demoFastPath } from "./demo-api.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
@@ -352,6 +352,14 @@ export async function startServer(
                 }
             },
             async onStoreDocument(data: import("@hocuspocus/server").onStoreDocumentPayload<ConnectionContext>) {
+                if (data.documentName === "projects/demo" && demoFastPath.has("projects/demo")) {
+                    if (checkMissingTemplatePages(data.document)) {
+                        logger.info(
+                            "[Hocuspocus] Evidence of missing template pages detected, invalidating demo fast path.",
+                        );
+                        demoFastPath.delete("projects/demo");
+                    }
+                }
                 if (persistence) {
                     await handleStoreDocumentForSchedules(
                         data,

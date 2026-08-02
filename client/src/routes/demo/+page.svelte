@@ -33,15 +33,7 @@
             error = undefined;
 
             // Seed demo project via API (no-op when already seeded)
-            const seedResult = await seedDemo();
-            if (!seedResult.ok) {
-                if (seedResult.reason === "network") {
-                    throw new Error("Can't reach the demo server — retrying...");
-                }
-            }
-            if (isDestroyed) return;
-
-            // Connect to demo room
+            const seedPromise = seedDemo();
             const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
             if (isDestroyed) {
                 client?.dispose();
@@ -54,6 +46,21 @@
             yjsStore.yjsClient = client;
             const project = AppProject.fromDoc(client.getProject().ydoc);
             store.project = project;
+            isLoading = false;
+
+            const seedResult = await seedPromise;
+            if (!seedResult.ok && seedResult.reason === "network" && yjsStore.notYetSynced) {
+                // If it's a completely cold load and we can't reach the server, throw
+                throw new Error("Can't reach the demo server — retrying...");
+            }
+            if (!isDestroyed && seedResult.ok && seedResult.reset) {
+                logger.info("Demo reset detected, reconnecting client");
+                removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+                yjsStore.yjsClient = undefined;
+                store.project = undefined;
+                await initializeDemo();
+                return;
+            }
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";

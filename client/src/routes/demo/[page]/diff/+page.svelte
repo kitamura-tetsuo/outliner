@@ -25,10 +25,7 @@ let isLoading = $state(true);
 async function loadLiveContent(proj: string, pTitle: string) {
     try {
         isLoading = true;
-        const seedResult = await seedDemo();
-        if (!seedResult.ok) {
-            logger.error("Failed to seed demo");
-        }
+        const seedPromise = seedDemo();
 
         const client = await getYjsClientByProjectTitle(proj);
         if (isDestroyed) {
@@ -57,6 +54,17 @@ async function loadLiveContent(proj: string, pTitle: string) {
         // Subscribe to updates
         updateObserver = () => updateContent();
         appProject.ydoc.on('update', updateObserver);
+        isLoading = false;
+
+        const seedResult = await seedPromise;
+        if (!isDestroyed && seedResult.ok && seedResult.reset) {
+            logger.info("Demo reset detected, reconnecting client");
+            appProject.ydoc.off('update', updateObserver);
+            removeYjsClientByProjectId(proj);
+            currentClient = null;
+            await loadLiveContent(proj, pTitle);
+            return;
+        }
 
     } catch (e) {
         logger.error({ error: e instanceof Error ? e : new Error(String(e)) }, "Error loading live content");

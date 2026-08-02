@@ -24,14 +24,7 @@
 
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
+                const seedPromise = seedDemo();
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
                 if (isDestroyed) {
                     client?.dispose();
@@ -42,6 +35,20 @@
                 }
                 yjsStore.yjsClient = client;
                 store.project = AppProject.fromDoc(client.getProject().ydoc);
+                isLoading = false;
+
+                const seedResult = await seedPromise;
+                if (!seedResult.ok && seedResult.reason === "network" && yjsStore.notYetSynced) {
+                    throw new Error("Can't reach the demo server — retrying...");
+                }
+                if (!isDestroyed && seedResult.ok && seedResult.reset) {
+                    logger.info("Demo reset detected, reconnecting client");
+                    removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+                    yjsStore.yjsClient = undefined;
+                    store.project = undefined;
+                    await initializeDemo();
+                    return;
+                }
             }
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo graph view");

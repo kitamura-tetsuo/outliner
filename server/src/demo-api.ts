@@ -18,13 +18,62 @@ import { getClientIp } from "./utils/ip.js";
 
 type HocuspocusInstance = Hocuspocus;
 
-const DEMO_PROJECT_ID = "demo";
+export const DEMO_PROJECT_ID = "demo";
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const FORCE_RESET_RATE_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 
 const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolean; }>>();
 const forceRateLimits = new Map<string, number>();
 let lastGlobalForceReset = 0;
+
+export function checkMissingTemplatePages(doc: Y.Doc): boolean {
+    const orderedTree = doc.getMap("orderedTree") as Y.Map<unknown>;
+    const keys = Array.from(orderedTree.keys());
+    const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
+    if (isEmpty) return true;
+
+    const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
+    const existingTemplateIds = new Set<string>();
+
+    const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
+    for (const key of treeMap.keys()) {
+        if (key === "root" || key === "deleted") continue;
+        const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
+        if (
+            nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
+            && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
+        ) {
+            const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
+            if (valueMap && valueMap.has("templatePageId")) {
+                const templatePageId = valueMap.get("templatePageId") as string | undefined;
+                if (templatePageId) {
+                    const rawText = valueMap.get("text");
+                    let textStr = "";
+                    if (rawText !== undefined && rawText !== null) {
+                        try {
+                            textStr = typeof (rawText as any).toString === "function"
+                                ? (rawText as any).toString()
+                                : String(rawText);
+                        } catch (e) {
+                        }
+                    }
+                    if (textStr.trim().toLowerCase() === templatePageId) {
+                        existingTemplateIds.add(templatePageId);
+                    }
+                }
+            }
+        }
+    }
+
+    for (const expected of expectedTemplateIds) {
+        if (!existingTemplateIds.has(expected)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export const demoFastPath = new Map<string, { lastVerified: number; templateVersion: number; }>();
 
 export interface DemoResetState {
     isEmpty: boolean;
@@ -93,6 +142,18 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
 
+            const fastPathState = demoFastPath.get(projectRoom);
+            const now = Date.now();
+            if (
+                !force && fastPathState && (now - fastPathState.lastVerified < 5 * 60 * 1000)
+                && fastPathState.templateVersion === DEMO_TEMPLATE_VERSION
+            ) {
+                logger.info({ event: "seed_demo_fast_path", projectRoom });
+                res.set("Server-Timing", "fast-path");
+                res.json({ success: true, reset: false });
+                return;
+            }
+
             if (inFlightResets.has(projectRoom)) {
                 logger.info({ event: "seed_demo_inflight_wait", projectRoom });
                 const result = await inFlightResets.get(projectRoom);
@@ -122,51 +183,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     const keys = Array.from(orderedTree.keys());
                     const isEmpty = keys.length === 0 || (keys.length === 1 && keys[0] === "root");
 
-                    // Check if any required template page is missing
-                    let missingTemplatePages = false;
-                    if (!isEmpty) {
-                        const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
-                        const existingTemplateIds = new Set<string>();
-
-                        // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
-                        const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
-                        for (const key of treeMap.keys()) {
-                            if (key === "root" || key === "deleted") continue;
-                            const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
-                            if (
-                                nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
-                                && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
-                            ) {
-                                const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
-                                if (valueMap && valueMap.has("templatePageId")) {
-                                    const templatePageId = valueMap.get("templatePageId") as string | undefined;
-                                    if (templatePageId) {
-                                        const rawText = valueMap.get("text");
-                                        let textStr = "";
-                                        if (rawText !== undefined && rawText !== null) {
-                                            try {
-                                                textStr = typeof (rawText as any).toString === "function"
-                                                    ? (rawText as any).toString()
-                                                    : String(rawText);
-                                            } catch (e) {
-                                                // ignore
-                                            }
-                                        }
-                                        if (textStr.trim().toLowerCase() === templatePageId) {
-                                            existingTemplateIds.add(templatePageId);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        for (const expected of expectedTemplateIds) {
-                            if (!existingTemplateIds.has(expected)) {
-                                missingTemplatePages = true;
-                                break;
-                            }
-                        }
-                    }
+                    let missingTemplatePages = checkMissingTemplatePages(doc as unknown as Y.Doc);
 
                     const shouldReset = shouldResetDemo({
                         isEmpty,
@@ -270,6 +287,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 meta.set("lastReset", now);
                                 meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                             });
+                            demoFastPath.set(projectRoom, {
+                                lastVerified: now,
+                                templateVersion: DEMO_TEMPLATE_VERSION,
+                            });
                         } finally {
                             await directConnection.transact((document: unknown) => {
                                 const ydoc = document as unknown as Y.Doc;
@@ -281,6 +302,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                     }
 
+                    if (!shouldReset) {
+                        demoFastPath.set(projectRoom, { lastVerified: now, templateVersion: DEMO_TEMPLATE_VERSION });
+                    }
                     return { success: true, reset: shouldReset };
                 } finally {
                     // Must disconnect to prevent memory leak

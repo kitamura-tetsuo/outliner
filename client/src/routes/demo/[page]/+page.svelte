@@ -72,14 +72,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
                 // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
+                const seedPromise = seedDemo();
                 const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
                 if (isDestroyed) {
                     client?.dispose();
@@ -90,6 +83,20 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 }
                 yjsStore.yjsClient = client;
                 store.project = AppProject.fromDoc(client.getProject().ydoc);
+                isLoading = false;
+
+                const seedResult = await seedPromise;
+                if (!seedResult.ok && seedResult.reason === "network" && yjsStore.notYetSynced) {
+                    throw new Error("Can't reach the demo server — retrying...");
+                }
+                if (!isDestroyed && seedResult.ok && seedResult.reset) {
+                    logger.info("Demo reset detected, reconnecting client");
+                    removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+                    yjsStore.yjsClient = undefined;
+                    store.project = undefined;
+                    await loadDemoPage();
+                    return;
+                }
             }
 
             // Let the $effect block handle page resolution and sync state

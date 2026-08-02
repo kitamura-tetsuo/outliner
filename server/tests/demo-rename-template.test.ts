@@ -2,7 +2,7 @@ import { expect } from "chai";
 import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
-import { createDemoRouter } from "../src/demo-api.js";
+import { createDemoRouter, demoFastPath } from "../src/demo-api.js";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION, demoPages, populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
@@ -50,6 +50,7 @@ describe("Demo rename template trigger", () => {
             }
         }
         expect(found).to.equal(true);
+        demoFastPath.delete("projects/demo");
 
         // Second call should reset because of the renamed page
         const res2 = await request(app).post("/api/seed-demo").send({});
