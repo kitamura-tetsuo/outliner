@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+
+registerCoverageHooks();
 
 test("Demo content loads without waiting for seed response", async ({ page }) => {
     // Block/Delay seed-demo

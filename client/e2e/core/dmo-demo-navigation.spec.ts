@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+
+registerCoverageHooks();
 
 test("Direct navigation to demo subpage", async ({ page }) => {
     await page.goto("/demo/Welcome");
