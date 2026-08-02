@@ -11,7 +11,7 @@ import {
 } from "../../services/yjstable/queryAnalysis";
 import { applyUnionedRowEdit, type RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import { COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
+import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import {
     addRecord,
     deleteRecord,
@@ -71,6 +71,7 @@ function headerLabel(column: string): string {
 }
 
 let dropTargetColumn = $state<{ column: string; position: "left" | "right" } | undefined>(undefined);
+let draggedColumnName = $state<string | undefined>(undefined);
 
 /** This table's own record id, only meaningful when rows are addressed by `id`. */
 function recordIdOf(row: Record<string, unknown>): string | undefined {
@@ -173,6 +174,7 @@ function handleCancelDelete() {
                             class:drop-target-left={dropTargetColumn?.column === column && dropTargetColumn.position === "left"}
                             class:drop-target-right={dropTargetColumn?.column === column && dropTargetColumn.position === "right"}
                             ondragstart={(e) => {
+                                e.stopPropagation();
                                 if (e.dataTransfer) {
                                     e.dataTransfer.effectAllowed = "move";
                                     e.dataTransfer.setData("text/plain", column);
@@ -180,37 +182,41 @@ function handleCancelDelete() {
                                     // payload is still unreadable (see blockDndOwnership).
                                     e.dataTransfer.setData(COLUMN_DRAG_TYPE, column);
                                 }
+                                draggedColumnName = column;
                             }}
                             ondragover={(e) => {
+                                e.stopPropagation();
                                 e.preventDefault();
                                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                                 const isLeft = e.clientX < rect.left + rect.width / 2;
                                 dropTargetColumn = { column, position: isLeft ? "left" : "right" };
                                 if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
                             }}
+                            ondragend={(e) => {
+                                e.stopPropagation();
+                                dropTargetColumn = undefined;
+                                draggedColumnName = undefined;
+                            }}
                             ondragleave={(e) => {
+                                e.stopPropagation();
                                 const related = e.relatedTarget as Node | null;
                                 if (!e.currentTarget?.contains(related)) {
                                     dropTargetColumn = undefined;
                                 }
                             }}
                             ondrop={(e) => {
+                                e.stopPropagation();
                                 e.preventDefault();
-                                const draggedCol = e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
+                                const draggedCol = draggedColumnName || e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
                                 if (draggedCol && draggedCol !== column) {
                                     const draggedIndex = displayColumns.indexOf(draggedCol);
                                     if (draggedIndex !== -1) {
-                                        // Target index calculation based on drop side and moving direction
-                                        let targetIndex = index;
-                                        if (draggedIndex < targetIndex && dropTargetColumn?.position === "left") {
-                                            targetIndex -= 1;
-                                        } else if (draggedIndex > targetIndex && dropTargetColumn?.position === "right") {
-                                            targetIndex += 1;
-                                        }
+                                        const targetIndex = calculateDropIndex(draggedIndex, index, dropTargetColumn?.position ?? "left");
                                         writeVisibleColumnOrder(moveColumn(displayColumns, draggedCol, targetIndex));
                                     }
                                 }
                                 dropTargetColumn = undefined;
+                                draggedColumnName = undefined;
                             }}
                             onkeydown={(e) => {
                                 if (e.altKey) {

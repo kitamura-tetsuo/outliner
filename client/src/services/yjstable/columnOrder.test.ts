@@ -1,7 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { moveColumn, orderColumns } from "./columnOrder";
+import { calculateDropIndex, moveColumn, orderColumns } from "./columnOrder";
 
 describe("columnOrder", () => {
+    describe("calculateDropIndex", () => {
+        it("returns index - 1 when dragging left/above and drop is left/above", () => {
+            expect(calculateDropIndex(0, 2, "left")).toBe(1);
+            expect(calculateDropIndex(0, 2, "above")).toBe(1);
+        });
+
+        it("returns hoverIndex when dragging left/above and drop is right/below", () => {
+            expect(calculateDropIndex(0, 2, "right")).toBe(2);
+            expect(calculateDropIndex(0, 2, "below")).toBe(2);
+        });
+
+        it("returns hoverIndex + 1 when dragging right/below and drop is right/below", () => {
+            expect(calculateDropIndex(3, 1, "right")).toBe(2);
+            expect(calculateDropIndex(3, 1, "below")).toBe(2);
+        });
+
+        it("returns hoverIndex when dragging right/below and drop is left/above", () => {
+            expect(calculateDropIndex(3, 1, "left")).toBe(1);
+            expect(calculateDropIndex(3, 1, "above")).toBe(1);
+        });
+    });
+
     describe("orderColumns", () => {
         it("retains stored columns that exist in the result in stored order", () => {
             const resultColumns = ["a", "b", "c"];

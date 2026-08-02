@@ -30,7 +30,43 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
         hostItemId = await TestHelpers.getItemIdByIndex(page, 1);
     });
 
-    test("dragging a header moves the column and persists the order across a reload", async ({ page }) => {
+    test("dragging a header via real mouse interactions moves the column and persists the order across a reload", async ({ page }) => {
+        await createTasksTableBlock(page, hostItemId);
+
+        expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
+
+        // REAL MOUSE DRAG
+        const sourceHeader = page.locator("th[data-col='status']").first();
+        const targetHeader = page.locator("th[data-col='title']").first();
+
+        await sourceHeader.hover();
+        await page.mouse.down();
+
+        // Move towards target left edge
+        const targetBox = await targetHeader.boundingBox();
+        if (targetBox) {
+            await page.mouse.move(targetBox.x + 5, targetBox.y + targetBox.height / 2, { steps: 5 });
+            await page.mouse.up();
+        } else {
+            throw new Error("Target bounding box not found");
+        }
+
+        const reordered = ["id", "status", "title", "priority", "due_date", "repeat_days"];
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
+
+        // Header cells and body cells move together.
+        await page.getByTestId("yjs-table-add-row").first().click();
+        await expect(page.getByTestId("yjs-table-grid").first().locator("tbody tr").first())
+            .toBeVisible({ timeout: 15000 });
+        await expect.poll(() => gridFirstRowCellOrder(page), { timeout: 15000 }).toEqual(reordered);
+
+        // The order lives in the UI Definition, so it survives a reload.
+        await page.reload();
+        await waitForGridColumns(page);
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 30000 }).toEqual(reordered);
+    });
+
+    test("dragging a header (using synthetic helper) moves the column", async ({ page }) => {
         await createTasksTableBlock(page, hostItemId);
 
         expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
