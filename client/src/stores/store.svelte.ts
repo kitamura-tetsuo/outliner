@@ -252,11 +252,18 @@ export class GeneralStore {
         return this.getAliasIndex().get(targetId) || [];
     }
 
-    private _traverseForAliases(node: Item, pageTitle: string, index: Map<string, { item: Item; pageTitle: string; }[]>) {
+    private _traverseForAliases(
+        node: Item,
+        pageTitle: string,
+        index: Map<string, { item: Item; pageTitle: string; }[]>,
+    ) {
         const targetId = node.aliasTargetId;
         if (targetId) {
             let arr = index.get(targetId);
-            if (!arr) { arr = []; index.set(targetId, arr); }
+            if (!arr) {
+                arr = [];
+                index.set(targetId, arr);
+            }
             arr.push({ item: node, pageTitle });
         }
         const children = node.items;
@@ -384,7 +391,10 @@ export class GeneralStore {
                                 }
                             }
                         }
-                    } else if (event.keys.has("aliasTargetId") || (event.path.length > 0 && event.path[event.path.length - 1] === "aliasTargetId")) {
+                    } else if (
+                        event.keys.has("aliasTargetId")
+                        || (event.path.length > 0 && event.path[event.path.length - 1] === "aliasTargetId")
+                    ) {
                         shouldUpdateAliases = true;
                     } else if (event.path.length === 1 && event.keys.has("text")) {
                         // Change on a node's property (text) (Top level structure event maybe?)

@@ -25,7 +25,7 @@ test.describe("Alias UI two-client sync", () => {
         await page1.waitForFunction(
             () => (globalThis as any).__YJS_STORE__?.getIsConnected?.() === true,
             null,
-            { timeout: 15000 }
+            { timeout: 15000 },
         ).catch(() => console.log("page1 not connected yet, continuing"));
 
         const targetId = await TestHelpers.getItemIdByIndex(page1, 1);
@@ -61,7 +61,7 @@ test.describe("Alias UI two-client sync", () => {
         await page2.waitForFunction(
             (targetId) => !!document.querySelector(`.outliner-item[data-id="${targetId}"]`),
             targetId,
-            { timeout: 45000 }
+            { timeout: 45000 },
         ).catch(() => console.log("Failed to wait for target item on page 2"));
         await TestHelpers.waitForPageData(page2, pageName, 10000).catch(() => console.log("ignore wait for pagedata"));
 
@@ -82,10 +82,10 @@ test.describe("Alias UI two-client sync", () => {
         }, targetId);
 
         // Check if client 1 has alias
-        await expect(page1.locator('.referring-aliases-container').first()).toBeVisible({ timeout: 10000 });
+        await expect(page1.locator(".referring-aliases-container").first()).toBeVisible({ timeout: 10000 });
 
         // Check client 2 receives the alias immediately (timeout <= 2000, avoiding 5-second polling)
-        await expect(page2.locator('.referring-aliases-container').first()).toBeVisible({ timeout: 2000 });
+        await expect(page2.locator(".referring-aliases-container").first()).toBeVisible({ timeout: 2000 });
 
         await context1.close();
         await context2.close();
