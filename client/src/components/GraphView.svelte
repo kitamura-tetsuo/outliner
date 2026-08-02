@@ -252,7 +252,9 @@ const logger = getLogger("GraphView");
 
     onMount(() => {
         chart = echarts.init(graphDiv);
-        window.__GRAPH_CHART__ = chart;
+        if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
+            window.__GRAPH_CHART__ = chart;
+        }
         chart.on("click", (params: ECElementEvent) => {
             if (params.dataType === "node") {
                 const pageName =

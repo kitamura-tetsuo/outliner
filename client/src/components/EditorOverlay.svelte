@@ -314,7 +314,7 @@ onMount(() => {
                 // Force update of positionMap to ensure it's current
                 updatePositionMap(); // Direct call instead of debounced to ensure immediate update in tests
                 syncCursors();
-                if (typeof window !== 'undefined') {
+                if (typeof window !== 'undefined' && import.meta.env.MODE !== "production") {
                     window.__selectionList = selectionList;
                 }
                 updateTextareaPosition();
@@ -327,9 +327,9 @@ onMount(() => {
     // Initialization
     try {
         syncCursors();
-        if (typeof window !== 'undefined') {
-            window.__selectionList = selectionList;
-        }
+        if (typeof window !== 'undefined' && import.meta.env.MODE !== "production") {
+                    window.__selectionList = selectionList;
+                }
         updateTextareaPosition();
         updatePositionMap();
     } catch (error) {
