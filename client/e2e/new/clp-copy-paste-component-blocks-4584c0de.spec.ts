@@ -65,7 +65,6 @@ test.describe("component block clipboard", () => {
             // The copy above uses the real system clipboard. Dispatch the
             // browser paste event with the captured custom MIME as Chromium
             // may strip non-standard formats when Clipboard.read() is disabled.
-            // eslint-disable-next-line no-restricted-globals
             const text = await navigator.clipboard.readText();
             // eslint-disable-next-line no-restricted-globals
             const encoded = (window as Window & { lastCopiedStructuredItems?: string; }).lastCopiedStructuredItems;
