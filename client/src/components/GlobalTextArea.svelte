@@ -6,7 +6,7 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { KeyEventHandler, isForeignInput } from "../lib/KeyEventHandler";
+import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
@@ -52,27 +52,6 @@ onMount(() => {
         window.KeyEventHandler = KeyEventHandler;
     }
 
-    // Set initial focus
-    if (textareaRef && !isForeignInput(document.activeElement)) {
-        textareaRef.focus();
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
-
-        // Additional attempts to ensure focus
-        requestAnimationFrame(() => {
-            if (textareaRef && !isForeignInput(document.activeElement)) {
-                textareaRef.focus();
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
-
-                setTimeout(() => {
-                    if (textareaRef && !isForeignInput(document.activeElement)) {
-                        textareaRef.focus();
-                        const isFocused = document.activeElement === textareaRef;
-                        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Final focus set, focused:", isFocused);
-                    }
-                }, 10);
-            }
-        });
-    }
 
 });
 
