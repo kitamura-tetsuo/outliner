@@ -132,6 +132,38 @@ describe("Demo Page View", () => {
         expect(elements.length).toBeGreaterThan(0);
     });
 
+
+    it("should render reset state when isResetting is true", async () => {
+        const Y_mod = await import("yjs");
+        const { getYjsClientByProjectTitle } = await import("../../../services");
+        (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
+            containerId: "mock-container",
+            getProject: () => {
+                const doc = new Y_mod.Doc();
+                doc.getMap("metadata").set("title", "demo");
+                doc.getMap("metadata").set("isResetting", true);
+                doc.getMap("metadata").set("resetStartedAt", Date.now());
+                return { ydoc: doc };
+            },
+            dispose: vi.fn(),
+        });
+
+        const { findPageByName } = await import("../../../utils/pageUtils");
+        (findPageByName as Mock).mockReturnValue(undefined); // Simulate page missing
+
+        render(DemoPageView);
+
+        await vi.waitFor(() => {
+            expect(screen.queryByText("Loading Demo...")).not.toBeInTheDocument();
+        }, { timeout: 2000, interval: 50 });
+
+        await vi.waitFor(() => {
+            expect(screen.getByText("Demo content is being reset")).toBeInTheDocument();
+        }, { timeout: 2000, interval: 50 });
+
+        expect(screen.queryByRole("button", { name: "Create Page" })).not.toBeInTheDocument();
+    });
+
     it("should render error state when sync times out", async () => {
         const Y_mod = await import("yjs");
         const { getYjsClientByProjectTitle } = await import("../../../services");
@@ -148,7 +180,7 @@ describe("Demo Page View", () => {
         });
 
         const { findPageByName } = await import("../../../utils/pageUtils");
-        (findPageByName as Mock).mockReturnValue(undefined);
+        (findPageByName as Mock).mockReturnValue(undefined); // Simulate page missing
 
         // We can just set the property before rendering
         // But loadDemoPage will execute and overwrite it?
