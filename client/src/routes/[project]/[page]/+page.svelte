@@ -281,7 +281,6 @@
     $effect(() => {
         void store.pagesVersion;
 
-        // E2E Stabilization: capture pageId as needed when page list changes
         try { capturePageIdForSchedule(); } catch (_e) { logger.error(_e); }
 
         if (!__loadingInProgress && !error && store.currentPage && store.project) {
