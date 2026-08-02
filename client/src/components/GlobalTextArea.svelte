@@ -130,21 +130,6 @@ function handleKeyDown(event: KeyboardEvent) {
 
     KeyEventHandler.handleKeyDown(event);
 
-    // Fallback for headless/E2E environments where input event may not fire
-    try {
-        const isPrintable = typeof event.key === "string" && event.key.length === 1;
-        const isModifier = event.ctrlKey || event.metaKey || event.altKey || event.isComposing;
-        const isTest = typeof window !== "undefined" && window.localStorage?.getItem?.("VITE_IS_TEST") === "true";
-        const isTextareaFocused = document.activeElement === textareaRef;
-        if (isTest && isPrintable && !isModifier && !aliasPickerStore.isVisible && !isTextareaFocused && !event.defaultPrevented) {
-            const cursors = store.getCursorInstances();
-            if (cursors.length > 0) {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown fallback insert:", event.key, "cursors=", cursors.length);
-                cursors.forEach(c => c.insertText(event.key));
-                store.startCursorBlink();
-            }
-        }
-    } catch (_e) { /* ignore */ }
 }
 
 // Delegate input event to KeyEventHandler
