@@ -2166,8 +2166,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { if (_e instanceof Error && _e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const errStr = _e.message.substring("PAGE_RENAME_CONFLICT:".length); if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: errStr, itemId: model.id } })); } } }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { if (_e instanceof Error && _e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const errStr = _e.message.substring("PAGE_RENAME_CONFLICT:".length); if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: errStr, itemId: model.id } })); } } }}
+                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (!trimmed) err = "Page title cannot be empty or whitespace only."; else if (trimmed.includes("/")) err = "Page title cannot contain '/'."; else if (trimmed.toLowerCase() !== String(model.original.text || "").trim().toLowerCase() && ((window as any).appStore || (window as any).generalStore)?.pageExists?.(trimmed)) { err = "A page with this title already exists."; } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
+                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (!trimmed) err = "Page title cannot be empty or whitespace only."; else if (trimmed.includes("/")) err = "Page title cannot contain '/'."; else if (trimmed.toLowerCase() !== String(model.original.text || "").trim().toLowerCase() && ((window as any).appStore || (window as any).generalStore)?.pageExists?.(trimmed)) { err = "A page with this title already exists."; } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
                 >
 
                 <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->
@@ -2179,6 +2179,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                         {renameError}
                     </div>
                 {/if}
+
                 {#if !isPageTitle && model.votes.length > 0}
                     <OutlinerItemVoteCount
                         count={model.votes.length}

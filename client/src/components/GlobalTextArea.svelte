@@ -128,7 +128,7 @@ function handleKeyDown(event: KeyboardEvent) {
     if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
 
 
-    try { KeyEventHandler.handleKeyDown(event); } catch (e) { if (e instanceof Error && e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const itemId = store.getActiveItem(); if (itemId && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: e.message.split(":")[1], itemId } })); } else { throw e; } }
+    KeyEventHandler.handleKeyDown(event);
 
     // Fallback for headless/E2E environments where input event may not fire
     try {
@@ -155,12 +155,12 @@ function handleInput(event: Event) {
     if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
 
 
-    try { KeyEventHandler.handleInput(event); } catch (e) { if (e instanceof Error && e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const itemId = store.getActiveItem(); if (itemId && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: e.message.split(":")[1], itemId } })); } else { throw e; } }
+    KeyEventHandler.handleInput(event);
 }
 
 // Delegate CompositionEnd event to KeyEventHandler
 function handleCompositionEnd(event: CompositionEvent) {
-    try { KeyEventHandler.handleCompositionEnd(event); } catch (e) { if (e instanceof Error && e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const itemId = store.getActiveItem(); if (itemId && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: e.message.split(":")[1], itemId } })); } else { throw e; } }
+    KeyEventHandler.handleCompositionEnd(event);
 
     store.setIsComposing(false);
     if (textareaRef) {
@@ -273,7 +273,7 @@ function handleBlur(event: FocusEvent) {
     oncut={handleCut}
     onpaste={async event => {
         try {
-            try { await handlePaste(event); } catch (e) { if (e instanceof Error && e.message.startsWith("PAGE_RENAME_CONFLICT:")) { const itemId = store.getActiveItem(); if (itemId && typeof window !== "undefined") window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: e.message.split(":")[1], itemId } })); return; } throw e; }
+            await handlePaste(event);
         } catch (error) {
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new CustomEvent("clipboard-read-error"));

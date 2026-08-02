@@ -41,6 +41,7 @@ describe("pageUtils", () => {
             expect(findPageByName(items, "Test Page")).toBeNull();
         });
 
+
         it("should return the first match if there are duplicate titles", () => {
             const first = { text: "Alpha", id: "1" };
             const second = { text: "alpha", id: "2" };
