@@ -19,7 +19,7 @@ jobs:
         working-directory: client
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -35,7 +35,7 @@ jobs:
 
       - name: Setup Node
         if: steps.changes.outputs.run == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -58,7 +58,7 @@ jobs:
 
       - name: Upload HTML report
         if: always() && steps.changes.outputs.run == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: stryker-nightly-html-report
           path: |

@@ -17,7 +17,8 @@ test("deploy workflow uses self-hosted runner and firebase deploy", () => {
     expect(fs.existsSync(workflowFile)).toBe(true);
     const workflow = fs.readFileSync(workflowFile, "utf-8");
     expect(workflow).toMatch(/runs-on:\s*(self-hosted|ubuntu-latest)/);
-    expect(workflow).toMatch(/actions\/checkout@v4/);
-    expect(workflow).toMatch(/actions\/setup-node@v4/);
+    // v5+ runs on Node.js 24; v4 targets the deprecated Node.js 20 runtime.
+    expect(workflow).toMatch(/actions\/checkout@v(?:[5-9]|\d{2,})/);
+    expect(workflow).toMatch(/actions\/setup-node@v(?:[5-9]|\d{2,})/);
     expect(workflow).toMatch(/firebase deploy/);
 });
