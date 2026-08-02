@@ -2047,7 +2047,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 
     id={isPageTitle ? undefined : model.id}
     role={isPageTitle ? "presentation" : "treeitem"}
-    tabindex={isPageTitle ? undefined : (isItemActive ? 0 : -1)}
+    tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
     aria-level={isPageTitle ? undefined : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
     aria-selected={isPageTitle ? undefined : isItemActive}
