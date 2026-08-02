@@ -23,9 +23,13 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 
 An overview of the basic interface and navigation.
 
-### Creating a Page
+### Creating and Browsing Pages
 
 You can create a new page from the project home page. Simply enter a title in the "New page name" input field and click the **Create** button.
+
+The project home page also displays a list of all pages. You can:
+- Toggle the display between **List view** and **Grid view** using the buttons in the top right.
+- Change the **Sort order** of the pages (e.g., Modified, Created, Last visited, Most linked, Most viewed, Title) using the dropdown menu.
 
 ### Switching to Edit Mode
 
@@ -40,12 +44,12 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 
 ### Sidebar Navigation
 
-Click the sidebar toggle button (hamburger menu) in the top-left corner to access the main sidebar navigation. The sidebar provides quick access to:
+Click the sidebar toggle button (hamburger menu) in the top-left corner to access the main sidebar navigation. Sections in the sidebar can be expanded or collapsed by clicking their headers. The sidebar provides quick access to:
 
 - **Projects:** Switch between your projects or go home.
-- **Pages:** Browse all pages in the current project.
+- **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the add (+) button in the section header.
 - **Tables:** View and manage database tables.
-- **Scheduled SQL:** Manage automated, recurring queries.
+- **Scheduled SQL:** Manage automated, recurring queries. You can quickly create a new schedule rule by clicking the add button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
 - **GitHub:** Quick link to the source code.
