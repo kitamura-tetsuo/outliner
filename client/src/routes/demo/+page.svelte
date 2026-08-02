@@ -11,6 +11,7 @@
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
         import Breadcrumb from "../../components/Breadcrumb.svelte";
+    import ConfirmDialog from "../../components/ConfirmDialog.svelte";
 
     let isLoading = $state(true);
     let isResetting = $state(false);
@@ -18,6 +19,7 @@
     let resetError: string | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
     let isDestroyed = false;
+    let showResetConfirm = $state(false);
 
     // Reactive page list (depends on store.pagesVersion)
     let pages = $derived.by(() => {
@@ -121,7 +123,7 @@
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">Public Demo Project</h1>
             <button type="button"
-                onclick={resetDemo}
+                onclick={() => showResetConfirm = true}
                 disabled={isResetting || isLoading}
                 data-testid="demo-reset-button"
                 aria-busy={isResetting || isLoading}
@@ -138,6 +140,16 @@
                 {/if}
             </button>
         </div>
+        <ConfirmDialog
+            bind:isOpen={showResetConfirm}
+            title="Reset Demo Content"
+            message="This action will erase all current edits and reset the demo for all visitors. This cannot be undone. Are you sure?"
+            confirmText="Reset"
+            cancelText="Cancel"
+            isDestructive={true}
+            onConfirm={resetDemo}
+            onCancel={() => { showResetConfirm = false; }}
+        />
         <p class="mt-1 text-sm text-gray-500">
             This is a public, collaborative demo project. Each page demonstrates a group of features. Content resets every 24 hours, or immediately with the reset button.
         </p>

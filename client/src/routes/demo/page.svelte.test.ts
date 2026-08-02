@@ -86,7 +86,15 @@ describe("Demo Page Reset Button", () => {
         expect(resetButton).not.toHaveClass("cursor-not-allowed");
     });
 
-    it("should apply disabled styling to the reset button during reset", async () => {
+    it("should open confirmation dialog and then apply disabled styling during reset", async () => {
+        // mock dialog methods for jsdom
+        HTMLDialogElement.prototype.showModal = vi.fn(function() {
+            this.open = true;
+        });
+        HTMLDialogElement.prototype.close = vi.fn(function() {
+            this.open = false;
+        });
+
         render(DemoPage);
 
         // Wait for initializeDemo to finish
@@ -94,10 +102,34 @@ describe("Demo Page Reset Button", () => {
 
         const resetButton = screen.getByTestId("demo-reset-button");
 
-        // Trigger a reset
+        // Click to open dialog
         await fireEvent.click(resetButton);
 
-        // After click, isResetting should be true
+        // Wait a tick for Svelte $effect to open the dialog
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Find the confirm button in the dialog. Use findByText inside the dialog context or just findByRole
+        // Since getByRole had an error, there might be multiple or it might not be visible.
+        // The error previously was: "Received element is not disabled: <button data-testid="demo-reset-button" ..."
+        // This implies fireEvent.click(confirmButton) clicked the wrong button OR we didn't mock seedDemo correctly to keep it pending.
+
+        // Let's find the confirm button explicitly
+        const confirmButton = await screen.findByRole("button", { name: "Reset" });
+
+        const { seedDemo } = await import("../../lib/demoSeed");
+        let resolveSeed: (val: unknown) => void;
+        (seedDemo as import("vitest").Mock).mockImplementationOnce(() =>
+            new Promise((resolve) => {
+                resolveSeed = resolve;
+            })
+        );
+
+        await fireEvent.click(confirmButton);
+
+        // Wait a tick for the state to update
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // After click, isResetting should be true because the mock hasn't resolved
         expect(resetButton).toBeDisabled();
         expect(resetButton).toHaveClass("bg-gray-300");
         expect(resetButton).toHaveClass("text-gray-500");
@@ -106,5 +138,8 @@ describe("Demo Page Reset Button", () => {
         // Ensure it doesn't have the active classes
         expect(resetButton).not.toHaveClass("bg-blue-600");
         expect(resetButton).not.toHaveClass("hover:bg-blue-700");
+
+        // Clean up
+        resolveSeed!({ ok: true });
     });
 });
