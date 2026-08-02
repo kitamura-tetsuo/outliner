@@ -1,9 +1,9 @@
+import { untrack } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveProjectSnapshot } from "../../../lib/projectSnapshot";
-import { setRoomSyncState, clearRoomSyncStates } from "../../../lib/yjs/roomSyncState";
+import { clearRoomSyncStates, setRoomSyncState } from "../../../lib/yjs/roomSyncState";
 import { Project } from "../../../schema/app-schema";
 import { store } from "../../../stores/store.svelte";
-import { untrack } from "svelte";
 
 vi.mock("../../../lib/projectSnapshot", () => {
     return {
