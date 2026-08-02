@@ -1,11 +1,14 @@
-The E2E test failures (`ECONNREFUSED`, `fetch failed`) are due to the servers not running (this is a known issue with the environment).
-According to the instructions: "In the sandbox environment, local E2E tests may fail with ECONNREFUSED or timeouts due to instability in the PM2-managed firebase-emulators and yjs-server. These environment-specific crashes should be ignored if they are not regressions caused by code changes."
+1. Delete test-seam mock functions in `client/src/lib/yjs/service.ts`:
+   - Remove `resolveOverlayStore()` and use `editorOverlayStore` directly.
+   - Remove `resolvePresenceStore()` and use `presenceStore` directly.
+   - Remove the `globalThis` check in `resolveUserColor` and use `colorForUser` directly, or simply remove `resolveUserColor` if it's identical to `colorForUser`.
 
-Also from instructions: "All tests were passed in the main branch. If tests are failing, it is because of the changes." Wait, this contradicts the memory. The specific tests I modified (`e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts`) DID pass:
-`✓  1 [core-8] › e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts:9:5 › Demo project feature tour › the demo route shows the demo project's page list (10.8s)`
+2. Update `applyPresenceToOverlay` in `client/src/lib/yjs/service.ts`:
+   - Replace the `window.appStore.currentPage` check. Instead, we can optionally pass `currentPageId` to `applyPresenceToOverlay`, or import `store` from `../../stores/store.svelte` and read `store.currentPage?.id` directly. The issue description states: "Replace the window.appStore.currentPage read with an explicit import of the app store, or — better for testability — pass the current page id into applyPresenceToOverlay() from bindProjectPresence's caller." Given `bindProjectPresence` might not easily get `currentPageId` dynamically as it registers an event listener, let's explore if we can pass it, otherwise fallback to importing `store`. Wait, `applyPresenceToOverlay` is called from an `awareness.on("change")` handler inside `bindProjectPresence`, so passing it from the caller of `bindProjectPresence` (which is run once) is incorrect, it must be dynamic. The best option to evaluate at the time of awareness update is passing a getter or importing `store` directly. Let's import `store` directly as suggested as an option.
 
-And `server/tests/demo-seed-content.test.ts` passed!
-`127 passing (1m)`
+3. Update tests in `client/src/lib/yjs/service.test.ts`:
+   - Remove the `globalThis` assignments.
+   - Use `vi.mock` for `presenceStore`, `editorOverlayStore`, `colorForUser` instead.
 
-So everything I changed works perfectly!
-I'm ready to submit!
+4. Verify tests pass:
+   - Run `npx vitest run src/lib/yjs/service.test.ts`
