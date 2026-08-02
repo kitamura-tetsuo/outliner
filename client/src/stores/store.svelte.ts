@@ -164,6 +164,30 @@ export class GeneralStore {
     // Explicit signal for pages updates to ensure Svelte 5 reactivity
     pagesVersion = $state(0);
 
+    // Alias tracking
+    aliasesVersion = $state(0);
+    private _aliasIndexVersion = -1;
+    /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal index map intentionally avoids fine-grained tracking overhead */
+    private _aliasIndex = new Map<string, { item: Item; pageTitle: string; }[]>();
+
+    public getAliasIndex(): Map<string, { item: Item; pageTitle: string; }[]> {
+        if (this._aliasIndexVersion !== this.aliasesVersion) {
+            this._rebuildAliasIndex();
+            this._aliasIndexVersion = this.aliasesVersion;
+        }
+        return this._aliasIndex;
+    }
+
+    private _rebuildAliasIndex() {
+        this._aliasIndex.clear();
+        if (!this._project?.items) return;
+        for (const page of iterateItems(this._project.items)) {
+            if (!page) continue;
+            const pageTitle = String(page.text || "");
+            this._traverseForAliases(page, pageTitle, this._aliasIndex);
+        }
+    }
+
     // Cache of page names (normalized to lowercase) for O(1) lookup
     private _pageNamesCache = new SvelteSet<string>();
 
@@ -227,35 +251,30 @@ export class GeneralStore {
      * Finds all items in the current project that refer to the given targetId as their aliasTargetId.
      */
     public findReferringAliases(targetId: string): { item: Item; pageTitle: string; }[] {
-        const result: { item: Item; pageTitle: string; }[] = [];
-        if (!targetId || !this._project?.items) return result;
-
-        try {
-            for (const page of iterateItems(this._project.items)) {
-                if (!page) continue;
-                const pageTitle = String(page.text || "");
-                this._traverseForAliases(page, targetId, pageTitle, result);
-            }
-        } catch (e) {
-            logger.error("Error finding referring aliases", e);
-        }
-        return result;
+        if (!targetId || !this._project?.items) return [];
+        void this.aliasesVersion;
+        return this.getAliasIndex().get(targetId) || [];
     }
 
     private _traverseForAliases(
         node: Item,
-        targetId: string,
         pageTitle: string,
-        result: { item: Item; pageTitle: string; }[],
+        index: Map<string, { item: Item; pageTitle: string; }[]>,
     ) {
-        if (node.aliasTargetId === targetId) {
-            result.push({ item: node, pageTitle });
+        const targetId = node.aliasTargetId;
+        if (targetId) {
+            let arr = index.get(targetId);
+            if (!arr) {
+                arr = [];
+                index.set(targetId, arr);
+            }
+            arr.push({ item: node, pageTitle });
         }
         const children = node.items;
         if (children) {
             for (const child of iterateItems(children)) {
                 if (!child) continue;
-                this._traverseForAliases(child, targetId, pageTitle, result);
+                this._traverseForAliases(child, pageTitle, index);
             }
         }
     }
@@ -321,6 +340,7 @@ export class GeneralStore {
         let snapshotTimeout: ReturnType<typeof setTimeout> | null = null;
         let updatePending = false;
         let rebuildPending = false;
+        let updateAliasesPending = false;
 
         const handler = (events: Array<Y.YEvent<Y.AbstractType<unknown>>>, _tr?: Y.Transaction) => {
             /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- This set is local to the event loop, no reactivity needed */
@@ -354,6 +374,7 @@ export class GeneralStore {
 
             // Check if we need to rebuild the page name cache
             let shouldRebuild = false;
+            let shouldUpdateAliases = false;
             try {
                 // Check if any event affects page existence or page titles
                 for (const event of events) {
@@ -363,6 +384,7 @@ export class GeneralStore {
                         if (event.changes.keys.size > 0) {
                             // Check if any added key is a page
                             for (const [key, change] of event.changes.keys) {
+                                shouldUpdateAliases = true;
                                 if (change.action === "add" || change.action === "update") {
                                     try {
                                         const parent = safeGetNodeParent(project.tree, key);
@@ -375,11 +397,17 @@ export class GeneralStore {
                                         logger.error(_e);
                                     }
                                 } else if (change.action === "delete") {
+                                    shouldUpdateAliases = true;
                                     // Conservative approach: rebuild on delete as we can't easily check parent
                                     shouldRebuild = true;
                                 }
                             }
                         }
+                    } else if (
+                        event.keys.has("aliasTargetId")
+                        || (event.path.length > 0 && event.path[event.path.length - 1] === "aliasTargetId")
+                    ) {
+                        shouldUpdateAliases = true;
                     } else if (event.path.length === 1 && event.keys.has("text")) {
                         // Change on a node's property (text) (Top level structure event maybe?)
                         const nodeId = String(event.path[0]);
@@ -433,6 +461,10 @@ export class GeneralStore {
 
             if (shouldRebuild) {
                 rebuildPending = true;
+                shouldUpdateAliases = true;
+            }
+            if (shouldUpdateAliases) {
+                updateAliasesPending = true;
             }
 
             // Batch UI updates and cache rebuilds using microtasks
@@ -441,6 +473,10 @@ export class GeneralStore {
                 queueMicrotask(() => {
                     updatePending = false;
                     this.pagesVersion++; // Trigger signal
+                    if (updateAliasesPending) {
+                        updateAliasesPending = false;
+                        this.aliasesVersion++;
+                    }
                     this._pagesData.items = project.items;
                     if (rebuildPending) {
                         rebuildPending = false;
