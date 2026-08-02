@@ -6,7 +6,7 @@ import {
     onDestroy,
     onMount,
 } from "svelte";
-import { KeyEventHandler, isForeignInput } from "../lib/KeyEventHandler";
+import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
