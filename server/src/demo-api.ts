@@ -26,6 +26,13 @@ const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolea
 const forceRateLimits = new Map<string, number>();
 let lastGlobalForceReset = 0;
 
+export interface DemoFastPath {
+    templateVersion: number;
+    lastReset: number;
+    expiresAt: number;
+}
+let demoFastPath: DemoFastPath | null = null;
+
 export interface DemoResetState {
     isEmpty: boolean;
     lastReset: number | undefined;
@@ -55,6 +62,12 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
     router.post("/seed-demo", async (req, res): Promise<void> => {
         try {
             const force = req.body?.force === true;
+            const invalidateFastPath = req.body?.invalidateFastPath === true;
+
+            if (invalidateFastPath) {
+                logger.info({ event: "seed_demo_fastpath_invalidated" });
+                demoFastPath = null;
+            }
             logger.info({ event: "seed_demo_request", force });
 
             let clientIpForRateLimit: string | undefined;
@@ -89,6 +102,16 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     return;
                 }
                 clientIpForRateLimit = clientIp;
+            } else if (demoFastPath) {
+                const now = Date.now();
+                if (
+                    demoFastPath.expiresAt > now && demoFastPath.templateVersion === DEMO_TEMPLATE_VERSION
+                    && demoFastPath.lastReset > 0 && (now - demoFastPath.lastReset <= RESET_INTERVAL_MS)
+                ) {
+                    logger.info({ event: "seed_demo_fastpath_hit", lastReset: demoFastPath.lastReset });
+                    res.json({ success: true, reset: false, fastPath: true });
+                    return;
+                }
             }
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
@@ -271,6 +294,12 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 meta.set("lastReset", now);
                                 meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
                             });
+
+                            demoFastPath = {
+                                templateVersion: DEMO_TEMPLATE_VERSION,
+                                lastReset: now,
+                                expiresAt: now + 5 * 60 * 1000,
+                            };
                         } finally {
                             await directConnection.transact((document: unknown) => {
                                 const ydoc = document as unknown as Y.Doc;
@@ -280,6 +309,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         }
                     } else {
                         logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
+                        if (templateVersion !== undefined && lastReset !== undefined) {
+                            demoFastPath = {
+                                templateVersion,
+                                lastReset,
+                                expiresAt: now + 5 * 60 * 1000,
+                            };
+                        }
                     }
 
                     return { success: true, reset: shouldReset };

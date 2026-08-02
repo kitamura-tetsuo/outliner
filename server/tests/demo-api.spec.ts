@@ -8,6 +8,13 @@ import { populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
 
 describe("Demo API", () => {
+    afterEach(async () => {
+        // Reset fast path
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+        await request(app).post("/api/seed-demo").send({ invalidateFastPath: true });
+    });
     let mockHocuspocus: any;
     let mockDoc: Y.Doc;
     let mockDirectConnection: any;
@@ -31,6 +38,20 @@ describe("Demo API", () => {
         mockHocuspocus = {
             openDirectConnection: jest.fn().mockResolvedValue(mockDirectConnection),
         };
+    });
+
+    it("should handle fast path", async () => {
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+
+        // First request to set fast path
+        await request(app).post("/api/seed-demo");
+
+        // Second request should hit fast path
+        const res = await request(app).post("/api/seed-demo");
+        expect(res.body.fastPath).toBe(true);
+        expect(res.body.reset).toBe(false);
     });
 
     it("should reset empty document", async () => {

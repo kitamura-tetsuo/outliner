@@ -7,6 +7,7 @@
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
+    import { acquireDemoClient, releaseDemoClient } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
@@ -70,27 +71,15 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             store.currentPage = undefined;
 
             // Connect once; page switches within /demo reuse the same client
-            if (!yjsStore.yjsClient || !store.project) {
-                // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
-                const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
-                if (isDestroyed) {
-                    client?.dispose();
-                    return;
-                }
-                if (!client) {
-                    throw new Error("Failed to connect to the demo project.");
-                }
-                yjsStore.yjsClient = client;
-                store.project = AppProject.fromDoc(client.getProject().ydoc);
+            const { client, project } = await acquireDemoClient();
+            if (isDestroyed) {
+                return;
             }
+            if (!client) {
+                throw new Error("Failed to connect to the demo project.");
+            }
+            yjsStore.yjsClient = client;
+            store.project = project;
 
             // Let the $effect block handle page resolution and sync state
         } catch (err) {
@@ -154,7 +143,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             } else if (!isSyncing) {
                 // Done syncing and still not found
                 store.currentPage = undefined;
-                pageNotFound = true;
+                if (!pageNotFound) {
+                    pageNotFound = true;
+                    // Tell server about missing page silently in background
+                    seedDemo({ invalidateFastPath: true }).catch(() => {});
+                }
             }
         }
     });
@@ -162,10 +155,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            releaseDemoClient();
         } catch (_e) { logger.error(_e); }
     });
 </script>

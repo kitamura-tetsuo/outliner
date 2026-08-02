@@ -4,6 +4,7 @@
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
     import { onMount, onDestroy } from "svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
+    import { acquireDemoClient, releaseDemoClient } from "../../../lib/demoInit";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -22,27 +23,15 @@
             isLoading = true;
             error = undefined;
 
-            if (!yjsStore.yjsClient || !store.project) {
-                // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
-                const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
-                if (isDestroyed) {
-                    client?.dispose();
-                    return;
-                }
-                if (!client) {
-                    throw new Error("Failed to connect to the demo project.");
-                }
-                yjsStore.yjsClient = client;
-                store.project = AppProject.fromDoc(client.getProject().ydoc);
+            const { client, project } = await acquireDemoClient();
+            if (isDestroyed) {
+                return;
             }
+            if (!client) {
+                throw new Error("Failed to connect to the demo project.");
+            }
+            yjsStore.yjsClient = client;
+            store.project = project;
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo graph view");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
@@ -58,10 +47,7 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            releaseDemoClient();
         } catch (_e) { logger.error(_e); }
     });
 

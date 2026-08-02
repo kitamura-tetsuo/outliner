@@ -34,8 +34,8 @@ function resolveApiBaseUrl(): string {
  * when the demo content was last seeded.
  */
 export async function seedDemo(
-    options: { force?: boolean; throwOnError?: boolean; } = {},
-): Promise<{ ok: boolean; reason?: "network" | "http" | "rate-limit"; }> {
+    options: { force?: boolean; throwOnError?: boolean; invalidateFastPath?: boolean; } = {},
+): Promise<{ ok: boolean; reason?: "network" | "http" | "rate-limit"; reset?: boolean; }> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -48,7 +48,10 @@ export async function seedDemo(
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ force: options.force === true }),
+            body: JSON.stringify({
+                force: options.force === true,
+                invalidateFastPath: options.invalidateFastPath === true,
+            }),
         });
         if (!response.ok) {
             let errorMsg = response.statusText;
@@ -75,7 +78,8 @@ export async function seedDemo(
             }
             return { ok: false, reason: errorRateLimitMs !== undefined ? "rate-limit" : "http" };
         }
-        return { ok: true };
+        const responseData = await response.json().catch(() => ({}));
+        return { ok: true, reset: responseData.reset === true };
     } catch (seedErr) {
         if (options.throwOnError) {
             if (seedErr instanceof SeedDemoError) {

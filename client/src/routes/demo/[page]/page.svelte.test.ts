@@ -5,6 +5,24 @@ import { yjsStore } from "../../../stores/yjsStore.svelte";
 import DemoPageView from "./+page.svelte";
 
 // Mock dependencies
+vi.mock("../../../lib/demoInit", () => ({
+    acquireDemoClient: vi.fn().mockImplementation(async () => {
+        const Y = await import("yjs");
+        const doc = new Y.Doc();
+        doc.getMap("metadata").set("title", "demo");
+        doc.getMap("metadata").set("lastReset", 0);
+        return {
+            client: { getProject: () => ({ ydoc: doc }), dispose: vi.fn() },
+            project: {
+                ydoc: doc,
+                addPage: vi.fn(),
+                items: { find: vi.fn(), root: { items: { toArray: () => [] } } },
+            },
+        };
+    }),
+    releaseDemoClient: vi.fn(),
+}));
+
 vi.mock("../../../lib/demoSeed", () => ({
     seedDemo: vi.fn().mockResolvedValue({ ok: true }),
     DEMO_PROJECT_NAME: "demo",
@@ -82,8 +100,8 @@ describe("Demo Page View", () => {
 
     it("should show loading state initially", async () => {
         // We delay the getYjsClient mock to force the loading state to stay active
-        const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as Mock).mockImplementationOnce(() => new Promise(() => {}));
+        const { acquireDemoClient } = await import("../../../lib/demoInit");
+        (acquireDemoClient as Mock).mockImplementationOnce(() => new Promise(() => {}));
 
         render(DemoPageView);
 
@@ -134,17 +152,16 @@ describe("Demo Page View", () => {
 
     it("should render reset state when isResetting is true", async () => {
         const Y_mod = await import("yjs");
-        const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
-            containerId: "mock-container",
-            getProject: () => {
-                const doc = new Y_mod.Doc();
-                doc.getMap("metadata").set("title", "demo");
-                doc.getMap("metadata").set("isResetting", true);
-                doc.getMap("metadata").set("resetStartedAt", Date.now());
-                return { ydoc: doc };
-            },
-            dispose: vi.fn(),
+        const { acquireDemoClient } = await import("../../../lib/demoInit");
+        (acquireDemoClient as Mock).mockImplementationOnce(async () => {
+            const doc = new Y_mod.Doc();
+            doc.getMap("metadata").set("title", "demo");
+            doc.getMap("metadata").set("isResetting", true);
+            doc.getMap("metadata").set("resetStartedAt", Date.now());
+            return {
+                client: { containerId: "mock-container", getProject: () => ({ ydoc: doc }), dispose: vi.fn() },
+                project: { ydoc: doc },
+            };
         });
 
         const { findPageByName } = await import("../../../utils/pageUtils");

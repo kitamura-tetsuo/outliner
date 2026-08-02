@@ -52,7 +52,7 @@ describe("Demo rename template trigger", () => {
         expect(found).to.equal(true);
 
         // Second call should reset because of the renamed page
-        const res2 = await request(app).post("/api/seed-demo").send({});
+        const res2 = await request(app).post("/api/seed-demo").send({ invalidateFastPath: true });
         expect(res2.body.reset).to.equal(true);
     });
 });

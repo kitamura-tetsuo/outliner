@@ -3,6 +3,7 @@
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
+    import { acquireDemoClient, releaseDemoClient } from "../../lib/demoInit";
     import { getLogger } from "../../lib/logger";
     import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
 
@@ -32,27 +33,14 @@
             isLoading = true;
             error = undefined;
 
-            // Seed demo project via API (no-op when already seeded)
-            const seedResult = await seedDemo();
-            if (!seedResult.ok) {
-                if (seedResult.reason === "network") {
-                    throw new Error("Can't reach the demo server — retrying...");
-                }
-            }
-            if (isDestroyed) return;
-
-            // Connect to demo room
-            const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+            const { client, project } = await acquireDemoClient();
             if (isDestroyed) {
-                client?.dispose();
                 return;
             }
             if (!client) {
                 throw new Error("Failed to connect to the demo project.");
             }
-
             yjsStore.yjsClient = client;
-            const project = AppProject.fromDoc(client.getProject().ydoc);
             store.project = project;
         } catch (err) {
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to initialize demo");
@@ -101,10 +89,7 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            releaseDemoClient();
         } catch (_e) { logger.error(_e); }
     });
 </script>
