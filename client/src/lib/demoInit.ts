@@ -11,6 +11,10 @@ let activeCount = 0;
 let initPromise: Promise<{ client: unknown; project: AppProject; }> | null = null;
 let releaseTimeout: ReturnType<typeof setTimeout> | null = null;
 
+export function forceDemoReinit() {
+    initPromise = null;
+}
+
 export async function acquireDemoClient(): Promise<{ client: unknown; project: AppProject; }> {
     activeCount++;
     if (releaseTimeout) {

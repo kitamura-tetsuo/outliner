@@ -120,7 +120,7 @@ ensure_python_env() {
   local VENV="${ROOT_DIR}/.venv"
   if [ ! -x "${VENV}/bin/python" ] || ! "${VENV}/bin/python" -c 'import sys' >/dev/null 2>&1; then
     echo "Recreating Python virtual environment (missing or unusable)..."
-    find "${VENV}" -mindepth 1 -delete 2>/dev/null || true
+    rm -rf "${VENV}"
     python3 -m venv "${VENV}"
   fi
   # shellcheck disable=SC1090

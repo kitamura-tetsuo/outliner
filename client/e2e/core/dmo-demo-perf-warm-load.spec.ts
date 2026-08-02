@@ -1,7 +1,4 @@
 import { expect, test } from "@playwright/test";
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-
-registerCoverageHooks();
 import { TestHelpers } from "../utils/testHelpers";
 
 test("Demo warm load performance", async ({ page }, testInfo) => {

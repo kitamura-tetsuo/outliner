@@ -3,7 +3,7 @@
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
-    import { acquireDemoClient, releaseDemoClient } from "../../lib/demoInit";
+    import { acquireDemoClient, releaseDemoClient, forceDemoReinit } from "../../lib/demoInit";
     import { getLogger } from "../../lib/logger";
     import { removeYjsClientByProjectId } from "../../services";
 
@@ -63,6 +63,7 @@
             removeYjsClientByProjectId(DEMO_PROJECT_NAME);
             yjsStore.yjsClient = undefined;
             store.project = undefined;
+            forceDemoReinit();
             await initializeDemo();
             if (isDestroyed) return;
             resetDone = error === undefined;

@@ -33,9 +33,14 @@ test.describe("Demo manual reset button", () => {
 
         const confirmButton = page.getByRole("button", { name: "Reset", exact: true });
         const [response] = await Promise.all([
-            page.waitForResponse(resp => resp.url().includes("/api/seed-demo") && resp.request().method() === "POST", {
-                timeout: 30000,
-            }),
+            page.waitForResponse(
+                resp =>
+                    resp.url().includes("/api/seed-demo") && resp.request().method() === "POST"
+                    && resp.request().postDataJSON()?.force === true,
+                {
+                    timeout: 30000,
+                },
+            ),
             confirmButton.click(),
         ]);
 
