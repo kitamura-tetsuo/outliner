@@ -53,7 +53,7 @@ export class CursorEditor {
     }
 
     private validateRename(
-        node: any,
+        node: import("../../schema/app-schema").Item,
         changeText: string,
         action: "insert" | "deleteBackward" | "deleteForward" | "paste",
     ): boolean {
@@ -99,7 +99,14 @@ export class CursorEditor {
             const oldTitle = currentText.trim().toLowerCase();
             const newTitle = trimmed.toLowerCase();
             const gStore = typeof window !== "undefined"
-                ? ((window as any).appStore || (window as any).generalStore)
+                ? ((window as unknown as {
+                    appStore?: { pageExists?: (name: string) => boolean; };
+                    generalStore?: { pageExists?: (name: string) => boolean; };
+                }).appStore
+                    || (window as unknown as {
+                        appStore?: { pageExists?: (name: string) => boolean; };
+                        generalStore?: { pageExists?: (name: string) => boolean; };
+                    }).generalStore)
                 : null;
             if (oldTitle !== newTitle && gStore?.pageExists?.(trimmed)) {
                 err = "A page with this title already exists.";
