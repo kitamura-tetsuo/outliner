@@ -26,7 +26,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "title", "start_at"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -42,7 +41,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "title", "start_at"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -59,7 +57,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "title"],
                 roles: { roleStart: "start_at", groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -69,21 +66,6 @@ describe("CalendarRoleEditor", () => {
         expect(startSelect.value).toBe("start_at");
     });
 
-    it("shows the read-only banner when the query is missing source_kind/source_id", () => {
-        const { getByTestId } = render(CalendarRoleEditor, {
-            props: {
-                project,
-                calendarId,
-                resultColumns: ["id", "title"],
-                roles: { groupAxes: [], laneOrder: [] },
-                readOnly: true,
-                readOnlyReason: "Read-only calendar: missing source_kind/source_id",
-            },
-        });
-
-        expect(getByTestId("calendar-read-only-banner").textContent).toMatch(/source_kind/);
-    });
-
     it("writes the selected column into the due role assignment", async () => {
         const { getByTestId } = render(CalendarRoleEditor, {
             props: {
@@ -91,7 +73,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "due"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -109,7 +90,6 @@ describe("CalendarRoleEditor", () => {
                 query: "SELECT id, text AS title, due FROM outline_items",
                 resultColumns: ["id", "title", "due"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -125,7 +105,6 @@ describe("CalendarRoleEditor", () => {
                     "SELECT id FROM outline_items WHERE start_at >= current_setting('view.range_start')::timestamptz",
                 resultColumns: ["id"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -140,7 +119,6 @@ describe("CalendarRoleEditor", () => {
                 query: "",
                 resultColumns: [],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -154,7 +132,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "tags"],
                 roles: { groupAxes: [], laneOrder: [] },
-                readOnly: false,
             },
         });
 
@@ -173,7 +150,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "tags"],
                 roles: { groupAxes: ["tags"], laneOrder: ["urgent"] },
-                readOnly: false,
                 knownLaneValues: ["urgent", "work"],
             },
         });
@@ -191,7 +167,6 @@ describe("CalendarRoleEditor", () => {
             calendarId,
             resultColumns: ["id", "tags"],
             roles: { groupAxes: ["tags"], laneOrder: ["urgent", "work"] },
-            readOnly: false,
             knownLaneValues: ["urgent", "work"],
         };
         const { getByTestId, rerender } = render(CalendarRoleEditor, { props });
@@ -212,7 +187,6 @@ describe("CalendarRoleEditor", () => {
                 calendarId,
                 resultColumns: ["id", "tags"],
                 roles: { groupAxes: ["tags"], laneOrder: [] },
-                readOnly: false,
             },
         });
 

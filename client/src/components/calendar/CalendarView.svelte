@@ -557,8 +557,6 @@ onDestroy(() => {
                     laneOrder: settings.laneOrder,
                     showEmptyLanes: settings.showEmptyLanes,
                 }}
-                readOnly={!editability.editable}
-                readOnlyReason={editability.readOnlyReason}
                 {knownLaneValues}
             />
         </section>
@@ -576,7 +574,7 @@ onDestroy(() => {
     {/if}
 
     {#if !editability.editable}
-        <p class="hint" data-testid="calendar-read-only-banner">Grid views below render this query's result, but nothing can be dragged until it is writable.</p>
+        <p class="hint read-only-banner" data-testid="calendar-read-only-banner">{editability.readOnlyReason}</p>
     {/if}
 
     {#if isGantt}
@@ -763,6 +761,16 @@ onDestroy(() => {
     border-radius: 4px;
     padding: 8px;
     background: #fafafa;
+}
+
+.read-only-banner {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    margin: 0 0 4px;
 }
 
 .status-toolbar {

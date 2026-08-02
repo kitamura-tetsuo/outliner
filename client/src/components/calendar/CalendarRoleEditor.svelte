@@ -39,8 +39,6 @@ interface Props {
     query?: string;
     resultColumns: string[];
     roles: RoleAssignment;
-    readOnly: boolean;
-    readOnlyReason?: string;
     /**
      * Distinct values the first group axis currently carries, from the latest
      * query result — the lane-order list mixes these with `roles.laneOrder`
@@ -57,8 +55,6 @@ let {
     query = "",
     resultColumns,
     roles,
-    readOnly,
-    readOnlyReason,
     knownLaneValues = [],
 }: Props = $props();
 
@@ -124,10 +120,6 @@ function setShowEmptyLanes(value: boolean) {
 </script>
 
 <div class="calendar-role-editor" data-testid="calendar-role-editor">
-    {#if readOnly}
-        <p class="read-only-banner" data-testid="calendar-read-only-banner">{readOnlyReason}</p>
-    {/if}
-
     {#if showRangeWarning}
         <p class="range-warning-banner" data-testid="calendar-range-warning">
             This query does not reference "{VIEW_RANGE_START_SETTING}" or "{VIEW_RANGE_END_SETTING}", so it reads
@@ -218,16 +210,6 @@ function setShowEmptyLanes(value: boolean) {
     display: flex;
     flex-direction: column;
     gap: 4px;
-}
-
-.read-only-banner {
-    background: #fef3c7;
-    border: 1px solid #fcd34d;
-    color: #92400e;
-    border-radius: 4px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
-    margin: 0 0 4px;
 }
 
 .range-warning-banner {
