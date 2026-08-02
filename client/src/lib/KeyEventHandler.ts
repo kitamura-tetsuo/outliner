@@ -956,8 +956,10 @@ export class KeyEventHandler {
         if (inputEvent.isComposing || inputEvent.inputType?.startsWith("insertComposition")) return;
         const cursorInstances = store.getLocalCursorInstances();
         cursorInstances.forEach(cursor => {
-            if (typeof (cursor as unknown as { onBeforeInput?: (e: InputEvent) => void }).onBeforeInput === "function") {
-                (cursor as unknown as { onBeforeInput: (e: InputEvent) => void }).onBeforeInput(inputEvent);
+            if (
+                typeof (cursor as unknown as { onBeforeInput?: (e: InputEvent) => void; }).onBeforeInput === "function"
+            ) {
+                (cursor as unknown as { onBeforeInput: (e: InputEvent) => void; }).onBeforeInput(inputEvent);
             }
         });
     }
@@ -1123,7 +1125,6 @@ export class KeyEventHandler {
                 }
             }
         }
-
 
         // Ensure focus on global textarea
         const textareaElement = store.getTextareaRef();

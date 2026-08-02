@@ -412,7 +412,7 @@ export class CursorEditor {
     }
 
     onBeforeInput(event: InputEvent) {
-        if (event.inputType === "insertReplacementText" && typeof event.getTargetRanges === 'function') {
+        if (event.inputType === "insertReplacementText" && typeof event.getTargetRanges === "function") {
             this.targetRangesForNextInput = event.getTargetRanges();
         }
     }
@@ -423,8 +423,10 @@ export class CursorEditor {
         // Helper to synthesize a keydown event for the cursor to handle deletions properly via Cursor.onKeyDown
         const dispatchKeyDown = (key: string) => {
             const evt = new KeyboardEvent("keydown", { key });
-            if (typeof (this.cursor as unknown as { onKeyDown?: (e: KeyboardEvent) => void }).onKeyDown === "function") {
-                (this.cursor as unknown as { onKeyDown: (e: KeyboardEvent) => void }).onKeyDown(evt);
+            if (
+                typeof (this.cursor as unknown as { onKeyDown?: (e: KeyboardEvent) => void; }).onKeyDown === "function"
+            ) {
+                (this.cursor as unknown as { onKeyDown: (e: KeyboardEvent) => void; }).onKeyDown(evt);
             }
         };
 
@@ -445,7 +447,7 @@ export class CursorEditor {
                     const range = this.targetRangesForNextInput[0];
                     if (range.startContainer === range.endContainer && range.startOffset !== range.endOffset) {
                         const target = this.cursor.findTarget();
-                        if (target && typeof target.deleteTextAt === 'function') {
+                        if (target && typeof target.deleteTextAt === "function") {
                             const lengthToDelete = range.endOffset - range.startOffset;
                             target.deleteTextAt(range.startOffset, lengthToDelete);
                             this.cursor.offset = range.startOffset;
