@@ -56,6 +56,7 @@ test.describe("LNK-0003: Internal link navigation function", () => {
             await expect(firstItem.locator(".item-content .control-char")).not.toBeVisible({ timeout: 5000 });
 
             // Select the link element that was created
+            console.log("HTML:", await firstItem.innerHTML());
             const linkElement = firstItem.locator("a[href]").first();
 
             // Check the link's href attribute
