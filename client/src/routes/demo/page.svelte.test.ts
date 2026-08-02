@@ -88,10 +88,10 @@ describe("Demo Page Reset Button", () => {
 
     it("should open confirmation dialog and then apply disabled styling during reset", async () => {
         // mock dialog methods for jsdom
-        HTMLDialogElement.prototype.showModal = vi.fn(function() {
+        HTMLDialogElement.prototype.showModal = vi.fn(function(this: HTMLDialogElement) {
             this.open = true;
         });
-        HTMLDialogElement.prototype.close = vi.fn(function() {
+        HTMLDialogElement.prototype.close = vi.fn(function(this: HTMLDialogElement) {
             this.open = false;
         });
 
