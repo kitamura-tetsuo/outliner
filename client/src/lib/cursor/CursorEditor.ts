@@ -30,6 +30,8 @@ export interface CursorEditingContext {
 }
 
 export class CursorEditor {
+    private targetRangesForNextInput: StaticRange[] | null = null;
+
     constructor(private readonly cursor: CursorEditingContext) {}
 
     // Pending "cursor visibility recovery" retry scheduled by deleteMultiItemSelection.
@@ -409,10 +411,60 @@ export class CursorEditor {
         }
     }
 
+    onBeforeInput(event: InputEvent) {
+        if (event.inputType === "insertReplacementText" && typeof event.getTargetRanges === "function") {
+            this.targetRangesForNextInput = event.getTargetRanges();
+        }
+    }
+
     onInput(event: InputEvent) {
-        const data = event.data;
-        if (data && data.length > 0) {
-            this.insertText(data);
+        const type = event.inputType;
+
+        // Helper to synthesize a keydown event for the cursor to handle deletions properly via Cursor.onKeyDown
+        const dispatchKeyDown = (key: string) => {
+            const evt = new KeyboardEvent("keydown", { key });
+            if (
+                typeof (this.cursor as unknown as { onKeyDown?: (e: KeyboardEvent) => void; }).onKeyDown === "function"
+            ) {
+                (this.cursor as unknown as { onKeyDown: (e: KeyboardEvent) => void; }).onKeyDown(evt);
+            }
+        };
+
+        if (type === "deleteContentBackward" || type === "deleteWordBackward" || type === "deleteByCut") {
+            dispatchKeyDown("Backspace");
+        } else if (type === "deleteContentForward" || type === "deleteWordForward") {
+            dispatchKeyDown("Delete");
+        } else if (type === "insertReplacementText") {
+            if (this.targetRangesForNextInput && this.targetRangesForNextInput.length > 0) {
+                const selection = this.getSelection();
+                if (selection && selectionHasRange(selection)) {
+                    if (selectionSpansMultipleItems(selection)) {
+                        this.deleteMultiItemSelection(selection);
+                    } else {
+                        this.deleteSelection();
+                    }
+                } else if (this.targetRangesForNextInput[0]) {
+                    const range = this.targetRangesForNextInput[0];
+                    if (range.startContainer === range.endContainer && range.startOffset !== range.endOffset) {
+                        const target = this.cursor.findTarget();
+                        if (target && typeof target.deleteTextAt === "function") {
+                            const lengthToDelete = range.endOffset - range.startOffset;
+                            target.deleteTextAt(range.startOffset, lengthToDelete);
+                            this.cursor.offset = range.startOffset;
+                        }
+                    }
+                }
+            }
+            this.targetRangesForNextInput = null;
+            const data = event.data;
+            if (data && data.length > 0) {
+                this.insertText(data);
+            }
+        } else {
+            const data = event.data;
+            if (data && data.length > 0) {
+                this.insertText(data);
+            }
         }
     }
 

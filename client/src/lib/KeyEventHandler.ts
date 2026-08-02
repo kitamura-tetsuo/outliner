@@ -950,6 +950,20 @@ export class KeyEventHandler {
     /**
      * Delegate Input events to each cursor
      */
+    static handleBeforeInput(event: Event) {
+        if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
+        const inputEvent = event as InputEvent;
+        if (inputEvent.isComposing || inputEvent.inputType?.startsWith("insertComposition")) return;
+        const cursorInstances = store.getLocalCursorInstances();
+        cursorInstances.forEach(cursor => {
+            if (
+                typeof (cursor as unknown as { onBeforeInput?: (e: InputEvent) => void; }).onBeforeInput === "function"
+            ) {
+                (cursor as unknown as { onBeforeInput: (e: InputEvent) => void; }).onBeforeInput(inputEvent);
+            }
+        });
+    }
+
     static handleInput(event: Event) {
         if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return;
 
@@ -1100,6 +1114,17 @@ export class KeyEventHandler {
 
         // Call onEdit callback
         store.triggerOnEdit();
+        if (cursorInstances.length > 0) {
+            const firstCursor = cursorInstances[0];
+            const node = firstCursor.findTarget();
+            const textareaElement = store.getTextareaRef();
+            if (textareaElement && node && typeof node.text !== "undefined") {
+                if (!store.isComposing) {
+                    textareaElement.value = node.text.toString();
+                    textareaElement.setSelectionRange(firstCursor.offset, firstCursor.offset);
+                }
+            }
+        }
 
         // Ensure focus on global textarea
         const textareaElement = store.getTextareaRef();
