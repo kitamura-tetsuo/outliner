@@ -5,7 +5,6 @@
 <script lang="ts">
     const componentId = `search-box-${searchBoxCounter++}`;
 
-import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
