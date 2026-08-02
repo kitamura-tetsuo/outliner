@@ -139,6 +139,51 @@ export class Comments {
 }
 
 // Wrapper for one node (item)
+
+export function validatePageTitle(tree: any, currentItemId: string, newText: string): string | null {
+    const trimmed = newText.trim();
+    if (!trimmed) return "Page title cannot be empty or whitespace only.";
+    if (trimmed.includes("/")) return "Page title cannot contain '/'.";
+
+    let rootChildrenKeys: string[] = [];
+    try {
+        rootChildrenKeys = tree.getNodeChildrenFromKey("root") || [];
+    } catch {
+        return null; // Ignore if error
+    }
+
+    const newTitle = trimmed.toLowerCase();
+    let newDecoded = newTitle;
+    try {
+        newDecoded = decodeURIComponent(newTitle);
+    } catch {
+        // ignore
+    }
+
+    for (const key of rootChildrenKeys) {
+        if (key === currentItemId) continue;
+        const val = tree.getNodeValueFromKey(key);
+        if (val) {
+            const yMap = typeof val.get === "function" ? val : null;
+            const t = yMap ? yMap.get("text") : val.text;
+            if (t) {
+                const title = String(t).trim().toLowerCase();
+                let decoded = title;
+                try {
+                    decoded = decodeURIComponent(title);
+                } catch {
+                    // ignore
+                }
+
+                if (title === newTitle || title === newDecoded || decoded === newTitle || decoded === newDecoded) {
+                    return "A page with this title already exists.";
+                }
+            }
+        }
+    }
+    return null;
+}
+
 export class Item {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
@@ -606,6 +651,15 @@ export class Item {
     }
 
     insertTextAt(offset: number, text: string) {
+        const parentKey = safeGetNodeParent(this.tree, this.key);
+        if (parentKey === "root") {
+            const currentText = String(this.value.get("text") || "");
+            const newText = currentText.slice(0, offset) + text + currentText.slice(offset);
+            const err = validatePageTitle(this.tree, this.key, newText);
+            if (err) {
+                throw new Error("PAGE_RENAME_CONFLICT:" + err);
+            }
+        }
         const t = this.value.get("text") as Y.Text;
         if (t && text) {
             this.ydoc.transact(() => {
@@ -616,6 +670,15 @@ export class Item {
     }
 
     deleteTextAt(offset: number, length: number) {
+        const parentKey = safeGetNodeParent(this.tree, this.key);
+        if (parentKey === "root") {
+            const currentText = String(this.value.get("text") || "");
+            const newText = currentText.slice(0, offset) + currentText.slice(offset + length);
+            const err = validatePageTitle(this.tree, this.key, newText);
+            if (err) {
+                throw new Error("PAGE_RENAME_CONFLICT:" + err);
+            }
+        }
         const t = this.value.get("text") as Y.Text;
         if (t && length > 0) {
             this.ydoc.transact(() => {
@@ -626,6 +689,13 @@ export class Item {
     }
 
     updateText(text: string) {
+        const parentKey = safeGetNodeParent(this.tree, this.key);
+        if (parentKey === "root") {
+            const err = validatePageTitle(this.tree, this.key, text);
+            if (err) {
+                throw new Error("PAGE_RENAME_CONFLICT:" + err);
+            }
+        }
         const t = this.value.get("text") as Y.Text;
         if (t) {
             const current = String(t);
