@@ -137,8 +137,7 @@ function renderInsideOutlinerItem(component: unknown, props: Record<string, unkn
         }, { capture: true });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { container } = render(component as any, { props });
+    const { container } = render(component as unknown as Parameters<typeof render>[0], { props });
     host.appendChild(container);
 
     return { host, container, itemDropHandled, itemDragOverHandled, itemDragEnterHandled };

@@ -145,8 +145,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                         let textStr = "";
                                         if (rawText !== undefined && rawText !== null) {
                                             try {
-                                                textStr = typeof (rawText as any).toString === "function"
-                                                    ? (rawText as any).toString()
+                                                textStr = typeof (rawText as { toString?: () => string }).toString === "function"
+                                                    ? (rawText as { toString: () => string }).toString()
                                                     : String(rawText);
                                             } catch (e) {
                                                 // ignore
