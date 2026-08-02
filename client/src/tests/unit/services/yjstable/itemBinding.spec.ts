@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { getItemTableId, observeItemTableId, setItemTableId } from "../../../../services/yjstable/itemBinding";
+import { describe, it, expect, vi } from "vitest";
+import { getItemTableId, setItemTableId, observeItemTableId } from "../../../../services/yjstable/itemBinding";
 
 describe("itemBinding", () => {
     describe("getItemTableId", () => {
@@ -52,7 +52,7 @@ describe("itemBinding", () => {
         });
 
         it("should return undefined when get is undefined", () => {
-            const item = {
+             const item = {
                 tree: {
                     getNodeValueFromKey: vi.fn().mockReturnValue({}),
                 },
@@ -119,72 +119,72 @@ describe("itemBinding", () => {
         });
 
         it("should call onChange when keysChanged contains yjsTableId", () => {
-            const keysChanged = new Set(["yjsTableId"]);
-            const observeMock = vi.fn((handler) => handler({ keysChanged }));
-            const unobserveMock = vi.fn();
-            const item = {
-                tree: {
-                    getNodeValueFromKey: vi.fn().mockReturnValue({
-                        observe: observeMock,
-                        unobserve: unobserveMock,
-                    }),
-                },
-                key: "item1",
-            };
-            const onChangeMock = vi.fn();
-            observeItemTableId(item, onChangeMock);
-            expect(onChangeMock).toHaveBeenCalled();
-        });
+             const keysChanged = new Set(["yjsTableId"]);
+             const observeMock = vi.fn((handler) => handler({ keysChanged }));
+             const unobserveMock = vi.fn();
+             const item = {
+                 tree: {
+                     getNodeValueFromKey: vi.fn().mockReturnValue({
+                         observe: observeMock,
+                         unobserve: unobserveMock,
+                     }),
+                 },
+                 key: "item1",
+             };
+             const onChangeMock = vi.fn();
+             observeItemTableId(item, onChangeMock);
+             expect(onChangeMock).toHaveBeenCalled();
+         });
 
         it("should not call onChange when keysChanged does not contain yjsTableId", () => {
-            const keysChanged = new Set(["otherField"]);
-            const observeMock = vi.fn((handler) => handler({ keysChanged }));
-            const unobserveMock = vi.fn();
-            const item = {
-                tree: {
-                    getNodeValueFromKey: vi.fn().mockReturnValue({
-                        observe: observeMock,
-                        unobserve: unobserveMock,
-                    }),
-                },
-                key: "item1",
-            };
-            const onChangeMock = vi.fn();
-            observeItemTableId(item, onChangeMock);
-            expect(onChangeMock).not.toHaveBeenCalled();
-        });
+             const keysChanged = new Set(["otherField"]);
+             const observeMock = vi.fn((handler) => handler({ keysChanged }));
+             const unobserveMock = vi.fn();
+             const item = {
+                 tree: {
+                     getNodeValueFromKey: vi.fn().mockReturnValue({
+                         observe: observeMock,
+                         unobserve: unobserveMock,
+                     }),
+                 },
+                 key: "item1",
+             };
+             const onChangeMock = vi.fn();
+             observeItemTableId(item, onChangeMock);
+             expect(onChangeMock).not.toHaveBeenCalled();
+         });
 
-        it("should return a function that calls unobserve", () => {
-            const observeMock = vi.fn();
-            const unobserveMock = vi.fn();
-            const item = {
-                tree: {
-                    getNodeValueFromKey: vi.fn().mockReturnValue({
-                        observe: observeMock,
-                        unobserve: unobserveMock,
-                    }),
-                },
-                key: "item1",
-            };
-            const onChangeMock = vi.fn();
-            const unsubscribe = observeItemTableId(item, onChangeMock);
-            unsubscribe();
-            expect(unobserveMock).toHaveBeenCalled();
-        });
+         it("should return a function that calls unobserve", () => {
+             const observeMock = vi.fn();
+             const unobserveMock = vi.fn();
+             const item = {
+                 tree: {
+                     getNodeValueFromKey: vi.fn().mockReturnValue({
+                         observe: observeMock,
+                         unobserve: unobserveMock,
+                     }),
+                 },
+                 key: "item1",
+             };
+             const onChangeMock = vi.fn();
+             const unsubscribe = observeItemTableId(item, onChangeMock);
+             unsubscribe();
+             expect(unobserveMock).toHaveBeenCalled();
+         });
 
-        it("should return an empty function if observe or unobserve is not available", () => {
-            const item = {
-                tree: {
-                    getNodeValueFromKey: vi.fn().mockReturnValue({}),
-                },
-                key: "item1",
-            };
-            const onChangeMock = vi.fn();
-            const unsubscribe = observeItemTableId(item, onChangeMock);
-            expect(() => unsubscribe()).not.toThrow();
-        });
+         it("should return an empty function if observe or unobserve is not available", () => {
+              const item = {
+                 tree: {
+                     getNodeValueFromKey: vi.fn().mockReturnValue({}),
+                 },
+                 key: "item1",
+             };
+             const onChangeMock = vi.fn();
+             const unsubscribe = observeItemTableId(item, onChangeMock);
+             expect(() => unsubscribe()).not.toThrow();
+         });
 
-        it("should return an empty function if nodeValue throws", () => {
+         it("should return an empty function if nodeValue throws", () => {
             const item = {
                 tree: {
                     getNodeValueFromKey: vi.fn().mockImplementation(() => {

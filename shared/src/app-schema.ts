@@ -783,9 +783,11 @@ export class Item {
     }
 
     removeAttachment(url: string) {
-        const arr = this.value.get("attachments") as Y.Array<string> | undefined;
+        const arr = this.value.get("attachments") as Y.Array<unknown> | undefined;
         if (!arr) return;
-        const idx = arr.doc ? arr.toArray().indexOf(url) : -1;
+        const idx = arr.doc
+            ? arr.toArray().findIndex((item: unknown) => Array.isArray(item) ? item[0] === url : item === url)
+            : -1;
         if (idx >= 0) arr.delete(idx, 1);
         this.value.set("lastChanged", Date.now());
     }
