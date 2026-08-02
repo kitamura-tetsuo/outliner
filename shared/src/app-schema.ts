@@ -769,7 +769,7 @@ export class Item {
             logger.warn({ err: _e }, "Silenced error");
         }
 
-        arr.push(mime || name ? [[url, mime, name] as any] : [url]);
+        arr.push(mime || name ? [[url, mime, name] as unknown as string] : [url]);
         this.value.set("lastChanged", Date.now());
         try {
             if (typeof window !== "undefined") {
