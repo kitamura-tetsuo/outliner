@@ -118,9 +118,11 @@ describe("Demo Page Reset Button", () => {
 
         const { seedDemo } = await import("../../lib/demoSeed");
         let resolveSeed: (val: any) => void;
-        (seedDemo as any).mockImplementationOnce(() => new Promise((resolve) => {
-            resolveSeed = resolve;
-        }));
+        (seedDemo as any).mockImplementationOnce(() =>
+            new Promise((resolve) => {
+                resolveSeed = resolve;
+            })
+        );
 
         await fireEvent.click(confirmButton);
 
