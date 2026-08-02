@@ -19,7 +19,7 @@ describe("createTestUser Security Tests", () => {
     const req = {
       method: "POST",
       body: { email: "test@test.com", password: "pass" },
-      headers: { origin: "http://localhost:54000" }
+      headers: { origin: "http://localhost:54000" },
     };
     const res = {
       set: jest.fn(),
@@ -28,7 +28,7 @@ describe("createTestUser Security Tests", () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
       end: jest.fn(),
-      on: jest.fn()
+      on: jest.fn(),
     };
 
     await myFunctions.createTestUser(req, res);

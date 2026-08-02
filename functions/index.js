@@ -698,7 +698,9 @@ exports.createTestUser = onRequest(
 
     // Fail closed: Explicit opt-in required
     if (process.env.ALLOW_TEST_USERS !== "true") {
-      logger.warn("Attempted to create test user without ALLOW_TEST_USERS=true");
+      logger.warn(
+        "Attempted to create test user without ALLOW_TEST_USERS=true",
+      );
       return res.status(403).json({
         error: "Test user creation is disabled",
       });
@@ -708,13 +710,18 @@ exports.createTestUser = onRequest(
       const { email, password, displayName, idToken } = req.body;
 
       // In production, require an admin token
-      if (process.env.NODE_ENV === "production" && !process.env.FUNCTIONS_EMULATOR) {
+      if (
+        process.env.NODE_ENV === "production" && !process.env.FUNCTIONS_EMULATOR
+      ) {
         if (!idToken) {
-          return res.status(400).json({ error: "ID token is required in production" });
+          return res.status(400).json({
+            error: "ID token is required in production",
+          });
         }
         let decodedToken;
         try {
-          decodedToken = await require("firebase-admin/auth").getAuth().verifyIdToken(idToken);
+          decodedToken = await require("firebase-admin/auth").getAuth()
+            .verifyIdToken(idToken);
           if (!decodedToken || !decodedToken.uid) {
             return res.status(401).json({ error: "Authentication failed" });
           }
