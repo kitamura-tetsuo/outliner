@@ -76,7 +76,7 @@ describe("getClickPosition", () => {
             setStart: vi.fn(),
             collapse: vi.fn(),
             startContainer: { nodeType: Node.TEXT_NODE },
-            startOffset: 3
+            startOffset: 3,
         }));
 
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
@@ -99,7 +99,7 @@ describe("getClickPosition", () => {
             if (x === 15 && y === 0) {
                 return {
                     startContainer: { nodeType: Node.TEXT_NODE },
-                    startOffset: 2
+                    startOffset: 2,
                 };
             }
             return null;
@@ -128,8 +128,10 @@ describe("getClickPosition", () => {
         });
 
         doc.createRange = vi.fn(() => ({
-            setStart: vi.fn(() => { throw new Error("Invalid node offset"); }),
-            collapse: vi.fn()
+            setStart: vi.fn(() => {
+                throw new Error("Invalid node offset");
+            }),
+            collapse: vi.fn(),
         }));
 
         // Should fall back to the bounding client rect method
