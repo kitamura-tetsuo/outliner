@@ -1,0 +1,11 @@
+id: ENV-7c4e19a2
+title: PR guards gate every other CI job
+title-ja: PRガードですべての他のCIジョブを制御する
+description: Every job in the main CI workflow declares PR Guards as a dependency. Formatting, linting, tests, and builds therefore remain queued until the guards pass and are skipped automatically when the guards fail, avoiding unnecessary CI work.
+category: environment
+status: implemented
+components:
+- .github/workflows/ci.yml
+- .github/workflows/ci-pr-guards.yml
+tests:
+- scripts/tests/env-pr-guards-gate-ci-7c4e19a2.spec.ts
