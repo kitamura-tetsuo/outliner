@@ -409,11 +409,26 @@ function startLogService() {
     }
 
     app.post("/api/create-test-user", async (req, res): Promise<any> => {
-        if (process.env.NODE_ENV === "production") {
-            return res.status(403).json({ error: "Not available in production" });
+        if (process.env.ALLOW_TEST_USERS !== "true") {
+            return res.status(403).json({ error: "Test user creation is disabled" });
         }
 
-        const { email, password, displayName } = req.body;
+        const { email, password, displayName, idToken } = req.body;
+
+        if (process.env.NODE_ENV === "production") {
+            if (!idToken) {
+                return res.status(400).json({ error: "ID token is required in production" });
+            }
+            try {
+                const auth = getAuth();
+                const decodedToken = await auth.verifyIdToken(idToken);
+                if (decodedToken.role !== "admin") {
+                    return res.status(403).json({ error: "Admin privileges required" });
+                }
+            } catch (authError) {
+                return res.status(401).json({ error: "Authentication failed" });
+            }
+        }
 
         if (!email || !password || !displayName) {
             return res.status(400).json({ error: "Missing required fields" });
