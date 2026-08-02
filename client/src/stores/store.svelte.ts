@@ -164,6 +164,7 @@ export class GeneralStore {
     // Alias tracking
     aliasesVersion = $state(0);
     private _aliasIndexVersion = -1;
+    /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal index map intentionally avoids fine-grained tracking overhead */
     private _aliasIndex = new Map<string, { item: Item; pageTitle: string; }[]>();
 
     public getAliasIndex(): Map<string, { item: Item; pageTitle: string; }[]> {
