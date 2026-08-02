@@ -28,6 +28,7 @@ An overview of the basic interface and navigation.
 You can create a new page from the project home page. Simply enter a title in the "New page name" input field and click the **Create** button.
 
 The project home page also displays a list of all pages. You can:
+
 - Toggle the display between **List view** and **Grid view** using the buttons in the top right.
 - Change the **Sort order** of the pages (e.g., Modified, Created, Last visited, Most linked, Most viewed, Title) using the dropdown menu.
 
