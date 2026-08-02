@@ -33,66 +33,68 @@ jobs:
 
   format:
     name: Format Check and Auto-Fix
+    needs: pr-guards
     uses: ./.github/workflows/ci-format.yml
     secrets: inherit
 
   checks:
-    needs: format
+    needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-checks.yml
     secrets: inherit
 
   unit-test:
-    needs: [format, eslint-client]
+    needs: [pr-guards, format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-unit.yml
     secrets: inherit
 
   integration-test:
-    needs: [format, eslint-client]
+    needs: [pr-guards, format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-integration.yml
     secrets: inherit
 
   server-test:
-    needs: [format, eslint-client]
+    needs: [pr-guards, format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-server.yml
     secrets: inherit
 
   e2e-test:
-    needs: [format, eslint-client]
+    needs: [pr-guards, format, eslint-client]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-test-e2e.yml
     secrets: inherit
 
   docker-build:
     name: Docker Build
-    needs: format
+    needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-docker-build.yml
     secrets: inherit
 
   eslint-client:
     name: Lint Code with ESLint
+    needs: pr-guards
     uses: ./.github/workflows/ci-eslint.yml
     secrets: inherit
 
   yaml-tests-check:
-    needs: format
+    needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-yaml-tests.yml
     secrets: inherit
 
   lint-diff-lines:
-    needs: format
+    needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-lint-diff-lines.yml
     secrets: inherit
 
   playwright-version:
     name: Playwright Version Check
-    needs: format
+    needs: [pr-guards, format]
     if: needs.format.outputs.changes_pushed != 'true'
     uses: ./.github/workflows/ci-playwright-version.yml
     secrets: inherit
