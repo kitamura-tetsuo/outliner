@@ -1,4 +1,9 @@
 import { expect } from "chai";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import * as Y from "yjs";
 import {
     buildDemoProject,
@@ -43,6 +48,23 @@ function findChildByText(items: Items | undefined, text: string): Item | undefin
 }
 
 describe("Demo seed content", () => {
+    it("the feature tour YAML specification matches the current demoPages list", () => {
+        const yamlPath = path.resolve(
+            __dirname,
+            "../../docs/client-features/dmo-demo-project-feature-tour-7d3e9a1c.yaml",
+        );
+        const yamlContent = fs.readFileSync(yamlPath, "utf-8");
+        const match = yamlContent.match(/The demo project is seeded with one page per feature group \((.*?)\)/);
+        expect(match, "Acceptance criterion enumerating feature groups exists in YAML").to.not.equal(null);
+
+        const specGroups = match![1].split(",").map(s => s.trim());
+        const expectedGroups = demoPages
+            .filter(p => p.title !== DEMO_LANDING_PAGE_TITLE)
+            .map(p => p.title.toLowerCase());
+
+        expect(specGroups).to.deep.equal(expectedGroups);
+    });
+
     const project = buildDemoProject("seed-test");
 
     it("builds a project titled 'demo' so internal links resolve to /demo/<page>", () => {

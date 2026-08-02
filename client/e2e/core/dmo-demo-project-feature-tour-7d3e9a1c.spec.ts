@@ -17,7 +17,9 @@ test.describe("Demo project feature tour", () => {
                 "Welcome",
                 "Formatting",
                 "Outliner Basics",
+                "Undo and Redo",
                 "Internal Links",
+                "Schedule Rules",
                 "Search and Commands",
                 "Selection and Clipboard",
                 "Collaboration",
@@ -26,6 +28,7 @@ test.describe("Demo project feature tour", () => {
                 "Advanced Features",
                 "Tasks and Habits",
                 "Recurring Tasks",
+                "Calendars",
             ]
         ) {
             await expect(pageList.getByText(title, { exact: true }).first()).toBeVisible({ timeout: 15000 });
