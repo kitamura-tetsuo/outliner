@@ -1,0 +1,10 @@
+<<<<<<< SEARCH
+    if (outcome.result) {
+        result = outcome.result;
+        queryError = undefined;
+=======
+    if (outcome.result) {
+        if (typeof window !== "undefined") console.log("runQuery outcome:", JSON.stringify(outcome.result.columns));
+        result = outcome.result;
+        queryError = undefined;
+>>>>>>> REPLACE
