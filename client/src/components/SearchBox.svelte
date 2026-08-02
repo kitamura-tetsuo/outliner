@@ -5,7 +5,6 @@
 <script lang="ts">
     const componentId = `search-box-${searchBoxCounter++}`;
 
-import { safeDecodeURIComponent } from "../utils/urlUtils";
 import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchBox");
     import { goto } from "$app/navigation";
@@ -25,26 +24,8 @@ const logger = getLogger("SearchBox");
     }
     let { project }: Props = $props();
 
-    // Resolve project from multiple sources for robustness in tests
     let effectiveProject: Project | null = $derived.by(() => {
-        const fromProps = project ?? store.project ?? null;
-        if (fromProps) return fromProps;
-        if (typeof window !== "undefined") {
-            const cur = window.__CURRENT_PROJECT__;
-            if (cur) return cur;
-            const w = typeof window !== 'undefined' ? window as Window & typeof globalThis & { appStore?: { project?: import("../schema/app-schema").Project }, generalStore?: { project?: import("../schema/app-schema").Project } } : undefined;
-            const gs = w?.appStore || w?.generalStore;
-            if (gs?.project) return gs.project;
-            const parts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
-            void parts[0]; // Previously projectTitle
-            void window.__YJS_SERVICE__; // Previously service
-            void window.__YJS_STORE__; // Previously yjsStoreRef
-            // Do NOT auto-create a project here. In tests this can create an empty
-            // project separate from the one prepared by TestHelpers, which breaks
-            // SearchBox results. Wait for store.project or global state instead.
-            // Keeping this block as a no-op fallback only.
-        }
-        return null;
+        return project ?? store.project ?? null;
     });
 
     let query = $state("");
@@ -75,11 +56,6 @@ const logger = getLogger("SearchBox");
         void refreshTick;
 
         let projectToUse: Project | null = effectiveProject;
-        if (!projectToUse && typeof window !== "undefined") {
-            // try global fallbacks
-            const cur = window.__CURRENT_PROJECT__;
-            if (cur) projectToUse = cur;
-        }
 
         // Resolve pages robustly. Prefer a non-empty store.pages.current, otherwise
         // fall back to project.items. Reading from `store` ensures reactivity when
@@ -94,12 +70,6 @@ const logger = getLogger("SearchBox");
                 () => effectiveProject?.items,
                 // Fallback 2: projectToUse.items
                 () => projectToUse?.items,
-                // Fallback 3: (window?.appStore || window?.generalStore).project.items
-                () => {
-                    const w = typeof window !== "undefined" ? window as Window & typeof globalThis & { appStore?: { project?: import("../schema/app-schema").Project }, generalStore?: { project?: import("../schema/app-schema").Project } } : undefined;
-                    const gs = w?.appStore || w?.generalStore;
-                    return gs?.project?.items;
-                },
             ];
 
             for (const getSource of sources) {
@@ -267,21 +237,6 @@ const logger = getLogger("SearchBox");
             searchHistoryStore.add(title);
             // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
             let projTitle = resolveProjectTitle(targetPage);
-            if (!projTitle && typeof window !== "undefined") {
-                const cur = window.__CURRENT_PROJECT__;
-                projTitle = cur?.title ?? projTitle;
-                if (!projTitle) {
-                    const pathParts = window.location.pathname
-                        .split("/")
-                        .filter(Boolean)
-                        .map(safeDecodeURIComponent);
-                    if (pathParts[0]) {
-                        projTitle = pathParts[0];
-                    } else {
-                        projTitle = "";
-                    }
-                }
-            }
             // Encode path segments to ensure correct routing for titles with spaces/special characters
             if (projTitle === "demo" || (typeof window !== "undefined" && window.location.pathname.startsWith("/demo"))) {
                 goto(resolvePath(`/demo/${encodeURIComponent(title)}`));
