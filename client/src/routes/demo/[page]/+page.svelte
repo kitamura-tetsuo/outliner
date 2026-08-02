@@ -24,18 +24,36 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     let error: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
+    let isServerResetting = $state(false);
     let isSearchPanelVisible = $state(false);
     let isDestroyed = false;
 
     $effect(() => {
         if (store.project) {
             const meta = store.project.ydoc.getMap("metadata");
+            let resetTimeout: ReturnType<typeof setTimeout>;
+
             const updateReset = () => {
                 lastReset = (meta.get("lastReset") as number) ?? 0;
+
+                const isResetting = meta.get("isResetting");
+                const resetStartedAt = meta.get("resetStartedAt") as number | undefined;
+                const now = Date.now();
+                clearTimeout(resetTimeout);
+
+                if (isResetting && resetStartedAt && now - resetStartedAt < 60000) {
+                    isServerResetting = true;
+                    resetTimeout = setTimeout(updateReset, 60000 - (now - resetStartedAt));
+                } else {
+                    isServerResetting = false;
+                }
             };
             updateReset();
             meta.observe(updateReset);
-            return () => meta.unobserve(updateReset);
+            return () => {
+                clearTimeout(resetTimeout);
+                meta.unobserve(updateReset);
+            };
         }
     });
 
@@ -88,6 +106,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     }
 
     function createDemoPage() {
+        if (isServerResetting) return;
         if (!store.project || !pageName) return;
 
         if (store.pageExists(pageName)) {
@@ -186,7 +205,21 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         </p>
     </div>
 
-    {#if (isLoading || (yjsStore.notYetSynced && !yjsStore.syncError && !store.currentPage)) && !error && !pageNotFound}
+    {#if isServerResetting}
+        <div class="rounded-md bg-blue-50 p-4" role="alert" aria-live="polite">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <span class="text-blue-400">ℹ️</span>
+                </div>
+                <div class="ml-3">
+                    <h2 class="text-sm font-medium text-blue-800">Demo content is being reset</h2>
+                    <div class="mt-2 text-sm text-blue-700">
+                        <p>The demo content is currently being reset. Please wait a moment while the server restores the template pages. Editing is temporarily paused.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {:else if (isLoading || (yjsStore.notYetSynced && !yjsStore.syncError && !store.currentPage)) && !error && !pageNotFound}
         <div class="py-8"><Loader message="Loading Demo..." /></div>
     {:else if error || yjsStore.syncError}
         <div class="rounded-md bg-red-50 p-4" role="alert" aria-live="assertive">
