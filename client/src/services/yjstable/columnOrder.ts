@@ -54,11 +54,14 @@ export function moveColumn(effectiveOrder: string[], column: string, targetIndex
     return nextOrder;
 }
 
-
 /**
  * Calculate the target index for insertion based on dragging index and drop side/position.
  */
-export function calculateDropIndex(draggedIndex: number, hoverIndex: number, position: "left" | "right" | "above" | "below"): number {
+export function calculateDropIndex(
+    draggedIndex: number,
+    hoverIndex: number,
+    position: "left" | "right" | "above" | "below",
+): number {
     let targetIndex = hoverIndex;
     if (draggedIndex < targetIndex && (position === "left" || position === "above")) {
         targetIndex -= 1;
