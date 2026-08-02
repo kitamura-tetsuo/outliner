@@ -157,6 +157,10 @@ function handleInput(event: Event) {
 
     KeyEventHandler.handleInput(event);
 }
+function handleBeforeInput(event: Event) {
+    KeyEventHandler.handleBeforeInput(event);
+}
+
 
 // Delegate CompositionEnd event to KeyEventHandler
 function handleCompositionEnd(event: CompositionEvent) {
@@ -265,6 +269,7 @@ function handleBlur(event: FocusEvent) {
     aria-controls="outliner-tree"
     aria-activedescendant={store.getActiveItem() ?? undefined}
     onkeydown={handleKeyDown}
+    onbeforeinput={handleBeforeInput}
     oninput={handleInput}
     oncompositionstart={handleCompositionStart}
     oncompositionupdate={handleCompositionUpdate}

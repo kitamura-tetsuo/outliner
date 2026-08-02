@@ -270,6 +270,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
      * @param event Keyboard event
      * @returns Whether the event was handled
      */
+    onBeforeInput(event: InputEvent) {
+        this.editor.onBeforeInput(event);
+    }
+
     onKeyDown(event: KeyboardEvent): boolean {
         // Debug information
         if (
