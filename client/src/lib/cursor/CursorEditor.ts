@@ -52,8 +52,11 @@ export class CursorEditor {
         return getSingleItemSelectionForUser(this.cursor.userId, itemId);
     }
 
-
-    private validateRename(node: any, changeText: string, action: "insert" | "deleteBackward" | "deleteForward" | "paste"): boolean {
+    private validateRename(
+        node: any,
+        changeText: string,
+        action: "insert" | "deleteBackward" | "deleteForward" | "paste",
+    ): boolean {
         let isRoot = false;
         try {
             isRoot = node.tree?.getNodeParentFromKey?.(node.id || node.key) === "root";
@@ -67,7 +70,8 @@ export class CursorEditor {
         if (action === "insert" || action === "paste") {
             const selection = this.getSingleItemSelection(this.cursor.itemId);
             if (selection && selection.startOffset !== selection.endOffset) {
-                newText = currentText.slice(0, selection.startOffset) + changeText + currentText.slice(selection.endOffset);
+                newText = currentText.slice(0, selection.startOffset) + changeText
+                    + currentText.slice(selection.endOffset);
             } else {
                 newText = currentText.slice(0, offset) + changeText + currentText.slice(offset);
             }
@@ -94,7 +98,9 @@ export class CursorEditor {
         else {
             const oldTitle = currentText.trim().toLowerCase();
             const newTitle = trimmed.toLowerCase();
-            const gStore = typeof window !== "undefined" ? ((window as any).appStore || (window as any).generalStore) : null;
+            const gStore = typeof window !== "undefined"
+                ? ((window as any).appStore || (window as any).generalStore)
+                : null;
             if (oldTitle !== newTitle && gStore?.pageExists?.(trimmed)) {
                 err = "A page with this title already exists.";
             }
@@ -102,7 +108,9 @@ export class CursorEditor {
 
         if (err) {
             if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: node.id || node.key } }));
+                window.dispatchEvent(
+                    new CustomEvent("page-rename-error", { detail: { message: err, itemId: node.id || node.key } }),
+                );
             }
             return false;
         }
