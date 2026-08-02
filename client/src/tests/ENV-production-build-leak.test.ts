@@ -27,7 +27,9 @@ const forbiddenGlobals = [
     "__YJS_CLIENT_REGISTRY__",
     "__FLUID_CLIENT_REGISTRY__",
     "__FIRESTORE_STORE__",
-    "__KEY_EVENT_HANDLER__",
+    "KeyEventHandler",
+    "__selectionList",
+    "__GRAPH_CHART__",
     "__pollingMonitor",
 ];
 

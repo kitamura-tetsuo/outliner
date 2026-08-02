@@ -48,7 +48,7 @@ onMount(() => {
     if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Textarea reference set in store");
 
     // Expose KeyEventHandler globally (for testing)
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && import.meta.env.MODE !== "production") {
         window.KeyEventHandler = KeyEventHandler;
     }
 
