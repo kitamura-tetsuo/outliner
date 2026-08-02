@@ -21,7 +21,9 @@ function resolveApiBaseUrl(): string {
     }
     if (!apiBaseUrl) {
         const isProduction = import.meta.env.MODE === "production";
-        apiBaseUrl = isProduction ? (typeof window !== "undefined" ? window.location.origin : "") : "http://127.0.0.1:7093";
+        apiBaseUrl = isProduction
+            ? (typeof window !== "undefined" ? window.location.origin : "")
+            : "http://127.0.0.1:7093";
     }
     return apiBaseUrl;
 }
