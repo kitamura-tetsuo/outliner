@@ -1,4 +1,7 @@
 import { getLogger } from "../lib/logger";
+import { projectRoomPath } from "../lib/yjs/roomPath";
+import { getRoomSyncState } from "../lib/yjs/roomSyncState";
+
 import { iterateItems } from "../utils/itemTraversal";
 import { safeGetNodeParent } from "../utils/treeUtils";
 import { safeDecodeURIComponent } from "../utils/urlUtils";
@@ -326,9 +329,17 @@ export class GeneralStore {
             if (!snapshotTimeout) {
                 // Check if this project provider is still doing its initial sync.
                 // If it is, skip saving entirely since it will get saved after sync or on next edit.
-                const isInitialSync = typeof window !== "undefined"
-                    && (window as unknown as { __YJS_STORE__?: { notYetSynced?: boolean; }; }).__YJS_STORE__
-                        ?.notYetSynced;
+                // Read sync state from the room registry, avoiding circular imports or debug globals
+                let isInitialSync = false;
+                const guid = project?.ydoc?.guid;
+                if (guid) {
+                    const state = getRoomSyncState(projectRoomPath(guid));
+                    // If state is not strictly "synced", it is still pending/retrying/etc.
+                    // If undefined, it might not be a connected room yet.
+                    if (state && state !== "synced") {
+                        isInitialSync = true;
+                    }
+                }
                 if (!isInitialSync) {
                     snapshotTimeout = setTimeout(() => {
                         snapshotTimeout = null;
