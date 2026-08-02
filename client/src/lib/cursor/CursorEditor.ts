@@ -115,7 +115,10 @@ export class CursorEditor {
 
         if (err) {
             if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") {
-                if (err === "A page with this title already exists." && window.location.href.includes("page-rename-duplicate-guard")) {
+                if (
+                    err === "A page with this title already exists."
+                    && window.location.href.includes("page-rename-duplicate-guard")
+                ) {
                     // keep error
                 } else {
                     err = null;
