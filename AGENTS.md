@@ -119,8 +119,6 @@ Mocks are generally forbidden. Limited exceptions:
 - If a specific test fails to start or stalls, inspect `server/logs/test-svelte-kit.log` for details.
 - Before assuming the test server is down, verify it with `curl -s http://localhost:7090/ | head -c 100`.
 - If the cause of an E2E test failure is unclear, investigate using Playwright MCP.
-- Duplicate Firebase initialization often causes 30 s timeouts—ensure `UserManager.initializeFirebaseApp()` checks `getApps()` before calling `initializeApp()`.
-- **Tinylicious Container Restoration Issue**: The error "default dataStore [rootDOId] must exist" occurs when trying to reload saved Fluid containers in Tinylicious (test environment). This is a known Tinylicious bug that doesn't occur in production. In test environments, avoid reloading saved containers and use alternative testing approaches instead.
 - **Test Isolation and Regression Prevention**: When troubleshooting failing tests, destructive changes to shared code may occur. If you modify common code outside the specific test target, run the basic E2E tests to verify no breaking changes have been introduced. If breaking changes are detected, revert the modifications to maintain test stability.
 - TypeScript macro shims: If `npx tsc --noEmit --project client/e2e/tsconfig.json` fails on `$state/$derived/$effect` in `.svelte.ts` files, add a `client/src/types/svelte5-shim.d.ts` declaring these macros for type checking only.
 - Use playwrite mcp to debug component issues.
@@ -202,13 +200,13 @@ Mocks are generally forbidden. Limited exceptions:
 - Important files: `Cursor.ts`, `EditorOverlay.svelte`, `EditorOverlayStore.svelte.ts`, `OutlinerItem.svelte`.
 - Maintain cursor X position when moving between items with arrow keys.
 - Use the Range API to navigate visual lines. Items never contain newline characters.
-- Selection range (SLR) logic is separate from cursor movement (CLM). Box selection is being implemented.
+- Selection range (SLR) logic is separate from cursor movement (CLM). Box selection is implemented (e.g. in `client/src/components/EditorOverlay.svelte`, `client/src/components/OutlinerItem.svelte`).
 - Formatting uses Scrapbox syntax: **bold** `[[text]]`, _italic_ `[/ text]`, strike-through `[-text]`, and code `text`.
 - Active items show plain text with control characters visible. Internal links (`[page]` or `[/project/page]`) should navigate via SvelteKit routing and only create a new page in SharedTree once the user edits it.
 
 ## 6. Project & Firebase Configuration
 
-- Projects use `title` (not `name`) and the project ID equals its Fluid container ID.
+- Projects use `title` (not `name`) and the project ID equals its Yjs room id (`projects/<id>`).
 - **Firebase Functions Access**: Firebase Functions are accessed through Firebase Hosting at `http://localhost:57070/api` in development environments. This ensures proper routing and CORS handling.
 - **Production Cloud Backend**: For Production Cloud Backend configuration, Firebase Functions must be accessed through Firebase Hosting emulator (port 57070) rather than direct Functions emulator access.
 - In both deployed and test environments, call Firebase Functions through the host's `/api/` route.
@@ -238,9 +236,8 @@ Mocks are generally forbidden. Limited exceptions:
 - Keep existing `$effect` blocks short (under 10 lines) and prefer `onMount` for initialization.
 - Do not add new code that uses Svelte 5 `$effect`.
 - Svelte 5 `$effect` is only allowed when there is no other way to achieve the desired behavior.
-- Implement API calls in `fluidService` and call them from components. Provide a `getFluidClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
+- Implement API calls in `yjsService` (`client/src/lib/yjsService.svelte.ts`) and call them from components. Provide a `getYjsClientByProjectTitle` function that searches `clientRegistry` by `Project.title`.
 - Export manager instances directly (`export const userManager = new UserManager()`) rather than via `getInstance()`.
-- Rename `firestoreStore.ts` to `firestoreStore.svelte.ts` to enable `$state` usage.
 - When testing links and cursor behavior, apply the patterns proven in LNK-0003: programmatic cursor creation, text insertion, waits, and visibility checks.
 
 ## 9. Node.js Package Management and NPM Operations Policy
