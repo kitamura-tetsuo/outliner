@@ -13,12 +13,14 @@ test.describe("Late Page-Item Hydration", () => {
         await expect.poll(async () => {
             return await page.evaluate(({ pid, ppage }) => {
                 const key = `schedule:lastPageChildId:${encodeURIComponent(pid)}:${encodeURIComponent(ppage)}`;
+                // eslint-disable-next-line no-restricted-globals
                 return window.sessionStorage.getItem(key) !== null;
             }, { pid: projectName, ppage: pageName });
         }, { timeout: 10000 }).toBe(true);
 
         const savedId = await page.evaluate(({ pid, ppage }) => {
             const key = `schedule:lastPageChildId:${encodeURIComponent(pid)}:${encodeURIComponent(ppage)}`;
+            // eslint-disable-next-line no-restricted-globals
             return window.sessionStorage.getItem(key);
         }, { pid: projectName, ppage: pageName });
 
