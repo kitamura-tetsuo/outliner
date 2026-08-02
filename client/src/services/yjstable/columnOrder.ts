@@ -54,6 +54,23 @@ export function moveColumn(effectiveOrder: string[], column: string, targetIndex
     return nextOrder;
 }
 
+/**
+ * Calculate the target index for insertion based on dragging index and drop side/position.
+ */
+export function calculateDropIndex(
+    draggedIndex: number,
+    hoverIndex: number,
+    position: "left" | "right" | "above" | "below",
+): number {
+    let targetIndex = hoverIndex;
+    if (draggedIndex < targetIndex && (position === "left" || position === "above")) {
+        targetIndex -= 1;
+    } else if (draggedIndex > targetIndex && (position === "right" || position === "below")) {
+        targetIndex += 1;
+    }
+    return targetIndex;
+}
+
 /** Replace the Y.Array contents in one transaction. */
 export function writeColumnOrder(handles: TableHandles, order: string[]): void {
     handles.doc.transact(() => {
@@ -64,6 +81,6 @@ export function writeColumnOrder(handles: TableHandles, order: string[]): void {
         } else {
             (orderArray as Y.Array<string>).delete(0, (orderArray as Y.Array<string>).length);
         }
-        (orderArray as Y.Array<string>).push(order);
+        if (order.length > 0) (orderArray as Y.Array<string>).push(order);
     }, handles.tableId);
 }

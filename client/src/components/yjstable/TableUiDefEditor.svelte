@@ -5,7 +5,7 @@
 // edits to different fields merge cleanly.
 
 import * as Y from "yjs";
-import { COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
+import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
@@ -37,6 +37,7 @@ const displayColumns = $derived.by(() => {
 });
 
 let dropTargetColumn = $state<{ column: string; position: "above" | "below" } | undefined>(undefined);
+let draggedColumnName = $state<string | undefined>(undefined);
 
 function commitQuery(e: Event) {
     const value = (e.target as HTMLInputElement).value;
@@ -149,6 +150,7 @@ function setColumnHidden(column: string, hidden: boolean) {
                     class:drop-target-above={dropTargetColumn?.column === column.name && dropTargetColumn.position === "above"}
                     class:drop-target-below={dropTargetColumn?.column === column.name && dropTargetColumn.position === "below"}
                     ondragstart={(e) => {
+                        e.stopPropagation();
                         if (e.dataTransfer) {
                             e.dataTransfer.effectAllowed = "move";
                             e.dataTransfer.setData("text/plain", column.name);
@@ -156,37 +158,42 @@ function setColumnHidden(column: string, hidden: boolean) {
                             // payload is still unreadable (see blockDndOwnership).
                             e.dataTransfer.setData(COLUMN_DRAG_TYPE, column.name);
                         }
+                        draggedColumnName = column.name;
                     }}
                     ondragover={(e) => {
+                        e.stopPropagation();
                         e.preventDefault();
                         const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                         const isAbove = e.clientY < rect.top + rect.height / 2;
                         dropTargetColumn = { column: column.name, position: isAbove ? "above" : "below" };
                         if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
                     }}
+                    ondragend={(e) => {
+                        e.stopPropagation();
+                        dropTargetColumn = undefined;
+                        draggedColumnName = undefined;
+                    }}
                     ondragleave={(e) => {
+                        e.stopPropagation();
                         const related = e.relatedTarget as Node | null;
                         if (!e.currentTarget?.contains(related)) {
                             dropTargetColumn = undefined;
                         }
                     }}
                     ondrop={(e) => {
+                        e.stopPropagation();
                         e.preventDefault();
-                        const draggedCol = e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
+                        const draggedCol = draggedColumnName || e.dataTransfer?.getData(COLUMN_DRAG_TYPE);
                         if (draggedCol && draggedCol !== column.name) {
                             const currentNames = displayColumns.map((c) => c.name);
                             const draggedIndex = currentNames.indexOf(draggedCol);
                             if (draggedIndex !== -1) {
-                                let targetIndex = index;
-                                if (draggedIndex < targetIndex && dropTargetColumn?.position === "above") {
-                                    targetIndex -= 1;
-                                } else if (draggedIndex > targetIndex && dropTargetColumn?.position === "below") {
-                                    targetIndex += 1;
-                                }
+                                const targetIndex = calculateDropIndex(draggedIndex, index, dropTargetColumn?.position ?? "above");
                                 writeColumnOrder(handles, moveColumn(currentNames, draggedCol, targetIndex));
                             }
                         }
                         dropTargetColumn = undefined;
+                        draggedColumnName = undefined;
                     }}
                 >
                     <div class="drag-handle" aria-hidden="true">⋮⋮</div>

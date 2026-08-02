@@ -30,7 +30,33 @@ test.describe("TBL-673b2241: reordering columns in the UI Definition editor", ()
         await expect(page.getByTestId("yjs-table-ui-editor").first()).toBeVisible({ timeout: 10000 });
     });
 
-    test("dragging an editor row reorders the column, and the grid agrees", async ({ page }) => {
+    test("dragging an editor row via real mouse interactions reorders the column, and the grid agrees", async ({ page }) => {
+        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(TASKS_PRESET_COLUMNS);
+        expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
+
+        // REAL MOUSE DRAG
+        const sourceRow = page.locator(".component-row[data-col='priority']").first();
+        const targetRow = page.locator(".component-row[data-col='title']").first();
+
+        const sourceDragHandle = sourceRow.locator(".drag-handle");
+        await sourceDragHandle.hover();
+        await page.mouse.down();
+
+        // Move towards target top edge
+        const targetBox = await targetRow.boundingBox();
+        if (targetBox) {
+            await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 5, { steps: 5 });
+            await page.mouse.up();
+        } else {
+            throw new Error("Target bounding box not found");
+        }
+
+        const reordered = ["id", "priority", "title", "status", "due_date", "repeat_days"];
+        await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(reordered);
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
+    });
+
+    test("dragging an editor row (using synthetic helper) reorders the column", async ({ page }) => {
         await expect.poll(() => uiEditorRowOrder(page), { timeout: 15000 }).toEqual(TASKS_PRESET_COLUMNS);
         expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
 
