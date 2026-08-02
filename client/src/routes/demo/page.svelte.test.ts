@@ -114,11 +114,11 @@ describe("Demo Page Reset Button", () => {
         // This implies fireEvent.click(confirmButton) clicked the wrong button OR we didn't mock seedDemo correctly to keep it pending.
 
         // Let's find the confirm button explicitly
-        const confirmButton = await screen.findByRole("button", { name: "Reset", exact: true });
+        const confirmButton = await screen.findByRole("button", { name: "Reset" });
 
         const { seedDemo } = await import("../../lib/demoSeed");
-        let resolveSeed: (val: any) => void;
-        (seedDemo as any).mockImplementationOnce(() =>
+        let resolveSeed: (val: unknown) => void;
+        (seedDemo as import("vitest").Mock).mockImplementationOnce(() =>
             new Promise((resolve) => {
                 resolveSeed = resolve;
             })
