@@ -20,6 +20,7 @@ Maybe "required feature-tour metadata" IS the YAML?
 Wait, what if `docs/client-features/*.yaml` is the metadata, and every page in the demo MUST have a corresponding `.yaml` file? No, that's not what the issue says.
 
 Let's do Option A. It's safer and implements the exact verification:
+
 1. Update `docs/client-features/dmo-demo-project-feature-tour-7d3e9a1c.yaml` to list the current groups.
 2. In `server/tests/demo-seed-content.test.ts`, read the YAML and assert the groups match exactly.
 3. Update `client/e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts` with the new titles.
@@ -30,13 +31,15 @@ Wait, what if Option B is better? "make it intentionally non-enumerative and poi
 If I make it intentionally non-enumerative, the test I should add is maybe to ensure that the Landing Page `Feature tour:` links exactly match `demoPages`? The existing test ALREADY checks `demoPages -> Landing Page`, but NOT `Landing Page -> demoPages`.
 Let's see if the existing test ensures `Landing Page -> demoPages`.
 No, it doesn't.
+
 ```typescript
-        const tourTexts = childTexts(tour!.items).join("\n");
-        for (const page of demoPages) {
-            if (page.title === DEMO_LANDING_PAGE_TITLE) continue;
-            expect(tourTexts, `tour links to ${page.title}`).to.contain(`[${page.title}]`);
-        }
+const tourTexts = childTexts(tour!.items).join("\n");
+for (const page of demoPages) {
+    if (page.title === DEMO_LANDING_PAGE_TITLE) continue;
+    expect(tourTexts, `tour links to ${page.title}`).to.contain(`[${page.title}]`);
+}
 ```
+
 If we added an extra link in `tourTexts` that wasn't in `demoPages`, this test wouldn't fail.
 
 Let's just use Option A, it is very explicit and strictly verifies the documentation itself.
