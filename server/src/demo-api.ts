@@ -141,7 +141,20 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 if (valueMap && valueMap.has("templatePageId")) {
                                     const templatePageId = valueMap.get("templatePageId") as string | undefined;
                                     if (templatePageId) {
-                                        existingTemplateIds.add(templatePageId);
+                                        const rawText = valueMap.get("text");
+                                        let textStr = "";
+                                        if (rawText !== undefined && rawText !== null) {
+                                            try {
+                                                textStr = typeof (rawText as any).toString === "function"
+                                                    ? (rawText as any).toString()
+                                                    : String(rawText);
+                                            } catch (e) {
+                                                // ignore
+                                            }
+                                        }
+                                        if (textStr.trim().toLowerCase() === templatePageId) {
+                                            existingTemplateIds.add(templatePageId);
+                                        }
                                     }
                                 }
                             }
