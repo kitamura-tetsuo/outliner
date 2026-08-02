@@ -91,7 +91,17 @@ function getWsBase(): string {
                 : "N/A"
         }, final=${port}`,
     );
-    const url = import.meta.env.VITE_YJS_WS_URL || `ws://localhost:${port}`;
+
+    let url = import.meta.env.VITE_YJS_WS_URL;
+    if (!url) {
+        const isProduction = import.meta.env.MODE === "production";
+        if (isProduction && typeof window !== "undefined") {
+            const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+            url = `${protocol}//${window.location.host}`;
+        } else {
+            url = `ws://localhost:${port}`;
+        }
+    }
     return url as string;
 }
 

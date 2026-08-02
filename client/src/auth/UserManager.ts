@@ -119,13 +119,16 @@ export class UserManager {
         const useEmulatorInLocalStorage = typeof window !== "undefined"
             && window.localStorage?.getItem("VITE_USE_FIREBASE_EMULATOR") === "true";
 
+        // Enforce isTestEnv to false in production
+        const finalIsTestEnv = isProduction ? false : isTestEnv;
+
         // Set useEmulator to true if any of isTestEnv is true
-        let useEmulator = isTestEnv
+        let useEmulator = isProduction ? false : (finalIsTestEnv
             || (typeof import.meta !== "undefined" && import.meta.env?.VITE_USE_FIREBASE_EMULATOR === "true")
-            || useEmulatorInLocalStorage;
+            || useEmulatorInLocalStorage);
 
         logger.debug({
-            isTestEnv,
+            isTestEnv: finalIsTestEnv,
             isProduction,
             useEmulator,
             VITE_USE_FIREBASE_EMULATOR: import.meta.env?.VITE_USE_FIREBASE_EMULATOR,

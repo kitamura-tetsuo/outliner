@@ -20,7 +20,10 @@ function resolveApiBaseUrl(): string {
         apiBaseUrl = import.meta.env.VITE_YJS_WS_URL.replace(/^ws(s)?:\/\//, "http$1://");
     }
     if (!apiBaseUrl) {
-        apiBaseUrl = "http://127.0.0.1:7093";
+        const isProduction = import.meta.env.MODE === "production";
+        apiBaseUrl = isProduction
+            ? (typeof window !== "undefined" ? window.location.origin : "")
+            : "http://127.0.0.1:7093";
     }
     return apiBaseUrl;
 }
