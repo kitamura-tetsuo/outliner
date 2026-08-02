@@ -3,13 +3,10 @@
     import GraphView from "../../../components/GraphView.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
     import { onMount, onDestroy } from "svelte";
-    import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
-    import { acquireDemoClient, releaseDemoClient } from "../../../lib/demoInit";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
-    import { store } from "../../../stores/store.svelte";
+        import { acquireDemoClient, releaseDemoClient } from "../../../lib/demoInit";
+        import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
-    import { Project as AppProject } from "../../../schema/app-schema";
-    import { getLogger } from "../../../lib/logger";
+        import { getLogger } from "../../../lib/logger";
 
     const logger = getLogger("DemoGraphView");
     const projectName = "Demo";

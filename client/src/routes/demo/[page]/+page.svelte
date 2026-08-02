@@ -9,11 +9,9 @@
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import { acquireDemoClient, releaseDemoClient } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
-    import type { Item } from "../../../schema/app-schema";
+        import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
-    import { Project as AppProject } from "../../../schema/app-schema";
-    import { store } from "../../../stores/store.svelte";
+        import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
 

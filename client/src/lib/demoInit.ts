@@ -8,10 +8,10 @@ import { getLogger } from "./logger";
 const logger = getLogger("demoInit");
 
 let activeCount = 0;
-let initPromise: Promise<{ client: any; project: AppProject; }> | null = null;
+let initPromise: Promise<{ client: unknown; project: AppProject; }> | null = null;
 let releaseTimeout: ReturnType<typeof setTimeout> | null = null;
 
-export async function acquireDemoClient(): Promise<{ client: any; project: AppProject; }> {
+export async function acquireDemoClient(): Promise<{ client: unknown; project: AppProject; }> {
     activeCount++;
     if (releaseTimeout) {
         clearTimeout(releaseTimeout);
@@ -34,7 +34,7 @@ export async function acquireDemoClient(): Promise<{ client: any; project: AppPr
                             throw new Error("Can't reach the demo server — retrying...");
                         }
                         // Block until client connects if seed passes
-                        return new Promise<any>(() => {});
+                        return new Promise<unknown>(() => {});
                     }),
                 ]);
             } catch (e) {

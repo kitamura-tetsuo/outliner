@@ -5,11 +5,10 @@
     import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
     import { acquireDemoClient, releaseDemoClient } from "../../lib/demoInit";
     import { getLogger } from "../../lib/logger";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
+    import { removeYjsClientByProjectId } from "../../services";
 
     const logger = getLogger("DemoListPage");
-    import { Project as AppProject } from "../../schema/app-schema";
-    import { store } from "../../stores/store.svelte";
+        import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
         import Breadcrumb from "../../components/Breadcrumb.svelte";
     import ConfirmDialog from "../../components/ConfirmDialog.svelte";
