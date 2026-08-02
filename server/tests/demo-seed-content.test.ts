@@ -49,7 +49,10 @@ function findChildByText(items: Items | undefined, text: string): Item | undefin
 
 describe("Demo seed content", () => {
     it("the feature tour YAML specification matches the current demoPages list", () => {
-        const yamlPath = path.resolve(__dirname, "../../docs/client-features/dmo-demo-project-feature-tour-7d3e9a1c.yaml");
+        const yamlPath = path.resolve(
+            __dirname,
+            "../../docs/client-features/dmo-demo-project-feature-tour-7d3e9a1c.yaml",
+        );
         const yamlContent = fs.readFileSync(yamlPath, "utf-8");
         const match = yamlContent.match(/The demo project is seeded with one page per feature group \((.*?)\)/);
         expect(match, "Acceptance criterion enumerating feature groups exists in YAML").to.not.equal(null);
