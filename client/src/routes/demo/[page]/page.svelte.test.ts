@@ -132,7 +132,6 @@ describe("Demo Page View", () => {
         expect(elements.length).toBeGreaterThan(0);
     });
 
-
     it("should render reset state when isResetting is true", async () => {
         const Y_mod = await import("yjs");
         const { getYjsClientByProjectTitle } = await import("../../../services");
