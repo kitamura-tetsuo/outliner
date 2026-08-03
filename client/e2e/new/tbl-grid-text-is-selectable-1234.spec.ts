@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("Grid text is selectable", async ({ page }) => {
@@ -30,7 +30,7 @@ test("Grid text is selectable", async ({ page }) => {
     expect(selection).toContain("Tasks");
 
     // Step 4: Select column header label
-    const headerLabel = page.locator('.th-label').first();
+    const headerLabel = page.locator(".th-label").first();
     const headerBox = await headerLabel.boundingBox();
     if (headerBox) {
         await page.mouse.move(headerBox.x + 2, headerBox.y + headerBox.height / 2);
