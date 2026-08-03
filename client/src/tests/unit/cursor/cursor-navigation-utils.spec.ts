@@ -13,7 +13,6 @@ const { mockCurrentPage } = vi.hoisted(() => {
 });
 
 vi.mock("../../../stores/store.svelte", () => ({
-
     store: {
         get currentPage() {
             return mockCurrentPage.value;
@@ -26,8 +25,6 @@ vi.mock("../../../stores/store.svelte", () => ({
         },
     },
 }));
-
-
 
 describe("CursorNavigationUtils", () => {
     let project: Project;
