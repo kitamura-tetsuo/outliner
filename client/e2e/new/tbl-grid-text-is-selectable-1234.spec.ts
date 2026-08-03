@@ -44,7 +44,9 @@ test("Grid text is selectable", async ({ page }, testInfo) => {
     const headerLabel = page.locator(".th-label").first();
     const headerBox = await headerLabel.boundingBox();
     if (headerBox) {
-        await page.mouse.click(headerBox.x + headerBox.width / 2, headerBox.y + headerBox.height / 2, { clickCount: 3 });
+        await page.mouse.click(headerBox.x + headerBox.width / 2, headerBox.y + headerBox.height / 2, {
+            clickCount: 3,
+        });
     }
 
     // eslint-disable-next-line no-restricted-globals
