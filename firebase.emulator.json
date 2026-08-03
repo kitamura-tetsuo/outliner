@@ -73,6 +73,10 @@
                 "function": "listUsers"
             },
             {
+                "source": "/api/create-test-user",
+                "function": "createTestUser"
+            },
+            {
                 "source": "/api/delete-container",
                 "function": "deleteProject"
             },
