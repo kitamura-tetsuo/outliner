@@ -44,8 +44,8 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
             await sourceHeader.dragTo(page.locator("body"), {
                 targetPosition: {
                     x: targetBox.x + 5,
-                    y: targetBox.y + targetBox.height / 2,
-                },
+                    y: targetBox.y + targetBox.height / 2
+                }
             });
         } else {
             throw new Error("Target bounding box not found");
