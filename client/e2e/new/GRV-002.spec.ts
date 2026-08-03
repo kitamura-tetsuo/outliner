@@ -231,7 +231,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     }
                 } catch {}
 
-                const nodes = pages.map((p: any) => ({ id: p.id, name: (p?.text?.toString?.() ?? String(p.text)) }));
+                const nodes = pages.map((p: any) => ({ id: p.id, name: p?.text?.toString?.() ?? String(p.text) }));
                 const links: any[] = [];
                 for (const src of pages) {
                     const srcText = (src?.text?.toString?.() ?? String(src.text)) as string;
@@ -275,7 +275,7 @@ test.describe("GRV-0001: Graph View real-time updates", () => {
                     console.log("Graph debug:", {
                         pages: pages.map((p: any) => ({
                             id: p.id,
-                            text: (p?.text?.toString?.() ?? String(p.text)),
+                            text: p?.text?.toString?.() ?? String(p.text),
                             children: (toArray(p.items || [])).map((
                                 i: any,
                             ) => (i?.text?.toString?.() ?? String(i.text))),
