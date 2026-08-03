@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { dragColumnHeader, TASKS_PRESET_COLUMNS } from "../utils/tableColumnDragHelpers";
+import { dragColumnHeader } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test("Grid column reorder via handle", async ({ page }, testInfo) => {
