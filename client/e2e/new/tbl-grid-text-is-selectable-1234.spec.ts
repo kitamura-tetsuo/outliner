@@ -21,11 +21,13 @@ test("Grid text is selectable", async ({ page }) => {
     }
 
     // Check selection
+    // eslint-disable-next-line no-restricted-globals
     let selection = await page.evaluate(() => window.getSelection()?.toString());
     expect(selection).toContain("Tasks");
 
     // Wait 200ms and check again (regression check for focus steal)
     await page.waitForTimeout(200);
+    // eslint-disable-next-line no-restricted-globals
     selection = await page.evaluate(() => window.getSelection()?.toString());
     expect(selection).toContain("Tasks");
 
@@ -39,10 +41,12 @@ test("Grid text is selectable", async ({ page }) => {
         await page.mouse.up();
     }
 
+    // eslint-disable-next-line no-restricted-globals
     let headerSelection = await page.evaluate(() => window.getSelection()?.toString());
     expect(headerSelection).toContain("id"); // First column is id
 
     await page.waitForTimeout(200);
+    // eslint-disable-next-line no-restricted-globals
     headerSelection = await page.evaluate(() => window.getSelection()?.toString());
     expect(headerSelection).toContain("id");
 });
