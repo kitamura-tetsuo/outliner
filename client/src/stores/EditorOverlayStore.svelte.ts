@@ -1536,10 +1536,13 @@ export class EditorOverlayStore {
         const { startItemId, startOffset, endItemId, endOffset } = localSelection;
 
         // Get global textarea
-        const textarea = typeof document !== "undefined" ? document.querySelector(".global-textarea") as HTMLTextAreaElement : null;
+        const textarea = typeof document !== "undefined"
+            ? document.querySelector(".global-textarea") as HTMLTextAreaElement
+            : null;
         if (!textarea) return;
 
-        const escapeId = (id: string) => typeof CSS !== "undefined" && CSS.escape ? CSS.escape(id) : id.replace(/['"\\]/g, '\\$&');
+        const escapeId = (id: string) =>
+            typeof CSS !== "undefined" && CSS.escape ? CSS.escape(id) : id.replace(/['"\\]/g, "\\$&");
 
         // Get text of items
         const startItemEl = document.querySelector(
