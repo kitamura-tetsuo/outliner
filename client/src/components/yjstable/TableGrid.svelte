@@ -167,23 +167,11 @@ function handleCancelDelete() {
                     {#each displayColumns as column, index (column)}
                         <th
                             scope="col"
-                            draggable="true"
                             tabindex="0"
                             data-col={column}
                             title={columnLabels[column] ? column : undefined}
                             class:drop-target-left={dropTargetColumn?.column === column && dropTargetColumn.position === "left"}
                             class:drop-target-right={dropTargetColumn?.column === column && dropTargetColumn.position === "right"}
-                            ondragstart={(e) => {
-                                e.stopPropagation();
-                                if (e.dataTransfer) {
-                                    e.dataTransfer.effectAllowed = "move";
-                                    e.dataTransfer.setData("text/plain", column);
-                                    // Identifies this drag as a column reorder while the
-                                    // payload is still unreadable (see blockDndOwnership).
-                                    e.dataTransfer.setData(COLUMN_DRAG_TYPE, column);
-                                }
-                                draggedColumnName = column;
-                            }}
                             ondragover={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
@@ -230,12 +218,37 @@ function handleCancelDelete() {
                                 }
                             }}
                         >
-                            <span class="th-label">
-                                {headerLabel(column)}
-                                {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
-                                    <span class="readonly-mark" title="Read-only column">RO</span>
-                                {/if}
-                            </span>
+                            <div class="th-content">
+                                <span class="th-label">
+                                    {headerLabel(column)}
+                                    {#if editability.editable && !editability.editableColumns.has(column) && !IDENTITY_COLUMNS.has(column)}
+                                        <span class="readonly-mark" title="Read-only column">RO</span>
+                                    {/if}
+                                </span>
+                                <div
+                                    class="column-drag-handle"
+                                    role="button"
+                                    tabindex="-1"
+                                    aria-label={`Drag to reorder ${column}`}
+                                    draggable="true"
+                                    data-testid="yjs-table-column-drag-handle"
+                                    ondragstart={(e) => {
+                                        e.stopPropagation();
+                                        if (e.dataTransfer) {
+                                            e.dataTransfer.effectAllowed = "move";
+                                            e.dataTransfer.setData("text/plain", column);
+                                            // Identifies this drag as a column reorder while the
+                                            // payload is still unreadable (see blockDndOwnership).
+                                            e.dataTransfer.setData(COLUMN_DRAG_TYPE, column);
+                                        }
+                                        draggedColumnName = column;
+                                    }}
+                                >
+                                    <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+                                        <path d="M5 4a1 1 0 11-2 0 1 1 0 012 0zm0 4a1 1 0 11-2 0 1 1 0 012 0zm0 4a1 1 0 11-2 0 1 1 0 012 0zm6-8a1 1 0 11-2 0 1 1 0 012 0zm0 4a1 1 0 11-2 0 1 1 0 012 0zm0 4a1 1 0 11-2 0 1 1 0 012 0z"/>
+                                    </svg>
+                                </div>
+                            </div>
                         </th>
                     {/each}
                     {#if editability.editable && editability.rowIdentity === "id"}
@@ -333,12 +346,6 @@ td {
 th {
     background-color: #f3f4f6;
     font-weight: 600;
-    cursor: grab;
-    user-select: none;
-}
-
-th:active {
-    cursor: grabbing;
 }
 
 th.drop-target-left {
@@ -349,9 +356,31 @@ th.drop-target-right {
     border-right: 3px solid #2563eb;
 }
 
+.th-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .th-label {
+    flex-grow: 1;
+}
+
+.column-drag-handle {
+    cursor: grab;
+    padding: 0 4px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
     user-select: none;
-    pointer-events: none;
+}
+
+.column-drag-handle:active {
+    cursor: grabbing;
+}
+
+.column-drag-handle:hover {
+    color: #6b7280;
 }
 
 .readonly-mark {
