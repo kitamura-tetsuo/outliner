@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm
 
 # Install system dependencies if needed
+# dprint-ignore
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
     # Add any extra dependencies you might need here
