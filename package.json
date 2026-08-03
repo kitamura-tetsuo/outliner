@@ -11,7 +11,7 @@
         "dprint-plugin-markup": "0.19.1",
         "dprint-plugin-yaml": "0.5.0",
         "patch-package": "^8.0.1",
-        "playwright": "^1.62.0",
+        "playwright": "^1.62.1",
         "pm2": "^7.0.3",
         "vitepress": "^1.6.4"
     }
