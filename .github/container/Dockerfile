@@ -1,7 +1,7 @@
 # Must match the Playwright version resolved in client/package-lock.json: the
 # image ships the browser bundle for exactly this release, and a mismatch makes
 # every E2E test fail at browserType.launch with "Executable doesn't exist".
-FROM mcr.microsoft.com/playwright:v1.62.0-jammy
+FROM mcr.microsoft.com/playwright:v1.62.1-jammy
 
 # Install Java and OS utilities
 RUN apt-get update -o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::ForceIPv4=true && \
