@@ -16,6 +16,7 @@ test.describe("Cross-item copy", () => {
         const firstItem = page.locator(".outliner-item").nth(0).locator(".item-text");
         const thirdItem = page.locator(".outliner-item").nth(2).locator(".item-text");
 
+        await firstItem.click();
         await firstItem.hover();
         await page.mouse.down();
         await thirdItem.hover();

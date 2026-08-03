@@ -1240,10 +1240,6 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     /**
      * Set selection range for global textarea
-     * @param startItemId Start item ID
-     * @param startOffset Start offset
-     * @param endItemId End item ID
-     * @param endOffset End offset
      */
     updateGlobalTextareaSelection() {
         store.syncTextareaToSelection();
