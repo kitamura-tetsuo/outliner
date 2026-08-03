@@ -109,6 +109,7 @@ export function isEditorClipboardEvent(event: Event): boolean {
  * Handler that distributes key and input events to each cursor instance
  */
 export class KeyEventHandler {
+    static lastCopyHandled = 0;
     // Browsers may strip non-standard MIME entries while moving a ClipboardEvent
     // through the operating-system clipboard. Retain the last in-app payload as
     // a same-tab fallback, but only use it when its plain text still matches.
@@ -239,6 +240,25 @@ export class KeyEventHandler {
             });
 
             // Dispatch the cut event
+            document.dispatchEvent(clipboardEvent);
+        });
+
+        // Ctrl+C copy (fallback for missing native event)
+        add("c", true, false, false, async () => {
+            const selections = Object.values(store.selections);
+            const localSelection = selections.find(s => (s.userId || "local") === "local");
+            if (!localSelection) return;
+
+            // Wait for potential native copy event
+            await new Promise(resolve => setTimeout(resolve, 0));
+            if (Date.now() - (KeyEventHandler.lastCopyHandled || 0) < 100) return;
+
+            // Dispatch synthetic copy
+            const clipboardEvent = new ClipboardEvent("copy", {
+                clipboardData: new DataTransfer(),
+                bubbles: true,
+                cancelable: true,
+            });
             document.dispatchEvent(clipboardEvent);
         });
     }
@@ -1268,6 +1288,7 @@ export class KeyEventHandler {
      * @param event ClipboardEvent
      */
     static handleCopy(event: ClipboardEvent) {
+        KeyEventHandler.lastCopyHandled = Date.now();
         // Debug info
         if (
             typeof window !== "undefined"
@@ -1386,7 +1407,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.clipboardData
+                    && navigator?.clipboard?.writeText && !event.isTrusted
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -1399,7 +1420,7 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                if (!event.clipboardData) {
+                if (!event.isTrusted) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
@@ -2651,7 +2672,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.clipboardData
+                    && navigator?.clipboard?.writeText && !event.isTrusted
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -2664,7 +2685,7 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                if (!event.clipboardData) {
+                if (!event.isTrusted) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
