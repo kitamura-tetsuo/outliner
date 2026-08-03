@@ -9,6 +9,7 @@ acceptance:
 - Pasting multi-line text splits it appropriately into multiple items
 - Text in selection ranges spanning multiple items can be copied
 tests:
+- client/e2e/core/slr-ctrl-c-copies-cross-item-selection-37d5614f.spec.ts
 - client/e2e/core/slr-copy-requires-editor-focus-3d7c2f18.spec.ts
 - client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
 - client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts

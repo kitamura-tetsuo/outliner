@@ -115,7 +115,7 @@ export class CursorSelection {
         });
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
     }
 
     /**
@@ -209,7 +209,7 @@ export class CursorSelection {
         });
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
     }
 
     /**
@@ -306,7 +306,7 @@ export class CursorSelection {
         });
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
     }
 
     /**
@@ -491,7 +491,7 @@ export class CursorSelection {
         }
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {
@@ -664,7 +664,7 @@ export class CursorSelection {
         this.cursor.applyToStore();
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
     }
 
     /**
@@ -767,7 +767,7 @@ export class CursorSelection {
         this.cursor.applyToStore();
 
         // Set global textarea selection
-        this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.cursor.updateGlobalTextareaSelection();
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined") {

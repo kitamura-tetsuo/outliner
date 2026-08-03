@@ -12,6 +12,7 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
         selections: {},
         updateCursor: vi.fn(),
         syncTextareaToActiveItem: vi.fn(),
+        syncTextareaToSelection: vi.fn(),
         setCursor: vi.fn(() => "new-cursor-id"),
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(),

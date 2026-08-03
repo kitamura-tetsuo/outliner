@@ -601,7 +601,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         });
 
         // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
+        this.updateGlobalTextareaSelection();
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
         if (typeof window !== "undefined" && hasSelection) {
@@ -1127,7 +1127,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         });
 
         // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(this.itemId, 0, this.itemId, text.length);
+        this.updateGlobalTextareaSelection();
 
         // Set cursor position to the end
         this.offset = text.length;
@@ -1156,7 +1156,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             isReversed: false,
         });
 
-        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, text.length);
+        this.updateGlobalTextareaSelection();
 
         this.offset = text.length;
         this.applyToStore();
@@ -1171,7 +1171,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const newOffset = Math.min(selection.startOffset, selection.endOffset);
         this.offset = newOffset;
         this.clearSelection();
-        this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset);
+        this.updateGlobalTextareaSelection();
         this.applyToStore();
         store.startCursorBlink();
     }
@@ -1195,7 +1195,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             isReversed: false,
         });
 
-        this.updateGlobalTextareaSelection(this.itemId, startOffset, this.itemId, endOffset);
+        this.updateGlobalTextareaSelection();
 
         this.offset = endOffset;
         this.applyToStore();
@@ -1245,7 +1245,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
      * @param endItemId End item ID
      * @param endOffset End offset
      */
-    updateGlobalTextareaSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
+    updateGlobalTextareaSelection() {
         store.syncTextareaToSelection();
     }
 
