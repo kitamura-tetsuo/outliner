@@ -128,7 +128,8 @@ Paste any URL to automatically create an external link.
 
 Easily find content and execute actions within Outliner.
 
-- **Search:** Use the Search pages input field in the top navigation bar or the **Search** button in the page header to search across the whole project. Recent searches are remembered for quick access.
+- **Search:** Use the "Search pages" input field in the top navigation bar to quickly search across the whole project. Recent searches are remembered for quick access.
+- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. This allows rewriting item text. Page titles stay untouched unless you tick "Include page titles".
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
