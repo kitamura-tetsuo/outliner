@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { findNextItem, findPreviousItem, getDeepestDescendant, searchItem, isPageItem } from "../../../lib/cursor/CursorNavigationUtils";
-import { Item as Page, Project, Item } from "../../../schema/app-schema";
+import {
+    findNextItem,
+    findPreviousItem,
+    getDeepestDescendant,
+    isPageItem,
+    searchItem,
+} from "../../../lib/cursor/CursorNavigationUtils";
+import { Item, Item as Page, Project } from "../../../schema/app-schema";
 
 vi.mock("../../../stores/store.svelte", () => ({
     store: {
@@ -11,8 +17,8 @@ vi.mock("../../../stores/store.svelte", () => ({
             mockCurrentPage = page;
         },
         activeViewModel: {
-            isCollapsed: vi.fn().mockReturnValue(false)
-        }
+            isCollapsed: vi.fn().mockReturnValue(false),
+        },
     },
 }));
 
