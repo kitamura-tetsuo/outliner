@@ -39,14 +39,14 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
         const sourceHeader = page.locator("th[data-col='status'] .column-drag-handle").first();
         const targetHeader = page.locator("th[data-col='title']").first();
 
-        await sourceHeader.hover();
-        await page.mouse.down();
-
-        // Move towards target left edge
         const targetBox = await targetHeader.boundingBox();
         if (targetBox) {
-            await page.mouse.move(targetBox.x + 5, targetBox.y + targetBox.height / 2, { steps: 5 });
-            await page.mouse.up();
+            await sourceHeader.dragTo(page.locator("body"), {
+                targetPosition: {
+                    x: targetBox.x + 5,
+                    y: targetBox.y + targetBox.height / 2
+                }
+            });
         } else {
             throw new Error("Target bounding box not found");
         }
