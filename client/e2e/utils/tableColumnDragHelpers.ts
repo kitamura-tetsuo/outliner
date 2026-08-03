@@ -125,7 +125,7 @@ export async function dragColumnHeader(
 ): Promise<void> {
     await dragElementOnto(
         page,
-        `[data-testid="yjs-table-grid"] th[data-col="${from}"]`,
+        `[data-testid="yjs-table-grid"] th[data-col="${from}"] .column-drag-handle`,
         `[data-testid="yjs-table-grid"] th[data-col="${to}"]`,
         side,
     );

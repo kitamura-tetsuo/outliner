@@ -181,7 +181,7 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
     it("lets a header drop reach the grid handler and write the new column order", () => {
         const { container, itemDropHandled, itemDragOverHandled, itemDragEnterHandled } = renderGrid();
 
-        const source = container.querySelector("th[data-col='col_b']")!;
+        const source = container.querySelector("th[data-col='col_b'] .column-drag-handle")!;
         const target = container.querySelector("th[data-col='col_a']")!;
         stubRect(target, { left: 100, top: 0, width: 100, height: 20 });
 

@@ -29,3 +29,6 @@ tests:
 - client/src/services/yjstable/tableRelationProvider.test.ts
 - client/src/services/yjstable/tableSyncAdapter.test.ts
 - client/src/services/yjstable/valueCasting.test.ts
+
+- client/e2e/new/tbl-grid-text-is-selectable-1234.spec.ts
+- client/e2e/new/tbl-grid-column-reorder-1234.spec.ts

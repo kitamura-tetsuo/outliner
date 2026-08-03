@@ -20,6 +20,7 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 // update-depth loops during E2E when alias picker and focus logic interact.
 // Focus management is handled in onMount and OutlinerItem.startEditing().
 
+
 // Register global textarea to the store
 onMount(() => {
     // Initialize measurement canvas on client only
@@ -184,7 +185,8 @@ function handleBlur(event: FocusEvent) {
             tagName === "select" ||
             tagName === "button" ||
             relatedTarget.closest(".page-search-box") ||
-            relatedTarget.closest("[data-testid='search-panel']")
+            relatedTarget.closest("[data-testid='search-panel']") ||
+            relatedTarget.closest(".component-wrapper")
         ) {
             return;
         }
@@ -204,8 +206,21 @@ function handleBlur(event: FocusEvent) {
                         activeTag === "select" ||
                         activeTag === "button" ||
                         activeEl.closest(".page-search-box") ||
-                        activeEl.closest("[data-testid='search-panel']")
+                        activeEl.closest("[data-testid='search-panel']") ||
+                        activeEl.closest(".component-wrapper")
                     ) {
+                        return;
+                    }
+                }
+
+                // Do not steal focus if the user has a non-collapsed selection outside the editor text
+                const sel = window.getSelection();
+                if (sel && !sel.isCollapsed) {
+                    const anchorNode = sel.anchorNode;
+                    if (anchorNode && anchorNode.nodeType === Node.ELEMENT_NODE && !(anchorNode as Element).closest(".item-text")) {
+                        return;
+                    }
+                    if (anchorNode && anchorNode.nodeType === Node.TEXT_NODE && anchorNode.parentElement && !anchorNode.parentElement.closest(".item-text")) {
                         return;
                     }
                 }
