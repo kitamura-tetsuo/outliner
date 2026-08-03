@@ -1,5 +1,5 @@
 import { fireEvent, render } from "@testing-library/svelte";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 
 describe("GlobalTextArea", () => {

@@ -20,6 +20,7 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 // update-depth loops during E2E when alias picker and focus logic interact.
 // Focus management is handled in onMount and OutlinerItem.startEditing().
 
+
 // Register global textarea to the store
 onMount(() => {
     // Initialize measurement canvas on client only
