@@ -18,5 +18,10 @@ test("Grid column reorder via handle", async ({ page }) => {
 
     await firstHandle.dragTo(secondCol);
 
-    // Test completed without errors
+    // Verify order changed
+    const expectedOrder = ["title", "id", "status", "priority", "due_date", "repeat_days"];
+    const actualOrder = await page.getByTestId("yjs-table-grid").first().locator("th[data-col]").evaluateAll((ths) =>
+        ths.map((th) => th.getAttribute("data-col") ?? "")
+    );
+    expect(actualOrder).toEqual(expectedOrder);
 });

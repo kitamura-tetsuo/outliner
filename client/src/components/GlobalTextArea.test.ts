@@ -1,8 +1,14 @@
 import { fireEvent, render } from "@testing-library/svelte";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 
 describe("GlobalTextArea", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+    afterEach(() => {
+        vi.useRealTimers();
+    });
     it("does not restore focus if blur relatedTarget is inside component-wrapper", async () => {
         const { container } = render(GlobalTextArea);
         const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
@@ -15,7 +21,7 @@ describe("GlobalTextArea", () => {
         await fireEvent.blur(textarea, { relatedTarget: mockRelatedTarget });
 
         // Wait for setTimeout in handleBlur
-        await new Promise(r => setTimeout(r, 20));
+        vi.advanceTimersByTime(20);
 
         expect(focusSpy).not.toHaveBeenCalled();
 

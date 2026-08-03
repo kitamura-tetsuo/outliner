@@ -16,20 +16,20 @@ test("Grid text is selectable", async ({ page }) => {
     if (box) {
         await page.mouse.move(box.x + 2, box.y + box.height / 2);
         await page.mouse.down();
-        await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2);
+        await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2, { steps: 5 });
         await page.mouse.up();
     }
 
     // Check selection
     // eslint-disable-next-line no-restricted-globals
     let selection = await page.evaluate(() => window.getSelection()?.toString());
-    expect(selection).toContain("Tasks");
+    expect(selection).toBe("Tasks");
 
     // Wait 200ms and check again (regression check for focus steal)
     await page.waitForTimeout(200);
     // eslint-disable-next-line no-restricted-globals
     selection = await page.evaluate(() => window.getSelection()?.toString());
-    expect(selection).toContain("Tasks");
+    expect(selection).toBe("Tasks");
 
     // Step 4: Select column header label
     const headerLabel = page.locator(".th-label").first();
@@ -37,16 +37,16 @@ test("Grid text is selectable", async ({ page }) => {
     if (headerBox) {
         await page.mouse.move(headerBox.x + 2, headerBox.y + headerBox.height / 2);
         await page.mouse.down();
-        await page.mouse.move(headerBox.x + headerBox.width - 2, headerBox.y + headerBox.height / 2);
+        await page.mouse.move(headerBox.x + headerBox.width - 2, headerBox.y + headerBox.height / 2, { steps: 5 });
         await page.mouse.up();
     }
 
     // eslint-disable-next-line no-restricted-globals
     let headerSelection = await page.evaluate(() => window.getSelection()?.toString());
-    expect(headerSelection).toContain("id"); // First column is id
+    expect(headerSelection).toBe("id");
 
     await page.waitForTimeout(200);
     // eslint-disable-next-line no-restricted-globals
     headerSelection = await page.evaluate(() => window.getSelection()?.toString());
-    expect(headerSelection).toContain("id");
+    expect(headerSelection).toBe("id");
 });

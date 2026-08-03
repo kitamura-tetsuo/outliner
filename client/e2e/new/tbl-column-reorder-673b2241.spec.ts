@@ -36,7 +36,7 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
         expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
 
         // REAL MOUSE DRAG
-        const sourceHeader = page.locator("th[data-col='status']").first();
+        const sourceHeader = page.locator("th[data-col='status'] .column-drag-handle").first();
         const targetHeader = page.locator("th[data-col='title']").first();
 
         await sourceHeader.hover();
