@@ -80,8 +80,7 @@ describe("CursorNavigationUtils", () => {
 
         expect(findPreviousItem(rootItem2.id)?.id).toBe(child1.id);
         expect(findPreviousItem(child1.id)?.id).toBe(rootItem1.id);
-        // TODO: The original logic currently has a bug where it returns undefined instead of the parent for the first item.
-        // expect(findPreviousItem(rootItem1.id)?.id).toBe(page.id); // Uncomment when the logic bug is fixed
+        expect(findPreviousItem(rootItem1.id)?.id).toBe(page.id);
         expect(findPreviousItem(page.id)).toBeUndefined();
     });
 });

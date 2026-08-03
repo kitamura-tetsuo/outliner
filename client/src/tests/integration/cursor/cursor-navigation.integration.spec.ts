@@ -142,10 +142,10 @@ describe("Cursor Integration", () => {
                 userId: "user-1",
             });
 
-            // Move left should navigate to previous item (but there isn't one)
+            // Move left should navigate to previous item (which is the parent now)
             cursor.moveLeft();
-            // The cursor should stay on the same item, not move to the parent
-            expect(cursor.itemId).toBe("test-item-1"); // Should stay on same item
+            // The cursor should move to the parent item, since that's what findPreviousItem returns now.
+            expect(cursor.itemId).toBe("parent-item-1");
 
             // Move to end of first item and then right to next item
             cursor.offset = mockItem.text.length;
