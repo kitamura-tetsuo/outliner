@@ -51,7 +51,7 @@ describe("graphUtils", () => {
         });
 
         it("should extract text from an object with toString method when text property is missing", () => {
-            const pages = [
+            const pages: unknown[] = [
                 { id: "p1", toString: () => "Stringified Page One" },
                 { id: "p2", text: { toString: () => "Stringified Text Obj" } },
             ];
