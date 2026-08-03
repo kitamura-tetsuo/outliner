@@ -76,7 +76,11 @@ describe("getClickPosition", () => {
         const doc = document as DocumentWithCaret;
         doc.caretPositionFromPoint = vi.fn((x, y) => {
             if (x === 15 && y === 0) {
-                return { offsetNode: mockNode, offset: 3 };
+                return {
+                    /* @ts-expect-error TS7 mock */
+                    offsetNode: mockNode,
+                    offset: 3,
+                };
             }
             return null;
         });
@@ -109,7 +113,11 @@ describe("getClickPosition", () => {
         const doc = document as DocumentWithCaret;
         doc.caretPositionFromPoint = vi.fn((x, y) => {
             if (x === 15 && y === 0) {
-                return { offsetNode: mockNode, offset: 3 };
+                return {
+                    /* @ts-expect-error TS7 mock */
+                    offsetNode: mockNode,
+                    offset: 3,
+                };
             }
             return null;
         });
@@ -324,7 +332,11 @@ describe("getClickPosition", () => {
         const doc = document as DocumentWithCaret;
         doc.caretPositionFromPoint = vi.fn((x, y) => {
             if (x === 15 && y === 0) {
-                return { offsetNode: mockNode, offset: 100 };
+                return {
+                    /* @ts-expect-error TS7 mock */
+                    offsetNode: mockNode,
+                    offset: 100,
+                };
             }
             return null;
         });
