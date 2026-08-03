@@ -53,8 +53,8 @@ function findPreviousItemRecursive(node: Item, targetId: string, prevItem?: Item
             prevForChild = getDeepestDescendant(children[i - 1]);
         } else {
             // Check if node is the currentPage (the top root node)
-            const isTopRoot = generalStore.currentPage && node.id === generalStore.currentPage.id;
-            prevForChild = isTopRoot ? undefined : node;
+
+            prevForChild = node;
         }
 
         if (child.id === targetId) {
