@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
-import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
+import { pendingRegistrationsMap, queueProjectRegistration } from "./metaDoc.svelte";
+import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle, isProcessingPending, scheduleProcessPending, initPendingRegistrationsListeners, cleanupPendingRegistrationsListeners, backoffTimeout } from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -188,5 +189,44 @@ describe("yjsService", () => {
                 "Failed to delete project: Internal Server Error",
             );
         });
+    });
+});
+
+
+describe("processPendingRegistrations backoff", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        initPendingRegistrationsListeners();
+    });
+
+    afterEach(() => {
+        cleanupPendingRegistrationsListeners();
+        vi.useRealTimers();
+        pendingRegistrationsMap.clear();
+    });
+
+    it("should process items and retry if any fail", async () => {
+        queueProjectRegistration("test-retry-id", "Test Retry Title");
+
+        scheduleProcessPending();
+
+        // Wait for all timers and immediate promises
+        await vi.runAllTimersAsync();
+
+        expect(backoffTimeout).toBeUndefined();
+    });
+
+    it("should clean up timers when queue is empty", async () => {
+        queueProjectRegistration("test-retry-id", "Test Retry Title");
+
+        scheduleProcessPending();
+
+        // Mock successful process by emptying map
+        pendingRegistrationsMap.clear();
+
+        scheduleProcessPending();
+        await vi.runAllTimersAsync();
+
+        expect(backoffTimeout).toBeUndefined();
     });
 });

@@ -15,6 +15,7 @@ import {
     getPendingRegistrations,
     getProjectIdByTitle,
     metaDocLoaded,
+    pendingRegistrationsMap,
     queueProjectRegistration,
     removePendingRegistration,
     setContainerTitleInMetaDoc,
@@ -637,25 +638,97 @@ export async function processPendingRegistrations(): Promise<void> {
     }
 }
 
-let cleanupRegistrations: (() => void) | undefined;
 
-if (typeof window !== "undefined") {
-    const handleOnline = () => {
-        void processPendingRegistrations();
+let cleanupRegistrations: (() => void) | undefined;
+export let backoffTimeout: ReturnType<typeof setTimeout> | undefined;
+export let isProcessingPending = false;
+
+export function scheduleProcessPending() {
+    if (backoffTimeout) clearTimeout(backoffTimeout);
+
+    let attempt = 0;
+    const maxAttempt = 5;
+
+    const run = async () => {
+        const pendingCount = getPendingRegistrations().length;
+        if (pendingCount === 0) {
+            backoffTimeout = undefined;
+            return;
+        }
+        if (isProcessingPending) {
+            backoffTimeout = setTimeout(scheduleProcessPending, 1000);
+            return;
+        }
+        isProcessingPending = true;
+
+        try {
+            await processPendingRegistrations();
+        } catch (error) {
+            logger.warn(`[yjsService] Error processing pending registrations: ${error}`);
+        } finally {
+            isProcessingPending = false;
+        }
+
+        const remaining = getPendingRegistrations().length;
+        if (remaining > 0 && attempt < maxAttempt) {
+            attempt++;
+            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+            backoffTimeout = setTimeout(run, delay);
+        } else {
+            backoffTimeout = undefined;
+        }
     };
 
-    // Process on network recovery
+    void run();
+}
+
+export function initPendingRegistrationsListeners() {
+    if (typeof window === "undefined") return () => {};
+
+    const handleOnline = () => {
+        if (navigator.onLine) scheduleProcessPending();
+    };
     window.addEventListener("online", handleOnline);
 
-    // Process on successful sign-in
     const unsubAuth = userManager.addEventListener(() => {
-        void processPendingRegistrations();
+        if (userManager.getCurrentUser()) scheduleProcessPending();
     });
 
-    cleanupRegistrations = () => {
+    const handlePendingChange = () => {
+        const pendingCount = getPendingRegistrations().length;
+        if (pendingCount > 0 && navigator.onLine && userManager.getCurrentUser()) scheduleProcessPending();
+    };
+
+
+    let cleanupPendingMap = () => {};
+    let initTimeout: ReturnType<typeof setTimeout>;
+    // Delay binding until next tick to ensure pendingRegistrationsMap is initialized
+    initTimeout = setTimeout(() => {
+        if (typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap && typeof pendingRegistrationsMap.observe === 'function') {
+            try {
+                pendingRegistrationsMap.observe(handlePendingChange);
+                cleanupPendingMap = () => {
+                    try { pendingRegistrationsMap.unobserve(handlePendingChange); } catch (e) {}
+                };
+            } catch(e) {}
+        }
+    }, 0);
+
+    return () => {
+        clearTimeout(initTimeout);
         window.removeEventListener("online", handleOnline);
         unsubAuth();
+        cleanupPendingMap();
+        if (backoffTimeout) {
+            clearTimeout(backoffTimeout);
+            backoffTimeout = undefined;
+        }
     };
+
+}
+
+if (typeof window !== "undefined") {
+    cleanupRegistrations = initPendingRegistrationsListeners();
 }
 
 export function cleanupPendingRegistrationsListeners() {
