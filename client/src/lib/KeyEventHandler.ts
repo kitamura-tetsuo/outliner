@@ -919,9 +919,21 @@ export class KeyEventHandler {
 
         // Call onKeyDown method for each cursor instance
         let handled = false;
-        for (const cursor of cursorInstances) {
-            if (cursor.onKeyDown(event)) {
+
+        // For Ctrl/Cmd+A (Select All), handle it only once for the first cursor
+        // to prevent overlapping multiple cursors duplicating the exact same page-wide selection and
+        // leaving multiple overlapping cursors trapped at the end of the document.
+        if (
+            (event.ctrlKey || event.metaKey) && (event.key === "a" || event.key === "A") && cursorInstances.length > 0
+        ) {
+            if (cursorInstances[0].onKeyDown(event)) {
                 handled = true;
+            }
+        } else {
+            for (const cursor of cursorInstances) {
+                if (cursor.onKeyDown(event)) {
+                    handled = true;
+                }
             }
         }
 

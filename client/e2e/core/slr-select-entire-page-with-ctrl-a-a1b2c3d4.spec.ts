@@ -1,52 +1,75 @@
 import { expect, test } from "@playwright/test";
+import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Select entire page with Ctrl/Cmd+A", () => {
     test("Select the full page from a middle body item", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
-            "Title",
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Item 1",
             "  Nested child",
             "Item 3",
         ]);
 
-        const middleItem = page.locator(".editor-item-content").nth(1);
-        await middleItem.click();
+        await page.waitForSelector("[data-item-id]");
+        const items = page.locator("[data-item-id]");
+        await expect(items.nth(3)).toBeVisible();
+
+        const allItems = await items.all();
+        const firstBodyId = await allItems[1].getAttribute("data-item-id");
+
+        // Focus using data-item-id
+        await page.locator(`[data-item-id="${firstBodyId}"]`).click();
+
+        // Wait for global textarea and cursor to be active
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea && document.activeElement === textarea;
+        });
 
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(300);
 
-        const text = await page.evaluate(() => (window as any).editorOverlayStore.getSelectedText());
-        expect(text).toBe("Title\nItem 1\nNested child\nItem 3");
+        const text = await page.evaluate(() => (globalThis as any).editorOverlayStore.getSelectedText());
+        expect(text).toBe(`${pageName}\nItem 1\n  Nested child\nItem 3`);
 
-        const selectionCount = await page.evaluate(() =>
-            Object.keys((window as any).editorOverlayStore.selections).length
-        );
-        expect(selectionCount).toBe(1);
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.selectionCount).toBe(1);
 
-        const storeSelections = await page.evaluate(() => (window as any).editorOverlayStore.selections);
+        const storeSelections = await page.evaluate(() => (globalThis as any).editorOverlayStore.selections);
         const selectionsKeys = Object.keys(storeSelections);
         const selection = storeSelections[selectionsKeys[0]];
-        const items = await page.locator(".editor-item").all();
-        const titleId = await items[0].getAttribute("data-item-id");
-        const lastItemId = await items[3].getAttribute("data-item-id");
+        const titleId = await allItems[0].getAttribute("data-item-id");
+        const lastItemId = await allItems[3].getAttribute("data-item-id");
 
         expect(selection.startItemId).toBe(titleId);
         expect(selection.startOffset).toBe(0);
         expect(selection.endItemId).toBe(lastItemId);
         expect(selection.endOffset).toBe(6); // "Item 3".length
+
+        const overlayElements = await page.locator(".editor-overlay .selection").all();
+        expect(overlayElements.length).toBeGreaterThan(0);
     });
 
     test("Repeated Ctrl+A is idempotent", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
-            "Title",
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Item 1",
             "  Nested child",
             "Item 3",
         ]);
 
-        const middleItem = page.locator(".editor-item-content").nth(1);
-        await middleItem.click();
+        await page.waitForSelector("[data-item-id]");
+        const items = page.locator("[data-item-id]");
+        await expect(items.nth(3)).toBeVisible();
+
+        const allItems = await items.all();
+        const firstBodyId = await allItems[1].getAttribute("data-item-id");
+
+        await page.locator(`[data-item-id="${firstBodyId}"]`).click();
+
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea && document.activeElement === textarea;
+        });
 
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(100);
@@ -55,78 +78,102 @@ test.describe("Select entire page with Ctrl/Cmd+A", () => {
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(300);
 
-        const text = await page.evaluate(() => (window as any).editorOverlayStore.getSelectedText());
-        expect(text).toBe("Title\nItem 1\nNested child\nItem 3");
+        const text = await page.evaluate(() => (globalThis as any).editorOverlayStore.getSelectedText());
+        expect(text).toBe(`${pageName}\nItem 1\n  Nested child\nItem 3`);
 
-        const selectionCount = await page.evaluate(() =>
-            Object.keys((window as any).editorOverlayStore.selections).length
-        );
-        expect(selectionCount).toBe(1);
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.selectionCount).toBe(1);
     });
 
     test("Existing local selection is replaced", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
-            "Title",
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Item 1",
         ]);
 
-        const titleItem = page.locator(".editor-item-content").first();
-        await titleItem.click();
+        await page.waitForSelector("[data-item-id]");
+        const items = page.locator("[data-item-id]");
+        await expect(items.nth(1)).toBeVisible();
+
+        const allItems = await items.all();
+        const titleId = await allItems[0].getAttribute("data-item-id");
+
+        await page.locator(`[data-item-id="${titleId}"]`).click();
+
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea && document.activeElement === textarea;
+        });
+
         await page.keyboard.press("Shift+ArrowDown");
         await page.waitForTimeout(100);
 
-        let selectionCount = await page.evaluate(() =>
-            Object.keys((window as any).editorOverlayStore.selections).length
-        );
-        expect(selectionCount).toBe(1);
+        let cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.selectionCount).toBe(1);
 
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(300);
 
-        const text = await page.evaluate(() => (window as any).editorOverlayStore.getSelectedText());
-        expect(text).toBe("Title\nItem 1");
+        const text = await page.evaluate(() => (globalThis as any).editorOverlayStore.getSelectedText());
+        expect(text).toBe(`${pageName}\nItem 1`);
 
-        selectionCount = await page.evaluate(() => Object.keys((window as any).editorOverlayStore.selections).length);
-        expect(selectionCount).toBe(1);
+        cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.selectionCount).toBe(1);
     });
 
     test("Title-only page works without errors", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
-            "Only Title",
-        ]);
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
 
-        const titleItem = page.locator(".editor-item-content").first();
-        await titleItem.click();
+        await page.waitForSelector("[data-item-id]");
+        const items = page.locator("[data-item-id]");
+        await expect(items.nth(0)).toBeVisible();
+
+        const allItems = await items.all();
+        const titleId = await allItems[0].getAttribute("data-item-id");
+
+        await page.locator(`[data-item-id="${titleId}"]`).click();
+
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea && document.activeElement === textarea;
+        });
 
         await page.keyboard.press("Control+a");
         await page.waitForTimeout(300);
 
-        const text = await page.evaluate(() => (window as any).editorOverlayStore.getSelectedText());
-        expect(text).toBe("Only Title");
+        const text = await page.evaluate(() => (globalThis as any).editorOverlayStore.getSelectedText());
+        expect(text).toBe(pageName);
 
-        const selectionCount = await page.evaluate(() =>
-            Object.keys((window as any).editorOverlayStore.selections).length
-        );
-        expect(selectionCount).toBe(1);
+        const cursorData = await CursorValidator.getCursorData(page);
+        expect(cursorData.selectionCount).toBe(1);
     });
 
     test("Platform and focus ownership (Meta+a and foreign input)", async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
-            "Title",
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Item 1",
         ]);
 
-        const middleItem = page.locator(".editor-item-content").nth(1);
-        await middleItem.click();
+        await page.waitForSelector("[data-item-id]");
+        const items = page.locator("[data-item-id]");
+        await expect(items.nth(1)).toBeVisible();
+
+        const allItems = await items.all();
+        const firstBodyId = await allItems[1].getAttribute("data-item-id");
+
+        await page.locator(`[data-item-id="${firstBodyId}"]`).click();
+
+        await page.waitForFunction(() => {
+            const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
+            return textarea && document.activeElement === textarea;
+        });
 
         await page.keyboard.press("Meta+a");
         await page.waitForTimeout(300);
 
-        const text = await page.evaluate(() => (window as any).editorOverlayStore.getSelectedText());
-        expect(text).toBe("Title\nItem 1");
+        const text = await page.evaluate(() => (globalThis as any).editorOverlayStore.getSelectedText());
+        expect(text).toBe(`${pageName}\nItem 1`);
 
         // Focus search input
-        const searchInput = page.getByPlaceholder("Search...");
+        const searchInput = page.getByRole("combobox", { name: "Search pages" });
         await searchInput.click();
         await searchInput.fill("hello");
         await page.keyboard.press("Control+a");
