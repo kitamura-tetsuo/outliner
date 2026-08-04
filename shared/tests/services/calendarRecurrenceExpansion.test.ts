@@ -98,3 +98,46 @@ describe("excludeOverriddenOccurrences", () => {
         expect(excludeOverriddenOccurrences(occurrences, [])).toEqual(occurrences);
     });
 });
+
+it("rejects an invalid dtstart format gracefully", () => {
+    const rule = {
+        rrule: "FREQ=DAILY;COUNT=3",
+        dtstart: "invalid-time",
+        timezone: "America/New_York",
+    };
+    const occurrences = expandRecurrence(rule, Date.now() - 100000, Date.now() + 100000);
+    expect(occurrences).toEqual([]);
+});
+
+it("handles durationMs being missing", () => {
+    const start = "2024-03-01T10:00:00";
+    const startMs = Date.UTC(2024, 2, 1, 15, 0, 0); // America/New_York is UTC-5
+    const rule = {
+        rrule: "FREQ=DAILY;COUNT=1",
+        dtstart: start,
+        timezone: "America/New_York",
+    };
+
+    const occurrences = expandRecurrence(rule, startMs - 1000, startMs + 1000);
+    expect(occurrences[0].endUtcMs).toEqual(occurrences[0].startUtcMs);
+});
+
+it("handles rrule string parsing errors", () => {
+    const rule = {
+        rrule: "INVALID_RRULE_FORMAT",
+        dtstart: "2024-03-01T10:00:00",
+        timezone: "America/New_York",
+    };
+    const occurrences = expandRecurrence(rule, Date.now() - 100000, Date.now() + 100000);
+    expect(occurrences).toEqual([]);
+});
+
+it("skips non-existent wall times", () => {
+    const rule = {
+        rrule: "FREQ=DAILY;COUNT=1",
+        dtstart: "2024-03-10T02:30:00",
+        timezone: "America/New_York",
+    };
+    const occurrences = expandRecurrence(rule, Date.UTC(2024, 2, 1), Date.UTC(2024, 2, 20));
+    expect(occurrences).toEqual([]);
+});

@@ -61,6 +61,18 @@ describe("iterateItems", () => {
         const result = Array.from(iterateItems({ foo: "bar" }));
         expect(result).toEqual([]);
     });
+
+    it("skips undefined iterateUnordered", () => {
+        const item1 = { id: "1" } as unknown as Item;
+        const items = {
+            iterateUnordered: "not a function",
+            [Symbol.iterator]: function*() {
+                yield item1;
+            },
+        };
+        const result = Array.from(iterateItems(items));
+        expect(result).toEqual([item1]);
+    });
 });
 
 describe("iterateItemsOrdered", () => {
@@ -133,7 +145,7 @@ describe("iterateItemsDeep", () => {
         const items = [item1];
 
         const result = Array.from(iterateItemsDeep(items));
-        expect(result.map(i => i.id)).toEqual(["1", "2", "3", "4"]);
+        expect(result.map((i) => i.id)).toEqual(["1", "2", "3", "4"]);
     });
 
     it("should iterate deeply using get('items')", () => {
@@ -143,7 +155,7 @@ describe("iterateItemsDeep", () => {
         const items = [item1];
 
         const result = Array.from(iterateItemsDeep(items)) as any[];
-        expect(result.map(i => i.id)).toEqual(["1", "2", "3"]);
+        expect(result.map((i) => i.id)).toEqual(["1", "2", "3"]);
     });
 
     it("handles deeply nested structures that return empty iterators", () => {
@@ -151,7 +163,7 @@ describe("iterateItemsDeep", () => {
         const items = [item1];
 
         const result = Array.from(iterateItemsDeep(items)) as any[];
-        expect(result.map(i => i.id)).toEqual(["1"]);
+        expect(result.map((i) => i.id)).toEqual(["1"]);
     });
 
     it("skips non-object items and continues", () => {
@@ -160,4 +172,109 @@ describe("iterateItemsDeep", () => {
         const result = Array.from(iterateItemsDeep(items)) as any[];
         expect(result).toContain(item2);
     });
+
+    it("should handle get('items') returning non-iterable", () => {
+        const item1 = { id: "1", get: (k: string) => k === "items" ? { foo: "bar" } : undefined };
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("returns empty iterable when root iterator yields nothing", () => {
+        const items = {
+            [Symbol.iterator]: function*() {},
+        };
+        const result = Array.from(iterateItemsDeep(items));
+        expect(result).toEqual([]);
+    });
+
+    it("handles deeply nested structures that yield items which return empty array", () => {
+        const item1 = { id: "1", items: { [Symbol.iterator]: function*() {} } };
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("handles deeply nested structures with no items", () => {
+        const item1 = { id: "1" } as unknown as Item;
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("skips undefined child items", () => {
+        const item1 = { id: "1", items: undefined } as unknown as Item;
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("skips non-object items and continues when they have no properties", () => {
+        const item2 = { id: "2" } as unknown as Item;
+        const items = [123, "not object", true, item2];
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result).toContain(item2);
+    });
+
+    it("returns correctly for item with get method that returns undefined", () => {
+        const item1 = { id: "1", get: (k: string) => k === "items" ? undefined : null } as unknown as Item;
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("handles deeply nested structures that yield items which return null child iterator", () => {
+        const item1 = { id: "1", items: { foo: "bar" } };
+        const items = [item1];
+
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("skips non-object item when item is null but truthy somehow", () => {
+        const items = [null] as unknown as any[];
+        const result = Array.from(iterateItemsDeep(items));
+        expect(result).toContain(null);
+    });
+
+    it("returns correctly for item with items property that resolves to undefined", () => {
+        const item1 = { id: "1", items: undefined } as unknown as Item;
+        const items = [item1];
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("returns correctly for get items that returns falsy", () => {
+        const item1 = { id: "1", get: () => undefined } as unknown as Item;
+        const items = [item1];
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i.id)).toEqual(["1"]);
+    });
+
+    it("skips non-object item when item is truthy but not object", () => {
+        const items = ["string"] as unknown as any[];
+        const result = Array.from(iterateItemsDeep(items));
+        expect(result).toContain("string");
+    });
+});
+
+it("covers the done but truthy result in iterator.next", () => {
+    // iterator.next() returning { done: true } with stack elements remaining
+    const item1 = {
+        id: "1",
+        items: {
+            [Symbol.iterator]: function*() {
+                yield null;
+                return;
+            },
+        },
+    };
+    const items = [item1];
+    const result = Array.from(iterateItemsDeep(items)) as any[];
+    expect(result.map((i) => i?.id)).toEqual(["1", undefined]);
 });

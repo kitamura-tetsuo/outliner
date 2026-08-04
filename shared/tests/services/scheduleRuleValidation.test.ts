@@ -109,3 +109,70 @@ describe("scheduleRuleValidation", () => {
         });
     });
 });
+
+describe("validateScheduleRuleSql (edge cases)", () => {
+    it("rejects empty SQL", () => {
+        const res = validateScheduleRuleSql("");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/empty/i);
+    });
+
+    it("rejects SQL with no INSERT statement", () => {
+        const res = validateScheduleRuleSql("WITH vars AS (SELECT 1 AS id) SELECT id FROM vars RETURNING *");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/must contain an INSERT statement/i);
+    });
+
+    it("handles null SQL", () => {
+        const res = validateScheduleRuleSql(null as any);
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/empty/i);
+    });
+});
+
+describe("validateScheduleRuleRRule (edge cases)", () => {
+    it("rejects empty rrule", () => {
+        const res = validateScheduleRuleRRule("");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/empty/i);
+    });
+
+    it("handles null rrule", () => {
+        const res = validateScheduleRuleRRule(null as any);
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/empty/i);
+    });
+
+    it("accepts string with RRULE: prefix", () => {
+        const res = validateScheduleRuleRRule("RRULE:FREQ=DAILY");
+        expect(res.valid).toBe(true);
+    });
+});
+
+describe("validateScheduleRuleTimezone (edge cases)", () => {
+    it("rejects empty timezone", () => {
+        const res = validateScheduleRuleTimezone("");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/required/i);
+    });
+
+    it("handles null timezone", () => {
+        const res = validateScheduleRuleTimezone(null as any);
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/required/i);
+    });
+});
+
+describe("validateScheduleRuleDtstart (edge cases)", () => {
+    it("rejects empty dtstart", () => {
+        const res = validateScheduleRuleDtstart("");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/required/i);
+    });
+
+    it("rejects parseWallTime valid but Date invalid", () => {
+        const res = validateScheduleRuleDtstart("0000-00-00T00:00:00");
+        expect(res.valid).toBe(false);
+        expect(res.error).toMatch(/Invalid dtstart date/i);
+    });
+});
