@@ -256,10 +256,12 @@ export class KeyEventHandler {
                 const selectedText = store.getSelectedText("local");
                 if (selectedText) {
                     if (typeof window !== "undefined") {
-                        (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
+                        (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = selectedText;
                         const structured = selectedItemsClipboardData();
                         if (structured) {
-                            (window as typeof window & { lastCopiedStructuredItems?: { encoded: string; plainText: string; } }).lastCopiedStructuredItems = structured;
+                            (window as typeof window & {
+                                lastCopiedStructuredItems?: { encoded: string; plainText: string; };
+                            }).lastCopiedStructuredItems = structured;
                         }
                     }
 
@@ -267,7 +269,10 @@ export class KeyEventHandler {
                     if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
                         navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                             if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                logger.error({ error: err }, "navigator.clipboard.writeText failed in synthetic Ctrl+C fallback:");
+                                logger.error(
+                                    { error: err },
+                                    "navigator.clipboard.writeText failed in synthetic Ctrl+C fallback:",
+                                );
                             }
                         });
                     }

@@ -470,7 +470,12 @@ export class EditorOverlayStore {
 
         if ((selection.userId ?? "local") === "local") {
             this.schedulePresenceSync();
-            this.syncTextareaToSelection(selection.startItemId, selection.startOffset, selection.endItemId, selection.endOffset);
+            this.syncTextareaToSelection(
+                selection.startItemId,
+                selection.startOffset,
+                selection.endItemId,
+                selection.endOffset,
+            );
         }
         return key;
     }
@@ -686,7 +691,9 @@ export class EditorOverlayStore {
             this.schedulePresenceSync();
         }
         if (userId === "local") {
-            const textarea = typeof document !== 'undefined' ? document.querySelector(".global-textarea") as HTMLTextAreaElement : null;
+            const textarea = typeof document !== "undefined"
+                ? document.querySelector(".global-textarea") as HTMLTextAreaElement
+                : null;
             if (textarea) {
                 textarea.value = "";
             }
@@ -1536,7 +1543,9 @@ export class EditorOverlayStore {
         if (this.isComposing) return;
 
         // Get global textarea
-        const textarea = typeof document !== 'undefined' ? document.querySelector(".global-textarea") as HTMLTextAreaElement : null;
+        const textarea = typeof document !== "undefined"
+            ? document.querySelector(".global-textarea") as HTMLTextAreaElement
+            : null;
         if (!textarea) return;
 
         // Get text of items
