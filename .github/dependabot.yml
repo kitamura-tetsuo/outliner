@@ -53,6 +53,13 @@ updates:
           - "playwright"
           - "playwright-core"
           - "@playwright/test"
+    ignore:
+      # TypeScript 7.0 removes the classic JavaScript compiler API before its
+      # replacement is ready. Skip only that release line; Dependabot should
+      # resume proposing TypeScript updates as soon as 7.1 or later is out.
+      - dependency-name: "typescript"
+        versions:
+          - ">=7.0.0 <7.1.0"
 
   - package-ecosystem: 'npm'
     directory: '/server'
@@ -73,16 +80,18 @@ updates:
           - "prettier"
           - "*prettier*"
     ignore:
-      # Hold TypeScript on the 6.x line for the server package.
+      # Hold TypeScript below 7.0 for the server package only while 7.0 is the
+      # newest release.
       # ts-jest (used by jest.config.js for the scheduler jest tests) declares a
       # peer dependency of `typescript@">=4.3 <7"`, so bumping to TypeScript 7
       # breaks `npm ci` with ERESOLVE before any test runs. TypeScript 7 also
       # ships the native (tsgo) compiler without the classic JS compiler API that
       # ts-jest relies on. Remove this ignore once ts-jest publishes a release
-      # that supports TypeScript 7 (expected around the TS 7.1 API).
+      # that supports TypeScript 7 (expected around the TS 7.1 API). Restricting
+      # this rule to the 7.0 release line lets Dependabot resume at 7.1.
       - dependency-name: "typescript"
-        update-types:
-          - "version-update:semver-major"
+        versions:
+          - ">=7.0.0 <7.1.0"
 
   - package-ecosystem: 'npm'
     directory: '/functions'
