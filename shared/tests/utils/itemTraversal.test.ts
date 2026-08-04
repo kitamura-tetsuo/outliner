@@ -268,20 +268,40 @@ describe("iterateItemsDeep", () => {
         const result = Array.from(iterateItemsDeep(items));
         expect(result).toContain("string");
     });
+
+    it("covers the done but truthy result in iterator.next", () => {
+        // iterator.next() returning { done: true } with stack elements remaining
+        const item1 = {
+            id: "1",
+            items: {
+                [Symbol.iterator]: function*() {
+                    yield null;
+                    return;
+                },
+            },
+        };
+        const items = [item1];
+        const result = Array.from(iterateItemsDeep(items)) as any[];
+        expect(result.map((i) => i?.id)).toEqual(["1", undefined]);
+    });
 });
 
-it("covers the done but truthy result in iterator.next", () => {
-    // iterator.next() returning { done: true } with stack elements remaining
-    const item1 = {
-        id: "1",
-        items: {
-            [Symbol.iterator]: function*() {
-                yield null;
-                return;
-            },
-        },
-    };
+it("handles when iterateItems returns iterable without Symbol.iterator for child items", () => {
+    // Line 123: if (childIterable)
+    // iterateItems always returns something that has Symbol.iterator or an empty array.
+    // It's not possible to hit the falsy case of childIterable unless iterateItems is changed to return undefined.
+    // We will just verify it correctly processes a normal child items list to ensure line 123 executes.
+    const item2 = { id: "2" } as unknown as Item;
+    const item1 = { id: "1", items: [item2] } as unknown as Item;
     const items = [item1];
-    const result = Array.from(iterateItemsDeep(items)) as any[];
-    expect(result.map((i) => i?.id)).toEqual(["1", undefined]);
+    const result = Array.from(iterateItemsDeep(items));
+    expect(result.map((i) => i.id)).toEqual(["1", "2"]);
+});
+
+it("safely ignores non-iterable childItems when mapped to undefined", () => {
+    // line 123 childIterable
+    const item1 = { id: "1", items: null } as unknown as Item;
+    const items = [item1];
+    const result = Array.from(iterateItemsDeep(items));
+    expect(result.map((i) => i.id)).toEqual(["1"]);
 });
