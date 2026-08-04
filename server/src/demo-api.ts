@@ -26,7 +26,7 @@ const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolea
 const forceRateLimits = new Map<string, number>();
 let lastGlobalForceReset = 0;
 
-let demoFastPath: { stateVectorHex: string; missingTemplatePages: boolean } | null = null;
+let demoFastPath: { stateVectorHex: string; missingTemplatePages: boolean; } | null = null;
 
 export interface DemoResetState {
     isEmpty: boolean;
