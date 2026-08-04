@@ -73,33 +73,33 @@ deploy-to-firebase:
         - "npm ci"
         - 'echo "Creating client .env file..."'
         - |
-              cat > .env << EOF
-              # Azure Fluid Relay Settings
-              VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
-              VITE_AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
-              VITE_USE_FIREBASE_AUTH=true
-              VITE_USE_API_AUTH=true
+          cat > .env << EOF
+          # Azure Fluid Relay Settings
+          VITE_AZURE_TENANT_ID=${AZURE_TENANT_ID}
+          VITE_AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
+          VITE_USE_FIREBASE_AUTH=true
+          VITE_USE_API_AUTH=true
 
-              # Connection Service Selection
-              VITE_USE_TINYLICIOUS=false
-              VITE_FORCE_AZURE=true
+          # Connection Service Selection
+          VITE_USE_TINYLICIOUS=false
+          VITE_FORCE_AZURE=true
 
-              # API Settings - Firebase Functions Endpoint
-              VITE_API_BASE_URL=https://outliner-d57b0.web.app
-              VITE_API_SERVER_URL=https://outliner-d57b0.web.app
+          # API Settings - Firebase Functions Endpoint
+          VITE_API_BASE_URL=https://outliner-d57b0.web.app
+          VITE_API_SERVER_URL=https://outliner-d57b0.web.app
 
-              # Fluid Framework Telemetry Settings
-              VITE_DISABLE_FLUID_TELEMETRY=true
+          # Fluid Framework Telemetry Settings
+          VITE_DISABLE_FLUID_TELEMETRY=true
 
-              # Firebase Settings
-              VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
-              VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
-              VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
-              VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
-              VITE_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
-              VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}
-              VITE_FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
-              EOF
+          # Firebase Settings
+          VITE_FIREBASE_API_KEY=${FIREBASE_API_KEY}
+          VITE_FIREBASE_AUTH_DOMAIN=${FIREBASE_AUTH_DOMAIN}
+          VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+          VITE_FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+          VITE_FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID}
+          VITE_FIREBASE_APP_ID=${FIREBASE_APP_ID}
+          VITE_FIREBASE_MEASUREMENT_ID=${FIREBASE_MEASUREMENT_ID}
+          EOF
         - "npm run build"
 
         # Build Firebase Functions
@@ -110,17 +110,17 @@ deploy-to-firebase:
         - "cd ${CI_PROJECT_DIR}"
         - 'echo "Creating Firebase Functions .env file..."'
         - |
-              cat > functions/.env << EOF
-              # Azure Fluid Relay Settings
-              AZURE_TENANT_ID=${AZURE_TENANT_ID}
-              AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
-              AZURE_PRIMARY_KEY=${AZURE_PRIMARY_KEY}
-              AZURE_SECONDARY_KEY=${AZURE_SECONDARY_KEY}
-              AZURE_ACTIVE_KEY=${AZURE_ACTIVE_KEY}
+          cat > functions/.env << EOF
+          # Azure Fluid Relay Settings
+          AZURE_TENANT_ID=${AZURE_TENANT_ID}
+          AZURE_FLUID_RELAY_ENDPOINT=${AZURE_FLUID_RELAY_ENDPOINT}
+          AZURE_PRIMARY_KEY=${AZURE_PRIMARY_KEY}
+          AZURE_SECONDARY_KEY=${AZURE_SECONDARY_KEY}
+          AZURE_ACTIVE_KEY=${AZURE_ACTIVE_KEY}
 
-              # Production Environment Settings
-              NODE_ENV=production
-              EOF
+          # Production Environment Settings
+          NODE_ENV=production
+          EOF
 
         # Deploy to Firebase
         - 'firebase deploy --token "${FIREBASE_TOKEN}" --non-interactive'
