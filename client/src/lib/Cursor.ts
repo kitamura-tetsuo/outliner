@@ -1,5 +1,5 @@
 import { tick } from "svelte";
-import { iterateItemsOrdered } from "../../../shared/src/utils/itemTraversal";
+
 import type { Item } from "../schema/app-schema";
 
 import type { SelectionRange } from "../stores/EditorOverlayStore.svelte";
