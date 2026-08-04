@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "../../src/app-schema.js";
-import { iterateItems, iterateItemsOrdered, iterateItemsDeep } from "../../src/utils/itemTraversal.js";
+import { iterateItems, iterateItemsDeep, iterateItemsOrdered } from "../../src/utils/itemTraversal.js";
 
 describe("iterateItems", () => {
     it("returns empty array for falsy input", () => {
@@ -11,9 +11,9 @@ describe("iterateItems", () => {
     it("uses iterateUnordered if available", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
-            iterateUnordered: function* () {
+            iterateUnordered: function*() {
                 yield item1;
-            }
+            },
         };
         const result = Array.from(iterateItems(items));
         expect(result).toEqual([item1]);
@@ -30,7 +30,7 @@ describe("iterateItems", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
             length: 1,
-            at: (i: number) => i === 0 ? item1 : undefined
+            at: (i: number) => i === 0 ? item1 : undefined,
         };
         const result = Array.from(iterateItems(items));
         expect(result).toEqual([item1]);
@@ -40,7 +40,7 @@ describe("iterateItems", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
             length: 1,
-            0: item1
+            0: item1,
         };
         const result = Array.from(iterateItems(items));
         expect(result).toEqual([item1]);
@@ -51,7 +51,7 @@ describe("iterateItems", () => {
         const items = {
             length: 2,
             0: undefined,
-            1: item1
+            1: item1,
         };
         const result = Array.from(iterateItems(items));
         expect(result).toEqual([item1]);
@@ -81,7 +81,7 @@ describe("iterateItemsOrdered", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
             length: 1,
-            at: (i: number) => i === 0 ? item1 : undefined
+            at: (i: number) => i === 0 ? item1 : undefined,
         };
         const result = Array.from(iterateItemsOrdered(items));
         expect(result).toEqual([item1]);
@@ -91,7 +91,7 @@ describe("iterateItemsOrdered", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
             length: 1,
-            0: item1
+            0: item1,
         };
         const result = Array.from(iterateItemsOrdered(items));
         expect(result).toEqual([item1]);
@@ -101,7 +101,7 @@ describe("iterateItemsOrdered", () => {
         const item1 = { id: "1" } as unknown as Item;
         const items = {
             length: 2,
-            at: (i: number) => i === 1 ? item1 : undefined
+            at: (i: number) => i === 1 ? item1 : undefined,
         };
         const result = Array.from(iterateItemsOrdered(items));
         expect(result).toEqual([item1]);
