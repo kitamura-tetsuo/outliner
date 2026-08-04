@@ -7,6 +7,14 @@ registerCoverageHooks();
 // 24h demo content reset.
 test.describe("Demo manual reset button", () => {
     test("clicking the reset button shows confirmation, and confirming forces a reseed", async ({ page }) => {
+        // Collect console warnings during the test
+        const warnings: string[] = [];
+        page.on("console", (msg) => {
+            if (msg.type() === "warning") {
+                warnings.push(msg.text());
+            }
+        });
+
         await page.goto("/demo");
 
         const pageList = page.getByTestId("demo-page-list");
@@ -49,5 +57,16 @@ test.describe("Demo manual reset button", () => {
         // The reseeded demo content is still shown afterwards.
         await expect(pageList.getByText("Welcome", { exact: true }).first()).toBeVisible({ timeout: 15000 });
         await expect(pageList.getByText("Formatting", { exact: true }).first()).toBeVisible({ timeout: 15000 });
+
+        // Ensure we do not flood the console with opaque AppSchema warnings during reset
+        const appSchemaWarnings = warnings.filter(w =>
+            w.includes("Silenced schema error") || w.includes("Silenced error")
+        );
+        expect(
+            appSchemaWarnings.length,
+            `Found ${appSchemaWarnings.length} AppSchema warnings during reset, expected 0. Samples: ${
+                appSchemaWarnings.slice(0, 3).join(", ")
+            }`,
+        ).toBe(0);
     });
 });
