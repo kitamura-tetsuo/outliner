@@ -12,13 +12,11 @@ import {
 } from "../../src/utils/zonedTime.js";
 
 describe("zonedTime", () => {
-
     it("utcMsToWallTime handles hour cycle properly and missing parts safely", () => {
         // We test that formatWallTime correctly handles the hour being 0
         const w = { year: 2024, month: 3, day: 10, hour: 0, minute: 30, second: 0 };
         expect(formatWallTime(w)).toBe("2024-03-10T00:30:00");
     });
-
 
     it("parses and formats a wall-clock string losslessly", () => {
         const w = parseWallTime("2024-03-10T02:30:00");

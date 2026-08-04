@@ -126,14 +126,12 @@ describe("iterateItemsOrdered", () => {
 });
 
 describe("iterateItemsDeep", () => {
-
     it("handles when get returns something other than an iterable", () => {
         const item1 = { id: "1", get: (k: string) => k === "items" ? { foo: "bar" } : undefined };
         const items = [item1];
         const result = Array.from(iterateItemsDeep(items));
         expect(result).toContain(item1);
     });
-
 
     it("returns empty iterable for falsy input", () => {
         expect(Array.from(iterateItemsDeep(null))).toEqual([]);
