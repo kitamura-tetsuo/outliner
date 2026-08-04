@@ -38,7 +38,7 @@ function resolveApiBaseUrl(): string {
  */
 export async function seedDemo(
     options: { force?: boolean; throwOnError?: boolean; } = {},
-): Promise<{ ok: boolean; reason?: "network" | "http" | "rate-limit"; }> {
+): Promise<{ ok: boolean; reset?: boolean; reason?: "network" | "http" | "rate-limit"; }> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -78,7 +78,16 @@ export async function seedDemo(
             }
             return { ok: false, reason: errorRateLimitMs !== undefined ? "rate-limit" : "http" };
         }
-        return { ok: true };
+
+        let reset = false;
+        try {
+            const data = await response.json();
+            reset = !!data.reset;
+        } catch (_e) {
+            // Ignore JSON parse error, assume not reset
+        }
+
+        return { ok: true, reset };
     } catch (seedErr) {
         if (options.throwOnError) {
             if (seedErr instanceof SeedDemoError) {

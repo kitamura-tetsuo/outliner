@@ -103,17 +103,31 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
             }
 
             const resetPromise = (async () => {
-                // Connect to demo document
-                const directConnection = await hocuspocus.openDirectConnection(projectRoom, {
-                    isSeeding: true,
-                });
+                const timings: string[] = [];
+                const startTime = performance.now();
 
-                try {
-                    const doc = directConnection.document;
+                let doc: Y.Doc | undefined;
+                let activeDocInstance = hocuspocus.documents?.get(projectRoom)?.document;
+
+                let directConnection: any = null;
+
+                if (activeDocInstance) {
+                    doc = activeDocInstance as Y.Doc;
+                    logger.info({ event: "seed_demo_using_active_doc", projectRoom });
+                } else {
+                    directConnection = await hocuspocus.openDirectConnection(projectRoom, {
+                        isSeeding: true,
+                    });
+                    doc = directConnection.document;
                     if (!doc) {
+                        if (directConnection) await directConnection.disconnect();
                         throw new Error("Failed to get document from direct connection");
                     }
+                }
 
+                timings.push(`metadata-read;dur=${Math.round(performance.now() - startTime)}`);
+
+                try {
                     const now = Date.now();
 
                     const metadata = doc.getMap("metadata") as Y.Map<unknown>;
@@ -126,11 +140,14 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
                     // Check if any required template page is missing
                     let missingTemplatePages = false;
+                    let templateScanDuration = 0;
                     if (!isEmpty) {
+                        const scanStart = performance.now();
                         const currentStateVector = Buffer.from(Y.encodeStateVector(doc)).toString("hex");
 
                         if (!force && demoFastPath && demoFastPath.stateVectorHex === currentStateVector) {
                             missingTemplatePages = demoFastPath.missingTemplatePages;
+                            templateScanDuration = performance.now() - scanStart;
                         } else {
                             const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
                             const existingTemplateIds = new Set<string>();
@@ -175,8 +192,11 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 }
                             }
                             demoFastPath = { stateVectorHex: currentStateVector, missingTemplatePages };
+                            templateScanDuration = performance.now() - scanStart;
                         }
                     }
+
+                    timings.push(`template-scan;dur=${Math.round(templateScanDuration)}`);
 
                     const shouldReset = shouldResetDemo({
                         isEmpty,
@@ -188,7 +208,15 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     });
 
                     if (shouldReset) {
+                        const resetStart = performance.now();
                         logger.info({ event: "seed_demo_resetting", lastReset, templateVersion, now, force });
+
+                        // We must have a directConnection to execute transactions safely
+                        if (!directConnection) {
+                            directConnection = await hocuspocus.openDirectConnection(projectRoom, {
+                                isSeeding: true,
+                            });
+                        }
 
                         await directConnection.transact((document: unknown) => {
                             const ydoc = document as unknown as Y.Doc;
@@ -289,14 +317,20 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 meta.set("isResetting", false);
                             });
                         }
+
+                        timings.push(`reset;dur=${Math.round(performance.now() - resetStart)}`);
                     } else {
                         logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
+                        timings.push(`reset;dur=0`);
                     }
 
+                    res.append("Server-Timing", timings.join(", "));
                     return { success: true, reset: shouldReset };
                 } finally {
-                    // Must disconnect to prevent memory leak
-                    await directConnection.disconnect();
+                    // Must disconnect to prevent memory leak, but only if we opened it
+                    if (directConnection) {
+                        await directConnection.disconnect();
+                    }
                 }
             })();
 

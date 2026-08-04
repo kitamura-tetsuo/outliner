@@ -32,17 +32,31 @@
             isLoading = true;
             error = undefined;
 
-            // Seed demo project via API (no-op when already seeded)
-            const seedResult = await seedDemo();
-            if (!seedResult.ok) {
-                if (seedResult.reason === "network") {
-                    throw new Error("Can't reach the demo server — retrying...");
-                }
-            }
-            if (isDestroyed) return;
+            performance.mark("demo-seed-start");
+            // Seed demo project via API in the background
+            const seedPromise = seedDemo().then(seedResult => {
+                performance.mark("demo-seed-end");
+                if (isDestroyed) return;
 
-            // Connect to demo room
+                // @ts-expect-error TS is not yet updated with reset return type
+                if (seedResult.ok && seedResult.reset) {
+                    logger.info("Demo reset occurred on server, reconnecting client...");
+                    resetDemoClientState();
+                    removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+                    initializeDemo();
+                } else if (!seedResult.ok && seedResult.reason === "network") {
+                    logger.warn("Can't reach the demo server for seeding.");
+                }
+            }).catch(err => {
+                performance.mark("demo-seed-end");
+                logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to seed demo");
+            });
+
+            // Connect to demo room in parallel
+            performance.mark("demo-client-start");
             const client = await acquireDemoClient();
+            performance.mark("demo-client-end");
+
             if (isDestroyed) {
                 releaseDemoClient();
                 return;

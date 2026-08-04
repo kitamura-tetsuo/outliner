@@ -25,12 +25,32 @@ let isLoading = $state(true);
 async function loadLiveContent(proj: string, pTitle: string) {
     try {
         isLoading = true;
-        const seedResult = await seedDemo();
-        if (!seedResult.ok) {
-            logger.error("Failed to seed demo");
-        }
 
+        performance.mark("demo-seed-start");
+        const seedPromise = seedDemo().then(seedResult => {
+            performance.mark("demo-seed-end");
+            if (isDestroyed) return;
+
+            // @ts-expect-error TS is not yet updated with reset return type
+            if (seedResult.ok && seedResult.reset) {
+                logger.info("Demo reset occurred on server, reconnecting client...");
+                import("../../../../services").then(({ resetDemoClientState, removeYjsClientByProjectId }) => {
+                    resetDemoClientState();
+                    removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+                    loadLiveContent(proj, pTitle);
+                });
+            } else if (!seedResult.ok && seedResult.reason === "network") {
+                logger.warn("Can't reach the demo server for seeding.");
+            }
+        }).catch(err => {
+            performance.mark("demo-seed-end");
+            logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to seed demo diff page");
+        });
+
+        performance.mark("demo-client-start");
         const client = await acquireDemoClient();
+        performance.mark("demo-client-end");
+
         if (isDestroyed) {
             releaseDemoClient();
             return;

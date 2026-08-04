@@ -21,3 +21,7 @@ acceptance:
 - The demo project is seeded with one page per feature group (formatting, outliner basics, undo and redo, internal links, schedule rules, search and commands, selection and clipboard, collaboration, comments and votes, publishing and sharing, advanced features, tasks and habits, recurring tasks, calendars)
 - When a new end-user feature is implemented, the demo template is extended to demonstrate it (see docs/demo-project.md)
 title-ja: デモプロジェクト機能ツアー
+- client/e2e/core/dmo-demo-warm-load-latency.spec.ts
+- client/e2e/core/dmo-demo-waterfall.spec.ts
+- client/e2e/core/dmo-demo-direct-page.spec.ts
+- client/e2e/core/dmo-demo-spa-navigation.spec.ts
