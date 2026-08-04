@@ -51,15 +51,14 @@ describe("Cursor moveToDocumentStart and End", () => {
         cursor.applyToStore = vi.fn();
     });
 
-    test("moveToDocumentStart moves cursor to the first item (rootItem1)", () => {
+    test("moveToDocumentStart moves cursor to the root item (page)", () => {
         const childItem = page.items.at(1)!.items.at(0)!;
         cursor.itemId = childItem.id;
         cursor.offset = 5;
 
         cursor.moveToDocumentStart();
 
-        const firstItem = page.items.at(0)!;
-        expect(cursor.itemId).toBe(firstItem.id);
+        expect(cursor.itemId).toBe(page.id);
         expect(cursor.offset).toBe(0);
     });
 
@@ -75,7 +74,7 @@ describe("Cursor moveToDocumentStart and End", () => {
         expect(cursor.offset).toBe(lastItem.text?.length);
     });
 
-    test("extendSelectionToDocumentStart extends selection to the first item", () => {
+    test("extendSelectionToDocumentStart extends selection to the root item (page)", () => {
         const childItem = page.items.at(1)!.items.at(0)!;
         cursor.itemId = childItem.id;
         cursor.offset = 5;
@@ -94,8 +93,7 @@ describe("Cursor moveToDocumentStart and End", () => {
 
         cursor.extendSelectionToDocumentStart();
 
-        const firstItem = page.items.at(0)!;
-        expect(cursor.itemId).toBe(firstItem.id);
+        expect(cursor.itemId).toBe(page.id);
         expect(cursor.offset).toBe(0);
         expect((cursor as unknown as CursorMocks).updateSelectionAfterMove).toHaveBeenCalledWith(childItem.id, 5);
     });

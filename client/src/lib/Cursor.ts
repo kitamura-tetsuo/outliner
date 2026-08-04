@@ -936,16 +936,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
-        // The root itself is usually the page title; we want to go to the first item.
-        if (item.items) {
-            for (const child of iterateItemsOrdered(item.items)) {
-                item = child;
-                break;
-            }
-        }
 
-        this.itemId = item.id;
+        this.itemId = root.id;
         this.offset = 0;
         // This clears existing selection when moving without shift
         this.clearSelection();
@@ -970,16 +962,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.resetInitialColumn();
         const root = generalStore.currentPage;
         if (!root) return;
-        let item: Item = root;
-        // The root itself is usually the page title; we want to go to the first item.
-        if (item.items) {
-            for (const child of iterateItemsOrdered(item.items)) {
-                item = child;
-                break;
-            }
-        }
 
-        this.itemId = item.id;
+        this.itemId = root.id;
         this.offset = 0;
         this.updateSelectionAfterMove(startItemId, startOffset);
         this.applyToStore();
