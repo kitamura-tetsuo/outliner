@@ -20,7 +20,8 @@ vi.mock("$lib/logger", () => ({
 }));
 
 vi.mock("../../../../services", () => ({
-    getYjsClientByProjectTitle: vi.fn(),
+    acquireDemoClient: vi.fn(),
+    releaseDemoClient: vi.fn(),
     removeYjsClientByProjectId: vi.fn(),
     exportItemToMarkdown: vi.fn(),
 }));

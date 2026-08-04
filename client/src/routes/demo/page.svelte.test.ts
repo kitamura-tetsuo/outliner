@@ -15,7 +15,7 @@ vi.mock("../../services", async (importOriginal) => {
     const Y = await import("yjs");
     return {
         ...actual,
-        getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
+        acquireDemoClient: vi.fn().mockResolvedValue({
             getProject: () => {
                 const doc = new Y.Doc();
                 doc.getMap("metadata").set("title", "demo");
@@ -23,8 +23,9 @@ vi.mock("../../services", async (importOriginal) => {
                     ydoc: doc,
                 };
             },
-            dispose: vi.fn(),
         }),
+        releaseDemoClient: vi.fn().mockReturnValue(0),
+        resetDemoClientState: vi.fn(),
         removeYjsClientByProjectId: vi.fn(),
     };
 });

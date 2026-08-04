@@ -3,8 +3,8 @@
     import GraphView from "../../../components/GraphView.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
     import { onMount, onDestroy } from "svelte";
-    import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
+    import { seedDemo } from "../../../lib/demoSeed";
+    import { acquireDemoClient, releaseDemoClient } from "../../../services";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { Project as AppProject } from "../../../schema/app-schema";
@@ -32,9 +32,9 @@
                 }
                 if (isDestroyed) return;
 
-                const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+                const client = await acquireDemoClient();
                 if (isDestroyed) {
-                    client?.dispose();
+                    releaseDemoClient();
                     return;
                 }
                 if (!client) {
@@ -58,10 +58,11 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            if (releaseDemoClient() === 0) {
+                yjsStore.yjsClient = undefined;
+                store.project = undefined;
+                store.currentPage = undefined;
+            }
         } catch (_e) { logger.error(_e); }
     });
 

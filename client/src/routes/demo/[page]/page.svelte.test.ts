@@ -15,7 +15,7 @@ vi.mock("../../../services", async (importOriginal) => {
     const Y = await import("yjs");
     return {
         ...actual,
-        getYjsClientByProjectTitle: vi.fn().mockResolvedValue({
+        acquireDemoClient: vi.fn().mockResolvedValue({
             getProject: () => {
                 const doc = new Y.Doc();
                 doc.getMap("metadata").set("title", "demo");
@@ -24,8 +24,8 @@ vi.mock("../../../services", async (importOriginal) => {
                     ydoc: doc,
                 };
             },
-            dispose: vi.fn(),
         }),
+        releaseDemoClient: vi.fn().mockReturnValue(0),
     };
 });
 
@@ -81,9 +81,9 @@ describe("Demo Page View", () => {
     });
 
     it("should show loading state initially", async () => {
-        // We delay the getYjsClient mock to force the loading state to stay active
-        const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as Mock).mockImplementationOnce(() => new Promise(() => {}));
+        // We delay the acquireDemoClient mock to force the loading state to stay active
+        const { acquireDemoClient } = await import("../../../services");
+        (acquireDemoClient as Mock).mockImplementationOnce(() => new Promise(() => {}));
 
         render(DemoPageView);
 
@@ -134,8 +134,8 @@ describe("Demo Page View", () => {
 
     it("should render reset state when isResetting is true", async () => {
         const Y_mod = await import("yjs");
-        const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
+        const { acquireDemoClient } = await import("../../../services");
+        (acquireDemoClient as Mock).mockResolvedValueOnce({
             containerId: "mock-container",
             getProject: () => {
                 const doc = new Y_mod.Doc();
@@ -144,7 +144,6 @@ describe("Demo Page View", () => {
                 doc.getMap("metadata").set("resetStartedAt", Date.now());
                 return { ydoc: doc };
             },
-            dispose: vi.fn(),
         });
 
         const { findPageByName } = await import("../../../utils/pageUtils");
@@ -165,8 +164,8 @@ describe("Demo Page View", () => {
 
     it("should render error state when sync times out", async () => {
         const Y_mod = await import("yjs");
-        const { getYjsClientByProjectTitle } = await import("../../../services");
-        (getYjsClientByProjectTitle as Mock).mockResolvedValueOnce({
+        const { acquireDemoClient } = await import("../../../services");
+        (acquireDemoClient as Mock).mockResolvedValueOnce({
             containerId: "mock-container",
             getProject: () => {
                 // Use the globally available Yjs instance or import it at test level
@@ -175,7 +174,6 @@ describe("Demo Page View", () => {
                 doc.getMap("metadata").set("lastReset", 0);
                 return { ydoc: doc };
             },
-            dispose: vi.fn(),
         });
 
         const { findPageByName } = await import("../../../utils/pageUtils");

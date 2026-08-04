@@ -5,7 +5,7 @@ import { page } from "$app/stores";
 import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
-import { exportItemToMarkdown, getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../../services";
+import { exportItemToMarkdown, acquireDemoClient, releaseDemoClient } from "../../../../services";
 import { DEMO_PROJECT_NAME, seedDemo } from "../../../../lib/demoSeed";
 import { Project as AppProject } from "../../../../schema/app-schema";
 import { findPageByName } from "../../../../utils/pageUtils";
@@ -30,9 +30,9 @@ async function loadLiveContent(proj: string, pTitle: string) {
             logger.error("Failed to seed demo");
         }
 
-        const client = await getYjsClientByProjectTitle(proj);
+        const client = await acquireDemoClient();
         if (isDestroyed) {
-            client?.dispose();
+            releaseDemoClient();
             return;
         }
         if (!client) {
@@ -92,7 +92,7 @@ onDestroy(() => {
             const appProject = AppProject.fromDoc(currentClient.getProject().ydoc);
             appProject.ydoc.off('update', updateObserver);
         }
-        removeYjsClientByProjectId(project);
+            releaseDemoClient();
     } catch (_e) {
         logger.error(_e);
     }
