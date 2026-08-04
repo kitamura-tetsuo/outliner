@@ -67,7 +67,7 @@ export class Comments {
         try {
             logger.info("[Comments.addComment] pushing comment to Y.Array");
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
         if (this._ensureInitialized) {
             this.yArray = this._ensureInitialized();
@@ -76,7 +76,7 @@ export class Comments {
         try {
             logger.info("[Comments.addComment] pushed. current length=", this.yArray.length);
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
         return { id: c.get("id") as string };
     }
@@ -110,7 +110,7 @@ export class Comments {
             if (!this.yArray || !this.yArray.doc) return 0;
             return this.yArray.length;
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("Comments.length", "unknown", _e);
             return 0;
         }
     }
@@ -206,7 +206,7 @@ export class Item {
         try {
             return this.tree.getNodeValueFromKey(this.key) as Y.Map<ItemValueType>;
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("Item.value", this.key || "unknown", _e);
             return DUMMY_MAP;
         }
     }
@@ -244,7 +244,7 @@ export class Item {
                 return (t as { toString: () => string; }).toString();
             }
         } catch (e) {
-            logger.warn({ err: e }, "[app-schema] get text() caught error");
+            logDeduplicatedWarning("Item.text", this.key || "unknown", e);
             // Ignore error when evaluating toString on corrupted Yjs types during rapid edits/resets
             return "";
         }
@@ -536,7 +536,7 @@ export class Item {
             const parsed = JSON.parse(raw);
             return Array.isArray(parsed) ? (parsed as string[]) : [];
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("Item.tableColumns", this.key || "unknown", _e);
             return [];
         }
     }
@@ -727,7 +727,11 @@ export class Item {
                                 try {
                                     cand.addAttachment(url, mime, name);
                                 } catch (_e) {
-                                    logger.warn({ err: _e }, "Silenced error");
+                                    logDeduplicatedWarning(
+                                        "AppSchema",
+                                        (this as any).key || (this as any).id || "unknown",
+                                        _e,
+                                    );
                                 }
                                 throw new Error("__DONE__");
                             }
@@ -744,7 +748,11 @@ export class Item {
                                     try {
                                         cand.addAttachment(url, mime, name);
                                     } catch (_e) {
-                                        logger.warn({ err: _e }, "Silenced error");
+                                        logDeduplicatedWarning(
+                                            "AppSchema",
+                                            (this as any).key || (this as any).id || "unknown",
+                                            _e,
+                                        );
                                     }
                                     break;
                                 }
@@ -754,7 +762,7 @@ export class Item {
                 }
             }
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
 
         // 2) Add to this node itself as usual
@@ -766,7 +774,7 @@ export class Item {
         try {
             logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
 
         arr.push(mime || name ? [[url, mime, name] as unknown as string] : [url]);
@@ -778,7 +786,7 @@ export class Item {
                 );
             }
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
     }
 
@@ -836,7 +844,7 @@ export class Item {
         try {
             logger.info("[Item.addComment] id=", this.id);
         } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
+            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
         }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
@@ -916,7 +924,7 @@ export class Items implements Iterable<Item> {
             return this.tree.sortChildrenByOrder(children, this.parentKey);
         } catch (e) {
             if (e instanceof Error && e.message.includes("does not exist")) return [];
-            logger.warn({ err: e }, "[app-schema] Items.childrenKeys error");
+            logDeduplicatedWarning("Items.childrenKeys", this.parentKey || "unknown", e);
             return [];
         }
     }
@@ -956,7 +964,7 @@ export class Items implements Iterable<Item> {
             keys = this.tree.getNodeChildrenFromKey(this.parentKey);
         } catch (e) {
             if (!(e instanceof Error && e.message.includes("does not exist"))) {
-                logger.warn({ err: e }, "[app-schema] Items.iterateUnordered error fetching children");
+                logDeduplicatedWarning("Items.iterateUnordered", this.parentKey || "unknown", e);
             }
             return;
         }
@@ -1108,6 +1116,24 @@ export class Project {
 }
 
 // Fluid implementation has been removed. Only stubs remain for compatibility.
+
+const warnedSchemaErrors = new Set<string>();
+
+function isDeletedNodeError(err: unknown): boolean {
+    if (err instanceof Error && err.message.includes("does not exist")) return true;
+    return false;
+}
+
+function logDeduplicatedWarning(operation: string, keyOrId: string, err: unknown) {
+    if (isDeletedNodeError(err)) return; // Suppress warnings for deleted/tombstoned nodes
+
+    const dedupeKey = `${operation}:${keyOrId}`;
+    if (warnedSchemaErrors.has(dedupeKey)) return;
+    warnedSchemaErrors.add(dedupeKey);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    logger.warn({ err: errorMessage, operation, nodeKey: keyOrId }, "Silenced schema error");
+}
+
 export const appTreeConfiguration: undefined = undefined;
 
 // Internal: Wrap Items with Proxy to enable array-like access
