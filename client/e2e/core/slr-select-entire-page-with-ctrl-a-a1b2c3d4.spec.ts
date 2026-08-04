@@ -1,3 +1,10 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
+/** @feature SLR-a1b2c3d4
+ *  Title   : Select entire page with Ctrl/Cmd+A
+ *  Source  : docs/client-features.yaml
+ */
 import { expect, test } from "@playwright/test";
 import { CursorValidator } from "../utils/cursorValidation";
 import { TestHelpers } from "../utils/testHelpers";
