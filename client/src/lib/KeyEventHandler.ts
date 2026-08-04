@@ -55,6 +55,20 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
 }
 
+function writeStructuredSystemClipboard(structured: { encoded: string; plainText: string; }): void {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") return;
+    const html = structuredClipboardHtml(structured.encoded, structured.plainText);
+    const item = new ClipboardItem({
+        "text/plain": new Blob([structured.plainText], { type: "text/plain" }),
+        "text/html": new Blob([html], { type: "text/html" }),
+    });
+    navigator.clipboard.write([item]).catch((error: unknown) => {
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+            logger.error({ error }, "navigator.clipboard.write failed for structured clipboard:");
+        }
+    });
+}
+
 function clearRetainedComponentHost(): void {
     const selection = Object.values(store.selections).find(sel => sel.startItemId !== sel.endItemId);
     const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
@@ -257,9 +271,9 @@ export class KeyEventHandler {
                 if (KeyEventHandler._nativeCopyFired) return;
                 const selectedText = store.getSelectedText("local");
                 if (selectedText) {
+                    const structured = selectedItemsClipboardData();
                     if (typeof window !== "undefined") {
                         (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = selectedText;
-                        const structured = selectedItemsClipboardData();
                         if (structured) {
                             (window as typeof window & {
                                 lastCopiedStructuredItems?: { encoded: string; plainText: string; };
@@ -268,7 +282,7 @@ export class KeyEventHandler {
                     }
 
                     // Write to OS clipboard as fallback because synthetic event cannot reach OS
-                    if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
+                    if (!structured && typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
                         navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                                 logger.error(
@@ -1375,6 +1389,7 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
         if (selectedText) {
@@ -1442,7 +1457,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.isTrusted
+                    && navigator?.clipboard?.writeText && !event.isTrusted && !structured
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -2646,6 +2661,7 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
         if (selectedText) {
@@ -2714,7 +2730,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.isTrusted
+                    && navigator?.clipboard?.writeText && !event.isTrusted && !structured
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
