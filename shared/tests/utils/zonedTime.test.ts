@@ -96,4 +96,37 @@ describe("zonedTime", () => {
     it("floatingDateToUtcMs returns undefined for invalid format", () => {
         expect(floatingDateToUtcMs("invalid", "UTC")).toBeUndefined();
     });
+
+    it("utcMsToWallTime handles hour===24 and missing parts", () => {
+        // Mock Intl.DateTimeFormat to force the branch
+        const mockFormatToParts = vi.fn().mockReturnValue([
+            { type: "year", value: "2024" },
+            { type: "month", value: "12" },
+            { type: "day", value: "31" },
+            { type: "hour", value: "24" },
+            // Omit minute and second to test the fallback ?? "0"
+        ]);
+
+        const originalDateTimeFormat = Intl.DateTimeFormat;
+        vi.spyOn(Intl, "DateTimeFormat").mockImplementation(function(this: any, ...args: any[]) {
+            return {
+                formatToParts: mockFormatToParts,
+            };
+        } as any);
+
+        try {
+            const result = utcMsToWallTime(Date.UTC(2024, 11, 31, 0, 0, 0), "UTC");
+
+            expect(result).toEqual({
+                year: 2024,
+                month: 12,
+                day: 31,
+                hour: 0, // Should be converted from 24 to 0
+                minute: 0, // Fallback applied
+                second: 0, // Fallback applied
+            });
+        } finally {
+            vi.restoreAllMocks();
+        }
+    });
 });
