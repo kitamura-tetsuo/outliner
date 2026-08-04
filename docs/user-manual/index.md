@@ -197,7 +197,7 @@ Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
-- **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**.
+- **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), optionally adjust the SQL name, and click **Create**.
 - **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 
 Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
@@ -212,7 +212,7 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **Schema:** Allows you to define and edit the SQL schema for your table.
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
   - **Schedule:** Create and manage recurring schedule rules (e.g., adding tasks daily or weekly) for the table.
-- The table toolbar also provides **Undo** and **Redo** buttons specific to the table's data.
+- The table toolbar also provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
 
 ### Collaboration
 
