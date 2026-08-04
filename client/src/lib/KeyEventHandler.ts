@@ -5,6 +5,8 @@ import {
     deserializeClipboardItems,
     OUTLINER_ITEMS_MIME,
     serializeClipboardItems,
+    structuredClipboardFromHtml,
+    structuredClipboardHtml,
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
@@ -1382,6 +1384,12 @@ export class KeyEventHandler {
                     // Set plaintext
                     event.clipboardData.setData("text/plain", selectedText);
                     if (structured) event.clipboardData.setData(OUTLINER_ITEMS_MIME, structured.encoded);
+                    if (structured) {
+                        event.clipboardData.setData(
+                            "text/html",
+                            structuredClipboardHtml(structured.encoded, selectedText),
+                        );
+                    }
 
                     // Add VS Code compatible metadata
                     if (isBoxSelectionCopy) {
@@ -2177,6 +2185,7 @@ export class KeyEventHandler {
             // Get plaintext
             let text = event.clipboardData?.getData("text/plain") || "";
             const encodedItems = event.clipboardData?.getData(OUTLINER_ITEMS_MIME) || "";
+            const encodedHtmlItems = structuredClipboardFromHtml(event.clipboardData?.getData("text/html") || "");
 
             // Use Clipboard API if not available from event
             if (!text && typeof navigator !== "undefined" && navigator.clipboard) {
@@ -2227,7 +2236,7 @@ export class KeyEventHandler {
 
             const cached = KeyEventHandler.lastStructuredClipboard;
             const structured = deserializeClipboardItems(
-                encodedItems || (cached?.plainText === text ? cached.encoded : ""),
+                encodedItems || encodedHtmlItems || (cached?.plainText === text ? cached.encoded : ""),
             );
             const sameProjectItems = structured && structured.sourceProjectId === generalStore.project?.ydoc?.guid
                 ? structured.items
@@ -2646,6 +2655,12 @@ export class KeyEventHandler {
                     // Set plaintext
                     event.clipboardData.setData("text/plain", selectedText);
                     if (structured) event.clipboardData.setData(OUTLINER_ITEMS_MIME, structured.encoded);
+                    if (structured) {
+                        event.clipboardData.setData(
+                            "text/html",
+                            structuredClipboardHtml(structured.encoded, selectedText),
+                        );
+                    }
 
                     // Add VS Code compatible metadata
                     if (isBoxSelectionCut) {

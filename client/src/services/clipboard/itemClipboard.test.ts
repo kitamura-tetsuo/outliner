@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { clipboardPlainText, deserializeClipboardItems, serializeClipboardItems } from "./itemClipboard";
+import {
+    clipboardPlainText,
+    deserializeClipboardItems,
+    serializeClipboardItems,
+    structuredClipboardFromHtml,
+    structuredClipboardHtml,
+} from "./itemClipboard";
 
 function item(text: string, fields: Record<string, unknown>) {
     return {
@@ -28,6 +34,17 @@ describe("item clipboard", () => {
             ],
         });
         expect(clipboardPlainText(decoded!)).toBe("note\ngrid\ncalendar");
+    });
+
+    it("round-trips structured data through the portable HTML clipboard representation", () => {
+        const encoded = serializeClipboardItems("project-a", [
+            { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
+        ]);
+        const html = structuredClipboardHtml(encoded, 'Sales & <Targets>\n"Q4"');
+        expect(structuredClipboardFromHtml(html)).toBe(encoded);
+        expect(html).toContain("Sales &amp; &lt;Targets&gt;<br>&quot;Q4&quot;");
+        expect(structuredClipboardFromHtml("<p>external content</p>")).toBeUndefined();
+        expect(structuredClipboardFromHtml('<span data-outliner-items="not base64!" hidden></span>')).toBeUndefined();
     });
 
     it("uses a meaningful fallback for an empty block host", () => {

@@ -51,36 +51,22 @@ test.describe("component block clipboard", () => {
             });
         }, { start: neighborId, end: hostId, endOffset: hostText?.length ?? 0 });
         await page.keyboard.press("Control+c");
-        await page.evaluate(() => {
-            // Copy must leave the selection intact, so explicitly move the
-            // editor to the independent paste destination used by this test.
-            // eslint-disable-next-line no-restricted-globals
-            window.editorOverlayStore!.clearSelections();
-        });
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Neighbor");
 
-        const target = items.nth(1);
+        // Use the trusted browser paste event. The portable HTML payload is
+        // independently round-tripped in itemClipboard.test.ts so this E2E
+        // remains focused on the operating-system clipboard path.
+        const target = page.locator(".outliner-item[data-item-id]").nth(1);
         await target.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.evaluate(async () => {
-            // The copy above uses the real system clipboard. Dispatch the
-            // browser paste event with the captured custom MIME as Chromium
-            // may strip non-standard formats when Clipboard.read() is disabled.
-            const text = await navigator.clipboard.readText();
-            // eslint-disable-next-line no-restricted-globals
-            const encoded = (window as Window & { lastCopiedStructuredItems?: string; }).lastCopiedStructuredItems;
-            if (!encoded) throw new Error("Copy did not produce an Outliner item payload");
-            const data = new DataTransfer();
-            data.setData("text/plain", text);
-            data.setData("application/x-outliner-items", encoded);
-            document.querySelector("textarea.global-textarea")!.dispatchEvent(
-                new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }),
-            );
-        });
+        await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });
         const sqlNames = await page.locator("[data-testid='yjs-table-sql-name']").allTextContents();
         expect(sqlNames[1]).toBe(sqlNames[0]);
-        await expect(page.getByTestId("yjs-table-grid").nth(1).locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+        await expect(page.getByTestId("yjs-table-grid").nth(1).locator("tbody tr")).toHaveCount(1, {
+            timeout: 30000,
+        });
     });
 
     test("cut and paste moves a Calendar view without losing its binding", async ({ page }) => {
