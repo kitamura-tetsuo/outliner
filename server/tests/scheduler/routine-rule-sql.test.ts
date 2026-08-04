@@ -137,13 +137,13 @@ describe("Demo routine schedule rule SQL", function() {
         value instanceof Date
             ? new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())).toISOString().slice(0, 10)
             : (() => {
-                  const str = String(value);
-                  const date = new Date(str);
-                  if (!isNaN(date.getTime()) && str.includes(date.getFullYear().toString())) {
-                      return date.toISOString().slice(0, 10);
-                  }
-                  return str.slice(0, 10);
-              })();
+                const str = String(value);
+                const date = new Date(str);
+                if (!isNaN(date.getTime()) && str.includes(date.getFullYear().toString())) {
+                    return date.toISOString().slice(0, 10);
+                }
+                return str.slice(0, 10);
+            })();
 
     it("the display query returns only the newest occurrence of each task", async () => {
         // The UI Definition query is a plain SELECT; run it through the same
