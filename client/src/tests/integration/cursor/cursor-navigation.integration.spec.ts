@@ -12,7 +12,7 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
         setActiveItem: vi.fn(),
         getTextareaRef: vi.fn(),
         clearCursorForItem: vi.fn(),
-        setSelection: vi.fn(),
+        setSelection: vi.fn(), syncTextareaToSelection: vi.fn(),
         clearSelectionForUser: vi.fn(),
         startCursorBlink: vi.fn(),
         triggerOnEdit: vi.fn(),

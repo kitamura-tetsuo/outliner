@@ -470,6 +470,7 @@ export class EditorOverlayStore {
 
         if ((selection.userId ?? "local") === "local") {
             this.schedulePresenceSync();
+            this.syncTextareaToSelection(selection.startItemId, selection.startOffset, selection.endItemId, selection.endOffset);
         }
         return key;
     }
@@ -683,6 +684,12 @@ export class EditorOverlayStore {
 
         if (userId === "local") {
             this.schedulePresenceSync();
+        }
+        if (userId === "local") {
+            const textarea = typeof document !== 'undefined' ? document.querySelector(".global-textarea") as HTMLTextAreaElement : null;
+            if (textarea) {
+                textarea.value = "";
+            }
         }
     }
 
@@ -1521,6 +1528,105 @@ export class EditorOverlayStore {
      * active item and cursor. This ensures the textarea (which handles IME and keyboard events)
      * has the correct state when the active item changes programmatically (e.g. on Enter).
      */
+
+    /**
+     * Mirror selection to the global hidden textarea
+     */
+    syncTextareaToSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
+        if (this.isComposing) return;
+
+        // Get global textarea
+        const textarea = typeof document !== 'undefined' ? document.querySelector(".global-textarea") as HTMLTextAreaElement : null;
+        if (!textarea) return;
+
+        // Get text of items
+        const startItemEl = document.querySelector(
+            `[data-item-id="${escapeId(startItemId)}"] .item-text`,
+        ) as HTMLElement;
+        const endItemEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"] .item-text`) as HTMLElement;
+
+        if (!startItemEl || !endItemEl) return;
+
+        const startItemText = startItemEl.textContent || "";
+
+        // If the selection is within a single item
+        if (startItemId === endItemId) {
+            // Update textarea content
+            textarea.value = startItemText;
+
+            // Set selection
+            textarea.setSelectionRange(startOffset, endOffset);
+        } else {
+            // If the selection spans multiple items
+            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
+
+            if (!startEl || !endEl) return;
+
+            // Determine order
+            const comparison = startEl.compareDocumentPosition(endEl);
+            let firstEl: Element, lastEl: Element;
+            let firstOffset: number, lastOffset: number;
+
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                firstEl = startEl;
+                lastEl = endEl;
+                firstOffset = startOffset;
+                lastOffset = endOffset;
+            } else {
+                firstEl = endEl;
+                lastEl = startEl;
+                firstOffset = endOffset;
+                lastOffset = startOffset;
+            }
+
+            // Traverse and build text
+            let combinedText = "";
+            let selectionStart = 0;
+            let selectionEnd = 0;
+
+            const root = document.querySelector(".outliner") || document.body;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                acceptNode(node) {
+                    return (node as Element).hasAttribute("data-item-id")
+                        ? NodeFilter.FILTER_ACCEPT
+                        : NodeFilter.FILTER_SKIP;
+                },
+            });
+            walker.currentNode = firstEl;
+
+            while (walker.currentNode) {
+                const current = walker.currentNode as HTMLElement;
+                const textEl = current.querySelector(".item-text");
+                const text = textEl?.textContent || "";
+
+                if (current === firstEl) {
+                    selectionStart = combinedText.length + firstOffset;
+                }
+                combinedText += text;
+                if (current === lastEl) {
+                    selectionEnd = combinedText.length - text.length + lastOffset;
+                }
+
+                if (current === lastEl) break;
+                combinedText += "\n";
+                if (!walker.nextNode()) break;
+            }
+
+            // Update textarea content
+            textarea.value = combinedText;
+
+            // Handle reversed selection
+            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                // start is before end
+                textarea.setSelectionRange(selectionStart, selectionEnd);
+            } else {
+                // end is before start
+                textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+            }
+        }
+    }
+
     syncTextareaToActiveItem() {
         if (this.isComposing) return;
 

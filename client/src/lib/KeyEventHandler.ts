@@ -241,6 +241,47 @@ export class KeyEventHandler {
             // Dispatch the cut event
             document.dispatchEvent(clipboardEvent);
         });
+
+        // Ctrl+C copy fallback
+        add("c", true, false, false, () => {
+            KeyEventHandler._nativeCopyFired = false;
+            // Check if store has local selection
+            const localSelection = Object.values(store.selections).find(s => (s.userId || "local") === "local");
+            if (!localSelection) return;
+
+            // Give the browser native copy a chance to fire.
+            // If it hasn't fired in the same loop, we fire a synthetic one
+            setTimeout(() => {
+                if (KeyEventHandler._nativeCopyFired) return;
+                const selectedText = store.getSelectedText("local");
+                if (selectedText) {
+                    if (typeof window !== "undefined") {
+                        (window as typeof window & { lastCopiedText?: string }).lastCopiedText = selectedText;
+                        const structured = selectedItemsClipboardData();
+                        if (structured) {
+                            (window as typeof window & { lastCopiedStructuredItems?: { encoded: string; plainText: string; } }).lastCopiedStructuredItems = structured;
+                        }
+                    }
+
+                    // Write to OS clipboard as fallback because synthetic event cannot reach OS
+                    if (typeof navigator !== "undefined" && navigator?.clipboard?.writeText) {
+                        navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
+                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                logger.error({ error: err }, "navigator.clipboard.writeText failed in synthetic Ctrl+C fallback:");
+                            }
+                        });
+                    }
+
+                    // Trigger the synthetic event for internal logic
+                    const clipboardEvent = new ClipboardEvent("copy", {
+                        clipboardData: new DataTransfer(),
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    document.dispatchEvent(clipboardEvent);
+                }
+            }, 0);
+        });
     }
     /**
      * Delegate KeyDown events to each cursor
@@ -1267,7 +1308,9 @@ export class KeyEventHandler {
      * Process copy event
      * @param event ClipboardEvent
      */
+    static _nativeCopyFired = false;
     static handleCopy(event: ClipboardEvent) {
+        KeyEventHandler._nativeCopyFired = true;
         // Debug info
         if (
             typeof window !== "undefined"
@@ -1386,7 +1429,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.clipboardData
+                    && navigator?.clipboard?.writeText && !event.isTrusted
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -1399,7 +1442,7 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                if (!event.clipboardData) {
+                if (!event.isTrusted) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
@@ -2651,7 +2694,7 @@ export class KeyEventHandler {
                 // Write to navigator.clipboard for robust system clipboard access
                 if (
                     typeof navigator !== "undefined"
-                    && navigator?.clipboard?.writeText && !event.clipboardData
+                    && navigator?.clipboard?.writeText && !event.isTrusted
                 ) {
                     navigator.clipboard.writeText(selectedText).catch((err: unknown) => {
                         if (
@@ -2664,7 +2707,7 @@ export class KeyEventHandler {
                 }
 
                 // Fallback: Copy using execCommand
-                if (!event.clipboardData) {
+                if (!event.isTrusted) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
