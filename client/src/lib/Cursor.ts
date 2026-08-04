@@ -1092,29 +1092,35 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     // Formatting methods are defined below
 
     /**
-     * Select all text in the current item
+     * Select the entire current page, from offset 0 of the page-title item
+     * through the end of the page's last depth-first descendant.
      */
     selectAll() {
-        const target = this.findTarget();
-        if (!target) return;
+        const root = generalStore.currentPage;
+        if (!root) return;
 
-        const text = this.getTargetText(target);
+        const deepest = getDeepestDescendant(root);
+        const endText = deepest.text || "";
+
+        // Clear existing selection for the same user before setting new range
+        store.clearSelectionForUser(this.userId);
 
         // Set selection
         store.setSelection({
-            startItemId: this.itemId,
+            startItemId: root.id,
             startOffset: 0,
-            endItemId: this.itemId,
-            endOffset: text.length,
+            endItemId: deepest.id,
+            endOffset: endText.length,
             userId: this.userId,
             isReversed: false,
         });
 
         // Set selection range for global textarea
-        this.updateGlobalTextareaSelection(this.itemId, 0, this.itemId, text.length);
+        this.updateGlobalTextareaSelection(root.id, 0, deepest.id, endText.length);
 
         // Set cursor position to the end
-        this.offset = text.length;
+        this.itemId = deepest.id;
+        this.offset = endText.length;
         this.applyToStore();
 
         // Start cursor blinking
