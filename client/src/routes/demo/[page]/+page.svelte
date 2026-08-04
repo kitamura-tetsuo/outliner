@@ -8,7 +8,7 @@
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
     import { getLogger } from "../../../lib/logger";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../../services";
+    import { acquireDemoClient, releaseDemoClient } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { Project as AppProject } from "../../../schema/app-schema";
@@ -80,9 +80,9 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 }
                 if (isDestroyed) return;
 
-                const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+                const client = await acquireDemoClient();
                 if (isDestroyed) {
-                    client?.dispose();
+                    releaseDemoClient();
                     return;
                 }
                 if (!client) {
@@ -162,10 +162,11 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            if (releaseDemoClient() === 0) {
+                yjsStore.yjsClient = undefined;
+                store.project = undefined;
+                store.currentPage = undefined;
+            }
         } catch (_e) { logger.error(_e); }
     });
 </script>

@@ -11,11 +11,14 @@ export {
 
 // Yjs Service functions (Fluid replacement)
 export {
+    acquireDemoClient,
     cleanupClient as cleanupYjsClient,
     createClient as createYjsClient,
     createNewProject as createNewYjsProject,
     getClientByProjectTitle as getYjsClientByProjectTitle,
+    releaseDemoClient,
     removeClientByProjectId as removeYjsClientByProjectId,
+    resetDemoClientState,
 } from "../lib/yjsService.svelte";
 
 // SnapshotService

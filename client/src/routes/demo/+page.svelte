@@ -4,7 +4,7 @@
     import PageList from "../../components/PageList.svelte";
     import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
     import { getLogger } from "../../lib/logger";
-    import { getYjsClientByProjectTitle, removeYjsClientByProjectId } from "../../services";
+    import { acquireDemoClient, releaseDemoClient, removeYjsClientByProjectId, resetDemoClientState } from "../../services";
 
     const logger = getLogger("DemoListPage");
     import { Project as AppProject } from "../../schema/app-schema";
@@ -42,9 +42,9 @@
             if (isDestroyed) return;
 
             // Connect to demo room
-            const client = await getYjsClientByProjectTitle(DEMO_PROJECT_NAME);
+            const client = await acquireDemoClient();
             if (isDestroyed) {
-                client?.dispose();
+                releaseDemoClient();
                 return;
             }
             if (!client) {
@@ -73,6 +73,7 @@
             resetError = undefined;
             await seedDemo({ force: true, throwOnError: true });
             if (isDestroyed) return;
+            resetDemoClientState();
             removeYjsClientByProjectId(DEMO_PROJECT_NAME);
             yjsStore.yjsClient = undefined;
             store.project = undefined;
@@ -101,10 +102,11 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            store.currentPage = undefined;
+            if (releaseDemoClient() === 0) {
+                yjsStore.yjsClient = undefined;
+                store.project = undefined;
+                store.currentPage = undefined;
+            }
         } catch (_e) { logger.error(_e); }
     });
 </script>

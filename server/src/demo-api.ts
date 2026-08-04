@@ -26,6 +26,8 @@ const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolea
 const forceRateLimits = new Map<string, number>();
 let lastGlobalForceReset = 0;
 
+let demoFastPath: { stateVectorHex: string; missingTemplatePages: boolean } | null = null;
+
 export interface DemoResetState {
     isEmpty: boolean;
     lastReset: number | undefined;
@@ -125,47 +127,54 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     // Check if any required template page is missing
                     let missingTemplatePages = false;
                     if (!isEmpty) {
-                        const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
-                        const existingTemplateIds = new Set<string>();
+                        const currentStateVector = Buffer.from(Y.encodeStateVector(doc)).toString("hex");
 
-                        // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
-                        const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
-                        for (const key of treeMap.keys()) {
-                            if (key === "root" || key === "deleted") continue;
-                            const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
-                            if (
-                                nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
-                                && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
-                            ) {
-                                const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
-                                if (valueMap && valueMap.has("templatePageId")) {
-                                    const templatePageId = valueMap.get("templatePageId") as string | undefined;
-                                    if (templatePageId) {
-                                        const rawText = valueMap.get("text");
-                                        let textStr = "";
-                                        if (rawText !== undefined && rawText !== null) {
-                                            try {
-                                                textStr = typeof (rawText as { toString?: () => string; }).toString
-                                                        === "function"
-                                                    ? (rawText as { toString: () => string; }).toString()
-                                                    : String(rawText);
-                                            } catch (e) {
-                                                // ignore
+                        if (!force && demoFastPath && demoFastPath.stateVectorHex === currentStateVector) {
+                            missingTemplatePages = demoFastPath.missingTemplatePages;
+                        } else {
+                            const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
+                            const existingTemplateIds = new Set<string>();
+
+                            // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
+                            const treeMap = doc.getMap("orderedTree") as Y.Map<unknown>;
+                            for (const key of treeMap.keys()) {
+                                if (key === "root" || key === "deleted") continue;
+                                const nodeMap = treeMap.get(key) as Y.Map<unknown> | undefined;
+                                if (
+                                    nodeMap && nodeMap.get("_parentHistory") instanceof Y.Map
+                                    && (nodeMap.get("_parentHistory") as Y.Map<unknown>).has("root")
+                                ) {
+                                    const valueMap = nodeMap.get("value") as Y.Map<unknown> | undefined;
+                                    if (valueMap && valueMap.has("templatePageId")) {
+                                        const templatePageId = valueMap.get("templatePageId") as string | undefined;
+                                        if (templatePageId) {
+                                            const rawText = valueMap.get("text");
+                                            let textStr = "";
+                                            if (rawText !== undefined && rawText !== null) {
+                                                try {
+                                                    textStr = typeof (rawText as { toString?: () => string; }).toString
+                                                            === "function"
+                                                        ? (rawText as { toString: () => string; }).toString()
+                                                        : String(rawText);
+                                                } catch (e) {
+                                                    // ignore
+                                                }
                                             }
-                                        }
-                                        if (textStr.trim().toLowerCase() === templatePageId) {
-                                            existingTemplateIds.add(templatePageId);
+                                            if (textStr.trim().toLowerCase() === templatePageId) {
+                                                existingTemplateIds.add(templatePageId);
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        for (const expected of expectedTemplateIds) {
-                            if (!existingTemplateIds.has(expected)) {
-                                missingTemplatePages = true;
-                                break;
+                            for (const expected of expectedTemplateIds) {
+                                if (!existingTemplateIds.has(expected)) {
+                                    missingTemplatePages = true;
+                                    break;
+                                }
                             }
+                            demoFastPath = { stateVectorHex: currentStateVector, missingTemplatePages };
                         }
                     }
 
@@ -187,6 +196,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                             meta.set("isResetting", true);
                             meta.set("resetStartedAt", now);
                         });
+
+                        demoFastPath = null;
 
                         try {
                             const docProject = Project.fromDoc(doc as unknown as Y.Doc);

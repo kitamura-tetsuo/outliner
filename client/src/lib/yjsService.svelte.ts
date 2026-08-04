@@ -533,6 +533,35 @@ export function removeClientByProjectId(projectId: string): void {
     }
 }
 
+let demoRefCount = 0;
+let demoAcquirePromise: Promise<YjsClient | undefined> | null = null;
+
+export async function acquireDemoClient(signal?: AbortSignal): Promise<YjsClient | undefined> {
+    if (demoRefCount === 0 || !demoAcquirePromise) {
+        demoAcquirePromise = getClientByProjectTitle("demo", signal);
+    }
+    const client = await demoAcquirePromise;
+    if (client && !signal?.aborted) {
+        demoRefCount++;
+    }
+    return client;
+}
+
+export function releaseDemoClient(): number {
+    if (demoRefCount > 0) {
+        demoRefCount--;
+    }
+    if (demoRefCount === 0) {
+        demoAcquirePromise = null;
+    }
+    return demoRefCount;
+}
+
+export function resetDemoClientState(): void {
+    demoRefCount = 0;
+    demoAcquirePromise = null;
+}
+
 export async function deleteProject(projectId: string): Promise<boolean> {
     logger.info(`[yjsService] deleteProject called for: ${projectId}`);
 
