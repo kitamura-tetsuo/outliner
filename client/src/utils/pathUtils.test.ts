@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
-import { resolvePath } from "./pathUtils";
 import * as appPaths from "$app/paths";
+import { describe, expect, it, vi } from "vitest";
+import { resolvePath } from "./pathUtils";
 
 // Mock SvelteKit's resolve function
 vi.mock("$app/paths", () => ({
