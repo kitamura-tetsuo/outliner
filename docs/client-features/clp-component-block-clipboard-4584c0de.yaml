@@ -14,6 +14,8 @@ acceptance:
 - Partial item selections and external clipboard content retain the existing plain-text behavior.
 - Pasting into another project safely falls back to plain text because component registries are project-local.
 - Pasting within the same project creates a second view of the existing component rather than duplicating its data.
+- Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 tests:
+- client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
 - client/src/services/clipboard/itemClipboard.test.ts

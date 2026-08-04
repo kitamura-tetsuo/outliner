@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("Ctrl+C copies cross-item selection", () => {
     test("copies exact selected text via mouse drag", async ({ page }) => {

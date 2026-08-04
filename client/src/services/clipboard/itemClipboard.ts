@@ -1,4 +1,5 @@
 export const OUTLINER_ITEMS_MIME = "application/x-outliner-items";
+const OUTLINER_ITEMS_HTML_ATTRIBUTE = "data-outliner-items";
 
 export type ClipboardComponentType = "yjstable" | "calendar";
 
@@ -74,4 +75,29 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
 
 export function clipboardPlainText(payload: ItemClipboardPayload): string {
     return payload.items.map(item => item.text).join("\n");
+}
+
+export function structuredClipboardHtml(encoded: string, plainText: string): string {
+    const bytes = new TextEncoder().encode(encoded);
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const visibleText = plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;").replaceAll("'", "&#39;").replaceAll("\n", "<br>");
+    return `<span ${OUTLINER_ITEMS_HTML_ATTRIBUTE}="${btoa(binary)}" hidden></span><span>${visibleText}</span>`;
+}
+
+export function structuredClipboardFromHtml(html: string): string | undefined {
+    if (!html) return undefined;
+    const document = new DOMParser().parseFromString(html, "text/html");
+    const encoded = document.querySelector(`[${OUTLINER_ITEMS_HTML_ATTRIBUTE}]`)?.getAttribute(
+        OUTLINER_ITEMS_HTML_ATTRIBUTE,
+    );
+    if (!encoded) return undefined;
+    try {
+        const binary = atob(encoded);
+        const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+    } catch {
+        return undefined;
+    }
 }
