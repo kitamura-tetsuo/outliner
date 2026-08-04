@@ -27,6 +27,7 @@ describe("logger", () => {
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.resetModules();
     });
 
     it("uses console logger by default", () => {
@@ -81,8 +82,8 @@ describe("logger", () => {
         // the original consoleFactory uses consoleLogger
         // but setLoggerFactory doesn't expose a way to reset to original
         // so we'll just trigger it by simulating module reload or manually importing
-        const { getLogger, setLoggerFactory } = await import("../src/logger.js?update=" + Date.now());
-        const logger = getLogger("default-test");
+        const module = await import("../src/logger.js");
+        const logger = module.getLogger("default-test");
 
         // Since we are mocking the global console, it will still go to our mockConsole
         // because Vitest evaluates the imported module within the current context.

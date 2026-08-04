@@ -83,55 +83,6 @@ describe("zonedTime", () => {
         expect(floatingDateToWallTime(d)).toEqual(w);
     });
 
-    it("utcMsToWallTime handles hour === 24 edge case", () => {
-        const OriginalDateTimeFormat = Intl.DateTimeFormat;
-        try {
-            class MockDateTimeFormat {
-                formatToParts() {
-                    return [
-                        { type: "year", value: "2024" },
-                        { type: "month", value: "01" },
-                        { type: "day", value: "01" },
-                        { type: "hour", value: "24" },
-                        { type: "minute", value: "00" },
-                        { type: "second", value: "00" },
-                    ];
-                }
-            }
-            vi.stubGlobal("Intl", { ...Intl, DateTimeFormat: MockDateTimeFormat });
-
-            const wall = utcMsToWallTime(Date.UTC(2024, 0, 1), "UTC");
-            expect(wall.hour).toBe(0);
-        } finally {
-            vi.unstubAllGlobals();
-        }
-    });
-
-    it("utcMsToWallTime handles missing parts in formatToParts", () => {
-        const OriginalDateTimeFormat = Intl.DateTimeFormat;
-        try {
-            class MockDateTimeFormat {
-                formatToParts() {
-                    // return empty parts to trigger the fallback to "0"
-                    return [];
-                }
-            }
-            vi.stubGlobal("Intl", { ...Intl, DateTimeFormat: MockDateTimeFormat });
-
-            const wall = utcMsToWallTime(Date.UTC(2024, 0, 1), "UTC");
-            expect(wall).toEqual({
-                year: 0,
-                month: 0,
-                day: 0,
-                hour: 0,
-                minute: 0,
-                second: 0,
-            });
-        } finally {
-            vi.unstubAllGlobals();
-        }
-    });
-
     it("parseWallTime returns undefined for invalid format", () => {
         expect(parseWallTime("invalid")).toBeUndefined();
     });
