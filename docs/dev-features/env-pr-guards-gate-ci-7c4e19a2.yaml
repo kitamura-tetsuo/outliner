@@ -5,7 +5,7 @@ description: Every job in the main CI workflow declares PR Guards as a dependenc
 category: environment
 status: implemented
 components:
-- .github/workflows/ci.yml
 - .github/workflows/ci-pr-guards.yml
+- .github/workflows/ci.yml
 tests:
 - scripts/tests/env-pr-guards-gate-ci-7c4e19a2.spec.ts

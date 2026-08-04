@@ -13,19 +13,19 @@ components:
 services:
 - server/src/demo-api.ts
 tests:
-- client/e2e/core/dmo-demo-warm-load-performance-3c7e5b12.spec.ts
 - client/e2e/core/dmo-demo-parallel-seed-connect-3c7e5b12.spec.ts
 - client/e2e/core/dmo-demo-shared-initialization-3c7e5b12.spec.ts
+- client/e2e/core/dmo-demo-warm-load-performance-3c7e5b12.spec.ts
 - client/src/lib/demoInit.test.ts
 - client/src/lib/demoSeed.test.ts
 - server/tests/demo-warm-path.test.ts
 acceptance:
-- The browser starts the demo Yjs connection without waiting for the seed validation response on a warm visit
-- A warm /demo visit reaches an interactive page list within 300 ms of the paired normal-project baseline
-- The seed validation endpoint answers a warm visit without opening the shared document or scanning the ordered tree
-- The warm verdict is invalidated by any change to the demo document, by unloading the document, by a template version change, by the 24h boundary, and by a failed validation or reset
 - /demo, /demo/[page], /demo/graph and /demo/[page]/diff share one initialization workflow and reuse the synced project client during Svelte-managed navigation
-- First-time seeding, 24h and template-version resets, missing-template repair and manual forced reset still rebuild the demo and reconnect the client
 - A concurrent visitor whose validation is coalesced into an in-flight reset is told that the document was reset
 - A failed validation is reported without hiding demo content that is already synced
+- A warm /demo visit reaches an interactive page list within 300 ms of the paired normal-project baseline
+- First-time seeding, 24h and template-version resets, missing-template repair and manual forced reset still rebuild the demo and reconnect the client
+- The browser starts the demo Yjs connection without waiting for the seed validation response on a warm visit
+- The seed validation endpoint answers a warm visit without opening the shared document or scanning the ordered tree
+- The warm verdict is invalidated by any change to the demo document, by unloading the document, by a template version change, by the 24h boundary, and by a failed validation or reset
 title-ja: デモのウォームロード初期化

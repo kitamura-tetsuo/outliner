@@ -11,7 +11,7 @@ acceptance:
 tests:
 - client/e2e/core/slr-copy-requires-editor-focus-3d7c2f18.spec.ts
 - client/e2e/core/slr-copy-selection-4c4c4f1a.spec.ts
+- client/e2e/core/slr-ctrl-c-copies-cross-item-selection-1a2b3c4d.spec.ts
 - client/e2e/core/slr-paste-copied-text-20a382d6.spec.ts
 - client/e2e/core/slr-paste-multiline-f8740117.spec.ts
-- client/e2e/core/slr-ctrl-c-copies-cross-item-selection-1a2b3c4d.spec.ts
 title-ja: 複数アイテム選択範囲のコピー＆ペースト

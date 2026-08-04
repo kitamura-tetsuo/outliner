@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { dragColumnHeader } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test("Grid column reorder via handle", async ({ page }, testInfo) => {
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Empty Item"]);
