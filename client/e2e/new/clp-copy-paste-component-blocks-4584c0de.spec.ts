@@ -34,6 +34,8 @@ test.describe("component block clipboard", () => {
         const hostIndex = itemIds.indexOf(hostId);
         expect(hostIndex).toBeGreaterThan(0);
         const neighborId = itemIds[hostIndex - 1];
+        const neighborText = await page.locator(`.outliner-item[data-item-id="${neighborId}"] .item-text`)
+            .textContent();
         const hostText = await renderedHost.locator(".item-text").textContent();
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
@@ -51,7 +53,7 @@ test.describe("component block clipboard", () => {
             });
         }, { start: neighborId, end: hostId, endOffset: hostText?.length ?? 0 });
         await page.keyboard.press("Control+c");
-        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain("Neighbor");
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`${neighborText}\nTasks`);
 
         // Use the trusted browser paste event. The portable HTML payload is
         // independently round-tripped in itemClipboard.test.ts so this E2E
