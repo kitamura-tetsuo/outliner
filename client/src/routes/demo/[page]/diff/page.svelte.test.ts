@@ -23,12 +23,16 @@ vi.mock("../../../../services", () => ({
     acquireDemoClient: vi.fn(),
     releaseDemoClient: vi.fn(),
     removeYjsClientByProjectId: vi.fn(),
+    resetDemoClientState: vi.fn(),
     exportItemToMarkdown: vi.fn(),
 }));
 
 vi.mock("../../../../lib/demoSeed", () => ({
     DEMO_PROJECT_NAME: "demo",
-    seedDemo: vi.fn().mockResolvedValue({ ok: true }),
+    seedDemo: vi.fn().mockResolvedValue({ ok: true, reset: false }),
+    SeedDemoError: class SeedDemoError extends Error {
+        rateLimitMs?: number;
+    },
 }));
 
 describe("Demo Diff Page", () => {

@@ -6,7 +6,8 @@ import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
 import { exportItemToMarkdown, acquireDemoClient, releaseDemoClient } from "../../../../services";
-import { DEMO_PROJECT_NAME, seedDemo } from "../../../../lib/demoSeed";
+import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
+import { startDemoValidation } from "../../../../lib/demoInit";
 import { Project as AppProject } from "../../../../schema/app-schema";
 import { findPageByName } from "../../../../utils/pageUtils";
 import { userManager } from "../../../../auth/UserManager";
@@ -25,10 +26,13 @@ let isLoading = $state(true);
 async function loadLiveContent(proj: string, pTitle: string) {
     try {
         isLoading = true;
-        const seedResult = await seedDemo();
-        if (!seedResult.ok) {
-            logger.error("Failed to seed demo");
-        }
+        // Validate template freshness in parallel: the diff view only needs the
+        // live document, so it must not wait for the validation round trip.
+        void startDemoValidation().then((seedResult) => {
+            if (!seedResult.ok) {
+                logger.error("Failed to seed demo");
+            }
+        });
 
         const client = await acquireDemoClient();
         if (isDestroyed) {

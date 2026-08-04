@@ -28,6 +28,65 @@ let lastGlobalForceReset = 0;
 
 let demoFastPath: { stateVectorHex: string; missingTemplatePages: boolean; } | null = null;
 
+// How long a "template is fresh" verdict may be reused without re-opening the
+// demo document. The verdict is additionally invalidated the moment the demo
+// document changes (see rememberDemoWarmState), so this is only a backstop for
+// state we can no longer observe.
+const WARM_PATH_TTL_MS = 5 * 60 * 1000;
+
+interface DemoWarmState {
+    lastReset: number;
+    templateVersion: number;
+    verifiedAt: number;
+    doc: Y.Doc;
+    onDocChanged: () => void;
+}
+
+// Authoritative "nothing to do" state for the demo room. While it is set, a
+// non-forced POST /api/seed-demo answers without opening a direct connection,
+// loading the document from storage, or scanning the ordered tree.
+let demoWarmState: DemoWarmState | undefined;
+
+function clearDemoWarmState(): void {
+    if (!demoWarmState) return;
+    const { doc, onDocChanged } = demoWarmState;
+    demoWarmState = undefined;
+    try {
+        doc.off("update", onDocChanged);
+        doc.off("destroy", onDocChanged);
+    } catch (_e) {
+        // The document may already be destroyed; nothing left to detach.
+    }
+}
+
+// Remember that `doc` currently holds a complete, up-to-date template. Any
+// update to the document (an edit by a visitor, a rename, a page deletion) or
+// unloading it from memory drops the verdict, so the next request revalidates.
+function rememberDemoWarmState(doc: Y.Doc, lastReset: number, templateVersion: number, now: number): void {
+    clearDemoWarmState();
+    const onDocChanged = () => clearDemoWarmState();
+    demoWarmState = { lastReset, templateVersion, verifiedAt: now, doc, onDocChanged };
+    doc.on("update", onDocChanged);
+    doc.on("destroy", onDocChanged);
+}
+
+// True when the last validation proved the template is fresh and nothing has
+// happened since that could invalidate it (including crossing the 24h reset
+// boundary or a template version bump after a deploy).
+export function isDemoWarm(now: number): boolean {
+    const state = demoWarmState;
+    if (!state) return false;
+    if (state.templateVersion !== DEMO_TEMPLATE_VERSION) return false;
+    if (now - state.verifiedAt > WARM_PATH_TTL_MS) return false;
+    if (now - state.lastReset > RESET_INTERVAL_MS) return false;
+    return true;
+}
+
+// Drop the warm-path verdict. Exported so tests can start from a cold server.
+export function resetDemoWarmState(): void {
+    clearDemoWarmState();
+}
+
 export interface DemoResetState {
     isEmpty: boolean;
     lastReset: number | undefined;
@@ -55,6 +114,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
     router.options("/seed-demo", cors({ origin: true, credentials: true }));
 
     router.post("/seed-demo", async (req, res): Promise<void> => {
+        const requestStartedAt = Date.now();
+        const reportTiming = (phase: string) => {
+            res.setHeader("Server-Timing", `demo-seed;dur=${Date.now() - requestStartedAt};desc="${phase}"`);
+        };
         try {
             const force = req.body?.force === true;
             logger.info({ event: "seed_demo_request", force });
@@ -95,10 +158,23 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
 
+            // Warm path: a previous request already proved the template is
+            // complete and current, and the document has not changed since.
+            // Answer without touching the document at all.
+            if (!force && isDemoWarm(Date.now())) {
+                logger.info({ event: "seed_demo_warm_path", projectRoom });
+                reportTiming("warm");
+                res.json({ success: true, reset: false, warm: true });
+                return;
+            }
+
             if (inFlightResets.has(projectRoom)) {
                 logger.info({ event: "seed_demo_inflight_wait", projectRoom });
                 const result = await inFlightResets.get(projectRoom);
-                res.json({ success: true, reset: false, inFlightResult: result });
+                reportTiming("coalesced");
+                // Report the coalesced run's verdict: a visitor that joined an
+                // in-flight reset must still learn that the document was rebuilt.
+                res.json({ success: true, reset: result?.reset === true, coalesced: true, inFlightResult: result });
                 return;
             }
 
@@ -198,6 +274,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         });
 
                         demoFastPath = null;
+                        clearDemoWarmState();
 
                         try {
                             const docProject = Project.fromDoc(doc as unknown as Y.Doc);
@@ -293,6 +370,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         logger.info({ event: "seed_demo_no_reset_needed", lastReset, templateVersion, now });
                     }
 
+                    if (shouldReset) {
+                        // The document we just rebuilt is by definition current.
+                        rememberDemoWarmState(doc as unknown as Y.Doc, now, DEMO_TEMPLATE_VERSION, Date.now());
+                    } else if (lastReset !== undefined && templateVersion !== undefined) {
+                        rememberDemoWarmState(doc as unknown as Y.Doc, lastReset, templateVersion, now);
+                    }
+
                     return { success: true, reset: shouldReset };
                 } finally {
                     // Must disconnect to prevent memory leak
@@ -308,6 +392,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     forceRateLimits.set(clientIpForRateLimit, finishTime);
                     lastGlobalForceReset = finishTime;
                 }
+                reportTiming(result.reset ? "reset" : "validated");
                 res.json(result);
             } finally {
                 inFlightResets.delete(projectRoom);
@@ -315,6 +400,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             logger.error({ error: new Error(errorMessage), event: "seed_demo_error" }, "An error occurred");
+            // A failed validation or reset must never leave a warm verdict behind.
+            clearDemoWarmState();
+            reportTiming("error");
             res.status(500).json({ error: "Demo seeding failed", message: errorMessage });
         }
     });

@@ -3,11 +3,9 @@
     import GraphView from "../../../components/GraphView.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
     import { onMount, onDestroy } from "svelte";
-    import { seedDemo } from "../../../lib/demoSeed";
-    import { acquireDemoClient, releaseDemoClient } from "../../../services";
+    import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
-    import { Project as AppProject } from "../../../schema/app-schema";
     import { getLogger } from "../../../lib/logger";
 
     const logger = getLogger("DemoGraphView");
@@ -15,6 +13,7 @@
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
+    let seedWarning: string | undefined = $state(undefined);
     let isDestroyed = false;
 
     async function initializeDemo() {
@@ -23,27 +22,18 @@
             error = undefined;
 
             if (!yjsStore.yjsClient || !store.project) {
-                // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
-                const client = await acquireDemoClient();
-                if (isDestroyed) {
-                    releaseDemoClient();
-                    return;
-                }
-                if (!client) {
-                    throw new Error("Failed to connect to the demo project.");
-                }
-                yjsStore.yjsClient = client;
-                store.project = AppProject.fromDoc(client.getProject().ydoc);
+                // Connects immediately; freshness validation runs in parallel.
+                await initializeDemoProject({
+                    isDestroyed: () => isDestroyed,
+                    onValidated: (update) => {
+                        seedWarning = update.seedFailure === "network"
+                            ? "Can't reach the demo server — retrying..."
+                            : undefined;
+                    },
+                });
             }
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo graph view");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
@@ -58,11 +48,7 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            if (releaseDemoClient() === 0) {
-                yjsStore.yjsClient = undefined;
-                store.project = undefined;
-                store.currentPage = undefined;
-            }
+            releaseDemoProject();
         } catch (_e) { logger.error(_e); }
     });
 
@@ -87,6 +73,13 @@
         <p class="mt-1 text-sm text-gray-500">
             This is a public, collaborative demo space. Content resets every 24 hours.
         </p>
+        {#if seedWarning}
+            <!-- Non-blocking: freshness validation failed, but already-synced
+                 demo content stays visible below. -->
+            <p class="mt-1 text-sm text-red-600" data-testid="demo-seed-warning" role="status" aria-live="assertive">
+                {seedWarning}
+            </p>
+        {/if}
     </div>
 
     {#if isLoading && !store.project}
