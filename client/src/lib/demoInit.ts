@@ -146,7 +146,14 @@ export async function initializeDemoProject(options: DemoInitOptions = {}): Prom
         if (seedResult.reset) {
             logger.info("Demo document was reseeded; reconnecting with a fresh client");
             const next = await reconnectDemoProject();
-            if (isDestroyed()) return;
+            if (isDestroyed()) {
+                // The route was destroyed while the replacement was connecting.
+                // Its destroy handler released the old reference only, so the
+                // replacement's reference (and the shared stores) are ours to
+                // clean up.
+                if (next) releaseDemoProject();
+                return;
+            }
             options.onValidated?.({ handle: next, reset: true });
             return;
         }

@@ -135,6 +135,66 @@ describe("Demo warm-path validation", function() {
         expect(projectOpens()).to.equal(2);
     });
 
+    it("joins an in-flight forced reset instead of answering from the warm verdict", async () => {
+        const ydoc = seededDoc();
+        // Move past the global force-reset cooldown left behind by earlier
+        // force tests in this process.
+        const pastCooldown = Date.now() + 10 * 60 * 1000;
+        const clock = sinon.stub(Date, "now").returns(pastCooldown);
+        let release: () => void = () => {};
+        const gate = new Promise<void>(resolve => {
+            release = resolve;
+        });
+
+        const openDirectConnection = sinon.stub().callsFake(async (room: string) => {
+            if (room === "projects/demo") await gate;
+            return {
+                document: ydoc,
+                transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
+                disconnect: async () => {},
+            };
+        });
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter({ openDirectConnection } as never, {} as never));
+
+        // Warm the verdict first (this request is not gated for the very first
+        // open because the gate only blocks until released below).
+        release();
+        await request(app).post("/api/seed-demo").send({});
+
+        // Now block the next open and start a forced reset.
+        const secondGate = new Promise<void>(resolve => {
+            release = resolve;
+        });
+        openDirectConnection.callsFake(async (room: string) => {
+            if (room === "projects/demo") await secondGate;
+            return {
+                document: ydoc,
+                transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
+                disconnect: async () => {},
+            };
+        });
+
+        const forced = request(app).post("/api/seed-demo").set("cf-connecting-ip", "10.1.0.9").send({ force: true })
+            .then(res => res);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        // A warm visitor arriving mid-reset must not be told "nothing happened".
+        const warmVisitor = request(app).post("/api/seed-demo").send({}).then(res => res);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        release();
+
+        const forcedRes = await forced;
+        const warmRes = await warmVisitor;
+
+        clock.restore();
+
+        expect(forcedRes.status, JSON.stringify(forcedRes.body)).to.equal(200);
+        expect(forcedRes.body.reset).to.equal(true);
+        expect(warmRes.body.warm).to.equal(undefined);
+        expect(warmRes.body.reset).to.equal(true);
+    });
+
     it("tells a coalesced concurrent visitor that the document was reset", async () => {
         // A stale document forces a reset; a second visitor arrives while it runs.
         const ydoc = seededDoc(Date.now() - 25 * 60 * 60 * 1000);

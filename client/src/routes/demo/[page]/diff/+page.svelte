@@ -5,10 +5,10 @@ import { page } from "$app/stores";
 import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
-import { exportItemToMarkdown, acquireDemoClient, releaseDemoClient } from "../../../../services";
+import { exportItemToMarkdown } from "../../../../services";
 import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
-import { startDemoValidation } from "../../../../lib/demoInit";
-import { Project as AppProject } from "../../../../schema/app-schema";
+import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../../lib/demoInit";
+import type { DemoProjectHandle } from "../../../../lib/demoInit";
 import { findPageByName } from "../../../../utils/pageUtils";
 import { userManager } from "../../../../auth/UserManager";
 
@@ -17,52 +17,54 @@ let pageTitle = $state("");
 let content = $state("");
 let user = $derived(userManager.getCurrentUser()?.name ?? "Guest");
 
-import type { YjsClient } from "../../../../yjs/YjsClient";
-let currentClient: YjsClient | null = null;
+let boundHandle: DemoProjectHandle | undefined = undefined;
 let updateObserver: (() => void) | null = null;
 let isDestroyed = false;
 let isLoading = $state(true);
 
+function unbind() {
+    if (boundHandle && updateObserver) {
+        boundHandle.project.ydoc.off("update", updateObserver);
+    }
+    boundHandle = undefined;
+    updateObserver = null;
+}
+
+// Mirror the live document into `content`. Re-bound from scratch whenever the
+// workflow hands us a different Y.Doc (a reset replaces the document).
+function bind(handle: DemoProjectHandle, pTitle: string) {
+    unbind();
+    boundHandle = handle;
+
+    const updateContent = () => {
+        const pageItem = findPageByName(handle.project.items, pTitle);
+        content = pageItem ? exportItemToMarkdown(pageItem) : "";
+    };
+
+    updateContent();
+    updateObserver = () => updateContent();
+    handle.project.ydoc.on("update", updateObserver);
+}
+
 async function loadLiveContent(proj: string, pTitle: string) {
     try {
         isLoading = true;
-        // Validate template freshness in parallel: the diff view only needs the
-        // live document, so it must not wait for the validation round trip.
-        void startDemoValidation().then((seedResult) => {
-            if (!seedResult.ok) {
-                logger.error("Failed to seed demo");
-            }
+        // Connects immediately; template freshness is validated in parallel and
+        // only reported back when the server actually rebuilt the document.
+        const handle = await initializeDemoProject({
+            isDestroyed: () => isDestroyed,
+            onValidated: (update) => {
+                if (update.reset && update.handle) {
+                    // The document was rebuilt: re-bind to the fresh one.
+                    bind(update.handle, pTitle);
+                } else if (update.seedFailure) {
+                    logger.error("Failed to seed demo");
+                }
+            },
         });
-
-        const client = await acquireDemoClient();
-        if (isDestroyed) {
-            releaseDemoClient();
-            return;
-        }
-        if (!client) {
-            logger.error(`Failed to connect to demo project`);
-            return;
-        }
-        currentClient = client;
-
-        const appProject = AppProject.fromDoc(client.getProject().ydoc);
-        const updateContent = () => {
-            const pageItem = findPageByName(appProject.items, pTitle);
-            if (pageItem) {
-                content = exportItemToMarkdown(pageItem);
-            } else {
-                content = "";
-            }
-        };
-
-        // Initial update
-        updateContent();
-
-        // Subscribe to updates
-        updateObserver = () => updateContent();
-        appProject.ydoc.on('update', updateObserver);
-
+        bind(handle, pTitle);
     } catch (e) {
+        if (e instanceof DemoInitAborted) return;
         logger.error({ error: e instanceof Error ? e : new Error(String(e)) }, "Error loading live content");
     } finally {
         isLoading = false;
@@ -92,11 +94,8 @@ onMount(() => {
 onDestroy(() => {
     isDestroyed = true;
     try {
-        if (currentClient && updateObserver) {
-            const appProject = AppProject.fromDoc(currentClient.getProject().ydoc);
-            appProject.ydoc.off('update', updateObserver);
-        }
-            releaseDemoClient();
+        unbind();
+        releaseDemoProject();
     } catch (_e) {
         logger.error(_e);
     }

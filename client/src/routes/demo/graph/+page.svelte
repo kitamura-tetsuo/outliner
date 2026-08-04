@@ -107,10 +107,15 @@
             </div>
         </div>
     {:else if store.project}
-        <!-- Graph View Component -->
-        <div class="graph-container bg-white shadow-sm">
-            <GraphView />
-        </div>
+        <!-- Keyed on the Y.Doc so a reset that replaces the document during
+             validation remounts the graph instead of leaving it bound to the
+             old document. -->
+        {#key store.project.ydoc.guid}
+            <!-- Graph View Component -->
+            <div class="graph-container bg-white shadow-sm">
+                <GraphView />
+            </div>
+        {/key}
     {/if}
 </main>
 

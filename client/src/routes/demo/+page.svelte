@@ -186,11 +186,15 @@
         </div>
     {:else if !isLoading && !error && !yjsStore.syncError && !yjsStore.notYetSynced && store.project && pages}
         <div class="mt-6" data-testid="demo-page-list">
-            <PageList
-                currentUser="anonymous"
-                project={store.project}
-                rootItems={pages}
-            />
+            <!-- Keyed on the Y.Doc so a reset that replaces the document during
+                 validation remounts the list against the new document. -->
+            {#key store.project.ydoc.guid}
+                <PageList
+                    currentUser="anonymous"
+                    project={store.project}
+                    rootItems={pages}
+                />
+            {/key}
         </div>
     {:else if !isLoading && !error}
         <div class="rounded-md bg-gray-50 p-4">

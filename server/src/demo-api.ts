@@ -154,9 +154,25 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     return;
                 }
                 clientIpForRateLimit = clientIp;
+                // A forced reset is about to rebuild the document: the warm
+                // verdict is stale from this moment, not only once the document
+                // has been opened.
+                clearDemoWarmState();
             }
 
             const projectRoom = `projects/${DEMO_PROJECT_ID}`;
+
+            // Joining an in-flight run takes precedence over the warm verdict:
+            // that run may be a reset, and this visitor has to hear about it.
+            if (inFlightResets.has(projectRoom)) {
+                logger.info({ event: "seed_demo_inflight_wait", projectRoom });
+                const result = await inFlightResets.get(projectRoom);
+                reportTiming("coalesced");
+                // Report the coalesced run's verdict: a visitor that joined an
+                // in-flight reset must still learn that the document was rebuilt.
+                res.json({ success: true, reset: result?.reset === true, coalesced: true, inFlightResult: result });
+                return;
+            }
 
             // Warm path: a previous request already proved the template is
             // complete and current, and the document has not changed since.
@@ -165,16 +181,6 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                 logger.info({ event: "seed_demo_warm_path", projectRoom });
                 reportTiming("warm");
                 res.json({ success: true, reset: false, warm: true });
-                return;
-            }
-
-            if (inFlightResets.has(projectRoom)) {
-                logger.info({ event: "seed_demo_inflight_wait", projectRoom });
-                const result = await inFlightResets.get(projectRoom);
-                reportTiming("coalesced");
-                // Report the coalesced run's verdict: a visitor that joined an
-                // in-flight reset must still learn that the document was rebuilt.
-                res.json({ success: true, reset: result?.reset === true, coalesced: true, inFlightResult: result });
                 return;
             }
 

@@ -1,8 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 
-// Yjs client factories are stubbed: only the initialization ordering is under
-// test here, not the transport. The stub exposes the minimum shape demoInit
-// touches (getProject().ydoc).
+// Scope of the mocks below: this suite covers the *ordering* contract of the
+// demo initialization workflow (validation and connection start together; the
+// verdict is applied afterwards) — not the Yjs transport or the reference
+// counter itself.
+//
+// - `../services`: `acquireDemoClient` opens a real websocket to the demo room,
+//   which a unit test cannot do. The reference counter it wraps is exercised for
+//   real by the demo E2E specs (`dmo-demo-shared-initialization-3c7e5b12`).
+// - `./demoSeed`: replaces one `fetch` round trip, mirroring how demoSeed.test.ts
+//   stubs `globalThis.fetch`.
+//
+// Everything else (Project.fromDoc, the stores, real Y.Docs) runs unmocked.
 vi.mock("../services", () => ({
     acquireDemoClient: vi.fn(),
     releaseDemoClient: vi.fn().mockReturnValue(0),
@@ -16,14 +25,10 @@ vi.mock("./demoSeed", () => ({
     SeedDemoError: class SeedDemoError extends Error {},
 }));
 
-vi.mock("../schema/app-schema", () => ({
-    Project: {
-        fromDoc: vi.fn().mockImplementation((ydoc: unknown) => ({ ydoc })),
-    },
-}));
-
 const services = await import("../services");
 const { seedDemo } = await import("./demoSeed");
+const { store } = await import("../stores/store.svelte");
+const { yjsStore } = await import("../stores/yjsStore.svelte");
 const {
     initializeDemoProject,
     releaseDemoProject,
@@ -47,6 +52,9 @@ describe("demoInit", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         resetDemoValidationState();
+        // mockReset clears any leftover one-shot implementations from a previous test.
+        (services.acquireDemoClient as Mock).mockReset();
+        (services.releaseDemoClient as Mock).mockReset().mockReturnValue(0);
         (services.acquireDemoClient as Mock).mockResolvedValue(makeClient("first"));
         (seedDemo as Mock).mockResolvedValue({ ok: true, reset: false });
     });
@@ -150,6 +158,34 @@ describe("demoInit", () => {
         } finally {
             clock.mockRestore();
         }
+    });
+
+    it("releases the replacement client when the route is destroyed mid-reconnect", async () => {
+        (seedDemo as Mock).mockResolvedValue({ ok: true, reset: true });
+        let finishReconnect: (() => void) | undefined;
+        (services.acquireDemoClient as Mock)
+            .mockResolvedValueOnce(makeClient("stale"))
+            .mockImplementationOnce(() =>
+                new Promise(resolve => {
+                    finishReconnect = () => resolve(makeClient("fresh"));
+                })
+            );
+
+        let destroyed = false;
+        const updates: unknown[] = [];
+        await initializeDemoProject({ isDestroyed: () => destroyed, onValidated: (u) => updates.push(u) });
+
+        // The route goes away while the replacement connection is in flight.
+        await vi.waitFor(() => expect(finishReconnect).toBeDefined());
+        destroyed = true;
+        finishReconnect!();
+
+        await vi.waitFor(() => expect(services.acquireDemoClient).toHaveBeenCalledTimes(2));
+        // The replacement's own reference must be released, not leaked.
+        await vi.waitFor(() => expect(services.releaseDemoClient).toHaveBeenCalled());
+        expect(updates).toHaveLength(0);
+        expect(store.project).toBeUndefined();
+        expect(yjsStore.yjsClient).toBeUndefined();
     });
 
     it("surfaces an actionable error when the demo project cannot be connected", async () => {
