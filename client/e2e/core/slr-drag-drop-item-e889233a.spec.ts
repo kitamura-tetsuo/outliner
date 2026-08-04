@@ -59,7 +59,7 @@ test.describe("SLR-0009: Item Drag and Drop", () => {
         const secondItem = page.locator(".outliner-item").nth(1);
         await secondItem.locator(".item-content").click({ force: true });
         await page.waitForTimeout(300);
-        await page.keyboard.press("Control+a");
+        await secondItem.locator(".item-content").click({ clickCount: 3, force: true });
         await page.waitForTimeout(300);
         await page.keyboard.press("Control+x");
         await page.waitForTimeout(300);

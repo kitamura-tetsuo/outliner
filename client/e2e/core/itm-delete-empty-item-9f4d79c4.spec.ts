@@ -10,7 +10,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ITM-0003: Delete empty item", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", ""]);
     });
 
     test("pressing Delete on empty item removes it", async ({ page }) => {
@@ -19,10 +19,8 @@ test.describe("ITM-0003: Delete empty item", () => {
         const items = page.locator(".outliner-item");
         const countBefore = await items.count();
 
-        const secondItem = items.nth(1);
-        await secondItem.locator(".item-content").click({ force: true });
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        const thirdItem = items.nth(2); // "Title", "Item 1", "" -> index 2 is the empty item
+        await thirdItem.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
         await page.keyboard.press("Delete");
