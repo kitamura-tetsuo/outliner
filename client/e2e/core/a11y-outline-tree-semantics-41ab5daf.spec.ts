@@ -69,11 +69,31 @@ test.describe("Accessible outline tree semantics", () => {
 
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
-        // Assert that the item element does not have an aria-label attribute (so the accessible name comes from the full text)
+        // Assert that the item element does not have an aria-label attribute
         await expect(firstItem).not.toHaveAttribute("aria-label");
 
+        // Assert that the item uses aria-labelledby for its accessible name to avoid reading secondary controls
+        const textElementId = `item-text-${firstItemId}`;
+        await expect(firstItem).toHaveAttribute("aria-labelledby", textElementId);
+
         // Ensure the element actually contains the full text
-        await expect(firstItem).toContainText(longText);
+        await expect(page.locator(`#${textElementId}`)).toContainText(longText);
+    });
+
+    test("blank items have an explicit accessible name", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+            "", // Blank item
+        ]);
+        await TestHelpers.waitForOutlinerItems(page, 2);
+
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+
+        // Should have the explicit fallback label
+        await expect(firstItem).toHaveAttribute("aria-label", "Blank outline item");
+        await expect(firstItem).not.toHaveAttribute("aria-labelledby");
     });
 
     test("zero-count comment button is hidden from accessibility tree on desktop", async ({ page }, testInfo) => {

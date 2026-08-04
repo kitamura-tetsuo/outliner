@@ -17,3 +17,5 @@ acceptance:
 - Each non-title outline item has role="treeitem" and an aria-level matching its nesting depth
 - The active (editing) item has aria-selected="true"; others have aria-selected="false"
 - The outline's ".tree-container" element has role="tree"
+- Blank outline items have an explicit accessible name like "Blank outline item" to prevent screen readers from reading nested control labels as item content
+- Non-blank items derive their accessible name explicitly from their text content, isolating them from secondary controls

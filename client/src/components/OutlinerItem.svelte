@@ -2055,6 +2055,8 @@ export function setSelectionPosition(start: number, end: number = start) {
 
     id={isPageTitle ? undefined : model.id}
     role={isPageTitle ? "presentation" : "treeitem"}
+    aria-labelledby={!isPageTitle && model.original.text ? `item-text-${model.id}` : undefined}
+    aria-label={!isPageTitle && !model.original.text ? "Blank outline item" : undefined}
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
     aria-level={isPageTitle ? undefined : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
@@ -2152,6 +2154,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <!-- When focused: Display control characters after applying formatting -->
                 <!-- When not focused: Hide control characters, apply formatting -->
                 <span
+                    id={`item-text-${model.id}`}
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
