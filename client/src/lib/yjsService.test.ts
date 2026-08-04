@@ -1,7 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
 import { pendingRegistrationsMap, queueProjectRegistration } from "./metaDoc.svelte";
-import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle, isProcessingPending, scheduleProcessPending, initPendingRegistrationsListeners, cleanupPendingRegistrationsListeners, backoffTimeout } from "./yjsService.svelte";
+import {
+    backoffTimeout,
+    cleanupPendingRegistrationsListeners,
+    createNewProject,
+    deleteProject,
+    getClientByProjectTitle,
+    initPendingRegistrationsListeners,
+    isProcessingPending,
+    scheduleProcessPending,
+    stableIdFromTitle,
+} from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -191,7 +201,6 @@ describe("yjsService", () => {
         });
     });
 });
-
 
 describe("processPendingRegistrations backoff", () => {
     beforeEach(() => {

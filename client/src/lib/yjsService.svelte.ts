@@ -638,7 +638,6 @@ export async function processPendingRegistrations(): Promise<void> {
     }
 }
 
-
 let cleanupRegistrations: (() => void) | undefined;
 export let backoffTimeout: ReturnType<typeof setTimeout> | undefined;
 export let isProcessingPending = false;
@@ -699,18 +698,22 @@ export function initPendingRegistrationsListeners() {
         if (pendingCount > 0 && navigator.onLine && userManager.getCurrentUser()) scheduleProcessPending();
     };
 
-
     let cleanupPendingMap = () => {};
     let initTimeout: ReturnType<typeof setTimeout>;
     // Delay binding until next tick to ensure pendingRegistrationsMap is initialized
     initTimeout = setTimeout(() => {
-        if (typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap && typeof pendingRegistrationsMap.observe === 'function') {
+        if (
+            typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap
+            && typeof pendingRegistrationsMap.observe === "function"
+        ) {
             try {
                 pendingRegistrationsMap.observe(handlePendingChange);
                 cleanupPendingMap = () => {
-                    try { pendingRegistrationsMap.unobserve(handlePendingChange); } catch (e) {}
+                    try {
+                        pendingRegistrationsMap.unobserve(handlePendingChange);
+                    } catch (e) {}
                 };
-            } catch(e) {}
+            } catch (e) {}
         }
     }, 0);
 
@@ -724,7 +727,6 @@ export function initPendingRegistrationsListeners() {
             backoffTimeout = undefined;
         }
     };
-
 }
 
 if (typeof window !== "undefined") {
