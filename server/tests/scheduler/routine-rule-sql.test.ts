@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { expect } from "chai";
 import {
     buildDemoScheduleRules,
@@ -14,7 +15,7 @@ import { castValueForColumn, parseSchemaString } from "../../src/scheduler/Sched
 // executor (PGlite in a worker thread), exactly as the scheduler runs them:
 // same schema, same seeded records, same occurrence setting.
 describe("Demo routine schedule rule SQL", function() {
-    this.timeout(60000);
+    jest.setTimeout(60000);
 
     const occurrences = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
     const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
@@ -135,7 +136,14 @@ describe("Demo routine schedule rule SQL", function() {
     const asIsoDate = (value: unknown): string =>
         value instanceof Date
             ? new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())).toISOString().slice(0, 10)
-            : String(value).slice(0, 10);
+            : (() => {
+                  const str = String(value);
+                  const date = new Date(str);
+                  if (!isNaN(date.getTime()) && str.includes(date.getFullYear().toString())) {
+                      return date.toISOString().slice(0, 10);
+                  }
+                  return str.slice(0, 10);
+              })();
 
     it("the display query returns only the newest occurrence of each task", async () => {
         // The UI Definition query is a plain SELECT; run it through the same
