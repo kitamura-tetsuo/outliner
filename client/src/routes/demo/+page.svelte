@@ -2,12 +2,11 @@
     import Loader from "../../components/Loader.svelte";
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
-    import { DEMO_PROJECT_NAME, seedDemo, SeedDemoError } from "../../lib/demoSeed";
+    import { SeedDemoError } from "../../lib/demoSeed";
+    import { DemoInitAborted, forceResetDemoProject, initializeDemoProject, releaseDemoProject } from "../../lib/demoInit";
     import { getLogger } from "../../lib/logger";
-    import { acquireDemoClient, releaseDemoClient, removeYjsClientByProjectId, resetDemoClientState } from "../../services";
 
     const logger = getLogger("DemoListPage");
-    import { Project as AppProject } from "../../schema/app-schema";
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
         import Breadcrumb from "../../components/Breadcrumb.svelte";
@@ -18,6 +17,7 @@
     let resetDone = $state(false);
     let resetError: string | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
+    let seedWarning: string | undefined = $state(undefined);
     let isDestroyed = false;
     let showResetConfirm = $state(false);
 
@@ -31,30 +31,22 @@
         try {
             isLoading = true;
             error = undefined;
+            seedWarning = undefined;
 
-            // Seed demo project via API (no-op when already seeded)
-            const seedResult = await seedDemo();
-            if (!seedResult.ok) {
-                if (seedResult.reason === "network") {
-                    throw new Error("Can't reach the demo server — retrying...");
-                }
-            }
-            if (isDestroyed) return;
-
-            // Connect to demo room
-            const client = await acquireDemoClient();
-            if (isDestroyed) {
-                releaseDemoClient();
-                return;
-            }
-            if (!client) {
-                throw new Error("Failed to connect to the demo project.");
-            }
-
-            yjsStore.yjsClient = client;
-            const project = AppProject.fromDoc(client.getProject().ydoc);
-            store.project = project;
+            // Connects immediately; template freshness is validated in parallel
+            // and only reported back when it changed something.
+            await initializeDemoProject({
+                isDestroyed: () => isDestroyed,
+                onValidated: (update) => {
+                    if (update.seedFailure === "network") {
+                        seedWarning = "Can't reach the demo server — retrying...";
+                    } else {
+                        seedWarning = undefined;
+                    }
+                },
+            });
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to initialize demo");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo.";
         } finally {
@@ -71,14 +63,12 @@
             isResetting = true;
             resetDone = false;
             resetError = undefined;
-            await seedDemo({ force: true, throwOnError: true });
+            error = undefined;
+            const handle = await forceResetDemoProject();
             if (isDestroyed) return;
-            resetDemoClientState();
-            removeYjsClientByProjectId(DEMO_PROJECT_NAME);
-            yjsStore.yjsClient = undefined;
-            store.project = undefined;
-            await initializeDemo();
-            if (isDestroyed) return;
+            if (!handle) {
+                throw new Error("Failed to connect to the demo project.");
+            }
             resetDone = error === undefined;
             setTimeout(() => { resetDone = false; }, 3000);
         } catch (err) {
@@ -102,11 +92,7 @@
     onDestroy(() => {
         isDestroyed = true;
         try {
-            if (releaseDemoClient() === 0) {
-                yjsStore.yjsClient = undefined;
-                store.project = undefined;
-                store.currentPage = undefined;
-            }
+            releaseDemoProject();
         } catch (_e) { logger.error(_e); }
     });
 </script>
@@ -165,6 +151,13 @@
                 {resetError}
             </p>
         {/if}
+        {#if seedWarning}
+            <!-- Non-blocking: freshness validation failed, but already-synced
+                 demo content stays visible below. -->
+            <p class="mt-1 text-sm text-red-600" data-testid="demo-seed-warning" role="status" aria-live="assertive">
+                {seedWarning}
+            </p>
+        {/if}
     </div>
 
     {#if isLoading || (yjsStore.notYetSynced && !yjsStore.syncError)}
@@ -193,11 +186,15 @@
         </div>
     {:else if !isLoading && !error && !yjsStore.syncError && !yjsStore.notYetSynced && store.project && pages}
         <div class="mt-6" data-testid="demo-page-list">
-            <PageList
-                currentUser="anonymous"
-                project={store.project}
-                rootItems={pages}
-            />
+            <!-- Keyed on the Y.Doc so a reset that replaces the document during
+                 validation remounts the list against the new document. -->
+            {#key store.project.ydoc.guid}
+                <PageList
+                    currentUser="anonymous"
+                    project={store.project}
+                    rootItems={pages}
+                />
+            {/key}
         </div>
     {:else if !isLoading && !error}
         <div class="rounded-md bg-gray-50 p-4">

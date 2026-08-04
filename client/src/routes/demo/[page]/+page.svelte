@@ -6,12 +6,11 @@
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
-    import { DEMO_PROJECT_NAME, seedDemo } from "../../../lib/demoSeed";
+    import { DEMO_PROJECT_NAME } from "../../../lib/demoSeed";
+    import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
-    import { acquireDemoClient, releaseDemoClient } from "../../../services";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
-    import { Project as AppProject } from "../../../schema/app-schema";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -22,6 +21,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
+    let seedWarning: string | undefined = $state(undefined);
     let pageNotFound = $state(false);
     let lastReset = $state(0);
     let isServerResetting = $state(false);
@@ -71,29 +71,20 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
 
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
-                // Seed demo project via API (no-op when already seeded)
-                const seedResult = await seedDemo();
-                if (!seedResult.ok) {
-                    if (seedResult.reason === "network") {
-                        throw new Error("Can't reach the demo server — retrying...");
-                    }
-                }
-                if (isDestroyed) return;
-
-                const client = await acquireDemoClient();
-                if (isDestroyed) {
-                    releaseDemoClient();
-                    return;
-                }
-                if (!client) {
-                    throw new Error("Failed to connect to the demo project.");
-                }
-                yjsStore.yjsClient = client;
-                store.project = AppProject.fromDoc(client.getProject().ydoc);
+                // Connects immediately; freshness validation runs in parallel.
+                await initializeDemoProject({
+                    isDestroyed: () => isDestroyed,
+                    onValidated: (update) => {
+                        seedWarning = update.seedFailure === "network"
+                            ? "Can't reach the demo server — retrying..."
+                            : undefined;
+                    },
+                });
             }
 
             // Let the $effect block handle page resolution and sync state
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err instanceof Error ? err : new Error(String(err)) }, "Failed to load demo page");
             error = err instanceof Error ? err.message : "An error occurred while loading the demo page.";
         } finally {
@@ -162,11 +153,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     onDestroy(() => {
         isDestroyed = true;
         try {
-            if (releaseDemoClient() === 0) {
-                yjsStore.yjsClient = undefined;
-                store.project = undefined;
-                store.currentPage = undefined;
-            }
+            releaseDemoProject();
         } catch (_e) { logger.error(_e); }
     });
 </script>
@@ -204,6 +191,13 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         <p class="mt-1 text-sm text-gray-500">
             This is a public, collaborative demo space. Content resets every 24 hours.
         </p>
+        {#if seedWarning}
+            <!-- Non-blocking: freshness validation failed, but already-synced
+                 demo content stays visible below. -->
+            <p class="mt-1 text-sm text-red-600" data-testid="demo-seed-warning" role="status" aria-live="assertive">
+                {seedWarning}
+            </p>
+        {/if}
     </div>
 
     {#if isServerResetting}

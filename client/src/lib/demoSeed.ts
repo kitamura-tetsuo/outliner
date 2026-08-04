@@ -28,6 +28,15 @@ function resolveApiBaseUrl(): string {
     return apiBaseUrl;
 }
 
+export interface SeedDemoResult {
+    ok: boolean;
+    /** True when the server actually rebuilt the demo document for this request. */
+    reset: boolean;
+    /** True when the server answered from its warm fast path without opening the document. */
+    warm?: boolean;
+    reason?: "network" | "http" | "rate-limit";
+}
+
 /**
  * Seed (or reset) the public demo project via the backend API.
  * Failures are logged but never thrown: the demo should still open
@@ -38,7 +47,7 @@ function resolveApiBaseUrl(): string {
  */
 export async function seedDemo(
     options: { force?: boolean; throwOnError?: boolean; } = {},
-): Promise<{ ok: boolean; reason?: "network" | "http" | "rate-limit"; }> {
+): Promise<SeedDemoResult> {
     try {
         const apiBaseUrl = resolveApiBaseUrl();
         // Append /api/seed-demo, ensuring we don't double up on slashes
@@ -76,9 +85,20 @@ export async function seedDemo(
                 }
                 throw new Error(errorMsg);
             }
-            return { ok: false, reason: errorRateLimitMs !== undefined ? "rate-limit" : "http" };
+            return { ok: false, reset: false, reason: errorRateLimitMs !== undefined ? "rate-limit" : "http" };
         }
-        return { ok: true };
+        // The caller needs to know whether the document was rebuilt: only then
+        // must it reconnect instead of keeping the already-synced client.
+        let reset = false;
+        let warm = false;
+        try {
+            const data = await response.json();
+            reset = data?.reset === true;
+            warm = data?.warm === true;
+        } catch (_e) {
+            // A body-less 200 means "nothing to do"; keep the defaults.
+        }
+        return { ok: true, reset, warm };
     } catch (seedErr) {
         if (options.throwOnError) {
             if (seedErr instanceof SeedDemoError) {
@@ -91,8 +111,8 @@ export async function seedDemo(
         }
         logger.warn(`Error seeding demo ${seedErr}`);
         if (seedErr instanceof TypeError) {
-            return { ok: false, reason: "network" };
+            return { ok: false, reset: false, reason: "network" };
         }
-        return { ok: false, reason: "http" };
+        return { ok: false, reset: false, reason: "http" };
     }
 }

@@ -48,10 +48,46 @@ describe("seedDemo", () => {
         await expect(seedDemo({ throwOnError: true })).rejects.toThrow("Failed to connect to the server: Load failed");
     });
 
+    it("reports the server's reset verdict so callers know whether to reconnect", async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            statusText: "OK",
+            json: async () => ({ success: true, reset: true }),
+        } as Response);
+
+        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: true, warm: false });
+    });
+
+    it("reports the warm fast path as a no-reset result", async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            statusText: "OK",
+            json: async () => ({ success: true, reset: false, warm: true }),
+        } as Response);
+
+        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: false, warm: true });
+    });
+
+    it("treats an unparsable success body as 'nothing to do'", async () => {
+        globalThis.fetch = vi.fn().mockResolvedValue({
+            ok: true,
+            statusText: "OK",
+            json: async () => {
+                throw new SyntaxError("Unexpected end of JSON input");
+            },
+        } as unknown as Response);
+
+        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: false, warm: false });
+    });
+
     it("does not throw if throwOnError is false or omitted", async () => {
         globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Load failed"));
 
-        await expect(seedDemo()).resolves.toEqual({ ok: false, reason: "network" });
-        await expect(seedDemo({ throwOnError: false })).resolves.toEqual({ ok: false, reason: "network" });
+        await expect(seedDemo()).resolves.toEqual({ ok: false, reset: false, reason: "network" });
+        await expect(seedDemo({ throwOnError: false })).resolves.toEqual({
+            ok: false,
+            reset: false,
+            reason: "network",
+        });
     });
 });

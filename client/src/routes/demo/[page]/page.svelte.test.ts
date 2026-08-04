@@ -6,8 +6,11 @@ import DemoPageView from "./+page.svelte";
 
 // Mock dependencies
 vi.mock("../../../lib/demoSeed", () => ({
-    seedDemo: vi.fn().mockResolvedValue({ ok: true }),
+    seedDemo: vi.fn().mockResolvedValue({ ok: true, reset: false }),
     DEMO_PROJECT_NAME: "demo",
+    SeedDemoError: class SeedDemoError extends Error {
+        rateLimitMs?: number;
+    },
 }));
 
 vi.mock("../../../services", async (importOriginal) => {
