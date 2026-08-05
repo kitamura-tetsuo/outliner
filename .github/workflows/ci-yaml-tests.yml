@@ -19,6 +19,11 @@ jobs:
       - name: Install PyYAML
         run: pip install pyyaml
 
+
+      - name: Prevent Fluid regression in specs
+        run: |
+          ! grep -i "fluid" docs/client-features/*.yaml | grep -v "cbe-remove-fluid-token-endpoint-cbe91364.yaml"
+
       - name: Check YAML test references
         run: |
           python3 - <<'PYEOF'

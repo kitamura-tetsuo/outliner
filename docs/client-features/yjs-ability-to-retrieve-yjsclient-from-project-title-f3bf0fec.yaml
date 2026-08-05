@@ -1,0 +1,16 @@
+id: YJS-0002
+title: Ability to retrieve YjsClient from project title
+description: Function to scan yjsClientRegistry and retrieve a YjsClient instance that matches Project.title. Project title and Yjs room ID have a 1:1 correspondence.
+category: yjs-service
+status: implemented
+acceptance:
+- Can access project data using the retrieved YjsClient instance
+- Can load project data using this function in project layout
+- Can retrieve YjsClient after creating a new project
+- Can retrieve YjsClient instance from project title
+- Returns error if project title is not specified
+- Returns undefined if no YjsClient matching the project title is found
+- Scan all YjsClients registered in yjsClientRegistry to find a match
+tests:
+- client/e2e/core/yjs-ability-to-retrieve-yjsclient-from-project-title-f3bf0fec.spec.ts
+title-ja: プロジェクトタイトルからYjsClientを取得する機能

@@ -4,7 +4,7 @@ description: Real-time display of other users' cursor positions when multiple us
 category: collaboration
 status: implemented
 acceptance:
-- Sync cursor positions using Fluid Framework's signal feature
+- Sync cursor positions using Yjs awareness states
 - When other users move their cursor, that position is displayed
 tests:
 - client/e2e/core/col-displaying-cursors-for-other-users-bedbc307.spec.ts
