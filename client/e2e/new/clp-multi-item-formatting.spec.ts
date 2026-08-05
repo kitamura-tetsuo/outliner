@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Clipboard Formatting", () => {
@@ -6,7 +6,7 @@ test.describe("Clipboard Formatting", () => {
         const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "plain start",
             "has [[bold]] and [/ italic] here",
-            "plain end"
+            "plain end",
         ]);
 
         // Wait for page name item to appear first, seeded items are after it
