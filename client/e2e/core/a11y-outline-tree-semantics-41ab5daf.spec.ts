@@ -158,4 +158,50 @@ test.describe("Accessible outline tree semantics", () => {
         expect(display).not.toBe("none"); // Still reserves space
         expect(visibility).toBe("hidden"); // But hidden from a11y tree
     });
+
+    test("keyboard-only users can navigate the tree items using arrow keys and Enter", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+            "Parent item",
+            "Child item",
+        ]);
+        await TestHelpers.waitForOutlinerItems(page, 3);
+        const parentId = await TestHelpers.getItemIdByIndex(page, 1);
+        const childId = await TestHelpers.getItemIdByIndex(page, 2);
+        expect(parentId).not.toBeNull();
+        expect(childId).not.toBeNull();
+
+        // Indent the second item under the first so the first item has a child.
+        const child = page.locator(`.outliner-item[data-item-id="${childId}"]`);
+        await child.locator(".item-content").click({ force: true });
+        await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
+        await page.keyboard.press("Tab");
+        await page.waitForTimeout(200);
+
+        // Reload to clear focus and editing states
+        await page.reload();
+        await TestHelpers.waitForOutlinerItems(page, 3);
+
+        const parentItem = page.locator(`.outliner-item[data-item-id="${parentId}"]`);
+        await parentItem.focus();
+
+        // Check if ArrowDown moves focus
+        await page.keyboard.press("ArrowDown");
+        await expect(page.locator(`.outliner-item[data-item-id="${childId}"]`)).toBeFocused();
+
+        // Check ArrowUp
+        await page.keyboard.press("ArrowUp");
+        await expect(parentItem).toBeFocused();
+
+        // Check ArrowLeft (collapse)
+        await page.keyboard.press("ArrowLeft");
+        await expect(parentItem).toHaveAttribute("aria-expanded", "false");
+
+        // Check ArrowRight (expand)
+        await page.keyboard.press("ArrowRight");
+        await expect(parentItem).toHaveAttribute("aria-expanded", "true");
+
+        // Check Enter to start editing
+        await page.keyboard.press("Enter");
+        await expect(page.locator("textarea.global-textarea:focus")).toBeVisible();
+    });
 });

@@ -19,3 +19,4 @@ acceptance:
 - Non-blank items derive their accessible name explicitly from their text content, isolating them from secondary controls
 - The active (editing) item has aria-selected="true"; others have aria-selected="false"
 - The outline's ".tree-container" element has role="tree"
+- Keyboard-only users can navigate the tree items using Arrow keys (Up, Down, Left, Right), Home, End, and activate items for editing using Enter, following the APG treeview pattern
