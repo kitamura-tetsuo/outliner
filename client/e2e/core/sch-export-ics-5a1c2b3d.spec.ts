@@ -36,7 +36,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         const env = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = env.projectName;
         pageName = env.pageName;
-        // pageId will be retrieved later from the schedule page debug element (to match the ID after connection)
+        // pageId will be retrieved later from session storage
         pageId = "";
 
         // Log session storage for debugging
@@ -61,16 +61,13 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         }/schedule`;
         await page.goto(scheduleUrl, { waitUntil: "domcontentloaded" });
 
-        const debugEl = page.getByTestId("schedule-debug");
-        await expect(debugEl).toBeVisible();
+        await expect(page.locator("body")).toContainText("Schedule Management", { timeout: 15000 });
 
-        // E2E stability: Wait for pageId to be resolved (might need navigation to main page first)
+        // Get the pageId from session storage where it was saved
         let resolvedPageId = "";
         for (let waitAttempts = 0; waitAttempts < 100; waitAttempts++) {
-            const debugText = await debugEl.innerText();
-            console.log(`[E2E] schedule-debug: ${debugText}`);
-            const matched = /ScheduleDebug:([^:]+):/.exec(debugText);
-            resolvedPageId = matched?.[1] ?? "";
+            const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${encodeURIComponent(pageName)}`;
+            resolvedPageId = await page.evaluate((key) => window.sessionStorage?.getItem(key) || "", sessionKey);
             if (resolvedPageId) {
                 console.log(`[E2E] pageId resolved after ${waitAttempts * 100}ms: ${resolvedPageId}`);
                 break;
@@ -79,10 +76,6 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         }
         expect(resolvedPageId).not.toEqual("");
         pageId = resolvedPageId;
-
-        // NOTE: We don't reload here because page reload causes the page to be recreated
-        // with a new pageId, which would invalidate the schedule we just created.
-        // The pageId is already stable after the navigation flow in onMount.
 
         // Create a schedule with the retrieved pageId
         const resp = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule", {
@@ -97,16 +90,9 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         console.log(`[E2E] createSchedule status=${status} body=${bodyText}`);
         expect(status, `createSchedule failed: ${bodyText}`).toBe(200);
 
-        // Refresh the page after creating a schedule to get the new schedule
-        console.log(`[E2E] Refreshing schedules after creating schedule...`);
-        await page.evaluate(async (pid) => {
-            if (typeof globalThis !== "undefined" && (globalThis as any).refreshSchedules) {
-                await (globalThis as any).refreshSchedules(pid);
-            }
-        }, resolvedPageId);
+        // Reload the page to load the new schedule naturally
+        await page.reload();
 
-        // Without reloading the page to check the created schedule, poll for the appearance of schedule items
-        // (Reloading would recreate the page and assign a new pageId)
         console.log(`[E2E] Waiting for schedule to appear...`);
         let scheduleItems = await page.locator('[data-testid="schedule-item"]').all();
         let scheduleCount = scheduleItems.length;

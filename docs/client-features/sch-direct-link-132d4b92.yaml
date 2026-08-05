@@ -1,0 +1,4 @@
+id: SCH-132D4B92
+title: Schedule Direct Link Loading
+title-ja: スケジュール直接リンクの読み込み
+description: Accessing the schedule route directly loads without bouncing to the parent page.
