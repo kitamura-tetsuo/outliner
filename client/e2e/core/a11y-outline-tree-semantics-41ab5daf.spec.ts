@@ -111,7 +111,7 @@ test.describe("Accessible outline tree semantics", () => {
 
         // Let's directly click the item with right-click instead, since Shift+F10 bubbling
         // might be intercepted by global handlers or not working well in playwright.
-        await firstItem.click({ button: 'right', position: { x: 5, y: 5 } });
+        await firstItem.click({ button: "right", position: { x: 5, y: 5 } });
 
         // Assert that the context menu is visible and a menuitem is focused
         const contextMenu = page.locator(".context-menu");
