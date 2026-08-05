@@ -194,6 +194,13 @@ export class KeyEventHandler {
             const boxSelection = selections.find(sel => sel.isBoxSelection);
             if (boxSelection || KeyEventHandler.boxSelectionState.active) {
                 KeyEventHandler.cancelBoxSelection();
+                return;
+            }
+
+            // Deactivate edit mode and blur global textarea
+            if (store.getActiveItem()) {
+                store.setActiveItem(null);
+                store.getTextareaRef()?.blur();
             }
         });
 

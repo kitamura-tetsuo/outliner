@@ -377,6 +377,33 @@
     }
 
     // Add empty sibling item while editing the bottom item
+
+    function handleWindowPointerDown(e: PointerEvent) {
+        if (!editorOverlayStore.getActiveItem()) return;
+
+        const target = e.target as HTMLElement;
+        if (!target || !target.closest) return;
+
+        // Don't deactivate if clicking on outliner items, toolbar, menus, or dialogues
+        if (
+            target.closest('#outliner-tree') ||
+            target.closest('.outliner-toolbar') ||
+            target.closest('.slash-command-palette') ||
+            target.closest('.alias-picker') ||
+            target.closest('.editor-overlay') ||
+            target.closest('.confirm-dialog') ||
+            target.closest('.presence-avatars') ||
+            target.closest('.item-container') ||
+            target.closest('.page-title-item-role-wrapper') ||
+            target.tagName === 'BUTTON' ||
+            target.closest('button')
+        ) {
+            return;
+        }
+
+        editorOverlayStore.setActiveItem(null);
+    }
+
     function handleEdit() {
         // Call external onEdit if available
         if (onEdit) onEdit();
@@ -2089,6 +2116,9 @@
         itemViewModel.original.toggleVote(currentUser);
     }
 </script>
+
+
+<svelte:window onpointerdown={handleWindowPointerDown} />
 
 {#key outlinerKey}
     <div
