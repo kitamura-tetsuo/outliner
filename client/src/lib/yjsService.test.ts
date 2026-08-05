@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { Project } from "../schema/yjs-schema";
-import { createNewProject, deleteProject, getClientByProjectTitle, stableIdFromTitle } from "./yjsService.svelte";
+import { pendingRegistrationsMap, queueProjectRegistration } from "./metaDoc.svelte";
+import {
+    backoffTimeout,
+    cleanupPendingRegistrationsListeners,
+    createNewProject,
+    deleteProject,
+    getClientByProjectTitle,
+    initPendingRegistrationsListeners,
+    scheduleProcessPending,
+    stableIdFromTitle,
+} from "./yjsService.svelte";
 
 // Define a type for the window object to avoid using 'any'
 interface TestWindow extends Window {
@@ -188,5 +198,48 @@ describe("yjsService", () => {
                 "Failed to delete project: Internal Server Error",
             );
         });
+    });
+});
+
+describe("processPendingRegistrations backoff", () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        initPendingRegistrationsListeners();
+    });
+
+    afterEach(() => {
+        cleanupPendingRegistrationsListeners();
+        vi.useRealTimers();
+        pendingRegistrationsMap.clear();
+        if (backoffTimeout) {
+            clearTimeout(backoffTimeout);
+        }
+    });
+
+    it("should trigger process and backoff via observer when item is enqueued", async () => {
+        queueProjectRegistration("test-retry-id", "Test Retry Title");
+
+        // Let the pending registrations map observe trigger
+        await vi.runAllTimersAsync();
+
+        scheduleProcessPending();
+
+        // Fast-forward
+        await vi.advanceTimersByTimeAsync(100000);
+
+        expect(backoffTimeout).toBeUndefined();
+    });
+
+    it("should clean up timers when queue is empty", async () => {
+        queueProjectRegistration("test-retry-id", "Test Retry Title");
+
+        scheduleProcessPending();
+
+        // Mock successful process by emptying map
+        pendingRegistrationsMap.clear();
+
+        await vi.advanceTimersByTimeAsync(100000);
+
+        expect(backoffTimeout).toBeUndefined();
     });
 });
