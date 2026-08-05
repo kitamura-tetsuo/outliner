@@ -46,3 +46,9 @@ and SQL Habit Tracker. Data stored in the legacy per-item structures
 project-level `yDatabase` map) is NOT migrated to the new subdoc-based
 structure; only newly created tables are supported. The old sql.js (SQLite)
 engine was removed together with those features.
+
+## Page Management
+
+### PAG-NON Page Deletion
+
+Outliner does not support deleting individual pages. Pages are append-only and permanent once created. This is a deliberate design choice because deleting a page is destructive and interacts deeply with backlinks, the graph view, and search indexing. Instead of deleting pages, users can rename them to indicate they are no longer in use (e.g., prefixing with `[Archived]`), or simply remove all content from the page. Whole-project deletion is supported (`docs/client-features/del-project-deletion-page-c8da7a47.yaml`).
