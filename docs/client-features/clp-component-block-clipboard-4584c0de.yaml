@@ -22,3 +22,4 @@ tests:
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
 - client/src/services/clipboard/itemClipboard.test.ts
+- client/e2e/new/clp-multi-item-formatting.spec.ts
