@@ -16,7 +16,6 @@ import {
     updateSchedule,
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
-import { yjsStore } from "../../../../stores/yjsStore.svelte";
 
 let project = $state("");
 let pageTitle = $state("");
