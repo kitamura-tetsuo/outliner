@@ -123,7 +123,6 @@ test.describe("Accessible outline tree semantics", () => {
         expect(visibility).toBe("hidden"); // But hidden from a11y tree
     });
 
-
     test("keyboard-only users can navigate the tree items using arrow keys and Enter", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Parent item",
