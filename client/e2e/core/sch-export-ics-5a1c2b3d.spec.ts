@@ -36,7 +36,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         const env = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = env.projectName;
         pageName = env.pageName;
-        // pageId will be retrieved later from the schedule page debug element (to match the ID after connection)
+        // pageId will be retrieved later from session storage
         pageId = "";
 
         // Log session storage for debugging
@@ -61,16 +61,15 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         }/schedule`;
         await page.goto(scheduleUrl, { waitUntil: "domcontentloaded" });
 
-        const debugEl = page.getByTestId("schedule-debug");
-        await expect(debugEl).toBeVisible();
+        await expect(page.locator("body")).toContainText("Schedule Management", { timeout: 15000 });
 
-        // E2E stability: Wait for pageId to be resolved (might need navigation to main page first)
+        // Get the pageId from session storage where it was saved
         let resolvedPageId = "";
         for (let waitAttempts = 0; waitAttempts < 100; waitAttempts++) {
-            const debugText = await debugEl.innerText();
-            console.log(`[E2E] schedule-debug: ${debugText}`);
-            const matched = /ScheduleDebug:([^:]+):/.exec(debugText);
-            resolvedPageId = matched?.[1] ?? "";
+            const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${
+                encodeURIComponent(pageName)
+            }`;
+            resolvedPageId = await page.evaluate((key) => globalThis.sessionStorage?.getItem(key) || "", sessionKey);
             if (resolvedPageId) {
                 console.log(`[E2E] pageId resolved after ${waitAttempts * 100}ms: ${resolvedPageId}`);
                 break;
@@ -105,8 +104,6 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
             }
         }, resolvedPageId);
 
-        // Without reloading the page to check the created schedule, poll for the appearance of schedule items
-        // (Reloading would recreate the page and assign a new pageId)
         console.log(`[E2E] Waiting for schedule to appear...`);
         let scheduleItems = await page.locator('[data-testid="schedule-item"]').all();
         let scheduleCount = scheduleItems.length;

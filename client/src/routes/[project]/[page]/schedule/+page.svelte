@@ -1,7 +1,6 @@
 <script lang="ts">
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
-import { goto } from "$app/navigation";
 import { resolvePath } from "../../../../utils/pathUtils";
 import { formatDateTime } from "../../../../utils/dateUtils";
 
@@ -17,13 +16,7 @@ import {
     updateSchedule,
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
-import { yjsStore } from "../../../../stores/yjsStore.svelte";
-import type { Item as AppItem } from "../../../../schema/app-schema";
-import type { Item as YjsItem } from "../../../../schema/yjs-schema";
-type Item = AppItem | YjsItem;
 
-// Import the load function from parent scope
-// We'll trigger it if the store is not properly initialized
 let project = $state("");
 let pageTitle = $state("");
 let pageId = $state("");
@@ -33,24 +26,6 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 let loadError = $state<string | null>(null);
-
-// Function to trigger parent page load
-async function triggerParentPageLoad() {
-    // Access the parent page's loadProjectAndPage via window if available
-    const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
-    if (win.loadProjectAndPage) {
-        // Set loading in progress to prevent duplicate calls
-        const loadInProgressKey = "__loadingInProgress";
-        if (!win[loadInProgressKey]) {
-            win[loadInProgressKey] = true;
-            try {
-                await win.loadProjectAndPage();
-            } finally {
-                win[loadInProgressKey] = false;
-            }
-        }
-    }
-}
 
 // Track navigation state for debugging
 let navState = $state({
@@ -96,360 +71,25 @@ onMount(() => {
         savedPageId: savedPageId ?? "null"
     });
 
-    // If project data is not loaded OR we don't have a saved pageId, we need to navigate to main page first
-    // Only navigate if store is empty or project title doesn't match
+    // Load the project and page directly using the reusable loader service
+    // This avoids bouncing to the parent page and waiting for E2E-only globals
     if (!hasProjectData || !savedPageId) {
-        logger.debug("Schedule page: Project data not loaded or no saved pageId, navigating to main page first", {
-            hasProjectData,
-            hasSavedPageId: !!savedPageId,
-            storeProjectItems: store.project?.items?.length ?? 0,
-            storeProjectTitle: store.project?.title ?? "null"
-        });
+        logger.debug("Schedule page: Project data not loaded or no saved pageId, directly loading");
+        try {
+            const { loadProjectAndPage } = await import("../../../../lib/projectPageLoader");
+            const result = await loadProjectAndPage(project, pageTitle);
 
-        // Navigate to main page to trigger loadProjectAndPage
-        const mainPageUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}`;
-        logger.debug("Schedule page: Navigating to main page:", mainPageUrl);
-        await goto(resolvePath(mainPageUrl));
-        logger.debug("Schedule page: Back from main page, waiting for store.project to be populated...");
-
-        // Wait for store.project to be populated after navigation
-        for (let i = 0; i < 50; i++) {
-            // Do NOT check destroyed here, because goto(mainPageUrl) unmounted this component,
-            // but we need this async execution to continue and navigate us back!
-            if ((store.project?.items?.length ?? 0) > 0) {
-                logger.debug("Schedule page: store.project populated after", i * 100, "ms");
-                break;
-            }
-            await new Promise(r => setTimeout(r, 100));
+            // Set pageId from the loaded page directly
+            pageId = String(result.page.id ?? "");
+            logger.debug("Schedule page: Successfully loaded project/page directly, pageId=", pageId);
+        } catch (e) {
+            logger.error({ error: e }, "Schedule page: Error loading project and page");
+            loadError = e instanceof Error ? e.message : String(e);
+            return;
         }
-        logger.debug("Schedule page: store.project?.items?.length =", store.project?.items?.length ?? 0);
-
-        // Navigate back to schedule page
-        const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
-        logger.debug("Schedule page: Navigating back to schedule:", scheduleUrl);
-        await goto(resolvePath(scheduleUrl));
-        logger.debug("Schedule page: Back on schedule page, store.project?.items?.length =", store.project?.items?.length ?? 0);
     } else {
-        logger.debug("Schedule page: Using saved pageId, no navigation needed");
-    }
-
-    // E2E stabilization: Wait for parent page's loadProjectAndPage to complete
-    // Wait until the parent page is completely loaded
-    let parentLoadWaitAttempts = 0;
-    const maxParentLoadWaitAttempts = 200; // 20 seconds
-    while (parentLoadWaitAttempts < maxParentLoadWaitAttempts) {
-        if (destroyed) return;
-        // Check if yjsStore.yjsClient is set (indicates main page loadProjectAndPage has completed)
-        // We check both the global window reference and the imported yjsStore
-        const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
-        const yjsClientExists = (win.loadProjectAndPage !== undefined) &&
-                               (yjsStore.yjsClient !== undefined || win.loadProjectAndPage?.yjsClient !== undefined);
-
-        // Check if the parent page has finished loading
-        // We check multiple conditions to determine if loading is complete
-        const gs = (window as unknown as { generalStore?: { project?: { items?: { length: number } }, currentPage?: unknown } }).generalStore;
-        const hasProject = !!gs?.project;
-        const hasCurrentPage = !!gs?.currentPage;
-        const projectItems = gs?.project?.items;
-        const projectItemsLength = projectItems?.length ?? 0;
-        const projectHasItems = projectItemsLength > 0;
-
-        if (hasProject && hasCurrentPage && projectHasItems) {
-            logger.debug("Schedule page: Parent page loading complete", {
-                hasProject,
-                hasCurrentPage,
-                projectHasItems,
-
-                currentPageTitle: (gs?.currentPage as { text?: { toString?: () => string } })?.text?.toString?.() ?? "",
-            });
-            break;
-        }
-
-        // Wait for yjsStore.yjsClient to be set (indicates main page loadProjectAndPage has completed)
-        if (!yjsClientExists) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            parentLoadWaitAttempts++;
-            continue;
-        }
-
-        // If project exists but has no items, try to trigger parent load
-        if (hasProject && !projectHasItems) {
-            logger.debug("Schedule page: Project exists but has no items, triggering parent load");
-            await triggerParentPageLoad();
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-        parentLoadWaitAttempts++;
-    }
-
-    // After waiting, check store.project directly for debugging
-    logger.debug("Schedule page: Final store state", {
-        storeProjectTitle: store.project?.title ?? "null",
-        storeProjectItemsLength: store.project?.items?.length ?? 0,
-        storeCurrentPageTitle: store.currentPage?.text?.toString?.() ?? "null",
-        gsProjectTitle: ((window as unknown as { generalStore?: { project?: { title?: string, items?: { length: number } } } }).generalStore?.project?.title) ?? "null",
-        gsProjectItemsLength: ((window as unknown as { generalStore?: { project?: { title?: string, items?: { length: number } } } }).generalStore?.project?.items?.length) ?? 0,
-    });
-
-    let sessionPinnedPageId: string | undefined;
-    // 0) Read the pageId pinned in the session as a candidate (but do not return immediately, check if it matches the current page)
-    try {
-        if (typeof window !== "undefined") {
-            const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
-            const saved = window.sessionStorage?.getItem(key) || "";
-            if (saved) {
-                sessionPinnedPageId = String(saved);
-                logger.debug("Schedule page: Found session pinned pageId=", sessionPinnedPageId);
-            }
-        }
-    } catch (_e) { logger.error(_e); }
-    // If there is a pageId saved in the session, adopt it with highest priority.
-    // However, verify whether the pageId belongs to the page corresponding to the current pageTitle
-    if (sessionPinnedPageId) {
-        // Validate that sessionPinnedPageId actually belongs to current pageTitle
-        // Also check store.project.items as store.pages?.current might not be populated yet
-        let isValid = false;
-        let validatedPageId: string | undefined;
-
-        // First check store.project.items (more reliable after reload)
-        try {
-
-            const projAny = store.project as unknown as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
-            if (projAny?.items) {
-                const projItems = projAny.items;
-                const projLen = projItems?.length ?? 0;
-                logger.debug("Schedule page: Checking session pageId in store.project.items", {
-                    sessionPageId: sessionPinnedPageId,
-                    projectItemsCount: projLen
-                });
-                for (let i = 0; i < projLen; i++) {
-
-                    const p = projItems?.at ? projItems.at(i) : projItems?.[i];
-                    if (!p) continue;
-                    const pId = String(p.id);
-                    const match = pId === String(sessionPinnedPageId);
-                    logger.debug("Schedule page:   Item", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
-                    if (match) {
-                        const title = p.text?.toString?.() ?? "";
-                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                            isValid = true;
-                            validatedPageId = sessionPinnedPageId;
-                            logger.debug("Schedule page: Session pageId validated in project.items");
-                            break;
-                        }
-                    }
-                }
-            } else {
-                logger.debug("Schedule page: store.project.items is empty or undefined");
-            }
-        } catch (e) {
-            logger.debug("Schedule page: Error checking project.items:", e);
-        }
-
-        // If not found in project.items, check store.pages?.current
-        if (!isValid) {
-            try {
-                const items = store.pages?.current;
-                const len = items?.length ?? 0;
-                logger.debug("Schedule page: Checking session pageId in store.pages.current", {
-                    sessionPageId: sessionPinnedPageId,
-                    pagesCurrentCount: len
-                });
-                for (let i = 0; i < len; i++) {
-                    const p = items?.at(i);
-                    if (!p) continue;
-                    const pId = String(p.id);
-                    const match = pId === String(sessionPinnedPageId);
-                    logger.debug("Schedule page:   Page", i, "id=", pId, "title=", p.text?.toString?.() ?? "", "match=", match);
-                    if (match) {
-                        const title = p.text?.toString?.() ?? "";
-                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                            isValid = true;
-                            validatedPageId = sessionPinnedPageId;
-                            logger.debug("Schedule page: Session pageId validated in pages.current");
-                            break;
-                        }
-                    }
-                }
-            } catch (e) {
-                logger.debug("Schedule page: Error checking pages.current:", e);
-            }
-        }
-
-        if (isValid && validatedPageId) {
-            pageId = validatedPageId;
-            logger.debug("Schedule page: Using validated session pinned pageId=", pageId);
-        } else {
-            logger.debug("Schedule page: Session pinned pageId NOT found, will resolve fresh", {
-                sessionPinnedPageId,
-                pageTitle,
-                storeProjectItemsLength: store.project?.items?.length ?? 0,
-                storePagesCurrentLength: store.pages?.current?.length ?? 0
-            });
-            sessionPinnedPageId = undefined; // Clear so we don't use stale value
-        }
-    }
-
-    // Wait up to 20 seconds until store.currentPage is set and points to the correct page
-    // E2E stabilization: Wait for parent page's loadProjectAndPage to complete
-    let waitAttempts = 0;
-    const maxWaitAttempts = 200; // 20 seconds
-    let foundPageRef: Item | undefined;
-
-    while (waitAttempts < maxWaitAttempts) {
-        if (destroyed) return;
-        // Check if we already found the page
-        if (foundPageRef) {
-            break;
-        }
-
-        // Check store.currentPage first
-        const current = store.currentPage;
-        if (current) {
-            const currentTitle = current?.text?.toString?.() ?? "";
-            if (currentTitle.toLowerCase() === pageTitle.toLowerCase()) {
-                foundPageRef = current;
-                break;
-            }
-        }
-
-        // Check store.pages?.current
-        try {
-            const items = store.pages?.current;
-            const len = items?.length ?? 0;
-            for (let i = 0; i < len; i++) {
-                const p = items?.at(i);
-                if (!p) continue;
-                const title = p.text?.toString?.() ?? "";
-                if (title.toLowerCase() === pageTitle.toLowerCase()) {
-
-                    foundPageRef = p as Item;
-                    break;
-                }
-            }
-        } catch (_e) { logger.error(_e); }
-
-        // Also check store.project.items directly
-        if (!foundPageRef) {
-            try {
-
-                const projAny = store.project as unknown as { items?: { length?: number; at?: (index: number) => { id?: string; text?: { toString?: () => string } }; [key: number]: { id?: string; text?: { toString?: () => string } }; }; findPage?: () => void };
-                if (projAny && typeof projAny.findPage === "function") {
-                    // Try to find page by iterating through project items
-                    const projItems = projAny.items;
-                    const projLen = projItems?.length ?? 0;
-                    for (let i = 0; i < projLen; i++) {
-
-                        const p = projItems?.at ? projItems.at(i) : projItems?.[i];
-                        if (!p) continue;
-                        const title = p.text?.toString?.() ?? "";
-                        if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                            foundPageRef = p as unknown as Item;
-                            break;
-                        }
-                    }
-                }
-            } catch (_e) { logger.error(_e); }
-        }
-
-        if (foundPageRef) {
-            break;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-        waitAttempts++;
-    }
-    logger.debug("Schedule page: After wait", {
-        waitAttempts,
-        hasFoundPage: !!foundPageRef,
-        foundPageTitle: foundPageRef?.text?.toString?.() ?? "",
-        hasCurrentPage: !!store.currentPage,
-        currentPageTitle: store.currentPage?.text?.toString?.() ?? "",
-        hasProject: !!store.project,
-        projectItemsLength: store.project?.items?.length ?? 0,
-        pageTitle,
-        hasPages: !!store.pages?.current,
-        pagesLength: store.pages?.current?.length ?? 0,
-    });
-
-    // If we found the page during the wait, use it
-    if (foundPageRef && !pageId) {
-        pageId = String(foundPageRef.id ?? "");
-        logger.debug("Schedule page: Found page during wait", { pageId, title: foundPageRef.text?.toString?.() });
-    }
-
-    // 1) Top priority: Use when currentPage points to the current page (exclude cases where values from other pages remain)
-    try {
-        const current = store.currentPage;
-        const currentTitle = current?.text?.toString?.() ?? "";
-        if (
-            !pageId &&
-            current &&
-            currentTitle.toLowerCase() === pageTitle.toLowerCase()
-        ) {
-            pageId = String(store.currentPage?.id ?? "");
-        }
-    } catch (_e) { logger.error(_e); }
-
-    // 2) If currentPage is undetermined, identify the corresponding page from the URL's pageTitle
-    if (!pageId) {
-        try {
-            const items = store.pages?.current;
-            const len = items?.length ?? 0;
-            let found: Item | undefined = undefined;
-            for (let i = 0; i < len; i++) {
-                const p = items?.at(i);
-                if (!p) continue;
-                const title = p.text;
-                if (title.toLowerCase() === pageTitle.toLowerCase()) {
-                    found = p;
-                    break;
-                }
-            }
-            if (found) {
-                pageId = found.id;
-            }
-        } catch (_e) { logger.error(_e); }
-    }
-
-    // 3) Use the session candidate as a last resort (E2E stabilization)
-    if (!pageId && sessionPinnedPageId) {
-        pageId = sessionPinnedPageId;
-        logger.debug("Schedule page: Using session fallback pageId=", sessionPinnedPageId);
-    }
-
-    // Wait for page subdocument to be connected before proceeding (E2E stability)
-    if (pageId) {
-        try {
-            const yjsClient = yjsStore.yjsClient;
-            if (yjsClient) {
-                for (let waitIter = 0; waitIter < 50; waitIter++) {
-                    if (destroyed) return;
-                    // Check if items are synced in the main doc
-                    const currentItems = store.pages?.current;
-                    const len = currentItems?.length ?? 0;
-                    let pageRef: Item | undefined;
-                    for (let i = 0; i < len; i++) {
-                        const p = currentItems?.at(i);
-                        if (!p) continue;
-                        if (String(p.id) === String(pageId)) {
-                            pageRef = p;
-                            break;
-                        }
-                    }
-                    if (pageRef) {
-                        const itemCount = pageRef?.items?.length ?? 0;
-                        if (itemCount > 0) {
-                            logger.debug("Schedule page: Page items found", { pageId, itemCount });
-                            break;
-                        }
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
-        } catch (e) {
-            logger.warn("Schedule page: Error waiting for page items:", e);
-        }
+        logger.debug("Schedule page: Using saved pageId from session", savedPageId);
+        pageId = savedPageId;
     }
 
     if (!pageId) {
@@ -459,7 +99,7 @@ onMount(() => {
 
     // Save pageId to session storage for stability across reloads
     try {
-        if (typeof window !== "undefined") {
+        if (typeof window !== "undefined" && pageId) {
             const key = `schedule:lastPageChildId:${encodeURIComponent(project)}:${encodeURIComponent(pageTitle)}`;
             window.sessionStorage?.setItem(key, String(pageId));
             logger.debug("Schedule page: Saved pageId to sessionStorage:", pageId);
@@ -467,10 +107,13 @@ onMount(() => {
     } catch (_e) { logger.error(_e); }
 
     logger.debug("Schedule page: Final pageId before refresh:", pageId);
-    await refresh();
+    if (pageId) {
+        await refresh();
+    }
 
     // E2E stability: Export refresh function to window for test access
-    if (typeof window !== "undefined") {
+    // This helper is kept as tests explicitly rely on it rather than full page reloads
+    if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
         (window as unknown as { refreshSchedules?: (pid?: string) => Promise<void> }).refreshSchedules = async (pid?: string) => {
             logger.debug("Schedule page: E2E refreshSchedules called with pid=", pid);
             if (pid) {
@@ -630,17 +273,6 @@ function toLocalISOString(timestamp: number): string {
         >
             {isDownloading ? "Preparing…" : "Download iCal"}
         </button>
-    </div>
-    <div data-testid="schedule-debug" class="text-xs text-gray-500 mb-2">
-        ScheduleDebug:{pageId}:{schedules.length}
-    </div>
-    <!-- Debug info for E2E troubleshooting -->
-    <div class="text-xs text-gray-500 mb-2" data-testid="schedule-debug-info">
-        Debug: currentPage={store.currentPage?.text?.toString?.() ?? "null"},
-        pages={store.pages?.current?.length ?? 0},
-        project={store.project?.title ?? "null"},
-        projectItems={store.project?.items?.length ?? 0},
-        pageTitle={pageTitle}
     </div>
     <ul data-testid="schedule-list">
         {#if loadError}
