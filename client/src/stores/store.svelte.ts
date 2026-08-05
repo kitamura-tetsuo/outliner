@@ -167,13 +167,47 @@ export class GeneralStore {
     // Alias tracking
     aliasesVersion = $state(0);
     private _aliasIndexVersion = -1;
+    private _aliasIndexInitialized = false;
     /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal index map intentionally avoids fine-grained tracking overhead */
     private _aliasIndex = new Map<string, { item: Item; pageTitle: string; }[]>();
+    /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
+    private _aliasSubscribers = new Map<string, Set<(aliases: { item: Item; pageTitle: string; }[]) => void>>();
+
+    public subscribeToAliases(targetId: string, callback: (aliases: { item: Item; pageTitle: string; }[]) => void) {
+        if (!this._aliasSubscribers.has(targetId)) {
+            /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
+            this._aliasSubscribers.set(targetId, new Set());
+        }
+        this._aliasSubscribers.get(targetId)!.add(callback);
+
+        // Initial call
+        callback(this.findReferringAliases(targetId));
+
+        return () => {
+            const subs = this._aliasSubscribers.get(targetId);
+            if (subs) {
+                subs.delete(callback);
+                if (subs.size === 0) {
+                    this._aliasSubscribers.delete(targetId);
+                }
+            }
+        };
+    }
+
+    private _notifyAliasSubscribers(targetId: string) {
+        const subs = this._aliasSubscribers.get(targetId);
+        if (subs) {
+            const aliases = this.findReferringAliases(targetId);
+            for (const cb of subs) {
+                cb(aliases);
+            }
+        }
+    }
 
     public getAliasIndex(): Map<string, { item: Item; pageTitle: string; }[]> {
-        if (this._aliasIndexVersion !== this.aliasesVersion) {
+        if (!this._aliasIndexInitialized && this._project?.items) {
+            this._aliasIndexInitialized = true;
             this._rebuildAliasIndex();
-            this._aliasIndexVersion = this.aliasesVersion;
         }
         return this._aliasIndex;
     }
@@ -474,6 +508,23 @@ export class GeneralStore {
                     updatePending = false;
                     this.pagesVersion++; // Trigger signal
                     if (updateAliasesPending) {
+                        /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
+                        const oldIndex = new Map(this._aliasIndex);
+                        this._aliasIndexInitialized = true;
+                        this._rebuildAliasIndex();
+
+                        // Notify subscribers
+                        /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
+                        const notified = new Set<string>();
+                        for (const targetId of this._aliasIndex.keys()) {
+                            this._notifyAliasSubscribers(targetId);
+                            notified.add(targetId);
+                        }
+                        for (const targetId of oldIndex.keys()) {
+                            if (!notified.has(targetId)) {
+                                this._notifyAliasSubscribers(targetId);
+                            }
+                        }
                         updateAliasesPending = false;
                         this.aliasesVersion++;
                     }
