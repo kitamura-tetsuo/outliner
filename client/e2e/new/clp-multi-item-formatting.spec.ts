@@ -3,7 +3,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Clipboard Formatting", () => {
     test("copies multi-item formatting", async ({ page }, testInfo) => {
-        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+        const { pageName: _pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "plain start",
             "has [[bold]] and [/ italic] here",
             "plain end",
@@ -24,9 +24,9 @@ test.describe("Clipboard Formatting", () => {
 
         // Set up clipboard capture
         await page.evaluate(() => {
-            (window as any).clipboardData = "";
+            (globalThis as any).clipboardData = "";
             document.addEventListener("copy", (e: any) => {
-                (window as any).clipboardData = e.clipboardData?.getData("text/plain") || "";
+                (globalThis as any).clipboardData = e.clipboardData?.getData("text/plain") || "";
             });
         });
 
@@ -35,7 +35,7 @@ test.describe("Clipboard Formatting", () => {
         await page.waitForTimeout(300);
 
         // Verify clipboard contents
-        const clipboardText = await page.evaluate(() => (window as any).clipboardData);
+        const clipboardText = await page.evaluate(() => (globalThis as any).clipboardData);
         expect(clipboardText).toContain("plain start");
         expect(clipboardText).toContain("has [[bold]] and [/ italic] here");
         expect(clipboardText).toContain("plain end");
