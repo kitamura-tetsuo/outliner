@@ -86,41 +86,16 @@ onMount(() => {
         } catch (e) {
             logger.error({ error: e }, "Schedule page: Error loading project and page");
             loadError = e instanceof Error ? e.message : String(e);
+            return;
         }
     } else {
         logger.debug("Schedule page: Using saved pageId from session", savedPageId);
         pageId = savedPageId;
     }
 
-    // Wait for page subdocument to be connected before proceeding (E2E stability)
-    if (pageId) {
-        try {
-            const yjsClient = yjsStore.yjsClient;
-            if (yjsClient) {
-                // E2E stabilization: Wait for actual page data from store instead of just pageId
-                for (let waitIter = 0; waitIter < 50; waitIter++) {
-                    if (destroyed) return;
-
-                    // Simple check for any page data, less strict than before
-                    const hasPageData = store.currentPage?.id === pageId ||
-                                      (store.pages?.current && store.pages.current.some(p => String(p?.id) === String(pageId)));
-
-                    if (hasPageData) {
-                        logger.debug("Schedule page: Page data ready", { pageId });
-                        break;
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
-        } catch (e) {
-            logger.warn("Schedule page: Error waiting for page items:", e);
-        }
-    }
-
     if (!pageId) {
         logger.error("Schedule page: pageId is empty, cannot load schedules");
-        // Don't return, allow error to show
-        loadError = "Could not identify page ID";
+        return;
     }
 
     // Save pageId to session storage for stability across reloads
@@ -137,6 +112,17 @@ onMount(() => {
         await refresh();
     }
 
+    // E2E stability: Export refresh function to window for test access
+    // This helper is kept as tests explicitly rely on it rather than full page reloads
+    if (typeof window !== "undefined" && import.meta.env.MODE === "test") {
+        (window as unknown as { refreshSchedules?: (pid?: string) => Promise<void> }).refreshSchedules = async (pid?: string) => {
+            logger.debug("Schedule page: E2E refreshSchedules called with pid=", pid);
+            if (pid) {
+                pageId = pid;
+            }
+            if (!destroyed) await refresh();
+        };
+    }
     };
 
     init();

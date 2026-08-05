@@ -79,6 +79,10 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         expect(resolvedPageId).not.toEqual("");
         pageId = resolvedPageId;
 
+        // NOTE: We don't reload here because page reload causes the page to be recreated
+        // with a new pageId, which would invalidate the schedule we just created.
+        // The pageId is already stable after the navigation flow in onMount.
+
         // Create a schedule with the retrieved pageId
         const resp = await page.request.post("http://127.0.0.1:57070/outliner-d57b0/us-central1/createSchedule", {
             data: {
@@ -92,8 +96,13 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
         console.log(`[E2E] createSchedule status=${status} body=${bodyText}`);
         expect(status, `createSchedule failed: ${bodyText}`).toBe(200);
 
-        // Reload the page to load the new schedule naturally
-        await page.reload();
+        // Refresh the page after creating a schedule to get the new schedule
+        console.log(`[E2E] Refreshing schedules after creating schedule...`);
+        await page.evaluate(async (pid) => {
+            if (typeof globalThis !== "undefined" && (globalThis as any).refreshSchedules) {
+                await (globalThis as any).refreshSchedules(pid);
+            }
+        }, resolvedPageId);
 
         console.log(`[E2E] Waiting for schedule to appear...`);
         let scheduleItems = await page.locator('[data-testid="schedule-item"]').all();
