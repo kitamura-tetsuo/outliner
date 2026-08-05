@@ -1548,18 +1548,18 @@ export class EditorOverlayStore {
             : null;
         if (!textarea) return;
 
-        // Get text of items
-        const startItemEl = document.querySelector(
-            `[data-item-id="${escapeId(startItemId)}"] .item-text`,
-        ) as HTMLElement;
-        const endItemEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"] .item-text`) as HTMLElement;
-
-        if (!startItemEl || !endItemEl) return;
-
-        const startItemText = startItemEl.textContent || "";
-
         // If the selection is within a single item
         if (startItemId === endItemId) {
+            let startItemText = this.getOriginalTextFromItem(startItemId) || "";
+            if (startItemText === "") {
+                const startItemEl = document.querySelector(
+                    `[data-item-id="${escapeId(startItemId)}"] .item-text`,
+                ) as HTMLElement;
+                if (startItemEl) {
+                    startItemText = startItemEl.textContent || "";
+                }
+            }
+
             // Update textarea content
             textarea.value = startItemText;
 
@@ -1567,71 +1567,151 @@ export class EditorOverlayStore {
             textarea.setSelectionRange(startOffset, endOffset);
         } else {
             // If the selection spans multiple items
-            const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
-            const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
+            const viewModel = store.activeViewModel;
+            let visibleItems: string[] = [];
 
-            if (!startEl || !endEl) return;
-
-            // Determine order
-            const comparison = startEl.compareDocumentPosition(endEl);
-            let firstEl: Element, lastEl: Element;
-            let firstOffset: number, lastOffset: number;
-
-            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
-                firstEl = startEl;
-                lastEl = endEl;
-                firstOffset = startOffset;
-                lastOffset = endOffset;
-            } else {
-                firstEl = endEl;
-                lastEl = startEl;
-                firstOffset = endOffset;
-                lastOffset = startOffset;
+            if (viewModel) {
+                visibleItems = viewModel.getVisibleItems().map(item => item.model.original?.id).filter(
+                    Boolean,
+                ) as string[];
             }
 
-            // Traverse and build text
-            let combinedText = "";
-            let selectionStart = 0;
-            let selectionEnd = 0;
+            if (visibleItems.length === 0) {
+                // Fallback to DOM TreeWalker if view model is not available or empty
+                const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);
+                const endEl = document.querySelector(`[data-item-id="${escapeId(endItemId)}"]`);
 
-            const root = document.querySelector(".outliner") || document.body;
-            const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
-                acceptNode(node) {
-                    return (node as Element).hasAttribute("data-item-id")
-                        ? NodeFilter.FILTER_ACCEPT
-                        : NodeFilter.FILTER_SKIP;
-                },
-            });
-            walker.currentNode = firstEl;
+                if (!startEl || !endEl) return;
 
-            while (walker.currentNode) {
-                const current = walker.currentNode as HTMLElement;
-                const textEl = current.querySelector(".item-text");
-                const text = textEl?.textContent || "";
+                // Determine order
+                const comparison = startEl.compareDocumentPosition(endEl);
+                let firstEl: Element, lastEl: Element;
+                let firstOffset: number, lastOffset: number;
 
-                if (current === firstEl) {
-                    selectionStart = combinedText.length + firstOffset;
-                }
-                combinedText += text;
-                if (current === lastEl) {
-                    selectionEnd = combinedText.length - text.length + lastOffset;
+                if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    firstEl = startEl;
+                    lastEl = endEl;
+                    firstOffset = startOffset;
+                    lastOffset = endOffset;
+                } else {
+                    firstEl = endEl;
+                    lastEl = startEl;
+                    firstOffset = endOffset;
+                    lastOffset = startOffset;
                 }
 
-                if (current === lastEl) break;
-                combinedText += "\n";
-                if (!walker.nextNode()) break;
-            }
+                // Traverse and build text
+                let combinedText = "";
+                let selectionStart = 0;
+                let selectionEnd = 0;
 
-            // Update textarea content
-            textarea.value = combinedText;
+                const root = document.querySelector(".outliner") || document.body;
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+                    acceptNode(node) {
+                        return (node as Element).hasAttribute("data-item-id")
+                            ? NodeFilter.FILTER_ACCEPT
+                            : NodeFilter.FILTER_SKIP;
+                    },
+                });
+                walker.currentNode = firstEl;
 
-            // Handle reversed selection
-            if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
-                // start is before end
-                textarea.setSelectionRange(selectionStart, selectionEnd);
+                while (walker.currentNode) {
+                    const current = walker.currentNode as HTMLElement;
+                    const itemId = current.getAttribute("data-item-id");
+
+                    let text = "";
+                    if (itemId) {
+                        text = this.getOriginalTextFromItem(itemId) || "";
+                    }
+
+                    if (!text) {
+                        const textEl = current.querySelector(".item-text");
+                        text = textEl?.textContent || "";
+                    }
+
+                    if (current === firstEl) {
+                        selectionStart = combinedText.length + firstOffset;
+                    }
+                    combinedText += text;
+                    if (current === lastEl) {
+                        selectionEnd = combinedText.length - text.length + lastOffset;
+                    }
+
+                    if (current === lastEl) break;
+                    combinedText += "\n";
+                    if (!walker.nextNode()) break;
+                }
+
+                // Update textarea content
+                textarea.value = combinedText;
+
+                // Handle reversed selection
+                if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                    // start is before end
+                    textarea.setSelectionRange(selectionStart, selectionEnd);
+                } else {
+                    // end is before start
+                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                }
             } else {
-                // end is before start
-                textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                // Use ViewModel for order
+                const startIndex = visibleItems.indexOf(startItemId);
+                const endIndex = visibleItems.indexOf(endItemId);
+
+                if (startIndex === -1 || endIndex === -1) return;
+
+                let firstIndex = startIndex;
+                let lastIndex = endIndex;
+                let firstOffset = startOffset;
+                let lastOffset = endOffset;
+                let isReversed = false;
+
+                if (startIndex > endIndex) {
+                    firstIndex = endIndex;
+                    lastIndex = startIndex;
+                    firstOffset = endOffset;
+                    lastOffset = startOffset;
+                    isReversed = true;
+                }
+
+                let combinedText = "";
+                let selectionStart = 0;
+                let selectionEnd = 0;
+
+                for (let i = firstIndex; i <= lastIndex; i++) {
+                    const itemId = visibleItems[i];
+                    let text = this.getOriginalTextFromItem(itemId) || "";
+                    if (!text) {
+                        const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`);
+                        text = textEl?.textContent || "";
+                    }
+
+                    if (i === firstIndex) {
+                        selectionStart = combinedText.length + firstOffset;
+                    }
+
+                    combinedText += text;
+
+                    if (i === lastIndex) {
+                        selectionEnd = combinedText.length - text.length + lastOffset;
+                    }
+
+                    if (i < lastIndex) {
+                        combinedText += "\n";
+                    }
+                }
+
+                // Update textarea content
+                textarea.value = combinedText;
+
+                // Handle reversed selection
+                if (!isReversed) {
+                    // start is before end
+                    textarea.setSelectionRange(selectionStart, selectionEnd);
+                } else {
+                    // end is before start
+                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                }
             }
         }
     }
