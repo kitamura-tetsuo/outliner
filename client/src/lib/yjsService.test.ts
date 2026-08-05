@@ -8,7 +8,6 @@ import {
     deleteProject,
     getClientByProjectTitle,
     initPendingRegistrationsListeners,
-    isProcessingPending,
     scheduleProcessPending,
     stableIdFromTitle,
 } from "./yjsService.svelte";
@@ -212,15 +211,21 @@ describe("processPendingRegistrations backoff", () => {
         cleanupPendingRegistrationsListeners();
         vi.useRealTimers();
         pendingRegistrationsMap.clear();
+        if (backoffTimeout) {
+            clearTimeout(backoffTimeout);
+        }
     });
 
-    it("should process items and retry if any fail", async () => {
+    it("should trigger process and backoff via observer when item is enqueued", async () => {
         queueProjectRegistration("test-retry-id", "Test Retry Title");
+
+        // Let the pending registrations map observe trigger
+        await vi.runAllTimersAsync();
 
         scheduleProcessPending();
 
-        // Wait for all timers and immediate promises
-        await vi.runAllTimersAsync();
+        // Fast-forward
+        await vi.advanceTimersByTimeAsync(100000);
 
         expect(backoffTimeout).toBeUndefined();
     });
@@ -233,8 +238,7 @@ describe("processPendingRegistrations backoff", () => {
         // Mock successful process by emptying map
         pendingRegistrationsMap.clear();
 
-        scheduleProcessPending();
-        await vi.runAllTimersAsync();
+        await vi.advanceTimersByTimeAsync(100000);
 
         expect(backoffTimeout).toBeUndefined();
     });

@@ -699,9 +699,8 @@ export function initPendingRegistrationsListeners() {
     };
 
     let cleanupPendingMap = () => {};
-    let initTimeout: ReturnType<typeof setTimeout>;
     // Delay binding until next tick to ensure pendingRegistrationsMap is initialized
-    initTimeout = setTimeout(() => {
+    const initTimeout = setTimeout(() => {
         if (
             typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap
             && typeof pendingRegistrationsMap.observe === "function"
@@ -711,9 +710,9 @@ export function initPendingRegistrationsListeners() {
                 cleanupPendingMap = () => {
                     try {
                         pendingRegistrationsMap.unobserve(handlePendingChange);
-                    } catch (e) {}
+                    } catch (_e) {}
                 };
-            } catch (e) {}
+            } catch (_e) {}
         }
     }, 0);
 
