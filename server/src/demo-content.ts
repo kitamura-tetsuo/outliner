@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 33;
+export const DEMO_TEMPLATE_VERSION = 34;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -440,6 +440,7 @@ export const demoTables: DemoTableTemplate[] = [
 export interface DemoScheduleRuleTemplate {
     // Fixed id so a reseed replaces the rule instead of adding a copy.
     ruleId: string;
+    name?: string;
     targetTableId: string;
     sql: string;
     rrule: string;
@@ -502,6 +503,7 @@ export function buildDemoScheduleRules(): DemoScheduleRuleTemplate[] {
     return [
         {
             ruleId: DEMO_DAILY_RULE_ID,
+            name: "Routine Occurrences · daily",
             targetTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
             sql: routineOccurrenceSql("daily"),
             rrule: "RRULE:FREQ=DAILY",
@@ -511,6 +513,7 @@ export function buildDemoScheduleRules(): DemoScheduleRuleTemplate[] {
         },
         {
             ruleId: DEMO_WEEKLY_RULE_ID,
+            name: "Routine Occurrences · weekly",
             targetTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
             sql: routineOccurrenceSql("weekly"),
             rrule: "RRULE:FREQ=WEEKLY;BYDAY=MO",
@@ -527,6 +530,9 @@ export function registerDemoScheduleRules(projectDoc: Y.Doc): void {
     for (const rule of buildDemoScheduleRules()) {
         const ruleMap = new Y.Map<string | boolean>();
         schedules.set(rule.ruleId, ruleMap);
+        if (rule.name) {
+            ruleMap.set("name", rule.name);
+        }
         ruleMap.set("targetTableId", rule.targetTableId);
         ruleMap.set("sql", rule.sql);
         ruleMap.set("rrule", rule.rrule);

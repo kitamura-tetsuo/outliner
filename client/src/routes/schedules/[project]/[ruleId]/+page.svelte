@@ -49,6 +49,7 @@
         }
 
         const rule: ScheduleRule = {
+            name: ruleMap.get("name") as string | undefined,
             targetTableId: ruleMap.get("targetTableId") as string,
             sql: ruleMap.get("sql") as string,
             rrule: ruleMap.get("rrule") as string,
