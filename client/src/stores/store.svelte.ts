@@ -203,9 +203,9 @@ export class GeneralStore {
     }
 
     public getAliasIndex(): Map<string, { item: Item; pageTitle: string; }[]> {
-        if (!this._aliasIndexInitialized && this._project?.items) { this._aliasIndexInitialized = true;
+        if (!this._aliasIndexInitialized && this._project?.items) {
+            this._aliasIndexInitialized = true;
             this._rebuildAliasIndex();
-
         }
         return this._aliasIndex;
     }
