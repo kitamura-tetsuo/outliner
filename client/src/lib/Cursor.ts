@@ -53,6 +53,20 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         return storeHasSelection(this.userId);
     }
 
+    private getSelectionAnchor(): { startItemId: string; startOffset: number; } {
+        const existingSelection = this.getSelectionForCurrentItem();
+        if (existingSelection) {
+            return {
+                startItemId: existingSelection.startItemId,
+                startOffset: existingSelection.startOffset,
+            };
+        }
+        return {
+            startItemId: this.itemId,
+            startOffset: this.offset,
+        };
+    }
+
     private getSelectionForCurrentItem() {
         const selection = this.getSelection();
         if (!selection) return undefined;
@@ -638,20 +652,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            // Keep start position (Anchor) if existing selection
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            // If new selection, use current position as start
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor left (Update Focus)
         this.moveLeft();
@@ -664,20 +665,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            // Keep start position (Anchor) if existing selection
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            // If new selection, use current position as start
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor right (Update Focus)
         this.moveRight();
@@ -690,20 +678,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            // Keep start position (Anchor) if existing selection
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            // If new selection, use current position as start
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor up (Update Focus)
         this.moveUp();
@@ -716,20 +691,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const target = this.findTarget();
         if (!target) return;
 
-        // Get current selection
-        const existingSelection = this.getSelectionForCurrentItem();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            // Keep start position (Anchor) if existing selection
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            // If new selection, use current position as start
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor down (Update Focus)
         this.moveDown();
@@ -780,7 +742,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
-        // Get current selection
+        // Get current selection anchor
         const existingSelection = this.getSelectionForCurrentItem();
 
         // If current cursor position is already at line start, do nothing (only if no selection)
@@ -788,15 +750,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             return;
         }
 
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor to line start
         this.offset = lineStartOffset;
@@ -813,7 +767,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
-        // Get current selection
+        // Get current selection anchor
         const existingSelection = this.getSelectionForCurrentItem();
 
         // If current cursor position is already at line end, do nothing (only if no selection)
@@ -821,15 +775,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             return;
         }
 
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         // Move cursor to line end
         this.offset = lineEndOffset;
