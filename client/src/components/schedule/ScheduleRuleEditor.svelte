@@ -37,6 +37,7 @@ if (initialRrule) {
 let isRawMode = $state(initialIsRaw);
 
 // Shared state
+let ruleName = $state(untrack(() => rule.name) || "");
 let sql = $state(untrack(() => rule.sql) || `INSERT INTO "${untrack(() => tableId)}" (id, occurrence_time) VALUES (gen_random_uuid(), current_setting('job.occurrence')::timestamptz);`);
 let dtstart = $state(untrack(() => rule.dtstart) || "");
 let timezone = $state(untrack(() => rule.timezone) || Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -154,6 +155,7 @@ function handleSave() {
 
     onSave({
         ...rule,
+        name: ruleName,
         targetTableId: tableId,
         sql,
         rrule: finalRruleStr,
@@ -166,6 +168,11 @@ function handleSave() {
 
 <div class="schedule-rule-editor p-4 border rounded bg-white shadow-sm">
     <h3 class="text-lg font-bold mb-4">Edit Schedule Rule</h3>
+
+    <div class="mb-4">
+        <label class="block text-sm font-medium mb-1" for="name-input">Rule Name (optional)</label>
+        <input id="name-input" type="text" class="w-full p-2 border rounded" bind:value={ruleName} placeholder="Custom rule name" />
+    </div>
 
     <div class="mb-4">
         <label class="flex items-center space-x-2">

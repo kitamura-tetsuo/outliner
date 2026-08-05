@@ -10,6 +10,7 @@
     import { getTableRegistry, listTables, type TableRegistryEntry } from "../services/yjstable/tableDocs";
     import { createScheduleRule } from "../services/schedule/scheduleRuleService";
 import { onDestroy, onMount } from "svelte";
+import { rrulestr } from "rrule";
 import type * as Y from "yjs";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
@@ -74,6 +75,7 @@ import type * as Y from "yjs";
 
     interface ScheduleEntry {
         id: string;
+        name?: string;
         targetTableId: string;
         rrule: string;
         enabled: boolean;
@@ -90,6 +92,7 @@ import type * as Y from "yjs";
         project.schedules.forEach((ruleMap, ruleId) => {
             result.push({
                 id: ruleId,
+                name: ruleMap.get("name") as string | undefined,
                 targetTableId: (ruleMap.get("targetTableId") as string) ?? "",
                 rrule: (ruleMap.get("rrule") as string) ?? "",
                 enabled: ruleMap.get("enabled") !== false,
@@ -99,8 +102,29 @@ import type * as Y from "yjs";
     });
 
     function scheduleLabel(entry: ScheduleEntry): string {
+        if (entry.name) {
+            return entry.name;
+        }
+
         const table = tables.find((t) => t.tableId === entry.targetTableId);
-        return table?.name || "Scheduled SQL";
+        const tableName = table?.name || "Scheduled SQL";
+
+        if (!entry.rrule) {
+            return tableName;
+        }
+
+        try {
+            let cadence = rrulestr(entry.rrule).toText();
+            // Simplify common phrasing
+            if (cadence === "every day") cadence = "daily";
+            else if (cadence.startsWith("every week")) cadence = "weekly";
+            else if (cadence.startsWith("every month")) cadence = "monthly";
+
+            return `${tableName} · ${cadence}`;
+        } catch (_e) {
+            // Ignore parse errors, return just table name
+            return tableName;
+        }
     }
 
     // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes

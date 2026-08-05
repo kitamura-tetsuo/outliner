@@ -9,6 +9,7 @@ import * as Y from "yjs";
  * `current_setting('job.occurrence')::timestamptz` is the scheduled occurrence time; using `now()` is discouraged.
  */
 export interface ScheduleRule {
+    name?: string;
     targetTableId: string;
     sql: string;
     rrule: string;
@@ -51,6 +52,7 @@ export function createScheduleRule(
     ruleMap.set("enabled", options.enabled !== undefined ? options.enabled : true);
     ruleMap.set("catchUp", options.catchUp !== undefined ? options.catchUp : true);
 
+    if (options.name) ruleMap.set("name", options.name);
     if (options.lastRunAt) ruleMap.set("lastRunAt", options.lastRunAt);
     if (options.lastRunStatus) ruleMap.set("lastRunStatus", options.lastRunStatus);
     if (options.lastRunError) ruleMap.set("lastRunError", options.lastRunError);
@@ -79,6 +81,7 @@ export function updateScheduleRule(
     }
 
     // Apply updates
+    if (updates.name !== undefined) ruleMap.set("name", updates.name);
     if (updates.targetTableId !== undefined) ruleMap.set("targetTableId", updates.targetTableId);
     if (updates.sql !== undefined) ruleMap.set("sql", updates.sql);
     if (updates.rrule !== undefined) ruleMap.set("rrule", updates.rrule);
