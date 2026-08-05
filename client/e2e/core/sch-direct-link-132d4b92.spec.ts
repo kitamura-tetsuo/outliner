@@ -24,7 +24,7 @@ test.describe("SCH-132D4B92: Schedule Direct Link E2E", () => {
         // but within the already seeded context
         await page.evaluate(() => {
             if (globalThis.sessionStorage) {
-               globalThis.sessionStorage.clear();
+                globalThis.sessionStorage.clear();
             }
         });
 
