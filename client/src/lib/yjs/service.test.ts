@@ -34,25 +34,16 @@ describe("yjsService", () => {
         expect(presence?.cursor?.itemId).toBe("i1");
     });
 
-    it("binds project presence to store", () => {
+    it("binds project presence to store", async () => {
         const awareness = new Awareness(new Y.Doc());
-        // Provide a minimal global presence store to avoid importing .svelte.ts
-        const presenceStore = {
-            users: {} as Record<string, unknown>,
-            setUser(u: { userId: string; [key: string]: unknown; }) {
-                this.users = { ...this.users, [u.userId]: u };
-            },
-            removeUser(id: string) {
-                const updatedUsers = { ...this.users };
-                delete updatedUsers[id];
-                this.users = updatedUsers;
-            },
-        };
 
-        (globalThis as unknown as { presenceStore: unknown; }).presenceStore = presenceStore;
+        // Since yjsService directly imports presenceStore now, we can just test the real store behavior
+        const { presenceStore } = await import("../../stores/PresenceStore.svelte");
+        presenceStore.users = {};
+
         const unbind = yjsService.bindProjectPresence(awareness);
         awareness.setLocalStateField("user", { userId: "u1", name: "Alice" });
-        expect((presenceStore.users["u1"] as { userName?: string; }).userName).toBe("Alice");
+        expect(presenceStore.users["u1"]?.userName).toBe("Alice");
         awareness.setLocalStateField("user", null);
         unbind();
     });

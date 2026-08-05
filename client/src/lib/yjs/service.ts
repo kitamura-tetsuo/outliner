@@ -40,9 +40,7 @@ function resolveOverlayStore(): typeof editorOverlayStore | undefined {
 }
 
 function resolvePresenceStore(): typeof presenceStore | undefined {
-    return (globalThis as typeof globalThis & {
-        presenceStore?: typeof import("../../stores/PresenceStore.svelte").presenceStore;
-    }).presenceStore ?? presenceStore;
+    return presenceStore;
 }
 
 function resolveUserColor(userId: string, provided?: string): string {

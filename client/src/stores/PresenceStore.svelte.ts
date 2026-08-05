@@ -10,7 +10,7 @@ export interface PresenceUser {
 export class PresenceStore {
     // Use a plain mutable object to avoid relying on Svelte 5 runes
     // in non-.svelte component runtime contexts (e.g., Playwright/Vite tests).
-    users: Record<string, PresenceUser> = {};
+    users: Record<string, PresenceUser> = $state({});
 
     setUser(user: PresenceUser) {
         this.users = { ...this.users, [user.userId]: user };

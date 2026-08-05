@@ -1,27 +1,9 @@
 <script lang="ts">
-import { onMount } from "svelte";
-// Ensure presence store side-effects (window.presenceStore) are initialized
-import "../stores/PresenceStore.svelte";
+import { presenceStore } from "../stores/PresenceStore.svelte";
 
 type PresenceUser = { userId: string; userName: string; color: string };
 
-let users = $state<PresenceUser[]>([]);
-
-function readUsers(): PresenceUser[] {
-  try {
-    const store = (window as Window).presenceStore;
-    return store ? Object.values(store.users || {}) : [];
-  } catch { return []; }
-}
-
-function sync() { users = readUsers(); }
-
-onMount(() => {
-  sync();
-  const handler = () => sync();
-  window.addEventListener("presence-users-changed", handler);
-  return () => window.removeEventListener("presence-users-changed", handler);
-});
+let users = $derived<PresenceUser[]>(Object.values(presenceStore.users || {}));
 </script>
 <div class="presence-row" data-testid="presence-row">
   {#each users as u (u.userId)}
