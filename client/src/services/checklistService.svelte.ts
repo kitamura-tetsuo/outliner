@@ -286,6 +286,7 @@ class ChecklistService {
                 return { ...l, _parsedRule: rule };
             });
         } else {
+            let changedLocal = false;
             const newArr = this.lists.map(l => {
                 if (l.id !== listId || !l.rrule) return l;
                 let rule = l._parsedRule;
@@ -294,7 +295,7 @@ class ChecklistService {
                 }
                 const next = rule.after(new Date(l.lastReset ?? 0));
                 if (next && next.getTime() <= now) {
-                    changed = true;
+                    changedLocal = true;
                     return {
                         ...l,
                         _parsedRule: rule,
@@ -303,12 +304,12 @@ class ChecklistService {
                     };
                 }
                 if (!l._parsedRule) {
-                    changed = true;
+                    changedLocal = true;
                     return { ...l, _parsedRule: rule };
                 }
                 return l;
             });
-            if (changed) this.lists = newArr;
+            if (changedLocal) this.lists = newArr;
         }
     }
 
