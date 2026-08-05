@@ -1,7 +1,7 @@
 id: CLM-0001
 title: Click to enter edit mode
 shortcut: Click
-description: Enter edit mode by clicking.
+description: Enter edit mode by clicking. Exit edit mode by pressing Escape or clicking outside the outliner tree.
 category: cursor-movement
 status: implemented
 tests:
@@ -17,4 +17,6 @@ acceptance:
 - Cursor is visible
 - Enter edit mode on click
 - Text input is enabled in edit mode
+- Exit edit mode by pressing Escape (also blurs the hidden textarea)
+- Exit edit mode by clicking outside the outliner tree
 title-ja: クリックで編集モードに入る
