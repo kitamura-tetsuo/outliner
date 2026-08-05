@@ -55,6 +55,17 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
 }
 
+/**
+ * True when the current selection carries component blocks (Grid/Calendar) that
+ * only the structured clipboard path can preserve. Other copy handlers must
+ * stand down in that case: writing plain text to the system clipboard would
+ * drop the component payload and desynchronise the paste-time fallback, whose
+ * cache is keyed on the copied plain text.
+ */
+export function hasStructuredClipboardSelection(): boolean {
+    return selectedItemsClipboardData() !== undefined;
+}
+
 function writeStructuredSystemClipboard(structured: { encoded: string; plainText: string; }): void {
     if (typeof navigator === "undefined" || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") return;
     const html = structuredClipboardHtml(structured.encoded, structured.plainText);
@@ -269,9 +280,12 @@ export class KeyEventHandler {
             // If it hasn't fired in the same loop, we fire a synthetic one
             setTimeout(() => {
                 if (KeyEventHandler._nativeCopyFired) return;
-                const selectedText = store.getSelectedText("local");
+                const structured = selectedItemsClipboardData();
+                // A component host contributes its view name to the structured
+                // payload only, so the structured plain text is authoritative
+                // whenever the selection carries one.
+                const selectedText = structured?.plainText || store.getSelectedText("local");
                 if (selectedText) {
-                    const structured = selectedItemsClipboardData();
                     if (typeof window !== "undefined") {
                         (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = selectedText;
                         if (structured) {
@@ -293,13 +307,16 @@ export class KeyEventHandler {
                         });
                     }
 
-                    // Trigger the synthetic event for internal logic
+                    // Trigger the synthetic event for internal logic. It must be
+                    // dispatched on the global textarea because KeyEventHandler.handleCopy
+                    // — the only handler that writes the structured component payload — is
+                    // bound to that element; document listeners still see it while bubbling.
                     const clipboardEvent = new ClipboardEvent("copy", {
                         clipboardData: new DataTransfer(),
                         bubbles: true,
                         cancelable: true,
                     });
-                    document.dispatchEvent(clipboardEvent);
+                    (store.getTextareaRef() ?? document).dispatchEvent(clipboardEvent);
                 }
             }, 0);
         });
@@ -1481,8 +1498,10 @@ export class KeyEventHandler {
                     });
                 }
 
-                // Fallback: Copy using execCommand
-                if (!event.isTrusted) {
+                // Fallback: Copy using execCommand. Skipped for structured
+                // payloads because it would replace the HTML flavour that
+                // carries the component bindings with plain text.
+                if (!event.isTrusted && !structured) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
@@ -2754,8 +2773,10 @@ export class KeyEventHandler {
                     });
                 }
 
-                // Fallback: Copy using execCommand
-                if (!event.isTrusted) {
+                // Fallback: Copy using execCommand. Skipped for structured
+                // payloads because it would replace the HTML flavour that
+                // carries the component bindings with plain text.
+                if (!event.isTrusted && !structured) {
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
