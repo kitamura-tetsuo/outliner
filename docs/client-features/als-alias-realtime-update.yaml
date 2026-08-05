@@ -1,0 +1,6 @@
+id: als-alias-realtime-update
+title: "Alias indicator updates in realtime"
+description: "Alias indicator updates in realtime across clients without polling"
+category: aliases
+tests:
+  - client/e2e/new/als-alias-realtime-update.spec.ts
