@@ -107,11 +107,11 @@ test.describe("Accessible outline tree semantics", () => {
         expect(firstItemId).not.toBeNull();
 
         const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        const itemContent = firstItem.locator(".item-content");
 
-        // Let's directly click the item with right-click instead, since Shift+F10 bubbling
-        // might be intercepted by global handlers or not working well in playwright.
-        await firstItem.click({ button: "right", position: { x: 5, y: 5 } });
+        // Explicitly focus the item wrapper, matching what would happen
+        // through keyboard navigation, then trigger the context menu keyboard shortcut.
+        await firstItem.focus();
+        await page.keyboard.press("Shift+F10");
 
         // Assert that the context menu is visible and a menuitem is focused
         const contextMenu = page.locator(".context-menu");
