@@ -241,8 +241,10 @@ function handleContextMenu(e: MouseEvent) {
 }
 
 function handleMenuKeyDown(e: KeyboardEvent) {
-    if (isPageTitle || isReadOnly) return;
+    if (isPageTitle) return;
+
     if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+        if (isReadOnly) return;
         e.preventDefault();
         e.stopPropagation();
 
@@ -252,6 +254,87 @@ function handleMenuKeyDown(e: KeyboardEvent) {
             contextMenuX = rect.left + 20;
             contextMenuY = rect.bottom;
         }
+        return;
+    }
+
+    if (e.key === 'Enter') {
+        if (isReadOnly) return;
+        e.preventDefault();
+        e.stopPropagation();
+        startEditing();
+        return;
+    }
+
+    const treeItems = Array.from(document.querySelectorAll('[role="treeitem"]:not([role="presentation"])')) as HTMLElement[];
+    const currentIndex = treeItems.indexOf(itemRef as HTMLElement);
+
+    if (currentIndex === -1) return;
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentIndex < treeItems.length - 1) {
+            treeItems[currentIndex + 1].focus();
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentIndex > 0) {
+            treeItems[currentIndex - 1].focus();
+        }
+        return;
+    }
+
+    if (e.key === 'Home') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (treeItems.length > 0) {
+            treeItems[0].focus();
+        }
+        return;
+    }
+
+    if (e.key === 'End') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (treeItems.length > 0) {
+            treeItems[treeItems.length - 1].focus();
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hasChildren && isCollapsed) {
+            dispatch("toggle-collapse", { itemId: model.id });
+        } else if (hasChildren && !isCollapsed) {
+            if (currentIndex < treeItems.length - 1) {
+                treeItems[currentIndex + 1].focus();
+            }
+        }
+        return;
+    }
+
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (hasChildren && !isCollapsed) {
+            dispatch("toggle-collapse", { itemId: model.id });
+        } else {
+            const currentLevel = parseInt(itemRef?.getAttribute('aria-level') || '1', 10);
+            for (let i = currentIndex - 1; i >= 0; i--) {
+                const level = parseInt(treeItems[i].getAttribute('aria-level') || '1', 10);
+                if (level < currentLevel) {
+                    treeItems[i].focus();
+                    break;
+                }
+            }
+        }
+        return;
     }
 }
 
