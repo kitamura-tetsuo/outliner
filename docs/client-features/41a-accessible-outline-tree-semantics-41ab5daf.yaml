@@ -14,8 +14,8 @@ tests:
 acceptance:
 - A visible "Keyboard & accessibility help" details/summary section documents Tab/Shift+Tab indent-outdent and Alt+ArrowUp/ArrowDown move-item shortcuts as alternatives to drag-and-drop reordering
 - An item with children has aria-expanded reflecting its collapsed/expanded state, updated when the collapse chevron is toggled
+- Blank outline items have an explicit accessible name like "Blank outline item" to prevent screen readers from reading nested control labels as item content
 - Each non-title outline item has role="treeitem" and an aria-level matching its nesting depth
+- Non-blank items derive their accessible name explicitly from their text content, isolating them from secondary controls
 - The active (editing) item has aria-selected="true"; others have aria-selected="false"
 - The outline's ".tree-container" element has role="tree"
-- Blank outline items have an explicit accessible name like "Blank outline item" to prevent screen readers from reading nested control labels as item content
-- Non-blank items derive their accessible name explicitly from their text content, isolating them from secondary controls

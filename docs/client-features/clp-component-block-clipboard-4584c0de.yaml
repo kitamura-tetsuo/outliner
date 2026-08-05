@@ -5,10 +5,12 @@ description: Copy, cut, and paste Grid and Calendar host items while preserving 
 category: clipboard
 status: implemented
 components:
+- client/src/components/EditorOverlay.svelte
 - client/src/components/OutlinerTree.svelte
 - client/src/lib/KeyEventHandler.ts
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
+- A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
 - A whole-item selection carries Grid and Calendar binding identifiers in the in-app clipboard format.
 - Cutting and pasting moves host items without deleting their underlying table or calendar data.
 - Partial item selections and external clipboard content retain the existing plain-text behavior.
@@ -18,4 +20,5 @@ acceptance:
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
+- client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
 - client/src/services/clipboard/itemClipboard.test.ts

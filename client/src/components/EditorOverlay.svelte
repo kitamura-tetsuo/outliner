@@ -9,7 +9,7 @@ import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte
 import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
-import { isEditorClipboardEvent } from '../lib/KeyEventHandler';
+import { hasStructuredClipboardSelection, isEditorClipboardEvent } from '../lib/KeyEventHandler';
 
 // store API (functions only) - keep the store as receiver so `this` stays bound
 const stopCursorBlink = () => store.stopCursorBlink();
@@ -894,6 +894,12 @@ function handleCopy(event: ClipboardEvent) {
   // inputs or over plain page text. Leave those to the browser.
   if (!isEditorClipboardEvent(event)) return;
 
+  // A selection that spans component blocks (Grid/Calendar) is copied by
+  // KeyEventHandler.handleCopy, which keeps the bindings in the structured
+  // payload. Writing plain text here would overwrite that system clipboard
+  // entry and lose the blocks on paste.
+  if (hasStructuredClipboardSelection()) return;
+
   // Do nothing if no selection (reference store directly to avoid reactive lag)
   const selections = Object.values(store.selections).filter(sel =>
     sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
@@ -1235,6 +1241,10 @@ function handleCut(event: ClipboardEvent) {
   // Same ownership check as handleCopy: never cut item text on behalf of
   // another input or of a plain page selection.
   if (!isEditorClipboardEvent(event)) return;
+
+  // Component blocks are cut by KeyEventHandler.handleCut for the same reason
+  // handleCopy defers to it.
+  if (hasStructuredClipboardSelection()) return;
 
   // Do nothing if no selection
   const selections = allSelections.filter(sel =>
