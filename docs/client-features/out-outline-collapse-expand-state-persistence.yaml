@@ -1,0 +1,8 @@
+id: OUT-COLLAPSE-PERSIST
+title: Outline collapse/expand state persistence
+description: Collapsing an outline item survives page reloads and navigation.
+category: ui
+status: implemented
+acceptance:
+- Expanding or collapsing an item persists the state to local storage.
+- Reloading the page or navigating back preserves the collapse/expand state of outline items.
