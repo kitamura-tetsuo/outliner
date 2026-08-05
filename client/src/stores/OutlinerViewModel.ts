@@ -1,6 +1,7 @@
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
 import { iterateItems } from "../utils/itemTraversal";
+import { userPreferencesStore } from "./UserPreferencesStore.svelte";
 
 const logger = getLogger();
 // Suppress verbose logs in E2E/Test environments
@@ -64,6 +65,8 @@ export class OutlinerViewModel {
     // Updating flag
     private _isUpdating = false;
 
+    private pageId: string | null = null;
+
     /**
      * Update view model from data model
      * @param pageItem Root item collection
@@ -79,6 +82,15 @@ export class OutlinerViewModel {
 
         try {
             this._isUpdating = true;
+
+            if (this.pageId === null) {
+                this.pageId = pageItem.id;
+                // Initialize collapsed map from store
+                const savedCollapsedIds = userPreferencesStore.getCollapsedState(this.pageId);
+                for (const id of savedCollapsedIds) {
+                    this.collapsedMap.set(id, true);
+                }
+            }
 
             debugLog(
                 `OutlinerViewModel: updateFromModel for pageItem.id=${pageItem.id} isItemLike=${isItemLike(pageItem)}`,
@@ -111,6 +123,15 @@ export class OutlinerViewModel {
 
             // Recalculate display order and depth - start from pageItem itself
             this.recalculateOrderAndDepthItem(pageItem);
+
+            // Prune non-existent IDs from the collapsed preferences store
+            if (!this.pageId) {
+                this.pageId = pageItem.id;
+            }
+            if (structureChanged) {
+                const validIds = new Set(this.viewModels.keys());
+                userPreferencesStore.pruneCollapsedState(this.pageId, validIds);
+            }
 
             debugLog(
                 "OutlinerViewModel: visibleOrder length after recalculate:",
@@ -343,6 +364,13 @@ export class OutlinerViewModel {
     toggleCollapsed(itemId: string): void {
         const isCollapsed = this.collapsedMap.get(itemId) || false;
         this.collapsedMap.set(itemId, !isCollapsed);
+
+        if (this.pageId) {
+            const collapsedIds = Array.from(this.collapsedMap.entries())
+                .filter(([_, collapsed]) => collapsed)
+                .map(([id, _]) => id);
+            userPreferencesStore.setCollapsedState(this.pageId, collapsedIds);
+        }
 
         // Recalculate display info from model (maintain item instance)
         const rootItem = this.findRootItem(itemId);

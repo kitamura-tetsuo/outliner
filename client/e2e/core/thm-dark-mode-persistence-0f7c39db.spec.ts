@@ -29,7 +29,7 @@ test.describe("THM-0002: Dark mode preference persists", () => {
             const stored = localStorage.getItem("user-preferences");
             return stored ? JSON.parse(stored) : null;
         });
-        expect(storedPreferences).toEqual({ theme: "dark" });
+        expect(storedPreferences?.theme).toBe("dark");
 
         // reload and verify state persists
         await page.reload();
