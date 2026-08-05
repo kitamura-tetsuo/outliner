@@ -51,7 +51,7 @@ test.describe("SLR-0006: Ctrl+C outside the editor", () => {
         const searchInput = page.getByTestId("search-pages-input").first();
         await searchInput.click();
         await searchInput.fill("foreign input text");
-        await page.keyboard.press("Control+a");
+        await searchInput.click({ clickCount: 3 });
         await page.keyboard.press("Control+c");
         await page.waitForTimeout(300);
 

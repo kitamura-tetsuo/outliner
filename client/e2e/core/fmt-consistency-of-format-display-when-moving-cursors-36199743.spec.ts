@@ -22,7 +22,8 @@ test.describe("Consistency of format display when moving cursors", () => {
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
+        await firstItem.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
         await page.keyboard.press("Backspace");
 
         // Enter bold text
@@ -100,7 +101,12 @@ test.describe("Consistency of format display when moving cursors", () => {
         await TestHelpers.waitForCursorVisible(page);
 
         // Clear existing text and enter new text
-        await page.keyboard.press("Control+a");
+        await pageTitle.locator(".item-content").click();
+        await page.keyboard.press("Home");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
+        await page.keyboard.press("Backspace");
         await page.keyboard.type("aasdd");
 
         // Click a normal item
@@ -144,7 +150,8 @@ test.describe("Consistency of format display when moving cursors", () => {
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
+        await firstItem.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
         await page.keyboard.press("Backspace");
         const firstItemIdForLink = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemIdForLink).not.toBeNull();
@@ -183,7 +190,8 @@ test.describe("Consistency of format display when moving cursors", () => {
         const firstItem = page.locator(".outliner-item").first();
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
+        await firstItem.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
         await page.keyboard.press("Backspace");
         const firstItemIdForInternalLink = await TestHelpers.getItemIdByIndex(page, 0);
         expect(firstItemIdForInternalLink).not.toBeNull();

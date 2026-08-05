@@ -20,9 +20,11 @@ test.describe("Cursor scrolling behavior", () => {
         const longText = Array.from({ length: 80 }, (_, i) => `Line ${i + 1}`).join("\n");
 
         await page.waitForSelector(".outliner-item");
-        await page.locator(".outliner-item").first().click();
+        const item = page.locator(".outliner-item").first();
+        await item.click();
 
-        await page.keyboard.press("Control+a"); // Select all to clear
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
         await page.keyboard.press("Backspace");
 
         // Insert text

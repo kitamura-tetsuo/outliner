@@ -14,8 +14,9 @@ test.describe("SLR-0012: Shrink Selection", () => {
         const item = page.locator(".outliner-item").first();
         await item.locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.keyboard.type("Hello World");
         await page.keyboard.press("Home");
         await page.keyboard.down("Shift");

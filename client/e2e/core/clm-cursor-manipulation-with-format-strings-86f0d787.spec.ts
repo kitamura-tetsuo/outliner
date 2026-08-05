@@ -13,9 +13,7 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Cursor manipulation within format strings", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        // The first body item is seeded empty so each test can type into it directly.
-        // Ctrl+A selects the whole page (SLR a1b2c3d4), so it cannot be used to clear a single item.
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["", "Item 2"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
         // Wait for outliner items to be rendered after seeding (wait for specific content)
         // Wait for outliner items to be rendered after seeding (robust wait)
         await page.locator(".outliner-item[data-item-id]").first().waitFor({ timeout: 60000 });
@@ -25,9 +23,17 @@ test.describe("Cursor manipulation within format strings", () => {
         // Select an item other than the page title (2nd item)
         const secondItemId = await TestHelpers.getItemIdByIndex(page, 1);
         expect(secondItemId).not.toBeNull();
-        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"] .item-content`);
-        await item.click({ force: true });
+        const item = page.locator(`.outliner-item[data-item-id="${secondItemId}"]`);
+        await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
+
+        // Clear existing text
+        await item.locator(".item-content").click();
+        await page.keyboard.press("Home");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
+        await page.keyboard.press("Backspace");
 
         // Type text containing bold formatting
         await page.keyboard.type("This is [[bold text]] here");
@@ -162,6 +168,14 @@ test.describe("Cursor manipulation within format strings", () => {
         await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
 
+        // Clear existing text
+        await item.locator(".item-content").click();
+        await page.keyboard.press("Home");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
+        await page.keyboard.press("Backspace");
+
         // Type text containing formatting
         await page.keyboard.type("This is [[bold text]] here");
 
@@ -281,6 +295,14 @@ test.describe("Cursor manipulation within format strings", () => {
         const item = page.locator(`.outliner-item[data-item-id="${secondItemId4}"]`);
         await item.locator(".item-content").click({ force: true });
         await TestHelpers.waitForCursorVisible(page);
+
+        // Clear the item by selecting all and deleting
+        await item.locator(".item-content").click();
+        await page.keyboard.press("Home");
+        await page.keyboard.down("Shift");
+        await page.keyboard.press("End");
+        await page.keyboard.up("Shift");
+        await page.keyboard.press("Backspace");
 
         // Type format text containing multiple words
         await page.keyboard.type("Start [[bold text words]] and [/italic words] end");

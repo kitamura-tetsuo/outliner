@@ -77,7 +77,9 @@ test.describe("LNK-0001: Internal Link Navigation", () => {
         // Try text input using the conventional method
         await firstItem.locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("Control+a");
+        await firstItem.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
         await page.keyboard.type(`[${actualPageName}]`);
         // Wait a bit for Yjs synchronization

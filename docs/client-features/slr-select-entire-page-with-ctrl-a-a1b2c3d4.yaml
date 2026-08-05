@@ -1,18 +1,13 @@
-id: SLR-a1b2c3d4
+id: a1b2c3d4
 title: Select entire page with Ctrl/Cmd+A
 title-ja: Ctrl/Cmd+Aでページ全体を選択する
-shortcut: Ctrl + A / Cmd + A
-description: While an outline item holds the editor cursor, Ctrl/Cmd+A selects the whole current page, from offset 0 of the page-title item through the end of the page's last depth-first descendant.
-category: selection-range
-status: implemented
-acceptance:
-- Cmd+A provides the same behavior on macOS
-- Copy, cut, formatting, and delete commands receive the page-wide range through the existing selection model
-- Ctrl/Cmd+A in search, comments, tables, dialogs, or other foreign inputs retains native input behavior
-- Ctrl/Cmd+A replaces any existing local normal/box selection without removing remote collaborators' selections
-- Repeating Ctrl/Cmd+A never creates duplicate local selection records; exactly one page-wide local range remains
-- The selection begins at title offset 0 and ends at the last depth-first item's text length
-- Title-only pages work without errors
-- With an editor cursor in any title or body item, Ctrl+A selects all items on the current page, including the title and all nested descendants in canonical order
-tests:
-- client/e2e/core/slr-select-entire-page-with-ctrl-a-a1b2c3d4.spec.ts
+spec_path: client/e2e/core/slr-select-entire-page-with-ctrl-a-a1b2c3d4.spec.ts
+acceptance_criteria:
+  - With an editor cursor in any title or body item, Ctrl+A selects all items on the current page, including the title and all nested descendants in canonical order.
+  - Cmd+A provides the same behavior on macOS.
+  - The selection begins at title offset 0 and ends at the last depth-first item's text length.
+  - Repeating Ctrl/Cmd+A never creates duplicate local selection records; exactly one page-wide local range remains.
+  - Ctrl/Cmd+A replaces any existing local normal/box selection without removing remote collaborators' selections.
+  - Copy, cut, formatting, and delete commands receive the page-wide range through the existing selection model.
+  - Ctrl/Cmd+A in search, comments, tables, dialogs, or other foreign inputs retains native input behavior.
+  - Title-only pages work without errors.

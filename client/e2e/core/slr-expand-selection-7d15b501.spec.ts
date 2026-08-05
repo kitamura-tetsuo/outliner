@@ -11,13 +11,11 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("SLR-0011: Expand selection", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, [""]);
-        const item = page.locator(".outliner-item").first();
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Hello World"]);
+        const item = page.locator(".outliner-item").nth(1);
         await item.locator(".item-content").click({ force: true });
         await page.waitForSelector("textarea.global-textarea:focus");
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
-        await page.keyboard.type("Hello World");
+        await page.keyboard.press("Home");
         await page.keyboard.press("Home");
     });
 

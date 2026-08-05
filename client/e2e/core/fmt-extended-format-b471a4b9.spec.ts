@@ -21,11 +21,11 @@ test.describe("Extended format", () => {
         expect(firstItemId).not.toBeNull();
 
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await item.locator(".item-content").click();
 
         // Delete existing text
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
 
         // Enter text containing a link (use insertText to enter special characters correctly)
@@ -56,11 +56,11 @@ test.describe("Extended format", () => {
         expect(firstItemId).not.toBeNull();
 
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await item.locator(".item-content").click();
 
         // Delete existing text
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
 
         // Enter text containing a quote
@@ -91,11 +91,11 @@ test.describe("Extended format", () => {
         expect(firstItemId).not.toBeNull();
 
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await item.locator(".item-content").click();
 
         // Delete existing text
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
 
         // Enter text containing complex formatting (list and quote separately)
@@ -126,11 +126,11 @@ test.describe("Extended format", () => {
         expect(firstItemId).not.toBeNull();
 
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
-        await item.locator(".item-content").click();
 
         // Delete existing text
-        await page.keyboard.press("Control+A");
-        await page.keyboard.press("Delete");
+        await item.locator(".item-content").click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
 
         // Enter text containing complex formatting

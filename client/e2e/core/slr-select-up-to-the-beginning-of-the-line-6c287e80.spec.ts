@@ -89,18 +89,26 @@ test.describe("SLR-0002: Select up to the beginning of the line", () => {
         const activeItemLocator = await TestHelpers.getActiveItemLocator(page);
         expect(activeItemLocator).not.toBeNull();
 
-        // beforeEach already entered "First line" / "Second line" / "Third line".
-        // Extend the last line instead of clearing the page: Ctrl+A now selects the
-        // entire page (SLR a1b2c3d4), so it can no longer clear a single item.
-        const lastItem = page.locator(".outliner-item").nth(2);
-        await lastItem.locator(".item-content").click({ force: true });
-        await TestHelpers.waitForCursorVisible(page);
-        await page.keyboard.press("End");
-        await page.keyboard.type(" with more text");
+        // Clear the text once and enter new text
+        await activeItemLocator.click({ clickCount: 3 });
+        await page.waitForTimeout(50);
+        await page.keyboard.press("Backspace");
         await page.waitForTimeout(100);
+
+        // Enter multi-line text
+        await page.keyboard.type("First line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Second line");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("Third line with more text");
 
         // Move the cursor to the middle of the third line
         await page.keyboard.press("Home");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("End");
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
         await page.keyboard.press("ArrowRight");
