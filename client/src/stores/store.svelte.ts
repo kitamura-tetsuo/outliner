@@ -170,10 +170,12 @@ export class GeneralStore {
     private _aliasIndexInitialized = false;
     /* eslint-disable-next-line svelte/prefer-svelte-reactivity -- internal index map intentionally avoids fine-grained tracking overhead */
     private _aliasIndex = new Map<string, { item: Item; pageTitle: string; }[]>();
+    /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
     private _aliasSubscribers = new Map<string, Set<(aliases: { item: Item; pageTitle: string; }[]) => void>>();
 
     public subscribeToAliases(targetId: string, callback: (aliases: { item: Item; pageTitle: string; }[]) => void) {
         if (!this._aliasSubscribers.has(targetId)) {
+            /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
             this._aliasSubscribers.set(targetId, new Set());
         }
         this._aliasSubscribers.get(targetId)!.add(callback);
@@ -506,11 +508,13 @@ export class GeneralStore {
                     updatePending = false;
                     this.pagesVersion++; // Trigger signal
                     if (updateAliasesPending) {
+                        /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
                         const oldIndex = new Map(this._aliasIndex);
                         this._aliasIndexInitialized = true;
                         this._rebuildAliasIndex();
 
                         // Notify subscribers
+                        /* eslint-disable-next-line svelte/prefer-svelte-reactivity */
                         const notified = new Set<string>();
                         for (const targetId of this._aliasIndex.keys()) {
                             this._notifyAliasSubscribers(targetId);

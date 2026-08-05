@@ -360,7 +360,7 @@ function handleContextMenuAction(action: string) {
 // Improve code health by avoiding a raw 5-second setInterval on every OutlinerItem instance.
 // Using a debounced tree version reacting to global store changes ensures we only evaluate
 // findReferringAliases when there is actual activity, significantly reducing idle CPU usage.
-let referringAliases = $state<{ item: any; pageTitle: string; }[]>([]);
+let referringAliases = $state<{ item: Item; pageTitle: string; }[]>([]);
 
 $effect(() => {
     const unsub = generalStore.subscribeToAliases(model.id, (aliases) => {
