@@ -69,7 +69,7 @@ test.describe("SCH-5A1C2B3D: Schedule iCal Export", () => {
             const sessionKey = `schedule:lastPageChildId:${encodeURIComponent(projectName)}:${
                 encodeURIComponent(pageName)
             }`;
-            resolvedPageId = await page.evaluate((key) => window.sessionStorage?.getItem(key) || "", sessionKey);
+            resolvedPageId = await page.evaluate((key) => globalThis.sessionStorage?.getItem(key) || "", sessionKey);
             if (resolvedPageId) {
                 console.log(`[E2E] pageId resolved after ${waitAttempts * 100}ms: ${resolvedPageId}`);
                 break;

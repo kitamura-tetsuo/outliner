@@ -1,7 +1,6 @@
 <script lang="ts">
     import { getLogger } from "$lib/logger";
     const logger = getLogger("Route");
-import { goto } from "$app/navigation";
 import { resolvePath } from "../../../../utils/pathUtils";
 import { formatDateTime } from "../../../../utils/dateUtils";
 
@@ -18,12 +17,7 @@ import {
 } from "../../../../services";
 import { store } from "../../../../stores/store.svelte";
 import { yjsStore } from "../../../../stores/yjsStore.svelte";
-import type { Item as AppItem } from "../../../../schema/app-schema";
-import type { Item as YjsItem } from "../../../../schema/yjs-schema";
-type Item = AppItem | YjsItem;
 
-// Import the load function from parent scope
-// We'll trigger it if the store is not properly initialized
 let project = $state("");
 let pageTitle = $state("");
 let pageId = $state("");
@@ -33,24 +27,6 @@ let editingId = $state("");
 let editingTime = $state("");
 let isDownloading = $state(false);
 let loadError = $state<string | null>(null);
-
-// Function to trigger parent page load
-async function triggerParentPageLoad() {
-    // Access the parent page's loadProjectAndPage via window if available
-    const win = window as unknown as { loadProjectAndPage?: (() => Promise<void>) & { yjsClient?: unknown }, __loadingInProgress?: boolean };
-    if (win.loadProjectAndPage) {
-        // Set loading in progress to prevent duplicate calls
-        const loadInProgressKey = "__loadingInProgress";
-        if (!win[loadInProgressKey]) {
-            win[loadInProgressKey] = true;
-            try {
-                await win.loadProjectAndPage();
-            } finally {
-                win[loadInProgressKey] = false;
-            }
-        }
-    }
-}
 
 // Track navigation state for debugging
 let navState = $state({
