@@ -16,9 +16,11 @@ Outliner does not send notifications through Slack or any other external applica
 
 ## Offline Editing
 
-### OFF-NON Offline Editing Support
+### OFF-NON Offline HTTP API Requests
 
-Offline editing will not be implemented. The Fluid Framework used for collaboration requires a network connection and does not support offline operations. Additionally, offline API requests (e.g., project saves, schedules) are not queued by the service worker; any write attempted while offline will fail loudly rather than being dropped silently.
+Offline outline editing **is** supported via `y-indexeddb` persistence and CRDT merge on reconnect (see `client/src/lib/yjs/connection.ts`). Offline edits are retained indefinitely in IndexedDB until the browser's data is manually cleared; there is currently no automatic eviction policy.
+
+However, non-Yjs offline HTTP API requests (e.g., project saves, schedules) are not queued by the service worker. Any write attempted against these REST endpoints while offline will fail loudly rather than being dropped silently.
 
 ## Extensibility
 
