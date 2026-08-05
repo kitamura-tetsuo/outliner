@@ -96,6 +96,42 @@ test.describe("Accessible outline tree semantics", () => {
         await expect(firstItem).not.toHaveAttribute("aria-labelledby");
     });
 
+    test("context menu returns focus to the invoking item on Escape", async ({ page }, testInfo) => {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [
+            "Menu item 1",
+            "Menu item 2",
+        ]);
+        await TestHelpers.waitForOutlinerItems(page, 2);
+
+        const firstItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstItemId).not.toBeNull();
+
+        const firstItem = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
+
+        // Explicitly focus the item wrapper, matching what would happen
+        // through keyboard navigation, then trigger the context menu keyboard shortcut.
+        await firstItem.focus();
+        await page.keyboard.press("Shift+F10");
+
+        // Assert that the context menu is visible and a menuitem is focused
+        const contextMenu = page.locator(".context-menu");
+        await expect(contextMenu).toBeVisible();
+        await expect(contextMenu.locator("button").first()).toBeFocused();
+
+        // Press Escape to dismiss the menu
+        await page.keyboard.press("Escape");
+
+        // Assert that the context menu is hidden
+        await expect(contextMenu).toBeHidden();
+
+        // Let's assert that the active element is either the textarea or the item wrapper.
+        // The textarea is usually what's focused when editing an item. Wait for it to be focused.
+        // Because of the way `document.activeElement` is restored, if it was the treeitem wrapper,
+        // it will be that. If it was the body, it might be the body.
+        // If we click it with right-click above, the `outliner-item` (treeitem) wrapper was probably focused.
+        await expect(firstItem).toBeFocused();
+    });
+
     test("zero-count comment button is hidden from accessibility tree on desktop", async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "Item with no comments",
