@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { devices } from "@playwright/test";
-import { waitForCursorVisible } from "../../e2e/helpers";
 import { CursorValidator } from "../../e2e/utils/cursorValidation";
 import { TestHelpers } from "../../e2e/utils/testHelpers";
+import { waitForCursorVisible } from "../../e2e/helpers";
+import { devices } from "@playwright/test";
 
 test.use({ ...devices["Pixel 7"] });
 
@@ -11,7 +11,7 @@ test("Mobile OS selection changes sync back to outliner store", async ({ page },
     const lines = [
         "First item",
         "Second item",
-        "Third item",
+        "Third item"
     ];
     await TestHelpers.seedProjectAndNavigate(page, testInfo, lines);
 
@@ -50,7 +50,7 @@ test("Mobile OS selection changes sync back to outliner store", async ({ page },
     // 4. Verify that the Outliner store synchronized the selection correctly
     // The selection should now be set in the editor overlay store.
     await page.waitForFunction(() => {
-        const win = window as any;
+        const win = globalThis as any;
         return Object.keys(win.editorOverlayStore.selections).length > 0;
     });
 
@@ -79,7 +79,7 @@ test("Mobile OS selection changes sync back to outliner store", async ({ page },
 
     // Wait for cursor position update
     await page.waitForFunction(() => {
-        const win = window as any;
+        const win = globalThis as any;
         const cursors = Object.values(win.editorOverlayStore.cursors);
         return cursors.length > 0 && (cursors[0] as any).offset === 4;
     });
