@@ -381,6 +381,29 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         rememberDemoWarmState(doc as unknown as Y.Doc, now, DEMO_TEMPLATE_VERSION, Date.now());
                     } else if (lastReset !== undefined && templateVersion !== undefined) {
                         rememberDemoWarmState(doc as unknown as Y.Doc, lastReset, templateVersion, now);
+
+                        // Independently verify each demo table room and re-seed if missing or stale
+                        for (const template of demoTables) {
+                            const tableRoom = `projects/${DEMO_PROJECT_ID}/tables/${template.tableId}`;
+                            const tableConnection = await hocuspocus.openDirectConnection(tableRoom, {
+                                isSeeding: true,
+                            });
+                            try {
+                                const tableDoc = tableConnection.document;
+                                if (tableDoc) {
+                                    const meta = tableDoc.getMap("metadata") as Y.Map<unknown>;
+                                    const tableTemplateVersion = meta.get("templateVersion") as number | undefined;
+                                    if (tableTemplateVersion !== DEMO_TEMPLATE_VERSION) {
+                                        logger.info({ event: "seed_demo_table_resetting", tableRoom });
+                                        await tableConnection.transact((document: unknown) => {
+                                            seedDemoTableDoc(document as unknown as Y.Doc, template);
+                                        });
+                                    }
+                                }
+                            } finally {
+                                await tableConnection.disconnect();
+                            }
+                        }
                     }
 
                     return { success: true, reset: shouldReset };
