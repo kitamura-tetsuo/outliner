@@ -9,6 +9,7 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { KeyEventHandler } from "../KeyEventHandler";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -500,15 +501,109 @@ export class CursorEditor {
     }
 
     onBeforeInput(event: InputEvent) {
-        if (event.inputType === "insertReplacementText" && typeof event.getTargetRanges === "function") {
+        if (typeof event.getTargetRanges === "function") {
             this.targetRangesForNextInput = event.getTargetRanges();
+        }
+
+        const type = event.inputType;
+        if (
+            type === "deleteSoftLineBackward" || type === "deleteHardLineBackward" || type === "deleteEntireSoftLine"
+            || type === "deleteSoftLineForward" || type === "deleteHardLineForward"
+            || type === "insertLineBreak" || type === "insertParagraph"
+            || type === "insertFromPaste" || type === "insertFromPasteAsQuotation" || type === "insertFromDrop"
+            || type === "insertTranspose" || type === "insertFromYank"
+            || type === "deleteByDrag" || type === "deleteContent"
+        ) {
+            event.preventDefault();
+            this.processInputType(event);
+        }
+    }
+
+    processInputType(event: InputEvent) {
+        const type = event.inputType;
+        const target = this.cursor.findTarget();
+        if (!target) return;
+
+        const getRangeInfo = () => {
+            if (this.targetRangesForNextInput && this.targetRangesForNextInput.length > 0) {
+                const range = this.targetRangesForNextInput[0];
+                if (range.startContainer === range.endContainer && range.startOffset !== range.endOffset) {
+                    return { start: range.startOffset, end: range.endOffset };
+                }
+            }
+            return null;
+        };
+
+        if (type === "deleteSoftLineBackward" || type === "deleteHardLineBackward" || type === "deleteEntireSoftLine") {
+            const rangeInfo = getRangeInfo();
+            if (rangeInfo && typeof target.deleteTextAt === "function") {
+                target.deleteTextAt(rangeInfo.start, rangeInfo.end - rangeInfo.start);
+                this.cursor.offset = rangeInfo.start;
+                this.cursor.applyToStore();
+            } else {
+                const originalOffset = this.cursor.offset;
+                this.cursor.moveToLineStart();
+                const newOffset = this.cursor.offset;
+                if (originalOffset > newOffset && typeof target.deleteTextAt === "function") {
+                    target.deleteTextAt(newOffset, originalOffset - newOffset);
+                    this.cursor.applyToStore();
+                }
+            }
+            if (type === "deleteEntireSoftLine") {
+                if (!rangeInfo) {
+                    const originalOffset = this.cursor.offset;
+                    this.cursor.moveToLineEnd();
+                    const newOffset = this.cursor.offset;
+                    if (newOffset > originalOffset && typeof target.deleteTextAt === "function") {
+                        target.deleteTextAt(originalOffset, newOffset - originalOffset);
+                        this.cursor.offset = originalOffset;
+                        this.cursor.applyToStore();
+                    }
+                }
+            }
+        } else if (type === "deleteSoftLineForward" || type === "deleteHardLineForward") {
+            const rangeInfo = getRangeInfo();
+            if (rangeInfo && typeof target.deleteTextAt === "function") {
+                target.deleteTextAt(rangeInfo.start, rangeInfo.end - rangeInfo.start);
+                this.cursor.offset = rangeInfo.start;
+                this.cursor.applyToStore();
+            } else {
+                const originalOffset = this.cursor.offset;
+                this.cursor.moveToLineEnd();
+                const newOffset = this.cursor.offset;
+                if (newOffset > originalOffset && typeof target.deleteTextAt === "function") {
+                    target.deleteTextAt(originalOffset, newOffset - originalOffset);
+                    this.cursor.offset = originalOffset;
+                    this.cursor.applyToStore();
+                }
+            }
+        } else if (type === "insertLineBreak") {
+            this.cursor.insertLineBreak();
+        } else if (type === "insertParagraph") {
+            this.cursor.insertItemBelow();
+        } else if (
+            type === "insertFromPaste" || type === "insertFromPasteAsQuotation" || type === "insertFromDrop"
+            || type === "insertTranspose" || type === "insertFromYank"
+        ) {
+            const clipboardEvent = new ClipboardEvent("paste", { clipboardData: event.dataTransfer });
+            KeyEventHandler.handlePaste(clipboardEvent);
+        } else if (type === "deleteByDrag" || type === "deleteContent") {
+            const rangeInfo = getRangeInfo();
+            if (rangeInfo && typeof target.deleteTextAt === "function") {
+                target.deleteTextAt(rangeInfo.start, rangeInfo.end - rangeInfo.start);
+                this.cursor.offset = rangeInfo.start;
+                this.cursor.applyToStore();
+            }
         }
     }
 
     onInput(event: InputEvent) {
         const type = event.inputType;
 
-        // Helper to synthesize a keydown event for the cursor to handle deletions properly via Cursor.onKeyDown
+        if (event.isComposing || type.startsWith("insertComposition")) {
+            return;
+        }
+
         const dispatchKeyDown = (key: string) => {
             const evt = new KeyboardEvent("keydown", { key });
             if (
@@ -551,6 +646,33 @@ export class CursorEditor {
         } else {
             const data = event.data;
             if (data && data.length > 0) {
+                // First try to delete using getTargetRanges() offsets
+                let handledReplace = false;
+                if (this.targetRangesForNextInput && this.targetRangesForNextInput.length > 0) {
+                    const range = this.targetRangesForNextInput[0];
+                    if (range.startContainer === range.endContainer && range.startOffset !== range.endOffset) {
+                        const target = this.cursor.findTarget();
+                        if (target && typeof target.deleteTextAt === "function") {
+                            const lengthToDelete = range.endOffset - range.startOffset;
+                            target.deleteTextAt(range.startOffset, lengthToDelete);
+                            this.cursor.offset = range.startOffset;
+                            handledReplace = true;
+                        }
+                    }
+                }
+
+                // Fallback to deleteSelection if targetRanges didn't handle it
+                if (!handledReplace) {
+                    const selection = this.getSelection();
+                    if (selection && selectionHasRange(selection)) {
+                        if (selectionSpansMultipleItems(selection)) {
+                            this.deleteMultiItemSelection(selection);
+                        } else {
+                            this.deleteSelection();
+                        }
+                    }
+                }
+
                 this.insertText(data);
             }
         }
