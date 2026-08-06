@@ -145,7 +145,7 @@
                 w.__FIRESTORE_STORE__ = placeholder;
                 g.__FIRESTORE_STORE__ = placeholder;
                 ensureStore().catch((err) => {
-                    console.error("[bootstrap] ensureStore failed", err);
+                    console.debug("[bootstrap] ensureStore failed", err);
                     // errors already logged in ensureStore
                 });
             })();
