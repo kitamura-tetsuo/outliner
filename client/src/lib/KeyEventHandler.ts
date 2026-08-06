@@ -1219,7 +1219,12 @@ export class KeyEventHandler {
             if (textareaElement && node && typeof node.text !== "undefined") {
                 if (!store.isComposing) {
                     textareaElement.value = node.text.toString();
+
+                    store.suppressSelectionResync = true;
                     textareaElement.setSelectionRange(firstCursor.offset, firstCursor.offset);
+                    queueMicrotask(() => {
+                        store.suppressSelectionResync = false;
+                    });
                 }
             }
         }
