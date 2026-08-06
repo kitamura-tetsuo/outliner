@@ -55,7 +55,7 @@ test.describe("FTR-53f59906: two-client collaboration on a table subdoc", () => 
             await expect(page1.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
             await page1.locator(".outliner-item").first().click();
             await page1.waitForTimeout(300);
-            const addDatabaseBtn = page1.getByTestId("main-toolbar").locator(".add-database-btn").last();
+            const addDatabaseBtn = page1.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
             await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
             await addDatabaseBtn.click();
             const createPanel = page1.getByTestId("yjs-table-create-panel").first();

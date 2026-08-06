@@ -18,7 +18,7 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus cl
         await page.locator(".outliner-item").first().click();
         await page.waitForTimeout(300);
 
-        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
+        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
         await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
         await addDatabaseBtn.click();
 

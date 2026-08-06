@@ -8,7 +8,7 @@ async function createTasksGrid(page: Page, testInfo: Parameters<typeof TestHelpe
     await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Grid host"]);
     const hostId = await TestHelpers.getItemIdByIndex(page, 1);
     await page.locator(`.outliner-item[data-item-id="${hostId}"]`).click();
-    await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+    await page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first().click();
     await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
     await page.getByTestId("yjs-table-create").click();
     await expect(page.getByTestId("yjs-table-view")).toBeVisible({ timeout: 30000 });

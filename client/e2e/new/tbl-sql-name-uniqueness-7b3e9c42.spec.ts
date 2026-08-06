@@ -18,7 +18,7 @@ test.describe("FTR-7b3e9c42: SQL names are unique within a project", () => {
     test("derives a SQL name from the display name and keeps it unique", async ({ page }) => {
         await page.locator(".outliner-item").first().click();
         await page.waitForTimeout(300);
-        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+        await page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first().click();
 
         const panel = page.getByTestId("yjs-table-create-panel").first();
         await expect(panel).toBeVisible({ timeout: 10000 });
@@ -47,7 +47,7 @@ test.describe("FTR-7b3e9c42: SQL names are unique within a project", () => {
         // tell the two apart.
         await page.locator(".outliner-item").nth(1).click();
         await page.waitForTimeout(300);
-        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+        await page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first().click();
 
         // The first block is a table view by now, so this is the only panel.
         const secondPanel = page.getByTestId("yjs-table-create-panel").first();

@@ -17,7 +17,7 @@ test.describe("Table Schedule Rule UI", () => {
 
         // Use TestHelpers to insert a table block
         // Insert a Database block from the toolbar
-        const addDatabaseBtn = page.locator(".add-database-btn").first();
+        const addDatabaseBtn = page.locator(".add-database-btn:not(.undo-redo-btn)").first();
         await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
         await addDatabaseBtn.click();
 

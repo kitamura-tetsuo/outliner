@@ -15,7 +15,7 @@ test.describe("select all clipboard with component blocks", () => {
         const host = page.locator(".outliner-item").nth(2);
         await expect(host).toBeVisible();
         await host.click();
-        const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
+        const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
         await addDatabase.click();
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();

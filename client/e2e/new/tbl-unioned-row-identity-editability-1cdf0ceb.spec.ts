@@ -28,7 +28,7 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         // the same result columns can be written back on either side.
         await page.locator(".outliner-item").first().click();
         await page.waitForTimeout(300);
-        await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
+        await page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first().click();
         const createPanel = page.getByTestId("yjs-table-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
         await createPanel.getByTestId("yjs-table-name-input").fill("routine occurrences");

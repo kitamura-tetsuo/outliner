@@ -21,7 +21,7 @@ test("Toolbar 'Add Database' button inserts a Database (table) component", async
     await page.waitForTimeout(500);
 
     // Click the Add Database button in the main-toolbar
-    const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
+    const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
     await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
     await addDatabaseBtn.click();
 

@@ -10,7 +10,7 @@ test("Grid column reorder via handle", async ({ page }, testInfo) => {
     const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
     await item.click();
     await page.waitForTimeout(300);
-    const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
+    const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
     await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
     await addDatabaseBtn.click();
     await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
