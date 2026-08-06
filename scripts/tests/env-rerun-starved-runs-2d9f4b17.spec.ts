@@ -24,8 +24,10 @@ test("the watcher reacts to the top-level workflows once they conclude", () => {
     for (const watched of ["CI", "Uptime Monitor", "Deploy"]) {
         expect(workflow, `${watched} must be watched`).toMatch(new RegExp(`^\\s+- ${watched}$`, "m"));
     }
-    // Re-queueing needs to write to the Actions API.
-    expect(workflow).toMatch(/permissions:\s*\n\s+actions: write/);
+    // Re-queueing needs to write to the Actions API, and naming any permission
+    // drops the rest to `none` -- without an explicit `contents: read` the
+    // checkout that fetches the script fails before it can run.
+    expect(workflow).toMatch(/permissions:\s*\n\s+actions: write\s*\n\s+contents: read/);
 });
 
 test("only failed runs are considered, so a cancelled run stays cancelled", () => {

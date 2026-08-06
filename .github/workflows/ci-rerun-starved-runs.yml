@@ -18,8 +18,11 @@ on:
       - Stryker Nightly Mutation
     types: [completed]
 
+# Naming any permission drops every unnamed one to `none`, so `contents: read`
+# has to be spelled out for actions/checkout to fetch the script.
 permissions:
   actions: write
+  contents: read
 
 jobs:
   rerun:
