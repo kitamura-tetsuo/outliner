@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { TreeValidator } from "../utils/treeValidation";
-import { TestHelpers } from "../utils/testHelpers";
 import { devices } from "@playwright/test";
+import { TestHelpers } from "../utils/testHelpers";
+import { TreeValidator } from "../utils/treeValidation";
 
 test.use({ ...devices["Pixel 7"] });
 
@@ -21,7 +21,13 @@ test.describe("Mobile InputType Editing (Android Chrome IME)", () => {
         await page.evaluate(() => {
             const activeEl = document.activeElement;
             if (activeEl) {
-                 activeEl.dispatchEvent(new InputEvent("beforeinput", { inputType: "deleteSoftLineBackward", bubbles: true, cancelable: true }));
+                activeEl.dispatchEvent(
+                    new InputEvent("beforeinput", {
+                        inputType: "deleteSoftLineBackward",
+                        bubbles: true,
+                        cancelable: true,
+                    }),
+                );
             }
         });
 
@@ -30,7 +36,9 @@ test.describe("Mobile InputType Editing (Android Chrome IME)", () => {
         await page.evaluate(() => {
             const activeEl = document.activeElement;
             if (activeEl) {
-                 activeEl.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertLineBreak", bubbles: true, cancelable: true }));
+                activeEl.dispatchEvent(
+                    new InputEvent("beforeinput", { inputType: "insertLineBreak", bubbles: true, cancelable: true }),
+                );
             }
         });
 
