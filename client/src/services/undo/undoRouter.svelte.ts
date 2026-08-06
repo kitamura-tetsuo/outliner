@@ -1,3 +1,4 @@
+import { SvelteSet } from "svelte/reactivity";
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 
@@ -28,7 +29,7 @@ export class UndoRouter {
     undoStack: Y.UndoManager[] = $state([]);
     redoStack: Y.UndoManager[] = $state([]);
 
-    private registered = new Set<Y.UndoManager>();
+    private registered = new SvelteSet<Y.UndoManager>();
 
     // Handlers are kept per manager so they can be detached on unregister.
     private addedHandlers = new WeakMap<Y.UndoManager, (event: { type: "undo" | "redo"; }) => void>();

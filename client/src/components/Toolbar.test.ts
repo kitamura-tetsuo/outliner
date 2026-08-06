@@ -1,6 +1,5 @@
-import { fireEvent, render } from "@testing-library/svelte";
-import { beforeAll, describe, expect, test, vi } from "vitest";
-import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+import { render } from "@testing-library/svelte";
+import { beforeAll, describe, expect, test } from "vitest";
 import Toolbar from "./Toolbar.svelte";
 
 beforeAll(() => {
@@ -13,7 +12,7 @@ beforeAll(() => {
 
 describe("Toolbar", () => {
     test("renders undo/redo buttons in desktop toolbar and binds disabled state correctly", () => {
-        const { getByTestId, getByLabelText } = render(Toolbar);
+        const { getByTestId } = render(Toolbar);
 
         const undoBtn = getByTestId("toolbar-undo");
         const redoBtn = getByTestId("toolbar-redo");
