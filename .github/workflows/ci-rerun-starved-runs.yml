@@ -1,0 +1,42 @@
+name: Rerun Starved Runs
+
+# GitHub occasionally cannot hand a queued job to a hosted runner and kills it
+# after ~15 minutes with "The job was not acquired by Runner of type hosted even
+# after multiple attempts". The run is then reported as failed although nothing
+# executed. Detect that signature and queue the run again instead of leaving a
+# red check behind.
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - Uptime Monitor
+      - Build and Push Server Container
+      - Build Test Container
+      - Deploy
+      - Sync to GitLab
+      - Stryker Nightly Mutation
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  rerun:
+    # A run killed by runner starvation concludes as a failure; a run someone (or
+    # `cancel-in-progress`) cancelled concludes as cancelled and must stay that way.
+    if: github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: scripts/ci
+
+      - name: Re-run the workflow when its jobs never reached a runner
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: bash scripts/ci/rerun-starved-run.sh

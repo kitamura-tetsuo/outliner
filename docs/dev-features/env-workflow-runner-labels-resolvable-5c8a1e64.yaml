@@ -1,0 +1,23 @@
+id: ENV-5c8a1e64
+title: Every workflow job targets a runner that can be acquired
+title-ja: すべてのワークフロージョブが取得可能なランナーを指定する
+description: 'Each job in .github/workflows names a GitHub-hosted image (for example ubuntu-latest) or
+
+  explicitly includes the self-hosted label. A label set such as [Linux, X64] without self-hosted is routed
+
+  to the hosted pool, where no image matches, so the job stays queued for 24 hours and is then killed with
+
+  "The job was not acquired by Runner of type hosted even after multiple attempts". The Stryker workflows
+
+  regressed that way when the self-hosted label was commented out, and the guard test keeps the class of
+
+  mistake from returning.
+
+  '
+category: environment
+status: implemented
+components:
+- .github/workflows/stryker-nightly.yml
+- .github/workflows/stryker-pr.yml.disabled
+tests:
+- scripts/tests/env-workflow-runner-labels-resolvable-5c8a1e64.spec.ts

@@ -1,0 +1,21 @@
+id: ENV-2d9f4b17
+title: Workflow runs starved of a hosted runner are re-queued automatically
+title-ja: ホストランナーを取得できなかった実行を自動で再キューする
+description: 'When GitHub cannot hand a queued job to a hosted runner it kills the job after about fifteen
+
+  minutes and the whole run is reported as failed even though nothing executed. The Rerun Starved Runs
+
+  workflow watches the top-level workflows, recognises that signature (a cancelled job with no runner name
+
+  that waited out the acquisition timeout, inside a run whose conclusion is failure) and re-queues the run,
+
+  up to three attempts. Runs cancelled by a superseding push or by hand are left untouched.
+
+  '
+category: environment
+status: implemented
+components:
+- .github/workflows/ci-rerun-starved-runs.yml
+- scripts/ci/rerun-starved-run.sh
+tests:
+- scripts/tests/env-rerun-starved-runs-2d9f4b17.spec.ts

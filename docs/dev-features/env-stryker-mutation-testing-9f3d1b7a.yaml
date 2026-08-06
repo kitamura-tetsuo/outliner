@@ -4,7 +4,7 @@ description: 'Add Stryker configuration, dependencies, and npm scripts so develo
 
   GitHub Actions execute incremental mutation testing on pull requests (limited to changed lines) and
 
-  a nightly full-suite run whenever commits land on main, both pinned to self-hosted Linux runners.
+  a nightly full-suite run whenever commits land on main, both on GitHub-hosted ubuntu-latest runners.
 
   Each run uploads HTML artifacts and publishes a markdown summary generated from the JSON report, while
 

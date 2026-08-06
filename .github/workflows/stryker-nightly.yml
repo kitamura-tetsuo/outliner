@@ -10,10 +10,13 @@ permissions:
 
 jobs:
   mutation:
-    runs-on:
-      # - self-hosted
-      - Linux
-      - X64
+    # `self-hosted` is the label that routes a job to the self-hosted pool. Once
+    # it was dropped the remaining `Linux`/`X64` pair became a request for a
+    # GitHub-hosted runner carrying those labels, and no hosted image matches a
+    # label set that omits its image name. The job then sat queued for 24 hours
+    # before Actions killed it with "The job was not acquired by Runner of type
+    # hosted even after multiple attempts". Name the hosted image instead.
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client
