@@ -10,4 +10,4 @@ tests:
 - client/src/tests/integration/globalStore.integration.spec.ts
 acceptance:
 - Setting project via the proxy updates the underlying store
-- The proxy exposes page data from the Fluid store
+- The proxy exposes page data from the Yjs store
