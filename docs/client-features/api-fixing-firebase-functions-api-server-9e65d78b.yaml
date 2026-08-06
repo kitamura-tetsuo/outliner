@@ -5,7 +5,7 @@ category: api-server
 status: implemented
 acceptance:
 - CORS settings are configured correctly and cross-origin requests are processed normally
-- Environment variables are loaded correctly and Azure Fluid Relay settings are applied
+- Environment variables are loaded correctly
 - Firebase Functions emulator starts normally
 - Health check endpoint (/health) responds normally
 - 'Port settings are configured correctly (Hosting: 57000)'

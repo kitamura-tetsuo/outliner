@@ -2,7 +2,7 @@ id: PRS-0001
 title: Show real-time presence indicators
 title-ja: リアルタイムプレゼンス表示
 category: collaboration
-description: Display active users with colored avatars using Fluid presence data.
+description: Display active users with colored avatars using Yjs awareness data.
 status: implemented
 acceptance:
 - Avatars appear for all connected users

@@ -41,3 +41,11 @@ jobs:
               print("All test references in feature YAML files are valid.")
               sys.exit(0)
           PYEOF
+      - name: Guard against Fluid references in YAML
+        run: |
+          violations=$(grep -i "fluid" docs/client-features/*.yaml | grep -v "cbe-remove-fluid-token-endpoint-cbe91364.yaml" || true)
+          if [ -n "$violations" ]; then
+            echo "Error: Found 'Fluid' references in feature YAML files:"
+            echo "$violations"
+            exit 1
+          fi

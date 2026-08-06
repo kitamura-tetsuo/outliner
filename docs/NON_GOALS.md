@@ -52,3 +52,9 @@ engine was removed together with those features.
 ### PAG-NON Page Deletion
 
 Outliner does not support deleting individual pages. Pages are append-only and permanent once created. This is a deliberate design choice because deleting a page is destructive and interacts deeply with backlinks, the graph view, and search indexing. Instead of deleting pages, users can rename them to indicate they are no longer in use (e.g., prefixing with `[Archived]`), or simply remove all content from the page. Whole-project deletion is supported (`docs/client-features/del-project-deletion-page-c8da7a47.yaml`).
+
+## Fluid Service
+
+### FLD-NON Ability to retrieve FluidClient
+
+The ability to retrieve a `FluidClient` instance by project title was removed during the Yjs migration, as the API no longer exists.
