@@ -12,5 +12,8 @@
     },
     "devDependencies": {
         "typescript": "^7.0.2"
+    },
+    "scripts": {
+        "test:unit": "vitest run"
     }
 }

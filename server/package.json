@@ -79,7 +79,8 @@
         "test:hocuspocus": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.js",
         "test:emulator-wait": "mocha tests/log-service-emulator-wait.test.js --timeout 10000",
         "postinstall": "patch-package && (test -e ../shared/node_modules || ln -s ../server/node_modules ../shared/node_modules || true)",
-        "postbuild": "ls -la dist"
+        "postbuild": "ls -la dist",
+        "test:unit": "npm run test:jest"
     },
     "version": "1.0.0",
     "resolutions": {
