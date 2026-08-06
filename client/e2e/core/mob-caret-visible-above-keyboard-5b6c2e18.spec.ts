@@ -9,11 +9,12 @@ test.describe("Mobile keyboard caret visibility", () => {
         const lines = Array.from({ length: 40 }, (_, i) => `Item ${i + 1}`);
 
         await page.addInitScript(() => {
-            const originalHeight = window.innerHeight;
+            const global = globalThis;
+            const originalHeight = global.innerHeight;
             const simulatedKeyboardHeight = 350;
             const vv = {
                 height: originalHeight,
-                width: window.innerWidth,
+                width: global.innerWidth,
                 offsetLeft: 0,
                 offsetTop: 0,
                 pageLeft: 0,
@@ -34,16 +35,16 @@ test.describe("Mobile keyboard caret visibility", () => {
                 },
             };
 
-            Object.defineProperty(window, "visualViewport", {
+            Object.defineProperty(global, "visualViewport", {
                 value: vv,
                 writable: true,
                 configurable: true,
             });
 
-            window.__simulateKeyboard = () => {
-                window.visualViewport.height = originalHeight - simulatedKeyboardHeight;
-                window.visualViewport.dispatchEvent("resize");
-                window.visualViewport.dispatchEvent("scroll");
+            global.__simulateKeyboard = () => {
+                global.visualViewport.height = originalHeight - simulatedKeyboardHeight;
+                global.visualViewport.dispatchEvent("resize");
+                global.visualViewport.dispatchEvent("scroll");
             };
         });
 
@@ -60,7 +61,7 @@ test.describe("Mobile keyboard caret visibility", () => {
 
         // Simulate keyboard opening
         await page.evaluate(() => {
-            window.__simulateKeyboard();
+            (globalThis as any).__simulateKeyboard();
         });
 
         // Wait for scroll
@@ -71,8 +72,8 @@ test.describe("Mobile keyboard caret visibility", () => {
             const cursor = document.querySelector(".cursor.active");
             if (!cursor) return false;
             const rect = cursor.getBoundingClientRect();
-            const vv = window.visualViewport;
-            return rect.bottom <= vv.height && rect.top >= 0;
+            const vv = globalThis.visualViewport;
+            return vv && rect.bottom <= vv.height && rect.top >= 0;
         });
 
         expect(isVisible).toBe(true);
