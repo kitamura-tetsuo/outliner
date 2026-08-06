@@ -1,0 +1,7 @@
+id: mob-textarea-ime-attributes-9f3a41d7
+title: Mobile textarea IME configuration
+description: The hidden global textarea should disable autocapitalize, autocorrect, and spellcheck to prevent unwanted mobile keyboard behavior, and set enterkeyhint="enter" and inputmode="text".
+status: implemented
+tests:
+- client/e2e/core/mob-textarea-ime-attributes-9f3a41d7.spec.ts
+title-ja: ''

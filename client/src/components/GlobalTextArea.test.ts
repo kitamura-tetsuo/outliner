@@ -27,4 +27,16 @@ describe("GlobalTextArea", () => {
 
         document.body.removeChild(mockRelatedTarget);
     });
+
+    it("has the correct IME attributes to disable mobile autocorrect/autocapitalize", () => {
+        const { container } = render(GlobalTextArea);
+        const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+
+        expect(textarea.getAttribute("autocapitalize")).toBe("off");
+        expect(textarea.getAttribute("autocorrect")).toBe("off");
+        expect(textarea.getAttribute("autocomplete")).toBe("off");
+        expect(textarea.getAttribute("spellcheck")).toBe("false");
+        expect(textarea.getAttribute("enterkeyhint")).toBe("enter");
+        expect(textarea.getAttribute("inputmode")).toBe("text");
+    });
 });
