@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   mutation:
-    runs-on:
-      # - self-hosted
-      - Linux
-      - X64
+    # See stryker-nightly.yml: a bare `Linux`/`X64` label pair never resolves to
+    # a GitHub-hosted runner, so the job is killed with "The job was not acquired
+    # by Runner of type hosted even after multiple attempts".
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: client
