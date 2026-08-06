@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
-import { createDemoRouter } from "../src/demo-api.js";
+import { createDemoRouter, resetDemoWarmState } from "../src/demo-api.js";
 import { DEMO_PROJECT_TITLE, DEMO_TEMPLATE_VERSION } from "../src/demo-content.js";
 import { populateDemoProject } from "../src/demo-content.js";
 import { Project } from "../src/schema/app-schema.js";
@@ -13,6 +13,7 @@ describe("Demo API", () => {
     let mockDirectConnection: any;
 
     beforeEach(async () => {
+        resetDemoWarmState();
         mockDoc = new Y.Doc();
         const metadata = mockDoc.getMap("metadata");
         metadata.set("lastReset", Date.now());
@@ -85,5 +86,44 @@ describe("Demo API", () => {
         expect(response.status).toBe(200);
         expect(response.body.reset).toBe(true);
         expect(response.body.success).toBe(true);
+    });
+
+    it("should selectively re-seed missing/stale table documents without full reset", async () => {
+        const { Project } = await import("../src/schema/app-schema.js");
+        const { populateDemoProject, demoTables } = await import("../src/demo-content.js");
+
+        mockDoc.transact(() => {
+            const project = Project.fromDoc(mockDoc);
+            populateDemoProject(project);
+        });
+
+        const tableDoc = new Y.Doc();
+        const mockTableConnection = {
+            document: tableDoc,
+            transact: jest.fn((cb: any) => cb(tableDoc)),
+            disconnect: jest.fn(),
+        };
+
+        // We create a fresh mock function to return mockTableConnection specifically for this test
+        // Because a singleton tableDoc doesn't update its own state between calls during the mock,
+        // mockTableConnection.transact gets called as many times as there are tables, since they all
+        // appear missing the version.
+        mockHocuspocus.openDirectConnection = jest.fn().mockImplementation(async (room: string) => {
+            if (room.includes("/tables/")) {
+                return mockTableConnection;
+            }
+            return mockDirectConnection;
+        });
+
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+
+        const response = await request(app).post("/api/seed-demo");
+        expect(response.status).toBe(200);
+        expect(response.body.reset).toBe(false);
+        expect(response.body.success).toBe(true);
+        // Should have called transact once for each table room missing the template version
+        expect(mockTableConnection.transact).toHaveBeenCalledTimes(1);
     });
 });

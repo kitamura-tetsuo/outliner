@@ -650,6 +650,9 @@ export function registerDemoTables(projectDoc: Y.Doc): void {
  * records (nested Y.Map per record).
  */
 export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
+    const meta = doc.getMap<unknown>("metadata");
+    meta.set("templateVersion", DEMO_TEMPLATE_VERSION);
+
     const schema = doc.getText("schema");
     schema.delete(0, schema.length);
     schema.insert(0, template.schemaSql);
