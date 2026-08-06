@@ -1,8 +1,10 @@
 import { expect } from "chai";
 import { JobExecutor } from "../../src/scheduler/executor.js";
 
+import { jest } from "@jest/globals";
+
 describe("Job executor", function() {
-    this.timeout(60000);
+    jest.setTimeout(60000);
     let executor: JobExecutor;
 
     beforeEach(() => {
