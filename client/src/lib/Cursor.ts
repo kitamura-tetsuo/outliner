@@ -893,17 +893,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     // Extend selection to document start
     extendSelectionToDocumentStart() {
-        const existingSelection = this.getSelection();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         this.resetInitialColumn();
         const root = generalStore.currentPage;
@@ -918,17 +908,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     // Extend selection to document end
     extendSelectionToDocumentEnd() {
-        const existingSelection = this.getSelection();
-
-        let startItemId, startOffset;
-
-        if (existingSelection) {
-            startItemId = existingSelection.startItemId;
-            startOffset = existingSelection.startOffset;
-        } else {
-            startItemId = this.itemId;
-            startOffset = this.offset;
-        }
+        const { startItemId, startOffset } = this.getSelectionAnchor();
 
         this.resetInitialColumn();
         const root = generalStore.currentPage;
