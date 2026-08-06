@@ -20,7 +20,8 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         await page.waitForTimeout(300);
 
         // Insert a Database block from the toolbar
-        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
+        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)")
+            .first();
         await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
         await addDatabaseBtn.click();
 
@@ -75,7 +76,8 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block", () => {
         await page.waitForTimeout(300);
 
         // Insert a Database block from the toolbar
-        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)").first();
+        const addDatabaseBtn = page.getByTestId("main-toolbar").locator(".add-database-btn:not(.undo-redo-btn)")
+            .first();
         await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
         await addDatabaseBtn.click();
 
