@@ -54,6 +54,12 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 
 let lastScrolledCursorId = '';
 let lastScrolledOffset = -1;
+let forceScrollNext = false;
+
+function handleVisualViewportEvent() {
+    forceScrollNext = true;
+    debouncedUpdatePositionMap();
+}
 
 // Alternative text measurement method for test environment (jsdom) or environments where Canvas initialization fails
 function measureTextWidthFallback(itemId: string, text: string): number {
@@ -225,7 +231,8 @@ function updateTextareaPosition() {
         // (end of composition). Otherwise, typing enough characters to wrap to
         // a new line during composition leaves the newly typed text below the
         // viewport since the anchor position never moves.
-        if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
+        if (forceScrollNext || lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
+            forceScrollNext = false;
             lastScrolledCursorId = lastCursor.itemId;
             lastScrolledOffset = lastCursor.offset;
 
@@ -243,14 +250,41 @@ function updateTextareaPosition() {
             const cursorHeight = itemInfo.lineHeight ? parseInt(String(itemInfo.lineHeight)) : 20;
             const viewportBottom = viewportTop + cursorHeight;
 
-            const stickyHeaderHeight = 80;
-            const margin = 20;
-            const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+            let stickyHeaderHeight = 80;
+            const computedHeaderHeight = typeof document !== 'undefined' ?
+                parseInt(getComputedStyle(document.documentElement).getPropertyValue('--toolbar-height')) : NaN;
+            if (!isNaN(computedHeaderHeight) && computedHeaderHeight > 0) {
+                stickyHeaderHeight = computedHeaderHeight;
+            }
 
-            if (viewportTop - window.scrollY < stickyHeaderHeight) {
-                window.scrollTo({ top: viewportTop - stickyHeaderHeight - margin, behavior: "smooth" });
-            } else if (viewportBottom - window.scrollY > windowHeight) {
-                window.scrollTo({ top: viewportBottom - windowHeight + margin, behavior: "smooth" });
+            const margin = 20;
+
+            // Get keyboard-aware viewport height (visualViewport) or fallback to window.innerHeight
+            const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+            const isVisualViewportReduced = vv ? vv.height < window.innerHeight : false;
+
+            const vvHeight = vv?.height ?? (window.innerHeight || document.documentElement.clientHeight);
+            const vvOffsetTop = vv?.offsetTop ?? 0;
+
+            // Calculate visible band top and bottom in absolute document coordinates
+            // Account for mobile toolbar which reduces the usable area at the bottom
+            let mobileToolbarHeight = 0;
+            if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                // Approximate total height of mobile action toolbar
+                mobileToolbarHeight = 50;
+            }
+
+            const bandTop = window.scrollY + vvOffsetTop + stickyHeaderHeight;
+            const bandBottom = window.scrollY + vvOffsetTop + vvHeight - mobileToolbarHeight;
+
+            const scrollBehavior = isVisualViewportReduced ? "auto" : "smooth";
+
+            if (viewportTop < bandTop) {
+                // Scroll up
+                window.scrollTo({ top: viewportTop - vvOffsetTop - stickyHeaderHeight - margin, behavior: scrollBehavior });
+            } else if (viewportBottom > bandBottom) {
+                // Scroll down
+                window.scrollTo({ top: viewportBottom - vvHeight + mobileToolbarHeight - vvOffsetTop + margin, behavior: scrollBehavior });
             }
         }
     } catch (e) {
@@ -768,6 +802,12 @@ onMount(() => {
         treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
     }
 
+    // Register visualViewport listeners to track mobile keyboard appearances
+    if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handleVisualViewportEvent);
+        window.visualViewport.addEventListener("scroll", handleVisualViewportEvent);
+    }
+
 
     // If there is an active cursor in the initial state, start blinking after a short delay
     setTimeout(() => {
@@ -837,6 +877,11 @@ onDestroy(() => {
     const treeContainer = resolveTreeContainer();
     if (treeContainer) {
         treeContainer.removeEventListener('scroll', debouncedUpdatePositionMap);
+    }
+
+    if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleVisualViewportEvent);
+        window.visualViewport.removeEventListener("scroll", handleVisualViewportEvent);
     }
 
     // Clear timer

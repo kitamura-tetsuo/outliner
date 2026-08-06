@@ -1,0 +1,6 @@
+id: mob-caret-visible-above-keyboard-5b6c2e18
+title: Mobile caret visible above keyboard
+status: testing
+tests:
+- client/e2e/core/mob-caret-visible-above-keyboard-5b6c2e18.spec.ts
+title-ja: Mobile caret visible above keyboard
