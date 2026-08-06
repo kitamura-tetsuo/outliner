@@ -132,10 +132,15 @@ describe("Demo routine schedule rule SQL", function() {
 
     // A SELECT over a DATE column yields a Date; the rules deliberately render
     // their dates as text instead (see routineOccurrenceSql).
-    const asIsoDate = (value: unknown): string =>
-        value instanceof Date
-            ? new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())).toISOString().slice(0, 10)
-            : String(value).slice(0, 10);
+    const asIsoDate = (value: unknown): string => {
+        if (typeof value === "string") return value.slice(0, 10);
+        // Handle cross-context Date instances in Jest/Mocha
+        if (Object.prototype.toString.call(value) === "[object Date]") {
+            const d = value as Date;
+            return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+        }
+        return String(value).slice(0, 10);
+    };
 
     it("the display query returns only the newest occurrence of each task", async () => {
         // The UI Definition query is a plain SELECT; run it through the same
