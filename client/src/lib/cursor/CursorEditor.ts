@@ -202,7 +202,14 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.isSyncingSelectionToTextarea = true;
+            try {
+                textarea.setSelectionRange(cursor.offset, cursor.offset);
+            } finally {
+                setTimeout(() => {
+                    store.isSyncingSelectionToTextarea = false;
+                }, 0);
+            }
         }
     }
 
@@ -256,7 +263,14 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.isSyncingSelectionToTextarea = true;
+            try {
+                textarea.setSelectionRange(cursor.offset, cursor.offset);
+            } finally {
+                setTimeout(() => {
+                    store.isSyncingSelectionToTextarea = false;
+                }, 0);
+            }
         }
 
         cursor.applyToStore();
@@ -317,7 +331,14 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.isSyncingSelectionToTextarea = true;
+            try {
+                textarea.setSelectionRange(cursor.offset, cursor.offset);
+            } finally {
+                setTimeout(() => {
+                    store.isSyncingSelectionToTextarea = false;
+                }, 0);
+            }
         }
     }
 

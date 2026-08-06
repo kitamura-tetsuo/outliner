@@ -1342,12 +1342,20 @@ function handleMouseMove(event: MouseEvent) {
         const end = Math.max(dragStartPosition, currentPosition);
         const isReversed = currentPosition < dragStartPosition;
 
-        // Set textarea selection range
-        hiddenTextareaRef.setSelectionRange(
-            start,
-            end,
-            isReversed ? "backward" : "forward",
-        );
+        // Suppress store sync while setting textarea selection manually to avoid ping-pong.
+        editorOverlayStore.isSyncingSelectionToTextarea = true;
+        try {
+            // Set textarea selection range
+            hiddenTextareaRef.setSelectionRange(
+                start,
+                end,
+                isReversed ? "backward" : "forward",
+            );
+        } finally {
+            setTimeout(() => {
+                editorOverlayStore.isSyncingSelectionToTextarea = false;
+            }, 0);
+        }
 
         // Reflect selection range to store (replace the previous drag selection
         // instead of accumulating one selection per mousemove)
@@ -2047,7 +2055,14 @@ onMount(() => {
 export function setSelectionPosition(start: number, end: number = start) {
     if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
 
-    hiddenTextareaRef.setSelectionRange(start, end);
+    editorOverlayStore.isSyncingSelectionToTextarea = true;
+    try {
+        hiddenTextareaRef.setSelectionRange(start, end);
+    } finally {
+        setTimeout(() => {
+            editorOverlayStore.isSyncingSelectionToTextarea = false;
+        }, 0);
+    }
     lastCursorPosition = end;
 
     updateSelectionAndCursor();

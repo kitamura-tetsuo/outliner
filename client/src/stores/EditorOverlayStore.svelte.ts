@@ -1814,7 +1814,8 @@ export class EditorOverlayStore {
 
             // Clear selection range
             this.clearSelectionForUser("local");
-        } else {
+        }
+        else {
             // When there is a selection range
             const isReversed = textarea.selectionDirection === "backward";
             const cursorOffset = isReversed ? currentStart : currentEnd;
