@@ -1,0 +1,7 @@
+title: "Undo/Redo toolbar buttons"
+title-ja: "Undo/Redo ツールバーボタン"
+status: "implemented"
+tests:
+  - "client/e2e/new/und-toolbar-undo-redo-6f0ad251.spec.ts"
+cross-references:
+  - "FTR-3c7f81ad"

@@ -75,7 +75,7 @@ describe("Demo API", () => {
     });
 
     it("should reset if template version changed", async () => {
-        mockDoc.getMap("metadata").set("templateVersion", 1); // Old version
+        mockDoc.getMap("metadata").set("templateVersion", DEMO_TEMPLATE_VERSION - 1); // Old version
 
         const app = express();
         app.use(express.json());

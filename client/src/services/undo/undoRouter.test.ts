@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { UndoRouter } from "./undoRouter";
+import { UndoRouter } from "./undoRouter.svelte";
 
 /** A scope: one doc, one map, one manager, registered with the router. */
 function scope(router: UndoRouter, name: string, trackedOrigins?: Set<unknown>) {
@@ -199,5 +199,25 @@ describe("UndoRouter", () => {
 
         outline.edit("a", 1);
         expect(router.undoDepth).toBe(1);
+    });
+
+    it("reactively exposes its availability", () => {
+        const router = new UndoRouter();
+        const outline = scope(router, "outline");
+
+        expect(router.canUndo()).toBe(false);
+        expect(router.canRedo()).toBe(false);
+
+        outline.edit("a", 1);
+        expect(router.canUndo()).toBe(true);
+        expect(router.canRedo()).toBe(false);
+
+        router.undo();
+        expect(router.canUndo()).toBe(false);
+        expect(router.canRedo()).toBe(true);
+
+        router.redo();
+        expect(router.canUndo()).toBe(true);
+        expect(router.canRedo()).toBe(false);
     });
 });

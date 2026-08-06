@@ -1,7 +1,7 @@
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 
-const logger = getLogger("undoRouter");
+const logger = getLogger("undoRouter.svelte");
 
 /**
  * A single undo/redo history across every Yjs scope of the workspace.
@@ -25,8 +25,8 @@ const logger = getLogger("undoRouter");
  * history leaves the global stack with it and the remaining entries stay usable.
  */
 export class UndoRouter {
-    private undoStack: Y.UndoManager[] = [];
-    private redoStack: Y.UndoManager[] = [];
+    undoStack: Y.UndoManager[] = $state([]);
+    redoStack: Y.UndoManager[] = $state([]);
 
     private registered = new Set<Y.UndoManager>();
 

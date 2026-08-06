@@ -8,6 +8,7 @@ import { store } from "../stores/store.svelte";
 import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 
 interface Props {
     onToggleDatabaseSidebar?: () => void;
@@ -141,6 +142,45 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
                 </span>
                 <span class="btn-text">Add Database</span>
             </button>
+
+            <button type="button"
+                class="add-database-btn undo-redo-btn"
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+                data-testid="toolbar-undo"
+                data-keep-editor-focus
+                disabled={!globalUndoRouter.canUndo()}
+                onpointerdown={(e) => e.preventDefault()}
+                onclick={() => globalUndoRouter.undo()}
+            >
+                <span class="btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7v6h6"></path>
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3l-3 2.7"></path>
+                    </svg>
+                </span>
+                <span class="btn-text">Undo</span>
+            </button>
+
+            <button type="button"
+                class="add-database-btn undo-redo-btn"
+                aria-label="Redo"
+                title="Redo (Ctrl+Shift+Z)"
+                data-testid="toolbar-redo"
+                data-keep-editor-focus
+                disabled={!globalUndoRouter.canRedo()}
+                onpointerdown={(e) => e.preventDefault()}
+                onclick={() => globalUndoRouter.redo()}
+            >
+                <span class="btn-icon">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 7v6h-6"></path>
+                        <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+                    </svg>
+                </span>
+                <span class="btn-text">Redo</span>
+            </button>
+
             <div role="search">
                 <SearchBox project={effectiveProject ?? undefined} />
             </div>
@@ -218,8 +258,18 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     align-items: center;
 }
 
-.add-database-btn:hover {
+.add-database-btn:hover:not(:disabled) {
     background-color: #e5e7eb;
+}
+
+.add-database-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.undo-redo-btn {
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
 }
 
 .databases-btn {

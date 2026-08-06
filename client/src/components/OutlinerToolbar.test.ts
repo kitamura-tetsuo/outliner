@@ -76,6 +76,8 @@ describe("OutlinerToolbar", () => {
         expect(getByTitle("Insert Sibling Below")).toBeTruthy();
         expect(getByTitle("Vote")).toBeTruthy();
         expect(getByTitle("Delete")).toBeTruthy();
+        expect(getByTitle("Undo")).toBeTruthy();
+        expect(getByTitle("Redo")).toBeTruthy();
     });
 
     test("mobile toolbar buttons call corresponding handlers", async () => {
@@ -88,6 +90,10 @@ describe("OutlinerToolbar", () => {
             onInsertSiblingBelow: vi.fn(),
             onVote: vi.fn(),
             onDelete: vi.fn(),
+            onUndo: vi.fn(),
+            onRedo: vi.fn(),
+            canUndo: true,
+            canRedo: true,
         };
 
         const { getByTitle } = render(OutlinerToolbar, {
@@ -120,6 +126,25 @@ describe("OutlinerToolbar", () => {
 
         await fireEvent.click(getByTitle("Delete"));
         expect(handlers.onDelete).toHaveBeenCalledTimes(1);
+
+        await fireEvent.click(getByTitle("Undo"));
+        expect(handlers.onUndo).toHaveBeenCalledTimes(1);
+
+        await fireEvent.click(getByTitle("Redo"));
+        expect(handlers.onRedo).toHaveBeenCalledTimes(1);
+    });
+
+    test("undo/redo buttons correctly bind disabled states", () => {
+        const { getByTitle } = render(OutlinerToolbar, {
+            props: {
+                mode: "mobile",
+                canUndo: false,
+                canRedo: true,
+            },
+        });
+
+        expect((getByTitle("Undo") as HTMLButtonElement).disabled).toBe(true);
+        expect((getByTitle("Redo") as HTMLButtonElement).disabled).toBe(false);
     });
 
     test("file input triggers onFileSelect", async () => {

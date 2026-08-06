@@ -9,7 +9,7 @@ import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
 import * as runner from "../../services/calendar/calendarQueryRunner";
 import { createCalendar, destroyCalendarUndoManager, getCalendar } from "../../services/calendar/calendarService";
-import { globalUndoRouter } from "../../services/undo/undoRouter";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import CalendarView from "./CalendarView.svelte";

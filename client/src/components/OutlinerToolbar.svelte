@@ -18,6 +18,10 @@
         onInsertSiblingBelow?: () => void;
         onDelete?: () => void;
         onVote?: () => void;
+        onUndo?: () => void;
+        onRedo?: () => void;
+        canUndo?: boolean;
+        canRedo?: boolean;
     }
 
     let {
@@ -35,6 +39,10 @@
         onInsertSiblingBelow,
         onDelete,
         onVote,
+        onUndo,
+        onRedo,
+        canUndo = false,
+        canRedo = false,
     }: Props = $props();
 
     // File input used by the "Add Image" action. Kept local to this component
@@ -94,6 +102,34 @@
             onclick={onIndent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </button>
+        <button type="button"
+            class="mobile-toolbar-btn"
+            title="Undo"
+            data-testid="mobile-toolbar-undo"
+            data-keep-editor-focus
+            disabled={!canUndo}
+            onpointerdown={(e) => e.preventDefault()}
+            onclick={onUndo}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 7v6h6"></path>
+                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3l-3 2.7"></path>
+            </svg>
+        </button>
+        <button type="button"
+            class="mobile-toolbar-btn"
+            title="Redo"
+            data-testid="mobile-toolbar-redo"
+            data-keep-editor-focus
+            disabled={!canRedo}
+            onpointerdown={(e) => e.preventDefault()}
+            onclick={onRedo}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 7v6h-6"></path>
+                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+            </svg>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
@@ -239,7 +275,12 @@
         flex-shrink: 0;
     }
 
-    .mobile-toolbar-btn:hover {
+    .mobile-toolbar-btn:hover:not(:disabled) {
         background: #e0e0e0;
+    }
+
+    .mobile-toolbar-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 </style>

@@ -183,7 +183,7 @@ function handleBlur(event: FocusEvent) {
             tagName === "input" ||
             tagName === "textarea" ||
             tagName === "select" ||
-            tagName === "button" ||
+            (tagName === "button" && !relatedTarget.hasAttribute("data-keep-editor-focus")) ||
             relatedTarget.closest(".page-search-box") ||
             relatedTarget.closest("[data-testid='search-panel']") ||
             relatedTarget.closest(".component-wrapper")

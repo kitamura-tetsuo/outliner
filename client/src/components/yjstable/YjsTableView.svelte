@@ -15,7 +15,7 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
-import { globalUndoRouter } from "../../services/undo/undoRouter";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -213,11 +213,13 @@ onDestroy(() => {
             <button
                 type="button"
                 data-testid="yjs-table-undo"
+                disabled={!globalUndoRouter.canUndo()}
                 onclick={() => globalUndoRouter.undo()}
             >Undo</button>
             <button
                 type="button"
                 data-testid="yjs-table-redo"
+                disabled={!globalUndoRouter.canRedo()}
                 onclick={() => globalUndoRouter.redo()}
             >Redo</button>
         </div>
@@ -347,6 +349,12 @@ onDestroy(() => {
 
 .view-toggles button.active {
     background: #2563eb;
+    color: white;
+}
+
+.undo-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
     border-color: #2563eb;
     color: white;
 }

@@ -13,7 +13,7 @@
 
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
-import { globalUndoRouter } from "../undo/undoRouter";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 
 export const ADAPTER_ORIGIN = Symbol("adapter-origin");
 export const TABLE_REGISTRY_KEY = "yjsTables";

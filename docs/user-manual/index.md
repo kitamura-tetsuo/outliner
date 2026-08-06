@@ -96,10 +96,12 @@ Easily reorder items using drag and drop. You can also use `Alt + ↑` and `Alt 
 
 Undo and redo run off a single history for the whole project.
 
-### Shortcuts
+### Shortcuts and Toolbar Buttons
 
 - `Ctrl+Z` undoes the most recent change.
 - `Ctrl+Shift+Z` or `Ctrl+Y` redoes it.
+
+You can also use the Undo and Redo buttons located on the main desktop toolbar and the mobile action toolbar (when on a mobile device).
 
 The outline and every database table each keep their own change history internally, but you never have to think about which one you are in. Changes made by other people editing at the same time are never undone by you.
 
@@ -252,3 +254,5 @@ You can also access a complete list of shortcuts by expanding the **Keyboard & a
 | Move item up            | `Alt + ↑`                        | `Option + ↑`                   |
 | Move item down          | `Alt + ↓`                        | `Option + ↓`                   |
 | Open context menu       | `Shift + F10` or `Menu`          | `Shift + F10` or `Menu`        |
+
+_Note: Undo and Redo are also available as buttons on the main desktop toolbar and the mobile action toolbar._

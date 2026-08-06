@@ -25,6 +25,7 @@
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
     import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
+    import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
     import ConfirmDialog from "./ConfirmDialog.svelte";
 
@@ -2274,6 +2275,10 @@
         onInsertSiblingBelow={handleMobileInsertSiblingBelow}
         onDelete={handleMobileDelete}
         onVote={handleMobileVote}
+        onUndo={() => globalUndoRouter.undo()}
+        onRedo={() => globalUndoRouter.redo()}
+        canUndo={globalUndoRouter.canUndo()}
+        canRedo={globalUndoRouter.canRedo()}
     />
 {/if}
 
