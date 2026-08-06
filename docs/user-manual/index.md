@@ -197,7 +197,7 @@ Click the **Add Database** button in the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
-- **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), optionally adjust the SQL name, and click **Create**.
+- **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**. The SQL name used in queries is generated automatically and displayed below the input fields.
 - **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
 
 Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
@@ -226,8 +226,8 @@ A calendar is a query plus a role assignment over its result columns — which c
 
 - **Query and Roles:** Candidates for roles are the columns the query actually returns. Changing the query never discards an existing role assignment for a column that is temporarily missing.
 - **Writeability:** A query must SELECT both `source_kind` and `source_id` for its rows to be writable; otherwise the calendar is read-only.
-- **Views:** Switch between Day, Multi-day, Week, Month, and Gantt views. Gantt view shows one row per entry, nested by the outline's own hierarchy.
-- **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys.
+- **Views:** Switch between Day, Multi-day, Week, Month, and Gantt views. Gantt view shows one row per entry, nested by the outline's own hierarchy. A parent with dated children shows a rolled-up bar spanning from their earliest start to latest end instead of its own dates; dragging it shifts the whole subtree as one undo entry. A parent's own due date (if any) renders as a marker alongside its rolled-up bar. Axis granularity (day/week/month/quarter) is a view setting.
+- **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys. While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land, formatted in the calendar's own timezone.
 - **Swimlanes:** Grouping by "tags" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry onto another lane to replace its tag, or hold `Ctrl` (`Cmd` on macOS) while dropping to add the lane's tag instead.
 - **Safe Operations:** "New entry" always asks which page to create it under, and deleting an entry always prompts between removing it and just clearing its date.
 
