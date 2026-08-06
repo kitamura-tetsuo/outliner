@@ -85,6 +85,8 @@ export class EditorOverlayStore {
     compositionLength = 0;
     // Holds the textarea element of GlobalTextArea
     textareaRef: HTMLTextAreaElement | null = null;
+    // Flag to suppress feedback loops when store writes to textarea
+    isSyncingSelectionToTextarea = false;
     // onEdit callback
     onEditCallback: (() => void) | null = null;
     private presenceSyncScheduled = false;
@@ -1563,8 +1565,15 @@ export class EditorOverlayStore {
             // Update textarea content
             textarea.value = startItemText;
 
-            // Set selection
-            textarea.setSelectionRange(startOffset, endOffset);
+            this.isSyncingSelectionToTextarea = true;
+            try {
+                // Set selection
+                textarea.setSelectionRange(startOffset, endOffset);
+            } finally {
+                setTimeout(() => {
+                    this.isSyncingSelectionToTextarea = false;
+                }, 0);
+            }
         } else {
             // If the selection spans multiple items
             const viewModel = store.activeViewModel;
@@ -1645,13 +1654,20 @@ export class EditorOverlayStore {
                 // Update textarea content
                 textarea.value = combinedText;
 
-                // Handle reversed selection
-                if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
-                    // start is before end
-                    textarea.setSelectionRange(selectionStart, selectionEnd);
-                } else {
-                    // end is before start
-                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                this.isSyncingSelectionToTextarea = true;
+                try {
+                    // Handle reversed selection
+                    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
+                        // start is before end
+                        textarea.setSelectionRange(selectionStart, selectionEnd);
+                    } else {
+                        // end is before start
+                        textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                    }
+                } finally {
+                    setTimeout(() => {
+                        this.isSyncingSelectionToTextarea = false;
+                    }, 0);
                 }
             } else {
                 // Use ViewModel for order
@@ -1704,13 +1720,20 @@ export class EditorOverlayStore {
                 // Update textarea content
                 textarea.value = combinedText;
 
-                // Handle reversed selection
-                if (!isReversed) {
-                    // start is before end
-                    textarea.setSelectionRange(selectionStart, selectionEnd);
-                } else {
-                    // end is before start
-                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                this.isSyncingSelectionToTextarea = true;
+                try {
+                    // Handle reversed selection
+                    if (!isReversed) {
+                        // start is before end
+                        textarea.setSelectionRange(selectionStart, selectionEnd);
+                    } else {
+                        // end is before start
+                        textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                    }
+                } finally {
+                    setTimeout(() => {
+                        this.isSyncingSelectionToTextarea = false;
+                    }, 0);
                 }
             }
         }
@@ -1757,7 +1780,68 @@ export class EditorOverlayStore {
         // Ensure cursor offset is within bounds
         const safeOffset = Math.min(Math.max(0, cursor.offset), text.length);
         if (textarea.selectionStart !== safeOffset || textarea.selectionEnd !== safeOffset) {
-            textarea.setSelectionRange(safeOffset, safeOffset);
+            this.isSyncingSelectionToTextarea = true;
+            try {
+                textarea.setSelectionRange(safeOffset, safeOffset);
+            } finally {
+                setTimeout(() => {
+                    this.isSyncingSelectionToTextarea = false;
+                }, 0);
+            }
+        }
+    }
+
+    syncSelectionFromTextarea() {
+        if (this.isSyncingSelectionToTextarea) return;
+        const textarea = this.getTextareaRef();
+        if (!textarea) return;
+
+        const activeId = this.getActiveItem();
+        if (!activeId) return;
+
+        const currentStart = textarea.selectionStart;
+        const currentEnd = textarea.selectionEnd;
+
+        // When there is no selection range
+        if (currentStart === currentEnd) {
+            // Set cursor position
+            this.setCursor({
+                itemId: activeId,
+                offset: currentStart,
+                isActive: true,
+                userId: "local",
+            });
+
+            // Clear selection range
+            this.clearSelectionForUser("local");
+        }
+        else {
+            // When there is a selection range
+            const isReversed = textarea.selectionDirection === "backward";
+            const cursorOffset = isReversed ? currentStart : currentEnd;
+
+            // Set cursor position
+            this.setCursor({
+                itemId: activeId,
+                offset: cursorOffset,
+                isActive: true,
+                userId: "local",
+            });
+
+            // Replace previous local drag selections instead of accumulating them,
+            // but keep box selections (Alt+Shift) created by this gesture intact
+            const remainingEntries = Object.entries(this.selections).filter(
+                ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
+            );
+            this.selections = Object.fromEntries(remainingEntries);
+            this.setSelection({
+                startItemId: activeId,
+                endItemId: activeId,
+                startOffset: Math.min(currentStart, currentEnd),
+                endOffset: Math.max(currentStart, currentEnd),
+                userId: "local",
+                isReversed: isReversed,
+            });
         }
     }
 

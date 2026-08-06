@@ -1,0 +1,7 @@
+title: Mobile OS Selection Sync
+title-ja: モバイルOSの選択同期
+description: Syncs selection changes made by the mobile OS software keyboard back to the outliner store.
+description-ja: モバイルOSのソフトウェアキーボードによる選択変更をアウトライナーストアに同期します。
+status: implemented
+tests:
+- client/e2e/core/mob-os-selection-sync-7c41f9a2.spec.ts

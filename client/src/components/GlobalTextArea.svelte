@@ -10,8 +10,23 @@ import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
+import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
+
+let selectionChangeRafId: number | null = null;
+function handleSelectionChange() {
+    if (selectionChangeRafId !== null) return;
+    selectionChangeRafId = requestAnimationFrame(() => {
+        selectionChangeRafId = null;
+        if (!textareaRef || document.activeElement !== textareaRef) return;
+        if (store.isComposing) return;
+        if (aliasPickerStore.isVisible) return;
+        if (commandPaletteStore.isVisible) return;
+
+        store.syncSelectionFromTextarea();
+    });
+}
 
 let measureCanvas: HTMLCanvasElement | null = null;
 let measureCtx: CanvasRenderingContext2D | null = null;
@@ -23,6 +38,7 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 
 // Register global textarea to the store
 onMount(() => {
+    document.addEventListener("selectionchange", handleSelectionChange);
     // Initialize measurement canvas on client only
     // Since the Canvas API may not be supported in Node.js test environments,
     // check for existence before initialization.
@@ -57,6 +73,10 @@ onMount(() => {
 });
 
 onDestroy(() => {
+    document.removeEventListener("selectionchange", handleSelectionChange);
+    if (selectionChangeRafId !== null) {
+        cancelAnimationFrame(selectionChangeRafId);
+    }
     store.setTextareaRef(null);
     try { generalStore.textareaRef = null; } catch (_e) { /* ignore */ }
 });
@@ -255,6 +275,7 @@ function handleBlur(event: FocusEvent) {
     oncompositionend={handleCompositionEnd}
     oncopy={handleCopy}
     oncut={handleCut}
+    onselect={handleSelectionChange}
     onpaste={async event => {
         try {
             await handlePaste(event);

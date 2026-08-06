@@ -984,78 +984,10 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
  */
 function updateSelectionAndCursor() {
     if (!hiddenTextareaRef) return;
+    editorOverlayStore.syncSelectionFromTextarea();
 
     const currentStart = hiddenTextareaRef.selectionStart;
     const currentEnd = hiddenTextareaRef.selectionEnd;
-
-    // When there is no selection range
-    if (currentStart === currentEnd) {
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: currentStart,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Clear selection range
-        const selections = Object.values(editorOverlayStore.selections).filter(s =>
-            s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id
-        );
-
-        if (selections.length > 0) {
-            // Delete selection range
-            const filteredEntries = [];
-            for (const [key, s] of Object.entries(editorOverlayStore.selections)) {
-                if (!(s.userId === "local" && s.startItemId === model.id && s.endItemId === model.id)) {
-                    filteredEntries.push([key, s]);
-                }
-            }
-            editorOverlayStore.selections = Object.fromEntries(filteredEntries);
-        }
-
-        // Clear global textarea selection range
-        if (hiddenTextareaRef) {
-            hiddenTextareaRef.setSelectionRange(currentStart, currentStart);
-        }
-    }
-    else {
-        // When there is a selection range
-        const isReversed = hiddenTextareaRef.selectionDirection === "backward";
-        const cursorOffset = isReversed ? currentStart : currentEnd;
-
-        // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: cursorOffset,
-            isActive: true,
-            userId: "local",
-        });
-
-        // Replace previous local drag selections instead of accumulating them,
-        // but keep box selections (Alt+Shift) created by this gesture intact
-        const remainingEntries = Object.entries(editorOverlayStore.selections).filter(
-            ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
-        );
-        editorOverlayStore.selections = Object.fromEntries(remainingEntries);
-        editorOverlayStore.setSelection({
-            startItemId: model.id,
-            endItemId: model.id,
-            startOffset: Math.min(currentStart, currentEnd),
-            endOffset: Math.max(currentStart, currentEnd),
-            userId: "local",
-            isReversed: isReversed,
-        });
-
-        // Set global textarea selection range
-        if (hiddenTextareaRef) {
-            hiddenTextareaRef.setSelectionRange(
-                currentStart,
-                currentEnd,
-                isReversed ? "backward" : "forward",
-            );
-        }
-    }
 
     // Update cursor position
     lastCursorPosition = currentStart === currentEnd ? currentStart :
