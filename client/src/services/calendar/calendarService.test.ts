@@ -153,7 +153,7 @@ describe("calendarService", () => {
 
         updateCalendar(project, calendarId, { name: "Renamed" });
         expect(getCalendar(project, calendarId)?.name).toBe("Renamed");
-        expect(globalUndoRouter.canUndo()).toBe(true);
+        expect(globalUndoRouter.canUndo).toBe(true);
 
         globalUndoRouter.undo();
         expect(getCalendar(project, calendarId)?.name).toBe("Original");

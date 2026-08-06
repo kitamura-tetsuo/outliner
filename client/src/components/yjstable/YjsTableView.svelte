@@ -213,13 +213,13 @@ onDestroy(() => {
             <button
                 type="button"
                 data-testid="yjs-table-undo"
-                disabled={!globalUndoRouter.canUndo()}
+                disabled={!globalUndoRouter.canUndo}
                 onclick={() => globalUndoRouter.undo()}
             >Undo</button>
             <button
                 type="button"
                 data-testid="yjs-table-redo"
-                disabled={!globalUndoRouter.canRedo()}
+                disabled={!globalUndoRouter.canRedo}
                 onclick={() => globalUndoRouter.redo()}
             >Redo</button>
         </div>

@@ -149,7 +149,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
                 title="Undo (Ctrl+Z)"
                 data-testid="toolbar-undo"
                 data-keep-editor-focus
-                disabled={!globalUndoRouter.canUndo()}
+                disabled={!globalUndoRouter.canUndo}
                 onpointerdown={(e) => e.preventDefault()}
                 onclick={() => globalUndoRouter.undo()}
             >
@@ -168,7 +168,7 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
                 title="Redo (Ctrl+Shift+Z)"
                 data-testid="toolbar-redo"
                 data-keep-editor-focus
-                disabled={!globalUndoRouter.canRedo()}
+                disabled={!globalUndoRouter.canRedo}
                 onpointerdown={(e) => e.preventDefault()}
                 onclick={() => globalUndoRouter.redo()}
             >

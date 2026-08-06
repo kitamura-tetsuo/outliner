@@ -2277,8 +2277,8 @@
         onVote={handleMobileVote}
         onUndo={() => globalUndoRouter.undo()}
         onRedo={() => globalUndoRouter.redo()}
-        canUndo={globalUndoRouter.canUndo()}
-        canRedo={globalUndoRouter.canRedo()}
+        canUndo={globalUndoRouter.canUndo}
+        canRedo={globalUndoRouter.canRedo}
     />
 {/if}
 

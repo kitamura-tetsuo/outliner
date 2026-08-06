@@ -66,7 +66,7 @@ describe("UndoRouter", () => {
         router.redo();
         expect(outline.map.get("c")).toBe(3);
         expect(router.redoDepth).toBe(0);
-        expect(router.canRedo()).toBe(false);
+        expect(router.canRedo).toBe(false);
     });
 
     it("keeps ordering when a scope is edited again within its capture window", () => {
@@ -103,7 +103,7 @@ describe("UndoRouter", () => {
 
         outline.edit("c", 3);
         expect(router.redoDepth).toBe(0);
-        expect(router.canRedo()).toBe(false);
+        expect(router.canRedo).toBe(false);
 
         router.redo();
         expect(table.map.has("b")).toBe(false);
@@ -205,19 +205,19 @@ describe("UndoRouter", () => {
         const router = new UndoRouter();
         const outline = scope(router, "outline");
 
-        expect(router.canUndo()).toBe(false);
-        expect(router.canRedo()).toBe(false);
+        expect(router.canUndo).toBe(false);
+        expect(router.canRedo).toBe(false);
 
         outline.edit("a", 1);
-        expect(router.canUndo()).toBe(true);
-        expect(router.canRedo()).toBe(false);
+        expect(router.canUndo).toBe(true);
+        expect(router.canRedo).toBe(false);
 
         router.undo();
-        expect(router.canUndo()).toBe(false);
-        expect(router.canRedo()).toBe(true);
+        expect(router.canUndo).toBe(false);
+        expect(router.canRedo).toBe(true);
 
         router.redo();
-        expect(router.canUndo()).toBe(true);
-        expect(router.canRedo()).toBe(false);
+        expect(router.canUndo).toBe(true);
+        expect(router.canRedo).toBe(false);
     });
 });

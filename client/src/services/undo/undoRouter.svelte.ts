@@ -125,11 +125,11 @@ export class UndoRouter {
         this.run(this.redoStack, this.undoStack, (um) => um.redo());
     }
 
-    public canUndo(): boolean {
+    get canUndo(): boolean {
         return this.undoStack.length > 0;
     }
 
-    public canRedo(): boolean {
+    get canRedo(): boolean {
         return this.redoStack.length > 0;
     }
 
