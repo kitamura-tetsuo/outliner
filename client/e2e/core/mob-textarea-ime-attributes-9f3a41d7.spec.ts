@@ -12,7 +12,7 @@ test.describe("Mobile textarea IME attributes", () => {
     test(
         "global textarea has correct IME attributes to disable autocapitalize and autocorrect",
         async ({ page }, testInfo) => {
-            const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item1"]);
+            await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item1"]);
 
             const textarea = page.locator(".global-textarea");
 
