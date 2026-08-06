@@ -67,7 +67,7 @@ export class Comments {
         try {
             logger.info("[Comments.addComment] pushing comment to Y.Array");
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
         if (this._ensureInitialized) {
             this.yArray = this._ensureInitialized();
@@ -76,7 +76,7 @@ export class Comments {
         try {
             logger.info("[Comments.addComment] pushed. current length=", this.yArray.length);
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
         return { id: c.get("id") as string };
     }
@@ -729,7 +729,7 @@ export class Item {
                                 } catch (_e) {
                                     logDeduplicatedWarning(
                                         "AppSchema",
-                                        (this as any).key || (this as any).id || "unknown",
+                                        ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"),
                                         _e,
                                     );
                                 }
@@ -750,7 +750,7 @@ export class Item {
                                     } catch (_e) {
                                         logDeduplicatedWarning(
                                             "AppSchema",
-                                            (this as any).key || (this as any).id || "unknown",
+                                            ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"),
                                             _e,
                                         );
                                     }
@@ -762,7 +762,7 @@ export class Item {
                 }
             }
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
 
         // 2) Add to this node itself as usual
@@ -774,7 +774,7 @@ export class Item {
         try {
             logger.debug({ url, id: this.id }, "[Item.addAttachment] pushing url");
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
 
         arr.push(mime || name ? [[url, mime, name] as unknown as string] : [url]);
@@ -786,7 +786,7 @@ export class Item {
                 );
             }
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
     }
 
@@ -844,7 +844,7 @@ export class Item {
         try {
             logger.info("[Item.addComment] id=", this.id);
         } catch (_e) {
-            logDeduplicatedWarning("AppSchema", (this as any).key || (this as any).id || "unknown", _e);
+            logDeduplicatedWarning("AppSchema", ((this as { key?: string }).key || (this as { id?: string }).id || "unknown"), _e);
         }
         let arr = this.value.get("comments") as Y.Array<Y.Map<CommentValueType>> | undefined;
         if (!arr) {
