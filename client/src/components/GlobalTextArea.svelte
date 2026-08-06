@@ -248,8 +248,8 @@ function handleBlur(event: FocusEvent) {
     aria-controls="outliner-tree"
     aria-activedescendant={store.getActiveItem() ?? undefined}
     autocapitalize="off"
-    autocorrect="off"
     autocomplete="off"
+    {...{ autocorrect: "off" }}
     spellcheck="false"
     enterkeyhint="enter"
     inputmode="text"
