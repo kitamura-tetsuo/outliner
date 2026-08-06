@@ -742,11 +742,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineStartOffset = getLineStartOffset(text, currentLineIndex);
 
-        // Get current selection anchor
-        const existingSelection = this.getSelectionForCurrentItem();
-
         // If current cursor position is already at line start, do nothing (only if no selection)
-        if (this.offset === lineStartOffset && !existingSelection) {
+        if (this.offset === lineStartOffset && !this.getSelectionForCurrentItem()) {
             return;
         }
 
@@ -767,11 +764,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const currentLineIndex = getCurrentLineIndex(text, this.offset);
         const lineEndOffset = getLineEndOffset(text, currentLineIndex);
 
-        // Get current selection anchor
-        const existingSelection = this.getSelectionForCurrentItem();
-
         // If current cursor position is already at line end, do nothing (only if no selection)
-        if (this.offset === lineEndOffset && !existingSelection) {
+        if (this.offset === lineEndOffset && !this.getSelectionForCurrentItem()) {
             return;
         }
 
