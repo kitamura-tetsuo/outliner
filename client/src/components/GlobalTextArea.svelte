@@ -247,6 +247,12 @@ function handleBlur(event: FocusEvent) {
     aria-label="Edit item text"
     aria-controls="outliner-tree"
     aria-activedescendant={store.getActiveItem() ?? undefined}
+    autocapitalize="off"
+    autocorrect="off"
+    autocomplete="off"
+    spellcheck="false"
+    enterkeyhint="enter"
+    inputmode="text"
     onkeydown={handleKeyDown}
     onbeforeinput={handleBeforeInput}
     oninput={handleInput}
