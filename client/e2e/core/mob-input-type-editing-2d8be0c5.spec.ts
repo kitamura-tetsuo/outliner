@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { devices } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 test.use({ ...devices["Pixel 7"] });
 
 test.describe("Mobile InputType Editing (Android Chrome IME)", () => {
     test("handles various inputTypes correctly", async ({ page }, testInfo) => {
-        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item1"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["item1"]);
 
         await page.waitForSelector(".outliner-item");
 
