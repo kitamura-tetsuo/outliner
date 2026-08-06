@@ -28,6 +28,8 @@ export interface CursorEditingContext {
     clearSelection(): void;
     applyToStore(): void;
     findTarget(): Item | undefined;
+    moveToLineStart(): void;
+    moveToLineEnd(): void;
 }
 
 export class CursorEditor {
@@ -578,9 +580,9 @@ export class CursorEditor {
                 }
             }
         } else if (type === "insertLineBreak") {
-            this.cursor.insertLineBreak();
+            this.insertLineBreak();
         } else if (type === "insertParagraph") {
-            this.cursor.insertItemBelow();
+            this.insertItemBelow();
         } else if (
             type === "insertFromPaste" || type === "insertFromPasteAsQuotation" || type === "insertFromDrop"
             || type === "insertTranspose" || type === "insertFromYank"

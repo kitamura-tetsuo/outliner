@@ -119,6 +119,8 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             clearSelection: vi.fn(),
             applyToStore: vi.fn(),
             findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
         };
         editor = new CursorEditor(cursorCtx);
 
@@ -146,6 +148,8 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
             clearSelection: vi.fn(),
             applyToStore: vi.fn(),
             findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
         };
         editor = new CursorEditor(cursorCtx);
 
