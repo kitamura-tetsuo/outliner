@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { devices } from "@playwright/test";
+import { waitForCursorVisible } from "../../e2e/helpers";
 import { CursorValidator } from "../../e2e/utils/cursorValidation";
 import { TestHelpers } from "../../e2e/utils/testHelpers";
-import { waitForCursorVisible } from "../../e2e/helpers";
-import { devices } from "@playwright/test";
 
 test.use({ ...devices["Pixel 7"] });
 
@@ -11,7 +11,7 @@ test("Mobile OS selection changes sync back to outliner store", async ({ page },
     const lines = [
         "First item",
         "Second item",
-        "Third item"
+        "Third item",
     ];
     await TestHelpers.seedProjectAndNavigate(page, testInfo, lines);
 
