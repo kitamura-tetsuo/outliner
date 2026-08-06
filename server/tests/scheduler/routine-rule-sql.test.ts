@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { expect } from "chai";
 import {
     buildDemoScheduleRules,
@@ -15,7 +14,7 @@ import { castValueForColumn, parseSchemaString } from "../../src/scheduler/Sched
 // executor (PGlite in a worker thread), exactly as the scheduler runs them:
 // same schema, same seeded records, same occurrence setting.
 describe("Demo routine schedule rule SQL", function() {
-    jest.setTimeout(60000);
+    this.timeout(60000);
 
     const occurrences = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
     const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
@@ -134,14 +133,10 @@ describe("Demo routine schedule rule SQL", function() {
     // A SELECT over a DATE column yields a Date; the rules deliberately render
     // their dates as text instead (see routineOccurrenceSql).
     const asIsoDate = (value: unknown): string => {
-        if (value instanceof Date) {
-            return new Date(Date.UTC(value.getFullYear(), value.getMonth(), value.getDate())).toISOString().slice(
-                0,
-                10,
-            );
-        }
-        const d = new Date(value as string);
-        if (!isNaN(d.getTime())) {
+        if (typeof value === "string") return value.slice(0, 10);
+        // Handle cross-context Date instances in Jest/Mocha
+        if (Object.prototype.toString.call(value) === "[object Date]") {
+            const d = value as Date;
             return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
         }
         return String(value).slice(0, 10);
