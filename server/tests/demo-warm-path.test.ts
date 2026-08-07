@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { expect } from "chai";
 import express from "express";
 import sinon from "sinon";
@@ -12,7 +13,7 @@ import { Project } from "../src/schema/app-schema.js";
 // server answers such visits from a verdict that is invalidated as soon as the
 // document changes.
 describe("Demo warm-path validation", function() {
-    this.timeout(10000);
+    jest.setTimeout(10000);
 
     function seededDoc(lastReset = Date.now()): Y.Doc {
         const ydoc = new Y.Doc();

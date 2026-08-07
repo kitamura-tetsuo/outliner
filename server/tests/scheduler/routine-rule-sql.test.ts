@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { expect } from "chai";
 import {
     buildDemoScheduleRules,
@@ -14,7 +15,7 @@ import { castValueForColumn, parseSchemaString } from "../../src/scheduler/Sched
 // executor (PGlite in a worker thread), exactly as the scheduler runs them:
 // same schema, same seeded records, same occurrence setting.
 describe("Demo routine schedule rule SQL", function() {
-    this.timeout(60000);
+    jest.setTimeout(60000);
 
     const occurrences = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
     const templates = demoTables.find((t) => t.tableId === DEMO_ROUTINE_TEMPLATES_TABLE_ID)!;
