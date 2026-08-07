@@ -1221,7 +1221,7 @@ export class KeyEventHandler {
                     textareaElement.value = node.text.toString();
 
                     store.suppressSelectionResync = true;
-                    textareaElement.setSelectionRange(firstCursor.offset, firstCursor.offset);
+                    store.applyTextareaSelectionRange(textareaElement, firstCursor.offset, firstCursor.offset);
                     queueMicrotask(() => {
                         store.suppressSelectionResync = false;
                     });

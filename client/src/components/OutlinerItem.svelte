@@ -931,7 +931,7 @@ function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
 
     if (cursorPosition !== undefined) {
         // Set cursor position to textarea
-        textareaEl.setSelectionRange(cursorPosition, cursorPosition);
+        editorOverlayStore.applyTextareaSelectionRange(textareaEl, cursorPosition, cursorPosition);
     }
 
     // Show mobile toolbar when editing starts (if on mobile)
@@ -1341,7 +1341,8 @@ function handleMouseMove(event: MouseEvent) {
         const isReversed = currentPosition < dragStartPosition;
 
         // Set textarea selection range
-        hiddenTextareaRef.setSelectionRange(
+        editorOverlayStore.applyTextareaSelectionRange(
+            hiddenTextareaRef,
             start,
             end,
             isReversed ? "backward" : "forward",
@@ -2045,7 +2046,7 @@ onMount(() => {
 export function setSelectionPosition(start: number, end: number = start) {
     if (!hiddenTextareaRef || !hasCursorBasedOnState()) return;
 
-    hiddenTextareaRef.setSelectionRange(start, end);
+    editorOverlayStore.applyTextareaSelectionRange(hiddenTextareaRef, start, end);
     lastCursorPosition = end;
 
     updateSelectionAndCursor();
