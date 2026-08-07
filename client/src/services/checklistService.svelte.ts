@@ -277,14 +277,16 @@ class ChecklistService {
             if (changed) this.syncFromYjs();
 
             // Still need to update the _parsedRule in the local mirror cache for performance
-            this.lists = this.lists.map(l => {
+            let cacheChanged = false;
+            const newLists = this.lists.map(l => {
                 if (l.id !== listId || !l.rrule) return l;
-                let rule = l._parsedRule;
-                if (!rule) {
-                    rule = RRule.fromString(l.rrule);
+                if (!l._parsedRule) {
+                    cacheChanged = true;
+                    return { ...l, _parsedRule: RRule.fromString(l.rrule) };
                 }
-                return { ...l, _parsedRule: rule };
+                return l;
             });
+            if (cacheChanged) this.lists = newLists;
         } else {
             let changedLocal = false;
             const newArr = this.lists.map(l => {
