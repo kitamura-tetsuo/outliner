@@ -1,5 +1,5 @@
 /** @feature CLP-4584c0de */
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -55,15 +55,15 @@ test("deployed demo preserves the Sales Grid binding through the real clipboard"
     // Some headless testing environments require dispatching paste directly when
     // Control+v does not work properly natively for custom clipboard contents.
     await page.evaluate(async () => {
-        let fallbackText = "";
+        const dt = new DataTransfer();
         try {
-            fallbackText = await navigator.clipboard.readText();
+            const clipboardText = await navigator.clipboard.readText();
+            dt.setData("text/plain", clipboardText);
         } catch {
             // eslint-disable-next-line no-restricted-globals
-            fallbackText = (window as any).lastCopiedText || "";
+            const windowText = (window as any).lastCopiedText || "";
+            dt.setData("text/plain", windowText);
         }
-        const dt = new DataTransfer();
-        dt.setData("text/plain", fallbackText);
         // Fallback for playwright custom mime type stripping
         // eslint-disable-next-line no-restricted-globals
         if ((window as any).lastCopiedStructuredItems) {
