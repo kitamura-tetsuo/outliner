@@ -1549,9 +1549,14 @@ export class EditorOverlayStore {
     ) {
         this.suppressSelectionResync = true;
         textarea.setSelectionRange(start, end, direction);
-        queueMicrotask(() => {
+        // Do not clear the flag in a microtask. Wait for the selectionchange event.
+        // The event handler will clear it, or a timeout will clear it as a fallback.
+        if ((this as any)._selectionSyncTimeout) {
+            clearTimeout((this as any)._selectionSyncTimeout);
+        }
+        (this as any)._selectionSyncTimeout = setTimeout(() => {
             this.suppressSelectionResync = false;
-        });
+        }, 50);
     }
 
     syncTextareaToSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
