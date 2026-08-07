@@ -74,7 +74,7 @@
     }
 
     function handleAuthLogout() {
-        isAuthenticated = false;
+        isAuthenticated = projectName === DEMO_PROJECT_NAME;
     }
 
     async function loadProject() {
@@ -178,10 +178,16 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6 flex-shrink-0">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
+        {#if projectName !== DEMO_PROJECT_NAME}
+            <AuthComponent
+                onAuthSuccess={handleAuthSuccess}
+                onAuthLogout={handleAuthLogout}
+            />
+        {:else}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {/if}
     </div>
 
     {#if isLoading}
