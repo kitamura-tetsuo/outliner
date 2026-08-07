@@ -86,6 +86,8 @@ export class EditorOverlayStore {
     // Holds the textarea element of GlobalTextArea
     textareaRef: HTMLTextAreaElement | null = null;
     suppressSelectionResync = false;
+    _selectionSyncTimeout: number | null = null;
+    lastSetSelection = { start: -1, end: -1, direction: "none" as "none" | "forward" | "backward" };
     // onEdit callback
     onEditCallback: (() => void) | null = null;
     private presenceSyncScheduled = false;
@@ -1551,12 +1553,12 @@ export class EditorOverlayStore {
         textarea.setSelectionRange(start, end, direction);
         // Do not clear the flag in a microtask. Wait for the selectionchange event.
         // The event handler will clear it, or a timeout will clear it as a fallback.
-        if ((this as any)._selectionSyncTimeout) {
-            clearTimeout((this as any)._selectionSyncTimeout);
+        if (this._selectionSyncTimeout) {
+            clearTimeout(this._selectionSyncTimeout);
         }
-        (this as any)._selectionSyncTimeout = setTimeout(() => {
+        this._selectionSyncTimeout = setTimeout(() => {
             this.suppressSelectionResync = false;
-        }, 50);
+        }, 50) as unknown as number;
     }
 
     syncTextareaToSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
