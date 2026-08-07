@@ -205,7 +205,7 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.applyTextareaSelectionRange(textarea, cursor.offset, cursor.offset);
         }
     }
 
@@ -259,7 +259,7 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.applyTextareaSelectionRange(textarea, cursor.offset, cursor.offset);
         }
 
         cursor.applyToStore();
@@ -320,7 +320,7 @@ export class CursorEditor {
         const textarea = store.getTextareaRef();
         if (textarea && !store.isComposing) {
             textarea.value = node.text?.toString?.() ?? "";
-            textarea.setSelectionRange(cursor.offset, cursor.offset);
+            store.applyTextareaSelectionRange(textarea, cursor.offset, cursor.offset);
         }
     }
 

@@ -1,8 +1,28 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import GlobalTextArea from "./GlobalTextArea.svelte";
 
 describe("GlobalTextArea", () => {
+    it("should call syncSelectionFromTextarea on selectionchange event", async () => {
+        const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+            cb(0);
+            return 1;
+        });
+
+        render(GlobalTextArea);
+        vi.spyOn(store, "syncSelectionFromTextarea");
+
+        const textarea = document.querySelector("textarea") as HTMLTextAreaElement;
+        textarea.focus();
+
+        document.dispatchEvent(new Event("selectionchange"));
+
+        expect(store.syncSelectionFromTextarea).toHaveBeenCalled();
+
+        rafSpy.mockRestore();
+    });
+
     beforeEach(() => {
         vi.useFakeTimers();
     });

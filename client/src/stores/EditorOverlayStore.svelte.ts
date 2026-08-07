@@ -85,6 +85,9 @@ export class EditorOverlayStore {
     compositionLength = 0;
     // Holds the textarea element of GlobalTextArea
     textareaRef: HTMLTextAreaElement | null = null;
+    suppressSelectionResync = false;
+    _selectionSyncTimeout: number | null = null;
+    lastSetSelection = { start: -1, end: -1, direction: "none" as "none" | "forward" | "backward" };
     // onEdit callback
     onEditCallback: (() => void) | null = null;
     private presenceSyncScheduled = false;
@@ -1539,6 +1542,25 @@ export class EditorOverlayStore {
     /**
      * Mirror selection to the global hidden textarea
      */
+
+    private applyTextareaSelectionRange(
+        textarea: HTMLTextAreaElement,
+        start: number,
+        end: number,
+        direction?: "forward" | "backward" | "none",
+    ) {
+        this.suppressSelectionResync = true;
+        textarea.setSelectionRange(start, end, direction);
+        // Do not clear the flag in a microtask. Wait for the selectionchange event.
+        // The event handler will clear it, or a timeout will clear it as a fallback.
+        if (this._selectionSyncTimeout) {
+            clearTimeout(this._selectionSyncTimeout);
+        }
+        this._selectionSyncTimeout = setTimeout(() => {
+            this.suppressSelectionResync = false;
+        }, 50) as unknown as number;
+    }
+
     syncTextareaToSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
         if (this.isComposing) return;
 
@@ -1564,7 +1586,7 @@ export class EditorOverlayStore {
             textarea.value = startItemText;
 
             // Set selection
-            textarea.setSelectionRange(startOffset, endOffset);
+            this.applyTextareaSelectionRange(textarea, startOffset, endOffset);
         } else {
             // If the selection spans multiple items
             const viewModel = store.activeViewModel;
@@ -1648,10 +1670,10 @@ export class EditorOverlayStore {
                 // Handle reversed selection
                 if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
                     // start is before end
-                    textarea.setSelectionRange(selectionStart, selectionEnd);
+                    this.applyTextareaSelectionRange(textarea, selectionStart, selectionEnd);
                 } else {
                     // end is before start
-                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                    this.applyTextareaSelectionRange(textarea, selectionEnd, selectionStart, "backward");
                 }
             } else {
                 // Use ViewModel for order
@@ -1707,12 +1729,62 @@ export class EditorOverlayStore {
                 // Handle reversed selection
                 if (!isReversed) {
                     // start is before end
-                    textarea.setSelectionRange(selectionStart, selectionEnd);
+                    this.applyTextareaSelectionRange(textarea, selectionStart, selectionEnd);
                 } else {
                     // end is before start
-                    textarea.setSelectionRange(selectionEnd, selectionStart, "backward");
+                    this.applyTextareaSelectionRange(textarea, selectionEnd, selectionStart, "backward");
                 }
             }
+        }
+    }
+
+    syncSelectionFromTextarea() {
+        const textarea = this.getTextareaRef();
+        if (!textarea) return;
+
+        const activeId = this.getActiveItem();
+        if (!activeId) return;
+
+        const currentStart = textarea.selectionStart;
+        const currentEnd = textarea.selectionEnd;
+
+        // When there is no selection range
+        if (currentStart === currentEnd) {
+            // Set cursor position
+            this.setCursor({
+                itemId: activeId,
+                offset: currentStart,
+                isActive: true,
+                userId: "local",
+            });
+
+            // Clear selection range
+            this.clearSelectionForUser("local");
+        } else {
+            // When there is a selection range
+            const isReversed = textarea.selectionDirection === "backward";
+            const cursorOffset = isReversed ? currentStart : currentEnd;
+
+            // Set cursor position
+            this.setCursor({
+                itemId: activeId,
+                offset: cursorOffset,
+                isActive: true,
+                userId: "local",
+            });
+
+            const remainingEntries = Object.entries(this.selections).filter(
+                ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
+            );
+            this.selections = Object.fromEntries(remainingEntries);
+            this.setSelection({
+                startItemId: activeId,
+                endItemId: activeId,
+                startOffset: Math.min(currentStart, currentEnd),
+                endOffset: Math.max(currentStart, currentEnd),
+                userId: "local",
+                isReversed: isReversed,
+            });
         }
     }
 
@@ -1757,7 +1829,7 @@ export class EditorOverlayStore {
         // Ensure cursor offset is within bounds
         const safeOffset = Math.min(Math.max(0, cursor.offset), text.length);
         if (textarea.selectionStart !== safeOffset || textarea.selectionEnd !== safeOffset) {
-            textarea.setSelectionRange(safeOffset, safeOffset);
+            this.applyTextareaSelectionRange(textarea, safeOffset, safeOffset);
         }
     }
 

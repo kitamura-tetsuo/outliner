@@ -10,6 +10,7 @@ import { KeyEventHandler } from "../lib/KeyEventHandler";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
+import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 
 let textareaRef: HTMLTextAreaElement;
 
@@ -21,8 +22,29 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 // Focus management is handled in onMount and OutlinerItem.startEditing().
 
 
+
+let selectionSyncRafId: number | null = null;
+
+function handleSelectionChange() {
+    if (typeof document === 'undefined') return;
+    if (document.activeElement !== textareaRef) return;
+    if (store.isComposing) return;
+    if (aliasPickerStore.isVisible) return;
+    if (commandPaletteStore.isVisible) return;
+    if (store.suppressSelectionResync) return;
+
+    if (selectionSyncRafId !== null) {
+        cancelAnimationFrame(selectionSyncRafId);
+    }
+    selectionSyncRafId = requestAnimationFrame(() => {
+        selectionSyncRafId = null;
+        store.syncSelectionFromTextarea();
+    });
+}
+
 // Register global textarea to the store
 onMount(() => {
+    document.addEventListener("selectionchange", handleSelectionChange);
     // Initialize measurement canvas on client only
     // Since the Canvas API may not be supported in Node.js test environments,
     // check for existence before initialization.
@@ -57,6 +79,9 @@ onMount(() => {
 });
 
 onDestroy(() => {
+    if (typeof document !== "undefined") {
+        document.removeEventListener("selectionchange", handleSelectionChange);
+    }
     store.setTextareaRef(null);
     try { generalStore.textareaRef = null; } catch (_e) { /* ignore */ }
 });
@@ -242,6 +267,7 @@ function handleBlur(event: FocusEvent) {
 </script>
 
 <textarea
+
     bind:this={textareaRef}
     class="global-textarea"
     aria-label="Edit item text"
