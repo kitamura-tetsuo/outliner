@@ -20,19 +20,6 @@ async function resetDemo(page: Page) {
     await expect(page.getByTestId("demo-reset-done")).toBeVisible({ timeout: 30000 });
 }
 
-async function dragAcrossWholeItems(start: Locator, end: Locator) {
-    const page = start.page();
-    const startBox = await start.boundingBox();
-    const endBox = await end.boundingBox();
-    expect(startBox).not.toBeNull();
-    expect(endBox).not.toBeNull();
-    // Expand the drag box horizontally so it captures the beginning and end of the text perfectly
-    await page.mouse.move(startBox!.x - 10, startBox!.y + startBox!.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(endBox!.x + endBox!.width + 10, endBox!.y + endBox!.height / 2, { steps: 24 });
-    await page.mouse.up();
-}
-
 test.afterEach(async ({ page }) => {
     await resetDemo(page);
 });
@@ -68,24 +55,27 @@ test("deployed demo preserves the Sales Grid binding through the real clipboard"
     // Some headless testing environments require dispatching paste directly when
     // Control+v does not work properly natively for custom clipboard contents.
     await page.evaluate(async () => {
-        let text = "";
+        let fallbackText = "";
         try {
-            text = await navigator.clipboard.readText();
+            fallbackText = await navigator.clipboard.readText();
         } catch {
-            text = (window as any).lastCopiedText || "";
+            // eslint-disable-next-line no-restricted-globals
+            fallbackText = (window as any).lastCopiedText || "";
         }
         const dt = new DataTransfer();
-        dt.setData("text/plain", text);
+        dt.setData("text/plain", fallbackText);
         // Fallback for playwright custom mime type stripping
+        // eslint-disable-next-line no-restricted-globals
         if ((window as any).lastCopiedStructuredItems) {
+            // eslint-disable-next-line no-restricted-globals
             dt.setData("application/outliner-items", (window as any).lastCopiedStructuredItems.encoded);
         }
-        const pasteEvent = new ClipboardEvent("paste", {
-            clipboardData: dt,
-            bubbles: true,
-            cancelable: true,
+        const pasteEvent = new ClipboardEvent('paste', {
+           clipboardData: dt,
+           bubbles: true,
+           cancelable: true
         });
-        document.querySelector(".global-textarea")?.dispatchEvent(pasteEvent);
+        document.querySelector('.global-textarea')?.dispatchEvent(pasteEvent);
     });
 
     await expect(grids).toHaveCount(3, { timeout: 30000 });
