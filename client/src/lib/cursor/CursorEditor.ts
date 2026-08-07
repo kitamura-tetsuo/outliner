@@ -1047,7 +1047,17 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            (actFirstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            if (typeof (actFirstItem as any).deleteTextAt === "function" && typeof (actFirstItem as any).insertTextAt === "function") {
+                const len = firstText.length - actFirstOffset;
+                if (len > 0) {
+                    (actFirstItem as any).deleteTextAt(actFirstOffset, len);
+                }
+                if (newLastText.length > 0) {
+                    (actFirstItem as any).insertTextAt(actFirstOffset, newLastText);
+                }
+            } else {
+                (actFirstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            }
 
             for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
                 const id = itemsToRemoveIds[i];

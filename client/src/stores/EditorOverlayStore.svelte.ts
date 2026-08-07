@@ -2121,8 +2121,8 @@ export class EditorOverlayStore {
                 endOff = Math.max(0, Math.min(len, sel.endOffset));
             }
 
-            // Add text (only valid range)
-            if (startOff < endOff) {
+            // Add text (only valid range or empty)
+            if (startOff <= endOff) {
                 const itemText = text.substring(startOff, endOff);
                 result += itemText;
 
