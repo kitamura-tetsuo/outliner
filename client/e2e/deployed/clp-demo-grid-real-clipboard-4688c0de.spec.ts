@@ -70,12 +70,12 @@ test("deployed demo preserves the Sales Grid binding through the real clipboard"
             // eslint-disable-next-line no-restricted-globals
             dt.setData("application/outliner-items", (window as any).lastCopiedStructuredItems.encoded);
         }
-        const pasteEvent = new ClipboardEvent('paste', {
-           clipboardData: dt,
-           bubbles: true,
-           cancelable: true
+        const pasteEvent = new ClipboardEvent("paste", {
+            clipboardData: dt,
+            bubbles: true,
+            cancelable: true,
         });
-        document.querySelector('.global-textarea')?.dispatchEvent(pasteEvent);
+        document.querySelector(".global-textarea")?.dispatchEvent(pasteEvent);
     });
 
     await expect(grids).toHaveCount(3, { timeout: 30000 });
