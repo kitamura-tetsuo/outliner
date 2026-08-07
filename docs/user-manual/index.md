@@ -25,12 +25,13 @@ An overview of the basic interface and navigation.
 
 ### Creating and Browsing Pages
 
-You can create a new page from the project home page. Simply enter a title in the "New page name" input field and click the **Create** button.
+You can create and browse pages using the left sidebar or the top search bar.
 
-The project home page also displays a list of all pages. You can:
+To browse your pages, click the sidebar toggle button in the top-left corner (hamburger menu) and expand the **Pages** section. This section lists all pages in the current project.
 
-- Toggle the display between **List view** and **Grid view** using the buttons in the top right.
-- Change the **Sort order** of the pages (e.g., Modified, Created, Last visited, Most linked, Most viewed, Title) using the dropdown menu.
+To create a new page, you can:
+- Click the add (**+**) button in the **Pages** section header of the sidebar.
+- Alternatively, search for a non-existent page name using the "Search pages" input field at the top of the screen and click on the "Create page" prompt.
 
 ### Switching to Edit Mode
 
