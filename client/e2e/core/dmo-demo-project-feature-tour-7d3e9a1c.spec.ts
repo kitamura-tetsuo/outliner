@@ -126,4 +126,20 @@ test.describe("Demo project feature tour", () => {
         const elapsed = Date.now() - startTime;
         expect(elapsed).toBeLessThan(10000); // Verify it didn't wait the full timeout
     });
+
+    test("public demo schedule loads without auth loading state", async ({ page }) => {
+        // Navigate directly to the public demo's schedule rule editor
+        await page.goto("/schedules/demo/demo-rule-daily-routines");
+
+        // The form fields should be visible
+        const targetTableSelect = page.getByTestId("target-table-select");
+        await expect(targetTableSelect).toBeVisible({ timeout: 30000 });
+
+        // Verify the AuthComponent loading message is NOT present
+        await expect(page.getByText("Checking authentication info...")).not.toBeVisible();
+        await expect(page.getByText("Please log in.")).not.toBeVisible();
+
+        // Ensure we see our guest mode text
+        await expect(page.getByText("Public demo / Guest access")).toBeVisible();
+    });
 });
