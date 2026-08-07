@@ -267,7 +267,7 @@ function handleBlur(event: FocusEvent) {
 </script>
 
 <textarea
-        onselect={handleSelectionChange}
+
     bind:this={textareaRef}
     class="global-textarea"
     aria-label="Edit item text"
