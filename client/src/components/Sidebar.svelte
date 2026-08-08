@@ -128,7 +128,7 @@ import type * as Y from "yjs";
     }
 
     // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes
-    let projectTitleForPath = $derived(store.project?.title || "");
+    let projectTitleForPath = $derived(currentProjectName);
 
     function addSchedule(e: MouseEvent) {
         e.stopPropagation();
@@ -181,7 +181,7 @@ import type * as Y from "yjs";
     // projects whose Yjs metadata never had a title set, corrupted with a raw
     // container UUID.
     let currentProjectName = $derived(
-        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
+        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || "Untitled Project"),
     );
 
 </script>
@@ -390,10 +390,10 @@ import type * as Y from "yjs";
                         {#each tables as table (table.tableId)}
                             <li>
                                 <a
-                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
+                                    href={`/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
                                     class="page-item table-link"
-                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
-                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
+                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
+                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >
