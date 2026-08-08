@@ -55,7 +55,9 @@ test("remote insertion before the caret preserves the local typing position", as
             const editorStore = (globalThis as any).editorOverlayStore;
             const store = (globalThis as any).store;
             const textarea = document.querySelector(".global-textarea") as HTMLTextAreaElement;
-            if (textarea && store?.activeItemId === id && document.activeElement === textarea) return textarea.selectionStart;
+            if (textarea && store?.activeItemId === id && document.activeElement === textarea) {
+                return textarea.selectionStart;
+            }
             return editorStore?.getCursorInstances?.().find((cursor: any) => cursor.itemId === id)?.offset;
         }, itemId)
     ).toBe(13);
