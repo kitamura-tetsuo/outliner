@@ -62,7 +62,7 @@ test.describe("Calendar view type select has accessible name", () => {
 
         await page.getByTestId("calendar-role-roleTitle").first().selectOption("title");
         await page.getByTestId("calendar-role-roleStart").first().selectOption("start_at");
-        let itemId: string = await page.evaluate(() => {
+        await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
             const target = items.at(1) ?? items.at(0); // fallback if only 1 item exists
             if (!target) throw new Error("No items found");
@@ -70,11 +70,14 @@ test.describe("Calendar view type select has accessible name", () => {
             target.start = `${today}T09:00:00.000Z`;
             target.allDay = false;
             target.duration = "PT30M";
-            return String(target.id);
         });
 
         await page.getByTestId("calendar-role-roleAllDay").first().selectOption("all_day");
         await page.getByTestId("calendar-role-roleDuration").first().selectOption("duration");
+
+        // Use the Day view
+        const combobox = page.getByRole("combobox", { name: /Resize Keyboard Calendar view/i });
+        await combobox.selectOption("day");
 
         // Wait for grid to load and resize handle to appear
         await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
