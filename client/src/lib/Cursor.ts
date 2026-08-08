@@ -137,7 +137,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
             text.observe(this.handleObservedText);
         }
         const safeOffset = Math.min(Math.max(0, this._offset), text.length);
-        this.caretAnchor = Y.createRelativePositionFromTypeIndex(text, safeOffset);
+        // Associate with the character to the left so our own insertion at the
+        // caret does not advance the anchor before CursorEditor increments it.
+        // Insertions strictly before the caret still rebase it as expected.
+        this.caretAnchor = Y.createRelativePositionFromTypeIndex(text, safeOffset, -1);
     }
 
     // Cancels any pending async work owned by this cursor's editor (e.g. the

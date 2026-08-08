@@ -100,7 +100,7 @@ describe("Concurrent Editing", () => {
         const remoteProject = Project.fromDoc(remote);
         const remoteItem = new Item(remote, remoteProject.tree, item.key);
         const remoteText = remoteItem.yMap.get("text") as Y.Text;
-        const caret = Y.createRelativePositionFromTypeIndex(remoteText, 10);
+        const caret = Y.createRelativePositionFromTypeIndex(remoteText, 10, -1);
 
         item.insertTextAt(0, "XYZ");
         Y.applyUpdate(remote, Y.encodeStateAsUpdate(source));
@@ -108,5 +108,22 @@ describe("Concurrent Editing", () => {
         expect(Y.createAbsolutePositionFromRelativePosition(caret, remote)?.index).toBe(13);
         remoteItem.insertTextAt(13, "!");
         expect(remoteItem.text).toBe("XYZ0123456789!");
+    });
+
+    it("does not double-advance a left-associated caret during local typing", () => {
+        const doc = new Y.Doc();
+        const text = doc.getText("item");
+        text.insert(0, "0123456789");
+        let offset = 0;
+
+        for (const character of "XYZ") {
+            const caret = Y.createRelativePositionFromTypeIndex(text, offset, -1);
+            text.insert(offset, character);
+            const anchoredOffset = Y.createAbsolutePositionFromRelativePosition(caret, doc)?.index ?? offset;
+            offset = anchoredOffset + character.length;
+        }
+
+        expect(text.toString()).toBe("XYZ0123456789");
+        expect(offset).toBe(3);
     });
 });
