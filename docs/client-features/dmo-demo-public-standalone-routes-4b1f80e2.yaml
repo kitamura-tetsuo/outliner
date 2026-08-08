@@ -1,0 +1,24 @@
+id: FTR-4b1f80e2
+title: Public Demo Standalone Routes
+description: The standalone table, table-schedule, schedule-rule and calendar routes of the public demo project open for anonymous visitors, matching the inline grids rendered on /demo/<page>.
+category: demo
+status: implemented
+components:
+- client/src/lib/publicProject.ts
+- client/src/routes/tables/[project]/[tableId]/+page.svelte
+- client/src/routes/tables/[project]/[tableId]/schedule/+page.svelte
+- client/src/routes/schedules/[project]/[ruleId]/+page.svelte
+- client/src/routes/calendars/[project]/[calendar]/+page.svelte
+tests:
+- client/e2e/core/dmo-demo-public-standalone-routes-4b1f80e2.spec.ts
+- client/src/lib/publicProject.test.ts
+- client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
+acceptance:
+- Sidebar links to /tables/demo/<table> open the table grid for a signed-out visitor
+- /tables/demo/<table>/schedule opens its rule list for a signed-out visitor
+- /schedules/demo/<ruleId> opens its rule editor for a signed-out visitor
+- /calendars/demo/<calendar> opens the calendar for a signed-out visitor
+- These routes show a "Public demo / Guest access" banner instead of the sign-in form
+- An anonymous Firebase auth resolution does not revoke access to a public project
+- The same routes still require sign-in for every non-public project
+title-ja: 公開デモの単独ルート

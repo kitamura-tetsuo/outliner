@@ -12,7 +12,7 @@
     import ScheduleRuleList from "../../../../../components/schedule/ScheduleRuleList.svelte";
     import ScheduleRuleEditor from "../../../../../components/schedule/ScheduleRuleEditor.svelte";
     import { createScheduleRule, deleteScheduleRule, updateScheduleRule, type ScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
-    import { DEMO_PROJECT_NAME } from "../../../../../lib/demoSeed";
+    import { isPublicProject } from "../../../../../lib/publicProject";
 
     const logger = getLogger("TableSchedulePage");
 
@@ -35,6 +35,12 @@
 
     // Reactive rules derived from the project doc
     let rules = $state<{ id: string, rule: ScheduleRule }[]>([]);
+
+    // Public projects stay readable for anonymous visitors. Deriving the gate
+    // instead of folding the demo case into `isAuthenticated` keeps the auth
+    // callbacks below from clobbering it once Firebase resolves to no user.
+    let isPublicDemo = $derived(isPublicProject(projectName));
+    let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function loadRules() {
         if (!store.project || !tableId) return;
@@ -76,9 +82,11 @@
     }
 
     async function loadTable() {
-        if (!projectName || !tableName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
+        // `tableName` is only resolved from the registry further down, so the
+        // route parameter is the only identifier available at this point.
+        if (!projectName || !routeTableId || !canAccess) return;
 
-        logger.info(`Loading table schedule: project="${projectName}", table="${tableName}"`);
+        logger.info(`Loading table schedule: project="${projectName}", table="${routeTableId}"`);
         isLoading = true;
         error = undefined;
         notFound = false;
@@ -129,15 +137,15 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && routeTableId) {
+        if (canAccess && projectName && routeTableId) {
             loadTable();
-        } else if (!isAuthenticated) {
+        } else {
             isLoading = false;
         }
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = userManager.getCurrentUser() !== null;
     });
 
     function startCreate() {
@@ -213,10 +221,16 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6 flex-shrink-0">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
+        {#if isPublicDemo}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {:else}
+            <AuthComponent
+                onAuthSuccess={handleAuthSuccess}
+                onAuthLogout={handleAuthLogout}
+            />
+        {/if}
     </div>
 
     {#if isLoading}
@@ -233,7 +247,7 @@
         <div class="rounded-md bg-yellow-50 p-4">
             <p class="text-sm text-yellow-700">Table not found.</p>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <p class="text-sm text-blue-700">Please log in.</p>
         </div>

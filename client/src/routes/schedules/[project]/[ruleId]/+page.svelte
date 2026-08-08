@@ -17,7 +17,7 @@
         updateScheduleRule,
         type ScheduleRule,
     } from "../../../../services/schedule/scheduleRuleService";
-    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
+    import { isPublicProject } from "../../../../lib/publicProject";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -36,6 +36,12 @@
     let selectedTableId = $state("");
     let currentRule = $state<Partial<ScheduleRule> | undefined>(undefined);
     let ruleLoaded = $state(false);
+
+    // Public projects stay readable for anonymous visitors. Deriving the gate
+    // instead of folding the demo case into `isAuthenticated` keeps the auth
+    // callbacks below from clobbering it once Firebase resolves to no user.
+    let isPublicDemo = $derived(isPublicProject(projectName));
+    let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function loadRule() {
         if (!store.project?.ydoc) return;
@@ -74,11 +80,11 @@
     }
 
     function handleAuthLogout() {
-        isAuthenticated = projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = false;
     }
 
     async function loadProject() {
-        if (!projectName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
+        if (!projectName || !canAccess) return;
 
         logger.info(`Loading schedule editor: project="${projectName}", rule="${ruleId}"`);
         isLoading = true;
@@ -114,15 +120,15 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && ruleId) {
+        if (canAccess && projectName && ruleId) {
             loadProject();
-        } else if (!isAuthenticated) {
+        } else {
             isLoading = false;
         }
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = userManager.getCurrentUser() !== null;
     });
 
     function backToProject() {
@@ -178,15 +184,15 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6 flex-shrink-0">
-        {#if projectName !== DEMO_PROJECT_NAME}
+        {#if isPublicDemo}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {:else}
             <AuthComponent
                 onAuthSuccess={handleAuthSuccess}
                 onAuthLogout={handleAuthLogout}
             />
-        {:else}
-            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
-                Public demo / Guest access
-            </div>
         {/if}
     </div>
 
@@ -204,7 +210,7 @@
         <div class="rounded-md bg-yellow-50 p-4">
             <p class="text-sm text-yellow-700">Scheduled SQL not found.</p>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <p class="text-sm text-blue-700">Please log in.</p>
         </div>

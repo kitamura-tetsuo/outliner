@@ -11,7 +11,7 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import CalendarView from "../../../../components/calendar/CalendarView.svelte";
     import { listCalendars } from "../../../../services/calendar/calendarService";
-    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
+    import { isPublicProject } from "../../../../lib/publicProject";
     import { Project } from "$shared/app-schema";
 
     const logger = getLogger("CalendarStandalonePage");
@@ -29,6 +29,12 @@
     let calendarProject: Project | undefined = $state(undefined);
     let calendarProjectId: string | undefined = $state(undefined);
 
+    // Public projects stay readable for anonymous visitors. Deriving the gate
+    // instead of folding the demo case into `isAuthenticated` keeps the auth
+    // callbacks below from clobbering it once Firebase resolves to no user.
+    let isPublicDemo = $derived(isPublicProject(projectName));
+    let canAccess = $derived(isAuthenticated || isPublicDemo);
+
     async function handleAuthSuccess() {
         isAuthenticated = true;
     }
@@ -38,7 +44,7 @@
     }
 
     async function loadCalendar() {
-        if (!projectName || !calendarName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
+        if (!projectName || !calendarName || !canAccess) return;
 
         logger.info(`Loading standalone calendar: project="${projectName}", calendar="${calendarName}"`);
         isLoading = true;
@@ -86,15 +92,15 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && calendarName) {
+        if (canAccess && projectName && calendarName) {
             loadCalendar();
-        } else if (!isAuthenticated) {
+        } else {
             isLoading = false;
         }
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = userManager.getCurrentUser() !== null;
     });
 </script>
 
@@ -119,10 +125,16 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6 flex-shrink-0">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
+        {#if isPublicDemo}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {:else}
+            <AuthComponent
+                onAuthSuccess={handleAuthSuccess}
+                onAuthLogout={handleAuthLogout}
+            />
+        {/if}
     </div>
 
     {#if isLoading}
@@ -166,7 +178,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">
