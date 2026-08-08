@@ -5,16 +5,16 @@ describe("Job executor", function() {
     this.timeout(60000);
     let executor: JobExecutor;
 
-    beforeEach(() => {
+    beforeEach(function() {
         executor = new JobExecutor();
         executor.startWorker();
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await executor.stopWorker();
     });
 
-    it("should bulk load records and handle timezone", async () => {
+    it("should bulk load records and handle timezone", async function() {
         const result = await executor.executeJob({
             ruleId: "test-rule-3",
             schemaSql: "CREATE TABLE test (id int, name text);",
@@ -31,7 +31,7 @@ describe("Job executor", function() {
         expect(result.rows).to.deep.equal([{ name: "Bob" }]);
     });
 
-    it("materializes every table of the job so a rule can read another one", async () => {
+    it("materializes every table of the job so a rule can read another one", async function() {
         // A rule writes into its target table but may query any table of its
         // project (see JobScheduler.loadReferencedTables): each entry of
         // `tables` becomes its own relation, loaded with its own records.
@@ -55,7 +55,7 @@ describe("Job executor", function() {
         expect(result.rows).to.deep.equal([{ id: "a", label: "from the other table" }]);
     });
 
-    it("should correctly handle heterogeneous records based on schema", async () => {
+    it("should correctly handle heterogeneous records based on schema", async function() {
         const result = await executor.executeJob({
             ruleId: "test-rule-hetero",
             schemaSql: "CREATE TABLE test (id int, name text, age int);",

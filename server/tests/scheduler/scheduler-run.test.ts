@@ -32,7 +32,7 @@ describe("Job scheduler run", function() {
     let openedRooms: string[];
     let seededRecordCount: number;
 
-    beforeEach(() => {
+    beforeEach(function() {
         docs = new Map();
 
         const projectDoc = new Y.Doc();
@@ -87,13 +87,15 @@ describe("Job scheduler run", function() {
             configuration: { extensions: [] },
             openDirectConnection: async (room: string) => {
                 openedRooms.push(room);
-                return { document: docs.get(room) ?? null, disconnect: () => {} };
+                return { document: docs.get(room) ?? null, disconnect: function() {} };
             },
         };
 
         const sqliteDb = {
             prepare: (sql: string) => ({
-                all: () => (/SELECT \* FROM schedule_index/.test(sql) ? [indexRow] : []),
+                all: function() {
+                    return /SELECT \* FROM schedule_index/.test(sql) ? [indexRow] : [];
+                },
                 run: (...args: any[]) => {
                     if (/SET next_run_at/.test(sql)) {
                         updates.push({ nextRunAt: args[0], seq: args[1] });
@@ -112,11 +114,11 @@ describe("Job scheduler run", function() {
         scheduler.start(3_600_000, false);
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         scheduler.stop();
     });
 
-    it("runs a due rule against the table's own room and stores the generated rows", async () => {
+    it("runs a due rule against the table's own room and stores the generated rows", async function() {
         await scheduler.tick();
 
         expect(openedRooms, "the table subdoc room is used, not the project room").to.contain(tableRoom);
@@ -141,7 +143,7 @@ describe("Job scheduler run", function() {
         expect(data.has(`weekly-review-${today}`)).to.equal(false);
     });
 
-    it("advances the index to the next occurrence and records the run", async () => {
+    it("advances the index to the next occurrence and records the run", async function() {
         await scheduler.tick();
 
         expect(updates.length, "the index cursor moved").to.be.greaterThan(0);
@@ -160,7 +162,7 @@ describe("Job scheduler run", function() {
         expect(ruleMap.get("lastRunError")).to.be.undefined;
     });
 
-    it("records a failing run with lastRunStatus 'error' but still advances the cursor", async () => {
+    it("records a failing run with lastRunStatus 'error' but still advances the cursor", async function() {
         // Break the SQL so it fails execution
         const ruleMap = docs.get(projectRoom)!.getMap("schedules").get(dailyRule.ruleId) as Y.Map<unknown>;
         ruleMap.set("sql", "SELECT * FROM no_such_table");
@@ -180,7 +182,7 @@ describe("Job scheduler run", function() {
         expect(ruleMap.get("lastRunError")).to.match(/relation "no_such_table" does not exist|syntax error/i);
     });
 
-    it("does not re-create or reset an occurrence that already exists", async () => {
+    it("does not re-create or reset an occurrence that already exists", async function() {
         await scheduler.tick();
 
         const data = docs.get(tableRoom)!.getMap("data");

@@ -29,7 +29,7 @@ describe("Demo warm-path validation", function() {
         const openDirectConnection = sinon.stub().callsFake(async () => ({
             document: ydoc,
             transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
-            disconnect: async () => {},
+            disconnect: async function() {},
         }));
         const app = express();
         app.use(express.json());
@@ -41,16 +41,16 @@ describe("Demo warm-path validation", function() {
         return { app, openDirectConnection, projectOpens };
     }
 
-    beforeEach(() => {
+    beforeEach(function() {
         resetDemoWarmState();
     });
 
-    afterEach(() => {
+    afterEach(function() {
         resetDemoWarmState();
         sinon.restore();
     });
 
-    it("answers a warm second visit without opening the document", async () => {
+    it("answers a warm second visit without opening the document", async function() {
         const ydoc = seededDoc();
         const { app, projectOpens } = appFor(ydoc);
 
@@ -65,7 +65,7 @@ describe("Demo warm-path validation", function() {
         expect(projectOpens()).to.equal(1);
     });
 
-    it("revalidates after the demo document changed", async () => {
+    it("revalidates after the demo document changed", async function() {
         const ydoc = seededDoc();
         const { app, projectOpens } = appFor(ydoc);
 
@@ -85,7 +85,7 @@ describe("Demo warm-path validation", function() {
         expect(second.body.reset).to.equal(true);
     });
 
-    it("revalidates after the document was unloaded from memory", async () => {
+    it("revalidates after the document was unloaded from memory", async function() {
         const ydoc = seededDoc();
         const { app, projectOpens } = appFor(ydoc);
 
@@ -101,7 +101,7 @@ describe("Demo warm-path validation", function() {
         expect(second.projectOpens()).to.equal(1);
     });
 
-    it("does not keep the warm verdict past the 24h reset boundary", async () => {
+    it("does not keep the warm verdict past the 24h reset boundary", async function() {
         const lastReset = Date.now();
         const ydoc = seededDoc(lastReset);
         const { app, projectOpens } = appFor(ydoc);
@@ -120,7 +120,7 @@ describe("Demo warm-path validation", function() {
         }
     });
 
-    it("never serves a forced reset from the warm path", async () => {
+    it("never serves a forced reset from the warm path", async function() {
         const ydoc = seededDoc();
         const { app, projectOpens } = appFor(ydoc);
 
@@ -135,13 +135,13 @@ describe("Demo warm-path validation", function() {
         expect(projectOpens()).to.equal(2);
     });
 
-    it("joins an in-flight forced reset instead of answering from the warm verdict", async () => {
+    it("joins an in-flight forced reset instead of answering from the warm verdict", async function() {
         const ydoc = seededDoc();
         // Move past the global force-reset cooldown left behind by earlier
         // force tests in this process.
         const pastCooldown = Date.now() + 10 * 60 * 1000;
         const clock = sinon.stub(Date, "now").returns(pastCooldown);
-        let release: () => void = () => {};
+        let release: () => void = function() {};
         const gate = new Promise<void>(resolve => {
             release = resolve;
         });
@@ -151,7 +151,7 @@ describe("Demo warm-path validation", function() {
             return {
                 document: ydoc,
                 transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
-                disconnect: async () => {},
+                disconnect: async function() {},
             };
         });
         const app = express();
@@ -172,7 +172,7 @@ describe("Demo warm-path validation", function() {
             return {
                 document: ydoc,
                 transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
-                disconnect: async () => {},
+                disconnect: async function() {},
             };
         });
 
@@ -195,10 +195,10 @@ describe("Demo warm-path validation", function() {
         expect(warmRes.body.reset).to.equal(true);
     });
 
-    it("tells a coalesced concurrent visitor that the document was reset", async () => {
+    it("tells a coalesced concurrent visitor that the document was reset", async function() {
         // A stale document forces a reset; a second visitor arrives while it runs.
         const ydoc = seededDoc(Date.now() - 25 * 60 * 60 * 1000);
-        let release: () => void = () => {};
+        let release: () => void = function() {};
         const gate = new Promise<void>(resolve => {
             release = resolve;
         });
@@ -208,7 +208,7 @@ describe("Demo warm-path validation", function() {
             return {
                 document: ydoc,
                 transact: (cb: (doc: Y.Doc) => void) => cb(ydoc),
-                disconnect: async () => {},
+                disconnect: async function() {},
             };
         });
         const app = express();
