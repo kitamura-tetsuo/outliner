@@ -64,7 +64,7 @@ import {
 } from "../../services/calendar/calendarService";
 import { layoutTimeGrid } from "../../services/calendar/calendarTimeGridLayout";
 import { listSupportedTimeZones, resolveCalendarTimezone } from "../../services/calendar/calendarTimezone";
-import { globalUndoRouter } from "../../services/undo/undoRouter";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { projectSchemaName } from "../../services/yjstable/sqlNames";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjstable/tableSyncAdapter";

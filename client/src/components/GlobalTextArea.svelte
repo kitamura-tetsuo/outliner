@@ -11,6 +11,7 @@ import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte
 import { store as generalStore } from "../stores/store.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { keepsEditorFocus } from "../lib/editorFocus";
 
 let textareaRef: HTMLTextAreaElement;
 
@@ -201,7 +202,7 @@ function handleBlur(event: FocusEvent) {
 
     // Check where the focus is moving
     const relatedTarget = event.relatedTarget as HTMLElement | null;
-    if (relatedTarget) {
+    if (relatedTarget && !keepsEditorFocus(relatedTarget)) {
         const tagName = relatedTarget.tagName.toLowerCase();
         // Do not steal focus if moving to an input/button or search-related containers
         if (
@@ -223,7 +224,7 @@ function handleBlur(event: FocusEvent) {
             if (textareaRef && !aliasPickerStore.isVisible) {
                 // Double check current active element is not an interactive input/button
                 const activeEl = document.activeElement;
-                if (activeEl) {
+                if (activeEl && !keepsEditorFocus(activeEl)) {
                     const activeTag = activeEl.tagName.toLowerCase();
                     if (
                         activeTag === "input" ||

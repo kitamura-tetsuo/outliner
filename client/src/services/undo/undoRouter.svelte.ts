@@ -23,11 +23,21 @@ const logger = getLogger("undoRouter");
  * Scope lifetime: entries of a destroyed scope are dropped, not revived. A
  * table that has been torn down cannot replay its inverse operations, so its
  * history leaves the global stack with it and the remaining entries stay usable.
+ *
+ * The two stacks are `$state` so that `canUndo()` / `canRedo()` can be read
+ * from a `$derived` in a component and the toolbar buttons enable and disable
+ * themselves as history is recorded and consumed. Svelte only proxies plain
+ * objects and arrays, so the `Y.UndoManager` entries themselves are stored as
+ * they are and identity comparisons keep working.
  */
 export class UndoRouter {
-    private undoStack: Y.UndoManager[] = [];
-    private redoStack: Y.UndoManager[] = [];
+    private undoStack: Y.UndoManager[] = $state([]);
+    private redoStack: Y.UndoManager[] = $state([]);
 
+    // Bookkeeping only: nothing renders from the set of registered scopes, so a
+    // reactive SvelteSet would buy nothing. Availability is derived from the two
+    // stacks above, which drop a scope's entries when it unregisters.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- see above
     private registered = new Set<Y.UndoManager>();
 
     // Handlers are kept per manager so they can be detached on unregister.

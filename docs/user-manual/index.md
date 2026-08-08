@@ -103,6 +103,12 @@ Undo and redo run off a single history for the whole project.
 - `Ctrl+Z` undoes the most recent change.
 - `Ctrl+Shift+Z` or `Ctrl+Y` redoes it.
 
+### Toolbar buttons
+
+The **Undo** and **Redo** buttons in the toolbar at the top of the window do exactly the same thing as the shortcuts. On phones and tablets they also appear in the action toolbar at the bottom of the screen — since a software keyboard has no `Ctrl` key, that is how you reach your history there.
+
+Each button is greyed out while there is nothing to undo (or redo) and becomes available as soon as you make a change. Pressing one while you are editing keeps your cursor where it was and leaves the software keyboard open, so you can carry straight on typing.
+
 The outline and every database table each keep their own change history internally, but you never have to think about which one you are in. Changes made by other people editing at the same time are never undone by you.
 
 ---
@@ -249,8 +255,8 @@ You can also access a complete list of shortcuts by expanding the **Keyboard & a
 | Box selection (Key)     | `Alt + Shift + Arrow`            | `Option + Shift + Arrow`       |
 | Expand selection        | `Shift + Alt + Right`            | `Shift + Option + Right`       |
 | Shrink selection        | `Shift + Alt + Left`             | `Shift + Option + Left`        |
-| Undo                    | `Ctrl + Z`                       | `Cmd + Z`                      |
-| Redo                    | `Ctrl + Shift + Z` or `Ctrl + Y` | `Cmd + Shift + Z` or `Cmd + Y` |
+| Undo (or toolbar Undo)  | `Ctrl + Z`                       | `Cmd + Z`                      |
+| Redo (or toolbar Redo)  | `Ctrl + Shift + Z` or `Ctrl + Y` | `Cmd + Shift + Z` or `Cmd + Y` |
 | Move item up            | `Alt + ↑`                        | `Option + ↑`                   |
 | Move item down          | `Alt + ↓`                        | `Option + ↓`                   |
 | Open context menu       | `Shift + F10` or `Menu`          | `Shift + F10` or `Menu`        |

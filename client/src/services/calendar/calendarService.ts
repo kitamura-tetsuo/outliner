@@ -9,7 +9,7 @@ import type { Project } from "$shared/app-schema";
 import type { CalendarValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
-import { globalUndoRouter } from "../undo/undoRouter";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { isValidIanaTimeZone } from "./calendarTimezone";
 
 export const DEFAULT_CALENDAR_VIEW_TYPE = "week";
