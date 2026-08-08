@@ -23,6 +23,28 @@ export interface Checklist {
     items: ChecklistItem[];
 }
 
+function areListsEqual(a: Checklist[], b: Checklist[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        const listA = a[i];
+        const listB = b[i];
+        if (listA.id !== listB.id) return false;
+        if (listA.title !== listB.title) return false;
+        if (listA.mode !== listB.mode) return false;
+        if (listA.rrule !== listB.rrule) return false;
+        if (listA.lastReset !== listB.lastReset) return false;
+        if (listA.items.length !== listB.items.length) return false;
+        for (let j = 0; j < listA.items.length; j++) {
+            const itemA = listA.items[j];
+            const itemB = listB.items[j];
+            if (itemA.id !== itemB.id) return false;
+            if (itemA.label !== itemB.label) return false;
+            if (itemA.state !== itemB.state) return false;
+        }
+    }
+    return true;
+}
+
 class ChecklistService {
     lists = $state<Checklist[]>([]);
     private ydoc: Y.Doc | null = null;
@@ -96,7 +118,9 @@ class ChecklistService {
                 });
             }
         }
-        this.lists = newLists;
+        if (!areListsEqual(this.lists, newLists)) {
+            this.lists = newLists;
+        }
     }
 
     createChecklist(
@@ -159,9 +183,15 @@ class ChecklistService {
             }, this);
             this.syncFromYjs();
         } else {
-            this.lists = this.lists.map(l =>
-                l.id === listId ? { ...l, items: [...l.items, { id: itemId, label, state: "active" }] } : l
-            );
+            let changed = false;
+            const newLists = this.lists.map(l => {
+                if (l.id === listId) {
+                    changed = true;
+                    return { ...l, items: [...l.items, { id: itemId, label, state: "active" as const }] };
+                }
+                return l;
+            });
+            if (changed) this.lists = newLists;
         }
         return itemId;
     }
@@ -193,20 +223,26 @@ class ChecklistService {
             }, this);
             this.syncFromYjs();
         } else {
-            this.lists = this.lists.map(l => {
+            let changed = false;
+            const newLists = this.lists.map(l => {
                 if (l.id !== listId) return l;
                 const mode = l.mode;
-                return {
-                    ...l,
-                    items: l.items.map(it => {
-                        if (it.id !== itemId) return it;
-                        if (mode === "shopping") {
-                            return { ...it, state: it.state === "archived" ? "active" : "archived" };
-                        }
-                        return { ...it, state: it.state === "checked" ? "active" : "checked" };
-                    }),
-                };
+                let itemChanged = false;
+                const newItems = l.items.map(it => {
+                    if (it.id !== itemId) return it;
+                    itemChanged = true;
+                    if (mode === "shopping") {
+                        return { ...it, state: it.state === "archived" ? "active" as const : "archived" as const };
+                    }
+                    return { ...it, state: it.state === "checked" ? "active" as const : "checked" as const };
+                });
+                if (itemChanged) {
+                    changed = true;
+                    return { ...l, items: newItems };
+                }
+                return l;
             });
+            if (changed) this.lists = newLists;
         }
     }
 
@@ -231,15 +267,17 @@ class ChecklistService {
             }, this);
             this.syncFromYjs();
         } else {
-            this.lists = this.lists.map(l =>
-                l.id === listId
-                    ? {
-                        ...l,
-                        items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" as const } : it),
-                        lastReset: Date.now(),
-                    }
-                    : l
-            );
+            let changed = false;
+            const newLists = this.lists.map(l => {
+                if (l.id !== listId) return l;
+                changed = true;
+                return {
+                    ...l,
+                    items: l.items.map(it => it.state !== "deleted" ? { ...it, state: "active" as const } : it),
+                    lastReset: Date.now(),
+                };
+            });
+            if (changed) this.lists = newLists;
         }
     }
 

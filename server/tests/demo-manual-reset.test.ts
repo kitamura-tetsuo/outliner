@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { expect } from "chai";
 import express from "express";
 import request from "supertest";
@@ -50,7 +49,7 @@ describe("Demo manual reset policy", function() {
 // "root" marker a concurrent write that could lose against tombstones from
 // earlier resets, leaving a document that YTree refuses to load.
 describe("Demo reseed keeps the shared document tree valid", function() {
-    jest.setTimeout(10000);
+    this.timeout(10000);
     // Mirrors the transact body of POST /api/seed-demo
     function resetCycle(ydoc: Y.Doc): void {
         const orderedTree = ydoc.getMap("orderedTree");
@@ -88,7 +87,7 @@ describe("Demo reseed keeps the shared document tree valid", function() {
 });
 
 describe("Demo manual reset rate limit", function() {
-    jest.setTimeout(10000);
+    this.timeout(10000);
 
     it("failed reset does not consume the cooldown", async function() {
         const app = express();
