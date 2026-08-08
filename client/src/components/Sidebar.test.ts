@@ -114,7 +114,9 @@ vi.mock("$app/stores", async () => {
             url: {
                 pathname: "/Test%20Project/Test%20Page%201",
             },
-            params: {},
+            params: {
+                project: "Test Project",
+            },
         }),
     };
 });
@@ -373,7 +375,7 @@ describe("Sidebar", () => {
             const pageItem = screen.getByText("Test Page 1").closest("a");
             expect(pageItem).toBeInTheDocument();
             // Assuming resolve returns the path directly in test env (standard SvelteKit mock behavior or actual implementation)
-            expect(pageItem).toHaveAttribute("href", "/Untitled%20Project/Test%20Page%201");
+            expect(pageItem).toHaveAttribute("href", "/Test%20Project/Test%20Page%201");
         });
 
         it("uses the routed project name, not a UUID-corrupted store.project.title, for page hrefs", async () => {

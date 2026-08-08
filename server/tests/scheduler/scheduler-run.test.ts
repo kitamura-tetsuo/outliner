@@ -1,4 +1,3 @@
-import { jest } from "@jest/globals";
 import { expect } from "chai";
 import { DateTime } from "luxon";
 import * as Y from "yjs";
@@ -17,7 +16,7 @@ import { JobScheduler } from "../../src/scheduler/Scheduler.js";
 // the scheduler must find the table's own room, run the SQL and write the
 // generated occurrence back into Data Storage.
 describe("Job scheduler run", function() {
-    jest.setTimeout(60000);
+    this.timeout(60000);
 
     const projectRoom = `projects/${DEMO_PROJECT_TITLE}`;
     const tableRoom = `${projectRoom}/tables/${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}`;
@@ -178,9 +177,7 @@ describe("Job scheduler run", function() {
         const lastRunAt = ruleMap.get("lastRunAt");
         expect(typeof lastRunAt).to.equal("string");
         expect(ruleMap.get("lastRunStatus")).to.equal("error");
-        expect(ruleMap.get("lastRunError")?.toString() || "syntax error").to.match(
-            /relation "no_such_table" does not exist|syntax error/i,
-        );
+        expect(ruleMap.get("lastRunError")).to.match(/relation "no_such_table" does not exist|syntax error/i);
     });
 
     it("does not re-create or reset an occurrence that already exists", async () => {

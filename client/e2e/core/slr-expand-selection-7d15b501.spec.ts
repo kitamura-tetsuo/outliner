@@ -80,7 +80,7 @@ test.describe("SLR-0011: Expand selection", () => {
             expect(basicSelectionState.selectedText).toBe("Hello World");
         } else {
             // If selection expansion feature is implemented
-            await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
+            await expect(page.locator(".editor-overlay .selection")).toBeVisible();
             expect(afterSelectionState.selectedText).toBe("Hello World");
         }
     });
