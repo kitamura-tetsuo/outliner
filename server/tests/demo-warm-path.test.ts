@@ -11,8 +11,9 @@ import { Project } from "../src/schema/app-schema.js";
 // the shared document, scanning the ordered tree and disconnecting again. The
 // server answers such visits from a verdict that is invalidated as soon as the
 // document changes.
+import { jest } from "@jest/globals";
 describe("Demo warm-path validation", function() {
-    this.timeout(10000);
+    jest.setTimeout(10000);
 
     function seededDoc(lastReset = Date.now()): Y.Doc {
         const ydoc = new Y.Doc();
