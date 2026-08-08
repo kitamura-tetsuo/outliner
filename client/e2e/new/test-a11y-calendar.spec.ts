@@ -70,7 +70,7 @@ test.describe("Calendar view type select has accessible name", () => {
         await expect(entry).toBeVisible({ timeout: 15000 });
         await expect(entry).not.toHaveClass(/not-writable/, { timeout: 15000 });
 
-        const handle = entry.locator('.resize-handle').first();
+        const handle = entry.locator(".resize-handle").first();
         await expect(handle).toBeVisible({ timeout: 15000 });
 
         // Check initial aria attributes
