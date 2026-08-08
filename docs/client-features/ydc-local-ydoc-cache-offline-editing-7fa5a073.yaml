@@ -13,8 +13,8 @@ components:
 services:
 - y-indexeddb (IndexedDB persistence)
 tests:
-- client/e2e/yjs/ydoc-persistence.spec.ts
 - client/e2e/yjs/offline-sync-merge.spec.ts
+- client/e2e/yjs/ydoc-persistence.spec.ts
 - client/src/lib/yjsPersistence.test.ts
 acceptance:
 - Changes merge correctly when connectivity is restored (via Yjs CRDT)

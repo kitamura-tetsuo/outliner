@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { devices } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+
+registerCoverageHooks();
 
 test.use({ ...devices["Pixel 7"] });
 
