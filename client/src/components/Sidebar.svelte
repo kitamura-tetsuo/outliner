@@ -25,7 +25,15 @@ import type * as Y from "yjs";
                      (typeof window !== 'undefined' && window.localStorage?.getItem?.("VITE_IS_TEST") === "true");
 
 
-        // Tables reactivity
+        // Prefer the project name from the current route (the human-readable name the
+    // user navigated with) over store.project.title, which may be stale or, for
+    // projects whose Yjs metadata never had a title set, corrupted with a raw
+    // container UUID.
+    let currentProjectName = $derived(
+        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || "Untitled Project"),
+    );
+
+    // Tables reactivity
     let isTablesCollapsed = $state(false);
     let registryVersion = $state(0);
     const registryObserver = () => {
@@ -127,9 +135,6 @@ import type * as Y from "yjs";
         }
     }
 
-    // Project title used for /schedules/[project]/[ruleId] and /tables/[project] routes
-    let projectTitleForPath = $derived(store.project?.title || "");
-
     function addSchedule(e: MouseEvent) {
         e.stopPropagation();
         const project = store.project;
@@ -147,7 +152,7 @@ import type * as Y from "yjs";
             sql: defaultSql,
             rrule: "FREQ=DAILY;INTERVAL=1",
         });
-        goto(`/schedules/${encodeURIComponent(projectTitleForPath)}/${encodeURIComponent(ruleId)}`);
+        goto(`/schedules/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(ruleId)}`);
     }
 
     // Collapsible state for Projects section
@@ -175,14 +180,6 @@ import type * as Y from "yjs";
         }
         return result;
     });
-
-    // Prefer the project name from the current route (the human-readable name the
-    // user navigated with) over store.project.title, which may be stale or, for
-    // projects whose Yjs metadata never had a title set, corrupted with a raw
-    // container UUID.
-    let currentProjectName = $derived(
-        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || store.project?.title || "Untitled Project"),
-    );
 
 </script>
 
@@ -390,10 +387,10 @@ import type * as Y from "yjs";
                         {#each tables as table (table.tableId)}
                             <li>
                                 <a
-                                    href={`/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
+                                    href={`/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
                                     class="page-item table-link"
-                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}`}
-                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(store.project?.title || '')}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
+                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
+                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >
@@ -466,7 +463,7 @@ import type * as Y from "yjs";
                         <li class="sidebar-placeholder">No scheduled SQL</li>
                     {:else}
                         {#each schedules as schedule (schedule.id)}
-                            {@const scheduleHref = `/schedules/${encodeURIComponent(projectTitleForPath)}/${encodeURIComponent(schedule.id)}`}
+                            {@const scheduleHref = `/schedules/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(schedule.id)}`}
                             <li>
                                 <a
                                     class="page-item schedule-link"
