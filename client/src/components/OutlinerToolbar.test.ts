@@ -76,6 +76,57 @@ describe("OutlinerToolbar", () => {
         expect(getByTitle("Insert Sibling Below")).toBeTruthy();
         expect(getByTitle("Vote")).toBeTruthy();
         expect(getByTitle("Delete")).toBeTruthy();
+        expect(getByTestId("mobile-toolbar-undo")).toBeTruthy();
+        expect(getByTestId("mobile-toolbar-redo")).toBeTruthy();
+    });
+
+    test("mobile undo/redo buttons are disabled until the history says otherwise", async () => {
+        const { getByTestId, rerender } = render(OutlinerToolbar, {
+            props: {
+                mode: "mobile",
+                canUndo: false,
+                canRedo: false,
+            },
+        });
+
+        const undoBtn = getByTestId("mobile-toolbar-undo") as HTMLButtonElement;
+        const redoBtn = getByTestId("mobile-toolbar-redo") as HTMLButtonElement;
+        expect(undoBtn.disabled).toBe(true);
+        expect(redoBtn.disabled).toBe(true);
+
+        await rerender({ mode: "mobile", canUndo: true, canRedo: false });
+        expect(undoBtn.disabled).toBe(false);
+        expect(redoBtn.disabled).toBe(true);
+
+        await rerender({ mode: "mobile", canUndo: true, canRedo: true });
+        expect(undoBtn.disabled).toBe(false);
+        expect(redoBtn.disabled).toBe(false);
+    });
+
+    test("mobile undo/redo buttons call their handlers and keep the editor focused", async () => {
+        const onUndo = vi.fn();
+        const onRedo = vi.fn();
+        const { getByTestId } = render(OutlinerToolbar, {
+            props: { mode: "mobile", onUndo, onRedo, canUndo: true, canRedo: true },
+        });
+
+        const undoBtn = getByTestId("mobile-toolbar-undo");
+        const redoBtn = getByTestId("mobile-toolbar-redo");
+
+        // The attribute is what GlobalTextArea's blur guard looks for, and the
+        // cancelled pointerdown is what stops the software keyboard closing.
+        expect(undoBtn.hasAttribute("data-keep-editor-focus")).toBe(true);
+        expect(redoBtn.hasAttribute("data-keep-editor-focus")).toBe(true);
+
+        const pointerDown = new MouseEvent("pointerdown", { bubbles: true, cancelable: true });
+        await fireEvent(undoBtn, pointerDown);
+        expect(pointerDown.defaultPrevented).toBe(true);
+
+        await fireEvent.click(undoBtn);
+        expect(onUndo).toHaveBeenCalledTimes(1);
+
+        await fireEvent.click(redoBtn);
+        expect(onRedo).toHaveBeenCalledTimes(1);
     });
 
     test("mobile toolbar buttons call corresponding handlers", async () => {

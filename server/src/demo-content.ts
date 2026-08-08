@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 35;
+export const DEMO_TEMPLATE_VERSION = 36;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -698,7 +698,8 @@ export const demoPages: DemoPageTemplate[] = [
             "Feature tour:",
             "  [Formatting]: bold, italic, strike-through, code, and links.",
             "  [Outliner Basics]: items, indentation, and keyboard navigation.",
-            "  [Undo and Redo]: one history shared by the outline and the database tables.",
+            "  [Undo and Redo]: one history shared by the outline and the database tables, "
+            + "from the keyboard or the toolbar buttons.",
             "  [Internal Links]: linking between pages, backlinks, and the graph view.",
             "  [Search and Commands]: full-text search and the inline command palette.",
             "  [Selection and Clipboard]: multi-item selection, box selection, copy and paste.",
@@ -753,6 +754,12 @@ export const demoPages: DemoPageTemplate[] = [
             "Shortcuts:",
             "  Ctrl+Z undoes the most recent change.",
             "  Ctrl+Shift+Z or Ctrl+Y redoes it.",
+            "Toolbar buttons:",
+            "  The Undo and Redo buttons at the top of the window do exactly the same thing as the shortcuts.",
+            "  On a phone they sit in the action toolbar at the bottom — a software keyboard has no Ctrl key, "
+            + "so that is how you reach your history there.",
+            "  Each button is greyed out while there is nothing to undo or redo, and pressing one keeps your "
+            + "cursor and the software keyboard in place.",
             "The outline and every database table each keep their own change history internally, "
             + "but you never have to think about which one you are in.",
             "One stack, in order:",

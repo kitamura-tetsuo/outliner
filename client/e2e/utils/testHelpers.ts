@@ -1083,6 +1083,24 @@ export class TestHelpers {
         text: string,
         userId: string = "local",
     ): Promise<void> {
+        // `setCursor` only updates the store; the matching Cursor instance is
+        // registered when the item re-renders, one or more frames later. Waiting
+        // for that registration instead of reading the map straight away keeps
+        // callers that insert immediately after `setCursor` from racing it.
+        await page.waitForFunction(
+            ({ itemId, userId }) => {
+                const store = (globalThis as any).editorOverlayStore;
+                if (!store || typeof store.getCursorInstances !== "function") return false;
+                return store.getCursorInstances().some(
+                    (c: any) => c.itemId === itemId && c.userId === userId && typeof c.insertText === "function",
+                );
+            },
+            { itemId, userId },
+            { timeout: 10000 },
+        ).catch(() => {
+            // Fall through: the evaluate below reports which cursors do exist.
+        });
+
         const success = await page.evaluate(async ({ itemId, text, userId }) => {
             const editorOverlayStore = (globalThis as any).editorOverlayStore;
             if (editorOverlayStore && editorOverlayStore.getCursorInstances) {
@@ -1093,12 +1111,16 @@ export class TestHelpers {
                     cursor.insertText(text);
                     return { ok: true };
                 } else {
-                    console.error(`TestHelpers.insertText: Cursor not found for itemId=${itemId}, userId=${userId}`);
-                    console.log(
-                        `Available cursors:`,
-                        cursorInstances.map((c: any) => ({ itemId: c.itemId, userId: c.userId })),
+                    // Serialize the available cursors into the error itself: the
+                    // console form collapses to "[Object, Object]" in CI logs,
+                    // which says nothing about why the lookup missed.
+                    const available = JSON.stringify(
+                        cursorInstances.map((c: any) => ({ itemId: c.itemId, userId: c.userId, isActive: c.isActive })),
                     );
-                    return { ok: false, error: `Cursor not found for itemId=${itemId}, userId=${userId}` };
+                    return {
+                        ok: false,
+                        error: `Cursor not found for itemId=${itemId}, userId=${userId}. Available: ${available}`,
+                    };
                 }
             } else {
                 // removed console.error

@@ -8,6 +8,8 @@ import { store } from "../stores/store.svelte";
 import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+import { preventEditorBlur, restoreEditorFocus } from "../lib/editorFocus";
 
 interface Props {
     onToggleDatabaseSidebar?: () => void;
@@ -19,6 +21,21 @@ let toolbarEl: HTMLDivElement | null = null;
 
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
+
+// The router's stacks are `$state`, so availability tracks every recorded and
+// consumed operation across the outline, the tables and the calendar.
+let canUndo = $derived(globalUndoRouter.canUndo());
+let canRedo = $derived(globalUndoRouter.canRedo());
+
+function handleUndo() {
+    globalUndoRouter.undo();
+    restoreEditorFocus();
+}
+
+function handleRedo() {
+    globalUndoRouter.redo();
+    restoreEditorFocus();
+}
 
 
 
@@ -141,6 +158,46 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
                 </span>
                 <span class="btn-text">Add Database</span>
             </button>
+            <!-- Undo/redo always go through the global router, never through a
+                 scope's own Y.UndoManager, so the buttons behave exactly like
+                 Ctrl+Z / Ctrl+Shift+Z. `data-keep-editor-focus` plus the
+                 pointerdown guard keep the caret and the software keyboard. -->
+            <button type="button"
+                class="history-btn"
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+                data-testid="toolbar-undo"
+                data-keep-editor-focus
+                disabled={!canUndo}
+                onpointerdown={preventEditorBlur}
+                onclick={handleUndo}
+            >
+                <span class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 14 4 9 9 4"></polyline>
+                        <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+                    </svg>
+                </span>
+                <span class="btn-text">Undo</span>
+            </button>
+            <button type="button"
+                class="history-btn"
+                aria-label="Redo"
+                title="Redo (Ctrl+Shift+Z)"
+                data-testid="toolbar-redo"
+                data-keep-editor-focus
+                disabled={!canRedo}
+                onpointerdown={preventEditorBlur}
+                onclick={handleRedo}
+            >
+                <span class="btn-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 14 20 9 15 4"></polyline>
+                        <path d="M4 20v-7a4 4 0 0 1 4-4h12"></path>
+                    </svg>
+                </span>
+                <span class="btn-text">Redo</span>
+            </button>
             <div role="search">
                 <SearchBox project={effectiveProject ?? undefined} />
             </div>
@@ -222,6 +279,38 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     background-color: #e5e7eb;
 }
 
+.history-btn {
+    margin-right: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background-color: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+}
+
+.history-btn .btn-icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.history-btn:hover:not(:disabled) {
+    background-color: #e5e7eb;
+}
+
+.history-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
 .databases-btn {
     margin-right: 1rem;
     padding: 0.25rem 0.75rem;
@@ -259,6 +348,15 @@ let effectiveProject: Project | null = $derived(project ?? store.project ?? null
     }
 
     .add-database-btn .btn-text {
+        display: none;
+    }
+
+    .history-btn {
+        margin-right: 0.5rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .history-btn .btn-text {
         display: none;
     }
 

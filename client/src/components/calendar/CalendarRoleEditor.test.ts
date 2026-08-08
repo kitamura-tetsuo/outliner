@@ -2,7 +2,7 @@ import { Project } from "$shared/app-schema";
 import { fireEvent, render } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createCalendar, destroyCalendarUndoManager, getCalendar } from "../../services/calendar/calendarService";
-import { globalUndoRouter } from "../../services/undo/undoRouter";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
 
 describe("CalendarRoleEditor", () => {

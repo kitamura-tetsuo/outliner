@@ -1,0 +1,14 @@
+id: FTR-6f0ad251
+title: Undo / Redo buttons in the toolbars
+title-ja: ツールバーのUndo/Redoボタン
+description: Undo and Redo are reachable by pointer as well as by keyboard. The main toolbar carries an Undo and a Redo icon button next to "Add Database", and the mobile action toolbar carries the same pair — on phones, whose keyboards have no Ctrl key, those buttons are the only way to reach the project's history. Both drive the unified undo stack (FTR-3c7f81ad) through the global undo router, so they behave exactly like Ctrl+Z / Ctrl+Shift+Z and reverse the most recent operation whichever scope it belongs to. The buttons are disabled while the corresponding stack is empty and enable themselves as soon as an operation is recorded, and pressing them keeps the caret and the software keyboard in place so editing can continue uninterrupted. The database table view's own Undo/Redo buttons share the same availability signal.
+category: client
+status: implemented
+related:
+- FTR-3c7f81ad
+tests:
+- client/e2e/new/und-toolbar-undo-redo-6f0ad251.spec.ts
+- client/e2e/new/und-toolbar-undo-redo-mobile-6f0ad251.spec.ts
+- client/src/components/OutlinerToolbar.test.ts
+- client/src/components/Toolbar.test.ts
+- client/src/services/undo/undoRouter.test.ts

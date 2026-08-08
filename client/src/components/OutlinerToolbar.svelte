@@ -1,5 +1,6 @@
 <script lang="ts">
     import { resolvePath } from "../utils/pathUtils";
+    import { preventEditorBlur } from "../lib/editorFocus";
 
     interface Props {
         mode: "desktop" | "mobile";
@@ -18,6 +19,10 @@
         onInsertSiblingBelow?: () => void;
         onDelete?: () => void;
         onVote?: () => void;
+        onUndo?: () => void;
+        onRedo?: () => void;
+        canUndo?: boolean;
+        canRedo?: boolean;
     }
 
     let {
@@ -35,6 +40,10 @@
         onInsertSiblingBelow,
         onDelete,
         onVote,
+        onUndo,
+        onRedo,
+        canUndo = false,
+        canRedo = false,
     }: Props = $props();
 
     // File input used by the "Add Image" action. Kept local to this component
@@ -88,6 +97,34 @@
         aria-label="Mobile Action Toolbar"
         style="bottom: {mobileToolbarBottomOffset}px"
     >
+        <!-- Phone keyboards have no Ctrl, so these are the only way to reach the
+             project history on mobile. They delegate to the global undo router
+             via `onUndo`/`onRedo`; `data-keep-editor-focus` and the pointerdown
+             guard keep the caret and the software keyboard in place. -->
+        <button type="button"
+            class="mobile-toolbar-btn"
+            title="Undo"
+            aria-label="Undo"
+            data-testid="mobile-toolbar-undo"
+            data-keep-editor-focus
+            disabled={!canUndo}
+            onpointerdown={preventEditorBlur}
+            onclick={onUndo}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+        </button>
+        <button type="button"
+            class="mobile-toolbar-btn"
+            title="Redo"
+            aria-label="Redo"
+            data-testid="mobile-toolbar-redo"
+            data-keep-editor-focus
+            disabled={!canRedo}
+            onpointerdown={preventEditorBlur}
+            onclick={onRedo}
+        >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+        </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
@@ -239,7 +276,12 @@
         flex-shrink: 0;
     }
 
-    .mobile-toolbar-btn:hover {
+    .mobile-toolbar-btn:hover:not(:disabled) {
         background: #e0e0e0;
+    }
+
+    .mobile-toolbar-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
     }
 </style>

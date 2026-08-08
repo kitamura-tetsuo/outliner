@@ -8,7 +8,7 @@ import {
     structuredClipboardFromHtml,
     structuredClipboardHtml,
 } from "../services/clipboard/itemClipboard";
-import { globalUndoRouter } from "../services/undo/undoRouter";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";

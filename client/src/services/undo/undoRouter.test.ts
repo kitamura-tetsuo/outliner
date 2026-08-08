@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { UndoRouter } from "./undoRouter";
+import { UndoRouter } from "./undoRouter.svelte";
 
 /** A scope: one doc, one map, one manager, registered with the router. */
 function scope(router: UndoRouter, name: string, trackedOrigins?: Set<unknown>) {
@@ -190,6 +190,55 @@ describe("UndoRouter", () => {
         router.undo();
         expect(outline.map.has("a")).toBe(false);
         expect(table.map.get("b")).toBe(2);
+    });
+
+    it("reports availability as the stacks fill and drain", () => {
+        // The toolbar buttons derive their `disabled` state from these two, so
+        // every transition below is a transition the buttons must follow.
+        const router = new UndoRouter();
+        const outline = scope(router, "outline");
+        const table = scope(router, "table");
+
+        expect(router.canUndo()).toBe(false);
+        expect(router.canRedo()).toBe(false);
+
+        outline.edit("a", 1);
+        expect(router.canUndo()).toBe(true);
+        expect(router.canRedo()).toBe(false);
+
+        table.edit("b", 2);
+        expect(router.canUndo()).toBe(true);
+
+        router.undo();
+        expect(router.canUndo()).toBe(true);
+        expect(router.canRedo()).toBe(true);
+
+        router.undo();
+        expect(router.canUndo()).toBe(false);
+        expect(router.canRedo()).toBe(true);
+
+        router.redo();
+        expect(router.canUndo()).toBe(true);
+        expect(router.canRedo()).toBe(true);
+
+        // A new operation discards the redo history.
+        outline.edit("c", 3);
+        expect(router.canRedo()).toBe(false);
+
+        router.clear();
+        expect(router.canUndo()).toBe(false);
+        expect(router.canRedo()).toBe(false);
+    });
+
+    it("reports nothing to undo once the only scope is unregistered", () => {
+        const router = new UndoRouter();
+        const table = scope(router, "table");
+
+        table.edit("b", 2);
+        expect(router.canUndo()).toBe(true);
+
+        router.unregister(table.undo);
+        expect(router.canUndo()).toBe(false);
     });
 
     it("registers a manager only once", () => {

@@ -26,6 +26,8 @@
     import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
+    import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
+    import { restoreEditorFocus } from "../lib/editorFocus";
     import ConfirmDialog from "./ConfirmDialog.svelte";
 
     const logger = getLogger("OutlinerTree");
@@ -2115,6 +2117,22 @@
         if (!itemViewModel) return;
         itemViewModel.original.toggleVote(currentUser);
     }
+
+    // Mobile history actions. They go through the global router exactly like
+    // Ctrl+Z / Ctrl+Shift+Z, and re-assert the caret afterwards so undoing does
+    // not drop the user out of the item they were editing.
+    let canUndo = $derived(globalUndoRouter.canUndo());
+    let canRedo = $derived(globalUndoRouter.canRedo());
+
+    function handleMobileUndo() {
+        globalUndoRouter.undo();
+        restoreEditorFocus();
+    }
+
+    function handleMobileRedo() {
+        globalUndoRouter.redo();
+        restoreEditorFocus();
+    }
 </script>
 
 
@@ -2274,6 +2292,10 @@
         onInsertSiblingBelow={handleMobileInsertSiblingBelow}
         onDelete={handleMobileDelete}
         onVote={handleMobileVote}
+        onUndo={handleMobileUndo}
+        onRedo={handleMobileRedo}
+        {canUndo}
+        {canRedo}
     />
 {/if}
 

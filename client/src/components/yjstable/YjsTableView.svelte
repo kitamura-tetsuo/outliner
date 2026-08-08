@@ -15,7 +15,7 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
-import { globalUndoRouter } from "../../services/undo/undoRouter";
+import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -62,6 +62,10 @@ let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
 let showSchedule = $state(false);
+
+// Availability of the shared history, tracked reactively from the router.
+let canUndo = $derived(globalUndoRouter.canUndo());
+let canRedo = $derived(globalUndoRouter.canRedo());
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
@@ -213,11 +217,13 @@ onDestroy(() => {
             <button
                 type="button"
                 data-testid="yjs-table-undo"
+                disabled={!canUndo}
                 onclick={() => globalUndoRouter.undo()}
             >Undo</button>
             <button
                 type="button"
                 data-testid="yjs-table-redo"
+                disabled={!canRedo}
                 onclick={() => globalUndoRouter.redo()}
             >Redo</button>
         </div>

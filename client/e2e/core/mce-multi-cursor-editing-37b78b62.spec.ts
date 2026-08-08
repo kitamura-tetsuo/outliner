@@ -16,8 +16,12 @@ test.describe("MCE-37b78b62: multi-cursor editing", () => {
     test("two cursors can edit", async ({ page }) => {
         const firstId = await page.locator(".outliner-item").nth(0).getAttribute("data-item-id");
         const secondId = await page.locator(".outliner-item").nth(1).getAttribute("data-item-id");
-        await TestHelpers.setCursor(page, firstId!, 0, "local");
+        // Place the remote cursor first. `setCursor` with `isActive` also moves
+        // the active item, and the local caret follows the active item, so
+        // seeding the remote cursor last would drag the local one onto the
+        // second item and both edits would land there.
         await TestHelpers.setCursor(page, secondId!, 0, "remote");
+        await TestHelpers.setCursor(page, firstId!, 0, "local");
         await TestHelpers.insertText(page, firstId!, "x", "local");
         await TestHelpers.insertText(page, secondId!, "y", "remote");
         await TestHelpers.waitForCursorVisible(page);

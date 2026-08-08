@@ -1,6 +1,6 @@
 import { Project } from "$shared/app-schema";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { globalUndoRouter } from "../undo/undoRouter";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import {
     createCalendar,
     deleteCalendar,

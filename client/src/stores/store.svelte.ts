@@ -12,7 +12,7 @@ import * as Y from "yjs";
 import { saveProjectSnapshot } from "../lib/projectSnapshot";
 import type { Items } from "../schema/app-schema";
 import { Item, Project } from "../schema/app-schema";
-import { globalUndoRouter } from "../services/undo/undoRouter";
+import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { ITEMS_RELATION_ORIGIN } from "../services/yjstable/itemsRelation";
 import { CHECKBOX_ROLLUP_ORIGIN, updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 import type { OutlinerViewModel } from "./OutlinerViewModel";
