@@ -1,13 +1,13 @@
 id: mob-os-selection-sync-7c41f9a2
-title: "Sync Mobile OS Selection Changes"
-title-ja: "モバイルOSの選択状態の同期"
-description: "Ensure selection and caret changes initiated by the mobile OS software keyboard are synced back to the outliner store."
-description-ja: "モバイルOSのソフトウェアキーボードによる選択やキャレットの変更が、アウトライナーのストアに同期されるようにします。"
-status: "implemented"
+title: Sync Mobile OS Selection Changes
+title-ja: モバイルOSの選択状態の同期
+description: Ensure selection and caret changes initiated by the mobile OS software keyboard are synced back to the outliner store.
+description-ja: モバイルOSのソフトウェアキーボードによる選択やキャレットの変更が、アウトライナーのストアに同期されるようにします。
+status: implemented
 tags:
-  - "mobile"
-  - "core"
-  - "selection"
+- mobile
+- core
+- selection
 tests:
-  - "client/e2e/core/mob-os-selection-sync-7c41f9a2.spec.ts"
-  - "client/src/components/GlobalTextArea.test.ts"
+- client/e2e/core/mob-os-selection-sync-7c41f9a2.spec.ts
+- client/src/components/GlobalTextArea.test.ts

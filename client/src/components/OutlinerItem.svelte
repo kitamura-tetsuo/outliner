@@ -70,14 +70,16 @@ onMount(() => {
 
 
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
-import { calculateGlobalOffset } from "../utils/domCursorUtils";
+import type { CaretPoint } from "../utils/domCursorUtils";
+import { getTextOffsetAtPoint } from "../utils/domCursorUtils";
+import { findWordBoundaries, TouchSelectionController, type TouchPoint } from "../lib/touchTextSelection";
 import type { OutlinerItemViewModel } from "../stores/OutlinerViewModel";
 import type { Item } from "../schema/app-schema";
 import { store as generalStore } from "../stores/store.svelte";
 import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
-import { getMeasurementSpan } from '../utils/domUtils';
+import { findBestOffsetBinary, getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
 import CommentThread from "./CommentThread.svelte";
 import { goto } from "$app/navigation";
@@ -93,63 +95,6 @@ import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
-/**
- * Binary search to find the character offset corresponding to a relative X coordinate.
- * Uses the provided span element to measure widths via Range API to avoid layout thrashing.
- */
-function findBestOffsetBinary(content: string, relX: number, span: HTMLElement): number {
-    span.textContent = content;
-    const textNode = span.firstChild;
-
-    // Fast path: empty or no text
-    if (!textNode) return 0;
-
-    // Fast path: check total width
-    const spanRect = span.getBoundingClientRect();
-    if (relX > spanRect.width) return content.length;
-    if (relX <= 0) return 0;
-
-    const range = document.createRange();
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, 0);
-
-    // Calculate start offset (padding-left equivalent)
-    const rangeStartRect = range.getBoundingClientRect();
-    const offset = rangeStartRect.left - spanRect.left;
-
-    let low = 0;
-    const len = textNode.textContent?.length ?? 0;
-    let high = len;
-
-    while (low < high) {
-        const mid = Math.floor((low + high) / 2);
-        range.setEnd(textNode, mid);
-        const w = range.getBoundingClientRect().width + offset;
-
-        if (w < relX) {
-            low = mid + 1;
-        } else {
-            high = mid;
-        }
-    }
-
-    // low is the first index where width >= relX
-    let best = low;
-
-    range.setEnd(textNode, low);
-    const dist1 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
-
-    if (low > 0) {
-        const prev = low - 1;
-        range.setEnd(textNode, prev);
-        const dist2 = Math.abs((range.getBoundingClientRect().width + offset) - relX);
-        if (dist2 < dist1) {
-            best = prev;
-        }
-    }
-
-    return best;
-}
 
 interface Props {
     model: OutlinerItemViewModel;
@@ -816,76 +761,30 @@ onMount(() => {
     }
 });
 
-function getClickPosition(event: MouseEvent, content: string): number {
-    const x = event.clientX;
-    const y = event.clientY;
-    // Identify text element
-    const textEl = displayRef.querySelector(".item-text") as HTMLElement;
-
-    // Try Caret API (Fast Path)
-    // Only use if rendered text length matches raw content length (avoids issues with hidden formatting/links)
-    if (textEl && (document.caretRangeFromPoint || (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint) && textEl.textContent?.length === content.length) {
-        let range: Range | null = null;
-        if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(x, y);
-        }
-        else {
-            const posInfo = (document as Document & { caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node, offset: number } }).caretPositionFromPoint?.(x, y);
-            if (posInfo) {
-                range = document.createRange();
-                range.setStart(posInfo.offsetNode, posInfo.offset);
-                range.collapse(true);
-            }
-        }
-
-        if (range && textEl.contains(range.startContainer)) {
-            // Calculate global offset avoiding O(N) layout thrashing
-            return calculateGlobalOffset(textEl, range.startContainer, range.startOffset);
-        }
-    }
-
-    // Fallback: width measurement using span
-    // Use entire content if no text element
-    const targetElement = textEl || displayRef;
-    const rect = targetElement.getBoundingClientRect();
-    const relX = x - rect.left;
-
-    // Processing when click position is outside text area
-    if (relX < 0) {
-        return 0; // Beginning if clicked on the left side of text
-    }
-
-    const span = getMeasurementSpan();
-    const style = window.getComputedStyle(targetElement);
-
-    // Only update styles if they differ (avoid unnecessary property writes)
-    if (span.style.fontSize !== style.fontSize ||
-        span.style.fontFamily !== style.fontFamily ||
-        span.style.fontWeight !== style.fontWeight ||
-        span.style.letterSpacing !== style.letterSpacing) {
-
-        span.style.fontFamily = style.fontFamily;
-        span.style.fontSize = style.fontSize;
-        span.style.fontWeight = style.fontWeight;
-        span.style.letterSpacing = style.letterSpacing;
-    }
-
-    const best = findBestOffsetBinary(content, relX, span);
-    // Span remains in DOM for reuse
-
-    return best;
+/**
+ * Maps a point to a text offset in this item.
+ *
+ * Takes a bare `{ clientX, clientY }` rather than a `MouseEvent` so mouse, touch and
+ * pen gestures all share one caret-mapping path.
+ */
+function getClickPosition(point: CaretPoint, content: string): number {
+    const textEl = displayRef.querySelector(".item-text") as HTMLElement | null;
+    return getTextOffsetAtPoint(textEl, displayRef, point.clientX, point.clientY, content);
 }
 
 function toggleCollapse() {
     dispatch("toggle-collapse", { itemId: model.id });
 }
 
+/** Point a caret gesture happened at, plus the modifier state the mouse path relies on. */
+type EditingPoint = CaretPoint & { altKey?: boolean; };
+
 /**
  * Set cursor
- * @param event Mouse event (calculate cursor position from click position)
+ * @param event Pointing gesture (calculate cursor position from its point)
  * @param initialCursorPosition Initial cursor position (if specified)
  */
-function startEditing(event?: MouseEvent, initialCursorPosition?: number) {
+function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     if (isReadOnly) return;
 
     // Get global textarea (from store, fallback to DOM if missing)
@@ -991,6 +890,209 @@ function updateSelectionAndCursor() {
     lastCursorPosition = currentStart === currentEnd ? currentStart :
         (hiddenTextareaRef.selectionDirection === "backward" ? currentStart : currentEnd);
 }
+
+// ---------------------------------------------------------------------------
+// Touch caret placement and long-press selection
+//
+// Touch screens synthesize a mouse event pair only after a tap completes and
+// synthesize nothing for a long-press drag, so the mouse handlers above cannot serve
+// touch. Pointer events drive the touch gestures instead; the mouse path is left
+// exactly as it was and the synthesized mouse events are suppressed for gestures the
+// touch path already handled.
+// ---------------------------------------------------------------------------
+
+/**
+ * Window (ms) in which synthesized mouse events following a handled touch gesture are
+ * ignored. Browsers emit the compatibility mousedown/mouseup/click well after touchend.
+ */
+const SYNTHETIC_MOUSE_SUPPRESS_MS = 800;
+
+let syntheticMouseSuppressedUntil = 0;
+/** Anchor offset a touch selection drag extends from (the pressed word's start). */
+let touchSelectionAnchorOffset = 0;
+/** Item the touch selection drag started on; the drag may extend into other items. */
+let isTouchSelecting = $state(false);
+
+function suppressSyntheticMouse() {
+    syntheticMouseSuppressedUntil = Date.now() + SYNTHETIC_MOUSE_SUPPRESS_MS;
+}
+
+/** True while mouse events synthesized from a just-handled touch gesture should be ignored. */
+function isSyntheticMouseSuppressed(): boolean {
+    return Date.now() < syntheticMouseSuppressedUntil;
+}
+
+/** True when a gesture on this target belongs to embedded UI rather than the item text. */
+function isNonTextGestureTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el?.closest) return false;
+    if (isForeignInput(target)) return true;
+    return Boolean(
+        el.closest(".component-wrapper")
+            || el.closest(".component-selector")
+            || el.closest("a")
+            || el.closest("button")
+            || el.closest("select")
+            || el.closest("input"),
+    );
+}
+
+/** Resolves the outliner item under a viewport point, for selection drags that leave this item. */
+function resolveItemAtPoint(point: TouchPoint): { itemId: string; offset: number; } | undefined {
+    const el = document.elementFromPoint(point.clientX, point.clientY) as HTMLElement | null;
+    const itemEl = el?.closest(".outliner-item") as HTMLElement | null;
+    const itemId = itemEl?.getAttribute("data-item-id");
+    if (!itemEl || !itemId) return undefined;
+
+    if (itemId === model.id) {
+        return { itemId, offset: getClickPosition(point, textString) };
+    }
+
+    const textEl = itemEl.querySelector(".item-text") as HTMLElement | null;
+    const content = textEl?.textContent ?? "";
+    return {
+        itemId,
+        offset: getTextOffsetAtPoint(textEl, itemEl, point.clientX, point.clientY, content),
+    };
+}
+
+/** Tap: place the caret at the touched character and open the software keyboard. */
+function handleTouchTap(point: TouchPoint) {
+    suppressSyntheticMouse();
+    // focus() must happen inside the gesture handler: iOS Safari only opens the
+    // keyboard for a focus that occurs during a user gesture.
+    startEditing(point);
+}
+
+/** Long press: select the word under the finger and enter selection-drag mode. */
+function handleTouchLongPress(point: TouchPoint) {
+    suppressSyntheticMouse();
+
+    const offset = getClickPosition(point, textString);
+    const { start, end } = findWordBoundaries(textString, offset);
+
+    // Place the caret first so the item becomes active and the textarea holds this text.
+    startEditing(undefined, end);
+
+    isTouchSelecting = true;
+    touchSelectionAnchorOffset = start;
+
+    if (hiddenTextareaRef) {
+        editorOverlayStore.applyTextareaSelectionRange(hiddenTextareaRef, start, end, "forward");
+    }
+
+    editorOverlayStore.clearSelectionForUser("local");
+    editorOverlayStore.setSelection({
+        startItemId: model.id,
+        startOffset: start,
+        endItemId: model.id,
+        endOffset: end,
+        userId: "local",
+        isReversed: false,
+    });
+    editorOverlayStore.setCursor({
+        itemId: model.id,
+        offset: end,
+        isActive: true,
+        userId: "local",
+    });
+    lastCursorPosition = end;
+    editorOverlayStore.startCursorBlink();
+
+    // Hand the anchor to the tree so the drag can extend across items through the
+    // same path the mouse drag uses.
+    dispatch("drag-start", {
+        itemId: model.id,
+        offset: start,
+        selection: null,
+    });
+}
+
+/** Selection drag: extend the selection to the finger, across items when needed. */
+function handleTouchExtend(point: TouchPoint) {
+    const hit = resolveItemAtPoint(point);
+    if (!hit) return;
+
+    if (hit.itemId === model.id && hiddenTextareaRef) {
+        const start = Math.min(touchSelectionAnchorOffset, hit.offset);
+        const end = Math.max(touchSelectionAnchorOffset, hit.offset);
+        editorOverlayStore.applyTextareaSelectionRange(
+            hiddenTextareaRef,
+            start,
+            end,
+            hit.offset < touchSelectionAnchorOffset ? "backward" : "forward",
+        );
+        lastCursorPosition = hit.offset;
+    }
+
+    // The tree owns cross-item selection state and handles the single-item case too.
+    dispatch("drag", { itemId: hit.itemId, offset: hit.offset });
+}
+
+/** Selection drag finished: keep the selection and stop suppressing browser gestures. */
+function handleTouchSelectionEnd() {
+    if (!isTouchSelecting) return;
+    isTouchSelecting = false;
+    suppressSyntheticMouse();
+
+    // Deliberately not re-derived from the hidden textarea: that only describes the
+    // active item and would flatten a selection spanning several items back down to
+    // one. The drag already wrote the authoritative selection to the store.
+    editorOverlayStore.startCursorBlink();
+    dispatch("drag-end", {
+        itemId: model.id,
+        offset: lastCursorPosition,
+    });
+}
+
+const touchSelection = new TouchSelectionController({
+    onTap: handleTouchTap,
+    onLongPress: handleTouchLongPress,
+    onExtend: handleTouchExtend,
+    onSelectionEnd: handleTouchSelectionEnd,
+});
+
+function handlePointerDown(event: PointerEvent) {
+    if (event.pointerType !== "touch") return;
+    if (isNonTextGestureTarget(event.target)) return;
+    touchSelection.pointerDown(event);
+}
+
+function handlePointerMove(event: PointerEvent) {
+    if (event.pointerType !== "touch") return;
+    touchSelection.pointerMove(event);
+}
+
+function handlePointerUp(event: PointerEvent) {
+    if (event.pointerType !== "touch") return;
+    touchSelection.pointerUp(event);
+}
+
+function handlePointerCancel(event: PointerEvent) {
+    if (event.pointerType !== "touch") return;
+    touchSelection.cancel();
+}
+
+// Only a selection drag may swallow touch scrolling, and only while it is running:
+// vertical panning of the outline must stay native everywhere else. `touch-action`
+// is latched at gesture start, so the scroll has to be cancelled through a
+// non-passive `touchmove` listener instead of a CSS rule toggled mid-gesture.
+onMount(() => {
+    const element = itemRef;
+    if (!element) return;
+
+    const suppressScrollDuringSelection = (event: TouchEvent) => {
+        if (isTouchSelecting && event.cancelable) {
+            event.preventDefault();
+        }
+    };
+
+    element.addEventListener("touchmove", suppressScrollDuringSelection, { passive: false });
+    return () => {
+        element.removeEventListener("touchmove", suppressScrollDuringSelection);
+        touchSelection.destroy();
+    };
+});
 
 // Whole item keydown event handler
 
@@ -1111,6 +1213,10 @@ function handleContentClick(e: MouseEvent) {
  * @param event Mouse event
  */
 function handleClick(event: MouseEvent) {
+    // A touch gesture already placed the caret / made the selection; the browser's
+    // compatibility click would redo it (and collapse a long-press selection).
+    if (isSyntheticMouseSuppressed()) return;
+
     // Ignore clicks inside embedded components (treated as foreign UI)
     if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
         return;
@@ -1194,6 +1300,9 @@ function handleClick(event: MouseEvent) {
  * @param event Mouse event
  */
 function handleMouseDown(event: MouseEvent) {
+    // Synthesized from a touch gesture the pointer handlers already served.
+    if (isSyntheticMouseSuppressed()) return;
+
     // Ignore clicks inside embedded components (treated as foreign UI)
     if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
         return;
@@ -1306,6 +1415,9 @@ function handleMouseDown(event: MouseEvent) {
 function handleMouseMove(event: MouseEvent) {
     // Ignore if left button is not pressed
     if (event.buttons !== 1) return;
+
+    // Synthesized from a touch gesture the pointer handlers already served.
+    if (isSyntheticMouseSuppressed()) return;
 
     // Rectangular selection (box selection) if Alt+Shift+Drag.
     // Handled by the item that has the cursor, independent of where the drag started.
@@ -1576,6 +1688,9 @@ function handleBoxSelection(event: MouseEvent, currentPosition: number) {
  * Mouseup handling: End drag
  */
 function handleMouseUp() {
+    // Synthesized from a touch gesture; the touch path already ended its own drag.
+    if (isSyntheticMouseSuppressed()) return;
+
     selectionDragStartedHere = false;
 
     // Ignore if not dragging
@@ -2067,6 +2182,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     onmousedown={handleMouseDown}
     onmousemove={handleMouseMove}
     onmouseup={handleMouseUp}
+    onpointerdown={handlePointerDown}
+    onpointermove={handlePointerMove}
+    onpointerup={handlePointerUp}
+    onpointercancel={handlePointerCancel}
+    class:touch-selecting={isTouchSelecting}
 
     id={isPageTitle ? undefined : model.id}
     role={isPageTitle ? "presentation" : "treeitem"}
@@ -2319,6 +2439,16 @@ export function setSelectionPosition(start: number, end: number = start) {
     padding-top: 4px;
     padding-bottom: 4px;
     min-height: 24px; /* E2E stabilization: Ensure visible boundary is not zero immediately after new insertion */
+}
+
+/*
+ * Only while a long-press selection drag is running: the finger is extending a
+ * selection, not panning. Applied on top of the non-passive `touchmove` handler,
+ * which is what actually cancels a scroll for the gesture already in flight.
+ * Never applied globally -- vertical scrolling of the outline must stay native.
+ */
+.outliner-item.touch-selecting {
+    touch-action: none;
 }
 
 .page-title {

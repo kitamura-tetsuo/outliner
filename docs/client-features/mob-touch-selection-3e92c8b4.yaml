@@ -1,0 +1,16 @@
+id: mob-touch-selection-3e92c8b4
+title: Touch caret placement and long-press text selection
+title-ja: タッチによるキャレット配置と長押しテキスト選択
+description: Place the caret by tapping and select text by long-pressing and dragging on touch devices. Caret and selection gestures run on pointer events so touch is served directly instead of relying on the browser's delayed synthesized mouse events, which never fire at all for a long-press drag. A tap focuses the hidden global textarea inside the gesture handler so the software keyboard opens on iOS as well as Android. A long press selects the word under the finger and starts a selection drag that extends character by character, across items, through the same tree-level selection path the mouse drag uses. Scrolling is only suppressed while such a drag is running, so ordinary vertical panning of the outline stays native. The mouse path -- drag selection, Shift+Click, Alt+Click multi-cursor and Alt+Shift box selection -- is unchanged.
+description-ja: タッチデバイスで、タップによるキャレット配置と、長押し＋ドラッグによるテキスト選択を行えるようにします。 キャレットと選択のジェスチャーをポインターイベントで処理し、遅延のあるブラウザーの合成マウスイベント （長押しドラッグでは発生しない）に依存せずタッチを直接扱います。タップ時はジェスチャーハンドラー内で 隠しグローバルテキストエリアにフォーカスするため、Android だけでなく iOS でもソフトウェアキーボードが開きます。 長押しは指の下の単語を選択し、そのままドラッグすると、マウスドラッグと同じツリー側の選択経路を通じて 項目をまたいで 1 文字ずつ選択範囲を広げられます。スクロールの抑制は選択ドラッグ中のみで、 通常の縦スクロールはネイティブのまま動作します。マウス操作（ドラッグ選択、Shift+クリック、 Alt+クリックのマルチカーソル、Alt+Shift の矩形選択）は変更されません。
+status: implemented
+tags:
+- mobile
+- core
+- selection
+- cursor
+tests:
+- client/e2e/core/mob-touch-longpress-select-3e92c8b4.spec.ts
+- client/e2e/core/mob-touch-selection-3e92c8b4.spec.ts
+- client/e2e/core/mob-touch-selection-cross-item-3e92c8b4.spec.ts
+- client/src/lib/touchTextSelection.test.ts

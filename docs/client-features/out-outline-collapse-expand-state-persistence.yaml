@@ -6,3 +6,6 @@ status: implemented
 acceptance:
 - Expanding or collapsing an item persists the state to local storage.
 - Reloading the page or navigating back preserves the collapse/expand state of outline items.
+title-ja: Outline collapse/expand state persistence
+tests:
+- client/e2e/core/out-outline-collapse-expand-state-persistence.spec.ts

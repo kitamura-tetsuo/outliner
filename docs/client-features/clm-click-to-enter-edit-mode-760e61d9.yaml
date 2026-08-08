@@ -16,7 +16,7 @@ acceptance:
 - Cursor blinks
 - Cursor is visible
 - Enter edit mode on click
-- Text input is enabled in edit mode
-- Exit edit mode by pressing Escape (also blurs the hidden textarea)
 - Exit edit mode by clicking outside the outliner tree
+- Exit edit mode by pressing Escape (also blurs the hidden textarea)
+- Text input is enabled in edit mode
 title-ja: クリックで編集モードに入る

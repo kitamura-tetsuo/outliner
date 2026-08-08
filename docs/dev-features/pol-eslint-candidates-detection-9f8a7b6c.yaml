@@ -33,5 +33,6 @@ related_files:
 changelog:
 - 2025-11-09: Initial implementation of ESLint candidates detection
 title-ja: ESLint Candidates Detection Script
+status: implemented
 tests:
 - scripts/tests/detect-promote-candidates.spec.ts

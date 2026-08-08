@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 34;
+export const DEMO_TEMPLATE_VERSION = 35;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -805,6 +805,11 @@ export const demoPages: DemoPageTemplate[] = [
         lines: [
             "Select text with the mouse or with Shift+Arrow keys.",
             "Selections can span multiple items: keep extending past the end of an item.",
+            "On a phone or tablet:",
+            "  Tap any character to put the caret there and open the keyboard.",
+            "  Press and hold to select the word under your finger.",
+            "  Keep your finger down and drag to extend the selection, even into the items below.",
+            "  A normal swipe still scrolls the outline as usual.",
             "Useful shortcuts:",
             "  Ctrl+L selects the entire line under the cursor.",
             "  Shift+Alt+Right expands the selection to the end of the line; Shift+Alt+Left shrinks it.",
