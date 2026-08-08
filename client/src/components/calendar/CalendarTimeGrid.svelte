@@ -236,15 +236,23 @@ onMount(() => {
         <div class="band-row" data-testid="calendar-all-day-band" style={`grid-template-columns: repeat(${layout.dayCount}, 1fr)`}>
             {#each layout.allDay as p (p.entry.key)}
                 <div
-                    role="button"
-                    tabindex="0"
+                    role="group"
+                    aria-label={p.entry.title}
                     class="all-day-entry"
                     class:not-writable={!isStartWritable(p.entry)}
                     style={`grid-column: ${p.dayIndex + 1} / span ${p.spanDays}`}
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
-                    onkeydown={(e) => onEntryKeydown(p.entry, e)}
+                    onpointerdown={(e) => {
+                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                    }}
                 >
-                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="entry-title"
+                        data-testid="calendar-entry-title"
+                        onkeydown={(e) => onEntryKeydown(p.entry, e)}
+                    >{p.entry.title}</div>
                     {#if isDeletable(p.entry)}
                         <button
                             type="button"
@@ -261,14 +269,22 @@ onMount(() => {
             {/each}
             {#each layout.milestones as m (m.entry.key)}
                 <div
-                    role="button"
-                    tabindex="0"
+                    role="group"
+                    aria-label={m.entry.title}
                     class="milestone-entry"
                     style={`grid-column: ${m.dayIndex + 1}`}
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
-                    onkeydown={(e) => onEntryKeydown(m.entry, e)}
+                    onpointerdown={(e) => {
+                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                    }}
                 >
-                    <span class="entry-title" data-testid="calendar-entry-title">◆ {m.entry.title}</span>
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="entry-title"
+                        data-testid="calendar-entry-title"
+                        onkeydown={(e) => onEntryKeydown(m.entry, e)}
+                    >◆ {m.entry.title}</div>
                     {#if isDeletable(m.entry)}
                         <button
                             type="button"
@@ -309,8 +325,8 @@ onMount(() => {
             {/each}
             {#each layout.timed as p (p.entry.key)}
                 <div
-                    role="button"
-                    tabindex="0"
+                    role="group"
+                    aria-label={p.entry.title}
                     class="timed-entry"
                     class:not-writable={!isStartWritable(p.entry)}
                     data-testid={`calendar-entry-${p.entry.key}`}
@@ -319,10 +335,18 @@ onMount(() => {
                     }%); width: calc(${100 / layout.dayCount / p.columnCount}% - 2px); top: ${
                         p.startFraction * dayHeightPx
                     }px; height: ${(p.endFraction - p.startFraction) * dayHeightPx}px`}
-                    onpointerdown={(e) => beginDrag("move", p.entry, e)}
-                    onkeydown={(e) => onEntryKeydown(p.entry, e)}
+                    onpointerdown={(e) => {
+                        beginDrag("move", p.entry, e);
+                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                    }}
                 >
-                    <span class="entry-title" data-testid="calendar-entry-title">{p.entry.title}</span>
+                    <div
+                        role="button"
+                        tabindex="0"
+                        class="entry-title"
+                        data-testid="calendar-entry-title"
+                        onkeydown={(e) => onEntryKeydown(p.entry, e)}
+                    >{p.entry.title}</div>
                     {#if isDeletable(p.entry)}
                         <button
                             type="button"
@@ -521,6 +545,16 @@ onMount(() => {
 
 .entry-title {
     pointer-events: none;
+    outline: none;
+}
+.entry-title:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+.all-day-entry .entry-title:focus-visible,
+.milestone-entry .entry-title:focus-visible {
+    outline-color: #2563eb;
 }
 
 .resize-handle {
