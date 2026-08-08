@@ -50,9 +50,12 @@ test("remote insertion before the caret preserves the local typing position", as
     await pageA.keyboard.type("XYZ");
 
     await expect(itemB).toContainText("XYZ0123456789", { timeout: 30_000 });
-    const textareaB = pageB.locator("textarea.global-textarea");
-    await expect(textareaB).toHaveValue("XYZ0123456789");
-    await expect.poll(() => textareaB.evaluate(element => (element as HTMLTextAreaElement).selectionStart)).toBe(13);
+    await expect.poll(() =>
+        pageB.evaluate((id) => {
+            const editorStore = (globalThis as any).editorOverlayStore;
+            return editorStore?.getCursorInstances?.().find((cursor: any) => cursor.itemId === id)?.offset;
+        }, itemId)
+    ).toBe(13);
 
     await pageB.keyboard.type("!");
     await expect(itemA).toContainText("XYZ0123456789!", { timeout: 30_000 });
