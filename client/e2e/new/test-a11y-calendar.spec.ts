@@ -64,13 +64,29 @@ test.describe("Calendar view type select has accessible name", () => {
         await page.getByTestId("calendar-role-roleStart").first().selectOption("start_at");
         await page.getByTestId("calendar-role-roleDuration").first().selectOption("duration");
 
+        // Ensure we seed an item with a start/duration
+        await page.evaluate(() => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const target = items.at(1) ?? items.at(0); // fallback if only 1 item exists
+            if (!target) throw new Error("No items found");
+            const today = new Date().toISOString().slice(0, 10);
+            target.start = `${today}T09:00:00.000Z`;
+            target.allDay = false;
+            target.duration = "PT30M";
+            return String(target.id);
+        });
+
+        // Use the Day view
+        const combobox = page.getByRole("combobox", { name: /Resize Keyboard Calendar view/i });
+        await combobox.selectOption("day");
+
         // Wait for grid to load and resize handle to appear
         await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
-        const entry = page.locator('.timed-entry[data-testid^="calendar-entry-outline_items:"]').first();
+        const entry = page.locator('.timed-entry').first();
         await expect(entry).toBeVisible({ timeout: 15000 });
         await expect(entry).not.toHaveClass(/not-writable/, { timeout: 15000 });
 
-        const handle = entry.locator(".resize-handle").first();
+        const handle = entry.locator('.resize-handle').first();
         await expect(handle).toBeVisible({ timeout: 15000 });
 
         // Check initial aria attributes
