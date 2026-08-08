@@ -45,7 +45,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         // Yjs observers run while the transaction is still being cleaned up. Rebase and
         // refresh the textarea afterwards, when the complete remote update is visible.
         queueMicrotask(() => {
-            if (this.destroyed || !this.isActive || !store.cursorInstances.has(this.cursorId)) return;
+            if (this.destroyed || !this.isActive) return;
             const rebasedOffset = this.offset;
             store.updateCursor({
                 cursorId: this.cursorId,
