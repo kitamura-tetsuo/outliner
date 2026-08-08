@@ -41,6 +41,7 @@ interface Props {
     onResizeMove: (entry: CalendarEntry, newDurationMs: number) => void;
     onResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
+    onKeyboardResize: (entry: CalendarEntry, newDurationMs: number) => void;
     onLaneDrop: (entry: CalendarEntry, laneValue: string | undefined, mode: "replace" | "add") => void;
     /** Delete affordance, passed straight through to each lane's grid (#4349). */
     onDeleteRequest?: (entry: CalendarEntry) => void;
@@ -65,6 +66,7 @@ let {
     onResizeMove,
     onResizeEnd,
     onKeyboardMove,
+    onKeyboardResize,
     onLaneDrop,
     onDeleteRequest,
     isDeletable = () => false,
@@ -176,6 +178,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
                 {onResizeMove}
                 {onResizeEnd}
                 {onKeyboardMove}
+                {onKeyboardResize}
                 {isDeletable}
                 {onDeleteRequest}
                 isLaneWritable={(entry) => isLaneWritable(entry)}

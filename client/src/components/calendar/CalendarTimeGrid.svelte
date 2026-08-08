@@ -22,7 +22,7 @@
 
 import { onMount } from "svelte";
 import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
-import { formatDragMoveLabel, formatDragResizeLabel } from "../../services/calendar/calendarDragLabel";
+import { formatDragMoveLabel, formatDragResizeLabel, formatDuration } from "../../services/calendar/calendarDragLabel";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
 import type { TimeGridLayout } from "../../services/calendar/calendarTimeGridLayout";
 import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
@@ -49,6 +49,7 @@ interface Props {
     onResizeMove: (entry: CalendarEntry, newDurationMs: number) => void;
     onResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
+    onKeyboardResize: (entry: CalendarEntry, newDurationMs: number) => void;
     /** Requests the delete-disposition prompt for an entry; addressability (not writability) gates this. */
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
@@ -73,6 +74,7 @@ let {
     onResizeMove,
     onResizeEnd,
     onKeyboardMove,
+    onKeyboardResize,
     onDeleteRequest,
     isDeletable = () => false,
     isLaneWritable,
@@ -201,6 +203,19 @@ function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (deltaMs === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaMs);
+}
+
+function onResizeKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if (!isDurationWritable(entry)) return;
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    e.stopPropagation(); // prevent bubbling to onEntryKeydown
+
+    const deltaMs = e.key === "ArrowUp" ? -15 * 60_000 : 15 * 60_000;
+    const currentDurationMs = entry.durationMs ?? MIN_DURATION_MS;
+    const newDurationMs = Math.max(MIN_DURATION_MS, currentDurationMs + deltaMs);
+
+    onKeyboardResize(entry, newDurationMs);
 }
 
 onMount(() => {
@@ -339,10 +354,16 @@ onMount(() => {
                     {#if isDurationWritable(p.entry)}
                         <div
                             role="separator"
+                            tabindex="0"
+                            aria-orientation="horizontal"
+                            aria-valuemin={MIN_DURATION_MS / 60000}
+                            aria-valuenow={(p.entry.durationMs ?? MIN_DURATION_MS) / 60000}
+                            aria-valuetext={formatDuration(p.entry.durationMs ?? MIN_DURATION_MS)}
                             aria-label={`Resize ${p.entry.title}`}
                             class="resize-handle"
                             data-testid={`calendar-entry-resize-${p.entry.key}`}
                             onpointerdown={(e) => beginDrag("resize", p.entry, e)}
+                            onkeydown={(e) => onResizeKeydown(p.entry, e)}
                         ></div>
                     {/if}
                     {#if isLaneWritable?.(p.entry)}

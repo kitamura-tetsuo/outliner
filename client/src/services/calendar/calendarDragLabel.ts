@@ -29,7 +29,7 @@ export interface DragLabelOptions {
     startMs?: number;
 }
 
-function formatDuration(durationMs: number): string {
+export function formatDuration(durationMs: number): string {
     const minutes = Math.max(0, Math.round(durationMs / 60000));
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;

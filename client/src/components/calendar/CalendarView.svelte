@@ -648,6 +648,7 @@ onDestroy(() => {
             onResizeMove={previewDuration}
             onResizeEnd={commitDuration}
             onKeyboardMove={commitStart}
+            onKeyboardResize={commitDuration}
             onLaneDrop={commitLaneDrop}
             {isDeletable}
             onDeleteRequest={requestDelete}
@@ -669,6 +670,7 @@ onDestroy(() => {
             onResizeMove={previewDuration}
             onResizeEnd={commitDuration}
             onKeyboardMove={commitStart}
+            onKeyboardResize={commitDuration}
             {isDeletable}
             onDeleteRequest={requestDelete}
         />
