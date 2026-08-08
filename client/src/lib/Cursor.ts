@@ -46,7 +46,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         // refresh the textarea afterwards, when the complete remote update is visible.
         queueMicrotask(() => {
             if (this.destroyed || !this.isActive) return;
-            const rebasedOffset = this.offset;
+            const rebasedOffset = this.resolveCaretAnchor();
             store.updateCursor({
                 cursorId: this.cursorId,
                 itemId: this.itemId,
@@ -109,6 +109,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     }
 
     get offset(): number {
+        return this._offset;
+    }
+
+    private resolveCaretAnchor(): number {
         if (this.caretAnchor) {
             const target = this.findTarget();
             const absolute = target && Y.createAbsolutePositionFromRelativePosition(this.caretAnchor, target.ydoc);
