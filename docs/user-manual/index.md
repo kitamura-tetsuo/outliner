@@ -32,7 +32,7 @@ To browse your pages, click the sidebar toggle button in the top-left corner (ha
 To create a new page, you can:
 
 - Click the add (**+**) button in the **Pages** section header of the sidebar.
-- Alternatively, search for a non-existent page name using the "Search pages" input field at the top of the screen and click on the "Create page" prompt.
+- Alternatively, use the "New page name" input field on the project homepage and click the **+ Create** button.
 
 ### Switching to Edit Mode
 
