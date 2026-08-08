@@ -126,7 +126,9 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     private bindCaretAnchor(): void {
         const target = this.findTarget();
-        const text = target?.yMap.get("text");
+        // Some non-Yjs Item implementations (including lightweight Fluid test
+        // stubs) do not expose a backing map; they keep using the numeric offset.
+        const text = target?.yMap?.get("text");
         if (!(text instanceof Y.Text) || !text.doc) return;
 
         if (this.observedText !== text) {
