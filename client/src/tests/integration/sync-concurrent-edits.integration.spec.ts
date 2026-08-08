@@ -87,4 +87,43 @@ describe("Concurrent Editing", () => {
         expect(i1?.text.toString()).toBe("AhelloB");
         expect(i2?.text.toString()).toBe("AhelloB");
     });
+
+    it("rebases a relative caret when a remote insertion lands before it", () => {
+        const source = new Y.Doc();
+        const project = Project.fromDoc(source);
+        const page = project.addPage("page", "test_user");
+        const item = page.items.addNode("test_user");
+        item.insertTextAt(0, "0123456789");
+
+        const remote = new Y.Doc();
+        Y.applyUpdate(remote, Y.encodeStateAsUpdate(source));
+        const remoteProject = Project.fromDoc(remote);
+        const remoteItem = new Item(remote, remoteProject.tree, item.key);
+        const remoteText = remoteItem.yMap.get("text") as Y.Text;
+        const caret = Y.createRelativePositionFromTypeIndex(remoteText, 10, -1);
+
+        item.insertTextAt(0, "XYZ");
+        Y.applyUpdate(remote, Y.encodeStateAsUpdate(source));
+
+        expect(Y.createAbsolutePositionFromRelativePosition(caret, remote)?.index).toBe(13);
+        remoteItem.insertTextAt(13, "!");
+        expect(remoteItem.text).toBe("XYZ0123456789!");
+    });
+
+    it("does not double-advance a left-associated caret during local typing", () => {
+        const doc = new Y.Doc();
+        const text = doc.getText("item");
+        text.insert(0, "0123456789");
+        let offset = 0;
+
+        for (const character of "XYZ") {
+            const caret = Y.createRelativePositionFromTypeIndex(text, offset, -1);
+            text.insert(offset, character);
+            const anchoredOffset = Y.createAbsolutePositionFromRelativePosition(caret, doc)?.index ?? offset;
+            offset = anchoredOffset + character.length;
+        }
+
+        expect(text.toString()).toBe("XYZ0123456789");
+        expect(offset).toBe(3);
+    });
 });

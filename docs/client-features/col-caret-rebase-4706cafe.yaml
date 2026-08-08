@@ -1,0 +1,6 @@
+id: COL-4706cafe
+title: Rebase the local caret after collaborative edits
+title-ja: 共同編集後にローカルキャレット位置を再調整する
+status: stable
+tests:
+- client/e2e/new/col-caret-rebase-4706cafe.spec.ts

@@ -1,4 +1,5 @@
 import { tick } from "svelte";
+import * as Y from "yjs";
 
 import type { Item } from "../schema/app-schema";
 
@@ -34,7 +35,28 @@ export interface CursorOptions {
 export class Cursor implements CursorEditingContext, CursorNavigationContext {
     cursorId: string;
     itemId: string;
-    offset: number;
+    private _offset = 0;
+    private caretAnchor: Y.RelativePosition | undefined;
+    private observedText: Y.Text | undefined;
+    private destroyed = false;
+    private readonly handleObservedText = (_event: Y.YTextEvent, transaction: Y.Transaction) => {
+        if (transaction.local) return;
+
+        // Yjs observers run while the transaction is still being cleaned up. Rebase and
+        // refresh the textarea afterwards, when the complete remote update is visible.
+        queueMicrotask(() => {
+            if (this.destroyed || !this.isActive) return;
+            const rebasedOffset = this.resolveCaretAnchor();
+            store.updateCursor({
+                cursorId: this.cursorId,
+                itemId: this.itemId,
+                offset: rebasedOffset,
+                isActive: this.isActive,
+                userId: this.userId,
+            });
+            store.syncTextareaToActiveItem();
+        });
+    };
     isActive: boolean;
     userId: string;
     // Initial column position used for up/down key navigation.
@@ -79,11 +101,50 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     constructor(cursorId: string, opts: CursorOptions) {
         this.cursorId = cursorId;
         this.itemId = opts.itemId;
-        this.offset = opts.offset;
         this.isActive = opts.isActive;
         this.userId = opts.userId;
         this.editor = new CursorEditor(this);
         this.navigation = new CursorNavigation(this);
+        this.offset = opts.offset;
+    }
+
+    get offset(): number {
+        return this._offset;
+    }
+
+    private resolveCaretAnchor(): number {
+        if (this.caretAnchor) {
+            const target = this.findTarget();
+            const absolute = target && Y.createAbsolutePositionFromRelativePosition(this.caretAnchor, target.ydoc);
+            if (absolute && absolute.type === this.observedText) {
+                this._offset = absolute.index;
+            }
+        }
+        return this._offset;
+    }
+
+    set offset(value: number) {
+        this._offset = value;
+        this.bindCaretAnchor();
+    }
+
+    private bindCaretAnchor(): void {
+        const target = this.findTarget();
+        // Some non-Yjs Item implementations (including lightweight Fluid test
+        // stubs) do not expose a backing map; they keep using the numeric offset.
+        const text = target?.yMap?.get("text");
+        if (!(text instanceof Y.Text) || !text.doc) return;
+
+        if (this.observedText !== text) {
+            this.observedText?.unobserve(this.handleObservedText);
+            this.observedText = text;
+            text.observe(this.handleObservedText);
+        }
+        const safeOffset = Math.min(Math.max(0, this._offset), text.length);
+        // Associate with the character to the left so our own insertion at the
+        // caret does not advance the anchor before CursorEditor increments it.
+        // Insertions strictly before the caret still rebase it as expected.
+        this.caretAnchor = Y.createRelativePositionFromTypeIndex(text, safeOffset, -1);
     }
 
     // Cancels any pending async work owned by this cursor's editor (e.g. the
@@ -91,6 +152,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     // Must be called whenever a Cursor instance is removed so leaked timers
     // don't fire after the cursor/DOM they reference is gone.
     destroy(): void {
+        this.destroyed = true;
+        this.observedText?.unobserve(this.handleObservedText);
+        this.observedText = undefined;
+        this.caretAnchor = undefined;
         this.editor.destroy();
     }
 
@@ -135,6 +200,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     }
 
     applyToStore() {
+        this.bindCaretAnchor();
         // Debug information
         if (
             typeof window !== "undefined"
