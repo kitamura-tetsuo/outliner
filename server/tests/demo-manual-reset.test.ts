@@ -10,7 +10,7 @@ import { Project } from "../src/schema/app-schema.js";
 
 // FTR-784f295f: the demo reset button manually triggers the same reset that
 // otherwise runs on the 24h schedule.
-describe("Demo manual reset policy", () => {
+describe("Demo manual reset policy", function() {
     const now = Date.now();
     const fresh = {
         isEmpty: false,
@@ -21,25 +21,25 @@ describe("Demo manual reset policy", () => {
         missingTemplatePages: false,
     };
 
-    it("does not reset a freshly seeded document without force", () => {
+    it("does not reset a freshly seeded document without force", function() {
         expect(shouldResetDemo(fresh)).to.equal(false);
     });
 
-    it("resets a freshly seeded document when force is requested", () => {
+    it("resets a freshly seeded document when force is requested", function() {
         expect(shouldResetDemo({ ...fresh, force: true })).to.equal(true);
     });
 
-    it("still resets on the 24h schedule without force", () => {
+    it("still resets on the 24h schedule without force", function() {
         const lastReset = now - 24 * 60 * 60 * 1000 - 1;
         expect(shouldResetDemo({ ...fresh, lastReset })).to.equal(true);
     });
 
-    it("still resets when the document is empty or has no reset metadata", () => {
+    it("still resets when the document is empty or has no reset metadata", function() {
         expect(shouldResetDemo({ ...fresh, isEmpty: true })).to.equal(true);
         expect(shouldResetDemo({ ...fresh, lastReset: undefined })).to.equal(true);
     });
 
-    it("still resets when the template version changed", () => {
+    it("still resets when the template version changed", function() {
         expect(shouldResetDemo({ ...fresh, templateVersion: DEMO_TEMPLATE_VERSION - 1 })).to.equal(true);
     });
 });
@@ -48,9 +48,8 @@ describe("Demo manual reset policy", () => {
 // document. The previous applyUpdate-from-a-fresh-doc approach made the YTree
 // "root" marker a concurrent write that could lose against tombstones from
 // earlier resets, leaving a document that YTree refuses to load.
-import { jest } from "@jest/globals";
 describe("Demo reseed keeps the shared document tree valid", function() {
-    jest.setTimeout(10000);
+    this.timeout(10000);
     // Mirrors the transact body of POST /api/seed-demo
     function resetCycle(ydoc: Y.Doc): void {
         const orderedTree = ydoc.getMap("orderedTree");
@@ -61,10 +60,10 @@ describe("Demo reseed keeps the shared document tree valid", function() {
         populateDemoProject(Project.fromDoc(ydoc), "seed-server");
     }
 
-    it("stays loadable by YTree across repeated reload-and-reset cycles", () => {
+    it("stays loadable by YTree across repeated reload-and-reset cycles", function() {
         // Simulate the server reloading the persisted doc (new client id each
         // time) and force-resetting it, several times in a row.
-        let persisted = (() => {
+        let persisted = (function() {
             const doc = new Y.Doc();
             resetCycle(doc);
             return Y.encodeStateAsUpdate(doc);
@@ -88,14 +87,14 @@ describe("Demo reseed keeps the shared document tree valid", function() {
 });
 
 describe("Demo manual reset rate limit", function() {
-    jest.setTimeout(10000);
+    this.timeout(10000);
 
-    it("failed reset does not consume the cooldown", async () => {
+    it("failed reset does not consume the cooldown", async function() {
         const app = express();
         app.use(express.json());
 
         const mockHocuspocus = {
-            openDirectConnection: async () => {
+            openDirectConnection: async function() {
                 throw new Error("Simulated reset failure");
             },
         };
@@ -114,7 +113,7 @@ describe("Demo manual reset rate limit", function() {
             openDirectConnection: async () => ({
                 document: new Y.Doc(),
                 transact: (cb: any) => cb(new Y.Doc()),
-                disconnect: async () => {},
+                disconnect: async function() {},
             }),
         };
         const appSuccess = express();
@@ -129,7 +128,7 @@ describe("Demo manual reset rate limit", function() {
         Date.now = originalNow;
     });
 
-    it("de-duplicated request does not consume the cooldown", async () => {
+    it("de-duplicated request does not consume the cooldown", async function() {
         const app = express();
         app.use(express.json());
 
@@ -139,7 +138,7 @@ describe("Demo manual reset rate limit", function() {
         });
 
         const mockHocuspocus = {
-            openDirectConnection: async () => {
+            openDirectConnection: async function() {
                 await resetPromise;
                 throw new Error("Simulated reset failure");
             },
@@ -174,7 +173,7 @@ describe("Demo manual reset rate limit", function() {
             openDirectConnection: async () => ({
                 document: new Y.Doc(),
                 transact: (cb: any) => cb(new Y.Doc()),
-                disconnect: async () => {},
+                disconnect: async function() {},
             }),
         };
         const appSuccess = express();
@@ -189,7 +188,7 @@ describe("Demo manual reset rate limit", function() {
         Date.now = originalNow;
     });
 
-    it("enforces a global cooldown across different IPs", async () => {
+    it("enforces a global cooldown across different IPs", async function() {
         const app = express();
         app.use(express.json());
 
@@ -197,7 +196,7 @@ describe("Demo manual reset rate limit", function() {
             openDirectConnection: async () => ({
                 document: new Y.Doc(),
                 transact: (cb: any) => cb(new Y.Doc()),
-                disconnect: async () => {},
+                disconnect: async function() {},
             }),
         };
         app.use("/api", createDemoRouter(mockHocuspocus as any));

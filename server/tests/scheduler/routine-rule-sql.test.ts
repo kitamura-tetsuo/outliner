@@ -28,12 +28,12 @@ describe("Demo routine schedule rule SQL", function() {
 
     let executor: JobExecutor;
 
-    beforeEach(() => {
+    beforeEach(function() {
         executor = new JobExecutor();
         executor.startWorker();
     });
 
-    afterEach(async () => {
+    afterEach(async function() {
         await executor.stopWorker();
     });
 
@@ -54,7 +54,7 @@ describe("Demo routine schedule rule SQL", function() {
             occurrenceUtcIso,
         });
 
-    it("inserts one dated occurrence per daily task definition", async () => {
+    it("inserts one dated occurrence per daily task definition", async function() {
         const result = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, "2026-03-05T00:00:00Z");
 
         expect(result.success, result.error).to.equal(true);
@@ -69,7 +69,7 @@ describe("Demo routine schedule rule SQL", function() {
         }
     });
 
-    it("inserts one dated occurrence per weekly task definition", async () => {
+    it("inserts one dated occurrence per weekly task definition", async function() {
         const result = await runRule(DEMO_WEEKLY_RULE_ID, weeklyRule.sql, "2026-03-02T00:00:00Z");
 
         expect(result.success, result.error).to.equal(true);
@@ -83,14 +83,14 @@ describe("Demo routine schedule rule SQL", function() {
         }
     });
 
-    it("uses the scheduled occurrence, not the execution time", async () => {
+    it("uses the scheduled occurrence, not the execution time", async function() {
         const result = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, "2020-01-02T00:00:00Z");
 
         expect(result.success, result.error).to.equal(true);
         expect(result.rows.every((r: any) => r.occurrence_date === "2020-01-02")).to.equal(true);
     });
 
-    it("is idempotent: re-running an occurrence does not touch the existing row", async () => {
+    it("is idempotent: re-running an occurrence does not touch the existing row", async function() {
         const occurrence = "2026-03-05T00:00:00Z";
         const first = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, occurrence);
         expect(first.success, first.error).to.equal(true);
@@ -107,7 +107,7 @@ describe("Demo routine schedule rule SQL", function() {
         expect(second.rows, "no row is re-inserted or reset").to.deep.equal([]);
     });
 
-    it("returns values the client can store: dates as text, done as boolean", async () => {
+    it("returns values the client can store: dates as text, done as boolean", async function() {
         const result = await runRule(DEMO_DAILY_RULE_ID, dailyRule.sql, "2026-03-05T00:00:00Z");
         const schema = parseSchemaString(occurrences.schemaSql);
         const columnTypes = new Map(schema.columns.map((c: any) => [c.name, c.type]));
@@ -142,7 +142,7 @@ describe("Demo routine schedule rule SQL", function() {
         return String(value).slice(0, 10);
     };
 
-    it("the display query returns only the newest occurrence of each task", async () => {
+    it("the display query returns only the newest occurrence of each task", async function() {
         // The UI Definition query is a plain SELECT; run it through the same
         // executor to verify the "latest occurrence only" behaviour.
         const result = await runRule(DEMO_DAILY_RULE_ID, occurrences.query, "2026-03-05T00:00:00Z");
