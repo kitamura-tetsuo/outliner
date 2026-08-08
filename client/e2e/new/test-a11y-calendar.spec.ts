@@ -82,11 +82,11 @@ test.describe("Calendar view type select has accessible name", () => {
 
         // Wait for grid to load and resize handle to appear
         await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
-        const entry = page.locator('.timed-entry').first();
+        const entry = page.locator(".timed-entry").first();
         await expect(entry).toBeVisible({ timeout: 15000 });
         await expect(entry).not.toHaveClass(/not-writable/, { timeout: 15000 });
 
-        const handle = entry.locator('.resize-handle').first();
+        const handle = entry.locator(".resize-handle").first();
         await expect(handle).toBeVisible({ timeout: 15000 });
 
         // Check initial aria attributes
