@@ -5,9 +5,7 @@
     import { userManager } from "../../../../auth/UserManager";
     import AuthComponent from "../../../../components/AuthComponent.svelte";
     import { getLogger } from "../../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../../services";
     import { store } from "../../../../stores/store.svelte";
-    import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import { listTables, type TableRegistryEntry } from "../../../../services/yjstable/tableDocs";
     import ScheduleRuleEditor from "../../../../components/schedule/ScheduleRuleEditor.svelte";
@@ -17,7 +15,9 @@
         updateScheduleRule,
         type ScheduleRule,
     } from "../../../../services/schedule/scheduleRuleService";
-    import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
+    import { isPublicProject } from "../../../../lib/publicProject";
+    import { DemoInitAborted } from "../../../../lib/demoInit";
+    import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -36,6 +36,14 @@
     let selectedTableId = $state("");
     let currentRule = $state<Partial<ScheduleRule> | undefined>(undefined);
     let ruleLoaded = $state(false);
+    let isDestroyed = false;
+    let projectHandle: RouteProjectHandle | undefined = undefined;
+
+    // Public projects stay readable for anonymous visitors. Deriving the gate
+    // instead of folding the demo case into `isAuthenticated` keeps the auth
+    // callbacks below from clobbering it once Firebase resolves to no user.
+    let isPublicDemo = $derived(isPublicProject(projectName));
+    let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function loadRule() {
         if (!store.project?.ydoc) return;
@@ -74,11 +82,11 @@
     }
 
     function handleAuthLogout() {
-        isAuthenticated = projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = false;
     }
 
     async function loadProject() {
-        if (!projectName || (!isAuthenticated && projectName !== DEMO_PROJECT_NAME)) return;
+        if (!projectName || !canAccess) return;
 
         logger.info(`Loading schedule editor: project="${projectName}", rule="${ruleId}"`);
         isLoading = true;
@@ -87,17 +95,16 @@
         ruleLoaded = false;
 
         try {
-            const client = await getYjsClientByProjectTitle(projectName);
-            if (!client) {
+            // Releases the previous reference before taking another, so a
+            // parameter change cannot leak a demo client reference.
+            projectHandle?.release();
+            projectHandle = undefined;
+            projectHandle = await openRouteProject(projectName, () => isDestroyed);
+            if (!projectHandle) {
                 notFound = true;
                 return;
             }
-
-            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
-            const projectDoc = client.getProject?.();
-            if (projectDoc) {
-                store.project = projectDoc as unknown as NonNullable<typeof store.project>;
-            }
+            if (isDestroyed) return;
 
             if (!store.project?.ydoc) {
                 error = "Failed to load project document.";
@@ -106,6 +113,7 @@
 
             loadRule();
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load schedule editor page:");
             error = err instanceof Error ? err.message : "An error occurred while loading the schedule.";
         } finally {
@@ -114,15 +122,21 @@
     }
 
     $effect(() => {
-        if ((isAuthenticated || projectName === DEMO_PROJECT_NAME) && projectName && ruleId) {
+        if (canAccess && projectName && ruleId) {
             loadProject();
-        } else if (!isAuthenticated) {
+        } else {
             isLoading = false;
         }
     });
 
     onMount(() => {
-        isAuthenticated = userManager.getCurrentUser() !== null || projectName === DEMO_PROJECT_NAME;
+        isAuthenticated = userManager.getCurrentUser() !== null;
+
+        return () => {
+            isDestroyed = true;
+            projectHandle?.release();
+            projectHandle = undefined;
+        };
     });
 
     function backToProject() {
@@ -178,15 +192,15 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6 flex-shrink-0">
-        {#if projectName !== DEMO_PROJECT_NAME}
+        {#if isPublicDemo}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {:else}
             <AuthComponent
                 onAuthSuccess={handleAuthSuccess}
                 onAuthLogout={handleAuthLogout}
             />
-        {:else}
-            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
-                Public demo / Guest access
-            </div>
         {/if}
     </div>
 
@@ -204,7 +218,7 @@
         <div class="rounded-md bg-yellow-50 p-4">
             <p class="text-sm text-yellow-700">Scheduled SQL not found.</p>
         </div>
-    {:else if !isAuthenticated}
+    {:else if !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <p class="text-sm text-blue-700">Please log in.</p>
         </div>
