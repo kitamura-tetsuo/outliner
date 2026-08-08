@@ -89,6 +89,32 @@ describe("TouchSelectionController", () => {
         expect(controller.isTracking).toBe(false);
     });
 
+    it("a second finger landing mid-press cancels the pending long press", () => {
+        controller.pointerDown(touch(30, 40));
+        expect(controller.isTracking).toBe(true);
+
+        // The second finger of a pinch is the non-primary pointer; it must still stop
+        // the first finger's armed timer rather than being ignored outright.
+        expect(controller.pointerDown(touch(90, 40, { pointerId: 2, isPrimary: false }))).toBe(false);
+        expect(controller.isTracking).toBe(false);
+
+        vi.advanceTimersByTime(LONG_PRESS_MS * 2);
+        expect(onLongPress).not.toHaveBeenCalled();
+    });
+
+    it("a second finger landing mid-drag ends the selection instead of extending it", () => {
+        controller.pointerDown(touch(30, 40));
+        vi.advanceTimersByTime(LONG_PRESS_MS);
+
+        controller.pointerDown(touch(90, 40, { pointerId: 2, isPrimary: false }));
+
+        expect(onSelectionEnd).toHaveBeenCalledTimes(1);
+        expect(controller.isSelecting).toBe(false);
+
+        controller.pointerMove(touch(120, 40));
+        expect(onExtend).not.toHaveBeenCalled();
+    });
+
     it("places the caret on a tap that does not move", () => {
         controller.pointerDown(touch(30, 40));
         expect(controller.pointerUp(touch(31, 41))).toBe(true);

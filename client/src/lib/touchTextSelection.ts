@@ -128,12 +128,16 @@ export class TouchSelectionController {
      */
     pointerDown(event: TouchPointerInput): boolean {
         if (event.pointerType !== "touch") return false;
-        if (event.isPrimary === false) return false;
 
-        // A second finger landing mid-gesture ends the current one rather than confusing it.
+        // Any additional finger ends the gesture in progress rather than confusing it --
+        // this must happen before the non-primary bail-out below, because the second
+        // finger of a pinch is exactly the non-primary case, and returning early would
+        // leave the first finger's long-press timer armed through the whole pinch.
         if (this.pointerId !== undefined && this.pointerId !== event.pointerId) {
             this.cancel();
         }
+
+        if (event.isPrimary === false) return false;
 
         this.pointerId = event.pointerId;
         this.startX = event.clientX;

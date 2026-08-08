@@ -8,7 +8,12 @@ registerCoverageHooks();
 
 test.use({ ...devices["Pixel 7"], hasTouch: true });
 
-const ABOVE_TEXT = "Second line";
+// Scrapbox formatting: the rendered text hides the control characters, so a DOM-derived
+// offset would be 9 ("Bold second line") where the raw model offset is 20. The drag must
+// report the raw offset.
+const ABOVE_TEXT = "[[Bold]] second line";
+// What the item renders while it is not being edited: the control characters are hidden.
+const ABOVE_RENDERED_TEXT = "Bold second line";
 const PRESSED_TEXT = "Hello World";
 // Offset of "World" inside PRESSED_TEXT; a long press snaps to the word's start.
 const WORD_START = 6;
@@ -19,7 +24,7 @@ test.describe("Mobile touch selection across items", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [ABOVE_TEXT, PRESSED_TEXT, "Filler tail"]);
         await page.waitForSelector("text=Loading Page...", { state: "hidden", timeout: 10000 });
 
-        const aboveItem = page.locator(`.outliner-item:not(.page-title):has-text("${ABOVE_TEXT}")`).first();
+        const aboveItem = page.locator(`.outliner-item:not(.page-title):has-text("${ABOVE_RENDERED_TEXT}")`).first();
         const pressedItem = page.locator(`.outliner-item:not(.page-title):has-text("${PRESSED_TEXT}")`).first();
         await expect(aboveItem).toBeVisible();
         await expect(pressedItem).toBeVisible();
@@ -40,12 +45,12 @@ test.describe("Mobile touch selection across items", () => {
             async () => {
                 const aboveBox = await aboveItem.locator(".item-text").first().boundingBox();
                 expect(aboveBox).not.toBeNull();
-                const midY = aboveBox!.y + aboveBox!.height / 2;
-                return [
-                    { x: aboveBox!.x + aboveBox!.width / 2, y: midY },
-                    // Past the trailing edge of the text above: select through to its end.
-                    { x: aboveBox!.x + aboveBox!.width * 0.99, y: midY },
-                ];
+                // A single move, landing past the trailing edge of the text above, so the
+                // selection is decided while that item is still rendered with its control
+                // characters hidden. A second move would first make the item active, and
+                // an active item renders its raw text -- which would mask an offset taken
+                // from the DOM instead of the model.
+                return [{ x: aboveBox!.x + aboveBox!.width * 0.99, y: aboveBox!.y + aboveBox!.height / 2 }];
             },
         );
         await page.waitForTimeout(500);
@@ -58,6 +63,9 @@ test.describe("Mobile touch selection across items", () => {
         const selection = cursorData.selections[0];
         expect(selection.startItemId).toBe(aboveItemId);
         expect(selection.startOffset).toBe(ABOVE_TEXT.length);
+        // Guards the raw-vs-rendered distinction: a DOM-derived offset would be the
+        // shorter rendered length instead.
+        expect(ABOVE_TEXT.length).toBeGreaterThan(ABOVE_RENDERED_TEXT.length);
         expect(selection.endItemId).toBe(pressedItemId);
         expect(selection.endOffset).toBe(WORD_START);
         expect(selection.isReversed).toBe(true);

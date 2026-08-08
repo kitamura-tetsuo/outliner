@@ -177,6 +177,15 @@ let contextMenuX = $state(0);
 let contextMenuY = $state(0);
 
 function handleContextMenu(e: MouseEvent) {
+    // Mobile browsers fire `contextmenu` for a touch-and-hold, which is the gesture the
+    // touch path uses to select a word. Swallow it for the duration of a tracked touch
+    // gesture so the menu never opens over the selection just made; a mouse right-click
+    // or the keyboard menu key never has a touch pointer down, so both still work.
+    if (touchSelection.isTracking || isTouchSelecting) {
+        e.preventDefault();
+        return;
+    }
+
     if (isPageTitle || isReadOnly) return;
     e.preventDefault();
     e.stopPropagation();
@@ -937,23 +946,26 @@ function isNonTextGestureTarget(target: EventTarget | null): boolean {
     );
 }
 
-/** Resolves the outliner item under a viewport point, for selection drags that leave this item. */
-function resolveItemAtPoint(point: TouchPoint): { itemId: string; offset: number; } | undefined {
+/**
+ * Event a touch selection drag sends to the item under the finger once the drag leaves
+ * the item it started on.
+ *
+ * A touch pointer gets implicit pointer capture on the element it landed on, so unlike a
+ * mouse drag the moves never reach the item being dragged over. Rather than measure that
+ * item from the outside -- its rendered text hides Scrapbox control characters, so a DOM
+ * offset would not index the raw model text the selection is expressed in -- the event
+ * asks the item to map the point against its own raw text, which is exactly what the
+ * mouse path does when a mousemove lands on it.
+ */
+const TOUCH_EXTEND_EVENT = "outliner-touch-extend";
+
+/** Finds the outliner item element under a viewport point, if any. */
+function itemElementAtPoint(point: TouchPoint): { element: HTMLElement; itemId: string; } | undefined {
     const el = document.elementFromPoint(point.clientX, point.clientY) as HTMLElement | null;
-    const itemEl = el?.closest(".outliner-item") as HTMLElement | null;
-    const itemId = itemEl?.getAttribute("data-item-id");
-    if (!itemEl || !itemId) return undefined;
-
-    if (itemId === model.id) {
-        return { itemId, offset: getClickPosition(point, textString) };
-    }
-
-    const textEl = itemEl.querySelector(".item-text") as HTMLElement | null;
-    const content = textEl?.textContent ?? "";
-    return {
-        itemId,
-        offset: getTextOffsetAtPoint(textEl, itemEl, point.clientX, point.clientY, content),
-    };
+    const element = el?.closest(".outliner-item") as HTMLElement | null;
+    const itemId = element?.getAttribute("data-item-id");
+    if (!element || !itemId) return undefined;
+    return { element, itemId };
 }
 
 /** Tap: place the caret at the touched character and open the software keyboard. */
@@ -1010,23 +1022,31 @@ function handleTouchLongPress(point: TouchPoint) {
 
 /** Selection drag: extend the selection to the finger, across items when needed. */
 function handleTouchExtend(point: TouchPoint) {
-    const hit = resolveItemAtPoint(point);
+    const hit = itemElementAtPoint(point);
     if (!hit) return;
 
-    if (hit.itemId === model.id && hiddenTextareaRef) {
-        const start = Math.min(touchSelectionAnchorOffset, hit.offset);
-        const end = Math.max(touchSelectionAnchorOffset, hit.offset);
+    // Another item: it maps the point against its own raw text and reports the offset.
+    if (hit.itemId !== model.id) {
+        hit.element.dispatchEvent(new CustomEvent(TOUCH_EXTEND_EVENT, { detail: point }));
+        return;
+    }
+
+    const offset = getClickPosition(point, textString);
+
+    if (hiddenTextareaRef) {
+        const start = Math.min(touchSelectionAnchorOffset, offset);
+        const end = Math.max(touchSelectionAnchorOffset, offset);
         editorOverlayStore.applyTextareaSelectionRange(
             hiddenTextareaRef,
             start,
             end,
-            hit.offset < touchSelectionAnchorOffset ? "backward" : "forward",
+            offset < touchSelectionAnchorOffset ? "backward" : "forward",
         );
-        lastCursorPosition = hit.offset;
+        lastCursorPosition = offset;
     }
 
     // The tree owns cross-item selection state and handles the single-item case too.
-    dispatch("drag", { itemId: hit.itemId, offset: hit.offset });
+    dispatch("drag", { itemId: model.id, offset });
 }
 
 /** Selection drag finished: keep the selection and stop suppressing browser gestures. */
@@ -1087,9 +1107,19 @@ onMount(() => {
         }
     };
 
+    // A selection drag running on another item asks this one where its finger is; only
+    // this component knows this item's raw text, control characters included.
+    const reportExtendPoint = (event: Event) => {
+        const point = (event as CustomEvent<TouchPoint>).detail;
+        if (!point) return;
+        dispatch("drag", { itemId: model.id, offset: getClickPosition(point, textString) });
+    };
+
     element.addEventListener("touchmove", suppressScrollDuringSelection, { passive: false });
+    element.addEventListener(TOUCH_EXTEND_EVENT, reportExtendPoint);
     return () => {
         element.removeEventListener("touchmove", suppressScrollDuringSelection);
+        element.removeEventListener(TOUCH_EXTEND_EVENT, reportExtendPoint);
         touchSelection.destroy();
     };
 });
