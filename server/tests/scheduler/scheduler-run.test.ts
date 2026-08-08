@@ -93,7 +93,9 @@ describe("Job scheduler run", function() {
 
         const sqliteDb = {
             prepare: (sql: string) => ({
-                all: function() { return /SELECT \* FROM schedule_index/.test(sql) ? [indexRow] : []; },
+                all: function() {
+                    return /SELECT \* FROM schedule_index/.test(sql) ? [indexRow] : [];
+                },
                 run: (...args: any[]) => {
                     if (/SET next_run_at/.test(sql)) {
                         updates.push({ nextRunAt: args[0], seq: args[1] });
