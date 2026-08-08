@@ -114,7 +114,7 @@ vi.mock("$app/stores", async () => {
             url: {
                 pathname: "/Test%20Project/Test%20Page%201",
             },
-            params: {},
+            params: { project: "Test Project" },
         }),
     };
 });
