@@ -19,6 +19,7 @@ acceptance:
 - /tables/demo/<table>/schedule opens its rule list for a signed-out visitor
 - An anonymous Firebase auth resolution does not revoke access to a public project
 - Sidebar links to /tables/demo/<table> open the table grid for a signed-out visitor
+- Signing out while one of these routes is open keeps its content visible; the sign-in wall never replaces it
 - The same routes still require sign-in for every non-public project
 - These routes show a "Public demo / Guest access" banner instead of the sign-in form
 title-ja: 公開デモの単独ルート
