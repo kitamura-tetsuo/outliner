@@ -5,13 +5,14 @@
     import { userManager } from "../../../../auth/UserManager";
     import AuthComponent from "../../../../components/AuthComponent.svelte";
     import { getLogger } from "../../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../../services";
     import { store } from "../../../../stores/store.svelte";
     import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
     import { isPublicProject } from "../../../../lib/publicProject";
+    import { DemoInitAborted } from "../../../../lib/demoInit";
+    import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -29,6 +30,8 @@
     let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
     let tableSqlName: string | undefined = $state(undefined);
     let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
+    let isDestroyed = false;
+    let projectHandle: RouteProjectHandle | undefined = undefined;
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -53,17 +56,16 @@
         notFound = false;
 
         try {
-            const client = await getYjsClientByProjectTitle(projectName);
-            if (!client) {
+            // Releases the previous reference before taking another, so a
+            // parameter change cannot leak a demo client reference.
+            projectHandle?.release();
+            projectHandle = undefined;
+            projectHandle = await openRouteProject(projectName, () => isDestroyed);
+            if (!projectHandle) {
                 notFound = true;
                 return;
             }
-
-            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
-            const projectDoc = client.getProject?.();
-            if (projectDoc) {
-                store.project = projectDoc as unknown as NonNullable<typeof store.project>;
-            }
+            if (isDestroyed) return;
 
             if (!store.project?.ydoc) {
                 error = "Failed to load project document.";
@@ -94,6 +96,7 @@
             // name lookups and conflict checks.
             tableProjectDoc = store.project.ydoc;
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load table page:");
             error = err instanceof Error ? err.message : "An error occurred while loading the table.";
         } finally {
@@ -113,9 +116,12 @@
         isAuthenticated = userManager.getCurrentUser() !== null;
 
         return () => {
+            isDestroyed = true;
             if (tableHandles?.doc) {
                 destroyTableUndoManager(tableHandles.doc);
             }
+            projectHandle?.release();
+            projectHandle = undefined;
         };
     });
 </script>

@@ -5,13 +5,14 @@
     import { userManager } from "../../../../auth/UserManager";
     import AuthComponent from "../../../../components/AuthComponent.svelte";
     import { getLogger } from "../../../../lib/logger";
-    import { getYjsClientByProjectTitle } from "../../../../services";
     import { store } from "../../../../stores/store.svelte";
     import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import CalendarView from "../../../../components/calendar/CalendarView.svelte";
     import { listCalendars } from "../../../../services/calendar/calendarService";
     import { isPublicProject } from "../../../../lib/publicProject";
+    import { DemoInitAborted } from "../../../../lib/demoInit";
+    import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
     import { Project } from "$shared/app-schema";
 
     const logger = getLogger("CalendarStandalonePage");
@@ -28,6 +29,8 @@
     let calendarId: string | undefined = $state(undefined);
     let calendarProject: Project | undefined = $state(undefined);
     let calendarProjectId: string | undefined = $state(undefined);
+    let isDestroyed = false;
+    let projectHandle: RouteProjectHandle | undefined = undefined;
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -52,17 +55,16 @@
         notFound = false;
 
         try {
-            const client = await getYjsClientByProjectTitle(projectName);
-            if (!client) {
+            // Releases the previous reference before taking another, so a
+            // parameter change cannot leak a demo client reference.
+            projectHandle?.release();
+            projectHandle = undefined;
+            projectHandle = await openRouteProject(projectName, () => isDestroyed);
+            if (!projectHandle) {
                 notFound = true;
                 return;
             }
-
-            yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
-            const projectDoc = client.getProject?.();
-            if (projectDoc) {
-                store.project = projectDoc as unknown as NonNullable<typeof store.project>;
-            }
+            if (isDestroyed) return;
 
             if (!store.project?.ydoc) {
                 error = "Failed to load project document.";
@@ -84,6 +86,7 @@
             calendarId = entry.id;
             calendarProjectId = yjsStore.currentProjectId ?? undefined;
         } catch (err) {
+            if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load calendar page:");
             error = err instanceof Error ? err.message : "An error occurred while loading the calendar.";
         } finally {
@@ -101,6 +104,12 @@
 
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
+
+        return () => {
+            isDestroyed = true;
+            projectHandle?.release();
+            projectHandle = undefined;
+        };
     });
 </script>
 

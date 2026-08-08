@@ -26,10 +26,24 @@ vi.mock("../../../../auth/UserManager", () => ({
 const salesDoc = new Y.Doc();
 const projectDoc = new Y.Doc();
 
-vi.mock("../../../../services", () => ({
-    getYjsClientByProjectTitle: vi.fn(async () => ({
-        getProject: () => ({ ydoc: projectDoc }),
-    })),
+// Stands in for the shared project opener: publishing on `store.project` is
+// what the route consumes, and the demo-seeding path it wraps needs a server.
+vi.mock("../../../../lib/routeProject", async () => {
+    const { store } = await import("../../../../stores/store.svelte");
+    return {
+        openRouteProject: vi.fn(async () => {
+            // Must not publish synchronously: the real opener always awaits a
+            // connection first, and a synchronous store write lands inside the
+            // caller's tracked effect scope and re-triggers it forever.
+            await Promise.resolve();
+            store.project = { ydoc: projectDoc } as unknown as NonNullable<typeof store.project>;
+            return { release: vi.fn() };
+        }),
+    };
+});
+
+vi.mock("../../../../lib/demoInit", () => ({
+    DemoInitAborted: class DemoInitAborted extends Error {},
 }));
 
 vi.mock("../../../../services/yjstable/tableDocs", () => ({
