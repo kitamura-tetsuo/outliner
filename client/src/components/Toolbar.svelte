@@ -148,6 +148,8 @@ function handleRedo() {
                 class="add-database-btn"
                 aria-label="Add Database"
                 title="Add Database"
+                data-keep-editor-focus
+                onpointerdown={preventEditorBlur}
                 onclick={() => commandPaletteStore.insert("yjstable")}
             >
                 <span class="btn-icon">
