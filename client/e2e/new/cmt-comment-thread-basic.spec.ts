@@ -247,7 +247,24 @@ test.describe("CMT-0001: comment threads", () => {
             timeout: 60000,
         });
 
+        // Click delete button
         await page.click(`[data-testid="comment-${commentId}"] .delete`);
+
+        // Verify the confirm dialog appears
+        await expect(page.locator("text=Delete Comment")).toBeVisible();
+
+        // Click cancel
+        await page.click('button:has-text("Cancel")');
+
+        // Verify the comment still exists
+        await expect(page.locator(`[data-testid="comment-${commentId}"] .text`)).toHaveText("edited");
+
+        // Click delete button again
+        await page.click(`[data-testid="comment-${commentId}"] .delete`);
+
+        // Click confirm on the dialogue
+        await page.locator("dialog").locator('button:has-text("Delete")').click();
+
         // Wait for comment count to disappear
         await expect(
             page.locator(`[data-item-id="${firstId}"] .comment-count`),
