@@ -390,6 +390,8 @@ function pointLeftPct(ms: number | undefined): number | undefined {
     border: 1px solid #e5e7eb;
     border-radius: 4px;
     overflow: hidden;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 .gantt-toolbar {

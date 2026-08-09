@@ -327,6 +327,7 @@ function handleCancelDelete() {
 .yjs-table-grid {
     width: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 table {

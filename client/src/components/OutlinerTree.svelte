@@ -2332,6 +2332,7 @@
         padding: 8px 16px;
         position: relative; /* Reference point for absolute positioning of child elements */
         min-height: 100px; /* Set minimum height */
+        overflow-x: hidden;
     }
 
     .outliner.embedded .tree-container {

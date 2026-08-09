@@ -14,6 +14,10 @@ html.dark {
     color: var(--color-white);
 }
 
+html, body {
+    overflow-x: hidden;
+}
+
 :root {
     --color-brand: #3b82f6;
     --color-brand-hover: #2563eb;
