@@ -204,6 +204,7 @@
 | YPP-c83a5f4b | Page subdoc per-page provider | — | removed |
 | YRR-b4e2c1d0 | YJS token refresh reconnect | client/e2e/yjs/80-yrr-token-refresh-reconnect-b4e2c1d0.spec.ts | implemented |
 | als-alias-realtime-update | Alias indicator updates in realtime | — | implemented |
+| core-page-scroll-not-hijacked-by-cursor-f0f4a8c9 | User scroll is never overridden by caret auto-scroll | — | active |
 | mob-caret-visible-above-keyboard-5b6c2e18 | Mobile caret visible above keyboard | — | testing |
 | mob-os-selection-sync-7c41f9a2 | Sync Mobile OS Selection Changes | — | implemented |
 | mob-textarea-ime-attributes-9f3a41d7 | Mobile textarea IME configuration | — | implemented |
