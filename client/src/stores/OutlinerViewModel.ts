@@ -203,7 +203,7 @@ export class OutlinerViewModel {
                 } else if ("votes" in item && Array.isArray((item as unknown as { votes: string[]; }).votes)) {
                     votesArray = (item as unknown as { votes: string[]; }).votes;
                 }
-                existingViewModel.votes = [...votesArray];
+                existingViewModel.votes = Array.from(new Set(votesArray));
 
                 existingViewModel.lastChanged = newLastChanged;
                 // Item wrapper exposes comments wrapper, but we need length from underlying Y.Array or wrapper
@@ -225,7 +225,7 @@ export class OutlinerViewModel {
                 id: item.id,
                 original: item,
                 text: item.text,
-                votes: [...initialVotes],
+                votes: Array.from(new Set(initialVotes)),
                 author: ((item as unknown as { author?: string; }).author || "") as string,
                 created: (item as unknown as { created?: number; }).created as number,
                 lastChanged: (() => {
