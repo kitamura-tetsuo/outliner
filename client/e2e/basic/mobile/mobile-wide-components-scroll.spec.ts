@@ -22,7 +22,7 @@ test("Wide components are scrollable horizontally without widening the document"
             expect(scrollMetrics.scrollWidth).toBeGreaterThanOrEqual(scrollMetrics.clientWidth);
 
             await locator.evaluate((el: Element) => el.scrollLeft = el.scrollWidth);
-            const windowScrollAfter = await page.evaluate(() => window.scrollX);
+            const windowScrollAfter = await page.evaluate(() => globalThis.scrollX);
             expect(windowScrollAfter).toBe(0);
         }
     };

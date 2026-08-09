@@ -21,7 +21,7 @@ test("Mobile toolbar is an independent horizontal scroller", async ({ page }) =>
 
     // Initial state
     const initialScroll = await toolbar.evaluate((el) => el.scrollLeft);
-    const initialWindowScroll = await page.evaluate(() => window.scrollX);
+    const initialWindowScroll = await page.evaluate(() => globalThis.scrollX);
     expect(initialScroll).toBe(0);
     expect(initialWindowScroll).toBe(0);
 
@@ -34,7 +34,7 @@ test("Mobile toolbar is an independent horizontal scroller", async ({ page }) =>
     await page.waitForTimeout(100);
 
     const endScroll = await toolbar.evaluate((el) => el.scrollLeft);
-    const windowScrollAfter = await page.evaluate(() => window.scrollX);
+    const windowScrollAfter = await page.evaluate(() => globalThis.scrollX);
 
     // Use > 0 to be more robust than exact match to scrollWidth - clientWidth due to pixel fractioning
     expect(endScroll).toBeGreaterThan(0);
