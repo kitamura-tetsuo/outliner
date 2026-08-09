@@ -694,13 +694,13 @@ export class EditorOverlayStore {
             this.schedulePresenceSync();
         }
         if (userId === "local") {
-            this.mirrorTextareaToActiveItem();
+            this.settleTextareaAfterSelectionCleared();
         }
     }
 
     /**
-     * Re-point the hidden global textarea at the active item after the local selection was
-     * dropped, instead of blanking it.
+     * Settle the hidden global textarea after the local selection was dropped, keeping its
+     * text where it is still the text of the item being edited.
      *
      * The textarea is the element the software keyboard is attached to, so emptying it while
      * it still holds focus tells the IME the editor became empty. Android's Gboard then grays
@@ -710,10 +710,12 @@ export class EditorOverlayStore {
      * keyboard collapses the selection right afterwards, and the collapse reaches the store
      * through `syncSelectionFromTextarea()` -> `clearSelectionForUser("local")`.
      *
-     * Keeping the active item's text in the mirror leaves the IME's view of the editor intact,
-     * so the panel stays usable across copy and OS-driven caret moves.
+     * This deliberately never writes item text into the mirror. The model text is not reliably
+     * readable at this point — a delete or a remote edit lands before the read catches up — and
+     * writing a stale value would corrupt every offset derived from the mirror afterwards. The
+     * mirror is either kept as-is or emptied, and the regular sync paths refill it.
      */
-    private mirrorTextareaToActiveItem() {
+    private settleTextareaAfterSelectionCleared() {
         // Never touch the mirror mid-composition: the IME owns it until composition ends.
         if (this.isComposing) return;
 
@@ -723,25 +725,25 @@ export class EditorOverlayStore {
                 : null);
         if (!textarea) return;
 
+        // Items never contain newlines, so a newline means the mirror still holds a cross-item
+        // selection whose offsets no longer describe a single item. With nothing being edited
+        // there is no text to mirror either. Both cases keep the previous empty-mirror
+        // behaviour; only the single-item mirror the IME is working against is preserved.
         const activeId = this.getActiveItem();
-        if (!activeId) {
-            // Nothing is being edited, so an empty mirror is the accurate state.
+        if (!activeId || textarea.value.includes("\n")) {
             if (textarea.value !== "") textarea.value = "";
             return;
         }
 
-        const text = this.getItemMirrorText(activeId);
-        if (textarea.value !== text) {
-            textarea.value = text;
-        }
-
-        // Collapse the mirror onto the local caret. When the OS moved the caret itself the
-        // offsets already agree, and skipping the redundant setSelectionRange avoids arming
-        // the resync suppression against the user's next keyboard-driven selection.
+        // Collapse the mirror onto the local caret, clamped to the mirror's own length so no
+        // stale text read can move it. When the OS moved the caret itself the offsets already
+        // agree, and skipping the redundant setSelectionRange avoids arming the resync
+        // suppression against the user's next keyboard-driven selection.
         const cursor = Object.values(this.cursors).find(c =>
             c.itemId === activeId && c.isActive && ((c.userId || "local") === "local")
         );
-        const offset = Math.min(Math.max(0, cursor?.offset ?? textarea.selectionStart), text.length);
+        if (!cursor) return;
+        const offset = Math.min(Math.max(0, cursor.offset), textarea.value.length);
         if (textarea.selectionStart !== offset || textarea.selectionEnd !== offset) {
             this.applyTextareaSelectionRange(textarea, offset, offset);
         }

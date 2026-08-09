@@ -73,7 +73,9 @@ describe("textareaMirror", () => {
         expect(textarea.selectionEnd).toBe(6);
     });
 
-    it("rewrites a stale cross-item mirror down to the active item when the selection is cleared", () => {
+    // A cross-item mirror numbers its offsets across every item it spans, so it cannot be kept
+    // once the selection is gone. Items never contain newlines, which is how it is recognised.
+    it("empties a stale cross-item mirror when the selection is cleared", () => {
         editorOverlayStore.setTextareaRef(textarea);
         editorOverlayStore.setActiveItem("item2");
         editorOverlayStore.setCursor({ itemId: "item2", offset: 2, isActive: true, userId: "local" });
@@ -82,9 +84,23 @@ describe("textareaMirror", () => {
 
         editorOverlayStore.clearSelectionForUser("local");
 
-        expect(textarea.value).toBe("Line 2");
-        expect(textarea.selectionStart).toBe(2);
-        expect(textarea.selectionEnd).toBe(2);
+        expect(textarea.value).toBe("");
+    });
+
+    // The mirror must never be rewritten from a text read here: right after a delete or a
+    // remote edit that read can still return the pre-edit text, and a stale mirror corrupts
+    // every offset derived from it afterwards (item splits, IME edits).
+    it("never rewrites the mirror's text when the selection is cleared", () => {
+        editorOverlayStore.setTextareaRef(textarea);
+        editorOverlayStore.setActiveItem("item1");
+        editorOverlayStore.setCursor({ itemId: "item1", offset: 3, isActive: true, userId: "local" });
+        // The mirror holds what the user is editing; the DOM has not caught up yet.
+        textarea.value = "Line 1 edited";
+
+        editorOverlayStore.clearSelectionForUser("local");
+
+        expect(textarea.value).toBe("Line 1 edited");
+        expect(textarea.selectionStart).toBe(3);
     });
 
     it("empties the mirror only when no item is being edited", () => {

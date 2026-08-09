@@ -39,11 +39,14 @@ test.describe("MOB-8d41c07b: keyboard cursor control after copy", () => {
                     editorOverlayStore?: {
                         setActiveItem: (id: string) => void;
                         setCursor: (c: { itemId: string; offset: number; isActive: boolean; userId: string; }) => void;
+                        syncTextareaToActiveItem: () => void;
                     };
                 }).editorOverlayStore;
                 if (!store || !id) return;
                 store.setActiveItem(id);
                 store.setCursor({ itemId: id, offset: 0, isActive: true, userId: "local" });
+                // What Cursor.activate() does on a real tap: fill the mirror from the item.
+                store.syncTextareaToActiveItem();
                 (document.querySelector("textarea.global-textarea") as HTMLTextAreaElement | null)?.focus();
             }, itemId);
 

@@ -10,10 +10,10 @@ tags:
 - selection
 - clipboard
 acceptance:
-- A cross-item mirror is rewritten down to the active item's text, not emptied, when the selection is cleared
 - After an IME copy collapses the selection, the virtual cursor still edits at the collapsed offset
-- Clearing the local selection keeps the hidden global textarea's value equal to the active item's text
-- The hidden textarea is emptied only when no item is active
+- Clearing the local selection keeps the hidden global textarea's text as it is while an item is being edited
+- Clearing the local selection never rewrites the hidden global textarea's text
+- The hidden textarea is emptied when no item is active or when it still holds a cross-item mirror
 tests:
 - client/e2e/core/mob-gboard-copy-keeps-textarea-mirror-8d41c07b.spec.ts
 - client/src/tests/textareaMirror.test.ts
