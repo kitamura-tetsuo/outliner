@@ -316,10 +316,23 @@
         border-top: 1px solid #ddd;
         padding: 8px;
         z-index: 1000;
-        justify-content: space-around;
         align-items: center;
         height: 50px;
+
+        /* Independent horizontal scroller */
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 8px;
         overflow-x: auto;
+        overflow-y: hidden;
+        touch-action: pan-x;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+
+    .mobile-action-toolbar::-webkit-scrollbar {
+        display: none;
     }
 
     @media (max-width: 768px) {

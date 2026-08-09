@@ -423,6 +423,8 @@ onMount(() => {
     border: 1px solid #e5e7eb;
     border-radius: 4px;
     overflow: clip;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 .day-header-row {
