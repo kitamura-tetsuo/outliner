@@ -121,4 +121,22 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
         await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 })
             .toEqual(["id", "status", "title", "priority", "due_date", "repeat_days"]);
     });
+
+    test("Undo (Ctrl+Z) reverts a reorder in a single step", async ({ page }) => {
+        await createTasksTableBlock(page, hostItemId);
+
+        expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
+
+        // Drop "status" on the left half of "title" so it lands before it.
+        await dragColumnHeader(page, "status", "title", "left");
+
+        const reordered = ["id", "status", "title", "priority", "due_date", "repeat_days"];
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
+
+        // Undo
+        // Give the transaction time to register before undoing
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Control+z");
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(TASKS_PRESET_COLUMNS);
+    });
 });

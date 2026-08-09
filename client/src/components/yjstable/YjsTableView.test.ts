@@ -68,6 +68,20 @@ describe("YjsTableView focus handling", () => {
         expect(Object.keys(editorOverlayStore.selections).length).toBe(0);
     });
 
+    it("does not render table-local undo/redo buttons", () => {
+        const projectDoc = new Y.Doc();
+        const { queryByTestId } = render(YjsTableView, {
+            props: {
+                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
+                projectDoc,
+                tableName: "Test Table",
+            },
+        });
+
+        expect(queryByTestId("yjs-table-undo")).toBeNull();
+        expect(queryByTestId("yjs-table-redo")).toBeNull();
+    });
+
     it("does not clear cursor and selection when a non-input element inside the table gets focusin", async () => {
         const projectDoc = new Y.Doc();
         const { getByTestId } = render(YjsTableView, {
