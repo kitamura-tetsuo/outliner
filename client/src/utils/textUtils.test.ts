@@ -74,7 +74,7 @@ describe("getClickPosition", () => {
 
         const mockNode = document.createTextNode(content);
         const doc = document as DocumentWithCaret;
-        doc.caretPositionFromPoint = vi.fn((x, y) => {
+        (doc as unknown as { caretPositionFromPoint: unknown }).caretPositionFromPoint = vi.fn((x: number, y: number) => {
             if (x === 15 && y === 0) {
                 return { offsetNode: mockNode, offset: 3 };
             }
@@ -94,7 +94,7 @@ describe("getClickPosition", () => {
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(3);
 
-        delete doc.caretPositionFromPoint;
+        delete (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint;
         delete (doc as unknown as { createRange?: unknown; }).createRange;
         document.body.removeChild(div);
     });
@@ -107,7 +107,7 @@ describe("getClickPosition", () => {
 
         const mockNode = document.createTextNode(content);
         const doc = document as DocumentWithCaret;
-        doc.caretPositionFromPoint = vi.fn((x, y) => {
+        (doc as unknown as { caretPositionFromPoint: unknown }).caretPositionFromPoint = vi.fn((x: number, y: number) => {
             if (x === 15 && y === 0) {
                 return { offsetNode: mockNode, offset: 3 };
             }
@@ -127,7 +127,7 @@ describe("getClickPosition", () => {
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(1);
 
-        delete doc.caretPositionFromPoint;
+        delete (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint;
         delete (doc as unknown as { createRange?: unknown; }).createRange;
         document.body.removeChild(div);
     });
@@ -146,7 +146,7 @@ describe("getClickPosition", () => {
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(1);
 
-        delete doc.caretPositionFromPoint;
+        delete (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint;
         document.body.removeChild(div);
     });
 
@@ -170,7 +170,7 @@ describe("getClickPosition", () => {
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(2);
 
-        delete doc.caretRangeFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
         document.body.removeChild(div);
     });
 
@@ -188,7 +188,7 @@ describe("getClickPosition", () => {
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(1);
 
-        delete doc.caretRangeFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
         document.body.removeChild(div);
     });
 
@@ -214,8 +214,8 @@ describe("getClickPosition", () => {
         expect(doc.caretRangeFromPoint).not.toHaveBeenCalled();
         expect(doc.caretPositionFromPoint).not.toHaveBeenCalled();
 
-        delete doc.caretRangeFromPoint;
-        delete doc.caretPositionFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
+        delete (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint;
     });
 
     it("should fallback gracefully if doc.caretRangeFromPoint is undefined", () => {
@@ -228,8 +228,8 @@ describe("getClickPosition", () => {
         const originalCaretRangeFromPoint = doc.caretRangeFromPoint;
         const originalCaretPositionFromPoint = doc.caretPositionFromPoint;
 
-        doc.caretRangeFromPoint = undefined;
-        doc.caretPositionFromPoint = undefined;
+        (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint = undefined;
+        (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint = undefined;
 
         const offset = getClickPosition(div, { clientX: 15, clientY: 0 } as MouseEvent, content);
         expect(offset).toBe(1);
@@ -260,7 +260,7 @@ describe("getClickPosition", () => {
         // Fallback calculation: 15 -> 10*1=10, 10*2=20 (diff 5) -> returns 1
         expect(offset).toBe(1);
 
-        delete doc.caretRangeFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
         document.body.removeChild(div);
     });
 
@@ -285,7 +285,7 @@ describe("getClickPosition", () => {
         // It clamps to content length
         expect(offset).toBe(6);
 
-        delete doc.caretRangeFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
         document.body.removeChild(div);
     });
 
@@ -310,7 +310,7 @@ describe("getClickPosition", () => {
         // It clamps to 0
         expect(offset).toBe(0);
 
-        delete doc.caretRangeFromPoint;
+        delete (doc as unknown as { caretRangeFromPoint?: unknown }).caretRangeFromPoint;
         document.body.removeChild(div);
     });
 
@@ -322,7 +322,7 @@ describe("getClickPosition", () => {
 
         const mockNode = document.createTextNode(content);
         const doc = document as DocumentWithCaret;
-        doc.caretPositionFromPoint = vi.fn((x, y) => {
+        (doc as unknown as { caretPositionFromPoint: unknown }).caretPositionFromPoint = vi.fn((x: number, y: number) => {
             if (x === 15 && y === 0) {
                 return { offsetNode: mockNode, offset: 100 };
             }
@@ -343,7 +343,7 @@ describe("getClickPosition", () => {
         // Fallback calculation: 15 -> 10*1=10, 10*2=20 (diff 5) -> returns 1
         expect(offset).toBe(1);
 
-        delete doc.caretPositionFromPoint;
+        delete (doc as unknown as { caretPositionFromPoint?: unknown }).caretPositionFromPoint;
         delete (doc as unknown as { createRange?: unknown; }).createRange;
         document.body.removeChild(div);
     });
