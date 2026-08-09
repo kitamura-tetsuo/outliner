@@ -46,14 +46,17 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         // refresh the textarea afterwards, when the complete remote update is visible.
         queueMicrotask(() => {
             if (this.destroyed || !this.isActive) return;
-            const rebasedOffset = this.resolveCaretAnchor();
-            store.updateCursor({
-                cursorId: this.cursorId,
-                itemId: this.itemId,
-                offset: rebasedOffset,
-                isActive: this.isActive,
-                userId: this.userId,
-            });
+            const newOffset = this.resolveCaretAnchor();
+            if (newOffset !== this._offset) {
+                this._offset = newOffset;
+                store.updateCursor({
+                    cursorId: this.cursorId,
+                    itemId: this.itemId,
+                    offset: this._offset,
+                    isActive: this.isActive,
+                    userId: this.userId,
+                });
+            }
             store.syncTextareaToActiveItem();
         });
     };
