@@ -9,6 +9,8 @@ vi.mock("../../../lib/yjsPersistence", () => ({
     attachIndexedDbPersistence: vi.fn().mockResolvedValue({ destroy: vi.fn() }),
 }));
 
+import { presenceStore } from "../../../stores/PresenceStore.svelte";
+
 describe("Presence Binding Leak", () => {
     it("should only bind once", async () => {
         const doc = new Y.Doc();
@@ -28,5 +30,56 @@ describe("Presence Binding Leak", () => {
 
         // Listener should be removed
         expect((observers.get("change") as unknown as Set<() => void>)?.size ?? 0).toBe(0);
+    });
+
+    it("should not remove user presence if another client ID with the same userId is still connected", async () => {
+        const doc = new Y.Doc();
+        const awareness = new Awareness(doc);
+        const unbind = yjsService.bindProjectPresence(awareness);
+
+        // Spy on presenceStore.removeUser
+        const removeUserSpy = vi.spyOn(presenceStore, "removeUser");
+
+        // Two different client IDs (e.g. 1 and 2) but same user ID ("user-123")
+        const client1Id = 1;
+        const client2Id = 2;
+        const userState = { userId: "user-123", name: "Alice", color: "red" };
+
+        // We simulate awareness states changing directly, bypassing some Yjs internals for the test
+        // Actually, let's just use awareness.setLocalStateField or mock getStates
+        const getStatesSpy = vi.spyOn(awareness, "getStates").mockReturnValue(
+            new Map([
+                [client1Id, { user: userState }],
+                [client2Id, { user: userState }],
+            ]),
+        );
+
+        // Get the update function that was registered
+        const observers = (awareness as unknown as { _observers: Map<string, Set<Function>>; })._observers;
+        const changeObservers = Array.from(observers.get("change") || []);
+        const updateFn = changeObservers[0];
+
+        // Initial setup - both joined
+        updateFn({ added: [client1Id, client2Id], updated: [], removed: [] }, "local");
+
+        // Now client1 disconnects
+        getStatesSpy.mockReturnValue(
+            new Map([
+                [client2Id, { user: userState }],
+            ]),
+        );
+        updateFn({ added: [], updated: [], removed: [client1Id] }, "local");
+
+        // verify user was NOT removed from store
+        expect(removeUserSpy).not.toHaveBeenCalledWith("user-123");
+
+        // Now client2 disconnects
+        getStatesSpy.mockReturnValue(new Map());
+        updateFn({ added: [], updated: [], removed: [client2Id] }, "local");
+
+        // verify user WAS removed from store
+        expect(removeUserSpy).toHaveBeenCalledWith("user-123");
+
+        unbind();
     });
 });
