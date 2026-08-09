@@ -7,6 +7,7 @@ import { getLogger } from "../lib/logger";
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { onMount } from "svelte";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
+import ConfirmDialog from "./ConfirmDialog.svelte";
 const logger = getLogger("CommentThread");
 
 
@@ -27,6 +28,22 @@ let editText = $state("");
 let localComments = $state<Comment[]>([]);
 let renderCommentsState = $state<Comment[]>([]);
 let threadRef: HTMLElement | null = null;
+
+let showDeleteConfirm = $state(false);
+let commentToDelete = $state<Comment | null>(null);
+
+function confirmDelete() {
+    if (commentToDelete) {
+        remove(commentToDelete.id);
+        showDeleteConfirm = false;
+        commentToDelete = null;
+    }
+}
+
+function cancelDelete() {
+    commentToDelete = null;
+    showDeleteConfirm = false;
+}
 
 
 let lastNotifiedCount = $state(-1);
@@ -312,7 +329,7 @@ function saveEdit(id: string) {
                 <span class="author">{c.author}:</span>
                 <span class="text">{c.text}</span>
                 <button type="button" onclick={() => startEdit(c)} class="edit" aria-label="Edit comment" title="Edit">✎</button>
-                <button type="button" onclick={() => remove(c.id)} class="delete" aria-label="Delete comment" title="Delete">×</button>
+                <button type="button" onclick={() => { commentToDelete = c; showDeleteConfirm = true; }} class="delete" aria-label="Delete comment" title="Delete">×</button>
             {/if}
         </div>
     {/each}
@@ -324,6 +341,19 @@ function saveEdit(id: string) {
         <button type="submit" data-testid="add-comment-btn">Add</button>
     </form>
 </div>
+
+{#if showDeleteConfirm}
+    <ConfirmDialog
+        bind:isOpen={showDeleteConfirm}
+        title="Delete Comment"
+        message={`Are you sure you want to delete this comment by ${commentToDelete?.author}: "${commentToDelete?.text?.substring(0, 50)}${commentToDelete?.text && commentToDelete.text.length > 50 ? '...' : ''}"?`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+    />
+{/if}
 
 <style>
 .comment-thread {
