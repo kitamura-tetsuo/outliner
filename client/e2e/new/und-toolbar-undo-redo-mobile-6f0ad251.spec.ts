@@ -66,4 +66,50 @@ test.describe("FTR-6f0ad251: Undo/Redo buttons in the mobile action toolbar", ()
             expect(await itemTexts(page)).toContain(ADDED);
         }).toPass({ timeout: 10000 });
     });
+
+    test("tapping other mobile toolbar buttons keeps editor focus", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [ORIGINAL]);
+
+        await expect(page.getByTestId("mobile-action-toolbar")).toBeVisible({ timeout: 10000 });
+
+        const itemText = page.locator(".outliner-item").first().locator(".item-text").first();
+        await itemText.click();
+        await TestHelpers.waitForCursorVisible(page);
+
+        // Map of button title to expected state
+        const buttonsToTest = [
+            "Indent",
+            "Outdent",
+            "Insert Above",
+            "Insert Below",
+            "New Child",
+            "Insert Sibling Below",
+            "Vote",
+            // "Delete" opens a modal so it legitimately takes focus away.
+            // "Delete",
+        ];
+
+        for (const title of buttonsToTest) {
+            // Refocus just in case previous operation blurred
+            await itemText.click();
+            await TestHelpers.waitForCursorVisible(page);
+
+            const btn = page.locator(`.mobile-toolbar-btn[title="${title}"]`);
+            await expect(btn).toBeVisible();
+            await btn.click();
+
+            // Wait a small amount for any blur event to trigger
+            await page.waitForTimeout(100);
+
+            const activeElementClass = await page.evaluate(() => document.activeElement?.className);
+            const activeElementId = await page.evaluate(() => document.activeElement?.id);
+            const activeElementText = await page.evaluate(() => document.activeElement?.textContent);
+            console.log(
+                "Title: " + title + " Active element class: " + activeElementClass + " ID: " + activeElementId
+                    + " Text: " + activeElementText,
+            );
+            expect(activeElementClass).toContain("global-textarea");
+        }
+    });
 });

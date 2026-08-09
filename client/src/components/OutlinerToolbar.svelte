@@ -179,6 +179,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 2 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 2}
             onclick={onIndent}
@@ -188,6 +190,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Outdent"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 3 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 3}
             onclick={onOutdent}
@@ -197,6 +201,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Above"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 4 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 4}
             onclick={onInsertAbove}
@@ -206,6 +212,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Below"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 5 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 5}
             onclick={onInsertBelow}
@@ -215,6 +223,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="New Child"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 6 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 6}
             onclick={onNewChild}
@@ -224,6 +234,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Sibling Below"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 7 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 7}
             onclick={onInsertSiblingBelow}
@@ -236,6 +248,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Vote"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 8 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 8}
             onclick={onVote}
@@ -245,6 +259,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Delete"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             tabindex={effectiveActiveIndex === 9 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 9}
             onclick={onDelete}
