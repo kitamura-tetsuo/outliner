@@ -670,15 +670,35 @@ export class Item {
     }
 
     toggleVote(user: string) {
-        let arr = this.value.get("votes") as Y.Array<string> | undefined;
-        if (!arr) {
-            arr = new Y.Array<string>();
-            this.value.set("votes", arr);
+        const update = () => {
+            let arr = this.value.get("votes") as Y.Array<string> | undefined;
+            if (!arr) {
+                arr = new Y.Array<string>();
+                this.value.set("votes", arr);
+            }
+            let found = false;
+            if (arr.doc) {
+                const all = arr.toArray();
+                for (let i = all.length - 1; i >= 0; i--) {
+                    if (all[i] === user) {
+                        arr.delete(i, 1);
+                        found = true;
+                    }
+                }
+            }
+            if (!found) {
+                arr.push([user]);
+            }
+            this.value.set("lastChanged", Date.now());
+        };
+
+        if (this.value.doc) {
+            this.value.doc.transact(() => {
+                update();
+            });
+        } else {
+            update();
         }
-        const idx = arr.doc ? arr.toArray().indexOf(user) : -1;
-        if (idx >= 0) arr.delete(idx, 1);
-        else arr.push([user]);
-        this.value.set("lastChanged", Date.now());
     }
 
     get attachments(): Y.Array<string> {
