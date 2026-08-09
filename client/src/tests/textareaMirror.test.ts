@@ -87,6 +87,24 @@ describe("textareaMirror", () => {
         expect(textarea.selectionEnd).toBe(2);
     });
 
+    // A cross-item mirror numbers offsets across every item it spans, so an OS collapse can
+    // record an offset past the end of the active item. Store and mirror must not disagree.
+    it("rebases a cursor left past the end of the active item by a cross-item collapse", () => {
+        editorOverlayStore.setTextareaRef(textarea);
+        editorOverlayStore.setActiveItem("item2");
+        editorOverlayStore.syncTextareaToSelection("item1", 0, "item2", 6);
+        // Offset 13 is the end of "Line 1\nLine 2", i.e. what the OS reports for the combined mirror.
+        editorOverlayStore.setCursor({ itemId: "item2", offset: 13, isActive: true, userId: "local" });
+
+        editorOverlayStore.clearSelectionForUser("local");
+
+        expect(textarea.value).toBe("Line 2");
+        expect(textarea.selectionStart).toBe(6);
+        const cursor = Object.values(editorOverlayStore.cursors).find(c => (c.userId ?? "local") === "local");
+        expect(cursor?.offset).toBe(6);
+        expect(editorOverlayStore.cursorInstances.get(cursor!.cursorId)?.offset).toBe(6);
+    });
+
     it("empties the mirror only when no item is being edited", () => {
         editorOverlayStore.setTextareaRef(textarea);
         editorOverlayStore.setActiveItem(null);
