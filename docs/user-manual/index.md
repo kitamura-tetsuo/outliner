@@ -105,7 +105,7 @@ Undo and redo run off a single history for the whole project.
 
 ### Toolbar buttons
 
-The **Undo** and **Redo** buttons in the toolbar at the top of the window do exactly the same thing as the shortcuts. On phones and tablets they also appear in the action toolbar at the bottom of the screen — since a software keyboard has no `Ctrl` key, that is how you reach your history there.
+The **Undo** and **Redo** buttons in the toolbar at the top of the window do exactly the same thing as the shortcuts. On a phone they sit in the action toolbar at the bottom — a software keyboard has no `Ctrl` key, so that is how you reach your history there.
 
 Each button is greyed out while there is nothing to undo (or redo) and becomes available as soon as you make a change. Pressing one while you are editing keeps your cursor where it was and leaves the software keyboard open, so you can carry straight on typing.
 
@@ -137,7 +137,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search:** Use the "Search pages" input field at the top of the screen to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. This allows rewriting item text. Page titles stay untouched unless you tick "Include page titles".
+- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. This allows rewriting item text. Page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -232,7 +232,7 @@ Databases are stored the same way as other outliner data, so data changes and sc
 
 A calendar is a query plus a role assignment over its result columns — which column is the title, the start, the all-day flag, the duration, and which columns are grouping axes. It has no data of its own.
 
-- **Query and Roles:** Candidates for roles are the columns the query actually returns. Changing the query never discards an existing role assignment for a column that is temporarily missing.
+- **Query and Roles:** Candidates for roles are the columns the query actually returns, in result order — never a fixed schema. Changing the query never discards an existing role assignment for a column that is temporarily missing.
 - **Writeability:** A query must SELECT both `source_kind` and `source_id` for its rows to be writable; otherwise the calendar is read-only.
 - **Views:** Switch between Day, Multi-day, Week, Month, and Gantt views. Gantt view shows one row per entry, nested by the outline's own hierarchy. A parent with dated children shows a rolled-up bar spanning from their earliest start to latest end instead of its own dates; dragging it shifts the whole subtree as one undo entry. A parent's own due date (if any) renders as a marker alongside its rolled-up bar. Axis granularity (day/week/month/quarter) is a view setting.
 - **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys. While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land, formatted in the calendar's own timezone.
