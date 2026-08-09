@@ -45,8 +45,7 @@ describe("Presence Binding Leak", () => {
         const client2Id = 2;
         const userState = { userId: "user-123", name: "Alice", color: "red" };
 
-        // We simulate awareness states changing directly, bypassing some Yjs internals for the test
-        // Actually, let's just use awareness.setLocalStateField or mock getStates
+        // We simulate awareness states changing directly, bypassing some Yjs internals for the test.
         const getStatesSpy = vi.spyOn(awareness, "getStates").mockReturnValue(
             new Map([
                 [client1Id, { user: userState }],
@@ -55,7 +54,8 @@ describe("Presence Binding Leak", () => {
         );
 
         // Get the update function that was registered
-        const observers = (awareness as unknown as { _observers: Map<string, Set<Function>>; })._observers;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const observers = (awareness as unknown as { _observers: Map<string, Set<any>>; })._observers;
         const changeObservers = Array.from(observers.get("change") || []);
         const updateFn = changeObservers[0];
 
