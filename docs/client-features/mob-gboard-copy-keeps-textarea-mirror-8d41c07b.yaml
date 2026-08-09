@@ -1,0 +1,19 @@
+id: MOB-8d41c07b
+title: Software keyboard cursor control stays usable after copy
+title-ja: コピー後もソフトウェアキーボードのカーソル操作を継続できる
+description: On Android, copying from the Gboard cursor-control panel makes the keyboard collapse the selection. Clearing the local selection must keep the hidden global textarea mirroring the active item instead of blanking it, so the IME still sees the editor's text and its cursor-control panel (arrows, select, copy, cut) stays enabled without tapping the item again.
+description-ja: Android の Gboard のカーソル操作パネルからコピーすると、キーボードが選択範囲を解除します。 ローカル選択範囲の解除時に隠しグローバルテキストエリアを空にせずアクティブ項目のテキストを反映し続けることで、 IME がエディタのテキストを認識したままになり、項目を再タップしなくてもカーソル操作パネル （矢印・選択・コピー・カット）が有効なまま使えるようにします。
+category: mobile
+status: implemented
+tags:
+- mobile
+- selection
+- clipboard
+acceptance:
+- After an IME copy collapses the selection, the virtual cursor still edits at the collapsed offset
+- Clearing the local selection keeps the hidden global textarea's text as it is while an item is being edited
+- Clearing the local selection never rewrites the hidden global textarea's text
+- The hidden textarea is emptied when no item is active or when it still holds a cross-item mirror
+tests:
+- client/e2e/core/mob-gboard-copy-keeps-textarea-mirror-8d41c07b.spec.ts
+- client/src/tests/textareaMirror.test.ts

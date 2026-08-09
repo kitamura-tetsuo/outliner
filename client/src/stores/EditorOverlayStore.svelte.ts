@@ -694,13 +694,68 @@ export class EditorOverlayStore {
             this.schedulePresenceSync();
         }
         if (userId === "local") {
-            const textarea = typeof document !== "undefined"
-                ? document.querySelector(".global-textarea") as HTMLTextAreaElement
-                : null;
-            if (textarea) {
-                textarea.value = "";
-            }
+            this.settleTextareaAfterSelectionCleared();
         }
+    }
+
+    /**
+     * Settle the hidden global textarea after the local selection was dropped, keeping its
+     * text where it is still the text of the item being edited.
+     *
+     * The textarea is the element the software keyboard is attached to, so emptying it while
+     * it still holds focus tells the IME the editor became empty. Android's Gboard then grays
+     * out its cursor-control panel (arrows, select, copy, cut) because there is no text to
+     * operate on, and it only recovers once the user taps the item again and `startEditing()`
+     * refills the mirror. That is exactly what happens after a copy issued from the panel: the
+     * keyboard collapses the selection right afterwards, and the collapse reaches the store
+     * through `syncSelectionFromTextarea()` -> `clearSelectionForUser("local")`.
+     *
+     * This deliberately never writes item text into the mirror. The model text is not reliably
+     * readable at this point — a delete or a remote edit lands before the read catches up — and
+     * writing a stale value would corrupt every offset derived from the mirror afterwards. The
+     * mirror is either kept as-is or emptied, and the regular sync paths refill it.
+     */
+    private settleTextareaAfterSelectionCleared() {
+        // Never touch the mirror mid-composition: the IME owns it until composition ends.
+        if (this.isComposing) return;
+
+        const textarea = this.getTextareaRef()
+            ?? (typeof document !== "undefined"
+                ? document.querySelector(".global-textarea") as HTMLTextAreaElement | null
+                : null);
+        if (!textarea) return;
+
+        // Items never contain newlines, so a newline means the mirror still holds a cross-item
+        // selection whose offsets no longer describe a single item. With nothing being edited
+        // there is no text to mirror either. Both cases keep the previous empty-mirror
+        // behaviour; only the single-item mirror the IME is working against is preserved.
+        const activeId = this.getActiveItem();
+        if (!activeId || textarea.value.includes("\n")) {
+            if (textarea.value !== "") textarea.value = "";
+            return;
+        }
+
+        // Collapse the mirror onto the local caret, clamped to the mirror's own length so no
+        // stale text read can move it. When the OS moved the caret itself the offsets already
+        // agree, and skipping the redundant setSelectionRange avoids arming the resync
+        // suppression against the user's next keyboard-driven selection.
+        const cursor = Object.values(this.cursors).find(c =>
+            c.itemId === activeId && c.isActive && ((c.userId || "local") === "local")
+        );
+        if (!cursor) return;
+        const offset = Math.min(Math.max(0, cursor.offset), textarea.value.length);
+        if (textarea.selectionStart !== offset || textarea.selectionEnd !== offset) {
+            this.applyTextareaSelectionRange(textarea, offset, offset);
+        }
+    }
+
+    /** Text the hidden textarea must mirror for `itemId`: the model text, or the rendered text. */
+    private getItemMirrorText(itemId: string): string {
+        const originalText = this.getOriginalTextFromItem(itemId);
+        if (originalText !== null) return originalText;
+
+        const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement | null;
+        return textEl ? this.getPlainTextFromElement(textEl) : "";
     }
 
     setActiveItem(itemId: string | null) {
@@ -1582,8 +1637,12 @@ export class EditorOverlayStore {
                 }
             }
 
-            // Update textarea content
-            textarea.value = startItemText;
+            // Update textarea content. Rewriting an unchanged value would make the browser
+            // push a fresh editor state to the IME, which resets the software keyboard's
+            // cursor-control panel, so only assign when the text actually differs.
+            if (textarea.value !== startItemText) {
+                textarea.value = startItemText;
+            }
 
             // Set selection
             this.applyTextareaSelectionRange(textarea, startOffset, endOffset);
@@ -1664,8 +1723,11 @@ export class EditorOverlayStore {
                     if (!walker.nextNode()) break;
                 }
 
-                // Update textarea content
-                textarea.value = combinedText;
+                // Update textarea content (see the single-item branch: skip no-op writes
+                // so the IME keeps its editing session)
+                if (textarea.value !== combinedText) {
+                    textarea.value = combinedText;
+                }
 
                 // Handle reversed selection
                 if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
@@ -1723,8 +1785,11 @@ export class EditorOverlayStore {
                     }
                 }
 
-                // Update textarea content
-                textarea.value = combinedText;
+                // Update textarea content (see the single-item branch: skip no-op writes
+                // so the IME keeps its editing session)
+                if (textarea.value !== combinedText) {
+                    textarea.value = combinedText;
+                }
 
                 // Handle reversed selection
                 if (!isReversed) {
@@ -1810,17 +1875,7 @@ export class EditorOverlayStore {
         const cursor = cursors[0];
 
         // Retrieve the item text from the store or DOM
-        let text = "";
-        const originalText = this.getOriginalTextFromItem(activeId);
-        if (originalText !== null) {
-            text = originalText;
-        } else {
-            // fallback to DOM
-            const textEl = document.querySelector(`[data-item-id="${escapeId(activeId)}"] .item-text`) as HTMLElement;
-            if (textEl) {
-                text = this.getPlainTextFromElement(textEl);
-            }
-        }
+        const text = this.getItemMirrorText(activeId);
 
         if (textarea.value !== text) {
             textarea.value = text;

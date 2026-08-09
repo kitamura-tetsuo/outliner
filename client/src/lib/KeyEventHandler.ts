@@ -1514,6 +1514,10 @@ export class KeyEventHandler {
                 // payloads because it would replace the HTML flavour that
                 // carries the component bindings with plain text.
                 if (!event.isTrusted && !structured) {
+                    // Selecting the helper element takes focus off the global textarea, and
+                    // removing it leaves the document with no focused element at all. That
+                    // tears down the software keyboard's editing session, so hand focus back.
+                    const previouslyFocused = document.activeElement as HTMLElement | null;
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
@@ -1522,6 +1526,7 @@ export class KeyEventHandler {
                     textarea.select();
                     document.execCommand("copy");
                     document.body.removeChild(textarea);
+                    previouslyFocused?.focus?.();
                 }
 
                 // Debug info
@@ -2789,6 +2794,10 @@ export class KeyEventHandler {
                 // payloads because it would replace the HTML flavour that
                 // carries the component bindings with plain text.
                 if (!event.isTrusted && !structured) {
+                    // Selecting the helper element takes focus off the global textarea, and
+                    // removing it leaves the document with no focused element at all. That
+                    // tears down the software keyboard's editing session, so hand focus back.
+                    const previouslyFocused = document.activeElement as HTMLElement | null;
                     const textarea = document.createElement("textarea");
                     textarea.value = selectedText;
                     textarea.style.position = "absolute";
@@ -2797,6 +2806,7 @@ export class KeyEventHandler {
                     textarea.select();
                     document.execCommand("copy");
                     document.body.removeChild(textarea);
+                    previouslyFocused?.focus?.();
                 }
 
                 // Debug info
