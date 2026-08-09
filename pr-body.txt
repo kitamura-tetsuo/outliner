@@ -1,16 +1,15 @@
-[Issues]
-- Running axe-core against the "Add Database" modal (specifically the Yjs Table rendering) revealed multiple accessibility violations.
-- `empty-table-header` in `TableGrid.svelte`: The actions column header `<th>` was completely empty.
-- `select-name` in `SelectCell.svelte`: The `<select>` element lacked an accessible name or label.
-- `label` in `DateCell.svelte`: The `<input type="date">` element lacked a label.
-- `button-name` and `label` in `TextCell.svelte` and `NumberCell.svelte`: The editable cell buttons lacked accessible names when empty, and the `<input>` elements lacked labels. Similar issues existed in `CheckboxCell.svelte`.
+This PR fixes an issue where clicking the "Add Database" button in the main toolbar caused the editor to lose focus, which could lead to databases being inserted in unexpected locations or failing to insert entirely.
 
-[Changes]
-- Added a `<span class="sr-only">Actions</span>` to the empty `<th>` in `TableGrid.svelte`.
-- Added `aria-label` attributes to the input elements in `SelectCell`, `DateCell`, `TextCell`, `NumberCell`, and `CheckboxCell`.
-- Added dynamic `aria-label` attributes to the empty button states in `TextCell` and `NumberCell` to provide discernible text.
+### Issues
+- The "Add Database" button did not have the `data-keep-editor-focus` and `preventEditorBlur` attributes.
+- Clicking the button caused the global textarea to blur, breaking the context needed by `commandPaletteStore.insert("yjstable")`.
 
-[Verification Results]
-- Re-running a Playwright axe-core script on the demo site with the changes applied shows 0 violations for the components.
-- Unit tests run successfully (`npm run test:unit`).
-- E2E tests run successfully (`./test.sh client/e2e/basic`).
+### Changes
+- Added `data-keep-editor-focus` attribute to the "Add Database" button in `client/src/components/Toolbar.svelte`.
+- Added `onpointerdown={preventEditorBlur}` to the "Add Database" button.
+- Mitigated flakiness in `col-caret-rebase-4706cafe.spec.ts` by explicitly focusing the textarea before polling for cursor changes.
+
+### Verification Results
+- All unit tests and e2e tests passed.
+- Linter and type checker passed.
+- The button now retains editor focus when clicked.
