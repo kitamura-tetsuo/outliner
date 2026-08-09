@@ -288,10 +288,14 @@ export const yjsService = {
                 const user = clientUserMap.get(id);
                 if (!user) return;
                 clientUserMap.delete(id);
-                target.removeUser(user.userId);
 
-                if (overlay && id !== clientId) {
-                    applyPresenceToOverlay(overlay, { ...user }, null);
+                const stillPresent = [...clientUserMap.values()].some(u => u.userId === user.userId);
+                if (!stillPresent) {
+                    target.removeUser(user.userId);
+
+                    if (overlay && id !== clientId) {
+                        applyPresenceToOverlay(overlay, { ...user }, null);
+                    }
                 }
             });
         };
