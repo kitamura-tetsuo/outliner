@@ -14,19 +14,19 @@ test.describe("Mobile - User scroll is never overridden by caret auto-scroll", (
         await page.click("[data-item-id]:first-child .item-text");
         await page.waitForTimeout(500);
 
-        const initialScrollY = await page.evaluate(() => window.scrollY);
+        const initialScrollY = await page.evaluate(() => globalThis.scrollY);
         expect(initialScrollY).toBe(0);
 
         // Simulate user scroll
         await page.evaluate(() => {
-            window.scrollTo(0, 200);
-            window.dispatchEvent(new Event("scroll"));
+            globalThis.scrollTo(0, 200);
+            globalThis.dispatchEvent(new Event("scroll"));
         });
 
         // Wait past the debounce window (100ms + some buffer)
         await page.waitForTimeout(500);
 
-        const finalScrollY = await page.evaluate(() => window.scrollY);
+        const finalScrollY = await page.evaluate(() => globalThis.scrollY);
 
         // Assert scroll position hasn't reverted back to 0
         expect(finalScrollY).toBe(200);
