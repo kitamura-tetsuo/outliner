@@ -1543,7 +1543,7 @@ export class EditorOverlayStore {
      * Mirror selection to the global hidden textarea
      */
 
-    private applyTextareaSelectionRange(
+    public applyTextareaSelectionRange(
         textarea: HTMLTextAreaElement,
         start: number,
         end: number,
