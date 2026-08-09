@@ -55,7 +55,7 @@ test("remote insertion before the caret preserves the local typing position", as
             const editorStore = (globalThis as any).editorOverlayStore;
             return editorStore?.getCursorInstances?.().find((cursor: any) => cursor.itemId === id)?.offset;
         }, itemId)
-    ).toBe(13);
+    ).toBe(13); // flaky;
 
     await pageB.keyboard.type("!");
     await expect(itemA).toContainText("XYZ0123456789!", { timeout: 30_000 });
