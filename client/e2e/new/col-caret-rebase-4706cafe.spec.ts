@@ -47,7 +47,8 @@ test("remote insertion before the caret preserves the local typing position", as
     await TestHelpers.setCursor(pageB, itemId!, 10);
     await TestHelpers.setCursor(pageA, itemId!);
     await TestHelpers.setCursor(pageA, itemId!, 0);
-    await TestHelpers.focusGlobalTextarea(pageA); await pageA.keyboard.type("XYZ");
+    await TestHelpers.focusGlobalTextarea(pageA);
+    await pageA.keyboard.type("XYZ");
 
     await expect(itemB).toContainText("XYZ0123456789", { timeout: 30_000 });
     await expect.poll(() =>
@@ -57,7 +58,8 @@ test("remote insertion before the caret preserves the local typing position", as
         }, itemId)
     ).toBe(13);
 
-    await TestHelpers.focusGlobalTextarea(pageB); await pageB.keyboard.type("!");
+    await TestHelpers.focusGlobalTextarea(pageB);
+    await pageB.keyboard.type("!");
     await expect(itemA).toContainText("XYZ0123456789!", { timeout: 30_000 });
     await expect(itemB).toContainText("XYZ0123456789!");
 
