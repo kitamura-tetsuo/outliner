@@ -51,6 +51,23 @@
     // live in this component's markup now.
     let fileInput: HTMLInputElement | null = $state(null);
 
+    let mobileActiveIndex = $state(0);
+
+    let effectiveActiveIndex = $derived.by(() => {
+        const disabledStates = [
+            !canUndo,
+            !canRedo,
+            false, false, false, false, false, false, false, false
+        ];
+
+        if (!disabledStates[mobileActiveIndex]) {
+            return mobileActiveIndex;
+        }
+
+        const firstEnabled = disabledStates.findIndex(disabled => !disabled);
+        return firstEnabled !== -1 ? firstEnabled : 0;
+    });
+
     function triggerFileSelect() {
         if (fileInput) {
             fileInput.click();
@@ -59,6 +76,34 @@
 
     function handleFileInputChange(event: Event) {
         onFileSelect?.(event);
+    }
+
+    function handleMobileToolbarKeydown(e: KeyboardEvent) {
+        if (mode !== "mobile") return;
+        if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+
+        const container = e.currentTarget as HTMLElement;
+        const buttons = Array.from(container.querySelectorAll('.mobile-toolbar-btn:not(:disabled)')) as HTMLButtonElement[];
+        if (buttons.length === 0) return;
+
+        const currentActiveBtn = container.querySelector('.mobile-toolbar-btn[tabindex="0"]') as HTMLButtonElement | null;
+        let currentIndex = currentActiveBtn ? buttons.indexOf(currentActiveBtn) : 0;
+        if (currentIndex === -1) currentIndex = 0;
+
+        let nextIndex = currentIndex;
+
+        if (e.key === "ArrowRight") {
+            nextIndex = (currentIndex + 1) % buttons.length;
+        } else if (e.key === "ArrowLeft") {
+            nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+        } else if (e.key === "Home") {
+            nextIndex = 0;
+        } else if (e.key === "End") {
+            nextIndex = buttons.length - 1;
+        }
+
+        e.preventDefault();
+        buttons[nextIndex].focus();
     }
 </script>
 
@@ -96,6 +141,8 @@
         role="toolbar"
         aria-label="Mobile Action Toolbar"
         style="bottom: {mobileToolbarBottomOffset}px"
+        tabindex="-1"
+        onkeydown={handleMobileToolbarKeydown}
     >
         <!-- Phone keyboards have no Ctrl, so these are the only way to reach the
              project history on mobile. They delegate to the global undo router
@@ -108,6 +155,8 @@
             data-testid="mobile-toolbar-undo"
             data-keep-editor-focus
             disabled={!canUndo}
+            tabindex={effectiveActiveIndex === 0 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 0}
             onpointerdown={preventEditorBlur}
             onclick={onUndo}
         >
@@ -120,6 +169,8 @@
             data-testid="mobile-toolbar-redo"
             data-keep-editor-focus
             disabled={!canRedo}
+            tabindex={effectiveActiveIndex === 1 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 1}
             onpointerdown={preventEditorBlur}
             onclick={onRedo}
         >
@@ -128,6 +179,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
+            tabindex={effectiveActiveIndex === 2 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 2}
             onclick={onIndent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -135,6 +188,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Outdent"
+            tabindex={effectiveActiveIndex === 3 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 3}
             onclick={onOutdent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -142,6 +197,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Above"
+            tabindex={effectiveActiveIndex === 4 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 4}
             onclick={onInsertAbove}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -149,6 +206,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Below"
+            tabindex={effectiveActiveIndex === 5 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 5}
             onclick={onInsertBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
@@ -156,6 +215,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="New Child"
+            tabindex={effectiveActiveIndex === 6 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 6}
             onclick={onNewChild}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -163,6 +224,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Sibling Below"
+            tabindex={effectiveActiveIndex === 7 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 7}
             onclick={onInsertSiblingBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -173,6 +236,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Vote"
+            tabindex={effectiveActiveIndex === 8 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 8}
             onclick={onVote}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -180,6 +245,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Delete"
+            tabindex={effectiveActiveIndex === 9 ? 0 : -1}
+            onfocusin={() => mobileActiveIndex = 9}
             onclick={onDelete}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

@@ -188,4 +188,92 @@ describe("OutlinerToolbar", () => {
         await fireEvent.change(fileInput, { target: { files: [new File([""], "test.png", { type: "image/png" })] } });
         expect(onFileSelect).toHaveBeenCalledTimes(1);
     });
+
+    test("mobile toolbar supports roving tabindex keyboard navigation", async () => {
+        const { getByTestId, container } = render(OutlinerToolbar, {
+            props: {
+                mode: "mobile",
+                canUndo: true,
+                canRedo: false, // Make Redo disabled to test skipping disabled elements
+            },
+        });
+
+        const toolbar = getByTestId("mobile-action-toolbar");
+        const buttons = Array.from(toolbar.querySelectorAll(".mobile-toolbar-btn")) as HTMLButtonElement[];
+
+        // Assert exactly one button has tabindex 0 (Undo)
+        const activeButtons = buttons.filter(btn => btn.tabIndex === 0);
+        expect(activeButtons.length).toBe(1);
+        expect(activeButtons[0]).toBe(buttons[0]);
+
+        // Focus first button to start test
+        buttons[0].focus();
+
+        // Dispatch ArrowRight to move to the next enabled button (Indent, skipping Redo)
+        await fireEvent.keyDown(toolbar, { key: "ArrowRight", code: "ArrowRight" });
+        expect(document.activeElement).toBe(buttons[2]); // Indent button
+        // Simulate Svelte processing the focus event which updates the state
+        await fireEvent.focusIn(buttons[2]);
+        expect(buttons[2].tabIndex).toBe(0);
+
+        // Dispatch End to jump to the last button (Delete)
+        await fireEvent.keyDown(toolbar, { key: "End", code: "End" });
+        expect(document.activeElement).toBe(buttons[9]); // Delete button
+        await fireEvent.focusIn(buttons[9]);
+        expect(buttons[9].tabIndex).toBe(0);
+
+        // Dispatch ArrowRight to wrap around to the first enabled button (Undo)
+        await fireEvent.keyDown(toolbar, { key: "ArrowRight", code: "ArrowRight" });
+        expect(document.activeElement).toBe(buttons[0]); // Undo button
+        await fireEvent.focusIn(buttons[0]);
+        expect(buttons[0].tabIndex).toBe(0);
+
+        // Dispatch ArrowLeft to wrap backwards to the last enabled button (Delete)
+        await fireEvent.keyDown(toolbar, { key: "ArrowLeft", code: "ArrowLeft" });
+        expect(document.activeElement).toBe(buttons[9]); // Delete button
+        await fireEvent.focusIn(buttons[9]);
+        expect(buttons[9].tabIndex).toBe(0);
+
+        // Dispatch Home to jump to the first enabled button (Undo)
+        await fireEvent.keyDown(toolbar, { key: "Home", code: "Home" });
+        expect(document.activeElement).toBe(buttons[0]); // Undo button
+        await fireEvent.focusIn(buttons[0]);
+        expect(buttons[0].tabIndex).toBe(0);
+    });
+
+    test("mobile toolbar effective tabindex skips dynamically disabled buttons", async () => {
+        const { getByTestId, rerender } = render(OutlinerToolbar, {
+            props: {
+                mode: "mobile",
+                canUndo: true,
+                canRedo: true,
+            },
+        });
+
+        const toolbar = getByTestId("mobile-action-toolbar");
+        const buttons = Array.from(toolbar.querySelectorAll(".mobile-toolbar-btn")) as HTMLButtonElement[];
+
+        // Initial state: Undo (index 0) has tabindex=0
+        expect(buttons[0].tabIndex).toBe(0);
+
+        // Focus Redo (index 1)
+        await fireEvent.focusIn(buttons[1]);
+        expect(buttons[1].tabIndex).toBe(0);
+        expect(buttons[0].tabIndex).toBe(-1);
+
+        // Dynamically disable Redo
+        await rerender({ mode: "mobile", canUndo: true, canRedo: false });
+
+        // Expect effective tabindex to fall back to the first enabled button (Undo, index 0)
+        expect(buttons[0].tabIndex).toBe(0);
+        expect(buttons[1].tabIndex).toBe(-1);
+
+        // Focus Undo, dynamically disable Undo
+        await fireEvent.focusIn(buttons[0]);
+        await rerender({ mode: "mobile", canUndo: false, canRedo: false });
+
+        // Expect effective tabindex to fall back to the first enabled button (Indent, index 2)
+        expect(buttons[2].tabIndex).toBe(0);
+        expect(buttons[0].tabIndex).toBe(-1);
+    });
 });
