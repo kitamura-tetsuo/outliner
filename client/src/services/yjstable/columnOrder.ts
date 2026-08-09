@@ -82,5 +82,5 @@ export function writeColumnOrder(handles: TableHandles, order: string[]): void {
             (orderArray as Y.Array<string>).delete(0, (orderArray as Y.Array<string>).length);
         }
         if (order.length > 0) (orderArray as Y.Array<string>).push(order);
-    }, handles.tableId);
+    });
 }

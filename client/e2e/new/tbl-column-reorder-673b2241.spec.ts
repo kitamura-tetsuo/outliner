@@ -121,4 +121,27 @@ test.describe("TBL-673b2241: reordering columns by dragging grid headers", () =>
         await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 })
             .toEqual(["id", "status", "title", "priority", "due_date", "repeat_days"]);
     });
+
+    test("Undo (Ctrl+Z) reverts a reorder in a single step", async ({ page }) => {
+        await createTasksTableBlock(page, hostItemId);
+
+        expect(await gridHeaderOrder(page)).toEqual(TASKS_PRESET_COLUMNS);
+
+        // Drop "status" on the left half of "title" so it lands before it.
+        await dragColumnHeader(page, "status", "title", "left");
+
+        const reordered = ["id", "status", "title", "priority", "due_date", "repeat_days"];
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(reordered);
+
+        // Wait a small moment to ensure the Yjs stack item is registered
+        await page.waitForTimeout(500);
+
+        // Undo
+        // Wait for the undo button to become available (this ensures global router picked up the change)
+        const undoBtn = page.getByTestId("toolbar-undo");
+        await expect(undoBtn).toBeEnabled({ timeout: 15000 });
+
+        await undoBtn.click();
+        await expect.poll(() => gridHeaderOrder(page), { timeout: 15000 }).toEqual(TASKS_PRESET_COLUMNS);
+    });
 });
