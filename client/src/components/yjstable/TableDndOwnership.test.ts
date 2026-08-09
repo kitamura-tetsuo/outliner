@@ -1,3 +1,4 @@
+// @feature TBL-4f0d2b9a
 // Regression coverage for the table Grid UI losing every column-reorder drop.
 //
 // A table block is rendered inside an OutlinerItem, and OutlinerItem installs
