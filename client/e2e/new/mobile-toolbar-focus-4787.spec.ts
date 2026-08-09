@@ -4,7 +4,6 @@ registerCoverageHooks();
 
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import { TreeValidator } from "../utils/treeValidation";
 
 test.describe("Mobile action toolbar buttons retain editor focus", () => {
     test.use({ viewport: { width: 375, height: 667 } });
