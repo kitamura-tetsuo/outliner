@@ -745,14 +745,6 @@ export class EditorOverlayStore {
         if (textarea.selectionStart !== offset || textarea.selectionEnd !== offset) {
             this.applyTextareaSelectionRange(textarea, offset, offset);
         }
-
-        // A cross-item mirror numbers its offsets across every item it spans, so an OS-driven
-        // collapse can leave the cursor past the end of the active item once the mirror shrinks
-        // back to that item. Rebase the record onto the clamped offset so the store and the
-        // mirror cannot disagree and the next edit lands inside the item.
-        if (cursor && cursor.offset !== offset) {
-            this.updateCursor({ ...cursor, offset });
-        }
     }
 
     /** Text the hidden textarea must mirror for `itemId`: the model text, or the rendered text. */
