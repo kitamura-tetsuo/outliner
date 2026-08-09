@@ -55,9 +55,25 @@ let measureCtx: CanvasRenderingContext2D | null = null;
 let lastScrolledCursorId = '';
 let lastScrolledOffset = -1;
 let forceScrollNext = false;
+let userScrollActive = false;
 
-function handleVisualViewportEvent() {
-    forceScrollNext = true;
+function handleUserScroll() {
+    userScrollActive = true;
+}
+let lastVisualViewportHeight = typeof window !== 'undefined' && window.visualViewport ? window.visualViewport.height : 0;
+
+function handleVisualViewportResize() {
+    if (typeof window !== 'undefined' && window.visualViewport) {
+        const currentHeight = window.visualViewport.height;
+        if (Math.abs(currentHeight - lastVisualViewportHeight) > 1) {
+            forceScrollNext = true;
+            lastVisualViewportHeight = currentHeight;
+        }
+    }
+    debouncedUpdatePositionMap();
+}
+
+function handleVisualViewportScroll() {
     debouncedUpdatePositionMap();
 }
 
@@ -231,7 +247,11 @@ function updateTextareaPosition() {
         // (end of composition). Otherwise, typing enough characters to wrap to
         // a new line during composition leaves the newly typed text below the
         // viewport since the anchor position never moves.
-        if (forceScrollNext || lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
+        if (lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset) {
+            userScrollActive = false;
+        }
+
+        if (!userScrollActive && (forceScrollNext || lastScrolledCursorId !== lastCursor.itemId || lastScrolledOffset !== lastCursor.offset)) {
             forceScrollNext = false;
             lastScrolledCursorId = lastCursor.itemId;
             lastScrolledOffset = lastCursor.offset;
@@ -797,15 +817,20 @@ onMount(() => {
 
     // Update position map on resize or scroll
     window.addEventListener('resize', debouncedUpdatePositionMap);
+    window.addEventListener('wheel', handleUserScroll, { passive: true });
+    window.addEventListener('touchmove', handleUserScroll, { passive: true });
+    window.addEventListener('scroll', handleUserScroll, { passive: true });
+
     const treeContainer = resolveTreeContainer();
     if (treeContainer) {
         treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
+        treeContainer.addEventListener('scroll', handleUserScroll, { passive: true });
     }
 
     // Register visualViewport listeners to track mobile keyboard appearances
     if (typeof window !== 'undefined' && window.visualViewport) {
-        window.visualViewport.addEventListener("resize", handleVisualViewportEvent);
-        window.visualViewport.addEventListener("scroll", handleVisualViewportEvent);
+        window.visualViewport.addEventListener("resize", handleVisualViewportResize);
+        window.visualViewport.addEventListener("scroll", handleVisualViewportScroll);
     }
 
 
@@ -874,14 +899,19 @@ onDestroy(() => {
 
     // Remove event listeners
     window.removeEventListener('resize', debouncedUpdatePositionMap);
+    window.removeEventListener('wheel', handleUserScroll);
+    window.removeEventListener('touchmove', handleUserScroll);
+    window.removeEventListener('scroll', handleUserScroll);
+
     const treeContainer = resolveTreeContainer();
     if (treeContainer) {
         treeContainer.removeEventListener('scroll', debouncedUpdatePositionMap);
+        treeContainer.removeEventListener('scroll', handleUserScroll);
     }
 
     if (typeof window !== 'undefined' && window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", handleVisualViewportEvent);
-        window.visualViewport.removeEventListener("scroll", handleVisualViewportEvent);
+        window.visualViewport.removeEventListener("resize", handleVisualViewportResize);
+        window.visualViewport.removeEventListener("scroll", handleVisualViewportScroll);
     }
 
     // Clear timer

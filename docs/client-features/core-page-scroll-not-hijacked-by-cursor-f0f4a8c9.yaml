@@ -1,0 +1,12 @@
+id: core-page-scroll-not-hijacked-by-cursor-f0f4a8c9
+title: User scroll is never overridden by caret auto-scroll
+title-ja: ユーザーによるスクロールはキャレットの自動スクロールに上書きされない
+status: active
+tests:
+  - client/e2e/core/page-scroll-not-hijacked-by-cursor-f0f4a8c9.spec.ts
+  - client/e2e/core/mob-page-scroll-not-hijacked-by-cursor-d124b8e2.spec.ts
+description: |
+  Ensures that user-initiated scrolling is respected.
+  Cross-reference:
+  - core-mob-caret-visible-above-keyboard-5b6c2e18
+  - core-ime-scroll-follows-composition-cursor-4af5add9
