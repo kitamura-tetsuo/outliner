@@ -128,6 +128,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onIndent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -135,6 +137,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Outdent"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onOutdent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
@@ -142,6 +146,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Above"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onInsertAbove}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
@@ -149,6 +155,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Below"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onInsertBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
@@ -156,6 +164,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="New Child"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onNewChild}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -163,6 +173,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Sibling Below"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onInsertSiblingBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -173,6 +185,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Vote"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onVote}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -180,6 +194,8 @@
         <button type="button"
             class="mobile-toolbar-btn"
             title="Delete"
+            data-keep-editor-focus
+            onpointerdown={preventEditorBlur}
             onclick={onDelete}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
