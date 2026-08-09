@@ -112,6 +112,7 @@
             onclick={onUndo}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+            <span class="btn-label">Undo</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
@@ -124,65 +125,82 @@
             onclick={onRedo}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+            <span class="btn-label">Redo</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
+            aria-label="Indent"
             onclick={onIndent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <span class="btn-label">Indent</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Outdent"
+            aria-label="Outdent"
             onclick={onOutdent}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span class="btn-label">Outdent</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Above"
+            aria-label="Insert Above"
             onclick={onInsertAbove}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            <span class="btn-label">Above</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Below"
+            aria-label="Insert Below"
             onclick={onInsertBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            <span class="btn-label">Below</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="New Child"
+            aria-label="New Child"
             onclick={onNewChild}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span class="btn-label">Child</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Sibling Below"
+            aria-label="Insert Sibling Below"
             onclick={onInsertSiblingBelow}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 10 4 15 9 20"></polyline>
                 <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
             </svg>
+            <span class="btn-label">Sibling</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Vote"
+            aria-label="Vote"
             onclick={onVote}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span class="btn-label">Vote</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Delete"
+            aria-label="Delete"
             onclick={onDelete}
         >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span class="btn-label">Delete</span>
         </button>
     </div>
 {/if}
@@ -251,7 +269,7 @@
         z-index: 1000;
         justify-content: space-around;
         align-items: center;
-        height: 50px;
+        height: 60px;
         overflow-x: auto;
     }
 
@@ -265,15 +283,21 @@
         background: #f0f0f0;
         border: 1px solid #ccc;
         border-radius: 4px;
-        padding: 6px 10px;
+        padding: 4px;
         cursor: pointer;
-        font-size: 14px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        width: 48px;
+        height: 48px;
         flex-shrink: 0;
+        gap: 2px;
+    }
+
+    .btn-label {
+        font-size: 10px;
+        line-height: 1;
     }
 
     .mobile-toolbar-btn:hover:not(:disabled) {
