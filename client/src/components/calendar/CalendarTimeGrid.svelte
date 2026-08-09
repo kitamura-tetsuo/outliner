@@ -258,7 +258,7 @@ onMount(() => {
                     style={`grid-column: ${p.dayIndex + 1} / span ${p.spanDays}`}
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
                     onpointerdown={(e) => {
-                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                        (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                 >
                     <div
@@ -290,7 +290,7 @@ onMount(() => {
                     style={`grid-column: ${m.dayIndex + 1}`}
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
                     onpointerdown={(e) => {
-                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                        (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                 >
                     <div
@@ -352,7 +352,7 @@ onMount(() => {
                     }px; height: ${(p.endFraction - p.startFraction) * dayHeightPx}px`}
                     onpointerdown={(e) => {
                         beginDrag("move", p.entry, e);
-                        (e.currentTarget.querySelector('.entry-title') || {}).focus?.();
+                        (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                 >
                     <div
@@ -377,7 +377,7 @@ onMount(() => {
                     {/if}
                     {#if isDurationWritable(p.entry)}
                         <div
-                            role="separator"
+                            role="slider"
                             tabindex="0"
                             aria-orientation="horizontal"
                             aria-valuemin={MIN_DURATION_MS / 60000}
