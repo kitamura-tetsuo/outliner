@@ -51,7 +51,7 @@ describe("yjs-schema Item Votes", () => {
         const doc2 = new Y.Doc();
         Y.applyUpdate(doc2, Y.encodeStateAsUpdate(ydoc));
         const tree2 = new YTree(doc2.getMap("orderedTree"));
-        const project2 = new Project(doc2, tree2);
+
         const item2 = new Item(doc2, tree2, item.key);
 
         // Concurrent votes from the same user while offline
