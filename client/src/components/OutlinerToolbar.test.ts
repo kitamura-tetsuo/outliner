@@ -190,7 +190,7 @@ describe("OutlinerToolbar", () => {
     });
 
     test("mobile toolbar supports roving tabindex keyboard navigation", async () => {
-        const { getByTestId, container } = render(OutlinerToolbar, {
+        const { getByTestId } = render(OutlinerToolbar, {
             props: {
                 mode: "mobile",
                 canUndo: true,
