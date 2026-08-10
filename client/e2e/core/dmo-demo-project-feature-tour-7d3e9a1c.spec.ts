@@ -67,6 +67,29 @@ test.describe("Demo project feature tour", () => {
         await expect(salesTable.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" })).toBeVisible();
     });
 
+    test("the Advanced Features page chart uses month for the category axis", async ({ page }) => {
+        await page.goto("/demo");
+
+        const pageList = page.getByTestId("demo-page-list");
+        await expect(pageList).toBeVisible({ timeout: 30000 });
+        await pageList.getByText("Advanced Features", { exact: true }).first().click();
+
+        await expect(page).toHaveURL(/\/demo\/Advanced%20Features$/, { timeout: 15000 });
+
+        const salesTable = page.getByTestId("yjs-table-view").filter({
+            has: page.getByTestId("yjs-table-name").getByText("Sales", { exact: true }),
+        }).first();
+        await expect(salesTable).toBeVisible({ timeout: 30000 });
+
+        await salesTable.getByTestId("yjs-table-toggle-chart").first().click();
+
+        const chart = salesTable.getByTestId("yjs-table-chart").first();
+        await expect(chart).toBeVisible({ timeout: 10000 });
+        await expect(chart).toHaveAttribute("aria-label", /Bar chart of revenue by month: Jan \(120\)/, {
+            timeout: 10000,
+        });
+    });
+
     test("the Publishing and Sharing page renders the seeded links", async ({ page }) => {
         await page.goto("/demo");
 
