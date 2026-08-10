@@ -42,11 +42,16 @@ test("Dependabot moves the Playwright packages together", () => {
     // what the image provides, which is how playwright-core reached 1.62.0
     // while the runner stayed on 1.61.1.
     const dependabot = read(".github", "dependabot.yml");
-    const group = dependabot.slice(dependabot.indexOf("      playwright:"));
+    const start = dependabot.indexOf("      playwright:");
+    expect(start, "missing Dependabot playwright group").toBeGreaterThanOrEqual(0);
 
-    expect(group).toMatch(/^ {6}playwright:$/m);
-    for (const pkg of ['"playwright"', '"playwright-core"', '"@playwright/test"']) {
-        expect(group.slice(0, group.indexOf("\n  - package-ecosystem") + 1 || undefined)).toContain(pkg);
+    // The group ends at the next key on its own indentation level.
+    const rest = dependabot.slice(start + "      playwright:\n".length);
+    const end = rest.search(/^ {0,6}\S/m);
+    const group = rest.slice(0, end === -1 ? undefined : end);
+
+    for (const pkg of ["playwright", "playwright-core", "@playwright/test"]) {
+        expect(group).toMatch(new RegExp(`^ +- ["']${pkg.replace("/", "\\/")}["']$`, "m"));
     }
 });
 
