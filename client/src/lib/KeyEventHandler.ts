@@ -3,6 +3,7 @@ import { getCalendar } from "../services/calendar/calendarService";
 import {
     clipboardPlainText,
     deserializeClipboardItems,
+    type GridTableSnapshot,
     OUTLINER_ITEMS_MIME,
     serializeClipboardItems,
     structuredClipboardFromHtml,
@@ -10,7 +11,8 @@ import {
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
-import { getTableName } from "../services/yjstable/tableDocs";
+import { exportTableStructure, importTableStructures } from "../services/yjstable/tableClone";
+import { getTableName, removeTable } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -89,10 +91,22 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     if (entries.length === 0) return undefined;
     if (!coversWholeRange && !hasComponent) return undefined;
 
+    const tableSnapshots: Record<string, GridTableSnapshot> = {};
+    const tableIds = new Set(entries.map(entry => getItemTableId(entry.item)).filter(tableId => tableId !== undefined));
+    for (const tableId of tableIds) {
+        try {
+            tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId);
+        } catch {
+            // Each Grid is portable independently; failed exports retain their
+            // source binding for same-project paste and degrade to text abroad.
+        }
+    }
+
     const baseDepth = entries[0].depth;
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
         entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
+        Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
     return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
@@ -2649,15 +2663,59 @@ export class KeyEventHandler {
                 return;
             }
 
-            // Treat as multi-item paste if normal multi-line text
-            if (text.includes("\n") || sameProjectItems) {
+            let structuredItems = sameProjectItems;
+            const destinationDoc = generalStore.project?.ydoc;
+            if (
+                structuredItems === undefined
+                && structured?.version === 2
+                && destinationDoc !== undefined
+                && structured.sourceProjectId !== destinationDoc.guid
+            ) {
+                const referencedTableIds = new Set(
+                    structured.items.flatMap(item =>
+                        item.componentType === "yjstable" && item.yjsTableId !== undefined ? [item.yjsTableId] : []
+                    ),
+                );
+                const referencedSnapshots = Object.fromEntries(
+                    [...referencedTableIds].flatMap(sourceTableId => {
+                        const snapshot = structured.tables[sourceTableId];
+                        return snapshot === undefined ? [] : [[sourceTableId, snapshot]];
+                    }),
+                );
+                if (Object.keys(referencedSnapshots).length > 0) {
+                    const imported = await importTableStructures(destinationDoc, referencedSnapshots);
+                    if (generalStore.project?.ydoc !== destinationDoc) {
+                        for (const destinationTableId of Object.values(imported.tableIdMap)) {
+                            removeTable(destinationDoc, destinationTableId);
+                        }
+                        return;
+                    }
+                    if (Object.keys(imported.tableIdMap).length > 0) {
+                        structuredItems = structured.items.map(item => {
+                            if (item.componentType === "yjstable") {
+                                const destinationTableId = item.yjsTableId === undefined
+                                    ? undefined
+                                    : imported.tableIdMap[item.yjsTableId];
+                                return destinationTableId === undefined
+                                    ? { text: item.text, depth: item.depth }
+                                    : { ...item, yjsTableId: destinationTableId };
+                            }
+                            if (item.componentType === "calendar") return { text: item.text, depth: item.depth };
+                            return item;
+                        });
+                    }
+                }
+            }
+
+            // Treat as multi-item paste if normal multi-line text or portable structured items.
+            if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
                 if (typeof window !== "undefined") {
                     window.dispatchEvent(
                         new CustomEvent("paste-multi-item", {
                             detail: {
                                 lines: text.split(/\r?\n/),
-                                structuredItems: sameProjectItems,
+                                structuredItems,
                                 selections: Object.values(store.selections).filter(selection =>
                                     selection.startOffset !== selection.endOffset
                                     || selection.startItemId !== selection.endItemId

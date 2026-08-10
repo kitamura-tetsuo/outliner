@@ -6,7 +6,13 @@ description: 'A single consolidated table feature that replaces the former Table
   '
 category: client
 status: implemented
+acceptance:
+- Cross-project Grid clones always start with empty Data Storage and remain structurally independent after paste; Calendar cross-project cloning is not part of this table feature.
+- Pasting a Grid host into another project creates a fresh registered destination table with a new table ID and destination-derived subdocument GUID, copying and conflict-rewriting its schema and UI definition without retaining a source binding.
+- Pasting a Grid host within its project creates another live view of the same registered table and shared Data Storage.
 tests:
+- client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
 - client/e2e/new/tbl-chart-view-toggle-9d4b17ea.spec.ts
 - client/e2e/new/tbl-database-table-block-53f59906.spec.ts
 - client/e2e/new/tbl-focus-clears-item-cursor-73f2c51c.spec.ts
@@ -25,9 +31,11 @@ tests:
 - client/src/services/yjstable/relationRowWrite.test.ts
 - client/src/services/yjstable/schemaIntrospection.test.ts
 - client/src/services/yjstable/sqlNames.test.ts
+- client/src/services/yjstable/tableClone.test.ts
 - client/src/services/yjstable/tableDocs.test.ts
 - client/src/services/yjstable/tableEngine.test.ts
 - client/src/services/yjstable/tableEngineItems.test.ts
 - client/src/services/yjstable/tableRelationProvider.test.ts
+- client/src/services/yjstable/tableSqlRewrite.test.ts
 - client/src/services/yjstable/tableSyncAdapter.test.ts
 - client/src/services/yjstable/valueCasting.test.ts

@@ -48,6 +48,9 @@ export interface TableHandles {
     undo: Y.UndoManager;
 }
 
+/** Structure handles available while a table is still invisible to the project registry. */
+export type TableInitializationHandles = Omit<TableHandles, "undo">;
+
 const tableUndoManagers = new WeakMap<Y.Doc, Y.UndoManager>();
 
 /** The registry map in the project doc: tableId -> Y.Map entry. */
@@ -70,11 +73,33 @@ export function listTables(projectDoc: Y.Doc): TableRegistryEntry[] {
 
 /**
  * Create a new table: a fresh subdoc referenced from the project registry.
+ * Optional initialization runs on the standalone subdoc before the registry can
+ * expose it, so observers never see a partially populated table. An initializer
+ * failure leaves no registry entry or attached project subdocument.
  * Returns the new table id.
  */
-export function createTable(projectDoc: Y.Doc, name: string, sqlName: string): string {
+export function createTable(
+    projectDoc: Y.Doc,
+    name: string,
+    sqlName: string,
+    initialize?: (handles: TableInitializationHandles) => void,
+): string {
     const tableId = uuidv4();
     const subdoc = new Y.Doc({ guid: tableDocGuid(projectDoc.guid, tableId), autoLoad: true });
+    const handles: TableInitializationHandles = {
+        tableId,
+        doc: subdoc,
+        schemaText: subdoc.getText(TABLE_SCHEMA_KEY),
+        uiDef: subdoc.getMap<unknown>(TABLE_UI_KEY),
+        data: subdoc.getMap<TableRecord>(TABLE_DATA_KEY),
+    };
+    try {
+        subdoc.transact(() => initialize?.(handles));
+    } catch (err) {
+        subdoc.destroy();
+        throw err;
+    }
+
     projectDoc.transact(() => {
         const entry = new Y.Map<unknown>();
         entry.set("name", name);
@@ -83,6 +108,19 @@ export function createTable(projectDoc: Y.Doc, name: string, sqlName: string): s
         getTableRegistry(projectDoc).set(tableId, entry);
     });
     return tableId;
+}
+
+export function removeTable(projectDoc: Y.Doc, tableId: string): boolean {
+    const registry = getTableRegistry(projectDoc);
+    const entry = registry.get(tableId);
+    if (!entry) return false;
+    const doc = entry.get("doc");
+    projectDoc.transact(() => registry.delete(tableId));
+    if (doc instanceof Y.Doc) {
+        destroyTableUndoManager(doc);
+        doc.destroy();
+    }
+    return true;
 }
 
 export function renameTable(projectDoc: Y.Doc, tableId: string, name: string): void {

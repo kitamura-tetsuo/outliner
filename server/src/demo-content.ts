@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 37;
+export const DEMO_TEMPLATE_VERSION = 38;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -896,9 +896,13 @@ export const demoPages: DemoPageTemplate[] = [
                 yjsTableId: DEMO_SALES_TABLE_ID,
             },
             {
-                text: "Clipboard: drag the mouse across the database item above and a neighboring item, then copy and "
-                    + "paste to create another live view of the same table. The drag does not have to stop exactly on "
-                    + "an item boundary. Cut and paste moves the view without deleting its data.",
+                text:
+                    "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
+                    + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
+                    + "Grid with a fresh identity, copied schema and UI settings, and empty Data Storage; conflicting SQL "
+                    + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
+                    + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
+                    + "without deleting its data.",
             },
             {
                 text: "Aggregation across tables: this table stores only the monthly targets, "

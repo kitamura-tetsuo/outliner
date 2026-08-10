@@ -177,6 +177,12 @@ With an active selection you can:
 - Drag and drop the selected text to move it.
 - Apply formatting such as bold or italic to the selected range.
 
+When a copied selection contains a component block:
+
+- Pasting a **Grid** in the same project creates another live view of the same table, including its shared Data Storage.
+- Pasting that Grid in another project creates an independent table with a fresh identity and a copy of its schema and UI settings. Its Data Storage starts empty, and conflicting SQL names are rewritten for the destination.
+- **Calendar** bindings can be pasted only within the same project; cross-project Calendar cloning is not supported and uses the readable-text fallback.
+
 ---
 
 ## Attachments

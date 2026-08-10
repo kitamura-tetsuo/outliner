@@ -1,7 +1,7 @@
 id: CLP-4584c0de
 title: Copy and paste component blocks
 title-ja: コンポーネントブロックのコピー＆ペースト
-description: Copy, cut, and paste Grid and Calendar host items while preserving their component bindings.
+description: Copy, cut, and paste Grid and Calendar host items, sharing bindings within a project and cloning portable Grid structure across projects.
 category: clipboard
 status: implemented
 components:
@@ -11,16 +11,21 @@ components:
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
+- A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, and complete UI definition, while its Data Storage starts empty and remains independent of the source project.
+- A later, separate cross-project paste creates another fresh independent Grid clone.
 - A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
 - A whole-item selection carries Grid and Calendar binding identifiers in the in-app clipboard format.
+- Calendar structure cloning across projects is not supported; foreign Calendar metadata keeps the safe readable-text fallback, while same-project Calendar paste retains its shared binding.
 - Cutting and pasting moves host items without deleting their underlying table or calendar data.
 - Partial selections without a component block, and external clipboard content, retain the existing plain-text behavior.
-- Pasting into another project safely falls back to plain text because component registries are project-local.
-- Pasting within the same project creates a second view of the existing component rather than duplicating its data.
+- Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
+- Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
