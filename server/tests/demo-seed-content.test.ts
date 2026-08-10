@@ -18,6 +18,7 @@ import {
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
     DEMO_TASKS_TABLE_ID,
+    DEMO_TEMPLATE_VERSION,
     DEMO_WEEKLY_RULE_ID,
     demoCalendars,
     demoPages,
@@ -133,6 +134,23 @@ describe("Demo seed content", () => {
         expect(table, "database table item exists").to.not.equal(undefined);
         expect(table!.componentType).to.equal("yjstable");
         expect(table!.yjsTableId).to.equal(DEMO_SALES_TABLE_ID);
+    });
+
+    it("seeds the current Grid clipboard guidance", () => {
+        expect(DEMO_TEMPLATE_VERSION).to.equal(38);
+
+        const advanced = findChildByText(project.items, "Advanced Features");
+        expect(advanced).to.not.equal(undefined);
+
+        const guidance = childTexts(advanced!.items).find(text => text.startsWith("Clipboard:"));
+        expect(guidance).to.equal(
+            "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
+                + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
+                + "Grid with a fresh identity, copied schema and UI settings, and empty Data Storage; conflicting SQL "
+                + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
+                + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
+                + "without deleting its data.",
+        );
     });
 
     it("registers every demo table in the project doc registry", () => {
