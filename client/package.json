@@ -38,7 +38,7 @@
         "@inlang/message-lint-rule-without-source": "^1.4.8",
         "@inlang/paraglide-js": "2.23.0",
         "@inlang/plugin-m-function-matcher": "^2.2.9",
-        "@inlang/plugin-message-format": "^4.4.0",
+        "@inlang/plugin-message-format": "^4.4.1",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "@playwright/mcp": "^0.0.76",
         "@playwright/test": "^1.62.1",
