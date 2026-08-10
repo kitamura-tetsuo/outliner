@@ -28,8 +28,10 @@ const logger = getLogger("KeyEventHandler");
  * mouse drag practically never stops exactly on an item boundary, and demanding
  * that used to drop the structured payload — and with it every Grid/Calendar
  * binding inside the range — for anything but Ctrl+A. Partially covered edge
- * items contribute only their selected slice, while component blocks are always
- * carried whole because they cannot be copied in halves.
+ * items contribute only their selected slice, while a component block the
+ * selection reaches at all is carried whole because it cannot be copied in
+ * halves. An edge the selection stops right at is not reached, so it drops out
+ * of the range entirely — component or not.
  *
  * A partial selection only takes this path when it actually holds a component
  * block; plain text ranges keep using the ordinary text clipboard.
@@ -67,10 +69,15 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
             ? getCalendar(project, calendarId)?.name
             : undefined;
         const text = String(item.text ?? "");
+        const isEdge = index === first || index === last;
         const sliceStart = index === first ? startOffset : 0;
         const sliceEnd = index === last ? endOffset : text.length;
-        // Component blocks are atomic: any overlap copies the whole block.
-        if (!isComponent && (index === first || index === last) && sliceStart >= sliceEnd) return [];
+        // An edge item with an empty slice is one the selection stops at rather
+        // than reaches, so it leaves the range — copying its component block
+        // would paste a Grid the user never selected. A text-less item has no
+        // slice to judge by, so it counts as reached.
+        if (isEdge && text.length > 0 && sliceStart >= sliceEnd) return [];
+        // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
         return [{
             item,

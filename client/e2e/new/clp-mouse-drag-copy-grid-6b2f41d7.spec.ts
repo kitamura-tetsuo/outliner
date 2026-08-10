@@ -1,5 +1,5 @@
 /** @feature CLP-4584c0de */
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -11,20 +11,34 @@ test.describe("mouse drag clipboard with component blocks", () => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Alpha item", "Block host", "Omega"]);
     });
 
+    /** Resolve a seeded item's id from its text so every later step can address it by data-item-id. */
+    async function itemIdByText(page: Page, text: string): Promise<string> {
+        const item = page.locator(".outliner-item[data-item-id]").filter({ hasText: text }).first();
+        await expect(item).toBeVisible();
+        const id = await item.getAttribute("data-item-id");
+        expect(id).toBeTruthy();
+        return id!;
+    }
+
     test("a mouse drag across a Grid host copies the block, not just its title", async ({ page }) => {
-        const host = page.locator(".outliner-item").nth(2);
-        await expect(host).toBeVisible();
-        await host.click();
+        const sourceId = await itemIdByText(page, "Alpha item");
+        const seededHostId = await itemIdByText(page, "Block host");
+        await page.locator(`.outliner-item[data-item-id="${seededHostId}"] .item-content`).click();
         const addDatabase = page.getByTestId("main-toolbar").locator(".add-database-btn").last();
         await addDatabase.click();
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();
         await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
 
-        const source = page.locator(".outliner-item").nth(1).locator(".item-text");
-        const target = page.getByTestId("yjs-table-view").first().locator(
+        // The toolbar may host the new Grid on its own item, so read the host id
+        // back from the rendered view instead of assuming a position.
+        const gridHostId = await page.getByTestId("yjs-table-view").first().locator(
             "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' outliner-item ') and @data-item-id][1]",
-        ).locator(".item-text");
+        ).getAttribute("data-item-id");
+        expect(gridHostId).toBeTruthy();
+
+        const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
+        const target = page.locator(`.outliner-item[data-item-id="${gridHostId}"] .item-text`);
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
@@ -57,8 +71,7 @@ test.describe("mouse drag clipboard with component blocks", () => {
         expect(componentTypes).toContain("yjstable");
 
         // Paste into a fresh item so no existing text merges with the payload.
-        const destination = page.locator(".outliner-item[data-item-id] .item-content").first();
-        await destination.click();
+        await page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-content`).click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("End");
         await page.keyboard.press("Enter");
