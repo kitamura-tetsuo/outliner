@@ -112,7 +112,9 @@ export async function openProjectPage(
             await page.evaluate(title => {
                 (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
             }, project);
-            await expect(page.locator(`select.project-select option[value="${projectId}"]`)).toBeAttached({ timeout: 15000 });
+            await expect(page.locator(`select.project-select option[value="${projectId}"]`)).toBeAttached({
+                timeout: 15000,
+            });
             await page.locator("select.project-select").selectOption({ value: projectId });
         }
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), { timeout: 5000 });
