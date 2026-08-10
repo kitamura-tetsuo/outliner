@@ -101,14 +101,18 @@ export async function openProjectPage(
     await page.evaluate(title => {
         (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
     }, project);
-    await page.waitForFunction((val) => {
-        const sel = document.querySelector("select.project-select") as HTMLSelectElement;
-        if (!sel || sel.disabled) return false;
-        for (let i = 0; i < sel.options.length; i++) {
-            if (sel.options[i].value === val) return true;
-        }
-        return false;
-    }, projectId, { timeout: 15000 });
+    await page.waitForFunction(
+        (val) => {
+            const sel = document.querySelector("select.project-select") as HTMLSelectElement;
+            if (!sel || sel.disabled) return false;
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === val) return true;
+            }
+            return false;
+        },
+        projectId,
+        { timeout: 15000 },
+    );
     await page.locator("select.project-select").selectOption({ value: projectId });
     await expect(async () => {
         const url = page.url();
@@ -119,14 +123,18 @@ export async function openProjectPage(
             await page.evaluate(title => {
                 (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
             }, project);
-            await page.waitForFunction((val) => {
-                const sel = document.querySelector("select.project-select") as HTMLSelectElement;
-                if (!sel || sel.disabled) return false;
-                for (let i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === val) return true;
-                }
-                return false;
-            }, projectId, { timeout: 15000 });
+            await page.waitForFunction(
+                (val) => {
+                    const sel = document.querySelector("select.project-select") as HTMLSelectElement;
+                    if (!sel || sel.disabled) return false;
+                    for (let i = 0; i < sel.options.length; i++) {
+                        if (sel.options[i].value === val) return true;
+                    }
+                    return false;
+                },
+                projectId,
+                { timeout: 15000 },
+            );
             await page.locator("select.project-select").selectOption({ value: projectId });
         }
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), { timeout: 5000 });
