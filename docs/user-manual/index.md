@@ -40,7 +40,7 @@ Click on any text to place your cursor there and enter edit mode.
 
 ### Moving Between Items
 
-Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cursor.
+Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cursor. The cursor keeps its horizontal position when moving vertically between items.
 
 - Move to the beginning of the line: `Home`
 - Move to the end of the line: `End`
@@ -85,8 +85,8 @@ Press `Enter` to insert a new item below the current one. Alternatively, click t
 
 ### Indenting Items
 
-- Increase indent: `Tab` at the beginning of a line
-- Decrease indent: `Shift + Tab` at the beginning of a line
+- Increase indent: `Tab` to indent an item (make it a child of the item above)
+- Decrease indent: `Shift + Tab` to unindent an item
 
 ### Moving Items
 
@@ -109,7 +109,7 @@ The **Undo** and **Redo** buttons in the toolbar at the top of the window do exa
 
 Each button is greyed out while there is nothing to undo (or redo) and becomes available as soon as you make a change. Pressing one while you are editing keeps your cursor where it was and leaves the software keyboard open, so you can carry straight on typing.
 
-The outline and every database table each keep their own change history internally, but you never have to think about which one you are in. Changes made by other people editing at the same time are never undone by you.
+The outline and every database table each keep their own change history internally, but you never have to think about which one you are in. It all acts as one stack, in order. Edit a line, then add a row to a table; undo twice and the table row goes first, then the edit. Changes made by other people editing at the same time are never undone by you.
 
 ---
 
@@ -137,7 +137,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search:** Use the "Search pages" input field at the top of the screen to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. This allows rewriting item text. Page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
+- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
@@ -153,6 +153,13 @@ Efficiently select and copy multiple items or text ranges.
 - `Ctrl + L`: Select the entire line under the cursor.
 - `Shift + Alt + Right`: Expand the selection to the end of the line.
 - `Shift + Alt + Left`: Shrink the selection.
+
+### Touch Selection (Phone or Tablet)
+
+- Tap any character to put the caret there and open the keyboard.
+- Press and hold to select the word under your finger.
+- Keep your finger down and drag to extend the selection, even into the items below.
+- A normal swipe still scrolls the outline as usual.
 
 ### Box Selection (Rectangle Selection)
 
@@ -186,10 +193,11 @@ You can upload attachments by dragging and dropping an image or file directly on
 
 Outliner includes advanced capabilities like aliases and schedule rules.
 
+- **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks).
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
-- **Comments and Votes:** Discuss and vote on items, with live seeded threads and votes.
+- **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Vote for an item to show agreement.
 - **Publishing and Sharing:** Read-only sharing (tokens), scheduled publishing, and snapshots (snapshot diff viewer).
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
@@ -198,6 +206,9 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 ## Database Tables
 
 Create database tables to manage structured data within your project. You can start with a blank table or use presets like Tasks or Habits.
+
+- **Task manager:** Add tasks with due dates, priorities, and repeat intervals. Status and priority options come from the schema's CHECK constraints.
+- **Habit tracker:** One table holds habit definitions and daily completion logs. Add a log row for today to extend a streak.
 
 ### Creating a Database Table
 

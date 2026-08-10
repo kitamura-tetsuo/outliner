@@ -15,7 +15,6 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
-import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -62,10 +61,6 @@ let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
 let showSchedule = $state(false);
-
-// Availability of the shared history, tracked reactively from the router.
-let canUndo = $derived(globalUndoRouter.canUndo());
-let canRedo = $derived(globalUndoRouter.canRedo());
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
@@ -210,23 +205,6 @@ onDestroy(() => {
                 }}
             >Schedule</button>
         </div>
-        <div class="undo-controls">
-            <!-- Undo/redo always go through the global router, never through
-                 this table's own Y.UndoManager: a direct call would advance the
-                 scope's stack without the router's and desynchronize them. -->
-            <button
-                type="button"
-                data-testid="yjs-table-undo"
-                disabled={!canUndo}
-                onclick={() => globalUndoRouter.undo()}
-            >Undo</button>
-            <button
-                type="button"
-                data-testid="yjs-table-redo"
-                disabled={!canRedo}
-                onclick={() => globalUndoRouter.redo()}
-            >Redo</button>
-        </div>
     </div>
 
     {#if showSchema}
@@ -335,14 +313,12 @@ onDestroy(() => {
     padding: 1px 5px;
 }
 
-.view-toggles,
-.undo-controls {
+.view-toggles {
     display: flex;
     gap: 4px;
 }
 
-.view-toggles button,
-.undo-controls button {
+.view-toggles button {
     border: 1px solid #d1d5db;
     border-radius: 4px;
     background: white;

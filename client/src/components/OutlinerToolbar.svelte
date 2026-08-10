@@ -160,7 +160,8 @@
             onpointerdown={preventEditorBlur}
             onclick={onUndo}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+            <span class="btn-label">Undo</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
@@ -174,98 +175,115 @@
             onpointerdown={preventEditorBlur}
             onclick={onRedo}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+            <span class="btn-label">Redo</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Indent"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Indent"
             tabindex={effectiveActiveIndex === 2 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 2}
             onclick={onIndent}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            <span class="btn-label">Indent</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Outdent"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Outdent"
             tabindex={effectiveActiveIndex === 3 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 3}
             onclick={onOutdent}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            <span class="btn-label">Outdent</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Above"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Insert Above"
             tabindex={effectiveActiveIndex === 4 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 4}
             onclick={onInsertAbove}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            <span class="btn-label">Add Above</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Below"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Insert Below"
             tabindex={effectiveActiveIndex === 5 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 5}
             onclick={onInsertBelow}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            <span class="btn-label">Add Below</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="New Child"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="New Child"
             tabindex={effectiveActiveIndex === 6 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 6}
             onclick={onNewChild}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span class="btn-label">Add Child</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Insert Sibling Below"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Insert Sibling Below"
             tabindex={effectiveActiveIndex === 7 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 7}
             onclick={onInsertSiblingBelow}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 10 4 15 9 20"></polyline>
                 <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
             </svg>
+            <span class="btn-label">Add Sibling</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Vote"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Vote"
             tabindex={effectiveActiveIndex === 8 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 8}
             onclick={onVote}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span class="btn-label">Vote</span>
         </button>
         <button type="button"
             class="mobile-toolbar-btn"
             title="Delete"
             data-keep-editor-focus
             onpointerdown={preventEditorBlur}
+            aria-label="Delete"
             tabindex={effectiveActiveIndex === 9 ? 0 : -1}
             onfocusin={() => mobileActiveIndex = 9}
             onclick={onDelete}
         >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            <span class="btn-label">Delete</span>
         </button>
     </div>
 {/if}
@@ -333,7 +351,7 @@
         padding: 8px;
         z-index: 1000;
         align-items: center;
-        height: 50px;
+        height: 64px;
 
         /* Independent horizontal scroller */
         flex-wrap: nowrap;
@@ -361,15 +379,24 @@
         background: #f0f0f0;
         border: 1px solid #ccc;
         border-radius: 4px;
-        padding: 6px 10px;
+        padding: 4px 6px;
         cursor: pointer;
         font-size: 14px;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        width: 40px;
-        height: 40px;
+        min-width: 56px;
+        height: 52px;
         flex-shrink: 0;
+        gap: 2px;
+        color: #333;
+    }
+
+    .btn-label {
+        font-size: 10px;
+        line-height: 1;
+        white-space: nowrap;
     }
 
     .mobile-toolbar-btn:hover:not(:disabled) {
