@@ -38,15 +38,17 @@ function nodeValue(item: ItemLike): { get?: (key: string) => unknown; } | undefi
 
 export function serializeClipboardItems(
     sourceProjectId: string,
-    items: Array<{ item: ItemLike; depth: number; fallbackText?: string; }>,
+    // `text` overrides the item's own text, so a partially selected item can be
+    // copied as just the selected slice while keeping its position in the range.
+    items: Array<{ item: ItemLike; depth: number; fallbackText?: string; text?: string; }>,
 ): string {
-    const serialized = items.map(({ item, depth, fallbackText }) => {
+    const serialized = items.map(({ item, depth, fallbackText, text: textOverride }) => {
         const value = nodeValue(item);
         const rawType = value?.get?.("componentType");
         const componentType = rawType === "yjstable" || rawType === "calendar" ? rawType : undefined;
         const bindingField = componentType ? bindings[componentType] : undefined;
         const binding = bindingField ? value?.get?.(bindingField) : undefined;
-        const text = String(item.text ?? "") || fallbackText || "";
+        const text = (textOverride ?? String(item.text ?? "")) || fallbackText || "";
         return {
             text,
             depth,

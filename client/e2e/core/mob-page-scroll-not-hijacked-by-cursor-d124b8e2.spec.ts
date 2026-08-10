@@ -1,6 +1,8 @@
 // @feature core-page-scroll-not-hijacked-by-cursor-f0f4a8c9
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.use({ viewport: { width: 375, height: 812 } });
 
