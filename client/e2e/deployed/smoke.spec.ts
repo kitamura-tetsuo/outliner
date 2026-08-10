@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 
 test("sidebar Pages header contains a uniquely named Add new page button", async ({ page }) => {
     await page.goto("/demo/Outliner%20Basics");

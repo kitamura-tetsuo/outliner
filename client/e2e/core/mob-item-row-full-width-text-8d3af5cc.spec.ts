@@ -1,7 +1,7 @@
 import "../utils/registerAfterEachSnapshot";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
-/** @feature MOB-0004
+/** @feature MOB-8d3af5cc
  *  Title   : Mobile item row full-width text with toolbar actions
  *  Source  : docs/client-features.yaml
  */
@@ -11,7 +11,7 @@ import { TestHelpers } from "../utils/testHelpers";
 const LONG_TEXT =
     "Items can carry comment threads and votes without the sentence collapsing into single characters per line.";
 
-test.describe("MOB-0004: Mobile item row full-width text", () => {
+test.describe("MOB-8d3af5cc: Mobile item row full-width text", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await page.setViewportSize({ width: 375, height: 700 });
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [LONG_TEXT]);

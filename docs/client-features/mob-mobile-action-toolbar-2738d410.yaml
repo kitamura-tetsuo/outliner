@@ -8,12 +8,12 @@ components:
 - client/src/components/OutlinerTree.svelte
 tests:
 - client/e2e/basic/mobile/mobile-action-toolbar-visible.spec.ts
-- client/e2e/core/MOB-0003.spec.ts
 - client/e2e/basic/mobile/mobile-toolbar-scroll.spec.ts
+- client/e2e/core/MOB-0003.spec.ts
 acceptance:
-- The toolbar scrolls independently, the first and last buttons are reachable, and the gesture does not chain to the page.
 - Delete and Vote buttons act on the active item
 - Indent and Outdent buttons modify item depth
 - Insert Above and Insert Below add sibling items
 - New Child creates a child under current item
+- The toolbar scrolls independently, the first and last buttons are reachable, and the gesture does not chain to the page.
 - Toolbar visible only on screens ≤ 768 px

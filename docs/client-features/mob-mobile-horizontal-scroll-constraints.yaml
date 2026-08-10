@@ -5,14 +5,14 @@ category: mobile
 status: implemented
 components:
 - client/src/app.css
-- client/src/components/yjstable/TableGrid.svelte
-- client/src/components/calendar/CalendarTimeGrid.svelte
 - client/src/components/calendar/CalendarGanttChart.svelte
+- client/src/components/calendar/CalendarTimeGrid.svelte
+- client/src/components/yjstable/TableGrid.svelte
 tests:
 - client/e2e/basic/mobile/mobile-horizontal-scroll.spec.ts
 - client/e2e/basic/mobile/mobile-toolbar-scroll.spec.ts
 - client/e2e/basic/mobile/mobile-wide-components-scroll.spec.ts
 acceptance:
 - Page never scrolls horizontally on mobile devices.
-- Wide components like Table Grid, Calendar Grid, and Calendar Gantt have independent horizontal scrolling.
 - Scrolling a wide component horizontally does not widen the main document.
+- Wide components like Table Grid, Calendar Grid, and Calendar Gantt have independent horizontal scrolling.

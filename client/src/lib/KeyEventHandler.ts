@@ -21,6 +21,19 @@ import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
 
+/**
+ * Structured clipboard payload for the current cross-item selection.
+ *
+ * The selection does not have to cover its first and last item completely. A
+ * mouse drag practically never stops exactly on an item boundary, and demanding
+ * that used to drop the structured payload — and with it every Grid/Calendar
+ * binding inside the range — for anything but Ctrl+A. Partially covered edge
+ * items contribute only their selected slice, while component blocks are always
+ * carried whole because they cannot be copied in halves.
+ *
+ * A partial selection only takes this path when it actually holds a component
+ * block; plain text ranges keep using the ordinary text clipboard.
+ */
 function selectedItemsClipboardData(): { encoded: string; plainText: string; } | undefined {
     const selection = Object.values(store.selections).find(sel =>
         !sel.isBoxSelection && sel.startItemId !== sel.endItemId
@@ -33,24 +46,47 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     if (start < 0 || end < 0) return undefined;
     const first = Math.min(start, end);
     const last = Math.max(start, end);
-    const lastItem = visible[last].model.original;
-    const lastLength = String(lastItem.text ?? "").length;
-    const startOffset = start <= end ? selection.startOffset : selection.endOffset;
-    const endOffset = start <= end ? selection.endOffset : selection.startOffset;
-    if (startOffset !== 0 || endOffset !== lastLength) return undefined;
+    const firstLength = String(visible[first].model.original.text ?? "").length;
+    const lastLength = String(visible[last].model.original.text ?? "").length;
+    const rawStartOffset = start <= end ? selection.startOffset : selection.endOffset;
+    const rawEndOffset = start <= end ? selection.endOffset : selection.startOffset;
+    const startOffset = Math.max(0, Math.min(firstLength, rawStartOffset));
+    const endOffset = Math.max(0, Math.min(lastLength, rawEndOffset));
+    const coversWholeRange = startOffset === 0 && endOffset === lastLength;
 
-    const entries = visible.slice(first, last + 1).map(entry => {
+    let hasComponent = false;
+    const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
+        const index = first + offset;
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
+        const isComponent = Boolean(tableId || calendarId);
         const fallbackText = tableId
             ? getTableName(project.ydoc, tableId)
             : calendarId
             ? getCalendar(project, calendarId)?.name
             : undefined;
-        return { item, depth: entry.depth - visible[first].depth, fallbackText };
+        const text = String(item.text ?? "");
+        const sliceStart = index === first ? startOffset : 0;
+        const sliceEnd = index === last ? endOffset : text.length;
+        // Component blocks are atomic: any overlap copies the whole block.
+        if (!isComponent && (index === first || index === last) && sliceStart >= sliceEnd) return [];
+        if (isComponent) hasComponent = true;
+        return [{
+            item,
+            depth: entry.depth,
+            fallbackText,
+            text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
+        }];
     });
-    const encoded = serializeClipboardItems(project.ydoc.guid, entries);
+    if (entries.length === 0) return undefined;
+    if (!coversWholeRange && !hasComponent) return undefined;
+
+    const baseDepth = entries[0].depth;
+    const encoded = serializeClipboardItems(
+        project.ydoc.guid,
+        entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
+    );
     const payload = deserializeClipboardItems(encoded);
     return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
 }

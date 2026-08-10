@@ -11,15 +11,18 @@ components:
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
+- A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
 - A whole-item selection carries Grid and Calendar binding identifiers in the in-app clipboard format.
 - Cutting and pasting moves host items without deleting their underlying table or calendar data.
-- Partial item selections and external clipboard content retain the existing plain-text behavior.
+- Partial selections without a component block, and external clipboard content, retain the existing plain-text behavior.
 - Pasting into another project safely falls back to plain text because component registries are project-local.
 - Pasting within the same project creates a second view of the existing component rather than duplicating its data.
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
+- client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
+- client/src/lib/KeyEventHandler.componentClipboard.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts

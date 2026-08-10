@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 36;
+export const DEMO_TEMPLATE_VERSION = 37;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -896,9 +896,9 @@ export const demoPages: DemoPageTemplate[] = [
                 yjsTableId: DEMO_SALES_TABLE_ID,
             },
             {
-                text:
-                    "Clipboard: select this whole database item together with a neighboring item, then copy and paste "
-                    + "to create another live view of the same table. Cut and paste moves the view without deleting its data.",
+                text: "Clipboard: drag the mouse across the database item above and a neighboring item, then copy and "
+                    + "paste to create another live view of the same table. The drag does not have to stop exactly on "
+                    + "an item boundary. Cut and paste moves the view without deleting its data.",
             },
             {
                 text: "Aggregation across tables: this table stores only the monthly targets, "

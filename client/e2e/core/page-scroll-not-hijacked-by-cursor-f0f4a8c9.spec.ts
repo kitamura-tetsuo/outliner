@@ -1,6 +1,8 @@
 // @feature core-page-scroll-not-hijacked-by-cursor-f0f4a8c9
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("Desktop - User scroll is never overridden by caret auto-scroll", () => {
     test("scrolling a page leaves the scroll position where the user put it", async ({ page }, testInfo) => {
