@@ -108,8 +108,7 @@ export const ITEMS_RELATION_COLUMNS = [
     "recurrence_occurrence_id",
 ] as const;
 
-function createTableSql(): string {
-    return `CREATE TABLE ${quoteIdent(ITEMS_RELATION_NAME)} (
+export const ITEMS_RELATION_CREATE_SQL = `CREATE TABLE ${quoteIdent(ITEMS_RELATION_NAME)} (
         "id" TEXT PRIMARY KEY,
         "page_id" TEXT,
         "parent_id" TEXT,
@@ -127,7 +126,6 @@ function createTableSql(): string {
         "recurrence_parent_id" TEXT,
         "recurrence_occurrence_id" TEXT
     )`;
-}
 
 interface ProjectedRow {
     id: string;
@@ -229,7 +227,9 @@ export class ItemsRelationProvider implements RelationProvider {
                 await db.exec(`CREATE SCHEMA IF NOT EXISTS ${quoteIdent(this.pgSchema)};`);
                 await db.exec(`DROP TABLE IF EXISTS ${this.qualifiedName()} CASCADE;`);
                 await db.exec(
-                    `BEGIN; SET LOCAL search_path TO ${quoteIdent(this.pgSchema)}; ${createTableSql()}; COMMIT;`,
+                    `BEGIN; SET LOCAL search_path TO ${
+                        quoteIdent(this.pgSchema)
+                    }; ${ITEMS_RELATION_CREATE_SQL}; COMMIT;`,
                 );
                 for (const row of rows) await this.insertRow(db, row);
             });
