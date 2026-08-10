@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { expect } from "chai";
 import { JobExecutor } from "../../src/scheduler/executor.js";
 
@@ -13,7 +14,7 @@ describe("JobExecutor timeout recovery", function() {
         await executor.stopWorker();
     });
 
-    this.timeout(60000); // 20 seconds to allow for 10s timeout plus overhead in slow CI environments
+    jest.setTimeout(60000); // 20 seconds to allow for 10s timeout plus overhead in slow CI environments
     it("recovers from a job timeout and executes the next job", async function() {
         const timeoutJobData = {
             schemaSql: "CREATE TABLE t (id INT);",
