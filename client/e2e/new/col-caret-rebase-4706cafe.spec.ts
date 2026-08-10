@@ -50,10 +50,16 @@ test("remote insertion before the caret preserves the local typing position", as
     await pageA.keyboard.type("XYZ");
 
     await expect(itemB).toContainText("XYZ0123456789", { timeout: 30_000 });
+    // Page B also holds a presence cursor for the collaborator on the same item, whose offset
+    // is 3 right after A typed "XYZ" at the start. Only the local caret is being rebased here,
+    // so the lookup must be restricted to it — otherwise whichever cursor the store happens to
+    // hold first decides the result.
     await expect.poll(() =>
         pageB.evaluate((id) => {
             const editorStore = (globalThis as any).editorOverlayStore;
-            return editorStore?.getCursorInstances?.().find((cursor: any) => cursor.itemId === id)?.offset;
+            return editorStore?.getCursorInstances?.().find((cursor: any) =>
+                cursor.itemId === id && (cursor.userId ?? "local") === "local"
+            )?.offset;
         }, itemId)
     ).toBe(13);
 
