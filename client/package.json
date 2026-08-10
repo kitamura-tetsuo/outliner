@@ -1,6 +1,6 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^2.19.1",
+        "@dotenvx/dotenvx": "^2.19.2",
         "@electric-sql/pglite": "^0.5.4",
         "@hocuspocus/provider": "^4.4.0",
         "@sentry/sveltekit": "^10.69.0",
@@ -28,7 +28,7 @@
         "typescript": "$typescript"
     },
     "devDependencies": {
-        "@dotenvx/dotenvx": "^2.19.1",
+        "@dotenvx/dotenvx": "^2.19.2",
         "@eslint/compat": "^2.1.0",
         "@eslint/js": "^10.0.1",
         "@inlang/message-lint-rule-empty-pattern": "^1.4.8",
