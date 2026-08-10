@@ -74,11 +74,45 @@ export async function seedCrossProjectFixture(page: Page, testInfo: TestInfo): P
 }
 
 /**
+ * Pick a fixture project in the home selector, re-asserting the user's accessible
+ * projects on every attempt.
+ *
+ * The emulator-backed test user is shared across parallel workers, so another test's
+ * `setAccessibleProjects` can drop this fixture's projects from the list at any moment
+ * — including right after we assert them and before the selector has rendered their
+ * `<option>`s. A bare `selectOption()` reports "did not find some options" and keeps
+ * retrying for the whole test timeout, because nothing in that retry loop ever puts the
+ * option back. Bounding each attempt and re-asserting accessibility in between lets the
+ * list recover instead.
+ */
+async function selectProjectFromHome(
+    page: Page,
+    fixture: ProjectFixture,
+    projectId: string,
+    project: string,
+): Promise<void> {
+    await expect(async () => {
+        await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
+        // A repeat visit to a project already opened earlier in this test can hit
+        // yjsService's "Test Project" fallback title (createClient()'s default
+        // when window.__CURRENT_PROJECT_TITLE__ is stale/unset) instead of
+        // resolving the real title. Pre-seed the same global the app's own
+        // createNewProject flow sets for this purpose so the fallback (if hit)
+        // resolves to the correct title regardless of its root cause.
+        await page.evaluate(title => {
+            (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
+        }, project);
+        const select = page.locator("select.project-select");
+        await expect(select.locator(`option[value="${projectId}"]`)).toHaveCount(1, { timeout: 10000 });
+        await select.selectOption(projectId, { timeout: 10000 });
+    }).toPass({ timeout: 60000 });
+}
+
+/**
  * Navigate via Home -> project selector -> page link, all Svelte-managed.
- * Re-asserts both fixture projects as accessible right before selecting: the
- * emulator-backed test user is shared across parallel workers/tests, so a
- * concurrent test's own `setAccessibleProjects` call can otherwise clobber
- * this fixture's list between an earlier navigation and this one.
+ * Selection goes through `selectProjectFromHome`, which keeps both fixture
+ * projects accessible across a concurrent test's clobbering of the shared
+ * test user's project list.
  */
 export async function openProjectPage(
     page: Page,
@@ -91,27 +125,13 @@ export async function openProjectPage(
 
     await page.locator('nav a:has-text("Home")').click();
     await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
-    await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
-    // A repeat visit to a project already opened earlier in this test can hit
-    // yjsService's "Test Project" fallback title (createClient()'s default
-    // when window.__CURRENT_PROJECT_TITLE__ is stale/unset) instead of
-    // resolving the real title. Pre-seed the same global the app's own
-    // createNewProject flow sets for this purpose so the fallback (if hit)
-    // resolves to the correct title regardless of its root cause.
-    await page.evaluate(title => {
-        (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
-    }, project);
-    await page.locator("select.project-select").selectOption(projectId);
+    await selectProjectFromHome(page, fixture, projectId, project);
     await expect(async () => {
         const url = page.url();
         if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
             await page.locator('nav a:has-text("Home")').click();
             await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
-            await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
-            await page.evaluate(title => {
-                (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
-            }, project);
-            await page.locator("select.project-select").selectOption(projectId);
+            await selectProjectFromHome(page, fixture, projectId, project);
         }
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), { timeout: 5000 });
     }).toPass({ timeout: 60000 });
