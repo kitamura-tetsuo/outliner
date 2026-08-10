@@ -815,11 +815,6 @@ function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     // Additional attempts to ensure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
-
-        setTimeout(() => {
-            textareaEl.focus();
-
-        }, 10);
     });
     // Synchronize text content
     textareaEl.value = textString;
@@ -1300,12 +1295,6 @@ function handleClick(event: MouseEvent) {
             // requestAnimationFrame
             requestAnimationFrame(() => {
                 textarea.focus();
-
-                // Use setTimeout as well for further certainty
-                setTimeout(() => {
-                    textarea.focus();
-
-                }, 10);
             });
         }
         else {
