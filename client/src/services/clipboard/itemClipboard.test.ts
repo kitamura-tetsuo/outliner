@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     clipboardPlainText,
     deserializeClipboardItems,
+    type GridTableSnapshot,
     serializeClipboardItems,
     structuredClipboardFromHtml,
     structuredClipboardHtml,
@@ -15,8 +16,25 @@ function item(text: string, fields: Record<string, unknown>) {
     };
 }
 
+function tableSnapshot(sourceTableId = "table-1"): GridTableSnapshot {
+    return {
+        sourceTableId,
+        name: "売上 📊",
+        sqlName: "sales",
+        schemaSql: "CREATE TABLE sales (id TEXT PRIMARY KEY, amount INTEGER)",
+        ui: {
+            query: "SELECT id, amount FROM sales ORDER BY amount",
+            components: {
+                amount: { type: "number", label: "金額 €", hidden: false },
+                id: { hidden: true },
+            },
+            columnOrder: ["amount", "id"],
+        },
+    };
+}
+
 describe("item clipboard", () => {
-    it("round-trips text, table, and calendar items with their bindings", () => {
+    it("round-trips version 1 text, table, and calendar items with their bindings", () => {
         const encoded = serializeClipboardItems("project-a", [
             { item: item("note", {}), depth: 0 },
             { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 1 },
@@ -36,12 +54,43 @@ describe("item clipboard", () => {
         expect(clipboardPlainText(decoded!)).toBe("note\ngrid\ncalendar");
     });
 
-    it("round-trips structured data through the portable HTML clipboard representation", () => {
-        const encoded = serializeClipboardItems("project-a", [
-            { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
-        ]);
+    it("round-trips a deduplicated version 2 Grid structure snapshot", () => {
+        const snapshot = tableSnapshot();
+        const encoded = serializeClipboardItems(
+            "project-a",
+            [
+                { item: item("first", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
+                { item: item("second", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 1 },
+            ],
+            { "table-1": snapshot },
+        );
+
+        expect(deserializeClipboardItems(encoded)).toEqual({
+            version: 2,
+            sourceProjectId: "project-a",
+            items: [
+                { text: "first", depth: 0, componentType: "yjstable", yjsTableId: "table-1" },
+                { text: "second", depth: 1, componentType: "yjstable", yjsTableId: "table-1" },
+            ],
+            tables: { "table-1": snapshot },
+        });
+        expect(Object.keys(JSON.parse(encoded).tables)).toEqual(["table-1"]);
+        expect(encoded).not.toContain('"data"');
+        expect(encoded).not.toContain("record");
+    });
+
+    it("round-trips version 2 Unicode and nested UI configuration through portable HTML", () => {
+        const encoded = serializeClipboardItems(
+            "プロジェクト-a",
+            [{ item: item("グリッド", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 }],
+            { "table-1": tableSnapshot() },
+        );
         const html = structuredClipboardHtml(encoded, 'Sales & <Targets>\n"Q4"');
+
         expect(structuredClipboardFromHtml(html)).toBe(encoded);
+        expect(deserializeClipboardItems(structuredClipboardFromHtml(html)!)).toEqual(
+            deserializeClipboardItems(encoded),
+        );
         expect(html).toContain("Sales &amp; &lt;Targets&gt;<br>&quot;Q4&quot;");
         expect(structuredClipboardFromHtml("<p>external content</p>")).toBeUndefined();
         expect(structuredClipboardFromHtml('<span data-outliner-items="not base64!" hidden></span>')).toBeUndefined();
@@ -54,8 +103,49 @@ describe("item clipboard", () => {
         expect(decoded?.items[0].text).toBe("Sales");
     });
 
-    it("rejects malformed clipboard data", () => {
+    it("rejects malformed clipboard data and snapshots strictly", () => {
         expect(deserializeClipboardItems("not json")).toBeUndefined();
         expect(deserializeClipboardItems('{"version":1,"sourceProjectId":"p","items":[{}]}')).toBeUndefined();
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 2,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            tables: {},
+        }))).toEqual({
+            version: 2,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            tables: {},
+        });
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 2,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            tables: {
+                "table-1": { ...tableSnapshot("different-id") },
+            },
+        }))).toBeUndefined();
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 2,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            tables: {
+                "table-1": {
+                    ...tableSnapshot(),
+                    data: { secret: { amount: 42 } },
+                },
+            },
+        }))).toBeUndefined();
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 2,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            tables: {
+                "table-1": {
+                    ...tableSnapshot(),
+                    ui: { ...tableSnapshot().ui, components: { amount: { type: "script" } } },
+                },
+            },
+        }))).toBeUndefined();
     });
 });

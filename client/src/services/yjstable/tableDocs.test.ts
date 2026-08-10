@@ -32,6 +32,36 @@ describe("table registry (project doc)", () => {
         expect([...projectDoc.getSubdocs()]).toContain(subdoc);
     });
 
+    it("initializes a table before registry observers can see it", () => {
+        const projectDoc = new Y.Doc({ guid: "proj-initialized" });
+        let visibleSchema: string | undefined;
+        getTableRegistry(projectDoc).observe(event => {
+            for (const tableId of event.keysChanged) {
+                visibleSchema = getTableHandles(projectDoc, tableId)?.schemaText.toString();
+            }
+        });
+
+        const tableId = createTable(projectDoc, "Tasks", "tasks", handles => {
+            handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT)");
+            handles.uiDef.set("query", "SELECT id FROM tasks");
+        });
+
+        expect(visibleSchema).toBe("CREATE TABLE tasks (id TEXT)");
+        expect(getTableHandles(projectDoc, tableId)?.uiDef.get("query")).toBe("SELECT id FROM tasks");
+    });
+
+    it("leaves no registry or subdocument debris when initialization fails", () => {
+        const projectDoc = new Y.Doc({ guid: "proj-failed" });
+
+        expect(() =>
+            createTable(projectDoc, "Broken", "broken", () => {
+                throw new Error("bad snapshot");
+            })
+        ).toThrow("bad snapshot");
+        expect(listTables(projectDoc)).toEqual([]);
+        expect([...projectDoc.getSubdocs()]).toEqual([]);
+    });
+
     it("renames tables through the registry entry", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "Old", "old_table");
