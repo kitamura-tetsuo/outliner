@@ -26,14 +26,24 @@ export function update(result: TableQueryResult) {
         return;
     }
     const firstRow = result.rows[0];
+    const technicalColumns = new Set(["id", "source_id", "source_kind"]);
     let labelColumn: string | undefined;
+    let fallbackColumn: string | undefined;
     const numericColumns: string[] = [];
     for (const column of result.columns) {
         if (typeof firstRow[column] === "number") {
             numericColumns.push(column);
-        } else if (!labelColumn) {
-            labelColumn = column;
+        } else {
+            if (!fallbackColumn) {
+                fallbackColumn = column;
+            }
+            if (!labelColumn && !technicalColumns.has(column)) {
+                labelColumn = column;
+            }
         }
+    }
+    if (!labelColumn) {
+        labelColumn = fallbackColumn;
     }
 
     ariaLabel = `Bar chart of ${numericColumns.join(", ")} by ${labelColumn || "index"}: ${result.rows.map((r, i) => `${labelColumn ? r[labelColumn] : i} (${numericColumns.map((c) => r[c]).join(", ")})`).join(", ")}`;
