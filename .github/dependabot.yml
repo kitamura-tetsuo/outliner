@@ -1,47 +1,45 @@
 version: 2
+
+# Scheduling policy
+#
+# Every npm directory used to be its own `updates` entry on a weekly schedule at
+# the same time, so all seven fired in the same minute and a week's worth of
+# releases landed as one burst -- 19 pull requests inside five minutes on
+# 2026-08-10, which is more than CI can drain before the next batch arrives.
+#
+# Two changes fix that:
+#
+#   1. `interval: daily`. Weekly does not reduce the number of updates, it only
+#      accumulates them; each release still gets a pull request, they just all
+#      arrive together. Daily hands CI one release-day's worth at a time.
+#   2. One entry listing every npm directory under `directories`, combined with
+#      groups. The same dependency version bump across /client, /server and
+#      /scripts is one change, and grouped updates span the listed directories,
+#      so it arrives as one pull request touching several lockfiles instead of
+#      one pull request per directory.
+#
+# The trailing `minor-and-patch` catch-all group collects everything the named
+# groups above it do not claim -- groups are matched in declaration order, so
+# the specific ones must stay first. Major bumps stay ungrouped and get their
+# own pull request: those are the ones that need to fail in isolation.
 updates:
   - package-ecosystem: 'npm'
-    directory: '/'
+    directories:
+      - '/'
+      - '/client'
+      - '/server'
+      - '/functions'
+      - '/scripts'
+      - '/scripts/tests'
     schedule:
-      interval: 'weekly'
+      interval: 'daily'
       time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'npm'
     groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"
-
-  - package-ecosystem: 'npm'
-    directory: '/client'
-    schedule:
-      interval: 'weekly'
-      time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
-    rebase-strategy: 'auto'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"
-      svelte-core:
-        patterns:
-          - "svelte"
-          - "@sveltejs/*"
-          - "vite"
       # Keep the Playwright packages on one version. They share a browser
       # registry, so bumping one alone leaves the runner asking for a browser
       # revision nothing installed -- every E2E shard then dies at
@@ -50,86 +48,41 @@ updates:
       # they version independently of the test runner.
       playwright:
         patterns:
-          - "playwright"
-          - "playwright-core"
-          - "@playwright/test"
+          - 'playwright'
+          - 'playwright-core'
+          - '@playwright/test'
+      svelte-core:
+        patterns:
+          - 'svelte'
+          - '@sveltejs/*'
+          - 'vite'
+      typescript-and-lint:
+        patterns:
+          - 'typescript'
+          - '*eslint*'
+          - '@typescript-eslint/*'
+          - 'prettier'
+          - '*prettier*'
+      minor-and-patch:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
     ignore:
       # TypeScript 7.0 removes the classic JavaScript compiler API before its
-      # replacement is ready. Skip only that release line; Dependabot should
-      # resume proposing TypeScript updates as soon as 7.1 or later is out.
-      - dependency-name: "typescript"
+      # replacement is ready, and ts-jest (used by server/jest.config.js for the
+      # scheduler tests) declares a peer dependency of `typescript@">=4.3 <7"`,
+      # so bumping to TypeScript 7 breaks `npm ci` with ERESOLVE before any test
+      # runs. This was a per-directory ignore for /client and /server; with the
+      # directories merged it applies everywhere, which is also what the
+      # typescript-and-lint group wants -- a single TypeScript version across
+      # the repository. Remove it once ts-jest publishes a release that supports
+      # TypeScript 7 (expected around the TS 7.1 API). Restricting the rule to
+      # the 7.0 release line lets Dependabot resume at 7.1.
+      - dependency-name: 'typescript'
         versions:
-          - ">=7.0.0 <7.1.0"
-
-  - package-ecosystem: 'npm'
-    directory: '/server'
-    schedule:
-      interval: 'weekly'
-      time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
-    rebase-strategy: 'auto'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"
-    ignore:
-      # Hold TypeScript below 7.0 for the server package only while 7.0 is the
-      # newest release.
-      # ts-jest (used by jest.config.js for the scheduler jest tests) declares a
-      # peer dependency of `typescript@">=4.3 <7"`, so bumping to TypeScript 7
-      # breaks `npm ci` with ERESOLVE before any test runs. TypeScript 7 also
-      # ships the native (tsgo) compiler without the classic JS compiler API that
-      # ts-jest relies on. Remove this ignore once ts-jest publishes a release
-      # that supports TypeScript 7 (expected around the TS 7.1 API). Restricting
-      # this rule to the 7.0 release line lets Dependabot resume at 7.1.
-      - dependency-name: "typescript"
-        versions:
-          - ">=7.0.0 <7.1.0"
-
-  - package-ecosystem: 'npm'
-    directory: '/functions'
-    schedule:
-      interval: 'weekly'
-      time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
-    rebase-strategy: 'auto'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"
-
-  - package-ecosystem: 'npm'
-    directory: '/scripts'
-    schedule:
-      interval: 'weekly'
-      time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
-    rebase-strategy: 'auto'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"
+          - '>=7.0.0 <7.1.0'
 
   # The E2E test container's base image. It ships the browser bundle for exactly
   # one Playwright release, so it has to move whenever client/package-lock.json
@@ -146,29 +99,10 @@ updates:
   - package-ecosystem: 'docker'
     directory: '/.github/container'
     schedule:
-      interval: 'weekly'
+      interval: 'daily'
       time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     rebase-strategy: 'auto'
     labels:
       - 'dependencies'
       - 'docker'
-
-  - package-ecosystem: 'npm'
-    directory: '/scripts/tests'
-    schedule:
-      interval: 'weekly'
-      time: '13:00' # UTC. Equivalent to 22:00 JST
-    open-pull-requests-limit: 10
-    rebase-strategy: 'auto'
-    labels:
-      - 'dependencies'
-      - 'npm'
-    groups:
-      typescript-and-lint:
-        patterns:
-          - "typescript"
-          - "*eslint*"
-          - "@typescript-eslint/*"
-          - "prettier"
-          - "*prettier*"

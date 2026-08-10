@@ -1,7 +1,7 @@
 id: ENV-c71a09e4
 title: Dependabot skips TypeScript 7.0 only
 title-ja: Dependabot は TypeScript 7.0 のみをスキップする
-description: Dependabot ignores TypeScript releases from 7.0.0 up to but excluding 7.1.0 for the client and server npm packages. This prevents pull requests for the incompatible 7.0 release line while allowing automated TypeScript updates to resume when 7.1 or a later release becomes available. The rule is not applied to npm workspaces that do not currently declare TypeScript.
+description: Dependabot ignores TypeScript releases from 7.0.0 up to but excluding 7.1.0. This prevents pull requests for the incompatible 7.0 release line while allowing automated TypeScript updates to resume when 7.1 or a later release becomes available. The ignore is declared once for the single npm updates entry that covers every directory; only client and server declare TypeScript, so no other workspace is affected, and the test fails if one starts to declare it.
 category: environment
 status: implemented
 components:

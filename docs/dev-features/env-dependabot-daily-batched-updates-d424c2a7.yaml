@@ -1,0 +1,10 @@
+id: ENV-d424c2a7
+title: Dependabot spreads updates daily and batches them across directories
+title-ja: Dependabot は更新を毎日に分散し、ディレクトリ横断でまとめる
+description: Dependabot runs on a daily schedule and declares every npm directory in a single updates entry, so a version bump that applies to several lockfiles arrives as one pull request instead of one per directory. A trailing catch-all group collects the remaining minor and patch updates, while major bumps stay ungrouped so they can fail in isolation. Together with a reduced open pull request limit this keeps a release day's worth of dependency work inside what CI can drain, replacing the weekly burst that opened nineteen pull requests within five minutes.
+category: environment
+status: implemented
+components:
+- .github/dependabot.yml
+tests:
+- scripts/tests/env-dependabot-daily-batched-updates-d424c2a7.spec.ts
