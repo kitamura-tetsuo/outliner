@@ -1,6 +1,5 @@
 {
     "dependencies": {
-        "@dotenvx/dotenvx": "^2.19.2",
         "@electric-sql/pglite": "^0.5.4",
         "@hocuspocus/provider": "^4.4.0",
         "@sentry/sveltekit": "^10.69.0",
