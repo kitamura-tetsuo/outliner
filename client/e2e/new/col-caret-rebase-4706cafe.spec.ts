@@ -43,10 +43,10 @@ test("remote insertion before the caret preserves the local typing position", as
     const itemB = pageB.locator(`[data-item-id="${itemId}"]`);
     await expect(itemB).toContainText("0123456789");
 
-    await TestHelpers.setCursor(pageB, itemId!);
-    await pageB.keyboard.press("End");
-    await TestHelpers.setCursor(pageA, itemId!);
-    await pageA.keyboard.press("Home");
+    await TestHelpers.setCursor(pageB, itemId!, 10);
+
+    await TestHelpers.setCursor(pageA, itemId!, 0);
+    await TestHelpers.focusGlobalTextarea(pageA);
     await pageA.keyboard.type("XYZ");
 
     await expect(itemB).toContainText("XYZ0123456789", { timeout: 30_000 });
@@ -57,6 +57,7 @@ test("remote insertion before the caret preserves the local typing position", as
         }, itemId)
     ).toBe(13);
 
+    await TestHelpers.focusGlobalTextarea(pageB);
     await pageB.keyboard.type("!");
     await expect(itemA).toContainText("XYZ0123456789!", { timeout: 30_000 });
     await expect(itemB).toContainText("XYZ0123456789!");

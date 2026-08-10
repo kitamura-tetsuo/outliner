@@ -101,7 +101,8 @@ export async function openProjectPage(
     await page.evaluate(title => {
         (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
     }, project);
-    await page.locator("select.project-select").selectOption(projectId);
+    await expect(page.locator(`select.project-select option[value="${projectId}"]`)).toBeAttached({ timeout: 15000 });
+    await page.locator("select.project-select").selectOption({ value: projectId });
     await expect(async () => {
         const url = page.url();
         if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
@@ -111,7 +112,8 @@ export async function openProjectPage(
             await page.evaluate(title => {
                 (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
             }, project);
-            await page.locator("select.project-select").selectOption(projectId);
+            await expect(page.locator(`select.project-select option[value="${projectId}"]`)).toBeAttached({ timeout: 15000 });
+            await page.locator("select.project-select").selectOption({ value: projectId });
         }
         await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), { timeout: 5000 });
     }).toPass({ timeout: 60000 });
