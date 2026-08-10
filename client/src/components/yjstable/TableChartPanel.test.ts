@@ -1,7 +1,7 @@
 import { render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
-import TableChartPanel from "./TableChartPanel.svelte";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
+import TableChartPanel from "./TableChartPanel.svelte";
 
 vi.mock("echarts", () => ({
     init: vi.fn(() => ({
@@ -24,7 +24,7 @@ describe("TableChartPanel", () => {
         const chartDiv = getByTestId("yjs-table-chart");
 
         expect(chartDiv.getAttribute("aria-label")).toBe(
-            "Bar chart of revenue by month: Jan (120), Feb (180)"
+            "Bar chart of revenue by month: Jan (120), Feb (180)",
         );
     });
 
@@ -40,7 +40,7 @@ describe("TableChartPanel", () => {
         const chartDiv = getByTestId("yjs-table-chart");
 
         expect(chartDiv.getAttribute("aria-label")).toBe(
-            "Bar chart of revenue by id: demo-1 (120), demo-2 (180)"
+            "Bar chart of revenue by id: demo-1 (120), demo-2 (180)",
         );
     });
 });

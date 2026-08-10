@@ -85,7 +85,9 @@ test.describe("Demo project feature tour", () => {
 
         const chart = salesTable.getByTestId("yjs-table-chart").first();
         await expect(chart).toBeVisible({ timeout: 10000 });
-        await expect(chart).toHaveAttribute("aria-label", /Bar chart of revenue by month: Jan \(120\)/, { timeout: 10000 });
+        await expect(chart).toHaveAttribute("aria-label", /Bar chart of revenue by month: Jan \(120\)/, {
+            timeout: 10000,
+        });
     });
 
     test("the Publishing and Sharing page renders the seeded links", async ({ page }) => {
