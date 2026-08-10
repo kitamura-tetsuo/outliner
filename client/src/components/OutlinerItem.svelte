@@ -33,7 +33,6 @@ function hasDataTransfer(obj: unknown): obj is HasDataTransfer { return !!obj &&
 import {
     createEventDispatcher,
     onMount,
-    tick,
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
@@ -794,7 +793,7 @@ type EditingPoint = CaretPoint & { altKey?: boolean; };
  * @param event Pointing gesture (calculate cursor position from its point)
  * @param initialCursorPosition Initial cursor position (if specified)
  */
-async function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
+function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     if (isReadOnly) return;
 
     // Get global textarea (from store, fallback to DOM if missing)
@@ -814,9 +813,9 @@ async function startEditing(event?: EditingPoint, initialCursorPosition?: number
     logger.debug(undefined, "OutlinerItem startEditing: Focus set to global textarea, activeElement: " + (document.activeElement === textareaEl));
 
     // Additional attempts to ensure focus
-    await tick();
-    textareaEl.focus();
-
+    requestAnimationFrame(() => {
+        textareaEl.focus();
+    });
     // Synchronize text content
     textareaEl.value = textString;
     textareaEl.focus();
@@ -1238,7 +1237,7 @@ function handleContentClick(e: MouseEvent) {
  * Click handling: Add multi-cursor with Alt+Click, otherwise start editing
  * @param event Mouse event
  */
-async function handleClick(event: MouseEvent) {
+function handleClick(event: MouseEvent) {
     // A touch gesture already placed the caret / made the selection; the browser's
     // compatibility click would redo it (and collapse a long-press selection).
     if (isSyntheticMouseSuppressed()) return;
@@ -1291,8 +1290,12 @@ async function handleClick(event: MouseEvent) {
         const textarea = editorOverlayStore.getTextareaRef();
         if (textarea) {
             // Multiple attempts to ensure focus is set
-            await tick();
             textarea.focus();
+
+            // requestAnimationFrame
+            requestAnimationFrame(() => {
+                textarea.focus();
+            });
         }
         else {
             logger.warn({ error: new Error("Global textarea not found") }, "Global textarea not found");
