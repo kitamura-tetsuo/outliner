@@ -1990,6 +1990,22 @@ onMount(() => {
         (displayRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dragOverHandler = dragOverHandler;
         (itemRef as HTMLElement & { _dropHandler?: EventListener, _dragOverHandler?: EventListener })._dropHandler = dropHandler;
 
+        const handleFocusItem = (e: Event) => {
+            const customEvent = e as CustomEvent;
+            const direction = customEvent.detail?.direction;
+            let cursorPosition = undefined;
+            if (direction === "up") {
+                cursorPosition = textString.length;
+            } else if (direction === "down" || direction === "enter") {
+                cursorPosition = 0;
+            } else if (direction === "left" || direction === "right") {
+                cursorPosition = customEvent.detail?.cursorScreenX;
+            }
+            startEditing(undefined, cursorPosition);
+        };
+        (itemRef as HTMLElement & { _focusItemHandler?: EventListener })._focusItemHandler = handleFocusItem;
+        itemRef.addEventListener('focus-item', handleFocusItem);
+
     } catch (_e) { /* ignore */ }
     return () => {
         try {
@@ -2014,6 +2030,11 @@ onMount(() => {
             if (itemDropHandler) {
                 itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: true } as EventListenerOptions);
                 itemRef?.removeEventListener?.('drop', itemDropHandler, { capture: false } as EventListenerOptions);
+            }
+
+            const itemFocusItemHandler = (itemRef as HTMLElement & { _focusItemHandler?: EventListener })?._focusItemHandler;
+            if (itemFocusItemHandler) {
+                itemRef?.removeEventListener?.('focus-item', itemFocusItemHandler);
             }
         } catch (_e) { /* ignore */ }
     };
