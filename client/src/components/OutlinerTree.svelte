@@ -60,6 +60,27 @@
         return `${ydocGuid ?? ""}:${id ?? `${projectName}:${pageName}`}`;
     });
 
+    /** Item ids this page can resolve, used to recognise state left by another page. */
+    function resolvableItemIds(): Set<string> {
+        return new Set(displayItems.map((entry) => entry.model.id));
+    }
+
+    /**
+     * Discard local selections that point outside this page. Only the top-level
+     * tree may do this: an embedded tree renders a single subtree, so items of
+     * the surrounding page are unknown to it and must not count as stale.
+     */
+    function dropStaleLocalSelections() {
+        if (isEmbedded) return;
+        const resolvable = resolvableItemIds();
+        const hasStale = Object.values(editorOverlayStore.selections).some(
+            (sel) =>
+                (sel.userId ?? "local") === "local"
+                && (!resolvable.has(sel.startItemId) || !resolvable.has(sel.endItemId)),
+        );
+        if (hasStale) editorOverlayStore.clearSelectionForUser("local");
+    }
+
     onMount(() => {
         window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         try {
@@ -78,6 +99,15 @@
                         editorOverlayStore.clearCursorAndSelection(userId, false);
                     }
                 }
+
+                // The local selection is page-scoped state, but the store keeps
+                // it across navigation: this component remounts for the new page
+                // while the previous page's selection stays behind, pointing at
+                // items that do not exist here. Every consumer then silently
+                // gives up - a paste is dropped whole (#4816 follow-up: a Grid
+                // copied from another project cloned its table but never
+                // reached the outline). Drop what this page cannot resolve.
+                dropStaleLocalSelections();
 
                 // Re-apply presences for this new page
                 const awareness = yjsStore.yjsClient?.getAwareness();
@@ -1004,10 +1034,18 @@
             win.lastPasteActiveItemId = activeItemId;
         }
 
+        // A selection this page cannot resolve was left behind by another page
+        // (see dropStaleLocalSelections). Pasting "into" it would find no items
+        // and drop the paste entirely, so paste at the cursor instead.
+        const resolvable = resolvableItemIds();
+        const pasteSelections = selections?.filter(
+            (sel) => resolvable.has(sel.startItemId) && resolvable.has(sel.endItemId),
+        );
+
         // If selections exist, delete selections then paste
-        if (selections && selections.length > 0) {
+        if (pasteSelections && pasteSelections.length > 0) {
             // Handle selection spanning multiple items
-            const multiItemSelection = selections.find(
+            const multiItemSelection = pasteSelections.find(
                 (sel: { startItemId?: string, endItemId?: string }) => sel.startItemId !== sel.endItemId,
             );
 
@@ -1018,7 +1056,7 @@
             }
 
             // Process selection within single item
-            const singleItemSelection = selections[0];
+            const singleItemSelection = pasteSelections[0];
             if (singleItemSelection) {
                 handleSingleItemSelectionPaste({
                 startItemId: singleItemSelection.startItemId,
