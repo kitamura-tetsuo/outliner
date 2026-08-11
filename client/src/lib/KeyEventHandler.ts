@@ -76,7 +76,9 @@ function selectedItemsClipboardData():
         let fallbackText: string | undefined;
         if (tableId) {
             const acquiredTable = getActiveTable(project.ydoc.guid, tableId);
-            const result = (acquiredTable?.adapter as any)?.lastResult;
+            const result = (acquiredTable?.adapter as unknown as {
+                lastResult?: { columns: string[]; rows: Record<string, unknown>[]; };
+            })?.lastResult;
             if (acquiredTable && result && result.columns && result.columns.length > 0) {
                 const config = {
                     columns: result.columns,
@@ -85,14 +87,21 @@ function selectedItemsClipboardData():
                             c: string,
                         ) => [
                             c,
-                            (acquiredTable.handles.uiDef.get("components") as Record<string, any>)?.[c]?.hidden
+                            (acquiredTable.handles.uiDef.get("components") as unknown as {
+                                get?: (k: string) => { hidden?: boolean; label?: string; };
+                            })?.get?.(c)?.hidden
                                 === true,
                         ]),
                     ),
                     labels: Object.fromEntries(
                         result.columns.map((
                             c: string,
-                        ) => [c, (acquiredTable.handles.uiDef.get("components") as Record<string, any>)?.[c]?.label]),
+                        ) => [
+                            c,
+                            (acquiredTable.handles.uiDef.get("components") as unknown as {
+                                get?: (k: string) => { hidden?: boolean; label?: string; };
+                            })?.get?.(c)?.label,
+                        ]),
                     ),
                     rows: result.rows,
                 };
@@ -398,7 +407,7 @@ export class KeyEventHandler {
             // If it hasn't fired in the same loop, we fire a synthetic one
             setTimeout(() => {
                 if (KeyEventHandler._nativeCopyFired) return;
-                let structured = selectedItemsClipboardData();
+                const structured = selectedItemsClipboardData();
                 // A component host contributes its view name to the structured
                 // payload only, so the structured plain text is authoritative
                 // whenever the selection carries one.
@@ -1508,7 +1517,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCopy = false;
-        let structured = selectedItemsClipboardData();
+        const structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
@@ -2834,7 +2843,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCut = false;
-        let structured = selectedItemsClipboardData();
+        const structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
