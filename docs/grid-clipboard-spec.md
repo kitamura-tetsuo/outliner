@@ -51,12 +51,12 @@ without also deciding who may read the shared room.
 
 ## 2. What happens today
 
-| Copy → paste | Item | Table | Data |
-| --- | --- | --- | --- |
-| Same project | duplicated | shared binding, same `tableId` | shared — one database, two views |
-| Other project | duplicated | fresh table: schema + UI cloned, new `tableId`, new subdoc guid | **empty** |
-| Other project, clone fails | duplicated | none — binding dropped | none; item degrades to its display name |
-| Other application | — | — | the table's display name as one line of text |
+| Copy → paste               | Item       | Table                                                           | Data                                         |
+| -------------------------- | ---------- | --------------------------------------------------------------- | -------------------------------------------- |
+| Same project               | duplicated | shared binding, same `tableId`                                  | shared — one database, two views             |
+| Other project              | duplicated | fresh table: schema + UI cloned, new `tableId`, new subdoc guid | **empty**                                    |
+| Other project, clone fails | duplicated | none — binding dropped                                          | none; item degrades to its display name      |
+| Other application          | —          | —                                                               | the table's display name as one line of text |
 
 Cut behaves as a move: the host item is removed and re-inserted, and the table
 itself is never deleted, so a cut that is never pasted loses a view and not a
@@ -137,12 +137,12 @@ configure: same project → another view; other project → independent clone.
 **Paste Special (`Ctrl/Cmd+Shift+V`) offers the variants the destination can
 actually honor**, and lists only those:
 
-| Variant | Same project | Other project | Result |
-| --- | --- | --- | --- |
-| Another view | ✅ default | ✗ impossible (§1) | second host, one database |
-| Independent copy (structure) | ✅ new | ✅ default | fresh table, schema + UI, no rows |
-| Independent copy with data | ✅ new | ✅ new, source-reachable only | fresh table, rows copied once |
-| Values only | ✅ new | ✅ new | plain items / text, no table |
+| Variant                      | Same project | Other project                 | Result                            |
+| ---------------------------- | ------------ | ----------------------------- | --------------------------------- |
+| Another view                 | ✅ default   | ✗ impossible (§1)             | second host, one database         |
+| Independent copy (structure) | ✅ new       | ✅ default                    | fresh table, schema + UI, no rows |
+| Independent copy with data   | ✅ new       | ✅ new, source-reachable only | fresh table, rows copied once     |
+| Values only                  | ✅ new       | ✅ new                        | plain items / text, no table      |
 
 An unavailable variant is shown disabled with its reason, not hidden: "Another
 view — the source table belongs to another project" teaches the model in §1
