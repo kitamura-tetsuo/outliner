@@ -181,10 +181,10 @@ against, and adding one would only let the paste report a difference it cannot
 act on. Under snapshot semantics the rows that exist when the user pastes are by
 definition the right rows, so the two outcomes are:
 
-| At paste time | Result | Reported as |
-| --- | --- | --- |
-| Source reachable, _n_ ≥ 0 rows | fresh table with those _n_ rows | copied with data |
-| Source unreachable | fresh table, structure only | copied without data, with the reason |
+| At paste time                  | Result                          | Reported as                          |
+| ------------------------------ | ------------------------------- | ------------------------------------ |
+| Source reachable, _n_ ≥ 0 rows | fresh table with those _n_ rows | copied with data                     |
+| Source unreachable             | fresh table, structure only     | copied without data, with the reason |
 
 ## 6. Answer to Q3 — the two cases, in full
 
