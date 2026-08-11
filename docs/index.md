@@ -170,6 +170,7 @@ The Outliner project is a real-time collaborative application built with the fol
 - [**Yjs Migration / fluid_to_yjs.md**](fluid_to_yjs.md): Details the mapping between legacy Fluid data structures and the current Yjs implementation, along with migration status.
 - [**State Management / state_management.md**](state_management.md): Guidelines on how state is managed across the application, particularly interacting with Yjs.
 - [**CRDT and SQL / crdt-sql-architecture.md**](crdt-sql-architecture.md): Why documents are CRDT-centric while tabular data is SQL-centric, and how a surface spanning both (a calendar) is built without a second source of truth.
+- [**Grid Clipboard / grid-clipboard-spec.md**](grid-clipboard-spec.md): Whether copying a Grid copies the view or the database, how that differs within and across projects, what a Grid should look like when pasted into another application, and how the same rule resolves for Chart and Calendar.
 - [**Production Setup / PRODUCTION_SETUP.md**](PRODUCTION_SETUP.md): Instructions and configurations for the production cloud backend.
 - [**Documentation / Documentation.md**](Documentation.md): Instructions for the documentation.
 - [**Demo Project / demo-project.md**](demo-project.md): How the public `/demo` feature tour is seeded, and the policy that every new end-user feature must also be added to the demo template.
