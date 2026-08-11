@@ -11,6 +11,7 @@ components:
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
+- A copy-time selection does not survive navigation to another page or project, so a Ctrl/Cmd+A copy of a page pastes all of its lines and Grid blocks into the destination instead of being silently dropped.
 - A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, and complete UI definition, while its Data Storage starts empty and remains independent of the source project.
 - A later, separate cross-project paste creates another fresh independent Grid clone.
 - A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
@@ -26,6 +27,7 @@ tests:
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-select-all-grid-4584c0de.spec.ts
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
