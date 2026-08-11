@@ -1,7 +1,7 @@
 # Grid copy and paste: view, database, and the world outside
 
 Status: §1–§3 describe implemented behavior
-(`docs/client-features/clp-component-block-clipboard-4584c0de.yaml`). §4–§8 are
+(`docs/client-features/clp-component-block-clipboard-4584c0de.yaml`). §4–§11 are
 a proposal and are **not** implemented; they answer four open questions:
 
 1. Is copying a Grid a copy of the _view_ or a copy of the _database_?
@@ -9,6 +9,9 @@ a proposal and are **not** implemented; they answer four open questions:
 3. How do the answers differ within one project and across projects?
 4. What should land in the clipboard when the paste target is another
    application?
+
+§8 extends the answers to the other two block types, Chart and Calendar. §9
+lists the decisions these answers make necessary and does **not** settle them.
 
 The short answer, and the rule the rest of this document derives:
 
@@ -33,7 +36,7 @@ binding field `yjsTableId` (`client/src/services/yjstable/itemBinding.ts`). That
 is the whole of it — an item that points at a table. Column order, column
 labels, hidden columns and the query itself are _not_ on the item; they live in
 the table's UI Definition, so two views of one table are today identical views,
-not independently configured ones (see §8.1).
+not independently configured ones (see §10.1).
 
 **The database** is a Y.Doc subdoc registered in the project doc: `tableId → {
 display name, subdoc }` (`client/src/services/yjstable/tableDocs.ts`). It holds
@@ -375,7 +378,7 @@ grid renders it.
 **Null.** SQL `NULL` and the empty string are different values that a TSV cannot
 tell apart. Emit both as an empty cell and accept the ambiguity: the alternative
 is a sentinel that pastes into a spreadsheet as a literal word. This is a
-one-way, lossy export — §8.3 keeps the round trip out of scope, so nothing later
+one-way, lossy export — §10.3 keeps the round trip out of scope, so nothing later
 has to invert it.
 
 Three further consequences to settle:
@@ -402,33 +405,163 @@ plausible-looking rows that is missing the tail is worse than an obvious refusal
 Note that this is strictly the _outward_ direction. Text arriving from outside
 keeps today's behavior: TSV pasted into an outline is text
 (`FTR-b6ebf516`). "Paste a spreadsheet as a new Grid" is a separate feature with
-its own schema-inference question, and §8.3.
+its own schema-inference question, and §10.3.
 
-## 8. Explicitly out of scope
+## 8. The same rule, for Calendar and Chart
 
-**8.1 Per-view configuration.** Column order, labels and visibility live in the
+The rule generalizes, but only because the unit it is applied to is not the
+block type. **The decision is made per relation, not per block.** A relation
+with Data Storage of its own travels; `outline_items` rebinds; a block is
+whatever set of relations its query reaches, rendered on some axis. Grid,
+Chart and Calendar differ in how they draw, not in what they own.
+
+| Block    | Its own data                | Cross-project paste                              |
+| -------- | --------------------------- | ------------------------------------------------ |
+| Grid     | Data Storage, in a subdoc   | structure + closure cloned, with rows            |
+| Chart    | none — a view of the result | exactly what its Grid does                       |
+| Calendar | none — settings only        | settings cloned; the rows follow their relations |
+
+### 8.1 Chart — the same object, with one new question outward
+
+`TableChartPanel.svelte` is a view over the same query result inside the same
+`yjstable` block, toggled in parallel with the grid. It is not a host type: no
+item points at a chart. So there is nothing to decide for the in-app direction —
+copying a host whose chart view happens to be open copies that host, its
+binding, and its closure, identically to copying it in grid view.
+
+The one new question is outward. For a Grid the appearance is a table of cells;
+for a chart the appearance is a picture. Both belong on the clipboard, in one
+write:
+
+- `text/plain` — the TSV of §7. A spreadsheet takes this and gets the numbers.
+- `text/html` — the `<table>` of §7 **plus** an `<img src="data:image/png;…">`
+  from the chart. Google Docs, Word and Slack take this and get the picture.
+- `image/png` — the same PNG as its own flavor, from ECharts `getDataURL()`, for
+  destinations that accept only an image.
+
+The destination picks its flavor; carrying several is what the clipboard is for,
+and it removes the need to ask the user whether they meant "the chart" or "the
+data". Two caveats: a PNG data URI is large, so the §7 size rule governs it too,
+and if the chart has not rendered there is no image — fall back to the table
+flavors, never to the display name.
+
+### 8.2 Calendar — no data of its own, so the rule resolves elsewhere
+
+From the header of `client/src/services/calendar/calendarService.ts`:
+
+> A calendar has a query and view settings and no data of its own, so unlike a
+> table it needs no subdoc: a flat `calendars` Y.Map on the project doc.
+
+Two consequences, and they point in opposite directions from today's behavior.
+
+**Cloning a calendar is easier than cloning a Grid, not harder.** §1's
+impossibility does not apply to it: there is no room derived from the project
+guid, because there is no room. Calendar settings are the most portable object
+in this document — a small flat map of a query, a view type, four role columns,
+grouping axes and lane order, copied key by key. Today's cross-project behavior
+degrades a calendar to readable text (`CLP-4584c0de`), which was a reasonable
+place to stop when the surrounding question was unanswered and is not one now.
+§10.4 is retired accordingly.
+
+**Its values were never its own, so they arrive by §6.2 and not by copying.**
+The calendar renders whatever its query returns, and that splits exactly along
+the line §6.2 already draws:
+
+- entries backed by a **table** travel — the table is in the closure, and its
+  rows are cloned;
+- entries backed by **`outline_items`** rebind, because the relation is a
+  projection of the destination project's own items;
+- a query reading both produces a calendar that is half copied and half local,
+  and the report has to say which half is which.
+
+So a week view of tasks, pasted into another project, shows _that project's_
+tasks. That is not a compromise — it is what someone pasting "my week view" into
+another project is asking for. The `outline_items` paragraph in §6.2 is a
+footnote for Grids and the main event for Calendars, and the rule at the top of
+this document is unchanged in both: what varies is which relation the values
+were living in all along.
+
+## 9. Open decisions
+
+These are consequences of §4–§8 that are not yet decided. Each carries a
+recommendation, but none should be treated as settled by this document.
+
+**9.1 What does undo of a paste undo?** A cross-project paste now writes the
+pasted items, the destination table registry, N new subdocs, and their rows. The
+global undo stack delegates to the scope an operation was applied to
+(`client/src/services/undo/undoRouter.svelte.ts`), and a paste is now several
+scopes at once. Recommendation: one paste is one undoable unit, and undoing it
+removes the tables it created — by construction nothing else references them
+yet. The open part is what happens when the user edited the pasted grid before
+pressing undo; the safe reading is that the edit is undone first, as its own
+step, and the paste is only reachable underneath it.
+
+**9.2 Schedule rules do not travel, and the clone will look broken.** A schedule
+rule is `{ targetTableId, sql, rrule, … }` in the project's `schedules` map, and
+the server scheduler writes its output into that table's Data Storage. Clone a
+table whose rows are generated by a rule and the destination gets a full,
+correct snapshot that then never grows again. The demo's own Recurring Tasks
+page is exactly this shape — `routine_templates` feeding `routine_occurrences`
+(`docs/schedule-sql-conventions.md`). Recommendation: do not clone schedule
+rules — a paste must not start writing to a project's data on a timer the user
+did not ask for — and report the omission by name, which turns a silent freeze
+into a one-line instruction to recreate the rule.
+
+**9.3 Should a repeat paste clone again, or reuse the previous clone?** Pasting
+the same clipboard into the same destination twice currently yields two
+independent tables holding two snapshots taken at different moments.
+Recommendation: record the provenance (source project guid + source table id) on
+each cloned table, and let a later paste into the same destination offer to bind
+to the copy that already exists instead of making another. The provenance is
+worth storing regardless — it is the only way the destination can ever say where
+a table came from — and the "Existing Table" tab in `YjsTableBlock.svelte`
+already establishes the interaction.
+
+**9.4 What does cut across projects leave behind?** Cut removes the view, never
+the database (§2), so cutting a Grid and pasting it into another project leaves
+an orphaned table in the source and copies its rows into the destination. That
+is defensible — the table may still be referenced from `/tables/…` or by another
+host — but it is not obviously what "cut" promised. Recommendation: keep the
+behavior and report it; deleting a table because its last view moved is
+destructive in the way `docs/NON_GOALS.md` avoids elsewhere.
+
+**9.5 A destination the user cannot write.** Undecided today and now more
+visible, since a paste creates tables rather than only items. The paste should
+fail as a whole, before creating anything, with a reason.
+
+**9.6 A long paste needs progress, cancellation and a rollback guarantee.**
+Cloning a closure with rows can take real time. One guarantee already exists —
+navigating away mid-paste removes the tables that were created
+(`KeyEventHandler.ts:2688`) — and it now has to cover rows and multiple tables,
+and to be visible while it runs rather than only correct after the fact.
+
+## 10. Explicitly out of scope
+
+**10.1 Per-view configuration.** Column order, labels and visibility live in the
 table's UI Definition, so two views of one table cannot differ. Making the view
 copy meaningfully distinct from the database copy on the _presentation_ axis
 requires moving that state onto the host item, which is a larger change to the
 table model and not part of this spec. Until then, "another view" and "the same
 grid again" are the same thing.
 
-**8.2 Cross-project shared tables.** §1. Not a missing feature and not on the
+**10.2 Cross-project shared tables.** §1. Not a missing feature and not on the
 roadmap: a deliberate consequence of deriving the table room from the project
 room, and it would have to answer who may read the shared room before it could
 be designed at all. Note that §4 does not soften this — a populated clone is the
 opposite of sharing. The rows are copied once, at paste time, and the two tables
 diverge from that instant.
 
-**8.3 Importing external tabular data as a Grid.** Pasting TSV or an HTML
+**10.3 Importing external tabular data as a Grid.** Pasting TSV or an HTML
 `<table>` from another app and inferring a schema is a real feature and a
 different one.
 
-**8.4 Calendar structure cloning.** Unchanged and still unsupported
-(`CLP-4584c0de`): a same-project Calendar paste retains its binding, and a
-cross-project one degrades to readable text.
+**10.4 Calendar structure cloning — retired, no longer out of scope.** This
+entry recorded that a cross-project Calendar paste degrades to readable text
+(`CLP-4584c0de`). §8.2 supersedes it: a calendar is settings only, and settings
+clone trivially. Same-project Calendar paste keeps its shared binding, as
+before.
 
-## 9. If this is implemented
+## 11. If this is implemented
 
 The two default-path defects first — a wrong default is worse than a missing
 gesture, because nobody opts into it:
@@ -455,10 +588,22 @@ gesture, because nobody opts into it:
    `TableCloneResult.failures` is computed and discarded at
    `KeyEventHandler.ts:2686`. Tests: a closure that pulled in unselected tables,
    a rename, a failed group, and a rebound `outline_items` each reach the user.
-5. **§5, Paste Special.** New gesture, new menu, variant availability per
+5. **§8.2, the Calendar clone.** Small once §6.2 exists, since a calendar is
+   settings only. Tests: a cross-project Calendar paste reproducing query, view
+   type, roles, grouping axes and lane order; its table-backed entries carrying
+   their rows; its `outline_items` entries showing the destination's items; a
+   mixed calendar reporting which half rebound.
+6. **§8.1, the Chart flavors.** Tests: a copied chart writing TSV, an HTML
+   fragment containing both a `<table>` and an `<img>`, and a standalone
+   `image/png`; an unrendered chart falling back to the table flavors.
+7. **§5, Paste Special.** New gesture, new menu, variant availability per
    destination. By this point every variant's machinery exists and only the
    choice is missing. Tests: each cell of the §5 matrix, including the disabled
    variants and their reasons.
+
+§9 must be answered before 1 ships, not after: undo (§9.1) and the unwritable
+destination (§9.5) are correctness, and the schedule-rule omission (§9.2) is a
+report the first populated clone already needs.
 
 Every acceptance line above belongs in
 `docs/client-features/clp-component-block-clipboard-4584c0de.yaml`, and the
