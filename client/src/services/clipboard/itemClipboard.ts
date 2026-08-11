@@ -217,8 +217,10 @@ export function structuredClipboardHtml(encoded: string, plainText: string, cust
     const bytes = new TextEncoder().encode(encoded);
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    const visibleHtml = customHtml !== undefined ? customHtml : plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;").replaceAll("'", "&#39;").replaceAll("\n", "<br>");
+    const visibleHtml = customHtml !== undefined
+        ? customHtml
+        : plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;").replaceAll("'", "&#39;").replaceAll("\n", "<br>");
     return `<span ${OUTLINER_ITEMS_HTML_ATTRIBUTE}="${btoa(binary)}" hidden></span><span>${visibleHtml}</span>`;
 }
 
