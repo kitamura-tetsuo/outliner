@@ -312,6 +312,40 @@ function updateTextareaPosition() {
     }
 }
 
+// Reactively sync cursors and selections when store state changes.
+// We use a Svelte 5 $effect to avoid manual subscriptions and setTimeouts.
+const syncCursors = () => {
+    cursorList = Object.values(store.cursors);
+    selectionList = Object.values(store.selections);
+};
+
+$effect(() => {
+    // Track store.cursors and store.selections reactively
+    void store.cursors;
+    void store.selections;
+
+    // Ensure update logic runs after microtask to let other state settle,
+    // avoiding synchronous tracking that might loop
+    let isCancelled = false;
+    requestAnimationFrame(() => {
+        if (isCancelled) return;
+        try {
+            updatePositionMap();
+            syncCursors();
+            if (typeof window !== 'undefined' && import.meta.env.MODE !== "production") {
+                window.__selectionList = selectionList;
+            }
+            updateTextareaPosition();
+        } catch (e) {
+            logger.warn('Failed to reactively update editor overlay:', e);
+        }
+    });
+
+    return () => {
+        isCancelled = true;
+    };
+});
+
 // Update position in response to change notification (eliminate polling)
 onMount(() => {
     // setup text measurement without DOM mutations
@@ -348,36 +382,6 @@ onMount(() => {
         measureCtx = null;
     }
 
-    // Subscribe to store changes with debounce to avoid infinite loops
-
-    let updateTimeout: ReturnType<typeof setTimeout> | null = null;
-    let unsubscribe = () => {};
-
-    // Subscribe to store changes in all environments to ensure proper updates
-    const syncCursors = () => {
-        cursorList = Object.values(store.cursors);
-        selectionList = Object.values(store.selections);
-    };
-
-    try {
-        unsubscribe = store.subscribe(() => {
-            if (updateTimeout) {
-                clearTimeout(updateTimeout);
-            }
-            updateTimeout = setTimeout(() => {
-                // Force update of positionMap to ensure it's current
-                updatePositionMap(); // Direct call instead of debounced to ensure immediate update in tests
-                syncCursors();
-                if (typeof window !== 'undefined' && import.meta.env.MODE !== "production") {
-                    window.__selectionList = selectionList;
-                }
-                updateTextareaPosition();
-            }, 16); // Update at ~60fps interval
-        });
-    } catch (error) {
-        logger.warn('Failed to subscribe to store changes:', error);
-    }
-
     // Initialization
     try {
         syncCursors();
@@ -390,17 +394,6 @@ onMount(() => {
         logger.warn('Failed to update textarea position on init:', error);
     }
 
-    // cleanup
-    return () => {
-        try {
-            unsubscribe();
-        } catch (error) {
-            logger.warn('Error during unsubscribe:', error);
-        }
-        if (updateTimeout) {
-            clearTimeout(updateTimeout);
-        }
-    };
 });
 
 // Helper function to perform more accurate text measurement
