@@ -21,18 +21,18 @@ These pollings may be safe to remove.
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
-        } catch (error) {
-            // ... existing catch ...
-            // If invalid-api-key happens here, catch it?
-            // But I'm preventing it by checking isMockMode first.
-            logger.error({ error: error as Error }, "Failed to initialize auth listener");
-            setTimeout(() => {
-                this.initAuthListenerAsync();
-            }, 1000);
-        }
-    }
 
+```
+    } catch (error) {
+        // ... existing catch ...
+        // If invalid-api-key happens here, catch it?
+        // But I'm preventing it by checking isMockMode first.
+        logger.error({ error: error as Error }, "Failed to initialize auth listener");
+        setTimeout(() => {
+            this.initAuthListenerAsync();
+        }, 1000);
+    }
+}
 ```
 
 ### BacklinkPanel.svelte:35:setTimeout
@@ -43,6 +43,7 @@ These pollings may be safe to remove.
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
+
 ```
 });
 
@@ -54,7 +55,6 @@ $effect(() => {
     }, 500);
     return () => clearTimeout(handler);
 });
-
 ```
 
 ### Checklist.svelte:59:setTimeout
@@ -65,8 +65,8 @@ $effect(() => {
 - **Code**: `timerId = setTimeout(() => {`
 
 **Context**:
-```
 
+```
     const delay = getNextResetDelay(listId);
     if (delay === null) return;
 
@@ -76,7 +76,6 @@ $effect(() => {
         setupTimer();
     }, safeDelay);
 }
-
 ```
 
 ### EditorOverlay.svelte:749:setTimeout
@@ -87,6 +86,7 @@ $effect(() => {
 - **Code**: `updatePositionMapTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
 let updatePositionMapTimer: ReturnType<typeof setTimeout>;
 
@@ -109,6 +109,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         window.visualViewport.addEventListener("scroll", handleVisualViewportScroll);
     }
@@ -131,18 +132,19 @@ function debouncedUpdatePositionMap() {
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
-            } catch {
-                // Intentionally empty - catch potential errors without further handling
-            }
-        });
-        updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
-        const timer = setTimeout(() => {
-            mo?.disconnect();
-            node.classList.remove('selection-box-updating');
-            updatingFlags[key] = false;
-            try {
-                if (typeof window !== 'undefined' && window.DEBUG_MODE) {
+    } catch {
+        // Intentionally empty - catch potential errors without further handling
+    }
+});
+updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
+const timer = setTimeout(() => {
+    mo?.disconnect();
+    node.classList.remove('selection-box-updating');
+    updatingFlags[key] = false;
+    try {
+        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
 ```
 
 ### GlobalTextArea.svelte:40:requestAnimationFrame
@@ -153,6 +155,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `selectionSyncRafId = requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     if (store.suppressSelectionResync) return;
 
@@ -164,7 +167,6 @@ function debouncedUpdatePositionMap() {
         store.syncSelectionFromTextarea();
     });
 }
-
 ```
 
 ### GlobalTextArea.svelte:223:setTimeout
@@ -175,6 +177,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         }
     }
@@ -197,6 +200,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     },
                 },
@@ -219,6 +223,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         });
 
@@ -241,6 +246,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `resetTimeout = setTimeout(updateResetting, 60000 - (now - resetStartedAt));`
 
 **Context**:
+
 ```
             const now = Date.now();
             clearTimeout(resetTimeout);
@@ -263,18 +269,18 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => { renameError = null; }, 3000);`
 
 **Context**:
-```
 
-        const onRenameError = (e: Event) => {
-            const ce = e as CustomEvent;
-            if (ce.detail?.itemId === model.id) {
-                renameError = ce.detail.message;
-                setTimeout(() => { renameError = null; }, 3000);
-            }
-        };
-        window.addEventListener("page-rename-error", onRenameError);
-        return () => {
-            window.removeEventListener("page-rename-error", onRenameError);
+```
+const onRenameError = (e: Event) => {
+    const ce = e as CustomEvent;
+    if (ce.detail?.itemId === model.id) {
+        renameError = ce.detail.message;
+        setTimeout(() => { renameError = null; }, 3000);
+    }
+};
+window.addEventListener("page-rename-error", onRenameError);
+return () => {
+    window.removeEventListener("page-rename-error", onRenameError);
 ```
 
 ### OutlinerItem.svelte:816:requestAnimationFrame
@@ -285,6 +291,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     // Set focus to global textarea (highest priority)
     textareaEl.focus();
@@ -307,6 +314,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             model.original.updateText(newText);
 
@@ -329,6 +337,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textarea) {
             // Multiple attempts to ensure focus is set
@@ -351,6 +360,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                 y = window.innerHeight - rect.height - 10;
             }
@@ -362,7 +372,6 @@ function debouncedUpdatePositionMap() {
             if (firstButton) firstButton.focus();
         }, 0);
     });
-
 ```
 
 ### OutlinerTree.svelte:142:requestAnimationFrame
@@ -373,6 +382,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `scrollTimeout = requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
     // Throttle scroll event to improve performance
     let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -395,6 +405,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     "password",
                 );
@@ -417,18 +428,18 @@ function debouncedUpdatePositionMap() {
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
-```
-    $effect(() => {
-        if (!query) {
-            debouncedQuery = "";
-            return;
-        }
-        const handler = setTimeout(() => {
-            debouncedQuery = query;
-        }, 200);
-        return () => clearTimeout(handler);
-    });
 
+```
+$effect(() => {
+    if (!query) {
+        debouncedQuery = "";
+        return;
+    }
+    const handler = setTimeout(() => {
+        debouncedQuery = query;
+    }, 200);
+    return () => clearTimeout(handler);
+});
 ```
 
 ### SearchBox.svelte:311:setTimeout
@@ -439,18 +450,19 @@ function debouncedUpdatePositionMap() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
-            if (e.target && "value" in e.target && e.target.value !== query) {
-                query = e.target.value as string;
-            }
-        }}
-        onblur={() => {
-            setTimeout(() => {
-                isFocused = false;
-            }, 200);
-        }}
-        oninput={() => {
-            shouldRefocus = true;
+    if (e.target && "value" in e.target && e.target.value !== query) {
+        query = e.target.value as string;
+    }
+}}
+onblur={() => {
+    setTimeout(() => {
+        isFocused = false;
+    }, 200);
+}}
+oninput={() => {
+    shouldRefocus = true;
 ```
 
 ### CalendarView.svelte:272:setTimeout
@@ -461,6 +473,7 @@ function debouncedUpdatePositionMap() {
 - **Code**: `requeryTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
     }
 }
@@ -472,7 +485,6 @@ function scheduleRequery() {
         void runQuery();
     }, REQUERY_DEBOUNCE_MS);
 }
-
 ```
 
 ### Cursor.ts:249:requestAnimationFrame
@@ -483,6 +495,7 @@ function scheduleRequery() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
@@ -494,7 +507,6 @@ function scheduleRequery() {
 
                     tick().then(() => {
                         textarea.focus();
-
 ```
 
 ### Cursor.ts:689:setTimeout
@@ -505,6 +517,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
@@ -527,6 +540,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             const localSelection = Object.values(store.selections).find(s => (s.userId || "local") === "local");
             if (!localSelection) return;
@@ -549,18 +563,18 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
-            // Since Enter's normal processing (newline/new item addition etc.) should be complete here,
-            // open AliasPicker afterwards based on pre-detection flag
-            if (shouldOpenAliasPickerAfterDefault) {
-                try {
-                    setTimeout(() => {
-                        try {
-                            const w: unknown = typeof window !== "undefined"
-                                ? (window as Window & typeof globalThis & { [key: string]: unknown; })
-                                : null;
-                            const tryOpen = (attempt = 0) => {
+```
+// Since Enter's normal processing (newline/new item addition etc.) should be complete here,
+// open AliasPicker afterwards based on pre-detection flag
+if (shouldOpenAliasPickerAfterDefault) {
+    try {
+        setTimeout(() => {
+            try {
+                const w: unknown = typeof window !== "undefined"
+                    ? (window as Window & typeof globalThis & { [key: string]: unknown; })
+                    : null;
+                const tryOpen = (attempt = 0) => {
 ```
 
 ### KeyEventHandler.ts:970:setTimeout
@@ -571,18 +585,19 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            logger.error(_e);
-                                        }
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        logger.warn(
-                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
-                                        );
-                                    }
+        logger.error(_e);
+    }
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    logger.warn(
+        "KeyEventHandler(Post): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:1033:requestAnimationFrame
@@ -593,6 +608,7 @@ function scheduleRequery() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (globalTextarea) {
                 // Multiple attempts to ensure focus is set
@@ -615,6 +631,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
 
@@ -637,18 +654,19 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
+
 ```
-                                            logger.error(_e);
-                                        }
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        logger.warn(
-                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
-                                        );
-                                    }
+        logger.error(_e);
+    }
+    return;
+}
+if (attempt < 10) {
+    setTimeout(() => tryOpen(attempt + 1), 10);
+} else {
+    logger.warn(
+        "KeyEventHandler(Post2): active item not found to open AliasPicker",
+    );
+}
 ```
 
 ### KeyEventHandler.ts:1296:requestAnimationFrame
@@ -659,6 +677,7 @@ function scheduleRequery() {
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
         if (textareaElement) {
             // Multiple attempts to ensure focus is set
@@ -681,6 +700,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
@@ -703,6 +723,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     }
                 `;
@@ -725,6 +746,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         hintEl.style.transition = "opacity 0.3s ease-in-out";
 
@@ -747,6 +769,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                         document.body.appendChild(hintEl);
 
@@ -769,18 +792,18 @@ function scheduleRequery() {
 - **Code**: `this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {`
 
 **Context**:
-```
 
-            if (typeof window !== "undefined") {
-                if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
-                    clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
-                }
-                this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {
-                    this.cursorVisibilityRecoveryTimeoutId = undefined;
-                    const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
-                    if (!cursorVisible) {
-                        cursor.applyToStore();
-                        store.startCursorBlink();
+```
+if (typeof window !== "undefined") {
+    if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
+        clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
+    }
+    this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {
+        this.cursorVisibilityRecoveryTimeoutId = undefined;
+        const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
+        if (!cursorVisible) {
+            cursor.applyToStore();
+            store.startCursorBlink();
 ```
 
 ### CursorSelection.ts:498:setTimeout
@@ -791,6 +814,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -802,7 +826,6 @@ function scheduleRequery() {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:774:setTimeout
@@ -813,6 +836,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -824,7 +848,6 @@ function scheduleRequery() {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
                 }
-
 ```
 
 ### CursorSelection.ts:797:setTimeout
@@ -835,6 +858,7 @@ function scheduleRequery() {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     store.forceUpdate();
                 }
@@ -857,6 +881,7 @@ function scheduleRequery() {
 - **Code**: `const timer = setTimeout(() => resolve(undefined), ms);`
 
 **Context**:
+
 ```
     return { client, project };
 }
@@ -879,6 +904,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `previewTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(hideTimer);
         hideTimer = null;
@@ -901,6 +927,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `hideTimer = window.setTimeout(() => {`
 
 **Context**:
+
 ```
         window.clearTimeout(previewTimer);
         previewTimer = null;
@@ -923,6 +950,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 10));`
 
 **Context**:
+
 ```
             setContainerTitleInMetaDoc(containerId, "Version 1");
             updateLastOpenedAt(containerId);
@@ -945,6 +973,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `logger.debug(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -967,6 +996,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `logger.debug(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
+
 ```
                 };
 
@@ -989,6 +1019,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `logger.debug(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);`
 
 **Context**:
+
 ```
             };
 
@@ -1011,6 +1042,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timeout = setTimeout(() => {`
 
 **Context**:
+
 ```
     // This avoids race conditions and 500ms hardcoded polling limits
     if (client.wsProvider && !client.wsProvider.isSynced) {
@@ -1033,6 +1065,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `this.longPressTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
         this.startY = event.clientY;
         this.movedBeyondSlop = false;
@@ -1055,6 +1088,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timer = setTimeout(finish, timeoutMs);`
 
 **Context**:
+
 ```
             clearTimeout(timer);
             unsubscribe?.();
@@ -1077,6 +1111,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, attempt * 1000));`
 
 **Context**:
+
 ```
                     { error: e },
                     `[${label}] getFreshIdToken failed (attempt ${attempt}/${MAX_TOKEN_RETRIES})`,
@@ -1099,6 +1134,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
+
 ```
                 clearTimeout(timer);
                 provider.off("synced", syncHandler);
@@ -1121,6 +1157,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.info(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
@@ -1143,6 +1180,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
+
 ```
             if (debugEnabled) {
                 console.info(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
@@ -1165,8 +1203,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-```
 
+```
         try {
             // HocuspocusProvider handles token refresh via its token option (function)
             // But we can force a reconnect/token send if needed.
@@ -1187,6 +1225,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
             await provider.connect();
 
@@ -1209,6 +1248,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         yText.insert(0, "Hello, World!");
         const yArray = doc1.getArray("items");
@@ -1220,7 +1260,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
         // Dispose the first doc
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:94:setTimeout
@@ -1231,6 +1270,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1253,6 +1293,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
+
 ```
         const yText = doc1.getText("content");
         yText.insert(0, "First");
@@ -1275,8 +1316,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-```
 
+```
         yText.insert(yText.length, " Second");
         await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -1297,8 +1338,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-```
 
+```
         // Verify the text is correct before persistence
         expect(yText.toString()).toBe("First Second Third");
 
@@ -1308,7 +1349,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
         // Dispose and recreate
         persistence1.destroy();
         doc1.destroy();
-
 ```
 
 ### yjsPersistence.test.ts:172:setTimeout
@@ -1319,6 +1359,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         const childArray = new Y.Array<string>();
         childArray.push(["item1", "item2"]);
@@ -1341,6 +1382,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await waitForSync(persistence1);
 
@@ -1363,6 +1405,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1385,6 +1428,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1407,6 +1451,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(resolve, 500); // resolve after timeout`
 
 **Context**:
+
 ```
         const mockPersistence = {
             synced: false,
@@ -1429,8 +1474,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timeoutId = setTimeout(() => {`
 
 **Context**:
-```
 
+```
         // Note: lib0's once() wraps the handler, making off() unreliable with the same reference.
         // We rely on persistence.destroy() on error to clean up the listeners.
         persistence.once("synced", onSynced);
@@ -1451,18 +1496,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 500));`
 
 **Context**:
+
 ```
-                const saved = await saveProjectIdToServer(projectId, projectName);
-                if (saved) {
-                    logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
-                    registrationSuccess = true;
-                    // Wait for Firestore propagation (important for subsequent reads)
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    break;
-                } else {
-                    logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
-                }
-            } catch (saveError) {
+    const saved = await saveProjectIdToServer(projectId, projectName);
+    if (saved) {
+        logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
+        registrationSuccess = true;
+        // Wait for Firestore propagation (important for subsequent reads)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        break;
+    } else {
+        logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+    }
+} catch (saveError) {
 ```
 
 ### yjsService.svelte.ts:188:setTimeout
@@ -1473,6 +1519,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 1000 * attempt));`
 
 **Context**:
+
 ```
                 logger.error({ error: saveError }, `[yjsService] Exception saving project ID (attempt ${attempt})`);
             }
@@ -1495,6 +1542,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timeout = setTimeout(() => {`
 
 **Context**:
+
 ```
                         resolve();
                     }
@@ -1517,6 +1565,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `backoffTimeout = setTimeout(scheduleProcessPending, 1000);`
 
 **Context**:
+
 ```
         if (pendingCount === 0) {
             backoffTimeout = undefined;
@@ -1539,18 +1588,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `backoffTimeout = setTimeout(run, delay);`
 
 **Context**:
+
 ```
-
-        const remaining = getPendingRegistrations().length;
-        if (remaining > 0 && attempt < maxAttempt) {
-            attempt++;
-            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
-            backoffTimeout = setTimeout(run, delay);
-        } else {
-            backoffTimeout = undefined;
-        }
-    };
-
+    const remaining = getPendingRegistrations().length;
+    if (remaining > 0 && attempt < maxAttempt) {
+        attempt++;
+        const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+        backoffTimeout = setTimeout(run, delay);
+    } else {
+        backoffTimeout = undefined;
+    }
+};
 ```
 
 ### yjsService.svelte.ts:703:setTimeout
@@ -1561,6 +1609,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const initTimeout = setTimeout(() => {`
 
 **Context**:
+
 ```
         if (pendingCount > 0 && navigator.onLine && userManager.getCurrentUser()) scheduleProcessPending();
     };
@@ -1583,6 +1632,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             return;
         }
@@ -1605,6 +1655,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100));`
 
 **Context**:
+
 ```
             );
             let retryCount = 0;
@@ -1627,6 +1678,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
         }
@@ -1649,18 +1701,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => URL.revokeObjectURL(url), 0);`
 
 **Context**:
+
 ```
-        anchor.href = url;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        anchor.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 0);
-        logger.debug("Schedule page: Exported schedules to iCal", filename);
-    }
-    catch (err) {
-        logger.error({ error: err }, "Schedule page: Error exporting schedules:");
-    }
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    logger.debug("Schedule page: Exported schedules to iCal", filename);
+}
+catch (err) {
+    logger.error({ error: err }, "Schedule page: Error exporting schedules:");
+}
 ```
 
 ### +page.svelte:161:setInterval
@@ -1671,6 +1724,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `statusInterval = setInterval(() => {`
 
 **Context**:
+
 ```
         if (isAuthenticated) {
             initializeFluidClient();
@@ -1693,18 +1747,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => { resetDone = false; }, 3000);`
 
 **Context**:
+
 ```
-            if (isDestroyed) return;
-            if (!handle) {
-                throw new Error("Failed to connect to the demo project.");
-            }
-            resetDone = error === undefined;
-            setTimeout(() => { resetDone = false; }, 3000);
-        } catch (err) {
-            if (err instanceof SeedDemoError && err.rateLimitMs !== undefined) {
-                const minutes = Math.ceil(err.rateLimitMs / 60000);
-                resetError = `You can only reset the demo content once every ${minutes} minutes. Please try again later.`;
-            } else if (err instanceof Error && err.message.includes("rate limited")) {
+    if (isDestroyed) return;
+    if (!handle) {
+        throw new Error("Failed to connect to the demo project.");
+    }
+    resetDone = error === undefined;
+    setTimeout(() => { resetDone = false; }, 3000);
+} catch (err) {
+    if (err instanceof SeedDemoError && err.rateLimitMs !== undefined) {
+        const minutes = Math.ceil(err.rateLimitMs / 60000);
+        resetError = `You can only reset the demo content once every ${minutes} minutes. Please try again later.`;
+    } else if (err instanceof Error && err.message.includes("rate limited")) {
 ```
 
 ### +page.svelte:46:setTimeout
@@ -1715,6 +1770,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `resetTimeout = setTimeout(updateReset, 60000 - (now - resetStartedAt));`
 
 **Context**:
+
 ```
                 const now = Date.now();
                 clearTimeout(resetTimeout);
@@ -1737,6 +1793,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 0));`
 
 **Context**:
+
 ```
         );
 
@@ -1759,6 +1816,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         }
 
@@ -1781,6 +1839,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         yjsStore.yjsClient = newClient;
 
@@ -1803,6 +1862,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const timeout = setTimeout(() => {`
 
 **Context**:
+
 ```
                                 resolve(true);
                             }
@@ -1825,6 +1885,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             }
 
@@ -1847,6 +1908,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 20));`
 
 **Context**:
+
 ```
             expect(f.item.due).toBeUndefined();
             expect(f.item.text).toBe("Review");
@@ -1869,6 +1931,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 50));`
 
 **Context**:
+
 ```
                 handles.schemaText.delete(0, handles.schemaText.length);
                 handles.schemaText.insert(0, "CREATE TABLE renamed (id TEXT PRIMARY KEY, note TEXT)");
@@ -1891,18 +1954,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert`
 
 **Context**:
+
 ```
-                due_date: "2026-07-15",
-                start_time: "2026-07-15T12:30:00",
-                other_time: "2026-07-15T15:45:00Z",
-            }, "r1");
-            await waitMicrotasks();
-            await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert
-            const result = await adapter.runQueryNow();
-            expect(result?.rows).toHaveLength(1);
-            expect(result?.rows[0].due_date).toBe("2026-07-15");
-            expect(result?.rows[0].start_time).toBe("2026-07-15T12:30:00.000Z");
-            expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
+    due_date: "2026-07-15",
+    start_time: "2026-07-15T12:30:00",
+    other_time: "2026-07-15T15:45:00Z",
+}, "r1");
+await waitMicrotasks();
+await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert
+const result = await adapter.runQueryNow();
+expect(result?.rows).toHaveLength(1);
+expect(result?.rows[0].due_date).toBe("2026-07-15");
+expect(result?.rows[0].start_time).toBe("2026-07-15T12:30:00.000Z");
+expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
 ```
 
 ### tableSyncAdapter.ts:446:setTimeout
@@ -1913,6 +1977,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `this.requeryTimer = setTimeout(() => {`
 
 **Context**:
+
 ```
     // ------------------------------------------------------------------
 
@@ -1924,7 +1989,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
             void this.runQueryNow();
         }, REQUERY_DEBOUNCE_MS);
     }
-
 ```
 
 ### EditorOverlayStore.svelte.ts:270:requestAnimationFrame
@@ -1935,6 +1999,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
                 if (textarea && !isForeignInput(document.activeElement)) {
                     // Multiple attempts to ensure focus is set
@@ -1957,6 +2022,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                     requestAnimationFrame(() => {
                         if (isForeignInput(document.activeElement)) return;
@@ -1979,6 +2045,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
@@ -2001,6 +2068,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
                 // Set focus using requestAnimationFrame and tick
                 requestAnimationFrame(() => {
@@ -2023,6 +2091,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
             logger.debug(`Current selections:`, this.selections);
         }
@@ -2045,6 +2114,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+
 ```
         // Force update by temporarily clearing and resetting selection ranges
         const tempSelections = { ...this.selections };
@@ -2067,8 +2137,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-```
 
+```
         // Update cursors similarly
         const tempCursors = { ...this.cursors };
         this.cursors = {};
@@ -2089,18 +2159,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
+
 ```
-            // Ensure reliable focus on global textarea to receive input
-            const textarea = this.getTextareaRef();
-            if (textarea && !isForeignInput(document.activeElement)) {
-                try {
-                    textarea.focus();
-                    requestAnimationFrame(() => {
-                        if (isForeignInput(document.activeElement)) return;
-                        textarea.focus();
-                    });
-                    tick().then(() => {
-                        if (isForeignInput(document.activeElement)) return;
+// Ensure reliable focus on global textarea to receive input
+const textarea = this.getTextareaRef();
+if (textarea && !isForeignInput(document.activeElement)) {
+    try {
+        textarea.focus();
+        requestAnimationFrame(() => {
+            if (isForeignInput(document.activeElement)) return;
+            textarea.focus();
+        });
+        tick().then(() => {
+            if (isForeignInput(document.activeElement)) return;
 ```
 
 ### EditorOverlayStore.svelte.ts:1614:setTimeout
@@ -2111,6 +2182,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `this._selectionSyncTimeout = setTimeout(() => {`
 
 **Context**:
+
 ```
         // Do not clear the flag in a microtask. Wait for the selectionchange event.
         // The event handler will clear it, or a timeout will clear it as a fallback.
@@ -2133,18 +2205,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `snapshotTimeout = setTimeout(() => {`
 
 **Context**:
+
 ```
-                    if (state && state !== "synced") {
-                        isInitialSync = true;
-                    }
-                }
-                if (!isInitialSync) {
-                    snapshotTimeout = setTimeout(() => {
-                        snapshotTimeout = null;
-                        try {
-                            saveProjectSnapshot(project);
-                        } catch (_e) {
-                            logger.error(_e);
+    if (state && state !== "synced") {
+        isInitialSync = true;
+    }
+}
+if (!isInitialSync) {
+    snapshotTimeout = setTimeout(() => {
+        snapshotTimeout = null;
+        try {
+            saveProjectSnapshot(project);
+        } catch (_e) {
+            logger.error(_e);
 ```
 
 ### snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts:50:setTimeout
@@ -2155,6 +2228,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         // HTML should be rendered in the diff area
         const diffs = document.querySelectorAll(".diff-view");
@@ -2177,18 +2251,19 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `else setTimeout(checkSync, 50);`
 
 **Context**:
+
 ```
-            const checkSync = () => {
-                if (c1.provider.isSynced && c2.provider.isSynced) {
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
+const checkSync = () => {
+    if (c1.provider.isSynced && c2.provider.isSynced) {
+        syncedCount++;
+        // Check twice to ensure stable sync state
+        if (syncedCount >= 2) resolve(undefined);
+        else setTimeout(checkSync, 50);
+    } else {
+        setTimeout(checkSync, 50);
+    }
+};
+checkSync();
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:24:setTimeout
@@ -2199,18 +2274,18 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `setTimeout(checkSync, 50);`
 
 **Context**:
-```
-                    syncedCount++;
-                    // Check twice to ensure stable sync state
-                    if (syncedCount >= 2) resolve(undefined);
-                    else setTimeout(checkSync, 50);
-                } else {
-                    setTimeout(checkSync, 50);
-                }
-            };
-            checkSync();
-        });
 
+```
+            syncedCount++;
+            // Check twice to ensure stable sync state
+            if (syncedCount >= 2) resolve(undefined);
+            else setTimeout(checkSync, 50);
+        } else {
+            setTimeout(checkSync, 50);
+        }
+    };
+    checkSync();
+});
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:33:setTimeout
@@ -2221,6 +2296,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 500));`
 
 **Context**:
+
 ```
         });
 
@@ -2243,6 +2319,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
+
 ```
         let received = false;
         for (let i = 0; i < 20; i++) {
@@ -2265,6 +2342,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `await new Promise(r => setTimeout(r, 0));`
 
 **Context**:
+
 ```
         logger.debug("Received:", received);
         expect(received).toBe(true);
@@ -2274,7 +2352,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
         await new Promise(r => setTimeout(r, 0));
     });
 });
-
 ```
 
 ### connectionSharedSetup.spec.ts:134:setTimeout
@@ -2285,6 +2362,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 - **Code**: `const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));`
 
 **Context**:
+
 ```
 };
 
@@ -2307,6 +2385,7 @@ describe("yjs connection: shared provider setup", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should wait for sync event if not synced", async () => {
             const persistence: MockPersistence = {
@@ -2329,6 +2408,7 @@ describe("yjs connection: shared provider setup", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
+
 ```
         it("should handle multiple calls to waitForSync", async () => {
             const persistence: MockPersistence = {
@@ -2524,4 +2604,3 @@ These are pollings executed only in test environments.
 ## Necessary Polling
 
 These are pollings with clear purposes and should not be removed.
-
