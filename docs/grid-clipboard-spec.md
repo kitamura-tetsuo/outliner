@@ -12,10 +12,16 @@ a proposal and are **not** implemented; they answer four open questions:
 
 The short answer, and the rule the rest of this document derives:
 
-> **Copying inward carries meaning; copying outward carries appearance.**
-> Inside Outliner a Grid copy is a copy of the _view_, and the database follows
-> only when the view cannot reach the original. Outside Outliner a Grid copy is
-> the rendered result — a table of cells, not a reference to anything.
+> **Wherever a Grid is pasted, it shows the values it showed when it was copied.**
+> What varies with distance is not the data but the _liveness_: in its own
+> project the paste is another live view of one database; in another project it
+> is an independent snapshot, data and all; in another application it is dead
+> cells.
+
+The user does not experience "project" as a storage boundary. They copied a grid
+with numbers in it, and a paste that produces the same grid with no numbers is
+wrong in the same way — and for the same reason — as a paste into Excel that
+produces the word `Sales`. Both are the app showing its own seams.
 
 ## 1. A Grid is a view; the database is somewhere else
 
@@ -81,38 +87,59 @@ exists to prevent. If a user drops a second Grid block on another page, they
 want to _see_ the sales table there, not to fork it.
 
 Right: the cross-project rule's _shape_. A shared binding is unavailable for the
-reason in §1, so structure-only is the honest maximum.
+reason in §1, so an independent clone is the only structure available.
 
-Thin, and the subject of the rest of this document:
+Wrong, and the subject of the rest of this document:
 
+- **The cross-project clone arrives empty.** This is the central defect. A
+  shared binding being impossible says nothing about whether the _rows_ should
+  travel, and the code conflated the two: because the destination could not
+  point at the source database, it also declined to copy anything out of it.
+  Those are separate questions, and the answer to the second is yes. §4.
+- **The external representation is close to useless.** A user looking at 200
+  rows of numbers copies them and gets the word `Sales`. §7. Same defect, one
+  boundary further out.
 - **The mode is chosen by the destination, never by the user.** Duplicating a
   table to fork it — same schema, same query, own rows — is a real need with no
-  gesture at all today. Neither is carrying rows across projects.
-- **Empty is a decision presented as a fact.** A cross-project paste silently
-  produces an empty grid. Nothing says the rows were dropped rather than lost.
-- **The external representation is close to useless.** A user looking at 200
-  rows of numbers copies them and gets the word `Sales`. §7.
+  gesture at all today. §5.
 
-## 4. Answer to Q1 — it is a view copy, and it should stay one
+## 4. Answer to Q1 — the question hides two axes, and they have different answers
 
-The default must remain the view: copy the item, keep it pointing at the same
-database when it can, and clone the database only when the pointer cannot
-survive the trip. Two reasons beyond §3.
+"View copy or database copy?" reads as one question but is two, and today's
+behavior comes from answering the first and letting the answer fall through to
+the second.
 
-**The database is not inside the view.** The grid on screen is one query result
-over a relation that may join several tables and the reserved `outline_items`
-relation. "Copy this Grid's database" is not a well-formed instruction whenever
-the query spans more than one relation, and it never means "copy what I can
-see". Copying the view is the only interpretation that is always well-formed.
+**Axis 1 — what object is copied?** The view. The user selected lines of an
+outline; the thing in the selection is a host item that points at a table. This
+is not a close call: the grid on screen is one query result over relations that
+may include several tables and the reserved `outline_items`, so "copy this
+Grid's database" is not even well-formed whenever the query spans more than one
+relation. Every other block in the same selection copies its appearance and its
+identity rather than the storage behind it, and the Grid should not be the
+exception.
 
-**The gesture is an outliner gesture.** A Grid is copied by selecting lines of
-an outline, along with the text items around it. The selection means "these
-blocks of my document", and every other block in that selection copies its
-appearance and its identity, not the storage behind it.
+**Axis 2 — does the destination share the source database, or get its own?**
+This is decided by the destination, and it is the only thing the destination
+decides:
 
-Where the pointer cannot survive — a different project — the fallback ranking
-is: clone the structure (today), then degrade to readable text (today), and
-never invent a shared binding across projects.
+- **Same project** — it shares. A second live view of one database, because the
+  binding is portable and two databases meaning the same thing is the second
+  source of truth `docs/crdt-sql-architecture.md` exists to prevent.
+- **Another project** — it gets its own, **populated**. A shared binding is
+  unavailable (§1), so the destination needs a database of its own; the values
+  are what the user copied, so they are copied into it.
+- **Another application** — it gets no database at all, only the values as
+  cells (§7).
+
+The error in today's implementation is that axis 2's second row was answered
+"gets its own, empty". Nothing justifies the "empty": the impossibility of
+sharing a room is a fact about `tableDocGuid`, not a reason to withhold rows the
+user is looking at and has full access to. Read down that list and the copied
+values survive every step; only the liveness decays.
+
+The fallback ranking when a populated clone cannot be built is unchanged: clone
+the structure without rows, then degrade to readable text, and never invent a
+shared binding across projects.
 
 ## 5. Answer to Q2 — yes, but the choice belongs to paste, not to copy
 
@@ -131,24 +158,33 @@ obvious design and the wrong one:
 At paste time all the information exists at once — the payload, the destination
 project, and whether the source is still reachable. So:
 
-**Default paste (`Ctrl/Cmd+V`) keeps today's rule** and gains nothing to
-configure: same project → another view; other project → independent clone.
+**Default paste (`Ctrl/Cmd+V`) follows §4** and has nothing to configure: same
+project → another view; other project → independent clone _with its data_.
+Either way the user sees the values they copied, which is why the default needs
+no decision from them.
 
 **Paste Special (`Ctrl/Cmd+Shift+V`) offers the variants the destination can
 actually honor**, and lists only those:
 
-| Variant                      | Same project | Other project                 | Result                            |
-| ---------------------------- | ------------ | ----------------------------- | --------------------------------- |
-| Another view                 | ✅ default   | ✗ impossible (§1)             | second host, one database         |
-| Independent copy (structure) | ✅ new       | ✅ default                    | fresh table, schema + UI, no rows |
-| Independent copy with data   | ✅ new       | ✅ new, source-reachable only | fresh table, rows copied once     |
-| Values only                  | ✅ new       | ✅ new                        | plain items / text, no table      |
+| Variant                    | Same project | Other project     | Result                            |
+| -------------------------- | ------------ | ----------------- | --------------------------------- |
+| Another view               | ✅ default   | ✗ impossible (§1) | second host, one database         |
+| Independent copy with data | ✅ new       | ✅ default        | fresh table, rows copied once     |
+| Independent copy, no data  | ✅ new       | ✅ new            | fresh table, schema + UI, no rows |
+| Values only                | ✅ new       | ✅ new            | plain items / text, no table      |
+
+Note what moved: "no data" is no longer the cross-project default, it is the
+opt-out — the variant for someone who wants the table as a _template_. That is a
+real want, and it is now stated as one instead of being imposed on everybody.
 
 An unavailable variant is shown disabled with its reason, not hidden: "Another
 view — the source table belongs to another project" teaches the model in §1
 better than any documentation does.
 
-### 5.1 "With data" must not put the data in the clipboard
+### 5.1 The data must not travel through the clipboard
+
+This section now governs the _default_ cross-project paste, not an opt-in
+variant, so its failure modes are on everybody's path.
 
 The tempting implementation — serialize Data Storage into the payload — should
 be rejected:
@@ -161,10 +197,17 @@ be rejected:
 
 Instead, keep the clipboard carrying **references and portable structure only**,
 which is what it carries today, and resolve rows at paste time from the live
-source: the payload already names `sourceProjectId` and `sourceTableId`, so a
-"with data" paste loads that project's table subdoc — through the same
-permission path as opening the project — and copies Data Storage into the freshly
-created destination table.
+source: the payload already names `sourceProjectId` and `sourceTableId`, so the
+paste loads that project's table subdoc — through the same permission path as
+opening the project — and copies Data Storage into the freshly created
+destination table.
+
+This is also what keeps the promise honest at the size where it would otherwise
+break. The external representation in §7 has to be capped, because a system
+clipboard is a bad place for a hundred thousand rows. A paste that reads the
+source subdoc directly has no such ceiling: the cross-project clone carries the
+whole table however large it is, and the cap in §7 stays confined to the one
+destination that cannot do better.
 
 This inherits the right failure modes for free. The source is unreachable —
 the user lost access, or is on another device where the project is not
@@ -194,34 +237,78 @@ The binding is portable, so the default is a second live view: same `tableId`,
 same rows, edits in either grid visible in both. This already works and should
 not change.
 
-What is missing is the fork: Paste Special → "Independent copy". Within a
-project this is the cheapest possible variant to implement, because the source
-table is in the same doc the paste is writing to — no cross-project loading, no
-permission question, and `importTableStructures` already does every hard part
-(SQL name conflict rewriting, dependency grouping, PGlite validation, atomic
-group commit). A same-project structure clone is that function applied with the
-source project as the destination.
+What is missing is the fork: Paste Special → "Independent copy with data", the
+same operation §6.2 performs by default, aimed back at the project it came
+from. Within a project it is the cheapest variant to build, because the source
+table is in the same doc the paste is writing to — the rows need no
+cross-project load and raise no permission question — and
+`importTableStructures` already does every hard part (SQL name conflict
+rewriting, dependency grouping, PGlite validation, atomic group commit). A
+same-project clone is that function applied with the source project as the
+destination, plus the row copy.
 
 ### 6.2 Across projects
 
-Structure clones as today, with three semantics worth stating explicitly because
-none of them is obvious to the user pasting:
+An independent clone, populated, built from the **transitive closure** of what
+the copied Grid needs.
 
-**Reserved relations rebind, and that is intended.** `outline_items` is in
+**Everything the query reaches comes along — structure and rows.** A Grid's
+query may join several tables, and each of those tables' own queries may reach
+further. The set to clone is therefore the closure of the dependency graph
+rooted at the copied hosts, not just the tables the user visibly selected. This
+replaces a hard edge in today's behavior rather than only adding to it: at
+present, `rewriteTableQuerySql` reports the dependencies it finds, and any
+dependency whose table was not itself copied fails the whole group with "query
+depends on source relation … that is absent from the clipboard". So copying one
+Grid that joins two tables fails today unless the user happened to also select
+the other table's host. Under the closure rule it succeeds, because the
+dependency is collected whether or not a host for it was in the selection.
+
+The closure is computed at copy time for structure — `listTables` maps a
+dependency's SQL name back to its `tableId`, and `exportTableStructures` already
+takes an arbitrary id set — and resolved at paste time for rows, per §5.1.
+
+**Rows mean the whole table, not the visible result.** The clone copies each
+dependency's Data Storage, not the rows the query returned. Copying only the
+result would mean inventing a schema for it, and the moment the query aggregates
+or joins, the pasted grid could not re-run its own query. Copying the underlying
+tables lets the destination re-run the original query and reach the original
+numbers, which is the actual promise. ("Give me just the result, flattened" is a
+legitimate but different want; it is the "Values only" variant in §5.)
+
+**The user should be told what came along.** A closure can be much larger than
+the selection, and the destination may be shared with people the source project
+is not — pasting is the user's decision to make, exactly as pasting into another
+app is, but it must not be an invisible one. §6.3.
+
+Three further semantics, none of them obvious to the user pasting:
+
+**Reserved relations rebind, and this is the one place the values change.**
+`outline_items` is in
 `RESERVED_RELATION_NAMES`, so `rewriteTableQuerySql` neither rewrites it nor
 records it as a clipboard dependency
 (`client/src/services/yjstable/tableSqlRewrite.ts:410`). A query over
 `outline_items` therefore clones successfully and then reads the _destination_
-project's items. This is the correct meaning — the relation is a
-system-defined projection of whatever project it is evaluated in, so a task view
-pasted into another project should show that project's tasks. But the numbers
-change on paste, and a user who copied a filled dashboard and received a filled
-_different_ dashboard deserves to be told which relations rebound.
+project's items. This is the correct meaning — the relation is a system-defined
+projection of whatever project it is evaluated in, so a task view pasted into
+another project should show that project's tasks — and it cannot be otherwise,
+since the relation is not a table and has no Data Storage to bring along.
 
-**Copied tables that reference each other travel as a unit.** Dependency groups
-succeed or fail together and a group whose query references a relation that was
-not copied fails as a group. Independent groups still land. So a partial success
-is a normal outcome, and its report has to name the tables that did not make it.
+It is therefore the single exception to the rule at the top of this document.
+Everywhere else the pasted Grid shows the values that were copied; a Grid
+reading `outline_items` shows the destination's items instead, and a user who
+copied a filled dashboard and received a filled _different_ dashboard has to be
+told which relations rebound. This is not a defect to fix — the alternative
+would be cloning the source project's outline into the destination — but it is
+the one case where the report in §6.3 is mandatory rather than merely good
+manners.
+
+**Groups still succeed or fail together.** Dependency groups are validated in
+PGlite and committed atomically, so a group whose SQL does not survive rewriting
+is skipped whole while independent groups still land. With the closure rule the
+common cause of failure — a dependency that was never copied — is gone, but
+partial success remains a normal outcome and its report has to name what did not
+make it.
 
 **Names are rewritten, not preserved.** A destination that already has `sales`
 receives `sales_2` (`deriveSqlName`), and the clone's own query is rewritten to
@@ -231,14 +318,19 @@ rather than discovered later in a query editor.
 
 ### 6.3 Reporting, in both cases
 
-Every non-default outcome above needs to reach the user at paste time; today
-they are silent. One transient summary on the paste covers all of them:
+Every outcome above needs to reach the user at paste time; today they are all
+silent. One transient summary on the paste covers them:
 
-- _n_ Grids pasted as new independent tables (rows not copied)
+- `Q3 report` pasted as an independent copy, with 1,240 rows
+- also copied 3 tables its query depends on: `sales`, `regions`, `fx_rates`
 - `sales` was renamed to `sales_2` in this project
-- `Q3 report` could not be pasted: its query depends on a table that was not
-  copied
-- This Grid now reads this project's outline items
+- `Headcount` was pasted without its rows: the source project is not available
+- `Open tasks` now reads this project's outline items
+
+The second and last lines are the ones that earn this feature. A closure paste
+creates tables the user did not select, and a rebound `outline_items` changes
+the numbers under a grid that otherwise looks identical — both are correct
+behavior that is indefensible if it happens silently.
 
 ## 7. Answer to Q4 — outside the app, a Grid is its rendered result
 
@@ -321,8 +413,12 @@ requires moving that state onto the host item, which is a larger change to the
 table model and not part of this spec. Until then, "another view" and "the same
 grid again" are the same thing.
 
-**8.2 Cross-project shared tables.** §1. Not a missing feature; a deliberate
-consequence of deriving the table room from the project room.
+**8.2 Cross-project shared tables.** §1. Not a missing feature and not on the
+roadmap: a deliberate consequence of deriving the table room from the project
+room, and it would have to answer who may read the shared room before it could
+be designed at all. Note that §4 does not soften this — a populated clone is the
+opposite of sharing. The rows are copied once, at paste time, and the two tables
+diverge from that instant.
 
 **8.3 Importing external tabular data as a Grid.** Pasting TSV or an HTML
 `<table>` from another app and inferring a schema is a real feature and a
@@ -334,26 +430,35 @@ cross-project one degrades to readable text.
 
 ## 9. If this is implemented
 
-Order, cheapest and most valuable first:
+The two default-path defects first — a wrong default is worse than a missing
+gesture, because nobody opts into it:
 
-1. **§7, the external representation.** No data model change, no new gesture,
-   and it fixes the most visible defect. Tests: a TSV `text/plain` and an HTML
-   `<table>` for a copied Grid, honoring hidden columns and column order; the
-   §7.1 quoting rule, for a cell and a column label each containing a tab, a
-   newline and a double quote, asserted to survive as one cell; a null and an
-   empty string both emitting an empty cell; the unmaterialized fallback; a mixed
-   text + Grid selection.
-2. **§6.3, paste-time reporting.** The information already exists —
+1. **§4 and §5.1, the populated cross-project clone.** The headline correction:
+   a cross-project paste stops arriving empty. Tests: rows present and equal to
+   the source after a cross-project paste; the two tables independent afterwards
+   (an edit on either side is invisible to the other); a reachable but empty
+   source reported as a successful zero-row copy rather than a degradation; an
+   unreachable source degrading to structure-only with a message; no row data
+   present in any clipboard MIME type at any size.
+2. **§6.2, the dependency closure.** Tests: copying one Grid whose query joins a
+   table the user did not select clones both, with rows — the case that fails
+   outright today; a chain three tables deep; a query over `outline_items`
+   cloning without it and rebinding to the destination.
+3. **§7, the external representation.** No data model change, no new gesture,
+   and it fixes the most visible defect at the outer boundary. Tests: a TSV
+   `text/plain` and an HTML `<table>` for a copied Grid, honoring hidden columns
+   and column order; the §7.1 quoting rule, for a cell and a column label each
+   containing a tab, a newline and a double quote, asserted to survive as one
+   cell; a null and an empty string both emitting an empty cell; the
+   unmaterialized fallback; a mixed text + Grid selection.
+4. **§6.3, paste-time reporting.** Some of the information already exists —
    `TableCloneResult.failures` is computed and discarded at
-   `KeyEventHandler.ts:2686`. Tests: a rename, a failed dependency group, and a
-   rebound `outline_items` each reach the user.
-3. **§5, Paste Special.** New gesture, new menu, variant availability per
-   destination. Tests: each cell of the §5 matrix, including the disabled
+   `KeyEventHandler.ts:2686`. Tests: a closure that pulled in unselected tables,
+   a rename, a failed group, and a rebound `outline_items` each reach the user.
+5. **§5, Paste Special.** New gesture, new menu, variant availability per
+   destination. By this point every variant's machinery exists and only the
+   choice is missing. Tests: each cell of the §5 matrix, including the disabled
    variants and their reasons.
-4. **§5.1, "with data".** Depends on 3. Tests: rows copied once and then
-   independent; a reachable but empty source reported as a successful zero-row
-   copy, not as a degradation; an unreachable source degrading to structure-only
-   with a message; no row data present in any clipboard MIME type.
 
 Every acceptance line above belongs in
 `docs/client-features/clp-component-block-clipboard-4584c0de.yaml`, and the
