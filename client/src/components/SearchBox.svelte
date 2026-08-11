@@ -12,7 +12,6 @@ const logger = getLogger("SearchBox");
     import type { Project } from "../schema/app-schema";
     import type { ItemLike } from "../types/yjs-types";
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
-    import { onMount } from "svelte";
     import { store } from "../stores/store.svelte";
     import { iterateItems } from "../utils/itemTraversal";
 
@@ -264,12 +263,6 @@ const logger = getLogger("SearchBox");
         }
     });
 
-    // Debug mount to verify presence during E2E and schedule micro-sync ticks
-    onMount(() => {
-        // schedule a few ticks to help early reactivity with global generalStore
-        for (let i = 0; i < 8; i++)
-            setTimeout(() => (refreshTick += 1), i * 50);
-    });
 </script>
 
 <div class="page-search-box">
