@@ -166,12 +166,25 @@ source: the payload already names `sourceProjectId` and `sourceTableId`, so a
 permission path as opening the project — and copies Data Storage into the freshly
 created destination table.
 
-This inherits the right failure modes for free. The source is unreachable
-because the user lost access, is on another device, or the table was emptied →
-the paste completes as a structure-only clone and says so. Access is enforced by
-the room, not by whoever holds the clipboard string. And the copy is a one-time
-snapshot at paste time, not a live link — which is the whole meaning of
-"independent copy".
+This inherits the right failure modes for free. The source is unreachable —
+the user lost access, or is on another device where the project is not
+available — → the paste completes as a structure-only clone and says so. Access
+is enforced by the room, not by whoever holds the clipboard string. And the copy
+is a one-time snapshot at paste time, not a live link — which is the whole
+meaning of "independent copy".
+
+**Reachability is the only discriminator, and an empty source is a success.** A
+reachable table holding zero rows is a complete zero-row copy, reported as an
+ordinary success — not a degradation. Emptied-after-copy is deliberately _not_ a
+distinguishable case: the payload carries no row count or revision to compare
+against, and adding one would only let the paste report a difference it cannot
+act on. Under snapshot semantics the rows that exist when the user pastes are by
+definition the right rows, so the two outcomes are:
+
+| At paste time | Result | Reported as |
+| --- | --- | --- |
+| Source reachable, _n_ ≥ 0 rows | fresh table with those _n_ rows | copied with data |
+| Source unreachable | fresh table, structure only | copied without data, with the reason |
 
 ## 6. Answer to Q3 — the two cases, in full
 
@@ -240,8 +253,8 @@ result, with the view's column order, column labels and hidden columns applied �
 the same list `TableGrid.svelte` renders through `effectiveColumns`.
 
 - **`text/plain`: TSV.** Header row of the visible column labels, then one line
-  per row, tab-separated. This is the universal spreadsheet contract: Excel,
-  Google Sheets and Numbers all split it into cells.
+  per row, tab-separated, with cells quoted per §7.1. This is the universal
+  spreadsheet contract: Excel, Google Sheets and Numbers all split it into cells.
 - **`text/html`: a real `<table>`.** Word, Google Docs, Notion and Excel all
   prefer the HTML flavor and render it as a table with its header row. The
   existing hidden `data-outliner-items` span stays in the same fragment
@@ -249,7 +262,31 @@ the same list `TableGrid.svelte` renders through `effectiveColumns`.
   the span, everyone else reads the table.
 - **`OUTLINER_ITEMS_MIME`: unchanged.** Bindings and portable structure, as today.
 
-Three consequences to settle:
+### 7.1 Cell serialization
+
+A cell's rendered text may itself contain a tab or a newline. Joining raw values
+with tabs and newlines would turn one such value into extra cells or extra rows —
+a corrupted paste that looks like valid data, which is the worst failure mode
+available here. Both flavors therefore need an explicit rule.
+
+**TSV.** Quote per RFC 4180 with tab as the delimiter: a cell containing a tab,
+CR, LF or a double quote is wrapped in double quotes and its own double quotes
+are doubled; every other cell is emitted raw. Excel and Google Sheets both honor
+this on paste, including a quoted cell spanning several lines. Column labels in
+the header row are quoted by the same rule — a label is user-supplied text and
+can contain the same characters.
+
+**HTML.** Cell boundaries are elements, so delimiters need no quoting; `&`, `<`
+and `>` are escaped and a newline inside a cell becomes `<br>`, matching how the
+grid renders it.
+
+**Null.** SQL `NULL` and the empty string are different values that a TSV cannot
+tell apart. Emit both as an empty cell and accept the ambiguity: the alternative
+is a sentinel that pastes into a spreadsheet as a literal word. This is a
+one-way, lossy export — §8.3 keeps the round trip out of scope, so nothing later
+has to invert it.
+
+Three further consequences to settle:
 
 **Mixed selections.** A selection of three text items and a Grid produces three
 lines and then the grid's rows. In `text/html` the text items are `<span>`s and
@@ -302,7 +339,10 @@ Order, cheapest and most valuable first:
 1. **§7, the external representation.** No data model change, no new gesture,
    and it fixes the most visible defect. Tests: a TSV `text/plain` and an HTML
    `<table>` for a copied Grid, honoring hidden columns and column order; the
-   unmaterialized fallback; a mixed text + Grid selection.
+   §7.1 quoting rule, for a cell and a column label each containing a tab, a
+   newline and a double quote, asserted to survive as one cell; a null and an
+   empty string both emitting an empty cell; the unmaterialized fallback; a mixed
+   text + Grid selection.
 2. **§6.3, paste-time reporting.** The information already exists —
    `TableCloneResult.failures` is computed and discarded at
    `KeyEventHandler.ts:2686`. Tests: a rename, a failed dependency group, and a
@@ -311,8 +351,9 @@ Order, cheapest and most valuable first:
    destination. Tests: each cell of the §5 matrix, including the disabled
    variants and their reasons.
 4. **§5.1, "with data".** Depends on 3. Tests: rows copied once and then
-   independent; an unreachable source degrading to structure-only with a
-   message; no row data present in any clipboard MIME type.
+   independent; a reachable but empty source reported as a successful zero-row
+   copy, not as a degradation; an unreachable source degrading to structure-only
+   with a message; no row data present in any clipboard MIME type.
 
 Every acceptance line above belongs in
 `docs/client-features/clp-component-block-clipboard-4584c0de.yaml`, and the
