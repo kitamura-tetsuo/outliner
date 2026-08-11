@@ -28,8 +28,15 @@ test.describe("select-all copy of a page containing a Grid, pasted across projec
         const sourceState = await readGridProjectState(page);
         expect(sourceState.tables).toHaveLength(1);
 
-        // Copy the whole page with the real keyboard shortcuts.
-        await page.locator(".outliner-item[data-item-id]").first().click();
+        // Copy the whole page with the real keyboard shortcuts. Ctrl+A covers the
+        // page regardless of where the cursor sits; address the item it starts
+        // from by data-item-id all the same.
+        const sourceAnchorId = await page.locator(".outliner-item[data-item-id]")
+            .filter({ has: page.locator(".item-text", { hasText: "Source anchor" }) })
+            .first()
+            .getAttribute("data-item-id");
+        expect(sourceAnchorId).toBeTruthy();
+        await page.locator(`.outliner-item[data-item-id="${sourceAnchorId}"]`).click();
         await page.locator("textarea.global-textarea").focus();
         await page.keyboard.press("Control+a");
         await page.keyboard.press("Control+c");
@@ -45,9 +52,16 @@ test.describe("select-all copy of a page containing a Grid, pasted across projec
             { timeout: 15000 },
         ).toBe(0);
 
+        // Resolve the anchor by its text and address it by data-item-id, so the
+        // paste target never depends on the rendered order of seeded items.
+        const anchorId = await page.locator(".outliner-item[data-item-id]")
+            .filter({ has: page.locator(".item-text", { hasText: "Destination anchor" }) })
+            .first()
+            .getAttribute("data-item-id");
+        expect(anchorId).toBeTruthy();
         await clickItemAndWaitForCursor(
             page,
-            page.locator(".outliner-item[data-item-id]").nth(1).locator(".item-content"),
+            page.locator(`.outliner-item[data-item-id="${anchorId}"] .item-content`),
         );
         await page.keyboard.press("Control+v");
 
