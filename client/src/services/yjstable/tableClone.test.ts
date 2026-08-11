@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import type { GridTableSnapshot } from "../clipboard/itemClipboard";
 import { resetPgliteForTests } from "./pgliteService";
-import { exportTableStructure, exportTableStructures, importTableStructures } from "./tableClone";
+import { copyTableData, exportTableStructure, exportTableStructures, importTableStructures } from "./tableClone";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText, tableDocGuid } from "./tableDocs";
 
 function configureUi(
@@ -217,5 +217,36 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(result.failures.host).toMatch(/absent from the clipboard/);
         expect(listTables(destination)).toEqual([]);
         expect([...destination.getSubdocs()]).toEqual([]);
+    });
+});
+
+describe("copyTableData", () => {
+    it("copies records with fresh nested maps and keeps both tables independent", () => {
+        const source = sourceProject();
+        const destinationDoc = new Y.Doc({ guid: "destination-data" });
+        const destinationId = createTable(destinationDoc, "Orders", "orders");
+        const sourceHandles = getTableHandles(source.doc, source.ordersId)!;
+        const destinationHandles = getTableHandles(destinationDoc, destinationId)!;
+
+        copyTableData(sourceHandles, destinationHandles);
+
+        expect(destinationHandles.data.toJSON()).toEqual(sourceHandles.data.toJSON());
+        expect(destinationHandles.data.get("o1")).not.toBe(sourceHandles.data.get("o1"));
+        sourceHandles.data.get("o1")!.set("amount", 99);
+        expect(destinationHandles.data.get("o1")!.get("amount")).toBe(42);
+        destinationHandles.data.get("o1")!.set("amount", 7);
+        expect(sourceHandles.data.get("o1")!.get("amount")).toBe(99);
+    });
+
+    it("treats a reachable empty source as a successful empty snapshot", () => {
+        const sourceDoc = new Y.Doc({ guid: "source-empty" });
+        const destinationDoc = new Y.Doc({ guid: "destination-empty" });
+        const source = getTableHandles(sourceDoc, createTable(sourceDoc, "Empty", "empty"))!;
+        const destination = getTableHandles(destinationDoc, createTable(destinationDoc, "Empty", "empty"))!;
+        addRecord(destination, { value: "stale" }, "stale");
+
+        copyTableData(source, destination);
+
+        expect(destination.data.size).toBe(0);
     });
 });

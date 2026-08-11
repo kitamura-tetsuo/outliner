@@ -235,6 +235,27 @@ export function getClientByProjectTitle(projectTitle: string, signal?: AbortSign
     return p;
 }
 
+/** Open an existing project by its authoritative room id. */
+export async function getClientByProjectId(projectId: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
+    if (signal?.aborted) return undefined;
+    let userId = userManager.getCurrentUser()?.id;
+    if (!userId && isTestEnvironment()) userId = "test-user-id";
+    if (!userId) return undefined;
+
+    const key = keyFor(userId, projectId);
+    const existing = registry.get(key)?.[0];
+    if (existing && !existing.isDestroyed) return existing;
+    if (existing?.isDestroyed) registry.delete(key);
+    if (signal?.aborted) return undefined;
+
+    try {
+        return await connectAndRegister(projectId, "", userId);
+    } catch (error) {
+        logger.warn({ error, projectId }, "[getClientByProjectId] Source project is unavailable");
+        return undefined;
+    }
+}
+
 async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
@@ -773,6 +794,7 @@ if (process.env.NODE_ENV === "test" && typeof window !== "undefined") {
     window.__YJS_SERVICE__ = {
         createNewProject,
         getClientByProjectTitle,
+        getClientByProjectId,
         createClient,
         cleanupClient,
     };

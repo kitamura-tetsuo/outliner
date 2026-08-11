@@ -83,6 +83,8 @@
 
     onMount(() => {
         window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
+        window.addEventListener("grid-paste-write-check", checkGridPasteWrite);
+        window.addEventListener("grid-paste-progress", showGridPasteProgress);
         try {
             logger.debug({ props: {
                 pageItem,
@@ -120,6 +122,8 @@
 
     onDestroy(() => {
         window.removeEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
+        window.removeEventListener("grid-paste-write-check", checkGridPasteWrite);
+        window.removeEventListener("grid-paste-progress", showGridPasteProgress);
     });
 
     let unsubscribeUser: (() => void) | null = null;
@@ -132,7 +136,28 @@
     let showScrollTop = $state(false);
     let mobileToolbarBottomOffset = $state(0);
     let showDeleteConfirm = $state(false);
+    let gridPasteStatus = $state("");
     let deleteConfirmItemId = $state<string | null>(null);
+
+    function checkGridPasteWrite(event: Event) {
+        if (isReadOnly) event.preventDefault();
+    }
+
+    function showGridPasteProgress(event: Event) {
+        const detail = (event as CustomEvent<{ state?: string; reason?: string; }>).detail;
+        if (detail.state === "copying") gridPasteStatus = "Copying Grid data… Press Escape to cancel.";
+        else if (detail.state === "complete-with-data") gridPasteStatus = "Grid copied with data.";
+        else if (detail.state === "complete-without-data") {
+            gridPasteStatus = `Grid copied without data: ${detail.reason ?? "source unavailable"}`;
+        } else if (detail.state === "cancelled") gridPasteStatus = "Grid paste cancelled.";
+        if (detail.state !== "copying") setTimeout(() => (gridPasteStatus = ""), 5000);
+    }
+
+    function cancelGridPasteOnEscape(event: KeyboardEvent) {
+        if (event.key === "Escape" && gridPasteStatus.startsWith("Copying Grid data")) {
+            window.dispatchEvent(new CustomEvent("grid-paste-cancel"));
+        }
+    }
 
     // Throttle scroll event to improve performance
     let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -2174,7 +2199,7 @@
 </script>
 
 
-<svelte:window onpointerdown={handleWindowPointerDown} />
+<svelte:window onpointerdown={handleWindowPointerDown} onkeydown={cancelGridPasteOnEscape} />
 
 {#key outlinerKey}
     <div
@@ -2183,6 +2208,9 @@
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
+        {#if gridPasteStatus}
+            <div class="grid-paste-status" role="status" aria-live="polite">{gridPasteStatus}</div>
+        {/if}
         {#if !isEmbedded}
             <OutlinerToolbar
                 mode="desktop"
