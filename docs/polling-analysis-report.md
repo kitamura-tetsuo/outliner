@@ -1,61 +1,38 @@
 # Polling Analysis Report
 
-Generated at: 2026-07-21T08:52:39.342Z
+Generated at: 2026-08-11T13:30:48.209Z
 
 ## Overview
 
-- Total Polling Count: 137
-- Necessary Polling: 3
-- Suspicious Polling: 104
-- Test-Only Polling: 30
+- Total Polling Count: 135
+- Necessary Polling: 0
+- Suspicious Polling: 106
+- Test-Only Polling: 29
 
 ## Suspicious Polling (Removal Candidates)
 
 These pollings may be safe to remove.
 
-### UserManager.ts:376:setTimeout
+### UserManager.ts:379:setTimeout
 
 - **File**: `/app/client/src/auth/UserManager.ts`
-- **Line**: 376
+- **Line**: 379
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-    } catch (error) {
-        // ... existing catch ...
-        // If invalid-api-key happens here, catch it?
-        // But I'm preventing it by checking isMockMode first.
-        logger.error({ error: error as Error }, "Failed to initialize auth listener");
-        setTimeout(() => {
-            this.initAuthListenerAsync();
-        }, 1000);
+        } catch (error) {
+            // ... existing catch ...
+            // If invalid-api-key happens here, catch it?
+            // But I'm preventing it by checking isMockMode first.
+            logger.error({ error: error as Error }, "Failed to initialize auth listener");
+            setTimeout(() => {
+                this.initAuthListenerAsync();
+            }, 1000);
+        }
     }
-}
-```
 
-### AliasPicker.svelte:102:setTimeout
-
-- **File**: `/app/client/src/components/AliasPicker.svelte`
-- **Line**: 102
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
-
-```
-if (aliasPickerStore.isVisible) {
-    try {
-        // First, the picker body
-        pickerElement?.focus();
-        // Next, the search input (if it exists)
-        setTimeout(() => {
-            inputElement?.focus();
-        }, 0);
-        // Sync selected index to external store
-        try { aliasPickerStore.setSelectedIndex?.(selectedIndex); } catch {}
-    } catch {}
 ```
 
 ### BacklinkPanel.svelte:35:setTimeout
@@ -66,7 +43,6 @@ if (aliasPickerStore.isVisible) {
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
-
 ```
 });
 
@@ -78,40 +54,39 @@ $effect(() => {
     }, 500);
     return () => clearTimeout(handler);
 });
+
 ```
 
-### Checklist.svelte:34:setInterval
+### Checklist.svelte:59:setTimeout
 
 - **File**: `/app/client/src/components/Checklist.svelte`
-- **Line**: 34
-- **Type**: setInterval
-- **Code**: `const interval = setInterval(() => applyAutoReset(id), 1000);`
+- **Line**: 59
+- **Type**: setTimeout
+- **Code**: `timerId = setTimeout(() => {`
 
 **Context**:
-
-```
-    const id = createChecklist(title, mode, rrule);
-    const unsubscribe = checklists.subscribe(arr => {
-        list = arr.find(l => l.id === id);
-    });
-    applyAutoReset(id);
-    const interval = setInterval(() => applyAutoReset(id), 1000);
-    return () => {
-        unsubscribe();
-        clearInterval(interval);
-    };
-});
 ```
 
-### EditorOverlay.svelte:720:setTimeout
+    const delay = getNextResetDelay(listId);
+    if (delay === null) return;
+
+    const safeDelay = Math.min(delay, 24 * 60 * 60 * 1000);
+    timerId = setTimeout(() => {
+        applyAutoReset(listId);
+        setupTimer();
+    }, safeDelay);
+}
+
+```
+
+### EditorOverlay.svelte:749:setTimeout
 
 - **File**: `/app/client/src/components/EditorOverlay.svelte`
-- **Line**: 720
+- **Line**: 749
 - **Type**: setTimeout
 - **Code**: `updatePositionMapTimer = setTimeout(() => {`
 
 **Context**:
-
 ```
 let updatePositionMapTimer: ReturnType<typeof setTimeout>;
 
@@ -119,24 +94,23 @@ let updatePositionMapTimer: ReturnType<typeof setTimeout>;
 function debouncedUpdatePositionMap() {
     clearTimeout(updatePositionMapTimer);
     updatePositionMapTimer = setTimeout(() => {
-        if (!aliasPickerStore.isVisible) updatePositionMap();
+        if (!aliasPickerStore.isVisible) {
+            updatePositionMap();
+            updateTextareaPosition();
+        }
     }, 100);
-}
-
-// Data reflection from store is guaranteed by MutationObserver and onMount initialization
 ```
 
-### EditorOverlay.svelte:793:setTimeout
+### EditorOverlay.svelte:838:setTimeout
 
 - **File**: `/app/client/src/components/EditorOverlay.svelte`
-- **Line**: 793
+- **Line**: 838
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-        treeContainer.addEventListener('scroll', debouncedUpdatePositionMap);
+        window.visualViewport.addEventListener("scroll", handleVisualViewportScroll);
     }
 
 
@@ -149,84 +123,58 @@ function debouncedUpdatePositionMap() {
 });
 ```
 
-### EditorOverlay.svelte:1408:setTimeout
+### EditorOverlay.svelte:1487:setTimeout
 
 - **File**: `/app/client/src/components/EditorOverlay.svelte`
-- **Line**: 1408
+- **Line**: 1487
 - **Type**: setTimeout
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
-
 ```
-    } catch {
-        // Intentionally empty - catch potential errors without further handling
-    }
-});
-updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
-const timer = setTimeout(() => {
-    mo?.disconnect();
-    node.classList.remove('selection-box-updating');
-    updatingFlags[key] = false;
-    try {
-        if (typeof window !== 'undefined' && window.DEBUG_MODE) {
+            } catch {
+                // Intentionally empty - catch potential errors without further handling
+            }
+        });
+        updatingFlags[key] = true; // Side effect for debugging (UI does not depend on this)
+        const timer = setTimeout(() => {
+            mo?.disconnect();
+            node.classList.remove('selection-box-updating');
+            updatingFlags[key] = false;
+            try {
+                if (typeof window !== 'undefined' && window.DEBUG_MODE) {
 ```
 
-### GlobalTextArea.svelte:61:requestAnimationFrame
+### GlobalTextArea.svelte:40:requestAnimationFrame
 
 - **File**: `/app/client/src/components/GlobalTextArea.svelte`
-- **Line**: 61
+- **Line**: 40
 - **Type**: requestAnimationFrame
-- **Code**: `requestAnimationFrame(() => {`
+- **Code**: `selectionSyncRafId = requestAnimationFrame(() => {`
 
 **Context**:
+```
+    if (store.suppressSelectionResync) return;
+
+    if (selectionSyncRafId !== null) {
+        cancelAnimationFrame(selectionSyncRafId);
+    }
+    selectionSyncRafId = requestAnimationFrame(() => {
+        selectionSyncRafId = null;
+        store.syncSelectionFromTextarea();
+    });
+}
 
 ```
-    if (textareaRef) {
-        textareaRef.focus();
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Initial focus set on mount, activeElement:", document.activeElement?.tagName);
 
-        // Additional attempts to ensure focus
-        requestAnimationFrame(() => {
-            if (textareaRef) {
-                textareaRef.focus();
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
-
-                setTimeout(() => {
-```
-
-### GlobalTextArea.svelte:66:setTimeout
+### GlobalTextArea.svelte:223:setTimeout
 
 - **File**: `/app/client/src/components/GlobalTextArea.svelte`
-- **Line**: 66
+- **Line**: 223
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
-```
-        requestAnimationFrame(() => {
-            if (textareaRef) {
-                textareaRef.focus();
-                if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: RAF focus set, activeElement:", document.activeElement?.tagName);
-
-                setTimeout(() => {
-                    if (textareaRef) {
-                        textareaRef.focus();
-                        const isFocused = document.activeElement === textareaRef;
-                        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea: Final focus set, focused:", isFocused);
-                    }
-```
-
-### GlobalTextArea.svelte:227:setTimeout
-
-- **File**: `/app/client/src/components/GlobalTextArea.svelte`
-- **Line**: 227
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
-
 ```
         }
     }
@@ -237,19 +185,40 @@ const timer = setTimeout(() => {
             if (textareaRef && !aliasPickerStore.isVisible) {
                 // Double check current active element is not an interactive input/button
                 const activeEl = document.activeElement;
-                if (activeEl) {
+                if (activeEl && !keepsEditorFocus(activeEl)) {
                     const activeTag = activeEl.tagName.toLowerCase();
 ```
 
-### GraphView.svelte:248:setTimeout
+### GraphView.svelte:226:setTimeout
 
 - **File**: `/app/client/src/components/GraphView.svelte`
-- **Line**: 248
+- **Line**: 226
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
+```
+                    },
+                },
+            ],
+        });
 
+        setTimeout(() => {
+            if (graphDiv) {
+                const canvas = graphDiv.querySelector("canvas");
+                if (canvas) {
+                    canvas.setAttribute("role", "img");
+                    canvas.setAttribute(
+```
+
+### GraphView.svelte:274:setTimeout
+
+- **File**: `/app/client/src/components/GraphView.svelte`
+- **Line**: 274
+- **Type**: setTimeout
+- **Code**: `setTimeout(() => {`
+
+**Context**:
 ```
         });
 
@@ -264,82 +233,58 @@ const timer = setTimeout(() => {
         // Also save on drag end
 ```
 
-### LoginStatusIndicator.svelte:118:setTimeout
-
-- **File**: `/app/client/src/components/LoginStatusIndicator.svelte`
-- **Line**: 118
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => signOutBtn?.focus(), 0);`
-
-**Context**:
-
-```
-function openMenu() {
-    if (!isAuthenticated) return;
-    isMenuOpen = true;
-    updateMenuPosition();
-    setTimeout(() => signOutBtn?.focus(), 0);
-    attachGlobalHandlers();
-}
-
-function closeMenu() {
-    isMenuOpen = false;
-```
-
-### OutlinerBase.svelte:71:setTimeout
+### OutlinerBase.svelte:63:setTimeout
 
 - **File**: `/app/client/src/components/OutlinerBase.svelte`
-- **Line**: 71
+- **Line**: 63
 - **Type**: setTimeout
-- **Code**: `previewUpdateTimeout = setTimeout(() => {`
+- **Code**: `resetTimeout = setTimeout(updateResetting, 60000 - (now - resetStartedAt));`
 
 **Context**:
-
 ```
-        const currentDoc = effectivePageItem.ydoc;
-        if (!currentDoc) return;
+            const now = Date.now();
+            clearTimeout(resetTimeout);
 
-        const updatePreviewDebounced = () => {
-            clearTimeout(previewUpdateTimeout);
-            previewUpdateTimeout = setTimeout(() => {
-                if (!effectivePageItem) return;
-                try {
-                    const newPreview = extractPagePreview(effectivePageItem);
-                    const oldPreview = effectivePageItem.preview;
-                    if (JSON.stringify(newPreview) !== JSON.stringify(oldPreview)) {
+            if (isResetting && resetStartedAt && now - resetStartedAt < 60000) {
+                isServerResetting = true;
+                resetTimeout = setTimeout(updateResetting, 60000 - (now - resetStartedAt));
+            } else {
+                isServerResetting = false;
+            }
+        };
+        updateResetting();
 ```
 
-### OutlinerItem.svelte:219:setTimeout
+### OutlinerItem.svelte:139:setTimeout
 
 - **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 219
+- **Line**: 139
 - **Type**: setTimeout
-- **Code**: `const t = setTimeout(() => {`
+- **Code**: `setTimeout(() => { renameError = null; }, 3000);`
 
 **Context**:
-
-```
-// findReferringAliases when there is actual activity, significantly reducing idle CPU usage.
-let debouncedTreeVersion = $state(0);
-$effect(() => {
-    // Using pagesVersion to track global structure changes
-    const v = generalStore.pagesVersion;
-    const t = setTimeout(() => {
-        debouncedTreeVersion = v;
-    }, 500);
-    return () => clearTimeout(t);
-});
 ```
 
-### OutlinerItem.svelte:771:requestAnimationFrame
+        const onRenameError = (e: Event) => {
+            const ce = e as CustomEvent;
+            if (ce.detail?.itemId === model.id) {
+                renameError = ce.detail.message;
+                setTimeout(() => { renameError = null; }, 3000);
+            }
+        };
+        window.addEventListener("page-rename-error", onRenameError);
+        return () => {
+            window.removeEventListener("page-rename-error", onRenameError);
+```
+
+### OutlinerItem.svelte:816:requestAnimationFrame
 
 - **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 771
+- **Line**: 816
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
     // Set focus to global textarea (highest priority)
     textareaEl.focus();
@@ -348,42 +293,20 @@ $effect(() => {
     // Additional attempts to ensure focus
     requestAnimationFrame(() => {
         textareaEl.focus();
-
-        setTimeout(() => {
-            textareaEl.focus();
-```
-
-### OutlinerItem.svelte:774:setTimeout
-
-- **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 774
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
-
-```
-    // Additional attempts to ensure focus
-    requestAnimationFrame(() => {
-        textareaEl.focus();
-
-        setTimeout(() => {
-            textareaEl.focus();
-
-        }, 10);
     });
     // Synchronize text content
+    textareaEl.value = textString;
+    textareaEl.focus();
 ```
 
-### OutlinerItem.svelte:1001:setTimeout
+### OutlinerItem.svelte:1195:setTimeout
 
 - **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 1001
+- **Line**: 1195
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
             model.original.updateText(newText);
 
@@ -398,15 +321,14 @@ $effect(() => {
                             // Require app-schema dynamically to avoid circular dep issues in store or import Item from app-schema
 ```
 
-### OutlinerItem.svelte:1098:requestAnimationFrame
+### OutlinerItem.svelte:1296:requestAnimationFrame
 
 - **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 1098
+- **Line**: 1296
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
         if (textarea) {
             // Multiple attempts to ensure focus is set
@@ -415,44 +337,42 @@ $effect(() => {
             // requestAnimationFrame
             requestAnimationFrame(() => {
                 textarea.focus();
-
-                // Use setTimeout as well for further certainty
-                setTimeout(() => {
-                    textarea.focus();
+            });
+        }
+        else {
+            logger.warn({ error: new Error("Global textarea not found") }, "Global textarea not found");
 ```
 
-### OutlinerItem.svelte:1102:setTimeout
+### OutlinerItemContextMenu.svelte:34:setTimeout
 
-- **File**: `/app/client/src/components/OutlinerItem.svelte`
-- **Line**: 1102
+- **File**: `/app/client/src/components/OutlinerItemContextMenu.svelte`
+- **Line**: 34
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-            // requestAnimationFrame
-            requestAnimationFrame(() => {
-                textarea.focus();
-
-                // Use setTimeout as well for further certainty
-                setTimeout(() => {
-                    textarea.focus();
-
-                }, 10);
-            });
+                y = window.innerHeight - rect.height - 10;
+            }
         }
+
+        // Focus the first item on mount
+        setTimeout(() => {
+            const firstButton = menuRef?.querySelector("button");
+            if (firstButton) firstButton.focus();
+        }, 0);
+    });
+
 ```
 
-### OutlinerTree.svelte:99:requestAnimationFrame
+### OutlinerTree.svelte:142:requestAnimationFrame
 
 - **File**: `/app/client/src/components/OutlinerTree.svelte`
-- **Line**: 99
+- **Line**: 142
 - **Type**: requestAnimationFrame
 - **Code**: `scrollTimeout = requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
     // Throttle scroll event to improve performance
     let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -467,38 +387,14 @@ $effect(() => {
         });
 ```
 
-### OutlinerTree.svelte:900:setTimeout
-
-- **File**: `/app/client/src/components/OutlinerTree.svelte`
-- **Line**: 900
-- **Type**: setTimeout
-- **Code**: `setTimeout(focusNewItem, 10);`
-
-**Context**:
-
-```
-                        `Sent finish-edit event to active item ${activeItem}`,
-                    );
-                }
-
-                // Delay slightly before focusing new item to ensure processing order
-                setTimeout(focusNewItem, 10);
-            } else {
-                // Focus immediately if active element not found
-                focusNewItem();
-            }
-        } else {
-```
-
-### ProjectSelector.svelte:163:setTimeout
+### ProjectSelector.svelte:115:setTimeout
 
 - **File**: `/app/client/src/components/ProjectSelector.svelte`
-- **Line**: 163
+- **Line**: 115
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
                     "password",
                 );
@@ -513,174 +409,190 @@ $effect(() => {
                         { count: cnt },
 ```
 
-### SearchBox.svelte:66:setTimeout
+### SearchBox.svelte:46:setTimeout
 
 - **File**: `/app/client/src/components/SearchBox.svelte`
-- **Line**: 66
+- **Line**: 46
 - **Type**: setTimeout
 - **Code**: `const handler = setTimeout(() => {`
 
 **Context**:
+```
+    $effect(() => {
+        if (!query) {
+            debouncedQuery = "";
+            return;
+        }
+        const handler = setTimeout(() => {
+            debouncedQuery = query;
+        }, 200);
+        return () => clearTimeout(handler);
+    });
 
 ```
-$effect(() => {
-    if (!query) {
-        debouncedQuery = "";
-        return;
-    }
-    const handler = setTimeout(() => {
-        debouncedQuery = query;
-    }, 200);
-    return () => clearTimeout(handler);
-});
-```
 
-### SearchBox.svelte:363:setTimeout
+### SearchBox.svelte:311:setTimeout
 
 - **File**: `/app/client/src/components/SearchBox.svelte`
-- **Line**: 363
+- **Line**: 311
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-    if (e.target && "value" in e.target && e.target.value !== query) {
-        query = e.target.value as string;
+            if (e.target && "value" in e.target && e.target.value !== query) {
+                query = e.target.value as string;
+            }
+        }}
+        onblur={() => {
+            setTimeout(() => {
+                isFocused = false;
+            }, 200);
+        }}
+        oninput={() => {
+            shouldRefocus = true;
+```
+
+### CalendarView.svelte:272:setTimeout
+
+- **File**: `/app/client/src/components/calendar/CalendarView.svelte`
+- **Line**: 272
+- **Type**: setTimeout
+- **Code**: `requeryTimer = setTimeout(() => {`
+
+**Context**:
+```
     }
-}}
-onblur={() => {
-    setTimeout(() => {
-        isFocused = false;
-    }, 200);
-}}
-oninput={() => {
-    shouldRefocus = true;
+}
+
+function scheduleRequery() {
+    if (requeryTimer !== undefined) clearTimeout(requeryTimer);
+    requeryTimer = setTimeout(() => {
+        requeryTimer = undefined;
+        void runQuery();
+    }, REQUERY_DEBOUNCE_MS);
+}
+
 ```
 
-### Cursor.ts:162:requestAnimationFrame
+### Cursor.ts:249:requestAnimationFrame
 
 - **File**: `/app/client/src/lib/Cursor.ts`
-- **Line**: 162
+- **Line**: 249
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
             if (textarea) {
                 // Multiple attempts to ensure focus is set
                 textarea.focus();
 
-                // Set focus using requestAnimationFrame
+                // Set focus using requestAnimationFrame and tick
                 requestAnimationFrame(() => {
                     textarea.focus();
 
-                    // Use setTimeout as well for extra reliability
-                    setTimeout(() => {
+                    tick().then(() => {
                         textarea.focus();
+
 ```
 
-### Cursor.ts:166:setTimeout
+### Cursor.ts:689:setTimeout
 
 - **File**: `/app/client/src/lib/Cursor.ts`
-- **Line**: 166
+- **Line**: 689
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-                // Set focus using requestAnimationFrame
-                requestAnimationFrame(() => {
-                    textarea.focus();
-
-                    // Use setTimeout as well for extra reliability
-                    setTimeout(() => {
-                        textarea.focus();
-
-                        // Debug information
-                        if (
-                            typeof window !== "undefined"
-```
-
-### Cursor.ts:596:setTimeout
-
-- **File**: `/app/client/src/lib/Cursor.ts`
-- **Line**: 596
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
-
-```
-        // Set selection range for global textarea
         this.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
 
         // Wait a bit for DOM reflection to ensure selection is correctly created
-        if (typeof window !== "undefined") {
-            setTimeout(() => {
-                if (typeof document === "undefined") return;
-                const selectionElements = document.querySelectorAll(".editor-overlay .selection");
+        if (typeof window !== "undefined" && hasSelection) {
+            tick().then(() => {
+                setTimeout(() => {
+                    if (typeof document === "undefined") return;
+                    const selectionElements = document.querySelectorAll(".editor-overlay .selection");
 
-                // Reset selection if not displayed
-                if (selectionElements.length === 0) {
+                    // Reset selection if not displayed
+                    if (selectionElements.length === 0) {
 ```
 
-### KeyEventHandler.ts:728:setTimeout
+### KeyEventHandler.ts:345:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 728
+- **Line**: 345
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-// Since Enter's normal processing (newline/new item addition etc.) should be complete here,
-// open AliasPicker afterwards based on pre-detection flag
-if (shouldOpenAliasPickerAfterDefault) {
-    try {
-        setTimeout(() => {
-            try {
-                const w: unknown = typeof window !== "undefined"
-                    ? (window as Window & typeof globalThis & { [key: string]: unknown; })
-                    : null;
-                const tryOpen = (attempt = 0) => {
+            const localSelection = Object.values(store.selections).find(s => (s.userId || "local") === "local");
+            if (!localSelection) return;
+
+            // Give the browser native copy a chance to fire.
+            // If it hasn't fired in the same loop, we fire a synthetic one
+            setTimeout(() => {
+                if (KeyEventHandler._nativeCopyFired) return;
+                const structured = selectedItemsClipboardData();
+                // A component host contributes its view name to the structured
+                // payload only, so the structured plain text is authoritative
+                // whenever the selection carries one.
 ```
 
-### KeyEventHandler.ts:752:setTimeout
+### KeyEventHandler.ts:944:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 752
+- **Line**: 944
+- **Type**: setTimeout
+- **Code**: `setTimeout(() => {`
+
+**Context**:
+```
+
+            // Since Enter's normal processing (newline/new item addition etc.) should be complete here,
+            // open AliasPicker afterwards based on pre-detection flag
+            if (shouldOpenAliasPickerAfterDefault) {
+                try {
+                    setTimeout(() => {
+                        try {
+                            const w: unknown = typeof window !== "undefined"
+                                ? (window as Window & typeof globalThis & { [key: string]: unknown; })
+                                : null;
+                            const tryOpen = (attempt = 0) => {
+```
+
+### KeyEventHandler.ts:970:setTimeout
+
+- **File**: `/app/client/src/lib/KeyEventHandler.ts`
+- **Line**: 970
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
-
 ```
-        }
-    } catch {}
-    return;
-}
-if (attempt < 10) {
-    setTimeout(() => tryOpen(attempt + 1), 10);
-} else {
-    logger.warn(
-        "KeyEventHandler(Post): active item not found to open AliasPicker",
-    );
-}
+                                            logger.error(_e);
+                                        }
+                                        return;
+                                    }
+                                    if (attempt < 10) {
+                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                    } else {
+                                        logger.warn(
+                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
+                                        );
+                                    }
 ```
 
-### KeyEventHandler.ts:801:requestAnimationFrame
+### KeyEventHandler.ts:1033:requestAnimationFrame
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 801
+- **Line**: 1033
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
             if (globalTextarea) {
                 // Multiple attempts to ensure focus is set
@@ -695,15 +607,14 @@ if (attempt < 10) {
             // Post-processing to open AliasPicker after normal processing (cursor.onKeyDown etc.)
 ```
 
-### KeyEventHandler.ts:809:setTimeout
+### KeyEventHandler.ts:1041:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 809
+- **Line**: 1041
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
             }
 
@@ -718,38 +629,36 @@ if (attempt < 10) {
                             const tryOpen = (attempt = 0) => {
 ```
 
-### KeyEventHandler.ts:831:setTimeout
+### KeyEventHandler.ts:1065:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 831
+- **Line**: 1065
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => tryOpen(attempt + 1), 10);`
 
 **Context**:
-
 ```
-        }
-    } catch {}
-    return;
-}
-if (attempt < 10) {
-    setTimeout(() => tryOpen(attempt + 1), 10);
-} else {
-    logger.warn(
-        "KeyEventHandler(Post2): active item not found to open AliasPicker",
-    );
-}
+                                            logger.error(_e);
+                                        }
+                                        return;
+                                    }
+                                    if (attempt < 10) {
+                                        setTimeout(() => tryOpen(attempt + 1), 10);
+                                    } else {
+                                        logger.warn(
+                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
+                                        );
+                                    }
 ```
 
-### KeyEventHandler.ts:1019:requestAnimationFrame
+### KeyEventHandler.ts:1296:requestAnimationFrame
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 1019
+- **Line**: 1296
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
         if (textareaElement) {
             // Multiple attempts to ensure focus is set
@@ -764,15 +673,14 @@ if (attempt < 10) {
                     textareaElement.focus();
 ```
 
-### KeyEventHandler.ts:1023:setTimeout
+### KeyEventHandler.ts:1300:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 1023
+- **Line**: 1300
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
             // Set focus using requestAnimationFrame
             requestAnimationFrame(() => {
@@ -787,15 +695,14 @@ if (attempt < 10) {
                         typeof window !== "undefined"
 ```
 
-### KeyEventHandler.ts:1398:setTimeout
+### KeyEventHandler.ts:1703:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 1398
+- **Line**: 1703
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
                     }
                 `;
@@ -810,15 +717,14 @@ if (attempt < 10) {
                 }, 500);
 ```
 
-### KeyEventHandler.ts:1557:setTimeout
+### KeyEventHandler.ts:1862:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 1557
+- **Line**: 1862
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
                         hintEl.style.transition = "opacity 0.3s ease-in-out";
 
@@ -833,15 +739,14 @@ if (attempt < 10) {
                         }, 1500);
 ```
 
-### KeyEventHandler.ts:1559:setTimeout
+### KeyEventHandler.ts:1864:setTimeout
 
 - **File**: `/app/client/src/lib/KeyEventHandler.ts`
-- **Line**: 1559
+- **Line**: 1864
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
                         document.body.appendChild(hintEl);
 
@@ -856,26 +761,26 @@ if (attempt < 10) {
                 }
 ```
 
-### CursorEditor.ts:808:setTimeout
+### CursorEditor.ts:1082:setTimeout
 
 - **File**: `/app/client/src/lib/cursor/CursorEditor.ts`
-- **Line**: 808
+- **Line**: 1082
 - **Type**: setTimeout
 - **Code**: `this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {`
 
 **Context**:
-
 ```
-if (typeof window !== "undefined") {
-    if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
-        clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
-    }
-    this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {
-        this.cursorVisibilityRecoveryTimeoutId = undefined;
-        const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
-        if (!cursorVisible) {
-            cursor.applyToStore();
-            store.startCursorBlink();
+
+            if (typeof window !== "undefined") {
+                if (this.cursorVisibilityRecoveryTimeoutId !== undefined) {
+                    clearTimeout(this.cursorVisibilityRecoveryTimeoutId);
+                }
+                this.cursorVisibilityRecoveryTimeoutId = setTimeout(() => {
+                    this.cursorVisibilityRecoveryTimeoutId = undefined;
+                    const cursorVisible = document.querySelector(".editor-overlay .cursor") !== null;
+                    if (!cursorVisible) {
+                        cursor.applyToStore();
+                        store.startCursorBlink();
 ```
 
 ### CursorSelection.ts:498:setTimeout
@@ -886,7 +791,6 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -898,6 +802,7 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
                 }
+
 ```
 
 ### CursorSelection.ts:774:setTimeout
@@ -908,7 +813,6 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
         // Set global textarea selection
         this.cursor.updateGlobalTextareaSelection(startItemId, startOffset, endItemId, endOffset);
@@ -920,6 +824,7 @@ if (typeof window !== "undefined") {
                 if (typeof window !== "undefined" && window.DEBUG_MODE) {
                     logger.debug(`Selection elements in DOM: ${selectionElements.length}`);
                 }
+
 ```
 
 ### CursorSelection.ts:797:setTimeout
@@ -930,7 +835,6 @@ if (typeof window !== "undefined") {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
                     store.forceUpdate();
                 }
@@ -945,6 +849,28 @@ if (typeof window !== "undefined") {
                     }
 ```
 
+### demoInit.ts:81:setTimeout
+
+- **File**: `/app/client/src/lib/demoInit.ts`
+- **Line**: 81
+- **Type**: setTimeout
+- **Code**: `const timer = setTimeout(() => resolve(undefined), ms);`
+
+**Context**:
+```
+    return { client, project };
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
+    return new Promise<T | undefined>((resolve) => {
+        const timer = setTimeout(() => resolve(undefined), ms);
+        promise.then(
+            (value) => {
+                clearTimeout(timer);
+                resolve(value);
+            },
+```
+
 ### linkPreviewHandler.ts:239:setTimeout
 
 - **File**: `/app/client/src/lib/linkPreviewHandler.ts`
@@ -953,7 +879,6 @@ if (typeof window !== "undefined") {
 - **Code**: `previewTimer = window.setTimeout(() => {`
 
 **Context**:
-
 ```
         window.clearTimeout(hideTimer);
         hideTimer = null;
@@ -976,7 +901,6 @@ if (typeof window !== "undefined") {
 - **Code**: `hideTimer = window.setTimeout(() => {`
 
 **Context**:
-
 ```
         window.clearTimeout(previewTimer);
         previewTimer = null;
@@ -999,7 +923,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 10));`
 
 **Context**:
-
 ```
             setContainerTitleInMetaDoc(containerId, "Version 1");
             updateLastOpenedAt(containerId);
@@ -1022,7 +945,6 @@ if (typeof window !== "undefined") {
 - **Code**: `logger.debug(`[PollingMonitor] Disabled setInterval (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
-
 ```
                 };
 
@@ -1045,7 +967,6 @@ if (typeof window !== "undefined") {
 - **Code**: `logger.debug(`[PollingMonitor] Disabled setTimeout (id=${id}, delay=${delay}ms)`);`
 
 **Context**:
-
 ```
                 };
 
@@ -1068,7 +989,6 @@ if (typeof window !== "undefined") {
 - **Code**: `logger.debug(`[PollingMonitor] Disabled requestAnimationFrame (id=${id})`);`
 
 **Context**:
-
 ```
             };
 
@@ -1083,15 +1003,102 @@ if (typeof window !== "undefined") {
                 call.executionCount++;
 ```
 
-### connection.ts:368:setTimeout
+### projectPageLoader.ts:34:setTimeout
+
+- **File**: `/app/client/src/lib/projectPageLoader.ts`
+- **Line**: 34
+- **Type**: setTimeout
+- **Code**: `const timeout = setTimeout(() => {`
+
+**Context**:
+```
+    // This avoids race conditions and 500ms hardcoded polling limits
+    if (client.wsProvider && !client.wsProvider.isSynced) {
+        logger.info(`loadProjectAndPage: Waiting for provider sync...`);
+        try {
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error("Provider sync timeout"));
+                }, 10000); // 10 second timeout
+
+                const onSync = () => {
+                    clearTimeout(timeout);
+```
+
+### touchTextSelection.ts:149:setTimeout
+
+- **File**: `/app/client/src/lib/touchTextSelection.ts`
+- **Line**: 149
+- **Type**: setTimeout
+- **Code**: `this.longPressTimer = setTimeout(() => {`
+
+**Context**:
+```
+        this.startY = event.clientY;
+        this.movedBeyondSlop = false;
+        this.selecting = false;
+
+        this.clearLongPressTimer();
+        this.longPressTimer = setTimeout(() => {
+            this.longPressTimer = undefined;
+            if (this.pointerId === undefined || this.movedBeyondSlop) return;
+            this.selecting = true;
+            this.handlers.onLongPress({ clientX: this.startX, clientY: this.startY });
+        }, this.longPressMs);
+```
+
+### connection.ts:147:setTimeout
 
 - **File**: `/app/client/src/lib/yjs/connection.ts`
-- **Line**: 368
+- **Line**: 147
+- **Type**: setTimeout
+- **Code**: `const timer = setTimeout(finish, timeoutMs);`
+
+**Context**:
+```
+            clearTimeout(timer);
+            unsubscribe?.();
+            resolve();
+        };
+
+        const timer = setTimeout(finish, timeoutMs);
+
+        try {
+            unsubscribe = onAuthStateChanged(auth, user => {
+                if (user) finish();
+            });
+```
+
+### connection.ts:339:setTimeout
+
+- **File**: `/app/client/src/lib/yjs/connection.ts`
+- **Line**: 339
+- **Type**: setTimeout
+- **Code**: `await new Promise(resolve => setTimeout(resolve, attempt * 1000));`
+
+**Context**:
+```
+                    { error: e },
+                    `[${label}] getFreshIdToken failed (attempt ${attempt}/${MAX_TOKEN_RETRIES})`,
+                );
+                if (attempt < MAX_TOKEN_RETRIES) {
+                    // Exponential backoff: 1s, 2s
+                    await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+                }
+            }
+        }
+
+        throw lastError || new Error("Failed to get token");
+```
+
+### connection.ts:532:setTimeout
+
+- **File**: `/app/client/src/lib/yjs/connection.ts`
+- **Line**: 532
 - **Type**: setTimeout
 - **Code**: `const timer = setTimeout(() => {`
 
 **Context**:
-
 ```
                 clearTimeout(timer);
                 provider.off("synced", syncHandler);
@@ -1106,15 +1113,14 @@ if (typeof window !== "undefined") {
                 cleanup();
 ```
 
-### testHelpers.ts:61:setTimeout
+### testHelpers.ts:64:setTimeout
 
 - **File**: `/app/client/src/lib/yjs/testHelpers.ts`
-- **Line**: 61
+- **Line**: 64
 - **Type**: setTimeout
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
-
 ```
             if (debugEnabled) {
                 console.info(`[${label}] provider.isSynced=true after ${i * pollIntervalMs}ms`);
@@ -1129,15 +1135,14 @@ if (typeof window !== "undefined") {
         if (checkDataAvailable()) {
 ```
 
-### testHelpers.ts:72:setTimeout
+### testHelpers.ts:75:setTimeout
 
 - **File**: `/app/client/src/lib/yjs/testHelpers.ts`
-- **Line**: 72
+- **Line**: 75
 - **Type**: setTimeout
 - **Code**: `await new Promise((r) => setTimeout(r, pollIntervalMs));`
 
 **Context**:
-
 ```
             if (debugEnabled) {
                 console.info(`[${label}] data available after ${i * pollIntervalMs}ms from synced`);
@@ -1152,16 +1157,16 @@ if (typeof window !== "undefined") {
             `[${label}] timeout after ${timeoutMs}ms, isSynced=${provider.isSynced}, dataAvailable=${checkDataAvailable()}`,
 ```
 
-### testHelpers.ts:203:setTimeout
+### testHelpers.ts:204:setTimeout
 
 - **File**: `/app/client/src/lib/yjs/testHelpers.ts`
-- **Line**: 203
+- **Line**: 204
 - **Type**: setTimeout
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-
 ```
+
         try {
             // HocuspocusProvider handles token refresh via its token option (function)
             // But we can force a reconnect/token send if needed.
@@ -1174,15 +1179,14 @@ if (typeof window !== "undefined") {
             while (!provider.isSynced && attempts < 50) {
 ```
 
-### testHelpers.ts:209:setTimeout
+### testHelpers.ts:210:setTimeout
 
 - **File**: `/app/client/src/lib/yjs/testHelpers.ts`
-- **Line**: 209
+- **Line**: 210
 - **Type**: setTimeout
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-
 ```
             await provider.connect();
 
@@ -1205,7 +1209,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-
 ```
         yText.insert(0, "Hello, World!");
         const yArray = doc1.getArray("items");
@@ -1217,6 +1220,7 @@ if (typeof window !== "undefined") {
         // Dispose the first doc
         persistence1.destroy();
         doc1.destroy();
+
 ```
 
 ### yjsPersistence.test.ts:94:setTimeout
@@ -1227,7 +1231,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-
 ```
         await waitForSync(persistence1);
 
@@ -1250,7 +1253,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-
 ```
         const yText = doc1.getText("content");
         yText.insert(0, "First");
@@ -1273,8 +1275,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 30));`
 
 **Context**:
-
 ```
+
         yText.insert(yText.length, " Second");
         await new Promise(resolve => setTimeout(resolve, 30));
 
@@ -1295,8 +1297,8 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-
 ```
+
         // Verify the text is correct before persistence
         expect(yText.toString()).toBe("First Second Third");
 
@@ -1306,6 +1308,7 @@ if (typeof window !== "undefined") {
         // Dispose and recreate
         persistence1.destroy();
         doc1.destroy();
+
 ```
 
 ### yjsPersistence.test.ts:172:setTimeout
@@ -1316,7 +1319,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-
 ```
         const childArray = new Y.Array<string>();
         childArray.push(["item1", "item2"]);
@@ -1339,7 +1341,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
-
 ```
         await waitForSync(persistence1);
 
@@ -1362,7 +1363,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 50));`
 
 **Context**:
-
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1385,7 +1385,6 @@ if (typeof window !== "undefined") {
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
 
 **Context**:
-
 ```
         await new Promise(resolve => setTimeout(resolve, 50));
 
@@ -1400,38 +1399,80 @@ if (typeof window !== "undefined") {
         const doc2 = new Y.Doc();
 ```
 
-### yjsService.svelte.ts:192:setTimeout
+### yjsPersistence.test.ts:332:setTimeout
+
+- **File**: `/app/client/src/lib/yjsPersistence.test.ts`
+- **Line**: 332
+- **Type**: setTimeout
+- **Code**: `setTimeout(resolve, 500); // resolve after timeout`
+
+**Context**:
+```
+        const mockPersistence = {
+            synced: false,
+            once: () => {},
+            off: () => {},
+            _db: new Promise(resolve => {
+                setTimeout(resolve, 500); // resolve after timeout
+            }),
+        };
+
+        // Wait for sync, expecting a timeout
+        let err;
+```
+
+### yjsPersistence.ts:65:setTimeout
+
+- **File**: `/app/client/src/lib/yjsPersistence.ts`
+- **Line**: 65
+- **Type**: setTimeout
+- **Code**: `const timeoutId = setTimeout(() => {`
+
+**Context**:
+```
+
+        // Note: lib0's once() wraps the handler, making off() unreliable with the same reference.
+        // We rely on persistence.destroy() on error to clean up the listeners.
+        persistence.once("synced", onSynced);
+
+        const timeoutId = setTimeout(() => {
+            reject(new TimeoutError("waitForSync timed out"));
+        }, timeoutMs);
+
+        if (persistence._db) {
+            persistence._db.catch((err) => {
+```
+
+### yjsService.svelte.ts:177:setTimeout
 
 - **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 192
+- **Line**: 177
 - **Type**: setTimeout
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 500));`
 
 **Context**:
-
 ```
-    const saved = await saveProjectIdToServer(projectId, projectName);
-    if (saved) {
-        logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
-        registrationSuccess = true;
-        // Wait for Firestore propagation (important for subsequent reads)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        break;
-    } else {
-        logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
-    }
-} catch (saveError) {
+                const saved = await saveProjectIdToServer(projectId, projectName);
+                if (saved) {
+                    logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
+                    registrationSuccess = true;
+                    // Wait for Firestore propagation (important for subsequent reads)
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    break;
+                } else {
+                    logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+                }
+            } catch (saveError) {
 ```
 
-### yjsService.svelte.ts:203:setTimeout
+### yjsService.svelte.ts:188:setTimeout
 
 - **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 203
+- **Line**: 188
 - **Type**: setTimeout
 - **Code**: `await new Promise(resolve => setTimeout(resolve, 1000 * attempt));`
 
 **Context**:
-
 ```
                 logger.error({ error: saveError }, `[yjsService] Exception saving project ID (attempt ${attempt})`);
             }
@@ -1446,15 +1487,14 @@ if (typeof window !== "undefined") {
             logger.warn(
 ```
 
-### yjsService.svelte.ts:347:setTimeout
+### yjsService.svelte.ts:287:setTimeout
 
 - **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 347
+- **Line**: 287
 - **Type**: setTimeout
 - **Code**: `const timeout = setTimeout(() => {`
 
 **Context**:
-
 ```
                         resolve();
                     }
@@ -1465,42 +1505,84 @@ if (typeof window !== "undefined") {
                 if (!isResolved) {
                     isResolved = true;
                     cleanupEffect();
-                    reject(
-                        new Error(
+                    // Resolve with undefined instead of rejecting
+                    logger.warn(`[resolveProjectId] Timeout waiting for project data from the server.`);
 ```
 
-### yjsService.svelte.ts:641:setTimeout
+### yjsService.svelte.ts:658:setTimeout
 
 - **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 641
+- **Line**: 658
 - **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
+- **Code**: `backoffTimeout = setTimeout(scheduleProcessPending, 1000);`
 
 **Context**:
+```
+        if (pendingCount === 0) {
+            backoffTimeout = undefined;
+            return;
+        }
+        if (isProcessingPending) {
+            backoffTimeout = setTimeout(scheduleProcessPending, 1000);
+            return;
+        }
+        isProcessingPending = true;
+
+        try {
+```
+
+### yjsService.svelte.ts:675:setTimeout
+
+- **File**: `/app/client/src/lib/yjsService.svelte.ts`
+- **Line**: 675
+- **Type**: setTimeout
+- **Code**: `backoffTimeout = setTimeout(run, delay);`
+
+**Context**:
+```
+
+        const remaining = getPendingRegistrations().length;
+        if (remaining > 0 && attempt < maxAttempt) {
+            attempt++;
+            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+            backoffTimeout = setTimeout(run, delay);
+        } else {
+            backoffTimeout = undefined;
+        }
+    };
 
 ```
-    }
-}
 
-if (typeof window !== "undefined") {
-    // Process on startup (wait a bit for auth to initialize)
-    setTimeout(() => {
-        void processPendingRegistrations();
-    }, 5000);
+### yjsService.svelte.ts:703:setTimeout
 
-    // Process on network recovery
-    window.addEventListener("online", () => {
+- **File**: `/app/client/src/lib/yjsService.svelte.ts`
+- **Line**: 703
+- **Type**: setTimeout
+- **Code**: `const initTimeout = setTimeout(() => {`
+
+**Context**:
+```
+        if (pendingCount > 0 && navigator.onLine && userManager.getCurrentUser()) scheduleProcessPending();
+    };
+
+    let cleanupPendingMap = () => {};
+    // Delay binding until next tick to ensure pendingRegistrationsMap is initialized
+    const initTimeout = setTimeout(() => {
+        if (
+            typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap
+            && typeof pendingRegistrationsMap.observe === "function"
+        ) {
+            try {
 ```
 
-### +page.svelte:99:setTimeout
+### +page.svelte:98:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 99
+- **Line**: 98
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
             return;
         }
@@ -1515,15 +1597,14 @@ if (typeof window !== "undefined") {
     // Handle auth success
 ```
 
-### +page.svelte:439:setTimeout
+### +page.svelte:384:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 439
+- **Line**: 384
 - **Type**: setTimeout
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100));`
 
 **Context**:
-
 ```
             );
             let retryCount = 0;
@@ -1538,17 +1619,16 @@ if (typeof window !== "undefined") {
                     logger.info(
 ```
 
-### +page.svelte:504:setTimeout
+### +page.svelte:451:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 504
+- **Line**: 451
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-            };
+            }
         }
 
         // Setup link preview handlers after page load
@@ -1561,141 +1641,26 @@ if (typeof window !== "undefined") {
             searchHistoryStore.add(pageName);
 ```
 
-### +page.svelte:123:setTimeout
+### +page.svelte:239:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 123
-- **Type**: setTimeout
-- **Code**: `await new Promise(r => setTimeout(r, 100));`
-
-**Context**:
-
-```
-            // but we need this async execution to continue and navigate us back!
-            if ((store.project?.items?.length ?? 0) > 0) {
-                logger.debug("Schedule page: store.project populated after", i * 100, "ms");
-                break;
-            }
-            await new Promise(r => setTimeout(r, 100));
-        }
-        logger.debug("Schedule page: store.project?.items?.length =", store.project?.items?.length ?? 0);
-
-        // Navigate back to schedule page
-        const scheduleUrl = `/${encodeURIComponent(project)}/${encodeURIComponent(pageTitle)}/schedule`;
-```
-
-### +page.svelte:170:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 170
-- **Type**: setTimeout
-- **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
-
-**Context**:
-
-```
-            break;
-        }
-
-        // Wait for yjsStore.yjsClient to be set (indicates main page loadProjectAndPage has completed)
-        if (!yjsClientExists) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            parentLoadWaitAttempts++;
-            continue;
-        }
-
-        // If project exists but has no items, try to trigger parent load
-```
-
-### +page.svelte:181:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 181
-- **Type**: setTimeout
-- **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
-
-**Context**:
-
-```
-        if (hasProject && !projectHasItems) {
-            logger.debug("Schedule page: Project exists but has no items, triggering parent load");
-            await triggerParentPageLoad();
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-        parentLoadWaitAttempts++;
-    }
-
-    // After waiting, check store.project directly for debugging
-    logger.debug("Schedule page: Final store state", {
-```
-
-### +page.svelte:359:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 359
-- **Type**: setTimeout
-- **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
-
-**Context**:
-
-```
-        if (foundPageRef) {
-            break;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 100));
-        waitAttempts++;
-    }
-    logger.debug("Schedule page: After wait", {
-        waitAttempts,
-        hasFoundPage: !!foundPageRef,
-```
-
-### +page.svelte:447:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 447
-- **Type**: setTimeout
-- **Code**: `await new Promise(resolve => setTimeout(resolve, 100));`
-
-**Context**:
-
-```
-                if (itemCount > 0) {
-                    logger.debug("Schedule page: Page items found", { pageId, itemCount });
-                    break;
-                }
-            }
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-    }
-} catch (e) {
-    logger.warn("Schedule page: Error waiting for page items:", e);
-}
-```
-
-### +page.svelte:596:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 596
+- **Line**: 239
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => URL.revokeObjectURL(url), 0);`
 
 **Context**:
-
 ```
-    anchor.href = url;
-    anchor.download = filename;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 0);
-    logger.debug("Schedule page: Exported schedules to iCal", filename);
-}
-catch (err) {
-    logger.error({ error: err }, "Schedule page: Error exporting schedules:");
-}
+        anchor.href = url;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+        logger.debug("Schedule page: Exported schedules to iCal", filename);
+    }
+    catch (err) {
+        logger.error({ error: err }, "Schedule page: Error exporting schedules:");
+    }
 ```
 
 ### +page.svelte:161:setInterval
@@ -1706,7 +1671,6 @@ catch (err) {
 - **Code**: `statusInterval = setInterval(() => {`
 
 **Context**:
-
 ```
         if (isAuthenticated) {
             initializeFluidClient();
@@ -1721,27 +1685,70 @@ catch (err) {
         logger.error({ error: err }, "Error initializing debug page:");
 ```
 
-### +page.svelte:75:setTimeout
+### +page.svelte:73:setTimeout
 
 - **File**: `/app/client/src/routes/demo/+page.svelte`
-- **Line**: 75
+- **Line**: 73
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => { resetDone = false; }, 3000);`
 
 **Context**:
-
 ```
-    yjsStore.yjsClient = undefined;
-    store.project = undefined;
-    await initializeDemo();
-    if (isDestroyed) return;
-    resetDone = error === undefined;
-    setTimeout(() => { resetDone = false; }, 3000);
-} catch (err) {
-    if (err instanceof SeedDemoError && err.rateLimitMs !== undefined) {
-        const minutes = Math.ceil(err.rateLimitMs / 60000);
-        resetError = `You can only reset the demo content once every ${minutes} minutes. Please try again later.`;
-    } else if (err instanceof Error && err.message.includes("rate limited")) {
+            if (isDestroyed) return;
+            if (!handle) {
+                throw new Error("Failed to connect to the demo project.");
+            }
+            resetDone = error === undefined;
+            setTimeout(() => { resetDone = false; }, 3000);
+        } catch (err) {
+            if (err instanceof SeedDemoError && err.rateLimitMs !== undefined) {
+                const minutes = Math.ceil(err.rateLimitMs / 60000);
+                resetError = `You can only reset the demo content once every ${minutes} minutes. Please try again later.`;
+            } else if (err instanceof Error && err.message.includes("rate limited")) {
+```
+
+### +page.svelte:46:setTimeout
+
+- **File**: `/app/client/src/routes/demo/[page]/+page.svelte`
+- **Line**: 46
+- **Type**: setTimeout
+- **Code**: `resetTimeout = setTimeout(updateReset, 60000 - (now - resetStartedAt));`
+
+**Context**:
+```
+                const now = Date.now();
+                clearTimeout(resetTimeout);
+
+                if (isResetting && resetStartedAt && now - resetStartedAt < 60000) {
+                    isServerResetting = true;
+                    resetTimeout = setTimeout(updateReset, 60000 - (now - resetStartedAt));
+                } else {
+                    isServerResetting = false;
+                }
+            };
+            updateReset();
+```
+
+### page.svelte.test.ts:134:setTimeout
+
+- **File**: `/app/client/src/routes/demo/page.svelte.test.ts`
+- **Line**: 134
+- **Type**: setTimeout
+- **Code**: `await new Promise(resolve => setTimeout(resolve, 0));`
+
+**Context**:
+```
+        );
+
+        await fireEvent.click(confirmButton);
+
+        // Wait a tick for the state to update
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // After click, isResetting should be true because the mock hasn't resolved
+        expect(resetButton).toBeDisabled();
+        expect(resetButton).toHaveClass("bg-gray-300");
+        expect(resetButton).toHaveClass("text-gray-500");
 ```
 
 ### +page.svelte:77:setTimeout
@@ -1752,7 +1759,6 @@ catch (err) {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
         }
 
@@ -1775,7 +1781,6 @@ catch (err) {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
         yjsStore.yjsClient = newClient;
 
@@ -1790,48 +1795,26 @@ catch (err) {
         logger.error({ error: err as Error }, "Error creating new outliner:");
 ```
 
-### +page.svelte:88:setInterval
+### +page.svelte:99:setTimeout
 
 - **File**: `/app/client/src/routes/settings/[project]/+page.svelte`
-- **Line**: 88
-- **Type**: setInterval
-- **Code**: `const checkInterval = setInterval(() => {`
-
-**Context**:
-
-```
-                // Maybe I should stay on the page and show "Saved!" until the store updates?
-                // Or just redirect and hope? Or show a spinner "Updating...".
-
-                // Let's implement a wait loop for the store to reflect the change before redirecting.
-                const checkInterval = setInterval(() => {
-                   const updated = projectStore.projects.find(p => p.name === newTitle);
-                   if (updated) {
-                       clearInterval(checkInterval);
-                       goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                   }
-```
-
-### +page.svelte:97:setTimeout
-
-- **File**: `/app/client/src/routes/settings/[project]/+page.svelte`
-- **Line**: 97
+- **Line**: 99
 - **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
+- **Code**: `const timeout = setTimeout(() => {`
 
 **Context**:
-
 ```
-                       goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                   }
-                }, 100);
+                                resolve(true);
+                            }
+                        });
+                    });
 
-                // Safety timeout
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    // Fallback redirect
-                    goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                }, 5000);
+                    const timeout = setTimeout(() => {
+                        if (!isResolved) {
+                            isResolved = true;
+                            cleanupEffect();
+                            resolve(false);
+                        }
 ```
 
 ### +page.svelte:53:setTimeout
@@ -1842,7 +1825,6 @@ catch (err) {
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
             }
 
@@ -1857,15 +1839,36 @@ catch (err) {
             status = "error";
 ```
 
-### tableSyncAdapter.test.ts:164:setTimeout
+### itemsRelationWrite.test.ts:162:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/itemsRelationWrite.test.ts`
+- **Line**: 162
+- **Type**: setTimeout
+- **Code**: `await new Promise((resolve) => setTimeout(resolve, 20));`
+
+**Context**:
+```
+            expect(f.item.due).toBeUndefined();
+            expect(f.item.text).toBe("Review");
+
+            // Deleting the item removes it from the outline as well.
+            f.item.due = "2026-08-01T09:00:00Z";
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(await f.rows()).toHaveLength(1);
+
+            await f.provider.applyWrite({
+                op: "DELETE",
+                rowId: f.item.key,
+```
+
+### tableSyncAdapter.test.ts:284:setTimeout
 
 - **File**: `/app/client/src/services/yjstable/tableSyncAdapter.test.ts`
-- **Line**: 164
+- **Line**: 284
 - **Type**: setTimeout
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 50));`
 
 **Context**:
-
 ```
                 handles.schemaText.delete(0, handles.schemaText.length);
                 handles.schemaText.insert(0, "CREATE TABLE renamed (id TEXT PRIMARY KEY, note TEXT)");
@@ -1880,38 +1883,36 @@ catch (err) {
             const result = await adapter.runQueryNow();
 ```
 
-### tableSyncAdapter.test.ts:211:setTimeout
+### tableSyncAdapter.test.ts:331:setTimeout
 
 - **File**: `/app/client/src/services/yjstable/tableSyncAdapter.test.ts`
-- **Line**: 211
+- **Line**: 331
 - **Type**: setTimeout
 - **Code**: `await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert`
 
 **Context**:
-
 ```
-    due_date: "2026-07-15",
-    start_time: "2026-07-15T12:30:00",
-    other_time: "2026-07-15T15:45:00Z",
-}, "r1");
-await waitMicrotasks();
-await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert
-const result = await adapter.runQueryNow();
-expect(result?.rows).toHaveLength(1);
-expect(result?.rows[0].due_date).toBe("2026-07-15");
-expect(result?.rows[0].start_time).toBe("2026-07-15T12:30:00.000Z");
-expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
+                due_date: "2026-07-15",
+                start_time: "2026-07-15T12:30:00",
+                other_time: "2026-07-15T15:45:00Z",
+            }, "r1");
+            await waitMicrotasks();
+            await new Promise((resolve) => setTimeout(resolve, 100)); // allow async upsert
+            const result = await adapter.runQueryNow();
+            expect(result?.rows).toHaveLength(1);
+            expect(result?.rows[0].due_date).toBe("2026-07-15");
+            expect(result?.rows[0].start_time).toBe("2026-07-15T12:30:00.000Z");
+            expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
 ```
 
-### tableSyncAdapter.ts:331:setTimeout
+### tableSyncAdapter.ts:446:setTimeout
 
 - **File**: `/app/client/src/services/yjstable/tableSyncAdapter.ts`
-- **Line**: 331
+- **Line**: 446
 - **Type**: setTimeout
 - **Code**: `this.requeryTimer = setTimeout(() => {`
 
 **Context**:
-
 ```
     // ------------------------------------------------------------------
 
@@ -1923,68 +1924,89 @@ expect(result?.rows[0].other_time).toBe("2026-07-15T15:45:00.000Z");
             void this.runQueryNow();
         }, REQUERY_DEBOUNCE_MS);
     }
-```
-
-### CommandPaletteStore.svelte.ts:383:setTimeout
-
-- **File**: `/app/client/src/stores/CommandPaletteStore.svelte.ts`
-- **Line**: 383
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
 
 ```
-requestAnimationFrame(() => {
-    try {
-        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-    } catch {}
-});
-setTimeout(() => {
-    try {
-        window.dispatchEvent(new CustomEvent("outliner-items-changed"));
-    } catch {}
-}, 0);
-```
 
-### EditorOverlayStore.svelte.ts:257:requestAnimationFrame
+### EditorOverlayStore.svelte.ts:270:requestAnimationFrame
 
 - **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 257
+- **Line**: 270
 - **Type**: requestAnimationFrame
 - **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
-                if (textarea) {
+                if (textarea && !isForeignInput(document.activeElement)) {
                     // Multiple attempts to ensure focus is set
                     textarea.focus();
 
-                    // Set focus using requestAnimationFrame
+                    // Set focus using requestAnimationFrame and tick
                     requestAnimationFrame(() => {
+                        if (isForeignInput(document.activeElement)) return;
                         textarea.focus();
 
-                        // Use setTimeout as well for extra certainty
-                        setTimeout(() => {
-                            textarea.focus();
+                        tick().then(() => {
+                            setTimeout(() => {
 ```
 
-### EditorOverlayStore.svelte.ts:261:setTimeout
+### EditorOverlayStore.svelte.ts:275:setTimeout
 
 - **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 261
+- **Line**: 275
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-                    // Set focus using requestAnimationFrame
                     requestAnimationFrame(() => {
+                        if (isForeignInput(document.activeElement)) return;
                         textarea.focus();
 
-                        // Use setTimeout as well for extra certainty
+                        tick().then(() => {
+                            setTimeout(() => {
+                                if (isForeignInput(document.activeElement)) return;
+                                textarea.focus();
+
+                                // Debug info
+                                if (
+```
+
+### EditorOverlayStore.svelte.ts:356:requestAnimationFrame
+
+- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
+- **Line**: 356
+- **Type**: requestAnimationFrame
+- **Code**: `requestAnimationFrame(() => {`
+
+**Context**:
+```
+            if (textarea) {
+                // Multiple attempts to ensure focus is set
+                textarea.focus();
+
+                // Set focus using requestAnimationFrame and tick
+                requestAnimationFrame(() => {
+                    textarea.focus();
+
+                    tick().then(() => {
+                        setTimeout(() => {
+                            textarea.focus();
+```
+
+### EditorOverlayStore.svelte.ts:360:setTimeout
+
+- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
+- **Line**: 360
+- **Type**: setTimeout
+- **Code**: `setTimeout(() => {`
+
+**Context**:
+```
+                // Set focus using requestAnimationFrame and tick
+                requestAnimationFrame(() => {
+                    textarea.focus();
+
+                    tick().then(() => {
                         setTimeout(() => {
                             textarea.focus();
 
@@ -1993,67 +2015,20 @@ setTimeout(() => {
                                 typeof window !== "undefined"
 ```
 
-### EditorOverlayStore.svelte.ts:340:requestAnimationFrame
+### EditorOverlayStore.svelte.ts:586:setTimeout
 
 - **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 340
-- **Type**: requestAnimationFrame
-- **Code**: `requestAnimationFrame(() => {`
-
-**Context**:
-
-```
-            if (textarea) {
-                // Multiple attempts to ensure focus is set
-                textarea.focus();
-
-                // Set focus using requestAnimationFrame
-                requestAnimationFrame(() => {
-                    textarea.focus();
-
-                    // Use setTimeout as well for extra certainty
-                    setTimeout(() => {
-                        textarea.focus();
-```
-
-### EditorOverlayStore.svelte.ts:344:setTimeout
-
-- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 344
+- **Line**: 586
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
-                // Set focus using requestAnimationFrame
-                requestAnimationFrame(() => {
-                    textarea.focus();
-
-                    // Use setTimeout as well for extra certainty
-                    setTimeout(() => {
-                        textarea.focus();
-
-                        // Debug info
-                        if (
-                            typeof window !== "undefined"
-```
-
-### EditorOverlayStore.svelte.ts:560:setTimeout
-
-- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 560
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => {`
-
-**Context**:
-
-```
-            logger.debug(`Box selection set with key: ${key}`);
             logger.debug(`Current selections:`, this.selections);
         }
 
         // Set isUpdating to false after 300ms
+        // Note: Using setTimeout here is correct for intentional delayed execution, not macro-task hacking.
         setTimeout(() => {
             const currentSelection = this.selections[key];
             if (currentSelection && currentSelection.isUpdating) {
@@ -2062,37 +2037,14 @@ setTimeout(() => {
                     ...this.selections,
 ```
 
-### EditorOverlayStore.svelte.ts:711:setInterval
+### EditorOverlayStore.svelte.ts:990:setTimeout
 
 - **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 711
-- **Type**: setInterval
-- **Code**: `this.timerId = setInterval(() => {`
-
-**Context**:
-
-```
-    startCursorBlink() {
-        this.cursorVisible = true;
-        clearInterval(this.timerId);
-        // Simply toggle so it works in Node too
-        this.timerId = setInterval(() => {
-            this.cursorVisible = !this.cursorVisible;
-        }, 530);
-    }
-
-    stopCursorBlink() {
-```
-
-### EditorOverlayStore.svelte.ts:902:setTimeout
-
-- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 902
+- **Line**: 990
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
         // Force update by temporarily clearing and resetting selection ranges
         const tempSelections = { ...this.selections };
@@ -2107,16 +2059,16 @@ setTimeout(() => {
         const tempCursors = { ...this.cursors };
 ```
 
-### EditorOverlayStore.svelte.ts:910:setTimeout
+### EditorOverlayStore.svelte.ts:998:setTimeout
 
 - **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 910
+- **Line**: 998
 - **Type**: setTimeout
 - **Code**: `setTimeout(() => {`
 
 **Context**:
-
 ```
+
         // Update cursors similarly
         const tempCursors = { ...this.cursors };
         this.cursors = {};
@@ -2129,61 +2081,80 @@ setTimeout(() => {
     /**
 ```
 
-### EditorOverlayStore.test.ts:85:setInterval
+### EditorOverlayStore.svelte.ts:1161:requestAnimationFrame
 
-- **File**: `/app/client/src/stores/EditorOverlayStore.test.ts`
-- **Line**: 85
-- **Type**: setInterval
-- **Code**: `this.timerId = setInterval(() => {`
+- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
+- **Line**: 1161
+- **Type**: requestAnimationFrame
+- **Code**: `requestAnimationFrame(() => {`
 
 **Context**:
-
 ```
-    );
-}
-startCursorBlink() {
-    this.cursorVisible = true;
-    clearInterval(this.timerId);
-    this.timerId = setInterval(() => {
-        this.cursorVisible = !this.cursorVisible;
-    }, 530);
-}
-stopCursorBlink() {
-    clearInterval(this.timerId);
+            // Ensure reliable focus on global textarea to receive input
+            const textarea = this.getTextareaRef();
+            if (textarea && !isForeignInput(document.activeElement)) {
+                try {
+                    textarea.focus();
+                    requestAnimationFrame(() => {
+                        if (isForeignInput(document.activeElement)) return;
+                        textarea.focus();
+                    });
+                    tick().then(() => {
+                        if (isForeignInput(document.activeElement)) return;
 ```
 
-### store.svelte.ts:309:setTimeout
+### EditorOverlayStore.svelte.ts:1614:setTimeout
+
+- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
+- **Line**: 1614
+- **Type**: setTimeout
+- **Code**: `this._selectionSyncTimeout = setTimeout(() => {`
+
+**Context**:
+```
+        // Do not clear the flag in a microtask. Wait for the selectionchange event.
+        // The event handler will clear it, or a timeout will clear it as a fallback.
+        if (this._selectionSyncTimeout) {
+            clearTimeout(this._selectionSyncTimeout);
+        }
+        this._selectionSyncTimeout = setTimeout(() => {
+            this.suppressSelectionResync = false;
+        }, 50) as unknown as number;
+    }
+
+    syncTextareaToSelection(startItemId: string, startOffset: number, endItemId: string, endOffset: number) {
+```
+
+### store.svelte.ts:398:setTimeout
 
 - **File**: `/app/client/src/stores/store.svelte.ts`
-- **Line**: 309
+- **Line**: 398
 - **Type**: setTimeout
 - **Code**: `snapshotTimeout = setTimeout(() => {`
 
 **Context**:
-
 ```
-// If it is, skip saving entirely since it will get saved after sync or on next edit.
-const isInitialSync = typeof window !== "undefined"
-    && (window as unknown as { __YJS_STORE__?: { notYetSynced?: boolean; }; }).__YJS_STORE__
-        ?.notYetSynced;
-if (!isInitialSync) {
-    snapshotTimeout = setTimeout(() => {
-        snapshotTimeout = null;
-        try {
-            saveProjectSnapshot(project);
-        } catch {}
-    }, 3000);
+                    if (state && state !== "synced") {
+                        isInitialSync = true;
+                    }
+                }
+                if (!isInitialSync) {
+                    snapshotTimeout = setTimeout(() => {
+                        snapshotTimeout = null;
+                        try {
+                            saveProjectSnapshot(project);
+                        } catch (_e) {
+                            logger.error(_e);
 ```
 
-### snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts:51:setTimeout
+### snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts:50:setTimeout
 
 - **File**: `/app/client/src/tests/integration/snapshot-diff-modal-a11y-9f2d1c3a.integration.spec.ts`
-- **Line**: 51
+- **Line**: 50
 - **Type**: setTimeout
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-
 ```
         // HTML should be rendered in the diff area
         const diffs = document.querySelectorAll(".diff-view");
@@ -2206,19 +2177,18 @@ if (!isInitialSync) {
 - **Code**: `else setTimeout(checkSync, 50);`
 
 **Context**:
-
 ```
-const checkSync = () => {
-    if (c1.provider.isSynced && c2.provider.isSynced) {
-        syncedCount++;
-        // Check twice to ensure stable sync state
-        if (syncedCount >= 2) resolve(undefined);
-        else setTimeout(checkSync, 50);
-    } else {
-        setTimeout(checkSync, 50);
-    }
-};
-checkSync();
+            const checkSync = () => {
+                if (c1.provider.isSynced && c2.provider.isSynced) {
+                    syncedCount++;
+                    // Check twice to ensure stable sync state
+                    if (syncedCount >= 2) resolve(undefined);
+                    else setTimeout(checkSync, 50);
+                } else {
+                    setTimeout(checkSync, 50);
+                }
+            };
+            checkSync();
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:24:setTimeout
@@ -2229,18 +2199,18 @@ checkSync();
 - **Code**: `setTimeout(checkSync, 50);`
 
 **Context**:
-
 ```
-            syncedCount++;
-            // Check twice to ensure stable sync state
-            if (syncedCount >= 2) resolve(undefined);
-            else setTimeout(checkSync, 50);
-        } else {
-            setTimeout(checkSync, 50);
-        }
-    };
-    checkSync();
-});
+                    syncedCount++;
+                    // Check twice to ensure stable sync state
+                    if (syncedCount >= 2) resolve(undefined);
+                    else setTimeout(checkSync, 50);
+                } else {
+                    setTimeout(checkSync, 50);
+                }
+            };
+            checkSync();
+        });
+
 ```
 
 ### prs-cursor-sync-4d2e1b6a.integration.spec.ts:33:setTimeout
@@ -2251,7 +2221,6 @@ checkSync();
 - **Code**: `await new Promise(r => setTimeout(r, 500));`
 
 **Context**:
-
 ```
         });
 
@@ -2274,7 +2243,6 @@ checkSync();
 - **Code**: `await new Promise(r => setTimeout(r, 100));`
 
 **Context**:
-
 ```
         let received = false;
         for (let i = 0; i < 20; i++) {
@@ -2297,7 +2265,6 @@ checkSync();
 - **Code**: `await new Promise(r => setTimeout(r, 0));`
 
 **Context**:
-
 ```
         logger.debug("Received:", received);
         expect(received).toBe(true);
@@ -2307,17 +2274,17 @@ checkSync();
         await new Promise(r => setTimeout(r, 0));
     });
 });
+
 ```
 
-### connectionSharedSetup.spec.ts:104:setTimeout
+### connectionSharedSetup.spec.ts:134:setTimeout
 
 - **File**: `/app/client/src/tests/unit/yjs/connectionSharedSetup.spec.ts`
-- **Line**: 104
+- **Line**: 134
 - **Type**: setTimeout
 - **Code**: `const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));`
 
 **Context**:
-
 ```
 };
 
@@ -2340,7 +2307,6 @@ describe("yjs connection: shared provider setup", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
-
 ```
         it("should wait for sync event if not synced", async () => {
             const persistence: MockPersistence = {
@@ -2363,7 +2329,6 @@ describe("yjs connection: shared provider setup", () => {
 - **Code**: `setTimeout(callback, 10);`
 
 **Context**:
-
 ```
         it("should handle multiple calls to waitForSync", async () => {
             const persistence: MockPersistence = {
@@ -2382,10 +2347,10 @@ describe("yjs connection: shared provider setup", () => {
 
 These are pollings executed only in test environments.
 
-### UserManager.ts:338:setTimeout
+### UserManager.ts:341:setTimeout
 
 - **File**: `/app/client/src/auth/UserManager.ts`
-- **Line**: 338
+- **Line**: 341
 - **Type**: setTimeout
 
 ### AuthComponent.svelte:71:setTimeout
@@ -2394,46 +2359,22 @@ These are pollings executed only in test environments.
 - **Line**: 71
 - **Type**: setTimeout
 
-### EditorOverlay.svelte:315:setTimeout
+### EditorOverlay.svelte:367:setTimeout
 
 - **File**: `/app/client/src/components/EditorOverlay.svelte`
-- **Line**: 315
+- **Line**: 367
 - **Type**: setTimeout
 
-### EditorOverlay.svelte:349:setTimeout
-
-- **File**: `/app/client/src/components/EditorOverlay.svelte`
-- **Line**: 349
-- **Type**: setTimeout
-
-### OutlinerTree.svelte:236:setInterval
-
-- **File**: `/app/client/src/components/OutlinerTree.svelte`
-- **Line**: 236
-- **Type**: setInterval
-
-### ProjectSelector.svelte:74:setInterval
-
-- **File**: `/app/client/src/components/ProjectSelector.svelte`
-- **Line**: 74
-- **Type**: setInterval
-
-### SearchBox.svelte:316:setTimeout
-
-- **File**: `/app/client/src/components/SearchBox.svelte`
-- **Line**: 316
-- **Type**: setTimeout
-
-### SearchPanel.svelte:227:requestAnimationFrame
+### SearchPanel.svelte:292:requestAnimationFrame
 
 - **File**: `/app/client/src/components/SearchPanel.svelte`
-- **Line**: 227
+- **Line**: 292
 - **Type**: requestAnimationFrame
 
-### connection.ts:142:setTimeout
+### projectPageLoader.ts:75:setTimeout
 
-- **File**: `/app/client/src/lib/yjs/connection.ts`
-- **Line**: 142
+- **File**: `/app/client/src/lib/projectPageLoader.ts`
+- **Line**: 75
 - **Type**: setTimeout
 
 ### yjsPersistence.test.ts:137:setTimeout
@@ -2454,40 +2395,28 @@ These are pollings executed only in test environments.
 - **Line**: 270
 - **Type**: setTimeout
 
-### yjsService.svelte.ts:301:setTimeout
+### yjsService.svelte.ts:260:setTimeout
 
 - **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 301
+- **Line**: 260
 - **Type**: setTimeout
 
-### yjsService.svelte.ts:651:setInterval
-
-- **File**: `/app/client/src/lib/yjsService.svelte.ts`
-- **Line**: 651
-- **Type**: setInterval
-
-### +page.svelte:196:setTimeout
+### +page.svelte:195:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 196
+- **Line**: 195
 - **Type**: setTimeout
 
-### +page.svelte:274:setInterval
+### +page.svelte:432:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 274
-- **Type**: setInterval
-
-### +page.svelte:486:setTimeout
-
-- **File**: `/app/client/src/routes/[project]/[page]/+page.svelte`
-- **Line**: 486
+- **Line**: 432
 - **Type**: setTimeout
 
-### +page.svelte:496:setTimeout
+### +page.svelte:139:setTimeout
 
 - **File**: `/app/client/src/routes/[project]/[page]/schedule/+page.svelte`
-- **Line**: 496
+- **Line**: 139
 - **Type**: setTimeout
 
 ### +page.svelte:241:setTimeout
@@ -2520,35 +2449,65 @@ These are pollings executed only in test environments.
 - **Line**: 159
 - **Type**: setTimeout
 
-### page.svelte.test.ts:73:setTimeout
+### page.svelte.test.ts:76:setTimeout
 
 - **File**: `/app/client/src/routes/demo/page.svelte.test.ts`
-- **Line**: 73
+- **Line**: 76
 - **Type**: setTimeout
 
-### page.svelte.test.ts:94:setTimeout
+### page.svelte.test.ts:105:setTimeout
 
 - **File**: `/app/client/src/routes/demo/page.svelte.test.ts`
-- **Line**: 94
+- **Line**: 105
 - **Type**: setTimeout
 
-### tableSyncAdapter.test.ts:18:setTimeout
+### page.svelte.test.ts:113:setTimeout
+
+- **File**: `/app/client/src/routes/demo/page.svelte.test.ts`
+- **Line**: 113
+- **Type**: setTimeout
+
+### itemsRelation.calendarTime.test.ts:53:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/itemsRelation.calendarTime.test.ts`
+- **Line**: 53
+- **Type**: setTimeout
+
+### itemsRelation.recurrence.test.ts:57:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/itemsRelation.recurrence.test.ts`
+- **Line**: 57
+- **Type**: setTimeout
+
+### itemsRelation.tags.test.ts:45:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/itemsRelation.tags.test.ts`
+- **Line**: 45
+- **Type**: setTimeout
+
+### itemsRelation.test.ts:47:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/itemsRelation.test.ts`
+- **Line**: 47
+- **Type**: setTimeout
+
+### relationRowWrite.test.ts:26:setTimeout
+
+- **File**: `/app/client/src/services/yjstable/relationRowWrite.test.ts`
+- **Line**: 26
+- **Type**: setTimeout
+
+### tableSyncAdapter.test.ts:22:setTimeout
 
 - **File**: `/app/client/src/services/yjstable/tableSyncAdapter.test.ts`
-- **Line**: 18
+- **Line**: 22
 - **Type**: setTimeout
 
-### AliasPickerStore.svelte.ts:52:setTimeout
+### AliasPickerStore.svelte.ts:54:setTimeout
 
 - **File**: `/app/client/src/stores/AliasPickerStore.svelte.ts`
-- **Line**: 52
+- **Line**: 54
 - **Type**: setTimeout
-
-### CommandPaletteStore.svelte.ts:378:requestAnimationFrame
-
-- **File**: `/app/client/src/stores/CommandPaletteStore.svelte.ts`
-- **Line**: 378
-- **Type**: requestAnimationFrame
 
 ### itm-add-new-items-with-enter-49d26e99.integration.spec.ts:20:setTimeout
 
@@ -2566,23 +2525,3 @@ These are pollings executed only in test environments.
 
 These are pollings with clear purposes and should not be removed.
 
-### +layout.svelte:131:setInterval
-
-- **File**: `/app/client/src/routes/+layout.svelte`
-- **Line**: 131
-- **Type**: setInterval
-- **Code**: `return setInterval(() => {`
-
-### EditorOverlayStore.svelte.ts:1072:requestAnimationFrame
-
-- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 1072
-- **Type**: requestAnimationFrame
-- **Code**: `requestAnimationFrame(() => textarea.focus());`
-
-### EditorOverlayStore.svelte.ts:1073:setTimeout
-
-- **File**: `/app/client/src/stores/EditorOverlayStore.svelte.ts`
-- **Line**: 1073
-- **Type**: setTimeout
-- **Code**: `setTimeout(() => textarea.focus(), 10);`
