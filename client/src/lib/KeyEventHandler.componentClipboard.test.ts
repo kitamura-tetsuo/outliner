@@ -162,6 +162,25 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         ];
     });
 
+    it("flavors written; fallback path", () => {
+        state.selection = {
+            startItemId: "a",
+            startOffset: 0,
+            endItemId: "c",
+            endOffset: 1,
+            userId: "local",
+        };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        const plainText = data.get("text/plain");
+        expect(plainText).toBe("Intro text\nDatabase tables\nT");
+
+        const htmlText = data.get("text/html");
+        expect(htmlText).toContain("Intro text<br>Database tables<br>T");
+    });
+
     it("keeps the Grid binding when the drag stops inside the edge items", () => {
         // Mouse drags rarely land on item boundaries: start mid-word, end mid-word.
         state.selection = { startItemId: "a", startOffset: 6, endItemId: "c", endOffset: 8, userId: "local" };

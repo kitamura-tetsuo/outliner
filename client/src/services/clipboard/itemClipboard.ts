@@ -213,13 +213,13 @@ export function clipboardPlainText(payload: ItemClipboardPayload): string {
     return payload.items.map(item => item.text).join("\n");
 }
 
-export function structuredClipboardHtml(encoded: string, plainText: string): string {
+export function structuredClipboardHtml(encoded: string, plainText: string, customHtml?: string): string {
     const bytes = new TextEncoder().encode(encoded);
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    const visibleText = plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    const visibleHtml = customHtml !== undefined ? customHtml : plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;").replaceAll("'", "&#39;").replaceAll("\n", "<br>");
-    return `<span ${OUTLINER_ITEMS_HTML_ATTRIBUTE}="${btoa(binary)}" hidden></span><span>${visibleText}</span>`;
+    return `<span ${OUTLINER_ITEMS_HTML_ATTRIBUTE}="${btoa(binary)}" hidden></span><span>${visibleHtml}</span>`;
 }
 
 export function structuredClipboardFromHtml(html: string): string | undefined {

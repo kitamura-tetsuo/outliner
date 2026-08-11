@@ -1,5 +1,6 @@
 import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
 import { getCalendar } from "../services/calendar/calendarService";
+import { serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
 import {
     clipboardPlainText,
     deserializeClipboardItems,
@@ -13,6 +14,7 @@ import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { exportTableStructure, importTableStructures } from "../services/yjstable/tableClone";
 import { getTableName, removeTable } from "../services/yjstable/tableDocs";
+import { getActiveTable } from "../services/yjstable/tableEngine";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -38,7 +40,10 @@ const logger = getLogger("KeyEventHandler");
  * A partial selection only takes this path when it actually holds a component
  * block; plain text ranges keep using the ordinary text clipboard.
  */
-function selectedItemsClipboardData(): { encoded: string; plainText: string; } | undefined {
+function selectedItemsClipboardData():
+    | { encoded: string; plainText: string; html?: string; truncated?: boolean; }
+    | undefined
+{
     const selection = Object.values(store.selections).find(sel =>
         !sel.isBoxSelection && sel.startItemId !== sel.endItemId
     );
@@ -59,17 +64,47 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     const coversWholeRange = startOffset === 0 && endOffset === lastLength;
 
     let hasComponent = false;
+    const tableTsvBlocks: Record<string, { text: string; truncated: boolean; }> = {};
+    const tableHtmlBlocks: Record<string, { html: string; truncated: boolean; }> = {};
+    let anyTruncated = false;
     const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
         const index = first + offset;
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
         const isComponent = Boolean(tableId || calendarId);
-        const fallbackText = tableId
-            ? getTableName(project.ydoc, tableId)
-            : calendarId
-            ? getCalendar(project, calendarId)?.name
-            : undefined;
+        let fallbackText: string | undefined;
+        if (tableId) {
+            const acquiredTable = getActiveTable(project.ydoc.guid, tableId);
+            const result = (acquiredTable?.adapter as any)?.lastResult;
+            if (acquiredTable && result && result.columns && result.columns.length > 0) {
+                const config = {
+                    columns: result.columns,
+                    hiddenColumns: Object.fromEntries(
+                        result.columns.map((
+                            c: string,
+                        ) => [
+                            c,
+                            (acquiredTable.handles.uiDef.get("components") as Record<string, any>)?.[c]?.hidden
+                                === true,
+                        ]),
+                    ),
+                    labels: Object.fromEntries(
+                        result.columns.map((
+                            c: string,
+                        ) => [c, (acquiredTable.handles.uiDef.get("components") as Record<string, any>)?.[c]?.label]),
+                    ),
+                    rows: result.rows,
+                };
+                tableTsvBlocks[tableId] = serializeGridToTsv(config);
+                tableHtmlBlocks[tableId] = serializeGridToHtml(config);
+                fallbackText = tableTsvBlocks[tableId].text;
+                if (tableTsvBlocks[tableId].truncated) anyTruncated = true;
+            }
+            if (!fallbackText) fallbackText = getTableName(project.ydoc, tableId);
+        } else if (calendarId) {
+            fallbackText = getCalendar(project, calendarId)?.name;
+        }
         const text = String(item.text ?? "");
         const isEdge = index === first || index === last;
         const sliceStart = index === first ? startOffset : 0;
@@ -109,7 +144,24 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
-    return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
+    if (!payload) return undefined;
+
+    const plainText = clipboardPlainText(payload);
+
+    let html: string | undefined = undefined;
+    if (Object.keys(tableHtmlBlocks).length > 0) {
+        html = payload.items.map(item => {
+            if (item.componentType === "yjstable" && item.yjsTableId && tableHtmlBlocks[item.yjsTableId]) {
+                return tableHtmlBlocks[item.yjsTableId].html;
+            }
+            return item.text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll(
+                '"',
+                "&quot;",
+            ).replaceAll("'", "&#39;").replaceAll("\n", "<br>");
+        }).join("<br>");
+    }
+
+    return { encoded, plainText, html, truncated: anyTruncated };
 }
 
 /**
@@ -123,9 +175,11 @@ export function hasStructuredClipboardSelection(): boolean {
     return selectedItemsClipboardData() !== undefined;
 }
 
-function writeStructuredSystemClipboard(structured: { encoded: string; plainText: string; }): void {
+function writeStructuredSystemClipboard(
+    structured: { encoded: string; plainText: string; html?: string; truncated?: boolean; },
+): void {
     if (typeof navigator === "undefined" || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") return;
-    const html = structuredClipboardHtml(structured.encoded, structured.plainText);
+    const html = structuredClipboardHtml(structured.encoded, structured.plainText, structured.html);
     const item = new ClipboardItem({
         "text/plain": new Blob([structured.plainText], { type: "text/plain" }),
         "text/html": new Blob([html], { type: "text/html" }),
@@ -344,7 +398,7 @@ export class KeyEventHandler {
             // If it hasn't fired in the same loop, we fire a synthetic one
             setTimeout(() => {
                 if (KeyEventHandler._nativeCopyFired) return;
-                const structured = selectedItemsClipboardData();
+                let structured = selectedItemsClipboardData();
                 // A component host contributes its view name to the structured
                 // payload only, so the structured plain text is authoritative
                 // whenever the selection carries one.
@@ -1454,7 +1508,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCopy = false;
-        const structured = selectedItemsClipboardData();
+        let structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
@@ -1487,6 +1541,9 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured?.truncated) {
+            console.warn("Grid result was too large and has been truncated in the clipboard.");
+        }
         if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
@@ -1500,7 +1557,7 @@ export class KeyEventHandler {
                     if (structured) {
                         event.clipboardData.setData(
                             "text/html",
-                            structuredClipboardHtml(structured.encoded, selectedText),
+                            structuredClipboardHtml(structured.encoded, selectedText, structured.html),
                         );
                     }
 
@@ -2777,7 +2834,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCut = false;
-        const structured = selectedItemsClipboardData();
+        let structured = selectedItemsClipboardData();
 
         if (boxSelection) {
             // If box selection
@@ -2810,6 +2867,9 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured?.truncated) {
+            console.warn("Grid result was too large and has been truncated in the clipboard.");
+        }
         if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
@@ -2823,7 +2883,7 @@ export class KeyEventHandler {
                     if (structured) {
                         event.clipboardData.setData(
                             "text/html",
-                            structuredClipboardHtml(structured.encoded, selectedText),
+                            structuredClipboardHtml(structured.encoded, selectedText, structured.html),
                         );
                     }
 
