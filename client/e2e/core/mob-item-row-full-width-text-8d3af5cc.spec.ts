@@ -85,7 +85,9 @@ test.describe("MOB-8d3af5cc: Mobile item row full-width text", () => {
 
         await toolbar.locator("button[title='Vote']").click();
         await page.waitForTimeout(300);
-        await expect(contentItem.locator(".vote-count")).toHaveText("1");
+        // Since the accessible name is also rendered as inner text in the DOM via .sr-only,
+        // we assert specifically on the visible span.
+        await expect(contentItem.locator(".vote-count span[aria-hidden='true']")).toHaveText("1");
 
         const countBefore = await page.locator(".outliner-item").count();
         await toolbar.locator("button[title='Delete']").click();
