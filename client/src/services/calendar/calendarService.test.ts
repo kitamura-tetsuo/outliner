@@ -223,7 +223,11 @@ describe("calendarService", () => {
         const docA = project.ydoc;
         const docB = new Y.Doc();
 
-        const calendarId = createCalendar(project, { name: "Cal", groupAxes: ["alpha", "beta"], laneOrder: ["l1", "l2"] });
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            groupAxes: ["alpha", "beta"],
+            laneOrder: ["l1", "l2"],
+        });
         Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
 
         // Create a concurrent branch B with its own changes
