@@ -96,6 +96,15 @@ export function getCalendarMap(project: Project, calendarId: string): Y.Map<Cale
 function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSettings {
     const groupAxesValue = calendarMap.get("groupAxes");
     const laneOrderValue = calendarMap.get("laneOrder");
+
+    // De-duplicate in read path for backward compatibility with older documents
+    // that may have stored duplicates in Y.Array due to concurrent edits.
+    const readArray = (value: unknown) => {
+        if (Array.isArray(value)) return Array.from(new Set(value));
+        if (value instanceof Y.Array) return Array.from(new Set(value.toArray()));
+        return [];
+    };
+
     return {
         name: String(calendarMap.get("name") ?? ""),
         query: String(calendarMap.get("query") ?? ""),
@@ -106,8 +115,8 @@ function readCalendarSettings(calendarMap: Y.Map<CalendarValueType>): CalendarSe
         roleAllDay: calendarMap.get("roleAllDay") as string | undefined,
         roleDuration: calendarMap.get("roleDuration") as string | undefined,
         roleDue: calendarMap.get("roleDue") as string | undefined,
-        groupAxes: groupAxesValue instanceof Y.Array ? groupAxesValue.toArray() : [],
-        laneOrder: laneOrderValue instanceof Y.Array ? laneOrderValue.toArray() : [],
+        groupAxes: readArray(groupAxesValue),
+        laneOrder: readArray(laneOrderValue),
         showEmptyLanes: calendarMap.get("showEmptyLanes") as boolean | undefined,
         weekStart: calendarMap.get("weekStart") as number | undefined,
         workingHoursStartMinutes: calendarMap.get("workingHoursStartMinutes") as number | undefined,
@@ -159,13 +168,12 @@ export function createCalendar(
     if (options.ganttScale) calendarMap.set("ganttScale", options.ganttScale);
     if (options.showEmptyLanes !== undefined) calendarMap.set("showEmptyLanes", options.showEmptyLanes);
 
-    const groupAxes = new Y.Array<string>();
-    if (options.groupAxes && options.groupAxes.length > 0) groupAxes.push(options.groupAxes);
-    calendarMap.set("groupAxes", groupAxes);
-
-    const laneOrder = new Y.Array<string>();
-    if (options.laneOrder && options.laneOrder.length > 0) laneOrder.push(options.laneOrder);
-    calendarMap.set("laneOrder", laneOrder);
+    if (options.groupAxes && options.groupAxes.length > 0) {
+        calendarMap.set("groupAxes", options.groupAxes);
+    }
+    if (options.laneOrder && options.laneOrder.length > 0) {
+        calendarMap.set("laneOrder", options.laneOrder);
+    }
 
     project.calendars.set(calendarId, calendarMap);
     return calendarId;
@@ -195,22 +203,6 @@ function setOrClearBoolean(calendarMap: Y.Map<CalendarValueType>, key: string, v
 function assertValidTimezone(timezone: string): string {
     if (!isValidIanaTimeZone(timezone)) throw new Error(`Invalid timezone: ${timezone}`);
     return timezone;
-}
-
-function ensureGroupAxesArray(calendarMap: Y.Map<CalendarValueType>): Y.Array<string> {
-    const existing = calendarMap.get("groupAxes");
-    if (existing instanceof Y.Array) return existing as Y.Array<string>;
-    const groupAxes = new Y.Array<string>();
-    calendarMap.set("groupAxes", groupAxes);
-    return groupAxes;
-}
-
-function ensureLaneOrderArray(calendarMap: Y.Map<CalendarValueType>): Y.Array<string> {
-    const existing = calendarMap.get("laneOrder");
-    if (existing instanceof Y.Array) return existing as Y.Array<string>;
-    const laneOrder = new Y.Array<string>();
-    calendarMap.set("laneOrder", laneOrder);
-    return laneOrder;
 }
 
 /**
@@ -249,14 +241,12 @@ export function updateCalendar(
         }
         if (updates.ganttScale !== undefined) setOrClear(calendarMap, "ganttScale", updates.ganttScale);
         if (updates.groupAxes !== undefined) {
-            const groupAxes = ensureGroupAxesArray(calendarMap);
-            if (groupAxes.length > 0) groupAxes.delete(0, groupAxes.length);
-            if (updates.groupAxes.length > 0) groupAxes.push(updates.groupAxes);
+            if (updates.groupAxes.length === 0) calendarMap.delete("groupAxes");
+            else calendarMap.set("groupAxes", updates.groupAxes);
         }
         if (updates.laneOrder !== undefined) {
-            const laneOrder = ensureLaneOrderArray(calendarMap);
-            if (laneOrder.length > 0) laneOrder.delete(0, laneOrder.length);
-            if (updates.laneOrder.length > 0) laneOrder.push(updates.laneOrder);
+            if (updates.laneOrder.length === 0) calendarMap.delete("laneOrder");
+            else calendarMap.set("laneOrder", updates.laneOrder);
         }
         if (updates.showEmptyLanes !== undefined) {
             setOrClearBoolean(calendarMap, "showEmptyLanes", updates.showEmptyLanes);
