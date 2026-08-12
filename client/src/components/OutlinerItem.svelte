@@ -197,6 +197,9 @@ function handleContextMenu(e: MouseEvent) {
 function handleMenuKeyDown(e: KeyboardEvent) {
     if (isPageTitle) return;
 
+    // While the context menu owns focus, let it handle its own keys.
+    if (isContextMenuOpen && e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
+
     if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
         if (isReadOnly) return;
         e.preventDefault();
@@ -2366,6 +2369,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                         count={model.votes.length}
                         title={voterNames}
                         ariaLabel={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
+                        voted={model.votes.includes(currentUser)}
+                        onToggle={toggleVote}
                     />
                 {/if}
                 {#if !isPageTitle}

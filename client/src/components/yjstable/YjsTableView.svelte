@@ -90,7 +90,7 @@ const engineCallbacks = {
 function refreshUiMirror() {
     uiQuery = String(handles.uiDef.get("query") ?? "");
     const order = handles.uiDef.get("columnOrder");
-    columnOrder = order instanceof Y.Array ? (order.toArray() as string[]) : [];
+    columnOrder = Array.isArray(order) ? (order as string[]) : (order instanceof Y.Array ? (order.toArray() as string[]) : []);
     const components = handles.uiDef.get("components");
     const nextType: Record<string, string | undefined> = {};
     const nextLabel: Record<string, string | undefined> = {};

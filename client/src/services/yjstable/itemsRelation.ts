@@ -469,10 +469,31 @@ export class ItemsRelationProvider implements RelationProvider {
             if (existing) nodeValue.delete("tags");
             return;
         }
-        const arr = existing ?? new Y.Array<string>();
-        if (!existing) nodeValue.set("tags", arr);
-        else if (arr.length > 0) arr.delete(0, arr.length);
-        arr.push(next);
+
+        if (!existing) {
+            const arr = new Y.Array<string>();
+            arr.push(next);
+            nodeValue.set("tags", arr);
+            return;
+        }
+
+        const current = existing.toArray();
+        const nextSet = new Set(next);
+
+        const seen = new Set<string>();
+        for (let i = current.length - 1; i >= 0; i--) {
+            const tag = current[i];
+            if (!nextSet.has(tag) || seen.has(tag)) {
+                existing.delete(i, 1);
+            } else {
+                seen.add(tag);
+            }
+        }
+
+        const toAdd = next.filter(t => !seen.has(t));
+        if (toAdd.length > 0) {
+            existing.push(toAdd);
+        }
     }
 
     private parseTagsValue(value: RelationValue): string[] {

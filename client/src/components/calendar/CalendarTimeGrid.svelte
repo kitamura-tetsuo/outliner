@@ -602,6 +602,13 @@ onMount(() => {
     font-size: 0.85rem;
     line-height: 1;
     padding: 0 2px;
+    position: relative;
+}
+
+.delete-button::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
 }
 
 .delete-button:hover {

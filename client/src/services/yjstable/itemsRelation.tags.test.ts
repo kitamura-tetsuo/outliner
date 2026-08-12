@@ -109,6 +109,52 @@ describe("items relation tags projection", { timeout: 30000 }, () => {
         }
     });
 
+    it("merges concurrent tags updates correctly and deduplicates tags", async () => {
+        const f = makeProject();
+        const page = f.add("root", "Page");
+        const key = f.add(page, "Card", "2026-08-02T09:00:00Z", ["alpha", "beta"]);
+
+        const doc2 = new Y.Doc({ guid: `${f.projectDoc.guid}-mirror` });
+        Y.applyUpdate(doc2, Y.encodeStateAsUpdate(f.projectDoc));
+        const tree2 = new YTree(doc2.getMap("orderedTree"));
+        const provider2 = new ItemsRelationProvider({ projectDoc: doc2, pgSchema: f.pgSchema });
+
+        try {
+            // Client 1 adds "gamma"
+            await f.provider.applyWrite({
+                op: "UPDATE",
+                rowId: key,
+                column: "tags",
+                value: JSON.stringify(["alpha", "beta", "gamma"]),
+            });
+
+            // Client 2 removes "beta", adds "delta"
+            await provider2.applyWrite({
+                op: "UPDATE",
+                rowId: key,
+                column: "tags",
+                value: JSON.stringify(["alpha", "delta"]),
+            });
+
+            Y.applyUpdate(doc2, Y.encodeStateAsUpdate(f.projectDoc));
+            Y.applyUpdate(f.projectDoc, Y.encodeStateAsUpdate(doc2));
+
+            const value1 = f.tree.getNodeValueFromKey(key) as Y.Map<unknown>;
+            const value2 = tree2.getNodeValueFromKey(key) as Y.Map<unknown>;
+
+            // The exact order between "gamma" and "delta" depends on Yjs CRDT timestamps.
+            // As long as the set has the correct exact contents, it is correct.
+            const s1 = new Set((value1.get("tags") as Y.Array<string>).toArray());
+            const s2 = new Set((value2.get("tags") as Y.Array<string>).toArray());
+
+            expect(s1).toEqual(new Set(["alpha", "gamma", "delta"]));
+            expect(s2).toEqual(new Set(["alpha", "gamma", "delta"]));
+        } finally {
+            f.provider.dispose();
+            provider2.dispose();
+        }
+    });
+
     it("clears tags when the relation writes an empty array", async () => {
         const f = makeProject();
         const page = f.add("root", "Page");

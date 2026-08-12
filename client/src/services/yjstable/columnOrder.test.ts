@@ -1,8 +1,38 @@
 // @feature TBL-4f0d2b9a
 import { describe, expect, it } from "vitest";
-import { calculateDropIndex, moveColumn, orderColumns } from "./columnOrder";
+import * as Y from "yjs";
+import { calculateDropIndex, moveColumn, orderColumns, writeColumnOrder } from "./columnOrder";
+import type { TableHandles } from "./tableDocs";
 
 describe("columnOrder", () => {
+    describe("writeColumnOrder", () => {
+        it("does not duplicate columns on concurrent reorders", () => {
+            const docA = new Y.Doc();
+            const docB = new Y.Doc();
+            const uiA = docA.getMap("uiDef");
+            const uiB = docB.getMap("uiDef");
+
+            const handlesA = { doc: docA, uiDef: uiA } as TableHandles;
+            const handlesB = { doc: docB, uiDef: uiB } as TableHandles;
+
+            writeColumnOrder(handlesA, ["month", "revenue", "region"]);
+            Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
+
+            writeColumnOrder(handlesA, ["revenue", "month", "region"]);
+            writeColumnOrder(handlesB, ["region", "month", "revenue"]);
+
+            Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
+            Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
+
+            const finalOrderA = uiA.get("columnOrder") as string[];
+            const finalOrderB = uiB.get("columnOrder") as string[];
+
+            expect(finalOrderA).toEqual(finalOrderB);
+            expect(finalOrderA.length).toBe(3);
+            expect(new Set(finalOrderA).size).toBe(3);
+        });
+    });
+
     describe("calculateDropIndex", () => {
         it("returns index - 1 when dragging left/above and drop is left/above", () => {
             expect(calculateDropIndex(0, 2, "left")).toBe(1);
