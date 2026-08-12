@@ -11,8 +11,8 @@ import {
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
-import { copyTableData, exportTableStructure, importTableStructures } from "../services/yjstable/tableClone";
-import { getTableHandles, getTableName, removeTable } from "../services/yjstable/tableDocs";
+import { exportTableStructure } from "../services/yjstable/tableClone";
+import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -21,7 +21,6 @@ import { escapeId } from "../utils/domUtils";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
-import { getClientByProjectId, removeClientByProjectId } from "./yjsService.svelte";
 const logger = getLogger("KeyEventHandler");
 
 /**
@@ -2684,107 +2683,22 @@ export class KeyEventHandler {
                     }),
                 );
                 if (Object.keys(referencedSnapshots).length > 0) {
-                    const writeCheck = typeof window === "undefined"
-                        ? undefined
-                        : new CustomEvent("grid-paste-write-check", { cancelable: true });
-                    if (writeCheck && !window.dispatchEvent(writeCheck)) {
-                        window.dispatchEvent(
-                            new CustomEvent("grid-paste-failed", {
-                                detail: { reason: "The destination project is read-only." },
-                            }),
-                        );
-                        return;
-                    }
-
-                    const pasteController = new AbortController();
-                    const cancelPaste = () => pasteController.abort();
-                    window.addEventListener("grid-paste-cancel", cancelPaste, { once: true });
-                    window.dispatchEvent(
-                        new CustomEvent("grid-paste-progress", {
-                            detail: { state: "copying", tableCount: Object.keys(referencedSnapshots).length },
-                        }),
+                    const { cloneGridTablesAcrossProjects } = await import(
+                        "../services/clipboard/crossProjectGridPaste"
                     );
-                    const imported = await importTableStructures(destinationDoc, referencedSnapshots);
-                    const rollback = () => {
-                        for (const destinationTableId of Object.values(imported.tableIdMap)) {
-                            removeTable(destinationDoc, destinationTableId);
-                        }
-                    };
-                    if (generalStore.project?.ydoc !== destinationDoc || pasteController.signal.aborted) {
-                        rollback();
-                        window.removeEventListener("grid-paste-cancel", cancelPaste);
-                        window.dispatchEvent(
-                            new CustomEvent("grid-paste-progress", { detail: { state: "cancelled" } }),
-                        );
-                        return;
-                    }
-
-                    let sourceUnavailableReason: string | undefined;
-                    try {
-                        const sourceClient = await getClientByProjectId(
-                            structured.sourceProjectId,
-                            pasteController.signal,
-                        );
-                        if (!sourceClient) {
-                            sourceUnavailableReason = "The source project is not available.";
-                        } else {
-                            const { connectTableDoc } = await import("./yjs/connection");
-                            for (const [sourceTableId, destinationTableId] of Object.entries(imported.tableIdMap)) {
-                                if (pasteController.signal.aborted || generalStore.project?.ydoc !== destinationDoc) {
-                                    break;
-                                }
-                                const sourceHandles = getTableHandles(sourceClient.project.ydoc, sourceTableId);
-                                const destinationHandles = getTableHandles(destinationDoc, destinationTableId);
-                                if (!sourceHandles || !destinationHandles) {
-                                    sourceUnavailableReason = `Source Grid table ${sourceTableId} is not available.`;
-                                    continue;
-                                }
-                                const connection = await connectTableDoc(
-                                    structured.sourceProjectId,
-                                    sourceTableId,
-                                    sourceHandles.doc,
-                                );
-                                try {
-                                    const { synced } = await connection.waitForInitialSync();
-                                    if (!synced) {
-                                        sourceUnavailableReason =
-                                            `Source Grid table ${sourceTableId} could not be reached.`;
-                                        continue;
-                                    }
-                                    copyTableData(sourceHandles, destinationHandles);
-                                } finally {
-                                    await connection.dispose();
-                                }
-                            }
-                        }
-                    } catch (error) {
-                        sourceUnavailableReason = error instanceof Error
-                            ? error.message
-                            : "The source project is not available.";
-                    } finally {
-                        removeClientByProjectId(structured.sourceProjectId);
-                    }
-                    window.removeEventListener("grid-paste-cancel", cancelPaste);
-                    if (pasteController.signal.aborted || generalStore.project?.ydoc !== destinationDoc) {
-                        rollback();
-                        window.dispatchEvent(
-                            new CustomEvent("grid-paste-progress", { detail: { state: "cancelled" } }),
-                        );
-                        return;
-                    }
-                    window.dispatchEvent(
-                        new CustomEvent("grid-paste-progress", {
-                            detail: sourceUnavailableReason
-                                ? { state: "complete-without-data", reason: sourceUnavailableReason }
-                                : { state: "complete-with-data" },
-                        }),
-                    );
-                    if (Object.keys(imported.tableIdMap).length > 0) {
+                    const tableIdMap = await cloneGridTablesAcrossProjects({
+                        destinationDoc,
+                        sourceProjectId: structured.sourceProjectId,
+                        snapshots: referencedSnapshots,
+                        isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
+                    });
+                    if (tableIdMap === undefined) return;
+                    if (Object.keys(tableIdMap).length > 0) {
                         structuredItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
                                 const destinationTableId = item.yjsTableId === undefined
                                     ? undefined
-                                    : imported.tableIdMap[item.yjsTableId];
+                                    : tableIdMap[item.yjsTableId];
                                 return destinationTableId === undefined
                                     ? { text: item.text, depth: item.depth }
                                     : { ...item, yjsTableId: destinationTableId };

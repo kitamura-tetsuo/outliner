@@ -20,12 +20,12 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
     aliasPickerStore: { isVisible: false, hide: vi.fn() },
 }));
 
-// This unit file exercises clipboard serialization and structure fallback. A
-// live source-room connection belongs to the cross-project E2E coverage, so it
-// is deliberately unavailable here rather than opening a WebSocket from JSDOM.
+// This file exercises clipboard serialization and the structure-only fallback.
+// Reaching the live source room belongs to the cross-project E2E coverage, so
+// the project registry reports the source as unavailable here instead of
+// opening a WebSocket out of JSDOM.
 vi.mock("./yjsService.svelte", () => ({
-    getClientByProjectId: () => Promise.resolve(undefined),
-    removeClientByProjectId: vi.fn(),
+    acquireClientByProjectId: () => Promise.resolve(undefined),
 }));
 
 interface TestSelection {

@@ -8,6 +8,7 @@ components:
 - client/src/components/EditorOverlay.svelte
 - client/src/components/OutlinerTree.svelte
 - client/src/lib/KeyEventHandler.ts
+- client/src/services/clipboard/crossProjectGridPaste.ts
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
@@ -28,12 +29,15 @@ acceptance:
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-data-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-unreachable-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-select-all-grid-4584c0de.spec.ts
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/services/clipboard/crossProjectGridPaste.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
 - client/src/services/yjstable/tableClone.test.ts
