@@ -15,7 +15,12 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
-import { activeChartImageGetters } from "../../stores/tableChartStore";
+import { orderColumns } from "../../services/yjstable/columnOrder";
+import {
+    registerTableClipboardSource,
+    type TableClipboardSource,
+    unregisterTableClipboardSource,
+} from "../../stores/tableClipboardRegistry";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -111,6 +116,21 @@ function refreshUiMirror() {
 
 const uiMirrorObserver = () => refreshUiMirror();
 
+// What this view hands to the system clipboard when a copy crosses its host
+// item. The getters run at copy time, so they read whatever is on screen then.
+const clipboardSource: TableClipboardSource = {
+    getGrid: () => {
+        if (result.columns.length === 0) return undefined;
+        return {
+            columns: orderColumns(result.columns, columnOrder),
+            hiddenColumns,
+            labels: columnLabels,
+            rows: result.rows,
+        };
+    },
+    getChartImage: () => (showChart ? chartPanel?.getImage() : undefined),
+};
+
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
@@ -119,6 +139,7 @@ let unsubscribe: (() => void) | undefined;
 onMount(() => {
     refreshUiMirror();
     handles.uiDef.observeDeep(uiMirrorObserver);
+    registerTableClipboardSource(handles.tableId, clipboardSource);
 
     void (async () => {
         const acquired = await session.acquire(handles.tableId);
@@ -136,17 +157,9 @@ onMount(() => {
 onDestroy(() => {
     handles.uiDef.unobserveDeep(uiMirrorObserver);
     unsubscribe?.();
-    activeChartImageGetters.delete(handles.tableId);
+    unregisterTableClipboardSource(handles.tableId, clipboardSource);
     session.dispose();
     destroyTableUndoManager(handles.doc);
-});
-
-$effect(() => {
-    if (showChart && chartPanel) {
-        activeChartImageGetters.set(handles.tableId, () => chartPanel!.getImage());
-    } else {
-        activeChartImageGetters.delete(handles.tableId);
-    }
 });
 </script>
 

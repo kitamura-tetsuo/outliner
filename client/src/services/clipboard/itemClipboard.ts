@@ -213,12 +213,18 @@ export function clipboardPlainText(payload: ItemClipboardPayload): string {
     return payload.items.map(item => item.text).join("\n");
 }
 
-export function structuredClipboardHtml(encoded: string, plainText: string, customHtml?: string): string {
+/**
+ * The clipboard's HTML fragment: the private payload in a hidden span, followed
+ * by what another application renders. `renderedHtml` overrides that visible
+ * part — a Grid supplies a real `<table>` there — and the hidden span is
+ * untouched either way, so in-app paste fidelity does not depend on it.
+ */
+export function structuredClipboardHtml(encoded: string, plainText: string, renderedHtml?: string): string {
     const bytes = new TextEncoder().encode(encoded);
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
-    const visibleHtml = customHtml !== undefined
-        ? customHtml
+    const visibleHtml = renderedHtml !== undefined
+        ? renderedHtml
         : plainText.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
             .replaceAll('"', "&quot;").replaceAll("'", "&#39;").replaceAll("\n", "<br>");
     return `<span ${OUTLINER_ITEMS_HTML_ATTRIBUTE}="${btoa(binary)}" hidden></span><span>${visibleHtml}</span>`;

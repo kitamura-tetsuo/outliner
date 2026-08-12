@@ -44,15 +44,18 @@ describe("TableChartPanel", () => {
             "Bar chart of revenue by id: demo-1 (120), demo-2 (180)",
         );
     });
-});
 
-it("returns undefined for getImage() if not rendered, or data URL if rendered", () => {
-    const { component } = render(TableChartPanel, { initial: { columns: [], rows: [] } });
-    expect(component.getImage()).toBeUndefined();
+    it("has no image until a result has been charted, then exports one on white", () => {
+        const { component } = render(TableChartPanel, { initial: { columns: [], rows: [] } });
+        // An empty result draws nothing, so there is no picture to copy.
+        expect(component.getImage()).toBeUndefined();
 
-    component.update({
-        columns: ["month", "revenue"],
-        rows: [{ month: "Jan", revenue: 100 }],
+        component.update({
+            columns: ["month", "revenue"],
+            rows: [{ month: "Jan", revenue: 100 }],
+        });
+
+        // Opaque, so the chart is readable wherever it is pasted.
+        expect(component.getImage()).toBe("data:image/png;base64,mockchart-bg");
     });
-    expect(component.getImage()).toBe("data:image/png;base64,mockchart-bg");
 });

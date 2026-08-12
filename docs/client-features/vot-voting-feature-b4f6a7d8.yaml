@@ -4,11 +4,13 @@ title-ja: アイテムの投票
 category: collaboration
 status: implemented
 acceptance:
-- Users can toggle votes on an item by right-clicking it and selecting 'Vote for item'
-- Users can toggle votes by clicking the interactive vote count badge on the item row
-- Users can toggle votes using the mobile action toolbar on smaller screens
 - The vote badge visibly updates with the current vote count
+- Users can toggle votes by clicking the interactive vote count badge on the item row
+- Users can toggle votes on an item by right-clicking it and selecting 'Vote for item'
+- Users can toggle votes using the mobile action toolbar on smaller screens
 - Votes are synchronized across clients in real-time
 components:
-- client/src/components/OutlinerItemVoteCount.svelte
 - client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemVoteCount.svelte
+tests:
+- client/e2e/basic/item-voting.spec.ts

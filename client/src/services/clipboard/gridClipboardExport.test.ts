@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { serializeGridToHtml, serializeGridToTsv } from "./gridClipboardExport";
+import { GRID_EXPORT_ROW_LIMIT, serializeGridToHtml, serializeGridToTsv } from "./gridClipboardExport";
 
 describe("gridClipboardExport", () => {
     describe("serializeGridToTsv", () => {
-        it("exports TSV with basic values and handles nulls", () => {
+        it("writes a header of labels and one line per row", () => {
             const result = serializeGridToTsv({
                 columns: ["c1", "c2"],
                 hiddenColumns: {},
@@ -13,11 +13,22 @@ describe("gridClipboardExport", () => {
                     { c1: null, c2: "" },
                 ],
             });
+            // NULL and the empty string are both an empty cell (§7.1).
             expect(result.text).toBe("Col 1\tCol 2\nA\tB\n\t");
             expect(result.truncated).toBe(false);
         });
 
-        it("quotes values according to RFC 4180", () => {
+        it("falls back to the SQL name when a column has no label", () => {
+            const result = serializeGridToTsv({
+                columns: ["revenue", "month"],
+                hiddenColumns: {},
+                labels: { revenue: "", month: undefined },
+                rows: [],
+            });
+            expect(result.text).toBe("revenue\tmonth");
+        });
+
+        it("quotes values and labels per RFC 4180", () => {
             const result = serializeGridToTsv({
                 columns: ["c1"],
                 hiddenColumns: {},
@@ -30,25 +41,38 @@ describe("gridClipboardExport", () => {
             expect(result.text).toBe('"Header\nnewline"\n"has ""quotes"""\n"has\ttabs"');
         });
 
-        it("respects hidden columns and limits", () => {
+        it("keeps the caller's column order and drops hidden columns", () => {
             const result = serializeGridToTsv({
-                columns: ["c1", "c2", "c3"],
+                columns: ["c3", "c2", "c1"],
                 hiddenColumns: { c2: true },
                 labels: {},
-                rows: [
-                    { c1: 1, c2: 2, c3: 3 },
-                    { c1: 4, c2: 5, c3: 6 },
-                    { c1: 7, c2: 8, c3: 9 },
-                ],
+                rows: [{ c1: 1, c2: 2, c3: 3 }],
+            });
+            expect(result.text).toBe("c3\tc1\n3\t1");
+        });
+
+        it("caps the rows and says how many it kept", () => {
+            const result = serializeGridToTsv({
+                columns: ["c1"],
+                hiddenColumns: {},
+                labels: {},
+                rows: [{ c1: 1 }, { c1: 2 }, { c1: 3 }],
                 rowLimit: 2,
             });
-            expect(result.text).toBe("c1\tc3\n1\t3\n4\t6\n--- Copy limit reached ---");
+            expect(result.text).toBe("c1\n1\n2\n--- Copy limit reached: first 2 of 3 rows ---");
             expect(result.truncated).toBe(true);
+        });
+
+        it("defaults the cap to the shared row limit", () => {
+            const rows = Array.from({ length: GRID_EXPORT_ROW_LIMIT + 1 }, (_, index) => ({ c1: index }));
+            const result = serializeGridToTsv({ columns: ["c1"], hiddenColumns: {}, labels: {}, rows });
+            expect(result.truncated).toBe(true);
+            expect(result.text.split("\n")).toHaveLength(GRID_EXPORT_ROW_LIMIT + 2);
         });
     });
 
     describe("serializeGridToHtml", () => {
-        it("exports HTML table and escapes special characters", () => {
+        it("writes a table and escapes markup", () => {
             const result = serializeGridToHtml({
                 columns: ["c1", "c2"],
                 hiddenColumns: {},
@@ -63,7 +87,17 @@ describe("gridClipboardExport", () => {
             expect(result.html).toContain("<td>a &quot;b&quot; c</td>");
         });
 
-        it("respects limits", () => {
+        it("emits NULL and the empty string as empty cells", () => {
+            const result = serializeGridToHtml({
+                columns: ["c1", "c2"],
+                hiddenColumns: {},
+                labels: {},
+                rows: [{ c1: null, c2: "" }],
+            });
+            expect(result.html).toContain("      <td></td>\n      <td></td>");
+        });
+
+        it("caps the rows and carries the notice", () => {
             const result = serializeGridToHtml({
                 columns: ["c1"],
                 hiddenColumns: {},
@@ -71,7 +105,7 @@ describe("gridClipboardExport", () => {
                 rows: [{ c1: 1 }, { c1: 2 }],
                 rowLimit: 1,
             });
-            expect(result.html).toContain("--- Copy limit reached ---");
+            expect(result.html).toContain("<p><i>--- Copy limit reached: first 1 of 2 rows ---</i></p>");
             expect(result.truncated).toBe(true);
         });
     });

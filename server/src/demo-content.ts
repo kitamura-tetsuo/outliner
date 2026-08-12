@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 39;
+export const DEMO_TEMPLATE_VERSION = 40;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -906,7 +906,9 @@ export const demoPages: DemoPageTemplate[] = [
                     + "Grid with a fresh identity, copied schema and UI settings, and empty Data Storage; conflicting SQL "
                     + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
                     + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
-                    + "without deleting its data.",
+                    + "without deleting its data. Outside Outliner the same copy pastes as what you see: a "
+                    + "spreadsheet receives the Grid's rows as cells, a document receives them as a table, and "
+                    + "with the Chart view open the picture travels with the numbers.",
             },
             {
                 text: "Aggregation across tables: this table stores only the monthly targets, "

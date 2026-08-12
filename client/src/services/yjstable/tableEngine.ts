@@ -90,7 +90,6 @@ interface Entry {
     provider: RelationProvider;
     /** Resolves once the relation finished loading and materializing. */
     ready: Promise<unknown>;
-    acquiredTable?: AcquiredTable;
     disposeConnection?: () => Promise<void> | void;
 }
 
@@ -166,9 +165,7 @@ function createTableEntry(
             remoteSynced = true;
         }
         await adapter.start();
-        const acquired = { adapter, handles, remoteSynced };
-        entry.acquiredTable = acquired;
-        return acquired;
+        return { adapter, handles, remoteSynced };
     })().then(resolveReady, rejectReady);
 
     entries.set(key, entry);
@@ -371,13 +368,4 @@ export async function resetTableEngineForTests(): Promise<void> {
 /** Test-only: wait until pending releases finished. */
 export async function waitForTableEngineIdle(): Promise<void> {
     await pendingWork;
-}
-
-/**
- * Returns a materialized AcquiredTable if the table is currently active in any session and fully initialized.
- */
-export function getActiveTable(projectId: string | undefined, tableId: string): AcquiredTable | undefined {
-    const pgSchema = projectSchemaName(projectId);
-    const key = entryKey(pgSchema, tableId);
-    return entries.get(key)?.acquiredTable;
 }

@@ -7,10 +7,17 @@ status: implemented
 components:
 - client/src/components/EditorOverlay.svelte
 - client/src/components/OutlinerTree.svelte
+- client/src/components/yjstable/TableChartPanel.svelte
+- client/src/components/yjstable/YjsTableView.svelte
 - client/src/lib/KeyEventHandler.ts
+- client/src/services/clipboard/gridClipboardExport.ts
 - client/src/services/clipboard/itemClipboard.ts
+- client/src/stores/tableClipboardRegistry.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
+- A Grid copied while its Chart view is open also carries the chart as a PNG, in the HTML flavor and as an image/png flavor of its own; an unrendered chart falls back to the table flavors, never to the display name.
+- A Grid that no view has rendered still copies as its display name, so a copy never blocks on a query.
+- A copied Grid pastes into a spreadsheet as its cells and into a document as a table, showing the view's column order, column labels and visible columns only.
 - A copy-time selection does not survive navigation to another page or project, so a Ctrl/Cmd+A copy of a page pastes all of its lines and Grid blocks into the destination instead of being silently dropped.
 - A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, and complete UI definition, while its Data Storage starts empty and remains independent of the source project.
 - A later, separate cross-project paste creates another fresh independent Grid clone.
@@ -22,8 +29,11 @@ acceptance:
 - Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
 - Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
+- 'The Grid export never truncates silently: a result past the row cap, or a chart image past the size cap, carries a notice in the copied content.'
+- The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
+- client/e2e/new/clp-chart-image-clipboard-4584c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
@@ -31,5 +41,7 @@ tests:
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
+- client/src/components/yjstable/TableChartPanel.test.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/services/clipboard/gridClipboardExport.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
