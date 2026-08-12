@@ -1,7 +1,8 @@
 import { Project } from "$shared/app-schema";
+import type { CalendarValueType } from "$shared/types/yjs-types";
 import { expect, test } from "vitest";
 import * as Y from "yjs";
-import { createCalendar, getCalendar, getCalendarMap, updateCalendar } from "./calendarService";
+import { createCalendar, getCalendar, getCalendarMap } from "./calendarService";
 
 // Directly test the bug and the LWW behavior using only the structures relevant to it
 test("concurrent updateCalendar deduplicates groupAxes and laneOrder via LWW scalar arrays", () => {
@@ -16,7 +17,7 @@ test("concurrent updateCalendar deduplicates groupAxes and laneOrder via LWW sca
     const calendarId = "test-calendar";
 
     docA.transact(() => {
-        const calMap = new Y.Map();
+        const calMap = new Y.Map<CalendarValueType>();
         calMap.set("name", "Test Calendar");
         calMap.set("groupAxes", ["initial"]);
         calMap.set("laneOrder", ["initial"]);
@@ -27,13 +28,13 @@ test("concurrent updateCalendar deduplicates groupAxes and laneOrder via LWW sca
 
     // Simulate concurrent updates
     docA.transact(() => {
-        const calMap = mapA.get(calendarId) as Y.Map<any>;
+        const calMap = mapA.get(calendarId) as Y.Map<CalendarValueType>;
         calMap.set("groupAxes", ["alpha", "beta", "gamma"]);
         calMap.set("laneOrder", ["1", "2", "3"]);
     });
 
     docB.transact(() => {
-        const calMap = mapB.get(calendarId) as Y.Map<any>;
+        const calMap = mapB.get(calendarId) as Y.Map<CalendarValueType>;
         calMap.set("groupAxes", ["alpha", "delta"]);
         calMap.set("laneOrder", ["1", "4"]);
     });
@@ -42,8 +43,8 @@ test("concurrent updateCalendar deduplicates groupAxes and laneOrder via LWW sca
     Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
     Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
 
-    const finalMapA = mapA.get(calendarId) as Y.Map<any>;
-    const finalMapB = mapB.get(calendarId) as Y.Map<any>;
+    const finalMapA = mapA.get(calendarId) as Y.Map<CalendarValueType>;
+    const finalMapB = mapB.get(calendarId) as Y.Map<CalendarValueType>;
 
     // Both should converge on the exact same array and have no duplicates
     expect(finalMapA.get("groupAxes")).toEqual(finalMapB.get("groupAxes"));
