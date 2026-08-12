@@ -376,9 +376,6 @@ export class UserManager {
             // If invalid-api-key happens here, catch it?
             // But I'm preventing it by checking isMockMode first.
             logger.error({ error: error as Error }, "Failed to initialize auth listener");
-            setTimeout(() => {
-                this.initAuthListenerAsync();
-            }, 1000);
         }
     }
 
