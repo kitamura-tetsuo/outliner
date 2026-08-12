@@ -409,7 +409,7 @@ export class KeyEventHandler {
                 return;
             }
             if (k === "Enter") {
-                const list = commandPaletteStore.filtered ?? [];
+                const list = commandPaletteStore.visible ?? [];
                 const sel = list?.[commandPaletteStore.selectedIndex ?? 0];
                 const q = String(commandPaletteStore.query || "").toLowerCase();
                 const isAliasOnly = Array.isArray(list) && list.length === 1 && (list[0]?.type === "alias");
@@ -666,8 +666,7 @@ export class KeyEventHandler {
             } else if (event.key === "Enter") {
                 // Palette Visible: Always prioritize Alias if filter includes Alias
                 try {
-                    const filtered = (commandPaletteStore as unknown as { filtered?: { type?: string; }[]; }).filtered
-                        ?? [];
+                    const filtered = commandPaletteStore.visible ?? [];
                     const hasAlias = filtered.some(c => c?.type === "alias");
                     if (hasAlias) {
                         try {

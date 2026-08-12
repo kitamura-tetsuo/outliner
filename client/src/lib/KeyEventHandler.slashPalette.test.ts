@@ -137,4 +137,23 @@ describe("KeyEventHandler slash command palette", () => {
         commandPaletteStore.handleCommandInput("d");
         expect(node.text).toBe("alpha/d");
     });
+
+    it("evaluates visible options once and uses the exact same array object for rendering and event handling", () => {
+        typeSlash();
+        commandPaletteStore.handleCommandInput("d");
+
+        // Grab the instance returned by visible
+        const firstVisibleList = commandPaletteStore.visible;
+        // Verify it returns exactly the same array identity (which implies it's using the same getter)
+        const secondVisibleList = commandPaletteStore.visible;
+
+        expect(firstVisibleList).toBe(secondVisibleList);
+
+        // A query change generates a new array, but it should still be internally consistent
+        commandPaletteStore.handleCommandInput("a");
+        const nextVisibleList = commandPaletteStore.visible;
+
+        expect(nextVisibleList).not.toBe(firstVisibleList);
+        expect(nextVisibleList).toBe(commandPaletteStore.visible);
+    });
 });

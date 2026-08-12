@@ -28,33 +28,10 @@ class CommandPaletteStore {
     ];
 
     // Visible list is calculated by getter
-    get visible() {
+    visible = $derived.by(() => {
         const q = (this.query || "").toLowerCase();
-        try {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(
-                    '[Palette.visible] q="' + q + '" list=',
-                    this.commands.filter(c => c.label.toLowerCase().includes(q)).map(c => c.label),
-                );
-            }
-        } catch (_e) {
-            logger.error(_e);
-        }
         return this.commands.filter(c => c.label.toLowerCase().includes(q));
-    }
-
-    get filtered() {
-        const q = (this.query || "").toLowerCase();
-        if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("[CommandPaletteStore.filtered] q:", q);
-        const result = this.commands.filter(c => c.label.toLowerCase().includes(q));
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(
-                "[CommandPaletteStore.filtered] Normal filtering, result:",
-                result.map(c => c.label),
-            );
-        }
-        return result;
-    }
+    });
 
     show(pos: Position, isPostInsert: boolean = false) {
         this.position = pos;
@@ -146,8 +123,8 @@ class CommandPaletteStore {
                 logger.debug(
                     "CommandPaletteStore.handleCommandInput: query=",
                     this.query,
-                    "filtered=",
-                    this.filtered.map(c => c.label),
+                    "visible=",
+                    this.visible.map(c => c.label),
                 );
             }
         } catch (_e) {
