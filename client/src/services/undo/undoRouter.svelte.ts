@@ -1,4 +1,4 @@
-import type * as Y from "yjs";
+import * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
 
 const logger = getLogger("undoRouter");
@@ -30,9 +30,24 @@ const logger = getLogger("undoRouter");
  * objects and arrays, so the `Y.UndoManager` entries themselves are stored as
  * they are and identity comparisons keep working.
  */
+import { rollbackCrossProjectPaste } from "../clipboard/crossProjectGridPaste";
+import { getTableRegistry } from "../yjstable/tableDocs";
+import { tableDocGuid } from "../yjstable/tableDocs";
+
+export interface CompositeUndoEntry {
+    type: "composite";
+    mainManager: Y.UndoManager;
+    projectDoc: Y.Doc;
+    createdTableIds: string[];
+    savedRegistryEntries: Record<string, { name: string; sqlName: string; }>;
+    savedSubdocStates: Record<string, Uint8Array>;
+}
+
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry;
+
 export class UndoRouter {
-    private undoStack: Y.UndoManager[] = $state([]);
-    private redoStack: Y.UndoManager[] = $state([]);
+    private undoStack: UndoRouterEntry[] = $state([]);
+    private redoStack: UndoRouterEntry[] = $state([]);
 
     // Bookkeeping only: nothing renders from the set of registered scopes, so a
     // reactive SvelteSet would buy nothing. Availability is derived from the two
@@ -126,12 +141,49 @@ export class UndoRouter {
 
     /** Reverse the most recent operation, whichever scope it belongs to. */
     public undo(): void {
-        this.run(this.undoStack, this.redoStack, (um) => um.undo());
+        this.run(this.undoStack, this.redoStack, (um) => um.undo(), true);
     }
 
     /** Restore the most recently undone operation. */
     public redo(): void {
-        this.run(this.redoStack, this.undoStack, (um) => um.redo());
+        this.run(this.redoStack, this.undoStack, (um) => um.redo(), false);
+    }
+
+    /**
+     * Group a cross-project paste into a single entry that can be cleanly
+     * undone and redone as one unit.
+     */
+    public captureCrossProjectPaste(mainManager: Y.UndoManager, projectDoc: Y.Doc, createdTableIds: string[]): void {
+        if (this.undoStack.length === 0) return;
+        const top = this.undoStack[this.undoStack.length - 1];
+        if (top === mainManager) {
+            const savedRegistryEntries: Record<string, { name: string; sqlName: string; }> = {};
+            const savedSubdocStates: Record<string, Uint8Array> = {};
+            const registry = getTableRegistry(projectDoc);
+
+            for (const tableId of createdTableIds) {
+                const entry = registry.get(tableId);
+                if (entry) {
+                    savedRegistryEntries[tableId] = {
+                        name: String(entry.get("name") ?? ""),
+                        sqlName: String(entry.get("sqlName") ?? ""),
+                    };
+                    const subdoc = entry.get("doc");
+                    if (subdoc instanceof Y.Doc) {
+                        savedSubdocStates[tableId] = Y.encodeStateAsUpdate(subdoc);
+                    }
+                }
+            }
+
+            this.undoStack[this.undoStack.length - 1] = {
+                type: "composite",
+                mainManager,
+                projectDoc,
+                createdTableIds,
+                savedRegistryEntries,
+                savedSubdocStates,
+            };
+        }
     }
 
     public canUndo(): boolean {
@@ -164,17 +216,51 @@ export class UndoRouter {
      * user's keystroke.
      */
     private run(
-        from: Y.UndoManager[],
-        to: Y.UndoManager[],
+        from: UndoRouterEntry[],
+        to: UndoRouterEntry[],
         apply: (um: Y.UndoManager) => unknown,
+        isUndo: boolean,
     ): void {
         this.routing = true;
         try {
             while (from.length > 0) {
-                const um = from.pop();
-                if (um && apply(um)) {
-                    to.push(um);
-                    return;
+                const entry = from.pop();
+                if (!entry) continue;
+
+                if ("type" in entry && entry.type === "composite") {
+                    if (apply(entry.mainManager)) {
+                        if (isUndo) {
+                            rollbackCrossProjectPaste(entry.projectDoc, entry.createdTableIds);
+                        } else {
+                            const registry = getTableRegistry(entry.projectDoc);
+                            entry.projectDoc.transact(() => {
+                                for (const tableId of entry.createdTableIds) {
+                                    const savedRegistry = entry.savedRegistryEntries[tableId];
+                                    const savedState = entry.savedSubdocStates[tableId];
+                                    if (savedRegistry && savedState) {
+                                        const subdoc = new Y.Doc({
+                                            guid: tableDocGuid(entry.projectDoc.guid, tableId),
+                                            autoLoad: true,
+                                        });
+                                        Y.applyUpdate(subdoc, savedState);
+                                        const mapEntry = new Y.Map<unknown>();
+                                        mapEntry.set("name", savedRegistry.name);
+                                        mapEntry.set("sqlName", savedRegistry.sqlName);
+                                        mapEntry.set("doc", subdoc);
+                                        registry.set(tableId, mapEntry);
+                                    }
+                                }
+                            });
+                        }
+                        to.push(entry);
+                        return;
+                    }
+                } else {
+                    const um = entry as Y.UndoManager;
+                    if (apply(um)) {
+                        to.push(um);
+                        return;
+                    }
                 }
             }
         } finally {
