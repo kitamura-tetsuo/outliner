@@ -12,6 +12,7 @@ import {
     getTableSqlName,
     listTables,
     removeTable,
+    type TableHandles,
     type TableInitializationHandles,
 } from "./tableDocs";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
@@ -21,6 +22,22 @@ export class TableCloneError extends Error {
         super(message);
         this.name = "TableCloneError";
     }
+}
+
+/**
+ * Copy a table's Data Storage as an independent snapshot. Yjs shared types
+ * cannot be attached to two documents, so every record map is rebuilt in the
+ * destination subdocument. The destination is replaced atomically.
+ */
+export function copyTableData(source: TableHandles, destination: TableHandles): void {
+    destination.doc.transact(() => {
+        destination.data.clear();
+        source.data.forEach((sourceRecord, recordId) => {
+            const destinationRecord = new Y.Map<import("./tableDocs").TableRecordValue>();
+            sourceRecord.forEach((value, column) => destinationRecord.set(column, value));
+            destination.data.set(recordId, destinationRecord);
+        });
+    });
 }
 
 export interface TableCloneResult {
