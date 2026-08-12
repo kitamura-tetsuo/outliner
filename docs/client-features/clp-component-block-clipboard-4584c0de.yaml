@@ -8,16 +8,20 @@ components:
 - client/src/components/EditorOverlay.svelte
 - client/src/components/OutlinerTree.svelte
 - client/src/lib/KeyEventHandler.ts
+- client/src/services/clipboard/crossProjectGridPaste.ts
 - client/src/services/clipboard/itemClipboard.ts
 acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
 - A copy-time selection does not survive navigation to another page or project, so a Ctrl/Cmd+A copy of a page pastes all of its lines and Grid blocks into the destination instead of being silently dropped.
-- A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, and complete UI definition, while its Data Storage starts empty and remains independent of the source project.
+- A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, complete UI definition, and rows resolved from the live source at paste time; its Data Storage remains independent of the source project.
 - A later, separate cross-project paste creates another fresh independent Grid clone.
 - A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
+- A read-only destination is untouched, and cancelling or navigating away during a Grid paste removes every table created by the operation.
 - A whole-item selection carries Grid and Calendar binding identifiers in the in-app clipboard format.
+- An unreachable source produces a structure-only Grid clone with a visible reason, while a reachable zero-row source is a successful populated clone.
 - Calendar structure cloning across projects is not supported; foreign Calendar metadata keeps the safe readable-text fallback, while same-project Calendar paste retains its shared binding.
 - Cutting and pasting moves host items without deleting their underlying table or calendar data.
+- Grid row data never appears in a clipboard MIME payload.
 - Partial selections without a component block, and external clipboard content, retain the existing plain-text behavior.
 - Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
 - Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
@@ -25,11 +29,15 @@ acceptance:
 tests:
 - client/e2e/deployed/clp-demo-grid-real-clipboard-4688c0de.spec.ts
 - client/e2e/new/clp-copy-paste-component-blocks-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-data-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-independence-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-grid-structure-4584c0de.spec.ts
+- client/e2e/new/clp-cross-project-grid-unreachable-4584c0de.spec.ts
 - client/e2e/new/clp-cross-project-select-all-grid-4584c0de.spec.ts
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/services/clipboard/crossProjectGridPaste.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
+- client/src/services/yjstable/tableClone.test.ts

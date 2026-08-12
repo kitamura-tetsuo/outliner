@@ -19,6 +19,8 @@ export interface GridTableState {
     schema: string;
     ui: Record<string, unknown>;
     dataSize: number;
+    /** Data Storage as plain values: record id -> column -> value. */
+    data: Record<string, Record<string, unknown>>;
 }
 
 export interface GridProjectState {
@@ -212,10 +214,34 @@ export async function configureGrid(
     });
 }
 
-export async function addSourceRecord(page: Page, viewIndex: number = 0): Promise<void> {
+export async function addSourceRecord(page: Page, viewIndex: number = 0, expectedRows: number = 1): Promise<void> {
     const view = page.getByTestId("yjs-table-view").nth(viewIndex);
     await view.getByTestId("yjs-table-add-row").click();
-    await expect(view.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+    await expect(view.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(expectedRows, { timeout: 30000 });
+}
+
+/**
+ * Type a value into one cell of a rendered Grid, addressed by its record id:
+ * the query carries no ORDER BY, so row positions are not stable across edits.
+ * A cell shows a button until it is clicked, which is what swaps in the
+ * editable input (TextCell.svelte).
+ */
+export async function setCellValue(
+    page: Page,
+    viewIndex: number,
+    recordId: string,
+    column: string,
+    value: string,
+): Promise<void> {
+    const cell = page.getByTestId("yjs-table-view").nth(viewIndex)
+        .getByTestId("yjs-table-grid")
+        .locator(`td[data-record-id="${recordId}"][data-col="${column}"]`);
+    await cell.locator("button.cell-value").click();
+    const input = cell.locator("input.cell-input");
+    await expect(input).toBeVisible({ timeout: 15000 });
+    await input.fill(value);
+    await input.press("Enter");
+    await expect(cell.locator("button.cell-value")).toHaveText(value, { timeout: 30000 });
 }
 
 /**
@@ -289,6 +315,7 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
                 schema: doc.getText("schema").toString(),
                 ui: doc.getMap("ui").toJSON(),
                 dataSize: doc.getMap("data").size,
+                data: doc.getMap("data").toJSON(),
             });
         });
         const hostTableIds: string[] = [];

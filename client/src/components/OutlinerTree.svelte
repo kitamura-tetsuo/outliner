@@ -22,6 +22,12 @@
     import { safeGetNodeParent } from "../utils/treeUtils";
     import { spliceMultiLinePaste } from "../lib/multiLinePaste";
     import type { ClipboardItem } from "../services/clipboard/itemClipboard";
+    import {
+        GRID_PASTE_CANCEL_EVENT,
+        GRID_PASTE_PROGRESS_EVENT,
+        GRID_PASTE_WRITE_CHECK_EVENT,
+        type GridPasteProgress,
+    } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
     import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
@@ -83,6 +89,8 @@
 
     onMount(() => {
         window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
+        window.addEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
+        window.addEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
         try {
             logger.debug({ props: {
                 pageItem,
@@ -120,6 +128,9 @@
 
     onDestroy(() => {
         window.removeEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
+        window.removeEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
+        window.removeEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
+        clearTimeout(gridPasteStatusTimer);
     });
 
     let unsubscribeUser: (() => void) | null = null;
@@ -132,7 +143,49 @@
     let showScrollTop = $state(false);
     let mobileToolbarBottomOffset = $state(0);
     let showDeleteConfirm = $state(false);
+    let gridPasteStatus = $state("");
+    let gridPasteRunning = $state(false);
+    let gridPasteStatusTimer: ReturnType<typeof setTimeout> | undefined;
     let deleteConfirmItemId = $state<string | null>(null);
+
+    /** A cross-project Grid paste creates tables, so a read-only page refuses it outright. */
+    function checkGridPasteWrite(event: Event) {
+        if (isReadOnly) event.preventDefault();
+    }
+
+    function setGridPasteStatus(message: string, transient: boolean) {
+        gridPasteStatus = message;
+        clearTimeout(gridPasteStatusTimer);
+        if (transient) gridPasteStatusTimer = setTimeout(() => (gridPasteStatus = ""), 5000);
+    }
+
+    function showGridPasteProgress(event: Event) {
+        const detail = (event as CustomEvent<GridPasteProgress>).detail;
+        gridPasteRunning = detail.state === "copying";
+        switch (detail.state) {
+            case "copying":
+                setGridPasteStatus("Copying Grid data… Press Escape to cancel.", false);
+                break;
+            case "complete-with-data":
+                setGridPasteStatus("Grid copied with its data.", true);
+                break;
+            case "complete-without-data":
+                setGridPasteStatus(`Grid copied without data: ${detail.reason}`, true);
+                break;
+            case "cancelled":
+                setGridPasteStatus("Grid paste cancelled.", true);
+                break;
+            case "failed":
+                setGridPasteStatus(`Grid paste failed: ${detail.reason}`, true);
+                break;
+        }
+    }
+
+    function cancelGridPasteOnEscape(event: KeyboardEvent) {
+        if (event.key === "Escape" && gridPasteRunning) {
+            window.dispatchEvent(new CustomEvent(GRID_PASTE_CANCEL_EVENT));
+        }
+    }
 
     // Throttle scroll event to improve performance
     let scrollTimeout: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -2174,7 +2227,7 @@
 </script>
 
 
-<svelte:window onpointerdown={handleWindowPointerDown} />
+<svelte:window onpointerdown={handleWindowPointerDown} onkeydown={cancelGridPasteOnEscape} />
 
 {#key outlinerKey}
     <div
@@ -2183,6 +2236,11 @@
         onmousedown={handleTreeMouseDown}
         onmouseup={handleTreeMouseUp}
     >
+        {#if gridPasteStatus && !isEmbedded}
+            <div class="grid-paste-status" data-testid="grid-paste-status" role="status" aria-live="polite">
+                {gridPasteStatus}
+            </div>
+        {/if}
         {#if !isEmbedded}
             <OutlinerToolbar
                 mode="desktop"
@@ -2357,6 +2415,14 @@
         flex-direction: column;
         position: relative;
         min-height: calc(100vh - 140px);
+    }
+
+    .grid-paste-status {
+        padding: 6px 16px;
+        border-bottom: 1px solid #ddd;
+        background: #f5f7fa;
+        color: #333;
+        font-size: 13px;
     }
 
     .outliner.embedded {

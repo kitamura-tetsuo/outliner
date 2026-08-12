@@ -19,21 +19,20 @@ const QUERY = "SELECT id, title, quantity, done FROM orders";
 
 // #4816: copying a selection that crosses a Grid and pasting it into another
 // project must clone the table's structure (schema/UI/name) into a brand new
-// destination table instead of falling back to plain text, while leaving the
-// destination's Data Storage empty and never touching the source project.
-test.describe("cross-project Grid paste clones table structure", () => {
+// destination table instead of falling back to plain text. Its rows are read
+// from the live source at paste time and rebuilt in independent Data Storage.
+test.describe("cross-project Grid paste clones table structure and data", () => {
     test.beforeEach(async ({ page }) => {
         await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     });
 
     test(
-        "pasting a Grid into another project creates a fresh, structurally-equal, empty clone",
+        "pasting a Grid into another project creates a fresh populated clone",
         async ({ page }, testInfo) => {
             test.setTimeout(180000);
             const fixture = await seedCrossProjectFixture(page, testInfo);
 
-            // Build a non-default Grid in the source project and give it a record,
-            // so we can later prove the destination starts with none.
+            // Build a non-default Grid in the source project and give it a record.
             await createBlankGrid(page, "Orders", "orders");
             await configureGrid(page, 0, SCHEMA, QUERY, "Order title");
             await addSourceRecord(page);
@@ -77,15 +76,14 @@ test.describe("cross-project Grid paste clones table structure", () => {
             expect(destinationTable.schema.replace(/\s+/g, " ")).toBe(sourceTable.schema.replace(/\s+/g, " "));
             expect(destinationTable.ui).toEqual({ columnOrder: [], ...sourceTable.ui });
 
-            // No source records copied.
-            expect(destinationTable.dataSize).toBe(0);
+            expect(destinationTable.dataSize).toBe(1);
 
-            // The rendered Grid shows the cloned schema/UI and an empty grid.
+            // The rendered Grid shows the cloned schema/UI and copied row.
             const view = page.getByTestId("yjs-table-view").filter({
                 has: page.locator("th", { hasText: "Order title" }),
             });
             await expect(view).toBeVisible({ timeout: 30000 });
-            await expect(view.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(0);
+            await expect(view.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(1);
 
             // The source table is untouched (still 1 record, same id/GUID).
             await openProjectPage(page, fixture, "source");

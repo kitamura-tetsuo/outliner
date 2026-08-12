@@ -235,6 +235,55 @@ export function getClientByProjectTitle(projectTitle: string, signal?: AbortSign
     return p;
 }
 
+export interface AcquiredProjectClient {
+    client: YjsClient;
+    /** Disposes the connection only when this acquisition is the one that opened it. */
+    release: () => void;
+}
+
+/**
+ * Open an existing project by its authoritative room id for a short visit,
+ * such as reading a Grid's rows while pasting it into another project. Access
+ * stays enforced by the room rather than by whoever names the id.
+ *
+ * A project that is already registered is shared rather than reopened, and
+ * `release()` then leaves it alone: only the acquisition that opened the
+ * connection is allowed to close it.
+ */
+export async function acquireClientByProjectId(
+    projectId: string,
+    signal?: AbortSignal,
+): Promise<AcquiredProjectClient | undefined> {
+    if (signal?.aborted) return undefined;
+    let userId = userManager.getCurrentUser()?.id;
+    if (!userId && isTestEnvironment()) userId = "test-user-id";
+    if (!userId) return undefined;
+
+    const key = keyFor(userId, projectId);
+    const existing = registry.get(key)?.[0];
+    if (existing && !existing.isDestroyed) return { client: existing, release: () => {} };
+    if (existing?.isDestroyed) registry.delete(key);
+    if (signal?.aborted) return undefined;
+
+    try {
+        const client = await connectAndRegister(projectId, "", userId);
+        return {
+            client,
+            release: () => {
+                try {
+                    client.dispose();
+                } catch (error) {
+                    logger.error(error);
+                }
+                registry.delete(key);
+            },
+        };
+    } catch (error) {
+        logger.warn({ error, projectId }, "[acquireClientByProjectId] Source project is unavailable");
+        return undefined;
+    }
+}
+
 async function connectAndRegister(projectId: string, title: string, userId: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     logger.info(`[connectAndRegister] Calling YjsClient.connect for projectId=${projectId}`);
@@ -242,8 +291,10 @@ async function connectAndRegister(projectId: string, title: string, userId: stri
     logger.info(`[connectAndRegister] YjsClient.connect completed`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
-    // Also save title to persistence so next time it might appear
-    setContainerTitleInMetaDoc(projectId, title);
+    // Also save title to persistence so next time it might appear. Callers that
+    // open a project by id alone carry no title, and writing an empty one would
+    // erase the name the sidebar already knows.
+    if (title) setContainerTitleInMetaDoc(projectId, title);
     return client;
 }
 

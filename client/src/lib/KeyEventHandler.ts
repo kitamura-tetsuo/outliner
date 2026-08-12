@@ -11,8 +11,8 @@ import {
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
-import { exportTableStructure, importTableStructures } from "../services/yjstable/tableClone";
-import { getTableName, removeTable } from "../services/yjstable/tableDocs";
+import { exportTableStructure } from "../services/yjstable/tableClone";
+import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -2682,19 +2682,22 @@ export class KeyEventHandler {
                     }),
                 );
                 if (Object.keys(referencedSnapshots).length > 0) {
-                    const imported = await importTableStructures(destinationDoc, referencedSnapshots);
-                    if (generalStore.project?.ydoc !== destinationDoc) {
-                        for (const destinationTableId of Object.values(imported.tableIdMap)) {
-                            removeTable(destinationDoc, destinationTableId);
-                        }
-                        return;
-                    }
-                    if (Object.keys(imported.tableIdMap).length > 0) {
+                    const { cloneGridTablesAcrossProjects } = await import(
+                        "../services/clipboard/crossProjectGridPaste"
+                    );
+                    const tableIdMap = await cloneGridTablesAcrossProjects({
+                        destinationDoc,
+                        sourceProjectId: structured.sourceProjectId,
+                        snapshots: referencedSnapshots,
+                        isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
+                    });
+                    if (tableIdMap === undefined) return;
+                    if (Object.keys(tableIdMap).length > 0) {
                         structuredItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
                                 const destinationTableId = item.yjsTableId === undefined
                                     ? undefined
-                                    : imported.tableIdMap[item.yjsTableId];
+                                    : tableIdMap[item.yjsTableId];
                                 return destinationTableId === undefined
                                     ? { text: item.text, depth: item.depth }
                                     : { ...item, yjsTableId: destinationTableId };

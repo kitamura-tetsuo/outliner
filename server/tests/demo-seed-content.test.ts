@@ -146,7 +146,7 @@ describe("Demo seed content", () => {
         expect(guidance).to.equal(
             "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                 + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
-                + "Grid with a fresh identity, copied schema and UI settings, and empty Data Storage; conflicting SQL "
+                + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
                 + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
                 + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
                 + "without deleting its data.",
