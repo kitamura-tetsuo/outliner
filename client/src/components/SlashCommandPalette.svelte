@@ -34,6 +34,14 @@ function handleClick(type: "yjstable" | "alias") {
 </div>
 
 <style>
+.slash-command-palette {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 4px 0;
+    min-width: 160px;
+}
 .slash-command-palette ul {
     list-style:none;
     margin:0;

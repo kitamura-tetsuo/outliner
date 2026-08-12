@@ -22,6 +22,7 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         await page.keyboard.type("/");
         const palette = page.locator(".slash-command-palette");
         await expect(palette).toBeVisible();
+        await expect(palette).toHaveCSS("background-color", "rgb(255, 255, 255)");
 
         // Check if options are visible
         const dbOption = page.locator('[data-testid="command-item-yjstable"]');
