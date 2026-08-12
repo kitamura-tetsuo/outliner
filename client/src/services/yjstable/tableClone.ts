@@ -88,7 +88,9 @@ function exportUiDefinition(uiDef: Y.Map<unknown>): GridTableSnapshot["ui"] {
     const ui = {
         query: query ?? "",
         components,
-        columnOrder: Array.isArray(columnOrderValue) ? columnOrderValue : (columnOrderValue instanceof Y.Array ? columnOrderValue.toArray() : []),
+        columnOrder: Array.isArray(columnOrderValue)
+            ? columnOrderValue
+            : (columnOrderValue instanceof Y.Array ? columnOrderValue.toArray() : []),
     };
     const candidate = {
         sourceTableId: "validation",
