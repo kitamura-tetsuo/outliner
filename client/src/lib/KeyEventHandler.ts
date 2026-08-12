@@ -164,7 +164,7 @@ function selectedItemsClipboardData():
         html = payload.items.map(item => {
             if (item.componentType === "yjstable" && item.yjsTableId && tableHtmlBlocks[item.yjsTableId]) {
                 const getImage = activeChartImageGetters.get(item.yjsTableId);
-                let imgDataUrl = getImage ? getImage() : undefined;
+                const imgDataUrl = getImage ? getImage() : undefined;
                 if (imgDataUrl) {
                     if (imgDataUrl.length > 5000000) {
                         anyTruncated = true;
