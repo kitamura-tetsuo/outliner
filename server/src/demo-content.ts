@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 39;
+export const DEMO_TEMPLATE_VERSION = 38;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -860,7 +860,7 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "Votes:",
                 children: [
-                    { text: "Click the vote button (or right-click -> Vote for item) on an item to show agreement." },
+                    { text: "Vote for an item to show agreement." },
                 ],
             },
             {

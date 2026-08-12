@@ -2366,8 +2366,6 @@ export function setSelectionPosition(start: number, end: number = start) {
                         count={model.votes.length}
                         title={voterNames}
                         ariaLabel={`${model.votes.length} vote${model.votes.length === 1 ? '' : 's'}`}
-                        voted={model.votes.includes(currentUser)}
-                        onToggleVote={toggleVote}
                     />
                 {/if}
                 {#if !isPageTitle}
