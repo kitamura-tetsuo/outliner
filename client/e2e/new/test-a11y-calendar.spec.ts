@@ -132,4 +132,85 @@ test.describe("Calendar timed entries DOM structure", () => {
         await expect(titleBtn.locator(".delete-button")).toHaveCount(0);
         await expect(deleteBtn).toHaveAccessibleName(/Delete /);
     });
+
+    test("delete button has an expanded hit area to meet WCAG 2.5.8 target size in real DOM", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar demo item"]);
+
+        const item = page.locator(".outliner-item").nth(1);
+        await expect(item).toBeVisible({ timeout: 10000 });
+        await item.click();
+        await page.waitForTimeout(300);
+
+        await item.click({ button: "right" });
+        const contextMenu = page.locator(".context-menu");
+        await expect(contextMenu).toBeVisible({ timeout: 10000 });
+        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+
+        const createPanel = page.getByTestId("calendar-create-panel").first();
+        await expect(createPanel).toBeVisible({ timeout: 10000 });
+        await page.getByTestId("calendar-name-input").first().fill("Hit Area Calendar");
+        await page.getByTestId("calendar-create").first().click();
+
+        const view = page.getByTestId("calendar-view").first();
+        await expect(view).toBeVisible({ timeout: 15000 });
+
+        const queryInput = page.getByTestId("calendar-query-input").first();
+        await queryInput.fill(
+            "SELECT id, text AS title, all_day, start_at, duration, 'outline_items' AS source_kind, id AS source_id FROM outline_items",
+        );
+        await queryInput.blur();
+        await expect(page.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 15000 });
+
+        await page.getByTestId("calendar-role-roleTitle").first().selectOption("title");
+        await page.getByTestId("calendar-role-roleStart").first().selectOption("start_at");
+        await page.evaluate(() => {
+            const items = (globalThis as any).generalStore.currentPage.items;
+            const target = items.at(1) ?? items.at(0); // fallback if only 1 item exists
+            if (!target) throw new Error("No items found");
+            const today = new Date().toISOString().slice(0, 10);
+            target.start = `${today}T09:00:00.000Z`;
+            target.allDay = false;
+            target.duration = "PT30M";
+        });
+
+        await page.getByTestId("calendar-role-roleAllDay").first().selectOption("all_day");
+        await page.getByTestId("calendar-role-roleDuration").first().selectOption("duration");
+
+        // Use the Day view to see the time grid
+        const combobox = page.getByRole("combobox", { name: /Hit Area Calendar view/i });
+        await combobox.selectOption("day");
+
+        // Wait for grid to load
+        await expect(page.getByTestId("calendar-time-grid").first()).toBeVisible({ timeout: 15000 });
+
+        // Wait for the entry to render
+        const entry = page.locator('.timed-entry').first();
+        await expect(entry).toBeVisible({ timeout: 15000 });
+
+        // Wait for the delete button to render inside the entry
+        const deleteBtn = entry.locator(".delete-button").first();
+        await expect(deleteBtn).toBeVisible({ timeout: 15000 });
+
+        // Check if the ::before pseudo-element has the correct absolute positioning and inset in real DOM
+        const pseudoElementStyles = await deleteBtn.evaluate((btn) => {
+            const style = window.getComputedStyle(btn, '::before');
+            return {
+                content: style.getPropertyValue('content'),
+                position: style.getPropertyValue('position'),
+                top: style.getPropertyValue('top'),
+                right: style.getPropertyValue('right'),
+                bottom: style.getPropertyValue('bottom'),
+                left: style.getPropertyValue('left'),
+            };
+        });
+
+        expect(pseudoElementStyles).not.toBeNull();
+        expect(pseudoElementStyles?.content).toBe('""');
+        expect(pseudoElementStyles?.position).toBe('absolute');
+        expect(pseudoElementStyles?.top).toBe('-6px');
+        expect(pseudoElementStyles?.right).toBe('-6px');
+        expect(pseudoElementStyles?.bottom).toBe('-6px');
+        expect(pseudoElementStyles?.left).toBe('-6px');
+    });
 });

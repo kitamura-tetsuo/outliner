@@ -341,6 +341,13 @@ function onDrop(cell: MonthCell, e: DragEvent) {
     font-size: 0.8rem;
     line-height: 1;
     padding: 0 2px;
+    position: relative;
+}
+
+.delete-button::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
 }
 
 .delete-button:hover {
