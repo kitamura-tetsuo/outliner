@@ -272,8 +272,12 @@ function handleBlur(event: FocusEvent) {
     bind:this={textareaRef}
     class="global-textarea"
     aria-label="Edit item text"
-    aria-controls="outliner-tree"
-    aria-activedescendant={store.getActiveItem() ?? undefined}
+    role={commandPaletteStore.isVisible ? "combobox" : undefined}
+    aria-expanded={commandPaletteStore.isVisible ? "true" : undefined}
+    aria-controls={commandPaletteStore.isVisible ? "slash-command-listbox" : "outliner-tree"}
+    aria-activedescendant={commandPaletteStore.isVisible
+        ? (commandPaletteStore.visible[commandPaletteStore.selectedIndex]?.type ? `command-item-${commandPaletteStore.visible[commandPaletteStore.selectedIndex]?.type}` : undefined)
+        : (store.getActiveItem() ?? undefined)}
     autocapitalize="off"
     autocomplete="off"
     {...{ autocorrect: "off" }}
