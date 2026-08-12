@@ -219,7 +219,7 @@ describe("calendarService", () => {
     });
 
     it("resolves concurrent array updates with last-writer-wins and removes legacy duplicates", async () => {
-        const Y = await import("yjs");
+        const { Y } = await import("yjs");
         const docA = project.ydoc;
         const docB = new Y.Doc();
 
@@ -230,15 +230,7 @@ describe("calendarService", () => {
         });
         Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
 
-        // Create a concurrent branch B with its own changes
-        const projectB = Project.createInstance("Test Project B", { ydoc: docB });
-        // Let's modify the map directly on docB to simulate a concurrent client setting legacy Y.Array
-        // to prove our read path correctly handles backwards-compatible reads and duplication
-
-        // Wait, projectB doesn't have the calendar until we apply the update correctly?
-        // Actually, project.calendars is a Y.Map. Since we sync docB from docA, we need
-        // to read docB.getMap("calendars") instead of projectB.calendars if projectB isn't initialized fully.
-        const calendarsB = docB.getMap<Y.Map<any>>("calendars");
+        const calendarsB = docB.getMap<import("yjs").Map<unknown>>("calendars");
         const calendarMapB = calendarsB.get(calendarId);
 
         docB.transact(() => {
@@ -247,29 +239,23 @@ describe("calendarService", () => {
                 arr = new Y.Array<string>();
                 calendarMapB?.set("groupAxes", arr);
             }
-            if (arr.length > 0) arr.delete(0, arr.length);
-            arr.push(["alpha", "gamma", "gamma"]); // duplicate legacy array insertion
+            const yArray = arr as import("yjs").Array<string>;
+            if (yArray.length > 0) yArray.delete(0, yArray.length);
+            yArray.push(["alpha", "gamma", "gamma"]);
         });
 
-        // Concurrently modify docA through the updated plain array write path
         updateCalendar(project, calendarId, { groupAxes: ["alpha", "delta"] });
 
-        // Merge updates
         Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
         Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
 
-        // The exact result of "last-writer-wins" depends on Yjs tie-breaking (usually client ID),
-        // but no duplicates should appear regardless of whether plain arrays or legacy duplicate Y.Arrays won.
         const mergedA = getCalendar(project, calendarId)!;
         expect(mergedA.groupAxes.length).toBeLessThanOrEqual(3);
         const uniqueAxes = Array.from(new Set(mergedA.groupAxes));
         expect(mergedA.groupAxes).toEqual(uniqueAxes);
 
-        // Assert laneOrder as well for concurrent string[] updates
         updateCalendar(project, calendarId, { laneOrder: ["l3", "l4"] });
 
-        // Let's modify directly again since updateCalendar checks the undo managers
-        // which might not be set up well on projectB stub.
         docB.transact(() => {
             const map = calendarsB.get(calendarId)!;
             map.set("laneOrder", ["l1", "l4"]);
