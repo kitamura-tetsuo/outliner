@@ -27,6 +27,14 @@ vi.mock("../stores/AliasPickerStore.svelte", () => ({
     aliasPickerStore: { isVisible: false, hide: vi.fn() },
 }));
 
+// This file exercises clipboard serialization and the structure-only fallback.
+// Reaching the live source room belongs to the cross-project E2E coverage, so
+// the project registry reports the source as unavailable here instead of
+// opening a WebSocket out of JSDOM.
+vi.mock("./yjsService.svelte", () => ({
+    acquireClientByProjectId: () => Promise.resolve(undefined),
+}));
+
 interface TestSelection {
     startItemId: string;
     startOffset: number;
@@ -197,6 +205,21 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
             componentType: "yjstable",
             yjsTableId: tableId,
         });
+    });
+
+    it("never writes Grid row data to any clipboard MIME type", () => {
+        const secret = "row-data-must-stay-out-of-the-clipboard";
+        const table = state.doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId)!;
+        const subdoc = table.get("doc") as Y.Doc;
+        const record = new Y.Map<unknown>();
+        record.set("value", secret);
+        subdoc.getMap<Y.Map<unknown>>("data").set("row-1", record);
+        state.selection = { startItemId: "a", startOffset: 0, endItemId: "c", endOffset: 13, userId: "local" };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect([...data.values()].every(value => !value.includes(secret))).toBe(true);
     });
 
     it("drops edge items the selection does not actually reach", () => {
