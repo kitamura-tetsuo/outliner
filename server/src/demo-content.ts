@@ -860,11 +860,15 @@ export const demoPages: DemoPageTemplate[] = [
             {
                 text: "Votes:",
                 children: [
-                    { text: "Click the vote count button, or right-click and choose 'Vote for item', to show agreement." },
+                    {
+                        text:
+                            "Click the vote count button, or right-click and choose 'Vote for item', to show agreement.",
+                    },
                 ],
             },
             {
-                text: "This item is already popular (3 votes). Click the vote count button or right-click to add yours.",
+                text:
+                    "This item is already popular (3 votes). Click the vote count button or right-click to add yours.",
                 votes: ["Alice", "Bob", "Carol"],
             },
             { text: "Try commenting on or voting for the items above!" },
