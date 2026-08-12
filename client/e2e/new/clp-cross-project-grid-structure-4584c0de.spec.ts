@@ -103,6 +103,7 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
 
             await createBlankGrid(page, "Orders", "orders");
             await configureGrid(page, 0, SCHEMA, QUERY, "Order title");
+            await addSourceRecord(page);
             const sourceState = await readGridProjectState(page);
             const sourceTable = sourceState.tables[0];
 
@@ -137,7 +138,7 @@ test.describe("cross-project Grid paste clones table structure and data", () => 
             expect(sqlNames).toContain("orders");
             expect(sqlNames).toContain(clonedTable.sqlName);
             expect(clonedTable.name).toBe(sourceTable.name);
-            expect(clonedTable.dataSize).toBe(0);
+            expect(clonedTable.dataSize).toBe(1);
         },
     );
 });
