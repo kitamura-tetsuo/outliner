@@ -1,7 +1,7 @@
-import * as Y from "yjs";
-import { expect, test } from "vitest";
-import { createCalendar, updateCalendar, getCalendarMap, getCalendar } from "./calendarService";
 import { Project } from "$shared/app-schema";
+import { expect, test } from "vitest";
+import * as Y from "yjs";
+import { createCalendar, getCalendar, getCalendarMap, updateCalendar } from "./calendarService";
 
 // Directly test the bug and the LWW behavior using only the structures relevant to it
 test("concurrent updateCalendar deduplicates groupAxes and laneOrder via LWW scalar arrays", () => {
