@@ -35,11 +35,11 @@ export type CommentValueType = string | number;
 export type ScheduleRuleValueType = string | boolean | number | undefined;
 
 /**
- * Type for Calendar Y.Map values. `groupAxes` is a Y.Array so concurrent
- * additions from two clients merge instead of clobbering one another (the
- * same reasoning as `Item.tags`, see docs/crdt-sql-architecture.md §4.7).
+ * Type for Calendar Y.Map values. `groupAxes` and `laneOrder` were previously Y.Array
+ * but are now plain `string[]` to ensure last-writer-wins semantics during concurrent edits
+ * and prevent duplicate entries. Support for `Y.Array<string>` is retained for backward compatibility.
  */
-export type CalendarValueType = string | boolean | number | undefined | Y.Array<string>;
+export type CalendarValueType = string | boolean | number | undefined | Y.Array<string> | string[];
 
 /**
  * Type for Y.Doc options
