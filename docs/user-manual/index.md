@@ -204,7 +204,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks).
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
-- **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Vote for an item to show agreement.
+- **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote button or right-click and choose 'Vote for item' to show agreement.
 - **Publishing and Sharing:** Read-only sharing (tokens), scheduled publishing, and snapshots (snapshot diff viewer).
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 

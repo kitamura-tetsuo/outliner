@@ -1,0 +1,20 @@
+id: VOT-1
+title: Voting Feature
+title-ja: 投票機能
+category: collaboration
+status: implemented
+description: Users can vote on individual outliner items to show agreement or popularity.
+acceptance:
+- A vote count badge appears next to the item when it has votes
+- Desktop users can also vote via the right-click context menu ("Vote for item" / "Remove vote")
+- Desktop users can vote by clicking the vote count badge directly on the item row
+- Mobile users can vote via the mobile action toolbar (Vote button)
+- The user's vote is toggled on/off with each interaction
+- The vote count updates synchronously in real time
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemContextMenu.svelte
+- client/src/components/OutlinerItemVoteCount.svelte
+- client/src/components/OutlinerToolbar.svelte
+tests:
+- client/src/components/OutlinerToolbar.test.ts
