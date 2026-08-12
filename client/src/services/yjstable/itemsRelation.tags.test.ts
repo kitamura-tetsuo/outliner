@@ -121,10 +121,20 @@ describe("items relation tags projection", { timeout: 30000 }, () => {
 
         try {
             // Client 1 adds "gamma"
-            await f.provider.applyWrite({ op: "UPDATE", rowId: key, column: "tags", value: JSON.stringify(["alpha", "beta", "gamma"]) });
+            await f.provider.applyWrite({
+                op: "UPDATE",
+                rowId: key,
+                column: "tags",
+                value: JSON.stringify(["alpha", "beta", "gamma"]),
+            });
 
             // Client 2 removes "beta", adds "delta"
-            await provider2.applyWrite({ op: "UPDATE", rowId: key, column: "tags", value: JSON.stringify(["alpha", "delta"]) });
+            await provider2.applyWrite({
+                op: "UPDATE",
+                rowId: key,
+                column: "tags",
+                value: JSON.stringify(["alpha", "delta"]),
+            });
 
             Y.applyUpdate(doc2, Y.encodeStateAsUpdate(f.projectDoc));
             Y.applyUpdate(f.projectDoc, Y.encodeStateAsUpdate(doc2));
