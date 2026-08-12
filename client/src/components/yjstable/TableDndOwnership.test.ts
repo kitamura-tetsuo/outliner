@@ -51,7 +51,9 @@ let handles: TableHandles;
 
 function storedColumnOrder(): string[] {
     const order = handles.uiDef.get("columnOrder");
-    return order instanceof Y.Array ? (order as Y.Array<string>).toArray() : [];
+    return Array.isArray(order)
+        ? (order as string[])
+        : (order instanceof Y.Array ? (order as Y.Array<string>).toArray() : []);
 }
 
 /**

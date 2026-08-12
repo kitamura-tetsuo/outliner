@@ -82,13 +82,15 @@ function exportUiDefinition(uiDef: Y.Map<unknown>): GridTableSnapshot["ui"] {
     });
 
     const columnOrderValue = uiDef.get("columnOrder");
-    if (columnOrderValue !== undefined && !(columnOrderValue instanceof Y.Array)) {
-        throw new TableCloneError("Grid UI columnOrder must be a Y.Array");
+    if (columnOrderValue !== undefined && !Array.isArray(columnOrderValue) && !(columnOrderValue instanceof Y.Array)) {
+        throw new TableCloneError("Grid UI columnOrder must be an Array or Y.Array");
     }
     const ui = {
         query: query ?? "",
         components,
-        columnOrder: columnOrderValue instanceof Y.Array ? columnOrderValue.toArray() : [],
+        columnOrder: Array.isArray(columnOrderValue)
+            ? columnOrderValue
+            : (columnOrderValue instanceof Y.Array ? columnOrderValue.toArray() : []),
     };
     const candidate = {
         sourceTableId: "validation",
@@ -148,9 +150,7 @@ function materializeUi(handles: TableInitializationHandles, snapshot: GridTableS
     }
     handles.uiDef.set("components", components);
 
-    const columnOrder = new Y.Array<string>();
-    if (snapshot.ui.columnOrder.length > 0) columnOrder.push([...snapshot.ui.columnOrder]);
-    handles.uiDef.set("columnOrder", columnOrder);
+    handles.uiDef.set("columnOrder", snapshot.ui.columnOrder.length > 0 ? [...snapshot.ui.columnOrder] : []);
 }
 
 async function validatePlansInPglite(plans: PlannedTable[]): Promise<void> {

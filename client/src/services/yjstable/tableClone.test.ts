@@ -21,8 +21,7 @@ function configureUi(
         amount.set("hidden", false);
         components.set("amount", amount);
         handles.uiDef.set("components", components);
-        const order = new Y.Array<string>();
-        order.push(["amount", "id"]);
+        const order = ["amount", "id"];
         handles.uiDef.set("columnOrder", order);
     });
 }
@@ -92,7 +91,7 @@ describe("table structure export", () => {
         });
         expect("data" in snapshot).toBe(false);
         expect(snapshot.ui.components).not.toBeInstanceOf(Y.Map);
-        expect(snapshot.ui.columnOrder).not.toBeInstanceOf(Y.Array);
+        expect(Array.isArray(snapshot.ui.columnOrder)).toBe(true);
     });
 
     it("deduplicates table IDs during batch export", () => {
@@ -143,17 +142,17 @@ describe("table structure import", { timeout: 30000 }, () => {
         const destinationHandles = getTableHandles(destination, result.tableIdMap[source.ordersId])!;
         const sourceComponents = sourceHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
         const destinationComponents = destinationHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        const sourceOrder = sourceHandles.uiDef.get("columnOrder") as Y.Array<string>;
-        const destinationOrder = destinationHandles.uiDef.get("columnOrder") as Y.Array<string>;
+        const sourceOrder = sourceHandles.uiDef.get("columnOrder") as string[];
+        const destinationOrder = destinationHandles.uiDef.get("columnOrder") as string[];
 
         expect(destinationComponents).not.toBe(sourceComponents);
         expect(destinationComponents.get("amount")).not.toBe(sourceComponents.get("amount"));
         expect(destinationOrder).not.toBe(sourceOrder);
 
         sourceComponents.get("amount")!.set("label", "source changed");
-        sourceOrder.push(["customer_id"]);
+        sourceHandles.uiDef.set("columnOrder", [...sourceOrder, "customer_id"]);
         expect(destinationComponents.get("amount")!.get("label")).toBe("金額 €");
-        expect(destinationOrder.toArray()).toEqual(["amount", "id"]);
+        expect(destinationOrder).toEqual(["amount", "id"]);
 
         destinationHandles.uiDef.set("query", "SELECT amount FROM orders");
         destinationComponents.get("amount")!.set("label", "destination changed");
