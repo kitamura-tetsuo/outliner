@@ -49,6 +49,8 @@ const logger = getLogger("SearchBox");
         return () => clearTimeout(handler);
     });
 
+    let containerEl: HTMLDivElement | null = null;
+
     // Calculate results reactively
     let results = $derived.by(() => {
         // include refreshTick as a reactive dependency to re-evaluate during init
@@ -250,6 +252,7 @@ const logger = getLogger("SearchBox");
     }
 
     function handlePageClick(page: Item) {
+        isFocused = false;
         navigateToPage(page);
     }
 
@@ -265,7 +268,11 @@ const logger = getLogger("SearchBox");
 
 </script>
 
-<div class="page-search-box">
+<div class="page-search-box" bind:this={containerEl} onfocusout={(e) => {
+    if (!containerEl?.contains(e.relatedTarget as Node)) {
+        isFocused = false;
+    }
+}}>
     <label
         id={`search-pages-label-${componentId}`}
         for={`search-pages-input-${componentId}`}
@@ -307,11 +314,6 @@ const logger = getLogger("SearchBox");
                 query = e.target.value as string;
             }
         }}
-        onblur={() => {
-            setTimeout(() => {
-                isFocused = false;
-            }, 200);
-        }}
         oninput={() => {
             shouldRefocus = true;
         }}
@@ -325,6 +327,7 @@ const logger = getLogger("SearchBox");
                 query = "";
                 inputEl?.focus();
             }}
+            onpointerdown={(e) => e.preventDefault()}
         >
             <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -355,6 +358,7 @@ const logger = getLogger("SearchBox");
                 >
                     <button type="button"
                         onclick={() => handlePageClick(page)}
+                        onpointerdown={(e) => e.preventDefault()}
                         tabindex="-1"
                         aria-label={`Go to page ${page.text.trimEnd()}`}
                         >{page.text.trimEnd()}</button
