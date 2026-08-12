@@ -29,11 +29,11 @@ test.describe("Outliner Item Context Menu Navigation", () => {
         await expect(contextMenu).toBeVisible();
 
         // Initially focus should be on the first menuitem
-        const firstMenuItem = contextMenu.locator('button').first();
+        const firstMenuItem = contextMenu.locator("button").first();
         await expect(firstMenuItem).toBeFocused();
 
         // Press ArrowDown
-        await page.keyboard.press('ArrowDown');
+        await page.keyboard.press("ArrowDown");
 
         // Verify focus moved to the second menuitem
         const secondMenuItem = contextMenu.locator('button[role="menuitem"]').nth(1);
@@ -43,7 +43,7 @@ test.describe("Outliner Item Context Menu Navigation", () => {
         await expect(contextMenu).toBeVisible();
 
         // Press ArrowUp
-        await page.keyboard.press('ArrowUp');
+        await page.keyboard.press("ArrowUp");
 
         // Verify focus moved back to the first menuitem
         await expect(firstMenuItem).toBeFocused();
