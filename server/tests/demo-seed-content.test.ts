@@ -137,7 +137,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(38);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(39);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -274,7 +274,7 @@ describe("Demo seed content", () => {
 
         const voted = findChildByText(
             page!.items,
-            "This item is already popular (3 votes). Click the vote button to add yours.",
+            "This item is already popular (3 votes). Click the vote count button or right-click to add yours.",
         );
         expect(voted, "voted item exists").to.not.equal(undefined);
         expect(voted!.votes.toArray()).to.deep.equal(["Alice", "Bob", "Carol"]);
