@@ -15,7 +15,7 @@ function handleClick(type: "yjstable" | "alias") {
     data-visible-count={commandPaletteStore.visible.length}
     style={`position:absolute;top:${commandPaletteStore.position.top}px;left:${commandPaletteStore.position.left}px;z-index:1000;display:${commandPaletteStore.isVisible ? 'block' : 'none'};`}
 >
-    <ul role="listbox" aria-label="Command suggestions">
+    <ul id="slash-command-listbox" role="listbox" aria-label="Command suggestions">
         {#each commandPaletteStore.visible as cmd, i (cmd.type)}
             <li
                 role="option"

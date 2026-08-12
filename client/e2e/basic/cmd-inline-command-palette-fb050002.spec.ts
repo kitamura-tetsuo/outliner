@@ -120,4 +120,44 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         const itemText = page.locator(`.outliner-item[data-item-id="${item1Id}"] .item-text`);
         await expect(itemText).toHaveText("item1 [/");
     });
+
+    test("opening the palette sets appropriate ARIA attributes for a11y", async ({ page }) => {
+        const item1Id = await TestHelpers.getItemIdByIndex(page, 1);
+        if (!item1Id) throw new Error("Item not found");
+
+        await TestHelpers.clickItemToEdit(page, `.outliner-item[data-item-id="${item1Id}"] .item-text`);
+        await page.waitForSelector(".cursor", { state: "visible" });
+
+        const globalTextarea = page.locator(".global-textarea");
+
+        // Before palette opens
+        await expect(globalTextarea).toHaveAttribute("aria-controls", "outliner-tree");
+
+        // Type / to open palette
+        await page.keyboard.type("/");
+        const palette = page.locator(".slash-command-palette");
+        await expect(palette).toBeVisible();
+
+        // Check attributes are set for a11y
+        await expect(globalTextarea).toHaveAttribute("role", "combobox");
+        await expect(globalTextarea).toHaveAttribute("aria-expanded", "true");
+        await expect(globalTextarea).toHaveAttribute("aria-controls", "slash-command-listbox");
+        await expect(globalTextarea).toHaveAttribute("aria-activedescendant", "command-item-yjstable");
+
+        // Move selection
+        await page.keyboard.press("ArrowDown");
+        await expect(globalTextarea).toHaveAttribute("aria-activedescendant", "command-item-alias");
+
+        // Press Escape to close
+        await page.keyboard.press("Escape");
+        await expect(palette).toBeHidden();
+
+        // Check attributes are reverted
+        await expect(globalTextarea).toHaveAttribute("aria-controls", "outliner-tree");
+        // Role and aria-expanded are removed entirely based on our logic (value evaluates to undefined so svelte removes it)
+        const role = await globalTextarea.getAttribute("role");
+        expect(role).toBeNull();
+        const expanded = await globalTextarea.getAttribute("aria-expanded");
+        expect(expanded).toBeNull();
+    });
 });
