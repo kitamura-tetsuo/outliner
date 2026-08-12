@@ -71,16 +71,9 @@ export function calculateDropIndex(
     return targetIndex;
 }
 
-/** Replace the Y.Array contents in one transaction. */
+/** Replace the stored column order as a single scalar in the map. */
 export function writeColumnOrder(handles: TableHandles, order: string[]): void {
     handles.doc.transact(() => {
-        let orderArray = handles.uiDef.get("columnOrder");
-        if (!(orderArray instanceof Y.Array)) {
-            orderArray = new Y.Array<string>();
-            handles.uiDef.set("columnOrder", orderArray);
-        } else {
-            (orderArray as Y.Array<string>).delete(0, (orderArray as Y.Array<string>).length);
-        }
-        if (order.length > 0) (orderArray as Y.Array<string>).push(order);
+        handles.uiDef.set("columnOrder", order);
     });
 }

@@ -110,8 +110,8 @@ describe("TableGrid", () => {
             key: "ArrowRight",
             altKey: true,
         });
-        const storedOrder = mockHandles.uiDef.get("columnOrder") as Y.Array<string>;
-        expect(storedOrder.toArray()).toEqual(["col_c", "id", "col_b", "col_a"]);
-        expect(storedOrder.toArray().indexOf("col_b")).toBe(2);
+        const storedOrder = mockHandles.uiDef.get("columnOrder") as string[];
+        expect(storedOrder).toEqual(["col_c", "id", "col_b", "col_a"]);
+        expect(storedOrder.indexOf("col_b")).toBe(2);
     });
 });

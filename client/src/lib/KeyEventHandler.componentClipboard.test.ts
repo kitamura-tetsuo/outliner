@@ -105,7 +105,7 @@ function createPortableTable(doc: Y.Doc, name = "Sales", sqlName = "sales"): str
         handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`);
         handles.uiDef.set("query", `SELECT id FROM ${sqlName}`);
         handles.uiDef.set("components", new Y.Map());
-        handles.uiDef.set("columnOrder", new Y.Array());
+        handles.uiDef.set("columnOrder", []);
     });
 }
 
