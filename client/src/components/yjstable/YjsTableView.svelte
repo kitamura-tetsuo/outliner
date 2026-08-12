@@ -15,6 +15,7 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
+import { activeChartImageGetters } from "../../stores/tableChartStore";
 import type {
     RecordSyncError,
     TableQueryResult,
@@ -135,8 +136,17 @@ onMount(() => {
 onDestroy(() => {
     handles.uiDef.unobserveDeep(uiMirrorObserver);
     unsubscribe?.();
+    activeChartImageGetters.delete(handles.tableId);
     session.dispose();
     destroyTableUndoManager(handles.doc);
+});
+
+$effect(() => {
+    if (showChart && chartPanel) {
+        activeChartImageGetters.set(handles.tableId, () => chartPanel!.getImage());
+    } else {
+        activeChartImageGetters.delete(handles.tableId);
+    }
 });
 </script>
 
