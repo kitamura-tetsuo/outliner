@@ -9,10 +9,9 @@ let { count, title, ariaLabel }: Props = $props();
 </script>
 
 <span
-    class="vote-count" class:has-count={count > 0}
+    class="vote-count"
     {title}
-    aria-label={ariaLabel}
->{count}</span>
+><span aria-hidden="true">{count}</span><span class="sr-only">{ariaLabel}</span></span>
 
 <style>
 .vote-count {
@@ -22,16 +21,5 @@ let { count, title, ariaLabel }: Props = $props();
     padding: 0 4px;
     font-size: 0.7rem;
     color: #666;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-:global(.outliner-item:hover) .vote-count,
-:global(.outliner-item:focus-within) .vote-count {
-    opacity: 1;
-}
-
-.vote-count.has-count {
-    opacity: 1;
 }
 </style>

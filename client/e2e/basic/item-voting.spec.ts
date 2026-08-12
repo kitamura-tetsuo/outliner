@@ -41,7 +41,9 @@ test.describe("Item Voting", () => {
         // Vote count should now be 1
         const voteCountBadge = page.locator(".vote-count");
         await expect(voteCountBadge).toBeVisible();
-        await expect(voteCountBadge).toHaveText("1");
+        // Since the accessible name is also rendered as inner text in the DOM via .sr-only,
+        // we assert specifically on the visible span.
+        await expect(voteCountBadge.locator('span[aria-hidden="true"]')).toHaveText("1");
 
         // Verify vote button state reflects voted status
         await secondItem.click({ button: "right" });
