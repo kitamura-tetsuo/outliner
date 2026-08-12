@@ -8,6 +8,7 @@ vi.mock("echarts", () => ({
         setOption: vi.fn(),
         clear: vi.fn(),
         dispose: vi.fn(),
+        getDataURL: vi.fn((opts) => `data:image/png;base64,mockchart${opts.backgroundColor ? '-bg' : ''}`),
     })),
 }));
 
@@ -44,3 +45,14 @@ describe("TableChartPanel", () => {
         );
     });
 });
+
+    it("returns undefined for getImage() if not rendered, or data URL if rendered", () => {
+        const { component } = render(TableChartPanel, { initial: { columns: [], rows: [] } });
+        expect(component.getImage()).toBeUndefined();
+
+        component.update({
+            columns: ["month", "revenue"],
+            rows: [{ month: "Jan", revenue: 100 }],
+        });
+        expect(component.getImage()).toBe("data:image/png;base64,mockchart-bg");
+    });

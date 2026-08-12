@@ -19,6 +19,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
+import { activeChartImageGetters } from "../stores/tableChartStore";
 import { escapeId } from "../utils/domUtils";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
@@ -41,7 +42,7 @@ const logger = getLogger("KeyEventHandler");
  * block; plain text ranges keep using the ordinary text clipboard.
  */
 function selectedItemsClipboardData():
-    | { encoded: string; plainText: string; html?: string; truncated?: boolean; }
+    | { encoded: string; plainText: string; html?: string; truncated?: boolean; pngDataUrl?: string; }
     | undefined
 {
     const selection = Object.values(store.selections).find(sel =>
@@ -158,9 +159,20 @@ function selectedItemsClipboardData():
     const plainText = clipboardPlainText(payload);
 
     let html: string | undefined = undefined;
+    let pngDataUrl: string | undefined = undefined;
     if (Object.keys(tableHtmlBlocks).length > 0) {
         html = payload.items.map(item => {
             if (item.componentType === "yjstable" && item.yjsTableId && tableHtmlBlocks[item.yjsTableId]) {
+                const getImage = activeChartImageGetters.get(item.yjsTableId);
+                let imgDataUrl = getImage ? getImage() : undefined;
+                if (imgDataUrl) {
+                    if (imgDataUrl.length > 5000000) {
+                        anyTruncated = true;
+                    } else {
+                        pngDataUrl = imgDataUrl;
+                        return tableHtmlBlocks[item.yjsTableId].html + `<br><img src="${imgDataUrl}">`;
+                    }
+                }
                 return tableHtmlBlocks[item.yjsTableId].html;
             }
             return item.text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll(
@@ -170,7 +182,7 @@ function selectedItemsClipboardData():
         }).join("<br>");
     }
 
-    return { encoded, plainText, html, truncated: anyTruncated };
+    return { encoded, plainText, html, truncated: anyTruncated, pngDataUrl };
 }
 
 /**
