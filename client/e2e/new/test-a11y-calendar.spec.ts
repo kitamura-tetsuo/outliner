@@ -196,7 +196,7 @@ test.describe("Calendar timed entries DOM structure", () => {
 
             // Check if the ::before pseudo-element has the correct absolute positioning and inset in real DOM
             const pseudoElementStyles = await deleteBtn.evaluate((btn) => {
-                const style = window.getComputedStyle(btn, "::before");
+                const style = globalThis.getComputedStyle(btn, "::before");
                 return {
                     content: style.getPropertyValue("content"),
                     position: style.getPropertyValue("position"),
