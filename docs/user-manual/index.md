@@ -68,6 +68,7 @@ Outliner uses Scrapbox-style syntax for text formatting options.
 - Bold: Wrap text in double brackets `[[bold]]`
 - Italic: Wrap text in a slash bracket `[/italic]`
 - Strikethrough: Wrap text in a dash bracket `[-strikethrough]`
+- Underline: Wrap text in `<u>` and `</u>` tags `<u>underline</u>`
 - Code: Wrap inline code in backticks \`code\`
 - URLs: Typed URLs automatically become clickable links
 - Checkboxes: Inline checkboxes with `[ ]` for pending and `[x]` for completed tasks
