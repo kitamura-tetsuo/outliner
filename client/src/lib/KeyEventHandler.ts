@@ -1,5 +1,6 @@
 import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
 import { getCalendar } from "../services/calendar/calendarService";
+import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
 import {
     clipboardPlainText,
     deserializeClipboardItems,
@@ -17,11 +18,57 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../stores/store.svelte";
+import { getTableClipboardSource } from "../stores/tableClipboardRegistry";
 import { escapeId } from "../utils/domUtils";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
+
+/** A chart PNG data URI past this is dropped rather than pushed into the clipboard. */
+const CHART_IMAGE_LIMIT = 2_000_000;
+
+const CHART_IMAGE_DROPPED_NOTICE = "--- Chart image too large to copy ---";
+
+interface StructuredClipboard {
+    /** The private payload: bindings and portable structure, unchanged by §7. */
+    encoded: string;
+    /** `text/plain` — outline text, with each rendered Grid replaced by its TSV. */
+    plainText: string;
+    /** `text/html` — the visible fragment, with real `<table>`s and chart images. */
+    html?: string;
+    /** `image/png` — the copied chart, for destinations that accept only an image. */
+    pngDataUrl?: string;
+    /** True when a cap trimmed the export; the notice travels with the content. */
+    truncated?: boolean;
+}
+
+/**
+ * The rendered export of a Grid, or undefined when nothing is materialized for
+ * it. Only a mounted view registers a source, so a collapsed or never-rendered
+ * Grid falls through to its display name — the §7 floor, and the reason a copy
+ * never has to block on a query.
+ */
+function renderedGridExport(
+    tableId: string,
+): { tsv: string; html: string; chartImage?: string; truncated: boolean; } | undefined {
+    const source = getTableClipboardSource(tableId);
+    const config = source?.getGrid();
+    if (!source || !config) return undefined;
+    const tsv = serializeGridToTsv(config);
+    const table = serializeGridToHtml(config);
+    const chartImage = source.getChartImage();
+    // A PNG data URI is large, so the §7 size rule governs it too: an oversized
+    // image is dropped — and, like a trimmed result, says so where it was.
+    const oversized = chartImage !== undefined && chartImage.length > CHART_IMAGE_LIMIT;
+    const html = oversized ? `${table.html}\n<p><i>${CHART_IMAGE_DROPPED_NOTICE}</i></p>` : table.html;
+    return {
+        tsv: tsv.text,
+        html,
+        chartImage: oversized ? undefined : chartImage,
+        truncated: tsv.truncated || table.truncated || oversized,
+    };
+}
 
 /**
  * Structured clipboard payload for the current cross-item selection.
@@ -37,8 +84,13 @@ const logger = getLogger("KeyEventHandler");
  *
  * A partial selection only takes this path when it actually holds a component
  * block; plain text ranges keep using the ordinary text clipboard.
+ *
+ * Outward (§7), a rendered Grid contributes its result rather than its name:
+ * TSV to `text/plain`, a real `<table>` to `text/html`, and the chart image
+ * alongside both. The private payload is untouched, so pasting back into
+ * Outliner behaves exactly as it did.
  */
-function selectedItemsClipboardData(): { encoded: string; plainText: string; } | undefined {
+function selectedItemsClipboardData(): StructuredClipboard | undefined {
     const selection = Object.values(store.selections).find(sel =>
         !sel.isBoxSelection && sel.startItemId !== sel.endItemId
     );
@@ -59,6 +111,10 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
     const coversWholeRange = startOffset === 0 && endOffset === lastLength;
 
     let hasComponent = false;
+    // Rendered exports keyed by table id. They feed the outward flavors only —
+    // the encoded payload keeps carrying the display name, so in-app paste
+    // fidelity is exactly what it was.
+    const gridExports = new Map<string, NonNullable<ReturnType<typeof renderedGridExport>>>();
     const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
         const index = first + offset;
         const item = entry.model.original;
@@ -81,6 +137,10 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
         if (isEdge && text.length > 0 && sliceStart >= sliceEnd) return [];
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
+        if (tableId && !gridExports.has(tableId)) {
+            const exported = renderedGridExport(tableId);
+            if (exported) gridExports.set(tableId, exported);
+        }
         return [{
             item,
             depth: entry.depth,
@@ -109,7 +169,35 @@ function selectedItemsClipboardData(): { encoded: string; plainText: string; } |
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
     );
     const payload = deserializeClipboardItems(encoded);
-    return payload ? { encoded, plainText: clipboardPlainText(payload) } : undefined;
+    if (!payload) return undefined;
+
+    // Outward flavors. A selection with no rendered Grid produces neither, and
+    // the ordinary text/HTML path is used exactly as before.
+    if (gridExports.size === 0) return { encoded, plainText: clipboardPlainText(payload) };
+
+    const exportOf = (item: { componentType?: string; yjsTableId?: string; }) =>
+        item.componentType === "yjstable" && item.yjsTableId ? gridExports.get(item.yjsTableId) : undefined;
+
+    const plainText = payload.items.map(item => exportOf(item)?.tsv ?? item.text).join("\n");
+    const html = payload.items.map(item => {
+        const exported = exportOf(item);
+        if (!exported) return escapeHtml(item.text).replaceAll("\n", "<br>");
+        // The picture and the numbers both belong on the clipboard: a document
+        // takes the image, a spreadsheet takes the cells (§8.1).
+        return exported.chartImage
+            ? `${exported.html}<br><img src="${exported.chartImage}">`
+            : exported.html;
+    }).join("<br>");
+
+    // One chart in the selection can also ride as an image flavor of its own,
+    // for destinations that accept nothing else. Two would have to be one
+    // picture, so they stay in the HTML table where both are visible.
+    const chartImages = [...gridExports.values()].map(exported => exported.chartImage)
+        .filter(image => image !== undefined);
+    const pngDataUrl = chartImages.length === 1 ? chartImages[0] : undefined;
+
+    const truncated = [...gridExports.values()].some(exported => exported.truncated);
+    return { encoded, plainText, html, pngDataUrl, truncated };
 }
 
 /**
@@ -123,12 +211,29 @@ export function hasStructuredClipboardSelection(): boolean {
     return selectedItemsClipboardData() !== undefined;
 }
 
-function writeStructuredSystemClipboard(structured: { encoded: string; plainText: string; }): void {
+/** `data:image/png;base64,…` to a Blob, so the PNG can ride as its own flavor. */
+function pngBlobFromDataUrl(dataUrl: string): Blob | undefined {
+    const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    if (!dataUrl.startsWith("data:image/png") || base64.length === 0) return undefined;
+    try {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new Blob([bytes], { type: "image/png" });
+    } catch {
+        return undefined;
+    }
+}
+
+function writeStructuredSystemClipboard(structured: StructuredClipboard): void {
     if (typeof navigator === "undefined" || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") return;
-    const html = structuredClipboardHtml(structured.encoded, structured.plainText);
+    const html = structuredClipboardHtml(structured.encoded, structured.plainText, structured.html);
+    const png = structured.pngDataUrl ? pngBlobFromDataUrl(structured.pngDataUrl) : undefined;
     const item = new ClipboardItem({
         "text/plain": new Blob([structured.plainText], { type: "text/plain" }),
         "text/html": new Blob([html], { type: "text/html" }),
+        // Destinations that accept only an image take this one (§8.1).
+        ...(png ? { "image/png": png } : {}),
     });
     navigator.clipboard.write([item]).catch((error: unknown) => {
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -1486,6 +1591,9 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured?.truncated) {
+            logger.warn("Grid export hit the clipboard size cap; the trimmed copy carries a notice.");
+        }
         if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
@@ -1499,7 +1607,7 @@ export class KeyEventHandler {
                     if (structured) {
                         event.clipboardData.setData(
                             "text/html",
-                            structuredClipboardHtml(structured.encoded, selectedText),
+                            structuredClipboardHtml(structured.encoded, selectedText, structured.html),
                         );
                     }
 
@@ -2812,6 +2920,9 @@ export class KeyEventHandler {
 
         if (structured) selectedText = structured.plainText;
         KeyEventHandler.lastStructuredClipboard = structured;
+        if (structured?.truncated) {
+            logger.warn("Grid export hit the clipboard size cap; the trimmed copy carries a notice.");
+        }
         if (structured) writeStructuredSystemClipboard(structured);
 
         // If selection text could be obtained
@@ -2825,7 +2936,7 @@ export class KeyEventHandler {
                     if (structured) {
                         event.clipboardData.setData(
                             "text/html",
-                            structuredClipboardHtml(structured.encoded, selectedText),
+                            structuredClipboardHtml(structured.encoded, selectedText, structured.html),
                         );
                     }
 

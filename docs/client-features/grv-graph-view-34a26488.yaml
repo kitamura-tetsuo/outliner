@@ -6,7 +6,6 @@ category: navigation
 status: implemented
 components:
 - client/src/components/GraphView.svelte
-- client/src/routes/graph/+page.svelte
 features:
 - Parse page links to build a graph structure
 - Allow navigation to pages by clicking nodes

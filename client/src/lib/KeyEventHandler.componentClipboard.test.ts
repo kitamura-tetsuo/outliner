@@ -1,11 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { GRID_EXPORT_ROW_LIMIT } from "../services/clipboard/gridClipboardExport";
 import {
     deserializeClipboardItems,
     type GridTableSnapshot,
     OUTLINER_ITEMS_MIME,
 } from "../services/clipboard/itemClipboard";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
+import {
+    getTableClipboardSource,
+    registerTableClipboardSource,
+    resetTableClipboardSources,
+    unregisterTableClipboardSource,
+} from "../stores/tableClipboardRegistry";
 import { KeyEventHandler } from "./KeyEventHandler";
 
 // Svelte store mocks as permitted by AGENTS.md: the copy path reads the
@@ -332,6 +339,163 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         KeyEventHandler.handleCopy(event);
 
         expect(deserializeClipboardItems(data.get(OUTLINER_ITEMS_MIME) ?? "")?.version).toBe(1);
+    });
+});
+
+describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
+    let tableId: string;
+
+    const gridConfig = () => ({
+        columns: ["month", "revenue", "internal_id"],
+        hiddenColumns: { internal_id: true },
+        labels: { revenue: "Revenue (¥)" },
+        rows: [
+            { month: "Jan", revenue: 100, internal_id: "x1" },
+            { month: "Feb", revenue: null, internal_id: "x2" },
+        ],
+    });
+
+    function selectWholeGridHost() {
+        state.selection = { startItemId: "a", startOffset: 0, endItemId: "b", endOffset: 0, userId: "local" };
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = `<div class="outliner"><textarea class="global-textarea"></textarea></div>`;
+        (document.querySelector("textarea") as HTMLTextAreaElement).focus();
+        state.doc = new Y.Doc();
+        state.selection = undefined;
+        state.cursors = [];
+        resetTableClipboardSources();
+        tableId = createPortableTable(state.doc);
+        state.visible = [
+            { model: { id: "a", original: makeItem("a", "Intro text") }, depth: 0 },
+            { model: { id: "b", original: makeItem("b", "", tableId) }, depth: 0 },
+        ];
+    });
+
+    it("copies a rendered Grid as TSV and a real HTML table, applying the view's columns", () => {
+        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => undefined });
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        // The hidden column is gone, the label replaces the SQL name, and NULL
+        // is an empty cell.
+        expect(data.get("text/plain")).toBe("Intro text\nmonth\tRevenue (¥)\nJan\t100\nFeb\t");
+        const html = data.get("text/html") ?? "";
+        expect(html).toContain("<th>Revenue (¥)</th>");
+        expect(html).toContain("<td>Jan</td>");
+        expect(html).not.toContain("internal_id");
+        expect(html).toContain("Intro text<br><table>");
+    });
+
+    it("keeps the private payload naming the Grid, so in-app paste is unchanged", () => {
+        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => undefined });
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(copiedItems(data)).toEqual([
+            { text: "Intro text", depth: 0 },
+            { text: "Sales", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+        ]);
+    });
+
+    it("falls back to the display name when no view has rendered the Grid", () => {
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(data.get("text/plain")).toBe("Intro text\nSales");
+    });
+
+    it("adds the chart image to the HTML flavor when the chart view is open", () => {
+        registerTableClipboardSource(tableId, {
+            getGrid: gridConfig,
+            getChartImage: () => "data:image/png;base64,AAAA",
+        });
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(data.get("text/html")).toContain('</table><br><img src="data:image/png;base64,AAAA">');
+        // The numbers still travel for spreadsheets.
+        expect(data.get("text/plain")).toContain("Jan\t100");
+    });
+
+    it("offers the chart as an image/png flavor of the system clipboard write", async () => {
+        registerTableClipboardSource(tableId, {
+            getGrid: gridConfig,
+            getChartImage: () => "data:image/png;base64,AAAA",
+        });
+        const written: Array<Record<string, Blob>> = [];
+        // Stub the two clipboard globals jsdom does not provide, so the flavor
+        // set of the real write is observable.
+        vi.stubGlobal(
+            "ClipboardItem",
+            class {
+                constructor(public readonly items: Record<string, Blob>) {
+                    written.push(items);
+                }
+            },
+        );
+        vi.stubGlobal("navigator", { clipboard: { write: vi.fn(async () => {}) } });
+        try {
+            selectWholeGridHost();
+            KeyEventHandler.handleCopy(copyEvent().event);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+
+        expect(written).toHaveLength(1);
+        expect(Object.keys(written[0])).toEqual(["text/plain", "text/html", "image/png"]);
+        expect(written[0]["image/png"].type).toBe("image/png");
+    });
+
+    it("drops an oversized chart image and marks the export truncated", () => {
+        const oversized = "data:image/png;base64," + "A".repeat(2_000_001);
+        registerTableClipboardSource(tableId, { getGrid: gridConfig, getChartImage: () => oversized });
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(data.get("text/html")).not.toContain("<img");
+        expect(data.get("text/html")).toContain("<table>");
+        // Never silent: the copy says the picture did not come along.
+        expect(data.get("text/html")).toContain("--- Chart image too large to copy ---");
+    });
+
+    it("caps the exported rows and says so in the copied content", () => {
+        const rows = Array.from({ length: GRID_EXPORT_ROW_LIMIT + 5 }, (_, index) => ({ month: `m${index}` }));
+        registerTableClipboardSource(tableId, {
+            getGrid: () => ({ columns: ["month"], hiddenColumns: {}, labels: {}, rows }),
+            getChartImage: () => undefined,
+        });
+        selectWholeGridHost();
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        const plainText = data.get("text/plain") ?? "";
+        expect(plainText).toContain(
+            `--- Copy limit reached: first ${GRID_EXPORT_ROW_LIMIT} of ${rows.length} rows ---`,
+        );
+        expect(plainText).not.toContain(`m${GRID_EXPORT_ROW_LIMIT}\n`);
+    });
+
+    it("unregisters only its own source, so a replacing view keeps the registration", () => {
+        const first = { getGrid: gridConfig, getChartImage: () => undefined };
+        const second = { getGrid: gridConfig, getChartImage: () => undefined };
+        registerTableClipboardSource(tableId, first);
+        registerTableClipboardSource(tableId, second);
+        unregisterTableClipboardSource(tableId, first);
+
+        expect(getTableClipboardSource(tableId)).toBe(second);
     });
 });
 

@@ -8,6 +8,7 @@ vi.mock("echarts", () => ({
         setOption: vi.fn(),
         clear: vi.fn(),
         dispose: vi.fn(),
+        getDataURL: vi.fn((opts) => `data:image/png;base64,mockchart${opts.backgroundColor ? "-bg" : ""}`),
     })),
 }));
 
@@ -42,5 +43,19 @@ describe("TableChartPanel", () => {
         expect(chartDiv.getAttribute("aria-label")).toBe(
             "Bar chart of revenue by id: demo-1 (120), demo-2 (180)",
         );
+    });
+
+    it("has no image until a result has been charted, then exports one on white", () => {
+        const { component } = render(TableChartPanel, { initial: { columns: [], rows: [] } });
+        // An empty result draws nothing, so there is no picture to copy.
+        expect(component.getImage()).toBeUndefined();
+
+        component.update({
+            columns: ["month", "revenue"],
+            rows: [{ month: "Jan", revenue: 100 }],
+        });
+
+        // Opaque, so the chart is readable wherever it is pasted.
+        expect(component.getImage()).toBe("data:image/png;base64,mockchart-bg");
     });
 });

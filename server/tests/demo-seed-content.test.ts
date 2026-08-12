@@ -137,7 +137,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(39);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(40);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -149,7 +149,9 @@ describe("Demo seed content", () => {
                 + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
                 + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
                 + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
-                + "without deleting its data.",
+                + "without deleting its data. Outside Outliner the same copy pastes as what you see: a "
+                + "spreadsheet receives the Grid's rows as cells, a document receives them as a table, and "
+                + "with the Chart view open the picture travels with the numbers.",
         );
     });
 

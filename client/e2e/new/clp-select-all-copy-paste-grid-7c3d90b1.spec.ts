@@ -20,14 +20,20 @@ test.describe("select all clipboard with component blocks", () => {
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();
         await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
+        // The outward copy is of the rendered result, so wait for the query to
+        // have produced one rather than racing it.
+        await expect(page.getByTestId("yjs-table-grid").first().locator("thead th").first())
+            .toBeVisible({ timeout: 30000 });
 
         // Ctrl+A selects the whole page: every text item plus the Grid host.
         await page.locator(".outliner-item .item-content").first().click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+a");
+        await page.waitForTimeout(500);
         await page.keyboard.press("Control+c");
+        // A rendered Grid contributes its result, not its display name.
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 })
-            .toContain("\nTasks");
+            .toContain("id\ttitle\tstatus\tpriority\tdue_date\trepeat_days");
 
         // Move the cursor to the end of the outline, dropping the selection.
         await page.locator(".outliner-item[data-item-id] .item-content").nth(3).click();

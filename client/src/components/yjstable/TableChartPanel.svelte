@@ -18,6 +18,15 @@ let chart: echarts.ECharts | undefined;
 let hasData = $state(false);
 let ariaLabel = $state("");
 
+export function getImage(): string | undefined {
+    if (!chart || !hasData) return undefined;
+    return chart.getDataURL({
+        type: "png",
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+    });
+}
+
 export function update(result: TableQueryResult) {
     if (!chart) return;
     hasData = result.rows.length > 0;

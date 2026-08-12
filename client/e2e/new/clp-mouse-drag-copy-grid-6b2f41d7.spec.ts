@@ -56,7 +56,7 @@ test.describe("mouse drag clipboard with component blocks", () => {
 
         await page.keyboard.press("Control+c");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 })
-            .toContain("Tasks");
+            .toContain("title\tstatus\tpriority");
 
         // The structured payload is what carries the Grid binding; a plain text
         // copy would still contain the host title and hide the regression.
