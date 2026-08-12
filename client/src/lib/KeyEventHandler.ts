@@ -2771,6 +2771,7 @@ export class KeyEventHandler {
             }
 
             let structuredItems = sameProjectItems;
+            let pastedTableIdMap: Record<string, string> | undefined = undefined;
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2793,14 +2794,15 @@ export class KeyEventHandler {
                     const { cloneGridTablesAcrossProjects } = await import(
                         "../services/clipboard/crossProjectGridPaste"
                     );
-                    const tableIdMap = await cloneGridTablesAcrossProjects({
+                    pastedTableIdMap = await cloneGridTablesAcrossProjects({
                         destinationDoc,
                         sourceProjectId: structured.sourceProjectId,
                         snapshots: referencedSnapshots,
                         isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
                     });
-                    if (tableIdMap === undefined) return;
-                    if (Object.keys(tableIdMap).length > 0) {
+                    if (pastedTableIdMap === undefined) return;
+                    if (Object.keys(pastedTableIdMap).length > 0) {
+                        const tableIdMap = pastedTableIdMap;
                         structuredItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
                                 const destinationTableId = item.yjsTableId === undefined
@@ -2835,6 +2837,20 @@ export class KeyEventHandler {
                             },
                         }),
                     );
+
+                    // If a cross-project paste created tables, group the new tables and the item insertion
+                    // into a single undoable unit so undo removes everything and redo restores all of it.
+                    if (
+                        pastedTableIdMap && Object.keys(pastedTableIdMap).length > 0 && destinationDoc
+                        && generalStore.undoManager
+                    ) {
+                        const { globalUndoRouter } = await import("../services/undo/undoRouter.svelte");
+                        globalUndoRouter.captureCrossProjectPaste(
+                            generalStore.undoManager,
+                            destinationDoc,
+                            Object.values(pastedTableIdMap),
+                        );
+                    }
                 }
                 return;
             }

@@ -249,4 +249,93 @@ describe("UndoRouter", () => {
         outline.edit("a", 1);
         expect(router.undoDepth).toBe(1);
     });
+
+    describe("CompositeUndoEntry", () => {
+        it("undoes and redoes a cross-project paste cleanly", () => {
+            const router = new UndoRouter();
+            const projectDoc = new Y.Doc();
+            const treeMap = projectDoc.getMap<number>("orderedTree");
+            const treeManager = new Y.UndoManager(treeMap);
+            router.register(treeManager);
+
+            // 1. Paste tables
+            const registry = projectDoc.getMap<unknown>("yjsTables");
+            const tableId = "t1";
+            const subdoc = new Y.Doc({ guid: "test-guid" });
+            subdoc.getText("schema").insert(0, "CREATE TABLE t1");
+            const mapEntry = new Y.Map<unknown>();
+            mapEntry.set("name", "Test Table");
+            mapEntry.set("sqlName", "t1_sql");
+            mapEntry.set("doc", subdoc);
+            registry.set(tableId, mapEntry);
+
+            // 2. Paste items
+            projectDoc.transact(() => {
+                treeMap.set("item1", 1);
+            });
+            expect(router.undoDepth).toBe(1);
+
+            // Capture composite
+            router.captureCrossProjectPaste(treeManager, projectDoc, [tableId]);
+            expect(router.undoDepth).toBe(1);
+
+            // Undo
+            router.undo();
+            expect(treeMap.has("item1")).toBe(false);
+            expect(registry.has(tableId)).toBe(false); // removeTable removes the registry entry
+            expect(router.redoDepth).toBe(1);
+
+            // Redo
+            router.redo();
+            expect(treeMap.get("item1")).toBe(1);
+            expect(registry.has(tableId)).toBe(true);
+            const restoredEntry = registry.get(tableId) as Y.Map<unknown>;
+            expect(restoredEntry.get("name")).toBe("Test Table");
+            expect(restoredEntry.get("sqlName")).toBe("t1_sql");
+            const restoredSubdoc = restoredEntry.get("doc") as Y.Doc;
+            expect(restoredSubdoc.getText("schema").toString()).toBe("CREATE TABLE t1");
+        });
+
+        it("keeps chronological ordering when the pasted grid is edited before undo", () => {
+            const router = new UndoRouter();
+            const projectDoc = new Y.Doc();
+            const treeMap = projectDoc.getMap<number>("orderedTree");
+            const treeManager = new Y.UndoManager(treeMap);
+            router.register(treeManager);
+
+            const registry = projectDoc.getMap<unknown>("yjsTables");
+            const tableId = "t1";
+            const subdoc = new Y.Doc({ guid: "test-guid" });
+            const mapEntry = new Y.Map<unknown>();
+            mapEntry.set("doc", subdoc);
+            registry.set(tableId, mapEntry);
+
+            projectDoc.transact(() => {
+                treeMap.set("item1", 1);
+            });
+            router.captureCrossProjectPaste(treeManager, projectDoc, [tableId]);
+
+            // Now edit the table
+            const tableMap = subdoc.getMap<number>("data");
+            const tableManager = new Y.UndoManager(tableMap);
+            router.register(tableManager);
+
+            subdoc.transact(() => {
+                tableMap.set("row1", 10);
+            });
+
+            expect(router.undoDepth).toBe(2);
+
+            // Undo 1: Reverses the edit, table still exists
+            router.undo();
+            expect(tableMap.has("row1")).toBe(false);
+            expect(registry.has(tableId)).toBe(true);
+            expect(treeMap.has("item1")).toBe(true);
+
+            // Undo 2: Reverses the paste, table removed
+            router.undo();
+            expect(registry.has(tableId)).toBe(false);
+            expect(treeMap.has("item1")).toBe(false);
+        });
+    });
 });

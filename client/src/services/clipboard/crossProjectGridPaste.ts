@@ -75,9 +75,7 @@ export async function cloneGridTablesAcrossProjects(
 
     let tableIdMap: Record<string, string> = {};
     const rollback = () => {
-        for (const destinationTableId of Object.values(tableIdMap)) {
-            removeTable(destinationDoc, destinationTableId);
-        }
+        rollbackCrossProjectPaste(destinationDoc, Object.values(tableIdMap));
         tableIdMap = {};
     };
 
@@ -176,5 +174,12 @@ async function copyRowsFromSource(
         return error instanceof Error ? error.message : "The source project is not available.";
     } finally {
         acquired?.release();
+    }
+}
+
+/** Remove the tables created by a paste that was cancelled or undone. */
+export function rollbackCrossProjectPaste(destinationDoc: Y.Doc, createdTableIds: string[]): void {
+    for (const destinationTableId of createdTableIds) {
+        removeTable(destinationDoc, destinationTableId);
     }
 }
