@@ -347,7 +347,7 @@ export async function importTableStructures(
                 const plan = plans.get(sourceTableId)!;
                 const existingTable = listTables(destinationProjectDoc).find(
                     t => t.sourceProjectGuid === sourceProjectId
-                        && t.sourceTableId === (plan.snapshot.sourceTableId || sourceTableId)
+                        && t.sourceTableId === (plan.snapshot.sourceTableId || sourceTableId),
                 );
 
                 if (existingTable) {
@@ -358,7 +358,10 @@ export async function importTableStructures(
                         plan.snapshot.name,
                         plan.destinationSqlName,
                         handles => materializeUi(handles, plan.snapshot, plan.querySql),
-                        { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId || sourceTableId },
+                        {
+                            sourceProjectGuid: sourceProjectId,
+                            sourceTableId: plan.snapshot.sourceTableId || sourceTableId,
+                        },
                     );
                     created.push(destinationTableId);
                     tableIdMap[sourceTableId] = destinationTableId;
