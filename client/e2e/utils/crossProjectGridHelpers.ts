@@ -117,7 +117,9 @@ export async function openProjectPage(
             { timeout: 15000 },
         );
     } catch (e) {}
-    try { await page.locator("select.project-select").selectOption({ value: projectId, timeout: 5000 }); } catch (e) {}
+    try {
+        await page.locator("select.project-select").selectOption({ value: projectId, timeout: 5000 });
+    } catch (e) {}
     await expect(async () => {
         const url = page.url();
         if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
