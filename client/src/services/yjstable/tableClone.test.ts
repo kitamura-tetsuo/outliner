@@ -109,7 +109,7 @@ describe("table structure import", { timeout: 30000 }, () => {
             handles.schemaText.insert(0, "CREATE TABLE orders (id TEXT PRIMARY KEY)");
         });
 
-        const result = await importTableStructures(destination, snapshots);
+        const result = await importTableStructures(destination, "source-project-id", snapshots);
         expect(result.failures).toEqual({});
         expect(Object.keys(result.tableIdMap).sort()).toEqual([source.customersId, source.ordersId].sort());
 
@@ -137,7 +137,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         const snapshot = exportTableStructure(source.doc, source.ordersId);
         snapshot.ui.query = "SELECT id, amount FROM orders";
         const destination = new Y.Doc({ guid: "destination-independent" });
-        const result = await importTableStructures(destination, { [source.ordersId]: snapshot });
+        const result = await importTableStructures(destination, "source-project-id", { [source.ordersId]: snapshot });
         const sourceHandles = getTableHandles(source.doc, source.ordersId)!;
         const destinationHandles = getTableHandles(destination, result.tableIdMap[source.ordersId])!;
         const sourceComponents = sourceHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
@@ -164,8 +164,8 @@ describe("table structure import", { timeout: 30000 }, () => {
         const destination = new Y.Doc({ guid: "destination-repeat" });
         const snapshot = simpleSnapshot("source-one", "tasks");
 
-        const first = await importTableStructures(destination, { "source-one": snapshot });
-        const second = await importTableStructures(destination, { "source-one": snapshot });
+        const first = await importTableStructures(destination, "source-project-id", { "source-one": snapshot });
+        const second = await importTableStructures(destination, "source-project-id", { "source-one": snapshot });
 
         expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
         expect(Object.keys(second.tableIdMap)).toEqual(["source-one"]);
@@ -181,7 +181,7 @@ describe("table structure import", { timeout: 30000 }, () => {
             "SELECT e.id, i.text FROM events e LEFT JOIN outline_items i ON i.id = e.id",
         );
 
-        const result = await importTableStructures(destination, { "calendar-host": snapshot });
+        const result = await importTableStructures(destination, "source-project-id", { "calendar-host": snapshot });
         expect(result.failures).toEqual({});
         expect(result.tableIdMap["calendar-host"]).toBeDefined();
     });
@@ -195,7 +195,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         };
         const independent = simpleSnapshot("independent", "independent");
 
-        const result = await importTableStructures(destination, { host, broken, independent });
+        const result = await importTableStructures(destination, "source-project-id", { host, broken, independent });
 
         expect(result.tableIdMap.independent).toBeDefined();
         expect(result.tableIdMap.host).toBeUndefined();
@@ -210,12 +210,25 @@ describe("table structure import", { timeout: 30000 }, () => {
         const destination = new Y.Doc({ guid: "destination-missing" });
         const snapshot = simpleSnapshot("host", "host", "SELECT * FROM host JOIN not_copied ON true");
 
-        const result = await importTableStructures(destination, { host: snapshot });
+        const result = await importTableStructures(destination, "source-project-id", { host: snapshot });
 
         expect(result.tableIdMap).toEqual({});
         expect(result.failures.host).toMatch(/absent from the clipboard/);
         expect(listTables(destination)).toEqual([]);
         expect([...destination.getSubdocs()]).toEqual([]);
+    });
+
+    it("records provenance on the cloned table", async () => {
+        const source = sourceProject();
+        const snapshot = exportTableStructure(source.doc, source.ordersId);
+        const destination = new Y.Doc({ guid: "destination-provenance" });
+
+        await importTableStructures(destination, "source-project-id", { [source.ordersId]: snapshot });
+
+        const tables = listTables(destination);
+        expect(tables).toHaveLength(1);
+        expect(tables[0].sourceProjectGuid).toBe("source-project-id");
+        expect(tables[0].sourceTableId).toBe(source.ordersId);
     });
 });
 

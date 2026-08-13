@@ -58,6 +58,21 @@ const existingTables = $derived.by(() => {
     return item.ydoc ? listTables(item.ydoc) : [];
 });
 
+let parsedTableId = $state<string | undefined>();
+$effect(() => {
+    parsedTableId = getItemTableId(item);
+    if (parsedTableId?.startsWith("existing:")) {
+        const id = parsedTableId.slice("existing:".length);
+        if (!selectedExistingTableId && existingTables.some(t => t.tableId === id)) {
+            creationMode = "existing";
+            selectedExistingTableId = id;
+            tableId = undefined; // Do not render as loaded yet
+        }
+    } else {
+        tableId = parsedTableId;
+    }
+});
+
 $effect(() => {
     if (creationMode === "existing" && existingTables.length > 0 && !selectedExistingTableId) {
         selectedExistingTableId = existingTables[0].tableId;
@@ -91,10 +106,10 @@ const registryObserver = () => {
 let unobserveItem: (() => void) | undefined;
 
 onMount(() => {
-    tableId = getItemTableId(item);
+    parsedTableId = getItemTableId(item);
     getTableRegistry(item.ydoc).observeDeep(registryObserver);
     unobserveItem = observeItemTableId(item, () => {
-        tableId = getItemTableId(item);
+        parsedTableId = getItemTableId(item);
     });
 });
 

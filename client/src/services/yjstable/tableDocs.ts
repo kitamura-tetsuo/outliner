@@ -36,6 +36,8 @@ export interface TableRegistryEntry {
      * authoritative: this field is rewritten whenever a schema is applied.
      */
     sqlName: string;
+    sourceProjectGuid?: string;
+    sourceTableId?: string;
 }
 
 export interface TableHandles {
@@ -62,10 +64,14 @@ export function listTables(projectDoc: Y.Doc): TableRegistryEntry[] {
     const registry = getTableRegistry(projectDoc);
     const entries: TableRegistryEntry[] = [];
     registry.forEach((entry, tableId) => {
+        const sourceProjectGuid = entry.get("sourceProjectGuid");
+        const sourceTableId = entry.get("sourceTableId");
         entries.push({
             tableId,
             name: String(entry.get("name") ?? ""),
             sqlName: String(entry.get("sqlName") ?? ""),
+            ...(typeof sourceProjectGuid === "string" && { sourceProjectGuid }),
+            ...(typeof sourceTableId === "string" && { sourceTableId }),
         });
     });
     return entries;
@@ -83,6 +89,7 @@ export function createTable(
     name: string,
     sqlName: string,
     initialize?: (handles: TableInitializationHandles) => void,
+    provenance?: { sourceProjectGuid: string; sourceTableId: string; },
 ): string {
     const tableId = uuidv4();
     const subdoc = new Y.Doc({ guid: tableDocGuid(projectDoc.guid, tableId), autoLoad: true });
@@ -105,6 +112,10 @@ export function createTable(
         entry.set("name", name);
         entry.set("sqlName", sqlName);
         entry.set("doc", subdoc);
+        if (provenance) {
+            entry.set("sourceProjectGuid", provenance.sourceProjectGuid);
+            entry.set("sourceTableId", provenance.sourceTableId);
+        }
         getTableRegistry(projectDoc).set(tableId, entry);
     });
     return tableId;

@@ -244,6 +244,7 @@ function connectedGroups(plans: Map<string, PlannedTable>): string[][] {
  */
 export async function importTableStructures(
     destinationProjectDoc: Y.Doc,
+    sourceProjectId: string,
     snapshots: Readonly<Record<string, GridTableSnapshot>>,
 ): Promise<TableCloneResult> {
     const failures: Record<string, string> = {};
@@ -349,6 +350,7 @@ export async function importTableStructures(
                     plan.snapshot.name,
                     plan.destinationSqlName,
                     handles => materializeUi(handles, plan.snapshot, plan.querySql),
+                    { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId },
                 );
                 created.push(destinationTableId);
                 tableIdMap[sourceTableId] = destinationTableId;

@@ -81,7 +81,7 @@ export async function cloneGridTablesAcrossProjects(
 
     try {
         reportProgress({ state: "copying", tableCount: Object.keys(snapshots).length });
-        tableIdMap = (await importTableStructures(destinationDoc, snapshots)).tableIdMap;
+        tableIdMap = (await importTableStructures(destinationDoc, sourceProjectId, snapshots)).tableIdMap;
         if (cancelled()) {
             rollback();
             reportProgress({ state: "cancelled" });
