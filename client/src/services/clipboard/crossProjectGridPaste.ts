@@ -58,7 +58,7 @@ export interface CrossProjectGridPasteOptions {
  */
 export async function cloneGridTablesAcrossProjects(
     options: CrossProjectGridPasteOptions,
-): Promise<Record<string, string> | undefined> {
+): Promise<{ tableIdMap: Record<string, string>; skippedSourceTableIds: string[]; } | undefined> {
     const { destinationDoc, sourceProjectId, snapshots, isDestinationCurrent } = options;
 
     if (!destinationAcceptsWrites()) {
@@ -81,7 +81,9 @@ export async function cloneGridTablesAcrossProjects(
 
     try {
         reportProgress({ state: "copying", tableCount: Object.keys(snapshots).length });
-        tableIdMap = (await importTableStructures(destinationDoc, snapshots, sourceProjectId)).tableIdMap;
+        const cloneResult = await importTableStructures(destinationDoc, snapshots, sourceProjectId);
+        tableIdMap = cloneResult.tableIdMap;
+        const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
             rollback();
             reportProgress({ state: "cancelled" });
@@ -106,7 +108,7 @@ export async function cloneGridTablesAcrossProjects(
                 ? { state: "complete-with-data" }
                 : { state: "complete-without-data", reason: unavailableReason },
         );
-        return tableIdMap;
+        return { tableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [] };
     } finally {
         if (typeof window !== "undefined") {
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);

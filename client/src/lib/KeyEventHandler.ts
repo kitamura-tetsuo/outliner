@@ -2772,6 +2772,7 @@ export class KeyEventHandler {
 
             let structuredItems = sameProjectItems;
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
+            let pastedSkippedTableIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2794,13 +2795,15 @@ export class KeyEventHandler {
                     const { cloneGridTablesAcrossProjects } = await import(
                         "../services/clipboard/crossProjectGridPaste"
                     );
-                    pastedTableIdMap = await cloneGridTablesAcrossProjects({
+                    const cloneResult = await cloneGridTablesAcrossProjects({
                         destinationDoc,
                         sourceProjectId: structured.sourceProjectId,
                         snapshots: referencedSnapshots,
                         isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
                     });
-                    if (pastedTableIdMap === undefined) return;
+                    if (cloneResult === undefined) return;
+                    pastedTableIdMap = cloneResult.tableIdMap;
+                    pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
                     // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
                     // (because ALL items were skipped due to provenance!).
                     // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
@@ -2813,7 +2816,7 @@ export class KeyEventHandler {
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
                                 if (destinationTableId === undefined) {
-                                    if (item.yjsTableId && structured.tables && structured.tables[item.yjsTableId]) {
+                                    if (item.yjsTableId && pastedSkippedTableIds.includes(item.yjsTableId)) {
                                         anyKept = true;
                                         return { ...item, yjsTableId: undefined };
                                     }
@@ -2822,7 +2825,10 @@ export class KeyEventHandler {
                                 anyKept = true;
                                 return { ...item, yjsTableId: destinationTableId };
                             }
-                            if (item.componentType === "calendar") return { text: item.text, depth: item.depth };
+                            if (item.componentType === "calendar") {
+                                anyKept = true;
+                                return { text: item.text, depth: item.depth };
+                            }
                             anyKept = true;
                             return item;
                         });

@@ -52,14 +52,14 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         const progress = recordProgress();
         cleanups.push(progress.stop);
 
-        const tableIdMap = await cloneGridTablesAcrossProjects({
+        const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             isDestinationCurrent: () => true,
         });
 
-        expect(tableIdMap).toBe(undefined);
+        expect(cloneResult).toBe(undefined);
         expect(listTables(destination)).toEqual([]);
         expect(progress.events).toEqual([
             { state: "failed", reason: "The destination project is read-only." },
@@ -72,14 +72,14 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         const progress = recordProgress();
         cleanups.push(progress.stop);
 
-        const tableIdMap = await cloneGridTablesAcrossProjects({
+        const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             isDestinationCurrent: () => true,
         });
 
-        const destinationTableId = tableIdMap![ordersId];
+        const destinationTableId = cloneResult!.tableIdMap[ordersId];
         expect(destinationTableId).toBeTypeOf("string");
         expect(getTableHandles(destination, destinationTableId)!.data.size).toBe(0);
         expect(progress.events).toEqual([
@@ -94,14 +94,14 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         const progress = recordProgress();
         cleanups.push(progress.stop);
 
-        const tableIdMap = await cloneGridTablesAcrossProjects({
+        const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             isDestinationCurrent: () => false,
         });
 
-        expect(tableIdMap).toBe(undefined);
+        expect(cloneResult).toBe(undefined);
         expect(listTables(destination)).toEqual([]);
         expect(progress.events.at(-1)).toEqual({ state: "cancelled" });
     });

@@ -46,6 +46,7 @@ export interface TableCloneResult {
     /** Source table id to a safe, user-presentable failure reason. */
     failures: Record<string, string>;
     failedSourceTableIds: string[];
+    skippedSourceTableIds?: string[];
 }
 
 interface PlannedTable {
@@ -248,6 +249,7 @@ export async function importTableStructures(
     sourceProjectId?: string,
 ): Promise<TableCloneResult> {
     const failures: Record<string, string> = {};
+    const skippedSourceTableIds: string[] = [];
     const basic = new Map<string, GridTableSnapshot>();
     for (const [sourceTableId, snapshot] of Object.entries(snapshots)) {
         if (!isGridTableSnapshot(snapshot, sourceTableId)) {
@@ -266,12 +268,13 @@ export async function importTableStructures(
     }
 
     if (sourceProjectId) {
-        for (const [sourceTableId, snapshot] of [...basic.entries()]) {
+        for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
             const key = `${sourceProjectId}:${sourceTableId}`;
             if (existingTableMap.has(key)) {
                 // Table already exists with matching provenance.
                 // We skip cloning it to let the block component fall back to its "Existing Table" UI.
                 basic.delete(sourceTableId);
+                skippedSourceTableIds.push(sourceTableId);
             }
         }
     }
@@ -384,5 +387,5 @@ export async function importTableStructures(
     }
 
     const failedSourceTableIds = Object.keys(failures).sort();
-    return { tableIdMap, failures, failedSourceTableIds };
+    return { tableIdMap, failures, failedSourceTableIds, skippedSourceTableIds };
 }
