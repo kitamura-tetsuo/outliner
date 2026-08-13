@@ -12,7 +12,7 @@ import {
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
-import { exportTableStructure } from "../services/yjstable/tableClone";
+import { computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
 import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -152,7 +152,10 @@ function selectedItemsClipboardData(): StructuredClipboard | undefined {
     if (!coversWholeRange && !hasComponent) return undefined;
 
     const tableSnapshots: Record<string, GridTableSnapshot> = {};
-    const tableIds = new Set(entries.map(entry => getItemTableId(entry.item)).filter(tableId => tableId !== undefined));
+    const initialTableIds = new Set(
+        entries.map(entry => getItemTableId(entry.item)).filter((id): id is string => id !== undefined),
+    );
+    const tableIds = computeTableClosure(project.ydoc, initialTableIds);
     for (const tableId of tableIds) {
         try {
             tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId);

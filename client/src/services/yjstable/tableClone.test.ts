@@ -2,7 +2,13 @@ import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import type { GridTableSnapshot } from "../clipboard/itemClipboard";
 import { resetPgliteForTests } from "./pgliteService";
-import { copyTableData, exportTableStructure, exportTableStructures, importTableStructures } from "./tableClone";
+import {
+    computeTableClosure,
+    copyTableData,
+    exportTableStructure,
+    exportTableStructures,
+    importTableStructures,
+} from "./tableClone";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText, tableDocGuid } from "./tableDocs";
 
 function configureUi(
@@ -97,6 +103,83 @@ describe("table structure export", () => {
     it("deduplicates table IDs during batch export", () => {
         const { doc, ordersId } = sourceProject();
         expect(Object.keys(exportTableStructures(doc, [ordersId, ordersId]))).toEqual([ordersId]);
+    });
+});
+
+describe("computeTableClosure", () => {
+    it("finds the closure of a chain of dependencies", () => {
+        const doc = new Y.Doc();
+        let tableA = "";
+        let tableB = "";
+        let tableC = "";
+        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM table_b");
+        });
+        const entryA = new Y.Map();
+        entryA.set("sqlName", "table_a");
+        entryA.set("tableId", tableA);
+        doc.getMap("tableRegistry").set(tableA, entryA);
+        tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM table_c");
+        });
+        const entryB = new Y.Map();
+        entryB.set("sqlName", "table_b");
+        entryB.set("tableId", tableB);
+        doc.getMap("tableRegistry").set(tableB, entryB);
+        tableC = createTable(doc, "Table C", "table_c", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM something_else");
+        });
+        const entryC = new Y.Map();
+        entryC.set("sqlName", "table_c");
+        entryC.set("tableId", tableC);
+        doc.getMap("tableRegistry").set(tableC, entryC);
+
+        const closure = computeTableClosure(doc, [tableA]);
+        expect(closure.has(tableA)).toBe(true);
+        expect(closure.has(tableB)).toBe(true);
+        expect(closure.has(tableC)).toBe(true);
+        expect(closure.size).toBe(3);
+    });
+
+    it("handles cycles gracefully", () => {
+        const doc = new Y.Doc();
+        let tableA = "";
+        let tableB = "";
+        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM table_b");
+        });
+        const entryA2 = new Y.Map();
+        entryA2.set("sqlName", "table_a");
+        entryA2.set("tableId", tableA);
+        doc.getMap("tableRegistry").set(tableA, entryA2);
+        tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM table_a");
+        });
+        const entryB2 = new Y.Map();
+        entryB2.set("sqlName", "table_b");
+        entryB2.set("tableId", tableB);
+        doc.getMap("tableRegistry").set(tableB, entryB2);
+
+        const closure = computeTableClosure(doc, [tableA]);
+        expect(closure.has(tableA)).toBe(true);
+        expect(closure.has(tableB)).toBe(true);
+        expect(closure.size).toBe(2);
+    });
+
+    it("ignores unresolvable dependencies", () => {
+        const doc = new Y.Doc();
+        let tableA = "";
+        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+            handles.uiDef.set("query", "SELECT * FROM table_non_existent");
+        });
+        const entryA3 = new Y.Map();
+        entryA3.set("sqlName", "table_a");
+        entryA3.set("tableId", tableA);
+        doc.getMap("tableRegistry").set(tableA, entryA3);
+
+        const closure = computeTableClosure(doc, [tableA]);
+        expect(closure.has(tableA)).toBe(true);
+        expect(closure.size).toBe(1);
     });
 });
 

@@ -154,6 +154,39 @@ export function exportTableStructures(
     return snapshots;
 }
 
+/** Resolves the full dependency closure of the given table IDs by parsing their queries. */
+export function computeTableClosure(projectDoc: Y.Doc, initialTableIds: Iterable<string>): Set<string> {
+    const visited = new Set<string>(initialTableIds);
+    const queue = Array.from(visited);
+    const registry = listTables(projectDoc);
+    const sqlNameToTableId = new Map(registry.map(entry => [entry.sqlName, entry.tableId]));
+
+    while (queue.length > 0) {
+        const tableId = queue.shift()!;
+        const handles = getTableHandles(projectDoc, tableId);
+        if (!handles) continue;
+
+        const query = String(handles.uiDef.get("query") ?? "");
+        if (!query) continue;
+
+        let queryRewrite;
+        try {
+            queryRewrite = rewriteTableQuerySql(query, new Map());
+        } catch {
+            continue; // Ignore tables with invalid queries
+        }
+
+        for (const dependency of queryRewrite.relationDependencies) {
+            const depTableId = sqlNameToTableId.get(dependency);
+            if (depTableId && !visited.has(depTableId)) {
+                visited.add(depTableId);
+                queue.push(depTableId);
+            }
+        }
+    }
+    return visited;
+}
+
 function materializeUi(handles: TableInitializationHandles, snapshot: GridTableSnapshot, querySql: string): void {
     handles.schemaText.insert(0, snapshot.schemaSql);
     handles.uiDef.set("query", querySql);
