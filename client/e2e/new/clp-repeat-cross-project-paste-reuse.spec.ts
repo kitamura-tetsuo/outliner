@@ -35,13 +35,10 @@ test.describe("cross-project Grid clone reuse", () => {
         await createBlankGrid(page, "Warmup", "warmup_table");
         const warmupState = await readGridProjectState(page);
         expect(warmupState.tables).toHaveLength(1);
-        const warmupTableId = warmupState.tables[0].id;
 
         await pasteAtAnchor(page, 2);
         const afterFirstPaste = await readGridProjectState(page);
         expect(afterFirstPaste.tables).toHaveLength(2);
-        const firstClone = afterFirstPaste.tables.find(t => t.id !== warmupTableId)!;
-        const firstCloneId = firstClone.id;
 
         await clickItemAndWaitForCursor(
             page,
