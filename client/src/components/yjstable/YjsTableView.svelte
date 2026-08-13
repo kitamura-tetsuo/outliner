@@ -43,9 +43,11 @@ interface Props {
     tableName?: string;
     /** Identifier queries use for this table, shown next to the display name. */
     sqlName?: string;
+    /** Provenance info from whence this table was copied */
+    sourceProjectId?: string;
 }
 
-let { handles, projectDoc, projectId, tableName, sqlName }: Props = $props();
+let { handles, projectDoc, projectId, tableName, sqlName, sourceProjectId }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -180,6 +182,9 @@ onDestroy(() => {
             <!-- The identifier queries use. Shown next to the label so the two
                  names are never confused for one another. -->
             <code class="table-sql-name" data-testid="yjs-table-sql-name" title="Name to use in SQL queries">{sqlName}</code>
+        {/if}
+        {#if sourceProjectId}
+            <span class="table-provenance" data-testid="yjs-table-provenance">copied from project</span>
         {/if}
         <div class="view-toggles" role="group" aria-label="Table views">
             <button
@@ -334,6 +339,11 @@ onDestroy(() => {
     background: #f3f4f6;
     border-radius: 3px;
     padding: 1px 5px;
+}
+
+.table-provenance {
+    font-size: 0.75rem;
+    color: #6b7280;
 }
 
 .view-toggles {

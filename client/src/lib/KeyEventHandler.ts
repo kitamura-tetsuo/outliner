@@ -2801,20 +2801,33 @@ export class KeyEventHandler {
                         isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
                     });
                     if (pastedTableIdMap === undefined) return;
-                    if (Object.keys(pastedTableIdMap).length > 0) {
+                    // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
+                    // (because ALL items were skipped due to provenance!).
+                    // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
+                    if (pastedTableIdMap) {
                         const tableIdMap = pastedTableIdMap;
-                        structuredItems = structured.items.map(item => {
+                        let anyKept = false;
+                        const mappedItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
                                 const destinationTableId = item.yjsTableId === undefined
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
-                                return destinationTableId === undefined
-                                    ? { text: item.text, depth: item.depth }
-                                    : { ...item, yjsTableId: destinationTableId };
+                                if (destinationTableId === undefined) {
+                                    if (item.yjsTableId && structured.tables && structured.tables[item.yjsTableId]) {
+                                        anyKept = true;
+                                        return { ...item, yjsTableId: undefined };
+                                    }
+                                    return { text: item.text, depth: item.depth };
+                                }
+                                anyKept = true;
+                                return { ...item, yjsTableId: destinationTableId };
                             }
                             if (item.componentType === "calendar") return { text: item.text, depth: item.depth };
+                            anyKept = true;
                             return item;
                         });
+                        if (anyKept) structuredItems = mappedItems;
+                        else structuredItems = undefined;
                     }
                 }
             }

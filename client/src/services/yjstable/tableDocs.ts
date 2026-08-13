@@ -26,6 +26,8 @@ export type TableRecord = Y.Map<TableRecordValue>;
 export type TableData = Y.Map<TableRecord>;
 
 export interface TableRegistryEntry {
+    sourceProjectId?: string;
+    sourceTableId?: string;
     tableId: string;
     /** Free-text label. Never appears in SQL. */
     name: string;
@@ -65,6 +67,8 @@ export function listTables(projectDoc: Y.Doc): TableRegistryEntry[] {
         entries.push({
             tableId,
             name: String(entry.get("name") ?? ""),
+            sourceProjectId: entry.get("sourceProjectId") ? String(entry.get("sourceProjectId")) : undefined,
+            sourceTableId: entry.get("sourceTableId") ? String(entry.get("sourceTableId")) : undefined,
             sqlName: String(entry.get("sqlName") ?? ""),
         });
     });
@@ -82,6 +86,7 @@ export function createTable(
     projectDoc: Y.Doc,
     name: string,
     sqlName: string,
+    options?: { sourceProjectId?: string; sourceTableId?: string; } | ((handles: TableInitializationHandles) => void),
     initialize?: (handles: TableInitializationHandles) => void,
 ): string {
     const tableId = uuidv4();
@@ -94,7 +99,10 @@ export function createTable(
         data: subdoc.getMap<TableRecord>(TABLE_DATA_KEY),
     };
     try {
-        subdoc.transact(() => initialize?.(handles));
+        subdoc.transact(() => {
+            if (typeof options === "function") options(handles);
+            else if (initialize) initialize(handles);
+        });
     } catch (err) {
         subdoc.destroy();
         throw err;
@@ -104,6 +112,10 @@ export function createTable(
         const entry = new Y.Map<unknown>();
         entry.set("name", name);
         entry.set("sqlName", sqlName);
+        if (options && typeof options !== "function") {
+            if (options.sourceProjectId) entry.set("sourceProjectId", options.sourceProjectId);
+            if (options.sourceTableId) entry.set("sourceTableId", options.sourceTableId);
+        }
         entry.set("doc", subdoc);
         getTableRegistry(projectDoc).set(tableId, entry);
     });

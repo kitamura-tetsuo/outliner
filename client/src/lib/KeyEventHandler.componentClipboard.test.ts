@@ -116,7 +116,7 @@ function copiedItems(data: Map<string, string>) {
 }
 
 function createPortableTable(doc: Y.Doc, name = "Sales", sqlName = "sales"): string {
-    return createTable(doc, name, sqlName, handles => {
+    return createTable(doc, name, sqlName, undefined, handles => {
         handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`);
         handles.uiDef.set("query", `SELECT id FROM ${sqlName}`);
         handles.uiDef.set("components", new Y.Map());
