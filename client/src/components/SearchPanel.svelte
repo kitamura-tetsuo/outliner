@@ -3,7 +3,7 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
-    import { onDestroy, onMount, untrack } from "svelte";
+    import { onDestroy, untrack } from "svelte";
     import { page as pageStore } from "$app/stores";
     import { get } from "svelte/store";
     import { store } from "../stores/store.svelte";
