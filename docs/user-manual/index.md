@@ -151,9 +151,9 @@ Efficiently select and copy multiple items or text ranges.
 ### Selecting Text
 
 - `Shift + Arrow keys`: Select character by character or line by line. Selections can span multiple items.
-- `Ctrl + L`: Select the entire line under the cursor.
-- `Shift + Alt + Right`: Expand the selection to the end of the line.
-- `Shift + Alt + Left`: Shrink the selection.
+- `Ctrl+L` selects the entire line under the cursor.
+- `Shift+Alt+Right` expands the selection to the end of the line; `Shift+Alt+Left` shrinks it.
+- `Alt+Shift+Arrow keys` (or `Alt+Shift+mouse drag`) create a box selection across items.
 
 ### Touch Selection (Phone or Tablet)
 
@@ -180,9 +180,11 @@ With an active selection you can:
 
 When a copied selection contains a component block:
 
-- Pasting a **Grid** in the same project creates another live view of the same table, including its shared Data Storage.
-- Pasting that Grid in another project creates an independent table with a fresh identity and a copy of its schema and UI settings. Its Data Storage starts empty, and conflicting SQL names are rewritten for the destination.
-- **Calendar** bindings can be pasted only within the same project; cross-project Calendar cloning is not supported and uses the readable-text fallback.
+- Pasting a **Grid** in the same project creates another live view of the same table and Data Storage.
+- Across projects, paste instead creates an independent Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL names are rewritten.
+- **Calendar** blocks are not cloned across projects. This public demo has only one project, so it demonstrates the same-project live-view behavior only.
+- Cut and paste moves the view without deleting its data.
+- Outside Outliner the same copy pastes as what you see: a spreadsheet receives the Grid's rows as cells, a document receives them as a table, and with the Chart view open the picture travels with the numbers.
 
 ---
 
@@ -205,7 +207,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks).
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Read-only sharing (tokens), scheduled publishing, and snapshots (snapshot diff viewer).
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (gear icon in the top right). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
 ---
@@ -251,11 +253,11 @@ Databases are stored the same way as other outliner data, so data changes and sc
 A calendar is a query plus a role assignment over its result columns — which column is the title, the start, the all-day flag, the duration, and which columns are grouping axes. It has no data of its own.
 
 - **Query and Roles:** Candidates for roles are the columns the query actually returns, in result order — never a fixed schema. Changing the query never discards an existing role assignment for a column that is temporarily missing.
-- **Writeability:** A query must SELECT both `source_kind` and `source_id` for its rows to be writable; otherwise the calendar is read-only.
+- **Writeability:** A query must SELECT both `source_kind` and `source_id` for its rows to be writable; otherwise the calendar is read-only and says so.
 - **Views:** Switch between Day, Multi-day, Week, Month, and Gantt views. Gantt view shows one row per entry, nested by the outline's own hierarchy. A parent with dated children shows a rolled-up bar spanning from their earliest start to latest end instead of its own dates; dragging it shifts the whole subtree as one undo entry. A parent's own due date (if any) renders as a marker alongside its rolled-up bar. Axis granularity (day/week/month/quarter) is a view setting.
-- **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys. While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land, formatted in the calendar's own timezone.
+- **Drag and Drop:** Drag an entry to reschedule it, drag its bottom edge to resize its duration, or move it with the arrow keys — all three go through the same write path, the same writability check, and the same optimistic-placement model. Switch between Day / Multi-day / Week / Month / Gantt with the toolbar select. While a drag or resize is in flight, a chip near the pointer shows exactly where the entry will land — "Thu, Aug 3 09:15 – 09:45" for a move, "09:00 – 10:30 (1h30m)" for a resize, a date alone in Month and Gantt — formatted in the calendar's own timezone and snapped the same way the drop is, so the label never promises something different from what gets written.
 - **Swimlanes:** Grouping by "tags" splits the week/day view into swimlanes, one per tag, and colour-codes entries in month view. Drag an entry onto another lane to replace its tag, or hold `Ctrl` (`Cmd` on macOS) while dropping to add the lane's tag instead.
-- **Safe Operations:** "New entry" always asks which page to create it under, and deleting an entry always prompts between removing it and just clearing its date.
+- **Safe Operations:** "New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.
 
 ---
 
