@@ -37,15 +37,15 @@ test.describe("Intra-project Client-side Navigation", () => {
         const pageZUrl = `/${encodeURIComponent(projectName)}/PageZ`;
 
         // This simulates typing in a non-existent page directly via SvelteKit router
-        await page.evaluate(async (url) => {
-            // Using SvelteKit's router to navigate to trigger param changes
+        await page.evaluate((url) => {
             const a = document.createElement("a");
             a.href = url;
             a.dataset.sveltekitNoscroll = "";
+            a.id = "temp-nav-link-1";
+            a.innerText = "Navigate";
             document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
         }, pageZUrl);
+        await page.click("#temp-nav-link-1", { force: true });
 
         // Verify the "Page not found" state appears
         await expect(page.locator('text="Page not found"')).toBeVisible();
@@ -59,14 +59,15 @@ test.describe("Intra-project Client-side Navigation", () => {
         await expect(page.locator("h1")).toContainText("PageZ");
 
         // Navigate client-side back to the first page (PageA) using the same technique
-        await page.evaluate(async (url) => {
+        await page.evaluate((url) => {
             const a = document.createElement("a");
             a.href = url;
             a.dataset.sveltekitNoscroll = "";
+            a.id = "temp-nav-link-2";
+            a.innerText = "Navigate";
             document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
         }, `/${encodeURIComponent(projectName)}/PageA`);
+        await page.click("#temp-nav-link-2", { force: true });
 
         // Wait for it to load
         await expect(page.locator("h1")).toContainText("PageA");
