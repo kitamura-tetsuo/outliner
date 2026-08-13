@@ -49,7 +49,9 @@ test.describe("cross-project Grid clone reuse", () => {
         );
         await page.keyboard.press("Control+v");
 
-        const unconfiguredBlock = page.getByTestId("yjs-table-block").filter({ has: page.getByTestId("yjs-table-create-panel") });
+        const unconfiguredBlock = page.getByTestId("yjs-table-block").filter({
+            has: page.getByTestId("yjs-table-create-panel"),
+        });
         await expect(unconfiguredBlock).toBeVisible({ timeout: 60000 });
 
         const existingTab = unconfiguredBlock.locator(".mode-tab", { hasText: "Existing Table" });
