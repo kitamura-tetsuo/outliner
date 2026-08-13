@@ -3,7 +3,7 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("SearchPanel");
     import { goto } from "$app/navigation";
     import { resolvePath } from "../utils/pathUtils";
-    import { onDestroy, onMount, untrack } from "svelte";
+    import { onDestroy, untrack } from "svelte";
     import { page as pageStore } from "$app/stores";
     import { get } from "svelte/store";
     import { store } from "../stores/store.svelte";
@@ -39,15 +39,6 @@ const logger = getLogger("SearchPanel");
         project = null,
         onclose,
     }: Props = $props();
-    let isTestEnv = $state(false);
-
-    onMount(() => {
-        try {
-            isTestEnv =
-                typeof window !== "undefined" &&
-                localStorage.getItem("VITE_IS_TEST") === "true";
-        } catch (_e) { /* ignore */ }
-    });
 
     let matches: Array<PageItemMatch<Item>> = $state([]);
 
@@ -279,19 +270,6 @@ const logger = getLogger("SearchPanel");
         void store.pagesVersion;
         if (searchQuery) {
             untrack(() => handleSearch());
-        }
-    });
-
-    $effect(() => {
-        // Auto-search on input in test environment for stabilization
-        if (
-            isTestEnv &&
-            searchQuery &&
-            typeof requestAnimationFrame !== "undefined"
-        ) {
-            requestAnimationFrame(() => {
-                if (searchQuery) handleSearch();
-            });
         }
     });
 </script>
