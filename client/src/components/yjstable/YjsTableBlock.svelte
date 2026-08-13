@@ -58,8 +58,16 @@ const existingTables = $derived.by(() => {
     return item.ydoc ? listTables(item.ydoc) : [];
 });
 
+// Select best matching table. In the case of cross-project paste, the clipboard carries sourceProjectId.
+// If not available, we can't reliably auto-select by provenance, so we'll just pick the first.
+// A more robust way would be comparing with the clipboard source, but we don't have it here.
+// Actually, we can just select the first one, or maybe sort it by provenance? Let's just select the first one.
+// The Acceptance Criteria does not strictly demand auto-selecting the specific matching table, just that
+// it's offered and we bind to it when selected. However, picking the exact match if we can is better.
 $effect(() => {
     if (creationMode === "existing" && existingTables.length > 0 && !selectedExistingTableId) {
+        // If there are tables with provenance, maybe one of them is the target?
+        // Since we don't know the incoming clipboard source, we'll just default to the first.
         selectedExistingTableId = existingTables[0].tableId;
     }
 });
@@ -75,6 +83,12 @@ const tableName = $derived.by(() => {
 const tableSqlName = $derived.by(() => {
     void registryVersion;
     return tableId ? getTableSqlName(item.ydoc, tableId) : undefined;
+});
+const tableSourceProjectId = $derived.by(() => {
+    void registryVersion;
+    if (!tableId) return undefined;
+    const entry = existingTables.find(t => t.tableId === tableId);
+    return entry?.sourceProjectId;
 });
 
 const takenSqlNames = $derived(existingTables.map((t) => t.sqlName).filter(Boolean));
@@ -140,7 +154,7 @@ function createFromPreset() {
 >
     {#if handles}
         {#key handles.doc.guid}
-            <YjsTableView {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} />
+            <YjsTableView {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} sourceProjectId={tableSourceProjectId} />
         {/key}
     {:else if tableId}
         <p class="loading" data-testid="yjs-table-waiting">Loading table...</p>
@@ -221,7 +235,7 @@ function createFromPreset() {
                     >
                         {#each existingTables as table (table.tableId)}
                             <option value={table.tableId}>
-                                {table.name || "Untitled table"}{table.sqlName ? ` (${table.sqlName})` : ""}
+                                {table.name || "Untitled table"}{table.sqlName ? ` (${table.sqlName})` : ""}{table.sourceProjectId ? ` (copied from ${table.sourceProjectId})` : ""}
                             </option>
                         {/each}
                     </select>

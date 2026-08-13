@@ -136,6 +136,17 @@ test.describe("cross-project Grid clone independence", () => {
             page.locator(".outliner-item[data-item-id]").first().locator(".item-content"),
         );
         await page.keyboard.press("Control+v");
+
+        // With provenance tracking, the second paste finds the existing clone and skips recreating it silently.
+        // It renders the Create/Existing UI instead. Wait for it:
+        const createPanel = page.getByTestId("yjs-table-create-panel").last();
+        await expect(createPanel).toBeVisible({ timeout: 60000 });
+
+        // The Acceptance Criteria requires that choosing to "make another copy" creates an independent table.
+        // That means we click "New Table" and create it.
+        await createPanel.locator("button:has-text('New Table')").click();
+        await createPanel.getByTestId("yjs-table-create").click();
+
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(3, { timeout: 60000 });
 
         const afterSecondPaste = await readGridProjectState(page);

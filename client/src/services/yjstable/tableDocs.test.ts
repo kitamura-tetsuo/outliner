@@ -41,7 +41,7 @@ describe("table registry (project doc)", () => {
             }
         });
 
-        const tableId = createTable(projectDoc, "Tasks", "tasks", handles => {
+        const tableId = createTable(projectDoc, "Tasks", "tasks", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT)");
             handles.uiDef.set("query", "SELECT id FROM tasks");
         });
@@ -54,7 +54,7 @@ describe("table registry (project doc)", () => {
         const projectDoc = new Y.Doc({ guid: "proj-failed" });
 
         expect(() =>
-            createTable(projectDoc, "Broken", "broken", () => {
+            createTable(projectDoc, "Broken", "broken", undefined, () => {
                 throw new Error("bad snapshot");
             })
         ).toThrow("bad snapshot");

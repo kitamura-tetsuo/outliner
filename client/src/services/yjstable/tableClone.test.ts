@@ -105,11 +105,11 @@ describe("table structure import", { timeout: 30000 }, () => {
         const source = sourceProject();
         const snapshots = exportTableStructures(source.doc, [source.ordersId, source.customersId]);
         const destination = new Y.Doc({ guid: "destination-project" });
-        createTable(destination, "Existing orders", "orders", handles => {
+        createTable(destination, "Existing orders", "orders", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE orders (id TEXT PRIMARY KEY)");
         });
 
-        const result = await importTableStructures(destination, snapshots);
+        const result = await importTableStructures(destination, snapshots, "source-project");
         expect(result.failures).toEqual({});
         expect(Object.keys(result.tableIdMap).sort()).toEqual([source.customersId, source.ordersId].sort());
 
@@ -137,7 +137,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         const snapshot = exportTableStructure(source.doc, source.ordersId);
         snapshot.ui.query = "SELECT id, amount FROM orders";
         const destination = new Y.Doc({ guid: "destination-independent" });
-        const result = await importTableStructures(destination, { [source.ordersId]: snapshot });
+        const result = await importTableStructures(destination, { [source.ordersId]: snapshot }, "source-project");
         const sourceHandles = getTableHandles(source.doc, source.ordersId)!;
         const destinationHandles = getTableHandles(destination, result.tableIdMap[source.ordersId])!;
         const sourceComponents = sourceHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
@@ -160,12 +160,27 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(sourceComponents.get("amount")!.get("label")).toBe("source changed");
     });
 
+    it("skips cloning a table if a table with the same provenance already exists", async () => {
+        const destination = new Y.Doc({ guid: "destination-repeat-provenance" });
+        const snapshot = simpleSnapshot("source-one", "tasks");
+
+        const first = await importTableStructures(destination, { "source-one": snapshot }, "source-project");
+        const second = await importTableStructures(destination, { "source-one": snapshot }, "source-project");
+
+        expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
+        // The second import skips it, so no tableIdMap entry is returned for "source-one"
+        expect(Object.keys(second.tableIdMap)).toEqual([]);
+
+        // And the table is only created once
+        expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks"]);
+    });
+
     it("imports one table per source snapshot in one call and fresh tables in a later call", async () => {
         const destination = new Y.Doc({ guid: "destination-repeat" });
         const snapshot = simpleSnapshot("source-one", "tasks");
 
-        const first = await importTableStructures(destination, { "source-one": snapshot });
-        const second = await importTableStructures(destination, { "source-one": snapshot });
+        const first = await importTableStructures(destination, { "source-one": snapshot }, undefined);
+        const second = await importTableStructures(destination, { "source-one": snapshot }, undefined);
 
         expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
         expect(Object.keys(second.tableIdMap)).toEqual(["source-one"]);
@@ -181,7 +196,7 @@ describe("table structure import", { timeout: 30000 }, () => {
             "SELECT e.id, i.text FROM events e LEFT JOIN outline_items i ON i.id = e.id",
         );
 
-        const result = await importTableStructures(destination, { "calendar-host": snapshot });
+        const result = await importTableStructures(destination, { "calendar-host": snapshot }, "source-project");
         expect(result.failures).toEqual({});
         expect(result.tableIdMap["calendar-host"]).toBeDefined();
     });
@@ -195,7 +210,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         };
         const independent = simpleSnapshot("independent", "independent");
 
-        const result = await importTableStructures(destination, { host, broken, independent });
+        const result = await importTableStructures(destination, { host, broken, independent }, "source-project");
 
         expect(result.tableIdMap.independent).toBeDefined();
         expect(result.tableIdMap.host).toBeUndefined();
@@ -210,7 +225,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         const destination = new Y.Doc({ guid: "destination-missing" });
         const snapshot = simpleSnapshot("host", "host", "SELECT * FROM host JOIN not_copied ON true");
 
-        const result = await importTableStructures(destination, { host: snapshot });
+        const result = await importTableStructures(destination, { host: snapshot }, "source-project");
 
         expect(result.tableIdMap).toEqual({});
         expect(result.failures.host).toMatch(/absent from the clipboard/);

@@ -46,6 +46,7 @@ export interface TableCloneResult {
     /** Source table id to a safe, user-presentable failure reason. */
     failures: Record<string, string>;
     failedSourceTableIds: string[];
+    skippedSourceTableIds?: string[];
 }
 
 interface PlannedTable {
@@ -245,8 +246,10 @@ function connectedGroups(plans: Map<string, PlannedTable>): string[][] {
 export async function importTableStructures(
     destinationProjectDoc: Y.Doc,
     snapshots: Readonly<Record<string, GridTableSnapshot>>,
+    sourceProjectId?: string,
 ): Promise<TableCloneResult> {
     const failures: Record<string, string> = {};
+    const skippedSourceTableIds: string[] = [];
     const basic = new Map<string, GridTableSnapshot>();
     for (const [sourceTableId, snapshot] of Object.entries(snapshots)) {
         if (!isGridTableSnapshot(snapshot, sourceTableId)) {
@@ -254,6 +257,26 @@ export async function importTableStructures(
             continue;
         }
         basic.set(sourceTableId, snapshot);
+    }
+
+    const existingTables = listTables(destinationProjectDoc);
+    const existingTableMap = new Map<string, string>(); // key: sourceProjectId:sourceTableId, value: tableId
+    for (const table of existingTables) {
+        if (table.sourceProjectId && table.sourceTableId) {
+            existingTableMap.set(`${table.sourceProjectId}:${table.sourceTableId}`, table.tableId);
+        }
+    }
+
+    if (sourceProjectId) {
+        for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
+            const key = `${sourceProjectId}:${sourceTableId}`;
+            if (existingTableMap.has(key)) {
+                // Table already exists with matching provenance.
+                // We skip cloning it to let the block component fall back to its "Existing Table" UI.
+                basic.delete(sourceTableId);
+                skippedSourceTableIds.push(sourceTableId);
+            }
+        }
     }
 
     const idsBySqlName = new Map<string, string[]>();
@@ -348,6 +371,7 @@ export async function importTableStructures(
                     destinationProjectDoc,
                     plan.snapshot.name,
                     plan.destinationSqlName,
+                    sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
                     handles => materializeUi(handles, plan.snapshot, plan.querySql),
                 );
                 created.push(destinationTableId);
@@ -363,5 +387,5 @@ export async function importTableStructures(
     }
 
     const failedSourceTableIds = Object.keys(failures).sort();
-    return { tableIdMap, failures, failedSourceTableIds };
+    return { tableIdMap, failures, failedSourceTableIds, skippedSourceTableIds };
 }

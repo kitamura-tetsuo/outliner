@@ -2772,6 +2772,7 @@ export class KeyEventHandler {
 
             let structuredItems = sameProjectItems;
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
+            let pastedSkippedTableIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2794,27 +2795,45 @@ export class KeyEventHandler {
                     const { cloneGridTablesAcrossProjects } = await import(
                         "../services/clipboard/crossProjectGridPaste"
                     );
-                    pastedTableIdMap = await cloneGridTablesAcrossProjects({
+                    const cloneResult = await cloneGridTablesAcrossProjects({
                         destinationDoc,
                         sourceProjectId: structured.sourceProjectId,
                         snapshots: referencedSnapshots,
                         isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
                     });
-                    if (pastedTableIdMap === undefined) return;
-                    if (Object.keys(pastedTableIdMap).length > 0) {
+                    if (cloneResult === undefined) return;
+                    pastedTableIdMap = cloneResult.tableIdMap;
+                    pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+                    // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
+                    // (because ALL items were skipped due to provenance!).
+                    // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
+                    if (pastedTableIdMap) {
                         const tableIdMap = pastedTableIdMap;
-                        structuredItems = structured.items.map(item => {
+                        let anyKept = false;
+                        const mappedItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
                                 const destinationTableId = item.yjsTableId === undefined
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
-                                return destinationTableId === undefined
-                                    ? { text: item.text, depth: item.depth }
-                                    : { ...item, yjsTableId: destinationTableId };
+                                if (destinationTableId === undefined) {
+                                    if (item.yjsTableId && pastedSkippedTableIds.includes(item.yjsTableId)) {
+                                        anyKept = true;
+                                        return { ...item, yjsTableId: undefined };
+                                    }
+                                    return { text: item.text, depth: item.depth };
+                                }
+                                anyKept = true;
+                                return { ...item, yjsTableId: destinationTableId };
                             }
-                            if (item.componentType === "calendar") return { text: item.text, depth: item.depth };
+                            if (item.componentType === "calendar") {
+                                anyKept = true;
+                                return { text: item.text, depth: item.depth };
+                            }
+                            anyKept = true;
                             return item;
                         });
+                        if (anyKept) structuredItems = mappedItems;
+                        else structuredItems = undefined;
                     }
                 }
             }
