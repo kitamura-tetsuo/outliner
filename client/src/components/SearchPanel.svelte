@@ -39,15 +39,6 @@ const logger = getLogger("SearchPanel");
         project = null,
         onclose,
     }: Props = $props();
-    let isTestEnv = $state(false);
-
-    onMount(() => {
-        try {
-            isTestEnv =
-                typeof window !== "undefined" &&
-                localStorage.getItem("VITE_IS_TEST") === "true";
-        } catch (_e) { /* ignore */ }
-    });
 
     let matches: Array<PageItemMatch<Item>> = $state([]);
 
@@ -279,19 +270,6 @@ const logger = getLogger("SearchPanel");
         void store.pagesVersion;
         if (searchQuery) {
             untrack(() => handleSearch());
-        }
-    });
-
-    $effect(() => {
-        // Auto-search on input in test environment for stabilization
-        if (
-            isTestEnv &&
-            searchQuery &&
-            typeof requestAnimationFrame !== "undefined"
-        ) {
-            requestAnimationFrame(() => {
-                if (searchQuery) handleSearch();
-            });
         }
     });
 </script>
