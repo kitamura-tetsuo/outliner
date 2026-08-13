@@ -169,8 +169,8 @@ describe("table structure import", { timeout: 30000 }, () => {
 
         expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
         expect(Object.keys(second.tableIdMap)).toEqual(["source-one"]);
-        expect(first.tableIdMap["source-one"]).not.toBe(second.tableIdMap["source-one"]);
-        expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks", "tasks_2"]);
+        expect(second.tableIdMap["source-one"]).toBe(`existing:${first.tableIdMap["source-one"]}`);
+        expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks"]);
     });
 
     it("validates outline_items in the scratch schema", async () => {

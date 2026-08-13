@@ -136,6 +136,18 @@ test.describe("cross-project Grid clone independence", () => {
             page.locator(".outliner-item[data-item-id]").first().locator(".item-content"),
         );
         await page.keyboard.press("Control+v");
+
+        const unconfiguredBlock = page.getByTestId("yjs-table-block").filter({
+            has: page.getByTestId("yjs-table-create-panel"),
+        });
+        await expect(unconfiguredBlock).toBeVisible({ timeout: 60000 });
+
+        const newTab = unconfiguredBlock.locator(".mode-tab", { hasText: "New Table" });
+        await expect(newTab).toBeVisible({ timeout: 60000 });
+        await newTab.click();
+
+        await unconfiguredBlock.getByTestId("yjs-table-create").click();
+
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(3, { timeout: 60000 });
 
         const afterSecondPaste = await readGridProjectState(page);

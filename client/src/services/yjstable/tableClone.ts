@@ -345,15 +345,24 @@ export async function importTableStructures(
         try {
             for (const sourceTableId of group) {
                 const plan = plans.get(sourceTableId)!;
-                const destinationTableId = createTable(
-                    destinationProjectDoc,
-                    plan.snapshot.name,
-                    plan.destinationSqlName,
-                    handles => materializeUi(handles, plan.snapshot, plan.querySql),
-                    { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId || sourceTableId },
+                const existingTable = listTables(destinationProjectDoc).find(
+                    t => t.sourceProjectGuid === sourceProjectId
+                        && t.sourceTableId === (plan.snapshot.sourceTableId || sourceTableId)
                 );
-                created.push(destinationTableId);
-                tableIdMap[sourceTableId] = destinationTableId;
+
+                if (existingTable) {
+                    tableIdMap[sourceTableId] = `existing:${existingTable.tableId}`;
+                } else {
+                    const destinationTableId = createTable(
+                        destinationProjectDoc,
+                        plan.snapshot.name,
+                        plan.destinationSqlName,
+                        handles => materializeUi(handles, plan.snapshot, plan.querySql),
+                        { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId || sourceTableId },
+                    );
+                    created.push(destinationTableId);
+                    tableIdMap[sourceTableId] = destinationTableId;
+                }
             }
         } catch (err) {
             for (const destinationTableId of created) removeTable(destinationProjectDoc, destinationTableId);
