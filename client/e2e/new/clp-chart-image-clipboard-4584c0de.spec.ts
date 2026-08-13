@@ -62,10 +62,14 @@ test.describe("chart clipboard flavors", () => {
         // is offered as its own flavor for image-only destinations.
         const readFlavors = () =>
             page.evaluate(async () => {
-                const items = await navigator.clipboard.read();
-                const item = items.find(entry => entry.types.includes("text/html"));
-                if (!item) return { html: "", types: [] as string[] };
-                return { html: await (await item.getType("text/html")).text(), types: item.types };
+                try {
+                    const items = await navigator.clipboard.read();
+                    const item = items.find(entry => entry.types.includes("text/html"));
+                    if (!item) return { html: "", types: [] as string[] };
+                    return { html: await (await item.getType("text/html")).text(), types: item.types };
+                } catch (e) {
+                    return { html: "", types: [] as string[] };
+                }
             });
         await expect.poll(readFlavors, { timeout: 15000 }).toMatchObject({
             html: expect.stringContaining("<table>"),
