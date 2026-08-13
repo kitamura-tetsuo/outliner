@@ -220,15 +220,18 @@ describe("table structure import", { timeout: 30000 }, () => {
 
     it("records provenance on the cloned table", async () => {
         const source = sourceProject();
-        const snapshot = exportTableStructure(source.doc, source.ordersId);
+        const snapshots = exportTableStructures(source.doc, [source.ordersId, source.customersId]);
         const destination = new Y.Doc({ guid: "destination-provenance" });
 
-        await importTableStructures(destination, "source-project-id", { [source.ordersId]: snapshot });
+        const result = await importTableStructures(destination, "source-project-id", snapshots);
+        expect(result.failures).toEqual({});
 
         const tables = listTables(destination);
-        expect(tables).toHaveLength(1);
-        expect(tables[0].sourceProjectGuid).toBe("source-project-id");
-        expect(tables[0].sourceTableId).toBe(source.ordersId);
+        expect(tables).toHaveLength(2);
+
+        const ordersTable = tables.find(t => t.sourceTableId === source.ordersId)!;
+        expect(ordersTable.sourceProjectGuid).toBe("source-project-id");
+        expect(ordersTable.sourceTableId).toBe(source.ordersId);
     });
 });
 

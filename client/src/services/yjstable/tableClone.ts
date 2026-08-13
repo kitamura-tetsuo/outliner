@@ -350,7 +350,7 @@ export async function importTableStructures(
                     plan.snapshot.name,
                     plan.destinationSqlName,
                     handles => materializeUi(handles, plan.snapshot, plan.querySql),
-                    { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId },
+                    { sourceProjectGuid: sourceProjectId, sourceTableId: plan.snapshot.sourceTableId || sourceTableId },
                 );
                 created.push(destinationTableId);
                 tableIdMap[sourceTableId] = destinationTableId;
