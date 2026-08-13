@@ -109,24 +109,21 @@ describe("table structure export", () => {
 describe("computeTableClosure", () => {
     it("finds the closure of a chain of dependencies", () => {
         const doc = new Y.Doc();
-        let tableA = "";
-        let tableB = "";
-        let tableC = "";
-        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM table_b");
         });
         const entryA = new Y.Map();
         entryA.set("sqlName", "table_a");
         entryA.set("tableId", tableA);
         doc.getMap("tableRegistry").set(tableA, entryA);
-        tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
+        const tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM table_c");
         });
         const entryB = new Y.Map();
         entryB.set("sqlName", "table_b");
         entryB.set("tableId", tableB);
         doc.getMap("tableRegistry").set(tableB, entryB);
-        tableC = createTable(doc, "Table C", "table_c", undefined, handles => {
+        const tableC = createTable(doc, "Table C", "table_c", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM something_else");
         });
         const entryC = new Y.Map();
@@ -143,16 +140,14 @@ describe("computeTableClosure", () => {
 
     it("handles cycles gracefully", () => {
         const doc = new Y.Doc();
-        let tableA = "";
-        let tableB = "";
-        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM table_b");
         });
         const entryA2 = new Y.Map();
         entryA2.set("sqlName", "table_a");
         entryA2.set("tableId", tableA);
         doc.getMap("tableRegistry").set(tableA, entryA2);
-        tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
+        const tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM table_a");
         });
         const entryB2 = new Y.Map();
@@ -168,8 +163,7 @@ describe("computeTableClosure", () => {
 
     it("ignores unresolvable dependencies", () => {
         const doc = new Y.Doc();
-        let tableA = "";
-        tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
+        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
             handles.uiDef.set("query", "SELECT * FROM table_non_existent");
         });
         const entryA3 = new Y.Map();

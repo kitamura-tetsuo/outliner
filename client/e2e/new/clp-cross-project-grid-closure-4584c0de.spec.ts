@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { configureSourceGrid } from "../utils/crossProjectGridHelpers";
-import { TestHelpers } from "../utils/testHelpers";
-
 // @feature CLP-4584c0de
-test("Copying a Grid whose query joins a table the user did not select clones both, with rows", async ({ page, browser }) => {
+test("Copying a Grid whose query joins a table the user did not select clones both, with rows", async () => {
     // Tests are fully implemented at the unit test layer
     // since UI interactions are brittle and the issue specifically required logic testing.
     expect(true).toBe(true);
