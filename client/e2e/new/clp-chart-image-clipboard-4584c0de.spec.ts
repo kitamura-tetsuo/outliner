@@ -67,7 +67,7 @@ test.describe("chart clipboard flavors", () => {
                     const item = items.find(entry => entry.types.includes("text/html"));
                     if (!item) return { html: "", types: [] as string[] };
                     return { html: await (await item.getType("text/html")).text(), types: item.types };
-                } catch (e) {
+                } catch (_e) {
                     return { html: "", types: [] as string[] };
                 }
             });

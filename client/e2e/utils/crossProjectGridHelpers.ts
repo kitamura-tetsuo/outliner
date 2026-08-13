@@ -116,10 +116,10 @@ export async function openProjectPage(
             projectId,
             { timeout: 15000 },
         );
-    } catch (e) {}
+    } catch (_e) {}
     try {
         await page.locator("select.project-select").selectOption({ value: projectId, timeout: 5000 });
-    } catch (e) {}
+    } catch (_e) {}
     await expect(async () => {
         const url = page.url();
         if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
