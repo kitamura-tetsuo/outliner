@@ -225,7 +225,9 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(destinationOrders.data.size).toBe(0);
         expect(destinationCustomers.data.size).toBe(0);
         expect(listTables(destination).find(table => table.tableId === destinationOrdersId)?.sqlName).toBe("orders_2");
-        expect(result.outcomes.filter(outcome => outcome.type !== "cloned").sort((a, b) => a.type.localeCompare(b.type))).toEqual([
+        expect(
+            result.outcomes.filter(outcome => outcome.type !== "cloned").sort((a, b) => a.type.localeCompare(b.type)),
+        ).toEqual([
             { type: "dependency-added", sourceTableId: source.customersId, tableName: "顧客" },
             { type: "renamed", sourceTableId: source.ordersId, tableName: "受注", from: "orders", to: "orders_2" },
         ]);
