@@ -327,7 +327,7 @@ $effect(() => {
     // Ensure update logic runs after microtask to let other state settle,
     // avoiding synchronous tracking that might loop
     let isCancelled = false;
-    requestAnimationFrame(() => {
+    queueMicrotask(() => {
         if (isCancelled) return;
         try {
             updatePositionMap();

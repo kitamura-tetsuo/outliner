@@ -815,10 +815,6 @@ function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     textareaEl.focus();
     logger.debug(undefined, "OutlinerItem startEditing: Focus set to global textarea, activeElement: " + (document.activeElement === textareaEl));
 
-    // Additional attempts to ensure focus
-    requestAnimationFrame(() => {
-        textareaEl.focus();
-    });
     // Synchronize text content
     textareaEl.value = textString;
     textareaEl.focus();
@@ -1292,13 +1288,7 @@ function handleClick(event: MouseEvent) {
         // Focus on global textarea (more reliable method)
         const textarea = editorOverlayStore.getTextareaRef();
         if (textarea) {
-            // Multiple attempts to ensure focus is set
             textarea.focus();
-
-            // requestAnimationFrame
-            requestAnimationFrame(() => {
-                textarea.focus();
-            });
         }
         else {
             logger.warn({ error: new Error("Global textarea not found") }, "Global textarea not found");
