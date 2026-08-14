@@ -2831,7 +2831,7 @@ export class KeyEventHandler {
                         if (pastedTableIdMap) {
                             for (const [sourceTableId, destinationTableId] of Object.entries(pastedTableIdMap)) {
                                 const srcTables = ("tables" in structured)
-                                    ? structured.tables as Record<string, any>
+                                    ? structured.tables as Record<string, { sqlName?: string; }>
                                     : undefined;
                                 const sourceSqlName = srcTables?.[sourceTableId]?.sqlName;
                                 const destSqlName = listTables(destinationDoc).find(t =>

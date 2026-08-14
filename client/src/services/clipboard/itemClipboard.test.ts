@@ -108,7 +108,7 @@ describe("item clipboard", () => {
                     viewType: "week",
                     groupAxes: ["tags"],
                     laneOrder: [],
-                } as any,
+                } as unknown as import("../calendar/calendarService").CalendarSettings,
             },
         );
         const decoded = deserializeClipboardItems(encoded);
