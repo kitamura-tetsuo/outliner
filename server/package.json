@@ -2,7 +2,7 @@
     "dependencies": {
         "@dotenvx/dotenvx": "^2.21.0",
         "@electric-sql/pglite": "^0.5.4",
-        "@google-cloud/secret-manager": "^6.3.0",
+        "@google-cloud/secret-manager": "^7.0.0",
         "@hocuspocus/extension-logger": "^4.6.0",
         "@hocuspocus/extension-sqlite": "^4.6.0",
         "@hocuspocus/server": "^4.2.0",
