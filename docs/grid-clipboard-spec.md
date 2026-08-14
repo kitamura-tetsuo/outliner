@@ -1,8 +1,9 @@
 # Grid copy and paste: view, database, and the world outside
 
-Status: §1–§3 describe implemented behavior
-(`docs/client-features/clp-component-block-clipboard-4584c0de.yaml`). §4–§11 are
-a proposal and are **not** implemented; they answer four open questions:
+Status: Implemented
+(`docs/client-features/clp-component-block-clipboard-4584c0de.yaml`). §4–§11
+record the design decisions that now govern component-block clipboard behavior
+and answer four questions:
 
 1. Is copying a Grid a copy of the _view_ or a copy of the _database_?
 2. Should the user be able to choose between the two?
