@@ -6,7 +6,11 @@ import {
     type GridTableSnapshot,
     OUTLINER_ITEMS_MIME,
 } from "../services/clipboard/itemClipboard";
-import { pasteSpecialChoices } from "../services/clipboard/pasteSpecial";
+import {
+    PASTE_SPECIAL_REQUEST_EVENT,
+    pasteSpecialChoices,
+    type PasteSpecialRequest,
+} from "../services/clipboard/pasteSpecial";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -524,6 +528,43 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             { text: "Grid", depth: 0, componentType: "yjstable", yjsTableId: "source-table" },
         ]);
         expect(listTables(state.doc)).toEqual([]);
+    });
+
+    it("does not leak Paste Special to the next paste after an empty clipboard", async () => {
+        const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+        Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+        (window as Window & typeof globalThis & { lastCopiedText?: string; }).lastCopiedText = undefined;
+        KeyEventHandler.handleKeyDown(
+            new KeyboardEvent("keydown", {
+                key: "v",
+                ctrlKey: true,
+                shiftKey: true,
+            }),
+        );
+        try {
+            await KeyEventHandler.handlePaste(pasteEvent("", ""));
+        } finally {
+            if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+            else delete (navigator as unknown as { clipboard?: Clipboard; }).clipboard;
+        }
+
+        const encoded = JSON.stringify({
+            version: 2,
+            sourceProjectId: state.doc.guid,
+            items: [{ text: "Grid", depth: 0, componentType: "yjstable", yjsTableId: "source-table" }],
+            tables: {},
+        });
+        const requested = vi.fn((event: Event) => {
+            (event as CustomEvent<PasteSpecialRequest>).detail.resolve(undefined);
+        });
+        window.addEventListener(PASTE_SPECIAL_REQUEST_EVENT, requested);
+        try {
+            await KeyEventHandler.handlePaste(pasteEvent(encoded, "Grid"));
+        } finally {
+            window.removeEventListener(PASTE_SPECIAL_REQUEST_EVENT, requested);
+        }
+
+        expect(requested).not.toHaveBeenCalled();
     });
 
     it("imports only referenced foreign Grids and strips missing Grid and Calendar metadata", async () => {

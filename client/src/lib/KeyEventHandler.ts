@@ -2445,6 +2445,9 @@ export class KeyEventHandler {
      * @param event ClipboardEvent
      */
     static async handlePaste(event: ClipboardEvent): Promise<void> {
+        const isSpecial = KeyEventHandler.nextPasteIsSpecial;
+        KeyEventHandler.nextPasteIsSpecial = false;
+
         // Debug info
 
         if (
@@ -2516,8 +2519,6 @@ export class KeyEventHandler {
             );
             const destinationProjectId = generalStore.project?.ydoc?.guid;
             let specialVariant: PasteSpecialVariant | undefined;
-            const isSpecial = KeyEventHandler.nextPasteIsSpecial;
-            KeyEventHandler.nextPasteIsSpecial = false;
             if (
                 isSpecial && structured && destinationProjectId
                 && structured.items.some(item => item.componentType !== undefined)

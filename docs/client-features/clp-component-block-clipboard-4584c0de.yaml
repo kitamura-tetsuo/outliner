@@ -53,7 +53,10 @@ tests:
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-paste-report-unreachable-8f2c1a7d.spec.ts
+- client/e2e/new/clp-paste-special-cross-project-4584c0de.spec.ts
+- client/e2e/new/clp-paste-special-same-project-4584c0de.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
+- client/src/components/PasteSpecialDialog.test.ts
 - client/src/components/yjstable/TableChartPanel.test.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
 - client/src/services/clipboard/crossProjectGridPaste.test.ts

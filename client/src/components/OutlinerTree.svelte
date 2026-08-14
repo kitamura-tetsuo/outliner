@@ -98,7 +98,7 @@
         window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         window.addEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
         window.addEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
-        window.addEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
+        if (!isEmbedded) window.addEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
         try {
             logger.debug({ props: {
                 pageItem,
@@ -138,8 +138,10 @@
         window.removeEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         window.removeEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
         window.removeEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
-        window.removeEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
-        pasteSpecialResolve?.(undefined);
+        if (!isEmbedded) {
+            window.removeEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
+            pasteSpecialResolve?.(undefined);
+        }
         clearTimeout(gridPasteStatusTimer);
     });
 
@@ -167,10 +169,12 @@
         pasteSpecialResolve = request.resolve;
     }
 
-    function finishPasteSpecial(variant: PasteSpecialVariant | undefined) {
+    async function finishPasteSpecial(variant: PasteSpecialVariant | undefined) {
         const resolve = pasteSpecialResolve;
         pasteSpecialResolve = undefined;
         pasteSpecialOptions = undefined;
+        await tick();
+        restoreEditorFocus();
         resolve?.(variant);
     }
 
@@ -2402,7 +2406,7 @@
     </div>
 {/key}
 
-{#if pasteSpecialOptions}
+{#if !isEmbedded && pasteSpecialOptions}
     <PasteSpecialDialog choices={pasteSpecialOptions} onchoose={finishPasteSpecial} />
 {/if}
 
