@@ -32,10 +32,10 @@
         }
 
         // Focus the first item on mount
-        setTimeout(() => {
+        queueMicrotask(() => {
             const firstButton = menuRef?.querySelector("button");
             if (firstButton) firstButton.focus();
-        }, 0);
+        });
     });
 
     function handleClose() {
