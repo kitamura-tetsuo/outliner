@@ -6,6 +6,7 @@ import {
     type GridTableSnapshot,
     OUTLINER_ITEMS_MIME,
 } from "../services/clipboard/itemClipboard";
+import { pasteSpecialChoices } from "../services/clipboard/pasteSpecial";
 import { createTable, listTables } from "../services/yjstable/tableDocs";
 import {
     getTableClipboardSource,
@@ -615,5 +616,35 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
         expect(dispatched).toBe(false);
         expect(listTables(destinationDoc)).toEqual([]);
         expect(listTables(state.doc)).toEqual([]);
+    });
+});
+
+describe("Paste Special component variant availability", () => {
+    const payload = {
+        version: 2 as const,
+        sourceProjectId: "source-project",
+        items: [{ text: "Grid", depth: 0, componentType: "yjstable" as const, yjsTableId: "source-table" }],
+        tables: { "source-table": snapshot("source-table") },
+    };
+
+    it("offers all variants in the source project", () => {
+        const choices = pasteSpecialChoices(payload, "source-project");
+        expect(choices.map(choice => [choice.variant, choice.available, choice.isDefault])).toEqual([
+            ["another-view", true, true],
+            ["copy-with-data", true, false],
+            ["copy-without-data", true, false],
+            ["values-only", true, false],
+        ]);
+    });
+
+    it("disables another view with a reason in another project", () => {
+        const choices = pasteSpecialChoices(payload, "destination-project");
+        expect(choices.map(choice => [choice.variant, choice.available, choice.isDefault])).toEqual([
+            ["another-view", false, false],
+            ["copy-with-data", true, true],
+            ["copy-without-data", true, false],
+            ["values-only", true, false],
+        ]);
+        expect(choices[0].reason).toBe("The source component belongs to another project");
     });
 });

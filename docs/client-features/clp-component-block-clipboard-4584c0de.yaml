@@ -35,6 +35,8 @@ acceptance:
 - Its `outline_items` entries show the destination project's items.
 - Its table-backed entries carry their rows (via the closure).
 - Partial selections without a component block, and external clipboard content, retain the existing plain-text behavior.
+- Paste Special (Ctrl/Cmd+Shift+V) offers another view, independent copies with or without data, and values only; availability and defaults follow the source and destination projects.
+- Paste Special keeps impossible choices visible and disabled with a reason, and reports the selected outcome.
 - Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
 - Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.

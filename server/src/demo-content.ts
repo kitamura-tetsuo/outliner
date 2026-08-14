@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 41;
+export const DEMO_TEMPLATE_VERSION = 42;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -904,8 +904,10 @@ export const demoPages: DemoPageTemplate[] = [
                     "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                     + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
                     + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
-                    + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
-                    + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
+                    + "names are rewritten, and Calendar blocks retain their portable settings. Press Ctrl/Cmd+Shift+V "
+                    + "for Paste Special: choose another live view, an independent copy with or without data, or plain values. "
+                    + "Unavailable choices stay visible and explain why. This public demo has only one project, so try "
+                    + "the same-project choices here. Cut and paste moves the view "
                     + "without deleting its data. When a cross-project paste has a hidden consequence—such as copying "
                     + "query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or "
                     + "leaving a cut table in the source—a transient summary names exactly what happened. Outside Outliner "

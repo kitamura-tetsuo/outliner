@@ -1,6 +1,7 @@
 import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
 import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
 import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
+import { GRID_PASTE_PROGRESS_EVENT } from "../services/clipboard/gridPasteEvents";
 import {
     clipboardPlainText,
     deserializeClipboardItems,
@@ -10,6 +11,11 @@ import {
     structuredClipboardFromHtml,
     structuredClipboardHtml,
 } from "../services/clipboard/itemClipboard";
+import {
+    pasteSpecialChoices,
+    type PasteSpecialVariant,
+    requestPasteSpecialChoice,
+} from "../services/clipboard/pasteSpecial";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
@@ -30,6 +36,26 @@ const logger = getLogger("KeyEventHandler");
 const CHART_IMAGE_LIMIT = 2_000_000;
 
 const CHART_IMAGE_DROPPED_NOTICE = "--- Chart image too large to copy ---";
+
+function reportPasteSpecialVariant(variant: PasteSpecialVariant): void {
+    if (typeof window === "undefined") return;
+    const message = variant === "another-view"
+        ? "Pasted as another view of the source component."
+        : variant === "values-only"
+        ? "Pasted values only, without component data."
+        : variant === "copy-with-data"
+        ? "Pasted as an independent copy with data."
+        : variant === "copy-without-data"
+        ? "Pasted as an independent copy without data."
+        : undefined;
+    if (message) {
+        window.dispatchEvent(
+            new CustomEvent(GRID_PASTE_PROGRESS_EVENT, {
+                detail: { state: "complete-with-data", report: [message] },
+            }),
+        );
+    }
+}
 
 interface StructuredClipboard {
     /** The private payload: bindings and portable structure, unchanged by §7. */
@@ -319,6 +345,8 @@ export class KeyEventHandler {
     // through the operating-system clipboard. Retain the last in-app payload as
     // a same-tab fallback, but only use it when its plain text still matches.
     private static lastStructuredClipboard: { encoded: string; plainText: string; } | undefined;
+    /** Keydown carries Shift, while the subsequent ClipboardEvent does not. */
+    private static nextPasteIsSpecial = false;
 
     // Maintains the state of box selection
     private static boxSelectionState: {
@@ -638,6 +666,10 @@ export class KeyEventHandler {
         }
 
         const cursorInstances = store.getLocalCursorInstances();
+
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "v") {
+            KeyEventHandler.nextPasteIsSpecial = true;
+        }
 
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
@@ -2482,7 +2514,26 @@ export class KeyEventHandler {
             const structured = deserializeClipboardItems(
                 encodedItems || encodedHtmlItems || (cached?.plainText === text ? cached.encoded : ""),
             );
-            const sameProjectItems = structured && structured.sourceProjectId === generalStore.project?.ydoc?.guid
+            const destinationProjectId = generalStore.project?.ydoc?.guid;
+            let specialVariant: PasteSpecialVariant | undefined;
+            const isSpecial = KeyEventHandler.nextPasteIsSpecial;
+            KeyEventHandler.nextPasteIsSpecial = false;
+            if (
+                isSpecial && structured && destinationProjectId
+                && structured.items.some(item => item.componentType !== undefined)
+            ) {
+                specialVariant = await requestPasteSpecialChoice(
+                    pasteSpecialChoices(structured, destinationProjectId),
+                );
+                if (specialVariant === undefined) return;
+            }
+            if (specialVariant === "values-only") {
+                // Keep the event's outward text flavor: rendered Grids already
+                // contribute their visible query result there.
+            }
+            const sameProjectItems = structured && structured.sourceProjectId === destinationProjectId
+                    && specialVariant !== "copy-with-data" && specialVariant !== "copy-without-data"
+                    && specialVariant !== "values-only"
                 ? structured.items
                 : undefined;
             if (sameProjectItems) text = clipboardPlainText(structured!);
@@ -2787,43 +2838,59 @@ export class KeyEventHandler {
                 return;
             }
 
-            let structuredItems = sameProjectItems;
+            let structuredItems = specialVariant === "values-only" ? undefined : sameProjectItems;
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
             let pastedSkippedTableIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
-                && structured?.version === 2
+                && specialVariant !== "values-only"
+                && structured !== undefined
+                && structured.version !== 1
                 && destinationDoc !== undefined
-                && structured.sourceProjectId !== destinationDoc.guid
+                && (structured.sourceProjectId !== destinationDoc.guid
+                    || specialVariant === "copy-with-data" || specialVariant === "copy-without-data")
             ) {
                 const referencedTableIds = new Set(
                     structured.items.flatMap(item =>
                         item.componentType === "yjstable" && item.yjsTableId !== undefined ? [item.yjsTableId] : []
                     ),
                 );
-                const closureTableIds = computeSnapshotClosure(structured.tables, referencedTableIds);
+                const snapshots = structured.tables ?? {};
+                const closureTableIds = computeSnapshotClosure(snapshots, referencedTableIds);
                 const referencedSnapshots = Object.fromEntries(
                     [...closureTableIds].flatMap(sourceTableId => {
-                        const snapshot = structured.tables[sourceTableId];
+                        const snapshot = snapshots[sourceTableId];
                         return snapshot === undefined ? [] : [[sourceTableId, snapshot]];
                     }),
                 );
-                if (Object.keys(referencedSnapshots).length > 0) {
-                    const { cloneGridTablesAcrossProjects } = await import(
-                        "../services/clipboard/crossProjectGridPaste"
-                    );
-                    const cloneResult = await cloneGridTablesAcrossProjects({
-                        destinationDoc,
-                        sourceProjectId: structured.sourceProjectId,
-                        snapshots: referencedSnapshots,
-                        requestedSourceTableIds: [...referencedTableIds],
-                        operation: structured.operation,
-                        isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
-                    });
-                    if (cloneResult === undefined) return;
-                    pastedTableIdMap = cloneResult.tableIdMap;
-                    pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+                const hasCalendars = "calendars" in structured
+                    && Object.keys(structured.calendars ?? {}).length > 0;
+                if (Object.keys(referencedSnapshots).length > 0 || hasCalendars) {
+                    if (Object.keys(referencedSnapshots).length > 0) {
+                        const { cloneGridTablesAcrossProjects } = await import(
+                            "../services/clipboard/crossProjectGridPaste"
+                        );
+                        const cloneResult = await cloneGridTablesAcrossProjects({
+                            destinationDoc,
+                            sourceProjectId: structured.sourceProjectId,
+                            snapshots: referencedSnapshots,
+                            requestedSourceTableIds: [...referencedTableIds],
+                            operation: structured.operation,
+                            copyData: specialVariant !== "copy-without-data",
+                            allowProvenanceReuse: specialVariant === undefined,
+                            requestedVariant: specialVariant === "copy-with-data"
+                                    || specialVariant === "copy-without-data"
+                                ? specialVariant
+                                : undefined,
+                            isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
+                        });
+                        if (cloneResult === undefined) return;
+                        pastedTableIdMap = cloneResult.tableIdMap;
+                        pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+                    } else {
+                        pastedTableIdMap = {};
+                    }
 
                     const pastedCalendarIdMap: Record<string, string> = {};
                     if ("calendars" in structured && structured.calendars) {
@@ -2932,6 +2999,13 @@ export class KeyEventHandler {
                             Object.values(pastedTableIdMap),
                         );
                     }
+                    if (
+                        specialVariant === "another-view" || specialVariant === "values-only"
+                        || ((specialVariant === "copy-with-data" || specialVariant === "copy-without-data")
+                            && Object.keys(pastedTableIdMap ?? {}).length === 0)
+                    ) {
+                        reportPasteSpecialVariant(specialVariant);
+                    }
                 }
                 return;
             }
@@ -2939,6 +3013,7 @@ export class KeyEventHandler {
             // If single line text, insert at cursor position
             const cursorInstances = store.getLocalCursorInstances();
             cursorInstances.forEach(cursor => cursor.insertText(text));
+            if (specialVariant === "values-only") reportPasteSpecialVariant(specialVariant);
         } catch (error) {
             // Log error and notify UI if error occurs
             if (
