@@ -94,6 +94,41 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         ]);
     });
 
+    it("creates a fresh same-project copy and copies its rows", async () => {
+        const { doc, ordersId } = sourceProject();
+
+        const cloneResult = await cloneGridTablesAcrossProjects({
+            destinationDoc: doc,
+            sourceProjectId: doc.guid,
+            snapshots: { [ordersId]: exportTableStructure(doc, ordersId) },
+            requestedSourceTableIds: [ordersId],
+            allowProvenanceReuse: false,
+            requestedVariant: "copy-with-data",
+            isDestinationCurrent: () => true,
+        });
+
+        const destinationTableId = cloneResult!.tableIdMap[ordersId];
+        expect(destinationTableId).not.toBe(ordersId);
+        expect(getTableHandles(doc, destinationTableId)!.data.size).toBe(1);
+    });
+
+    it("creates an independent structure without rows when data is opted out", async () => {
+        const { doc, ordersId } = sourceProject();
+
+        const cloneResult = await cloneGridTablesAcrossProjects({
+            destinationDoc: doc,
+            sourceProjectId: doc.guid,
+            snapshots: { [ordersId]: exportTableStructure(doc, ordersId) },
+            requestedSourceTableIds: [ordersId],
+            copyData: false,
+            allowProvenanceReuse: false,
+            requestedVariant: "copy-without-data",
+            isDestinationCurrent: () => true,
+        });
+
+        expect(getTableHandles(doc, cloneResult!.tableIdMap[ordersId])!.data.size).toBe(0);
+    });
+
     it("leaves no table behind when the user navigates away mid-paste", async () => {
         const { doc: source, ordersId } = sourceProject();
         const destination = new Y.Doc({ guid: "abandoned-destination" });

@@ -137,7 +137,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(41);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(42);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -147,8 +147,10 @@ describe("Demo seed content", () => {
             "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                 + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
                 + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
-                + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
-                + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
+                + "names are rewritten, and Calendar blocks retain their portable settings. Press Ctrl/Cmd+Shift+V "
+                + "for Paste Special: choose another live view, an independent copy with or without data, or plain values. "
+                + "Unavailable choices stay visible and explain why. This public demo has only one project, so try "
+                + "the same-project choices here. Cut and paste moves the view "
                 + "without deleting its data. When a cross-project paste has a hidden consequence—such as copying "
                 + "query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or "
                 + "leaving a cut table in the source—a transient summary names exactly what happened. Outside Outliner "

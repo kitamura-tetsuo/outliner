@@ -35,6 +35,13 @@
     import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
     import { restoreEditorFocus } from "../lib/editorFocus";
     import ConfirmDialog from "./ConfirmDialog.svelte";
+    import PasteSpecialDialog from "./PasteSpecialDialog.svelte";
+    import {
+        PASTE_SPECIAL_REQUEST_EVENT,
+        type PasteSpecialChoice,
+        type PasteSpecialRequest,
+        type PasteSpecialVariant,
+    } from "../services/clipboard/pasteSpecial";
 
     const logger = getLogger("OutlinerTree");
 
@@ -91,6 +98,7 @@
         window.addEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         window.addEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
         window.addEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
+        if (!isEmbedded) window.addEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
         try {
             logger.debug({ props: {
                 pageItem,
@@ -130,6 +138,10 @@
         window.removeEventListener("paste-multi-item", handlePasteMultiItem as EventListener);
         window.removeEventListener(GRID_PASTE_WRITE_CHECK_EVENT, checkGridPasteWrite);
         window.removeEventListener(GRID_PASTE_PROGRESS_EVENT, showGridPasteProgress);
+        if (!isEmbedded) {
+            window.removeEventListener(PASTE_SPECIAL_REQUEST_EVENT, showPasteSpecial);
+            pasteSpecialResolve?.(undefined);
+        }
         clearTimeout(gridPasteStatusTimer);
     });
 
@@ -147,6 +159,24 @@
     let gridPasteRunning = $state(false);
     let gridPasteStatusTimer: ReturnType<typeof setTimeout> | undefined;
     let deleteConfirmItemId = $state<string | null>(null);
+    let pasteSpecialOptions = $state<PasteSpecialChoice[] | undefined>();
+    let pasteSpecialResolve: PasteSpecialRequest["resolve"] | undefined;
+
+    function showPasteSpecial(event: Event) {
+        pasteSpecialResolve?.(undefined);
+        const request = (event as CustomEvent<PasteSpecialRequest>).detail;
+        pasteSpecialOptions = request.choices;
+        pasteSpecialResolve = request.resolve;
+    }
+
+    async function finishPasteSpecial(variant: PasteSpecialVariant | undefined) {
+        const resolve = pasteSpecialResolve;
+        pasteSpecialResolve = undefined;
+        pasteSpecialOptions = undefined;
+        await tick();
+        restoreEditorFocus();
+        resolve?.(variant);
+    }
 
     /** A cross-project Grid paste creates tables, so a read-only page refuses it outright. */
     function checkGridPasteWrite(event: Event) {
@@ -2375,6 +2405,10 @@
         {/if}
     </div>
 {/key}
+
+{#if !isEmbedded && pasteSpecialOptions}
+    <PasteSpecialDialog choices={pasteSpecialOptions} onchoose={finishPasteSpecial} />
+{/if}
 
 {#if !isEmbedded}
     <OutlinerToolbar

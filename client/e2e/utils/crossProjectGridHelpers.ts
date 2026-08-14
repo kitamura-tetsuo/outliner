@@ -301,6 +301,13 @@ export async function pasteAtAnchor(page: Page, expectedViews: number): Promise<
     await expect(page.getByTestId("yjs-table-view")).toHaveCount(expectedViews, { timeout: 60000 });
 }
 
+/** Open Paste Special at a stable outline anchor using the trusted keyboard shortcut. */
+export async function openPasteSpecialAtAnchor(page: Page): Promise<void> {
+    await clickItemAndWaitForCursor(page, page.locator(".outliner-item[data-item-id]").nth(1).locator(".item-content"));
+    await page.keyboard.press("Control+Shift+v");
+    await expect(page.getByTestId("paste-special-dialog")).toBeVisible({ timeout: 15000 });
+}
+
 /** Read the current project's table registry and Grid host bindings straight from Yjs. */
 export async function readGridProjectState(page: Page): Promise<GridProjectState> {
     return page.evaluate(() => {

@@ -331,6 +331,7 @@ export async function importTableStructures(
     snapshots: Readonly<Record<string, GridTableSnapshot>>,
     sourceProjectId?: string,
     requestedSourceTableIds?: ReadonlySet<string>,
+    allowProvenanceReuse = true,
 ): Promise<TableCloneResult> {
     const failures: Record<string, string> = {};
     const failureGroups: string[][] = [];
@@ -353,7 +354,7 @@ export async function importTableStructures(
         }
     }
 
-    if (sourceProjectId) {
+    if (sourceProjectId && allowProvenanceReuse) {
         for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
             const key = `${sourceProjectId}:${sourceTableId}`;
             if (existingTableMap.has(key)) {

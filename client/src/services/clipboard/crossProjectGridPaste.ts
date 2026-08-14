@@ -39,6 +39,12 @@ export interface CrossProjectGridPasteOptions {
     /** Tables whose hosts the user selected; all other snapshots are closure additions. */
     requestedSourceTableIds: string[];
     operation?: "cut";
+    /** Paste Special can deliberately create structure without resolving rows. */
+    copyData?: boolean;
+    /** Independent-copy variants always create a fresh clone, even after an earlier paste. */
+    allowProvenanceReuse?: boolean;
+    /** Explicit Paste Special choice, used to report the requested outcome. */
+    requestedVariant?: "copy-with-data" | "copy-without-data";
     /** False once the user has navigated away from the destination page. */
     isDestinationCurrent: () => boolean;
 }
@@ -146,6 +152,9 @@ export async function cloneGridTablesAcrossProjects(
         snapshots,
         requestedSourceTableIds,
         operation,
+        copyData = true,
+        allowProvenanceReuse = true,
+        requestedVariant,
         isDestinationCurrent,
     } = options;
 
@@ -174,6 +183,7 @@ export async function cloneGridTablesAcrossProjects(
             snapshots,
             sourceProjectId,
             new Set(requestedSourceTableIds),
+            allowProvenanceReuse,
         );
         tableIdMap = cloneResult.tableIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
@@ -183,13 +193,11 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
-        const sourceCopy = await copyRowsFromSource(
-            sourceProjectId,
-            tableIdMap,
-            destinationDoc,
-            controller.signal,
-            cancelled,
-        );
+        const sourceCopy = copyData
+            ? sourceProjectId === destinationDoc.guid
+                ? copyRowsFromSameProject(destinationDoc, tableIdMap)
+                : await copyRowsFromSource(sourceProjectId, tableIdMap, destinationDoc, controller.signal, cancelled)
+            : { skippedSchedules: [], rowCounts: {} };
         if (cancelled()) {
             rollback();
             reportProgress({ state: "cancelled" });
@@ -223,6 +231,11 @@ export async function cloneGridTablesAcrossProjects(
             });
         }
         const report = formatGridPasteReport(outcomes);
+        if (requestedVariant === "copy-with-data" && report.length === 0) {
+            report.push("Pasted as an independent copy with data.");
+        } else if (requestedVariant === "copy-without-data") {
+            report.unshift("Pasted as an independent copy without data.");
+        }
         reportProgress(
             sourceCopy.unavailableReason === undefined
                 ? { state: "complete-with-data", report }
@@ -234,6 +247,21 @@ export async function cloneGridTablesAcrossProjects(
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
         }
     }
+}
+
+function copyRowsFromSameProject(
+    projectDoc: Y.Doc,
+    tableIdMap: Record<string, string>,
+): SourceCopyResult {
+    const rowCounts: Record<string, number> = {};
+    for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
+        const source = getTableHandles(projectDoc, sourceTableId);
+        const destination = getTableHandles(projectDoc, destinationTableId);
+        if (!source || !destination) continue;
+        copyTableData(source, destination);
+        rowCounts[sourceTableId] = destination.data.size;
+    }
+    return { skippedSchedules: [], rowCounts };
 }
 
 /**
