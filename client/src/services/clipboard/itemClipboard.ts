@@ -1,3 +1,4 @@
+import type { CalendarSettings } from "../calendar/calendarService";
 export const OUTLINER_ITEMS_MIME = "application/x-outliner-items";
 const OUTLINER_ITEMS_HTML_ATTRIBUTE = "data-outliner-items";
 
@@ -49,7 +50,16 @@ export interface ItemClipboardPayloadV2 {
     tables: Record<string, GridTableSnapshot>;
 }
 
-export type ItemClipboardPayload = ItemClipboardPayloadV1 | ItemClipboardPayloadV2;
+export interface ItemClipboardPayloadV3 {
+    version: 3;
+    sourceProjectId: string;
+    items: ClipboardItem[];
+    operation?: "cut";
+    tables?: Record<string, GridTableSnapshot>;
+    calendars?: Record<string, CalendarSettings>;
+}
+
+export type ItemClipboardPayload = ItemClipboardPayloadV1 | ItemClipboardPayloadV2 | ItemClipboardPayloadV3;
 
 interface ItemLike {
     text?: unknown;
@@ -64,6 +74,25 @@ const bindings = {
 
 const PAYLOAD_V1_KEYS = new Set(["version", "sourceProjectId", "items", "operation"]);
 const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "operation"]);
+const PAYLOAD_V3_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "calendars", "operation"]);
+const CALENDAR_SETTINGS_KEYS = new Set([
+    "name",
+    "query",
+    "viewType",
+    "timezone",
+    "roleTitle",
+    "roleStart",
+    "roleAllDay",
+    "roleDuration",
+    "roleDue",
+    "groupAxes",
+    "laneOrder",
+    "showEmptyLanes",
+    "weekStart",
+    "workingHoursStartMinutes",
+    "workingHoursEndMinutes",
+    "ganttScale",
+]);
 const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "calendarId"]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder"]);
@@ -142,6 +171,36 @@ export function isGridTableSnapshot(value: unknown, sourceTableId?: string): val
     return isGridUiDefinitionDto(value.ui);
 }
 
+function isCalendarSettings(value: unknown): value is CalendarSettings {
+    if (!isRecord(value) || !hasOnlyKeys(value, CALENDAR_SETTINGS_KEYS)) return false;
+    if (typeof value.name !== "string" || typeof value.query !== "string" || typeof value.viewType !== "string") {
+        return false;
+    }
+    if (value.timezone !== undefined && typeof value.timezone !== "string") return false;
+    if (value.roleTitle !== undefined && typeof value.roleTitle !== "string") return false;
+    if (value.roleStart !== undefined && typeof value.roleStart !== "string") return false;
+    if (value.roleAllDay !== undefined && typeof value.roleAllDay !== "string") return false;
+    if (value.roleDuration !== undefined && typeof value.roleDuration !== "string") return false;
+    if (value.roleDue !== undefined && typeof value.roleDue !== "string") return false;
+    if (!Array.isArray(value.groupAxes) || !value.groupAxes.every(v => typeof v === "string")) return false;
+    if (!Array.isArray(value.laneOrder) || !value.laneOrder.every(v => typeof v === "string")) return false;
+    if (value.showEmptyLanes !== undefined && typeof value.showEmptyLanes !== "boolean") return false;
+    if (value.weekStart !== undefined && typeof value.weekStart !== "number") return false;
+    if (value.workingHoursStartMinutes !== undefined && typeof value.workingHoursStartMinutes !== "number") {
+        return false;
+    }
+    if (value.workingHoursEndMinutes !== undefined && typeof value.workingHoursEndMinutes !== "number") return false;
+    if (value.ganttScale !== undefined && typeof value.ganttScale !== "string") return false;
+    return true;
+}
+
+function isCalendarSettingsMap(value: unknown): value is Record<string, CalendarSettings> {
+    return isRecord(value)
+        && Object.entries(value).every(([calendarId, settings]) =>
+            calendarId.length > 0 && isCalendarSettings(settings)
+        );
+}
+
 function isSnapshotMap(value: unknown): value is Record<string, GridTableSnapshot> {
     return isRecord(value)
         && Object.entries(value).every(([sourceTableId, snapshot]) =>
@@ -155,6 +214,7 @@ export function serializeClipboardItems(
     // copied as just the selected slice while keeping its position in the range.
     items: Array<{ item: ItemLike; depth: number; fallbackText?: string; text?: string; }>,
     tables?: Readonly<Record<string, GridTableSnapshot>>,
+    calendars?: Readonly<Record<string, CalendarSettings>>,
     operation?: "cut",
 ): string {
     const serialized = items.map(({ item, depth, fallbackText, text: textOverride }) => {
@@ -174,7 +234,7 @@ export function serializeClipboardItems(
     });
 
     if (!serialized.every(isClipboardItem)) throw new TypeError("Cannot serialize invalid clipboard items");
-    if (tables === undefined) {
+    if (tables === undefined && calendars === undefined) {
         return JSON.stringify(
             {
                 version: 1,
@@ -185,18 +245,39 @@ export function serializeClipboardItems(
         );
     }
 
-    const snapshotMap = { ...tables };
-    if (!isSnapshotMap(snapshotMap)) {
+    if (calendars === undefined) {
+        const snapshotMap = { ...tables };
+        if (!isSnapshotMap(snapshotMap)) {
+            throw new TypeError("Cannot serialize invalid Grid table snapshots");
+        }
+        return JSON.stringify(
+            {
+                version: 2,
+                sourceProjectId,
+                items: serialized,
+                tables: snapshotMap,
+                ...(operation ? { operation } : {}),
+            } satisfies ItemClipboardPayloadV2,
+        );
+    }
+
+    const snapshotMap = tables ? { ...tables } : undefined;
+    if (snapshotMap && !isSnapshotMap(snapshotMap)) {
         throw new TypeError("Cannot serialize invalid Grid table snapshots");
+    }
+    const calendarMap = calendars ? { ...calendars } : undefined;
+    if (calendarMap && !isCalendarSettingsMap(calendarMap)) {
+        throw new TypeError("Cannot serialize invalid calendar settings");
     }
     return JSON.stringify(
         {
-            version: 2,
+            version: 3,
             sourceProjectId,
             items: serialized,
-            tables: snapshotMap,
+            ...(snapshotMap ? { tables: snapshotMap } : {}),
+            ...(calendarMap ? { calendars: calendarMap } : {}),
             ...(operation ? { operation } : {}),
-        } satisfies ItemClipboardPayloadV2,
+        } satisfies ItemClipboardPayloadV3,
     );
 }
 
@@ -219,6 +300,12 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
             if (!hasOnlyKeys(payload, PAYLOAD_V2_KEYS)) return undefined;
             if (!isSnapshotMap(payload.tables)) return undefined;
             return payload as unknown as ItemClipboardPayloadV2;
+        }
+        if (payload.version === 3) {
+            if (!hasOnlyKeys(payload, PAYLOAD_V3_KEYS)) return undefined;
+            if (payload.tables !== undefined && !isSnapshotMap(payload.tables)) return undefined;
+            if (payload.calendars !== undefined && !isCalendarSettingsMap(payload.calendars)) return undefined;
+            return payload as unknown as ItemClipboardPayloadV3;
         }
         return undefined;
     } catch {

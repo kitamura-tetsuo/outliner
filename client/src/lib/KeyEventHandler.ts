@@ -1,5 +1,5 @@
 import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
-import { getCalendar } from "../services/calendar/calendarService";
+import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
 import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
 import {
     clipboardPlainText,
@@ -13,7 +13,8 @@ import {
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
-import { getTableName } from "../services/yjstable/tableDocs";
+import { getTableName, listTables } from "../services/yjstable/tableDocs";
+import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { editorOverlayStore as store } from "../stores/EditorOverlayStore.svelte";
@@ -165,11 +166,23 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         }
     }
 
+    const calendarSnapshots: Record<string, CalendarSettings> = {};
+    for (const entry of entries) {
+        const calendarId = getItemCalendarId(entry.item);
+        if (calendarId && !calendarSnapshots[calendarId]) {
+            const settings = getCalendar(project, calendarId);
+            if (settings) {
+                calendarSnapshots[calendarId] = settings;
+            }
+        }
+    }
+
     const baseDepth = entries[0].depth;
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
         entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
+        Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
     );
     const payload = deserializeClipboardItems(encoded);
@@ -2811,11 +2824,47 @@ export class KeyEventHandler {
                     if (cloneResult === undefined) return;
                     pastedTableIdMap = cloneResult.tableIdMap;
                     pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+
+                    const pastedCalendarIdMap: Record<string, string> = {};
+                    if ("calendars" in structured && structured.calendars) {
+                        const sqlNameMap = new Map<string, string>();
+                        if (pastedTableIdMap) {
+                            for (const [sourceTableId, destinationTableId] of Object.entries(pastedTableIdMap)) {
+                                const srcTables = ("tables" in structured)
+                                    ? structured.tables as Record<string, any>
+                                    : undefined;
+                                const sourceSqlName = srcTables?.[sourceTableId]?.sqlName;
+                                const destSqlName = listTables(destinationDoc).find(t =>
+                                    t.tableId === destinationTableId
+                                )?.sqlName;
+                                if (sourceSqlName && destSqlName) {
+                                    sqlNameMap.set(sourceSqlName, destSqlName);
+                                }
+                            }
+                        }
+                        for (
+                            const [sourceCalendarId, settings] of Object.entries(
+                                structured.calendars as Record<
+                                    string,
+                                    import("../services/calendar/calendarService").CalendarSettings
+                                >,
+                            )
+                        ) {
+                            const rewrittenQuery = rewriteTableQuerySql(settings.query, sqlNameMap).sql;
+                            const newCalendarId = createCalendar(
+                                generalStore.project!,
+                                { ...settings, query: rewrittenQuery },
+                            );
+                            pastedCalendarIdMap[sourceCalendarId] = newCalendarId;
+                        }
+                    }
+
                     // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
                     // (because ALL items were skipped due to provenance!).
                     // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
-                    if (pastedTableIdMap) {
-                        const tableIdMap = pastedTableIdMap;
+                    if (pastedTableIdMap || Object.keys(pastedCalendarIdMap).length > 0) {
+                        const tableIdMap = pastedTableIdMap || {};
+                        const calendarIdMap = pastedCalendarIdMap;
                         let anyKept = false;
                         const mappedItems = structured.items.map(item => {
                             if (item.componentType === "yjstable") {
@@ -2833,8 +2882,14 @@ export class KeyEventHandler {
                                 return { ...item, yjsTableId: destinationTableId };
                             }
                             if (item.componentType === "calendar") {
+                                const destinationCalendarId = item.calendarId === undefined
+                                    ? undefined
+                                    : calendarIdMap[item.calendarId];
+                                if (destinationCalendarId === undefined) {
+                                    return { text: item.text, depth: item.depth };
+                                }
                                 anyKept = true;
-                                return { text: item.text, depth: item.depth };
+                                return { ...item, calendarId: destinationCalendarId };
                             }
                             anyKept = true;
                             return item;

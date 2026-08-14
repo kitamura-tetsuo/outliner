@@ -18,17 +18,22 @@ acceptance:
 - A Ctrl/Cmd+A page-wide selection copies its Grid and Calendar hosts, so pasting the page at the end repeats those blocks.
 - A Grid copied while its Chart view is open also carries the chart as a PNG, in the HTML flavor and as an image/png flavor of its own; an unrendered chart falls back to the table flavors, never to the display name.
 - A Grid that no view has rendered still copies as its display name, so a copy never blocks on a query.
+- A calendar reading both reports which half rebound.
 - A copied Grid pastes into a spreadsheet as its cells and into a document as a table, showing the view's column order, column labels and visible columns only.
 - A copy-time selection does not survive navigation to another page or project, so a Ctrl/Cmd+A copy of a page pastes all of its lines and Grid blocks into the destination instead of being silently dropped.
+- A cross-project Calendar paste reproduces query, view type, timezone, all role columns, grouping axes, lane order and the remaining view settings.
 - A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, complete UI definition, and rows resolved from the live source at paste time; its Data Storage remains independent of the source project.
 - A later, separate cross-project paste creates another fresh independent Grid clone.
 - A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
 - A read-only destination is untouched, and cancelling or navigating away during a Grid paste removes every table created by the operation.
+- A same-project Calendar paste still retains its shared binding.
+- A v1/v2 clipboard payload still pastes correctly.
 - A whole-item selection carries Grid and Calendar binding identifiers in the in-app clipboard format.
 - An unreachable source produces a structure-only Grid clone with a visible reason, while a reachable zero-row source is a successful populated clone.
-- Calendar structure cloning across projects is not supported; foreign Calendar metadata keeps the safe readable-text fallback, while same-project Calendar paste retains its shared binding.
 - Cutting and pasting moves host items without deleting their underlying table or calendar data.
 - Grid row data never appears in a clipboard MIME payload.
+- Its `outline_items` entries show the destination project's items.
+- Its table-backed entries carry their rows (via the closure).
 - Partial selections without a component block, and external clipboard content, retain the existing plain-text behavior.
 - Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
 - Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
