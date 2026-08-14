@@ -96,12 +96,42 @@ describe("item clipboard", () => {
         expect(structuredClipboardFromHtml('<span data-outliner-items="not base64!" hidden></span>')).toBeUndefined();
     });
 
+    it("round-trips version 3 with calendars", () => {
+        const encoded = serializeClipboardItems(
+            "project-a",
+            [{ item: item("calendar", { componentType: "calendar", calendarId: "cal-1" }), depth: 0 }],
+            undefined,
+            {
+                "cal-1": {
+                    name: "My Cal",
+                    query: "SELECT id FROM outline_items",
+                    viewType: "week",
+                    groupAxes: ["tags"],
+                    laneOrder: [],
+                } as unknown as import("../calendar/calendarService").CalendarSettings,
+            },
+        );
+        const decoded = deserializeClipboardItems(encoded);
+        expect(decoded).toMatchObject({
+            version: 3,
+            calendars: {
+                "cal-1": {
+                    name: "My Cal",
+                    query: "SELECT id FROM outline_items",
+                    viewType: "week",
+                    groupAxes: ["tags"],
+                    laneOrder: [],
+                },
+            },
+        });
+    });
+
     it("round-trips the private cut marker without adding it to ordinary copies", () => {
         const entries = [
             { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
         ];
-        const cut = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() }, "cut");
-        const copied = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() });
+        const cut = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() }, undefined, "cut");
+        const copied = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() }, undefined);
 
         expect(deserializeClipboardItems(cut)?.operation).toBe("cut");
         expect(deserializeClipboardItems(copied)?.operation).toBeUndefined();
