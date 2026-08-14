@@ -10,7 +10,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 
 // Bump this whenever the demo template below changes so that already-seeded
 // demo documents are re-seeded on the next /api/seed-demo call.
-export const DEMO_TEMPLATE_VERSION = 40;
+export const DEMO_TEMPLATE_VERSION = 41;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs.
@@ -906,7 +906,10 @@ export const demoPages: DemoPageTemplate[] = [
                     + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "
                     + "names are rewritten. Calendar blocks are not cloned across projects. This public demo has only one "
                     + "project, so it demonstrates the same-project live-view behavior only. Cut and paste moves the view "
-                    + "without deleting its data. Outside Outliner the same copy pastes as what you see: a "
+                    + "without deleting its data. When a cross-project paste has a hidden consequence—such as copying "
+                    + "query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or "
+                    + "leaving a cut table in the source—a transient summary names exactly what happened. Outside Outliner "
+                    + "the same copy pastes as what you see: a "
                     + "spreadsheet receives the Grid's rows as cells, a document receives them as a table, and "
                     + "with the Chart view open the picture travels with the numbers.",
             },

@@ -1,0 +1,29 @@
+id: CLP-8f2c1a7d
+title: Report cross-project Grid paste outcomes
+title-ja: プロジェクト間のグリッド貼り付け結果を報告
+description: Show a transient, named summary when a cross-project Grid paste has consequential outcomes that are not visible in the pasted block.
+category: clipboard
+status: implemented
+components:
+- client/src/components/OutlinerTree.svelte
+- client/src/lib/KeyEventHandler.ts
+- client/src/services/clipboard/crossProjectGridPaste.ts
+- client/src/services/clipboard/gridPasteEvents.ts
+- client/src/services/clipboard/itemClipboard.ts
+- client/src/services/yjstable/tableClone.ts
+- client/src/services/yjstable/tableSqlRewrite.ts
+acceptance:
+- A Grid that reads outline_items says that it now reads the destination project's outline items.
+- A cross-project cut says that its source tables remain in place.
+- A dependency closure names tables copied even though their hosts were not selected.
+- A paste with no consequential outcomes leaves no completed-paste report visible.
+- A repeat paste names the existing clone and explains how to make or reuse a copy.
+- An unreachable source names Grids pasted without rows.
+- SQL relation renames and failed dependency groups are reported by table name.
+- Schedule rules targeting cloned tables are named as intentionally not copied.
+tests:
+- client/e2e/new/clp-paste-report-unreachable-8f2c1a7d.spec.ts
+- client/src/services/clipboard/crossProjectGridPaste.test.ts
+- client/src/services/clipboard/itemClipboard.test.ts
+- client/src/services/yjstable/tableClone.test.ts
+- client/src/services/yjstable/tableSqlRewrite.test.ts

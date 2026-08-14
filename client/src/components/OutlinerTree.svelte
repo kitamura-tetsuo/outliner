@@ -167,10 +167,10 @@
                 setGridPasteStatus("Copying Grid data… Press Escape to cancel.", false);
                 break;
             case "complete-with-data":
-                setGridPasteStatus("Grid copied with its data.", true);
+                setGridPasteStatus(detail.report.join("\n"), detail.report.length > 0);
                 break;
             case "complete-without-data":
-                setGridPasteStatus(`Grid copied without data: ${detail.reason}`, true);
+                setGridPasteStatus(detail.report.join("\n"), true);
                 break;
             case "cancelled":
                 setGridPasteStatus("Grid paste cancelled.", true);
@@ -2423,6 +2423,7 @@
         background: #f5f7fa;
         color: #333;
         font-size: 13px;
+        white-space: pre-line;
     }
 
     .outliner.embedded {

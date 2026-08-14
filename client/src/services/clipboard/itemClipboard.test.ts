@@ -96,6 +96,17 @@ describe("item clipboard", () => {
         expect(structuredClipboardFromHtml('<span data-outliner-items="not base64!" hidden></span>')).toBeUndefined();
     });
 
+    it("round-trips the private cut marker without adding it to ordinary copies", () => {
+        const entries = [
+            { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
+        ];
+        const cut = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() }, "cut");
+        const copied = serializeClipboardItems("project-a", entries, { "table-1": tableSnapshot() });
+
+        expect(deserializeClipboardItems(cut)?.operation).toBe("cut");
+        expect(deserializeClipboardItems(copied)?.operation).toBeUndefined();
+    });
+
     it("uses a meaningful fallback for an empty block host", () => {
         const decoded = deserializeClipboardItems(serializeClipboardItems("project-a", [
             { item: item("", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0, fallbackText: "Sales" },
@@ -106,6 +117,12 @@ describe("item clipboard", () => {
     it("rejects malformed clipboard data and snapshots strictly", () => {
         expect(deserializeClipboardItems("not json")).toBeUndefined();
         expect(deserializeClipboardItems('{"version":1,"sourceProjectId":"p","items":[{}]}')).toBeUndefined();
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [{ text: "text", depth: 0 }],
+            tables: {},
+        }))).toBeUndefined();
         expect(deserializeClipboardItems(JSON.stringify({
             version: 2,
             sourceProjectId: "p",

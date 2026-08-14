@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import type { GridTableSnapshot } from "../clipboard/itemClipboard";
 import { resetPgliteForTests } from "./pgliteService";
 import {
+    computeSnapshotClosure,
     computeTableClosure,
     copyTableData,
     exportTableStructure,
@@ -177,6 +178,18 @@ describe("computeTableClosure", () => {
     });
 });
 
+describe("computeSnapshotClosure", () => {
+    it("keeps transitive portable dependencies and rejects unrelated snapshots", () => {
+        const snapshots = {
+            host: simpleSnapshot("host", "host", "SELECT * FROM dependency"),
+            dependency: simpleSnapshot("dependency", "dependency"),
+            unrelated: simpleSnapshot("unrelated", "unrelated"),
+        };
+
+        expect([...computeSnapshotClosure(snapshots, ["host"])]).toEqual(["host", "dependency"]);
+    });
+});
+
 describe("table structure import", { timeout: 30000 }, () => {
     it("creates fresh destination tables, rewrites conflicts and cross-table references, and keeps data empty", async () => {
         const source = sourceProject();
@@ -186,7 +199,12 @@ describe("table structure import", { timeout: 30000 }, () => {
             handles.schemaText.insert(0, "CREATE TABLE orders (id TEXT PRIMARY KEY)");
         });
 
-        const result = await importTableStructures(destination, snapshots, "source-project");
+        const result = await importTableStructures(
+            destination,
+            snapshots,
+            "source-project",
+            new Set([source.ordersId]),
+        );
         expect(result.failures).toEqual({});
         expect(Object.keys(result.tableIdMap).sort()).toEqual([source.customersId, source.ordersId].sort());
 
@@ -207,6 +225,10 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(destinationOrders.data.size).toBe(0);
         expect(destinationCustomers.data.size).toBe(0);
         expect(listTables(destination).find(table => table.tableId === destinationOrdersId)?.sqlName).toBe("orders_2");
+        expect(result.outcomes.filter(outcome => outcome.type !== "cloned")).toEqual([
+            { type: "renamed", sourceTableId: source.ordersId, tableName: "受注", from: "orders", to: "orders_2" },
+            { type: "dependency-added", sourceTableId: source.customersId, tableName: "顧客" },
+        ]);
     });
 
     it("materializes independent Y.Map/Y.Array values and remains independent in both directions", async () => {
@@ -250,6 +272,9 @@ describe("table structure import", { timeout: 30000 }, () => {
 
         // And the table is only created once
         expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks"]);
+        expect(second.outcomes).toEqual([
+            { type: "reuse-offered", sourceTableId: "source-one", tableName: "TASKS" },
+        ]);
     });
 
     it("imports one table per source snapshot in one call and fresh tables in a later call", async () => {
@@ -276,6 +301,12 @@ describe("table structure import", { timeout: 30000 }, () => {
         const result = await importTableStructures(destination, { "calendar-host": snapshot }, "source-project");
         expect(result.failures).toEqual({});
         expect(result.tableIdMap["calendar-host"]).toBeDefined();
+        expect(result.outcomes).toContainEqual({
+            type: "rebound",
+            sourceTableId: "calendar-host",
+            tableName: "EVENTS",
+            relation: "outline_items",
+        });
     });
 
     it("skips a failed dependency group while cloning an independent valid table", async () => {
@@ -296,6 +327,12 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(result.failures.host).toMatch(/expected source relation/);
         expect(listTables(destination)).toHaveLength(1);
         expect(listTables(destination)[0].sqlName).toBe("independent");
+        expect(result.outcomes).toContainEqual({
+            type: "failed-group",
+            sourceTableIds: ["broken", "host"],
+            tableNames: ["BROKEN", "HOST"],
+            reason: result.failures.host,
+        });
     });
 
     it("rejects an absent source relation without leaving registry debris", async () => {

@@ -19,7 +19,7 @@ export const GRID_PASTE_WRITE_CHECK_EVENT = "grid-paste-write-check";
 
 export type GridPasteProgress =
     | { state: "copying"; tableCount: number; }
-    | { state: "complete-with-data"; }
-    | { state: "complete-without-data"; reason: string; }
+    | { state: "complete-with-data"; report: string[]; }
+    | { state: "complete-without-data"; reason: string; report: string[]; }
     | { state: "cancelled"; }
     | { state: "failed"; reason: string; };
