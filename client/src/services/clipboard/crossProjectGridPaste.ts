@@ -41,6 +41,8 @@ export interface CrossProjectGridPasteOptions {
     operation?: "cut";
     /** False once the user has navigated away from the destination page. */
     isDestinationCurrent: () => boolean;
+    /** If true, structure and views will be cloned, but no data will be copied. */
+    noData?: boolean;
 }
 
 export type GridPasteOutcome =
@@ -183,17 +185,20 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
-        const sourceCopy = await copyRowsFromSource(
-            sourceProjectId,
-            tableIdMap,
-            destinationDoc,
-            controller.signal,
-            cancelled,
-        );
-        if (cancelled()) {
-            rollback();
-            reportProgress({ state: "cancelled" });
-            return undefined;
+        let sourceCopy: SourceCopyResult = { skippedSchedules: [], rowCounts: {} };
+        if (!options.noData) {
+            sourceCopy = await copyRowsFromSource(
+                sourceProjectId,
+                tableIdMap,
+                destinationDoc,
+                controller.signal,
+                cancelled,
+            );
+            if (cancelled()) {
+                rollback();
+                reportProgress({ state: "cancelled" });
+                return undefined;
+            }
         }
 
         const outcomes: GridPasteOutcome[] = cloneResult.outcomes.map(outcome =>

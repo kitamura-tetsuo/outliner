@@ -455,6 +455,14 @@ export class KeyEventHandler {
             document.dispatchEvent(clipboardEvent);
         });
 
+        // Ctrl+Shift+V Paste Special
+        add("V", true, false, true, () => {
+            KeyEventHandler.handlePasteSpecialShortcut();
+        });
+        add("v", true, false, true, () => {
+            KeyEventHandler.handlePasteSpecialShortcut();
+        });
+
         // Ctrl+C copy fallback
         add("c", true, false, false, () => {
             KeyEventHandler._nativeCopyFired = false;
@@ -2402,6 +2410,49 @@ export class KeyEventHandler {
                 KeyEventHandler.boxSelectionState.ranges = [];
             }
         }
+    }
+
+    static async handlePasteSpecialShortcut(): Promise<void> {
+        if (typeof window === "undefined") return;
+
+        let text = "";
+        let encodedItems = "";
+        let encodedHtmlItems = "";
+
+        if ((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText) {
+            text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText as string;
+            encodedItems = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems as string || "";
+        } else if (navigator.clipboard && navigator.clipboard.readText) {
+            try {
+                text = await navigator.clipboard.readText();
+            } catch (error) {
+                logger.error({ error }, "navigator.clipboard.readText failed in paste special");
+                return;
+            }
+        } else {
+            return;
+        }
+
+        if (!text) return;
+
+        const cached = KeyEventHandler.lastStructuredClipboard;
+        const structuredItems = deserializeClipboardItems(
+            encodedItems || encodedHtmlItems || (cached?.plainText === text ? cached.encoded : ""),
+        );
+
+        const sameProjectItems = structuredItems && structuredItems.sourceProjectId === generalStore.project?.ydoc?.guid
+            ? structuredItems.items
+            : undefined;
+        if (sameProjectItems) text = clipboardPlainText(structuredItems!);
+
+        window.dispatchEvent(
+            new CustomEvent("paste-special-menu", {
+                detail: {
+                    text,
+                    structuredItems
+                },
+            }),
+        );
     }
 
     /**

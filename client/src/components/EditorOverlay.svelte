@@ -10,6 +10,7 @@ import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 import { hasStructuredClipboardSelection, isEditorClipboardEvent } from '../lib/KeyEventHandler';
+import PasteSpecialMenu from './clipboard/PasteSpecialMenu.svelte';
 
 // store API (functions only) - keep the store as receiver so `this` stays bound
 const stopCursorBlink = () => store.stopCursorBlink();
@@ -1518,6 +1519,7 @@ function handlePaste(event: ClipboardEvent) {
         </button>
     {/if}
 
+    <PasteSpecialMenu />
     <!-- Hidden textarea for clipboard -->
     <textarea bind:this={clipboardRef} class="clipboard-textarea" aria-hidden="true" tabindex="-1"></textarea>
     <!-- Suppress selection and cursor while AliasPicker is displayed to avoid loops -->
