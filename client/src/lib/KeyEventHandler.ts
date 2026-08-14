@@ -2421,7 +2421,9 @@ export class KeyEventHandler {
 
         if ((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText) {
             text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText as string;
-            encodedItems = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems as string || "";
+            encodedItems =
+                (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems as string
+                || "";
         } else if (navigator.clipboard && navigator.clipboard.readText) {
             try {
                 text = await navigator.clipboard.readText();
@@ -2449,7 +2451,7 @@ export class KeyEventHandler {
             new CustomEvent("paste-special-menu", {
                 detail: {
                     text,
-                    structuredItems
+                    structuredItems,
                 },
             }),
         );
