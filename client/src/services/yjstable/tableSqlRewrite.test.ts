@@ -8,6 +8,7 @@ describe("rewriteCreateTableSql", () => {
         expect(rewriteCreateTableSql(sql, "sales", "sales_2")).toEqual({
             sql: `-- keep sales in this comment\nCREATE  TABLE  sales_2 (\n  sales TEXT DEFAULT 'sales',\n  note TEXT\n);`,
             relationDependencies: [],
+            reservedRelationDependencies: [],
         });
     });
 
@@ -35,6 +36,13 @@ describe("rewriteCreateTableSql", () => {
 });
 
 describe("rewriteTableQuerySql", () => {
+    it("reports reserved relations that rebind without treating them as clipboard dependencies", () => {
+        const result = rewriteTableQuerySql("SELECT id, text FROM outline_items", new Map());
+
+        expect(result.relationDependencies).toEqual([]);
+        expect(result.reservedRelationDependencies).toEqual(["outline_items"]);
+    });
+
     it("rewrites FROM and JOIN relations while preserving columns, aliases, comments, spacing, and unrelated literals", () => {
         const sql = "SELECT sales.id, 'sales' AS label /* sales */\n"
             + "FROM  sales sales JOIN customers c ON c.id = sales.customer_id\n"

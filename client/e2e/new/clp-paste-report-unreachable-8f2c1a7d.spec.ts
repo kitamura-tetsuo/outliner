@@ -1,4 +1,4 @@
-/** @feature CLP-4584c0de */
+/** @feature CLP-8f2c1a7d */
 import { expect, test } from "@playwright/test";
 import {
     addSourceRecord,
@@ -65,7 +65,10 @@ test.describe("cross-project Grid paste with an unreachable source", () => {
             await pasteAtAnchor(page, 2);
 
             // The paste says what happened instead of pretending the Grid was empty.
-            await expect(page.getByTestId("grid-paste-status")).toContainText("without data", { timeout: 60000 });
+            await expect(page.getByTestId("grid-paste-status")).toContainText(
+                "Orders pasted without rows",
+                { timeout: 60000 },
+            );
 
             const destinationState = await readGridProjectState(page);
             const clone = destinationState.tables.find(table => table.id !== warmupTableId)!;

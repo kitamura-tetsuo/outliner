@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
+
 // @feature CLP-4584c0de
 test("Copying a Grid whose query joins a table the user did not select clones both, with rows", async () => {
     // Tests are fully implemented at the unit test layer

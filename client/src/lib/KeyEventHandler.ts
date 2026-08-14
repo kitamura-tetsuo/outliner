@@ -12,7 +12,7 @@ import {
 } from "../services/clipboard/itemClipboard";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
-import { computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
+import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
 import { getTableName } from "../services/yjstable/tableDocs";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -90,7 +90,7 @@ function renderedGridExport(
  * alongside both. The private payload is untouched, so pasting back into
  * Outliner behaves exactly as it did.
  */
-function selectedItemsClipboardData(): StructuredClipboard | undefined {
+function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | undefined {
     const selection = Object.values(store.selections).find(sel =>
         !sel.isBoxSelection && sel.startItemId !== sel.endItemId
     );
@@ -170,6 +170,7 @@ function selectedItemsClipboardData(): StructuredClipboard | undefined {
         project.ydoc.guid,
         entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
+        operation,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return undefined;
@@ -2788,8 +2789,9 @@ export class KeyEventHandler {
                         item.componentType === "yjstable" && item.yjsTableId !== undefined ? [item.yjsTableId] : []
                     ),
                 );
+                const closureTableIds = computeSnapshotClosure(structured.tables, referencedTableIds);
                 const referencedSnapshots = Object.fromEntries(
-                    [...referencedTableIds].flatMap(sourceTableId => {
+                    [...closureTableIds].flatMap(sourceTableId => {
                         const snapshot = structured.tables[sourceTableId];
                         return snapshot === undefined ? [] : [[sourceTableId, snapshot]];
                     }),
@@ -2802,6 +2804,8 @@ export class KeyEventHandler {
                         destinationDoc,
                         sourceProjectId: structured.sourceProjectId,
                         snapshots: referencedSnapshots,
+                        requestedSourceTableIds: [...referencedTableIds],
+                        operation: structured.operation,
                         isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
                     });
                     if (cloneResult === undefined) return;
@@ -2925,7 +2929,7 @@ export class KeyEventHandler {
         // Get text of selection range
         let selectedText: string;
         let isBoxSelectionCut = false;
-        const structured = selectedItemsClipboardData();
+        const structured = selectedItemsClipboardData("cut");
 
         if (boxSelection) {
             // If box selection

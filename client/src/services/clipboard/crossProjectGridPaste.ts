@@ -1,6 +1,6 @@
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
-import { copyTableData, importTableStructures } from "../yjstable/tableClone";
+import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
 import { destroyTableUndoManager, getTableHandles, removeTable } from "../yjstable/tableDocs";
 import {
     GRID_PASTE_CANCEL_EVENT,
@@ -36,10 +36,85 @@ export interface CrossProjectGridPasteOptions {
     sourceProjectId: string;
     /** Portable structure carried by the clipboard, keyed by source table id. */
     snapshots: Record<string, GridTableSnapshot>;
+    /** Tables whose hosts the user selected; all other snapshots are closure additions. */
+    requestedSourceTableIds: string[];
+    operation?: "cut";
     /** False once the user has navigated away from the destination page. */
     isDestinationCurrent: () => boolean;
 }
 
+export type GridPasteOutcome =
+    | TableCloneOutcome
+    | { type: "schedule-skipped"; sourceTableId: string; tableName: string; ruleName: string; }
+    | { type: "source-data-unavailable"; tableNames: string[]; reason: string; }
+    | { type: "cut-source-retained"; tableNames: string[]; };
+
+interface SourceCopyResult {
+    unavailableReason?: string;
+    skippedSchedules: Array<{ sourceTableId: string; ruleName: string; }>;
+    rowCounts: Record<string, number>;
+}
+
+export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): string[] {
+    const noteworthy = outcomes.some(outcome => outcome.type !== "cloned");
+    if (!noteworthy) return [];
+
+    const lines = outcomes
+        .filter((outcome): outcome is Extract<GridPasteOutcome, { type: "cloned"; }> & { rowCount: number; } =>
+            outcome.type === "cloned" && outcome.selected && outcome.rowCount !== undefined
+        )
+        .map(outcome =>
+            `${outcome.tableName} pasted as an independent copy, with ${outcome.rowCount.toLocaleString()} `
+            + `${outcome.rowCount === 1 ? "row" : "rows"}.`
+        );
+    const dependencies = outcomes.filter((
+        outcome,
+    ): outcome is Extract<GridPasteOutcome, { type: "dependency-added"; }> => outcome.type === "dependency-added");
+    if (dependencies.length > 0) {
+        lines.push(
+            `Also copied ${dependencies.length} ${dependencies.length === 1 ? "table" : "tables"} `
+                + `its query depends on: ${dependencies.map(outcome => outcome.tableName).join(", ")}.`,
+        );
+    }
+    for (const outcome of outcomes) {
+        switch (outcome.type) {
+            case "renamed":
+                lines.push(`${outcome.tableName} was renamed from ${outcome.from} to ${outcome.to} in this project.`);
+                break;
+            case "failed-group":
+                lines.push(
+                    `${outcome.tableNames.join(", ")} ${outcome.tableNames.length === 1 ? "was" : "were"} `
+                        + `not pasted: ${outcome.reason}.`,
+                );
+                break;
+            case "rebound":
+                lines.push(`${outcome.tableName} now reads this project's ${outcome.relation}.`);
+                break;
+            case "schedule-skipped":
+                lines.push(
+                    `${outcome.tableName} has schedule rule ${outcome.ruleName} that was not copied \u2014 recreate it here if the rows should keep generating.`,
+                );
+                break;
+            case "source-data-unavailable":
+                lines.push(`${outcome.tableNames.join(", ")} pasted without rows: ${outcome.reason}`);
+                break;
+            case "cut-source-retained":
+                lines.push(
+                    `Cut left the source ${outcome.tableNames.length === 1 ? "table" : "tables"} in place: ${
+                        outcome.tableNames.join(", ")
+                    }.`,
+                );
+                break;
+            case "reuse-offered":
+                lines.push(
+                    `You already pasted ${outcome.tableName} into this project — paste again to make a second copy, `
+                        + "or reuse the existing one.",
+                );
+                break;
+        }
+    }
+    return lines;
+}
 /**
  * Clone the copied Grids into the destination project and fill them with the
  * rows the source holds at paste time.
@@ -58,8 +133,21 @@ export interface CrossProjectGridPasteOptions {
  */
 export async function cloneGridTablesAcrossProjects(
     options: CrossProjectGridPasteOptions,
-): Promise<{ tableIdMap: Record<string, string>; skippedSourceTableIds: string[]; } | undefined> {
-    const { destinationDoc, sourceProjectId, snapshots, isDestinationCurrent } = options;
+): Promise<
+    {
+        tableIdMap: Record<string, string>;
+        skippedSourceTableIds: string[];
+        outcomes: GridPasteOutcome[];
+    } | undefined
+> {
+    const {
+        destinationDoc,
+        sourceProjectId,
+        snapshots,
+        requestedSourceTableIds,
+        operation,
+        isDestinationCurrent,
+    } = options;
 
     if (!destinationAcceptsWrites()) {
         reportProgress({ state: "failed", reason: "The destination project is read-only." });
@@ -81,7 +169,12 @@ export async function cloneGridTablesAcrossProjects(
 
     try {
         reportProgress({ state: "copying", tableCount: Object.keys(snapshots).length });
-        const cloneResult = await importTableStructures(destinationDoc, snapshots, sourceProjectId);
+        const cloneResult = await importTableStructures(
+            destinationDoc,
+            snapshots,
+            sourceProjectId,
+            new Set(requestedSourceTableIds),
+        );
         tableIdMap = cloneResult.tableIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
@@ -90,7 +183,7 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
-        const unavailableReason = await copyRowsFromSource(
+        const sourceCopy = await copyRowsFromSource(
             sourceProjectId,
             tableIdMap,
             destinationDoc,
@@ -103,12 +196,39 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
-        reportProgress(
-            unavailableReason === undefined
-                ? { state: "complete-with-data" }
-                : { state: "complete-without-data", reason: unavailableReason },
+        const outcomes: GridPasteOutcome[] = cloneResult.outcomes.map(outcome =>
+            outcome.type === "cloned"
+                ? { ...outcome, rowCount: sourceCopy.rowCounts[outcome.sourceTableId] }
+                : outcome
         );
-        return { tableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [] };
+        for (const schedule of sourceCopy.skippedSchedules) {
+            outcomes.push({
+                type: "schedule-skipped",
+                sourceTableId: schedule.sourceTableId,
+                tableName: snapshots[schedule.sourceTableId]?.name ?? schedule.sourceTableId,
+                ruleName: schedule.ruleName,
+            });
+        }
+        if (sourceCopy.unavailableReason !== undefined && Object.keys(tableIdMap).length > 0) {
+            outcomes.push({
+                type: "source-data-unavailable",
+                tableNames: Object.keys(tableIdMap).map(id => snapshots[id]?.name ?? id),
+                reason: sourceCopy.unavailableReason,
+            });
+        }
+        if (operation === "cut") {
+            outcomes.push({
+                type: "cut-source-retained",
+                tableNames: requestedSourceTableIds.map(id => snapshots[id]?.name ?? id),
+            });
+        }
+        const report = formatGridPasteReport(outcomes);
+        reportProgress(
+            sourceCopy.unavailableReason === undefined
+                ? { state: "complete-with-data", report }
+                : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
+        );
+        return { tableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [], outcomes };
     } finally {
         if (typeof window !== "undefined") {
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
@@ -126,7 +246,7 @@ async function copyRowsFromSource(
     destinationDoc: Y.Doc,
     signal: AbortSignal,
     cancelled: () => boolean,
-): Promise<string | undefined> {
+): Promise<SourceCopyResult> {
     // Imported lazily: the provider stack and the project registry are only
     // needed by this one branch of paste, and a static edge from the key
     // handler to the Yjs service would drag both into every module that
@@ -139,11 +259,18 @@ async function copyRowsFromSource(
     let acquired: Awaited<ReturnType<typeof acquireClientByProjectId>>;
     try {
         acquired = await acquireClientByProjectId(sourceProjectId, signal);
-        if (!acquired) return "The source project is not available.";
+        if (!acquired) {
+            return {
+                unavailableReason: "The source project is not available.",
+                skippedSchedules: [],
+                rowCounts: {},
+            };
+        }
 
         let unavailableReason: string | undefined;
+        const rowCounts: Record<string, number> = {};
         for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
-            if (cancelled()) return undefined;
+            if (cancelled()) return { skippedSchedules: [], rowCounts };
 
             const sourceHandles = getTableHandles(acquired.client.project.ydoc, sourceTableId);
             const destinationHandles = getTableHandles(destinationDoc, destinationTableId);
@@ -161,6 +288,7 @@ async function copyRowsFromSource(
                         continue;
                     }
                     copyTableData(sourceHandles, destinationHandles);
+                    rowCounts[sourceTableId] = destinationHandles.data.size;
                 } finally {
                     await connection.dispose();
                 }
@@ -170,10 +298,24 @@ async function copyRowsFromSource(
                 destroyTableUndoManager(sourceHandles.doc);
             }
         }
-        return unavailableReason;
+        const skippedSchedules: SourceCopyResult["skippedSchedules"] = [];
+        acquired.client.project.schedules.forEach((rule, ruleId) => {
+            const targetTableId = rule.get("targetTableId");
+            if (typeof targetTableId !== "string" || tableIdMap[targetTableId] === undefined) return;
+            const name = rule.get("name");
+            skippedSchedules.push({
+                sourceTableId: targetTableId,
+                ruleName: typeof name === "string" && name.length > 0 ? name : ruleId,
+            });
+        });
+        return { unavailableReason, skippedSchedules, rowCounts };
     } catch (error) {
         logger.warn({ error, sourceProjectId }, "[cloneGridTablesAcrossProjects] source rows could not be read");
-        return error instanceof Error ? error.message : "The source project is not available.";
+        return {
+            unavailableReason: error instanceof Error ? error.message : "The source project is not available.",
+            skippedSchedules: [],
+            rowCounts: {},
+        };
     } finally {
         acquired?.release();
     }

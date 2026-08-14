@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { resetPgliteForTests } from "../yjstable/pgliteService";
 import { exportTableStructure } from "../yjstable/tableClone";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText } from "../yjstable/tableDocs";
-import { cloneGridTablesAcrossProjects } from "./crossProjectGridPaste";
+import { cloneGridTablesAcrossProjects, formatGridPasteReport, type GridPasteOutcome } from "./crossProjectGridPaste";
 import { GRID_PASTE_PROGRESS_EVENT, GRID_PASTE_WRITE_CHECK_EVENT, type GridPasteProgress } from "./gridPasteEvents";
 
 // The live source room belongs to the cross-project E2E coverage: these cases
@@ -56,6 +56,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
+            requestedSourceTableIds: [ordersId],
             isDestinationCurrent: () => true,
         });
 
@@ -76,6 +77,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
+            requestedSourceTableIds: [ordersId],
             isDestinationCurrent: () => true,
         });
 
@@ -84,7 +86,11 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
         expect(getTableHandles(destination, destinationTableId)!.data.size).toBe(0);
         expect(progress.events).toEqual([
             { state: "copying", tableCount: 1 },
-            { state: "complete-without-data", reason: "The source project is not available." },
+            {
+                state: "complete-without-data",
+                reason: "The source project is not available.",
+                report: ["Orders pasted without rows: The source project is not available."],
+            },
         ]);
     });
 
@@ -98,11 +104,53 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
             destinationDoc: destination,
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
+            requestedSourceTableIds: [ordersId],
             isDestinationCurrent: () => false,
         });
 
         expect(cloneResult).toBe(undefined);
         expect(listTables(destination)).toEqual([]);
         expect(progress.events.at(-1)).toEqual({ state: "cancelled" });
+    });
+
+    it("renders every consequential outcome by name and suppresses a clean paste", () => {
+        const cloned: GridPasteOutcome = {
+            type: "cloned",
+            sourceTableId: "report",
+            destinationTableId: "new-report",
+            tableName: "Q3 report",
+            sqlName: "q3_report",
+            selected: true,
+            rowCount: 1240,
+        };
+        expect(formatGridPasteReport([cloned])).toEqual([]);
+
+        expect(formatGridPasteReport([
+            cloned,
+            { type: "dependency-added", sourceTableId: "sales", tableName: "sales" },
+            { type: "renamed", sourceTableId: "sales", tableName: "sales", from: "sales", to: "sales_2" },
+            {
+                type: "failed-group",
+                sourceTableIds: ["headcount"],
+                tableNames: ["Headcount"],
+                reason: "SQL validation failed",
+            },
+            { type: "rebound", sourceTableId: "tasks", tableName: "Open tasks", relation: "outline_items" },
+            {
+                type: "schedule-skipped",
+                sourceTableId: "routine",
+                tableName: "routine_occurrences",
+                ruleName: "Daily routines",
+            },
+            { type: "cut-source-retained", tableNames: ["Q3 report"] },
+        ])).toEqual([
+            "Q3 report pasted as an independent copy, with 1,240 rows.",
+            "Also copied 1 table its query depends on: sales.",
+            "sales was renamed from sales to sales_2 in this project.",
+            "Headcount was not pasted: SQL validation failed.",
+            "Open tasks now reads this project's outline_items.",
+            "routine_occurrences has schedule rule Daily routines that was not copied — recreate it here if the rows should keep generating.",
+            "Cut left the source table in place: Q3 report.",
+        ]);
     });
 });

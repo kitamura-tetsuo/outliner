@@ -37,12 +37,14 @@ export interface ItemClipboardPayloadV1 {
     version: 1;
     sourceProjectId: string;
     items: ClipboardItem[];
+    operation?: "cut";
 }
 
 export interface ItemClipboardPayloadV2 {
     version: 2;
     sourceProjectId: string;
     items: ClipboardItem[];
+    operation?: "cut";
     /** Deduplicated by source table id. */
     tables: Record<string, GridTableSnapshot>;
 }
@@ -60,6 +62,8 @@ const bindings = {
     calendar: "calendarId",
 } as const;
 
+const PAYLOAD_V1_KEYS = new Set(["version", "sourceProjectId", "items", "operation"]);
+const PAYLOAD_V2_KEYS = new Set(["version", "sourceProjectId", "items", "tables", "operation"]);
 const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "calendarId"]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder"]);
@@ -151,6 +155,7 @@ export function serializeClipboardItems(
     // copied as just the selected slice while keeping its position in the range.
     items: Array<{ item: ItemLike; depth: number; fallbackText?: string; text?: string; }>,
     tables?: Readonly<Record<string, GridTableSnapshot>>,
+    operation?: "cut",
 ): string {
     const serialized = items.map(({ item, depth, fallbackText, text: textOverride }) => {
         const value = nodeValue(item);
@@ -170,7 +175,14 @@ export function serializeClipboardItems(
 
     if (!serialized.every(isClipboardItem)) throw new TypeError("Cannot serialize invalid clipboard items");
     if (tables === undefined) {
-        return JSON.stringify({ version: 1, sourceProjectId, items: serialized } satisfies ItemClipboardPayloadV1);
+        return JSON.stringify(
+            {
+                version: 1,
+                sourceProjectId,
+                items: serialized,
+                ...(operation ? { operation } : {}),
+            } satisfies ItemClipboardPayloadV1,
+        );
     }
 
     const snapshotMap = { ...tables };
@@ -183,6 +195,7 @@ export function serializeClipboardItems(
             sourceProjectId,
             items: serialized,
             tables: snapshotMap,
+            ...(operation ? { operation } : {}),
         } satisfies ItemClipboardPayloadV2,
     );
 }
@@ -190,16 +203,20 @@ export function serializeClipboardItems(
 export function deserializeClipboardItems(value: string): ItemClipboardPayload | undefined {
     try {
         const payload: unknown = JSON.parse(value);
-        if (!isRecord(payload) || typeof payload.sourceProjectId !== "string" || !Array.isArray(payload.items)) {
+        if (
+            !isRecord(payload)
+            || typeof payload.sourceProjectId !== "string" || !Array.isArray(payload.items)
+            || (payload.operation !== undefined && payload.operation !== "cut")
+        ) {
             return undefined;
         }
         if (!payload.items.every(isClipboardItem)) return undefined;
         if (payload.version === 1) {
-            if (!hasOnlyKeys(payload, new Set(["version", "sourceProjectId", "items"]))) return undefined;
+            if (!hasOnlyKeys(payload, PAYLOAD_V1_KEYS)) return undefined;
             return payload as unknown as ItemClipboardPayloadV1;
         }
         if (payload.version === 2) {
-            if (!hasOnlyKeys(payload, new Set(["version", "sourceProjectId", "items", "tables"]))) return undefined;
+            if (!hasOnlyKeys(payload, PAYLOAD_V2_KEYS)) return undefined;
             if (!isSnapshotMap(payload.tables)) return undefined;
             return payload as unknown as ItemClipboardPayloadV2;
         }

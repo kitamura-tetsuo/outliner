@@ -11,6 +11,8 @@ export interface TableSqlRewriteResult {
     sql: string;
     /** Non-system relations actually read by FROM/JOIN or projected as source_kind. */
     relationDependencies: string[];
+    /** System-defined relations that intentionally rebind to the destination project. */
+    reservedRelationDependencies: string[];
 }
 
 type TokenKind = "word" | "quotedIdentifier" | "string" | "dollarString" | "space" | "comment" | "symbol";
@@ -380,7 +382,11 @@ export function rewriteCreateTableSql(
             tokens[referencedIndex!].text = replacementIdentifier(tokens[referencedIndex!], destinationRelation);
         }
     }
-    return { sql: tokens.map(token => token.text).join(""), relationDependencies: [] };
+    return {
+        sql: tokens.map(token => token.text).join(""),
+        relationDependencies: [],
+        reservedRelationDependencies: [],
+    };
 }
 
 /**
@@ -401,6 +407,7 @@ export function rewriteTableQuerySql(
     const { matchingClose, enclosingOpen, enclosingClose } = parenMetadata(tokens);
     const cteScopes = collectCteScopes(tokens, matchingClose, enclosingClose);
     const dependencies = new Set<string>();
+    const reservedDependencies = new Set<string>();
     const fromActive = new Map<number, boolean>();
     const expectRelation = new Map<number, boolean>();
     const expressionDepths = new Set<number>();
@@ -408,7 +415,8 @@ export function rewriteTableQuerySql(
     let depth = 0;
 
     const recordDependency = (name: string) => {
-        if (!RESERVED_RELATION_NAMES.has(name)) dependencies.add(name);
+        if (RESERVED_RELATION_NAMES.has(name)) reservedDependencies.add(name);
+        else dependencies.add(name);
     };
 
     for (let i = 0; i < tokens.length; i++) {
@@ -544,5 +552,9 @@ export function rewriteTableQuerySql(
         tokens[i].text = replacementIdentifier(tokens[i], [...destinations][0]!);
     }
 
-    return { sql: tokens.map(token => token.text).join(""), relationDependencies: [...dependencies] };
+    return {
+        sql: tokens.map(token => token.text).join(""),
+        relationDependencies: [...dependencies],
+        reservedRelationDependencies: [...reservedDependencies],
+    };
 }

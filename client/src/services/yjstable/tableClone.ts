@@ -47,7 +47,24 @@ export interface TableCloneResult {
     failures: Record<string, string>;
     failedSourceTableIds: string[];
     skippedSourceTableIds?: string[];
+    outcomes: TableCloneOutcome[];
 }
+
+export type TableCloneOutcome =
+    | {
+        type: "cloned";
+        sourceTableId: string;
+        destinationTableId: string;
+        tableName: string;
+        sqlName: string;
+        selected: boolean;
+        rowCount?: number;
+    }
+    | { type: "dependency-added"; sourceTableId: string; tableName: string; }
+    | { type: "renamed"; sourceTableId: string; tableName: string; from: string; to: string; }
+    | { type: "rebound"; sourceTableId: string; tableName: string; relation: string; }
+    | { type: "failed-group"; sourceTableIds: string[]; tableNames: string[]; reason: string; }
+    | { type: "reuse-offered"; sourceTableId: string; tableName: string; };
 
 interface PlannedTable {
     snapshot: GridTableSnapshot;
@@ -55,6 +72,7 @@ interface PlannedTable {
     schemaSql: string;
     querySql: string;
     dependencyIds: Set<string>;
+    reservedRelations: Set<string>;
     error?: string;
 }
 
@@ -187,6 +205,38 @@ export function computeTableClosure(projectDoc: Y.Doc, initialTableIds: Iterable
     return visited;
 }
 
+/** Resolve a dependency closure using only portable clipboard snapshots. */
+export function computeSnapshotClosure(
+    snapshots: Readonly<Record<string, GridTableSnapshot>>,
+    initialTableIds: Iterable<string>,
+): Set<string> {
+    const visited = new Set<string>(initialTableIds);
+    const queue = Array.from(visited);
+    const sqlNameToTableId = new Map(
+        Object.entries(snapshots).map(([tableId, snapshot]) => [snapshot.sqlName, tableId]),
+    );
+
+    while (queue.length > 0) {
+        const tableId = queue.shift()!;
+        const snapshot = snapshots[tableId];
+        if (!snapshot) continue;
+        try {
+            const rewrite = rewriteTableQuerySql(snapshot.ui.query, new Map());
+            for (const dependency of rewrite.relationDependencies) {
+                const dependencyId = sqlNameToTableId.get(dependency);
+                if (dependencyId && !visited.has(dependencyId)) {
+                    visited.add(dependencyId);
+                    queue.push(dependencyId);
+                }
+            }
+        } catch {
+            // Import validation reports malformed queries; closure collection
+            // still keeps the selected host so its failure reaches the user.
+        }
+    }
+    return visited;
+}
+
 function materializeUi(handles: TableInitializationHandles, snapshot: GridTableSnapshot, querySql: string): void {
     handles.schemaText.insert(0, snapshot.schemaSql);
     handles.uiDef.set("query", querySql);
@@ -280,13 +330,16 @@ export async function importTableStructures(
     destinationProjectDoc: Y.Doc,
     snapshots: Readonly<Record<string, GridTableSnapshot>>,
     sourceProjectId?: string,
+    requestedSourceTableIds?: ReadonlySet<string>,
 ): Promise<TableCloneResult> {
     const failures: Record<string, string> = {};
+    const failureGroups: string[][] = [];
     const skippedSourceTableIds: string[] = [];
     const basic = new Map<string, GridTableSnapshot>();
     for (const [sourceTableId, snapshot] of Object.entries(snapshots)) {
         if (!isGridTableSnapshot(snapshot, sourceTableId)) {
             failures[sourceTableId] = "Grid table snapshot is malformed";
+            failureGroups.push([sourceTableId]);
             continue;
         }
         basic.set(sourceTableId, snapshot);
@@ -320,6 +373,7 @@ export async function importTableStructures(
     }
     for (const [sqlName, sourceTableIds] of idsBySqlName) {
         if (sourceTableIds.length < 2) continue;
+        failureGroups.push([...sourceTableIds].sort());
         for (const sourceTableId of sourceTableIds) {
             failures[sourceTableId] = `Several copied tables claim SQL relation "${sqlName}"`;
             basic.delete(sourceTableId);
@@ -349,6 +403,7 @@ export async function importTableStructures(
             schemaSql: "",
             querySql: "",
             dependencyIds: new Set(),
+            reservedRelations: new Set(),
         };
         plans.set(sourceTableId, plan);
         try {
@@ -360,6 +415,7 @@ export async function importTableStructures(
             plan.snapshot.schemaSql = plan.schemaSql;
             const queryRewrite = rewriteTableQuerySql(snapshot.ui.query, destinationNames);
             plan.querySql = queryRewrite.sql;
+            plan.reservedRelations = new Set(queryRewrite.reservedRelationDependencies);
             for (const dependency of queryRewrite.relationDependencies) {
                 const dependencyId = sourceIdBySqlName.get(dependency);
                 if (!dependencyId) {
@@ -377,6 +433,7 @@ export async function importTableStructures(
         const planningFailure = groupPlans.find(plan => plan.error)?.error;
         if (planningFailure) {
             for (const sourceTableId of group) failures[sourceTableId] = planningFailure;
+            failureGroups.push(group);
             continue;
         }
 
@@ -385,6 +442,7 @@ export async function importTableStructures(
         } catch (err) {
             const message = `Grid table structure failed SQL validation: ${cloneErrorMessage(err)}`;
             for (const sourceTableId of group) failures[sourceTableId] = message;
+            failureGroups.push(group);
             continue;
         }
 
@@ -393,6 +451,7 @@ export async function importTableStructures(
         if (occupiedName !== undefined) {
             const message = `Destination SQL relation "${occupiedName}" became occupied before Grid table creation`;
             for (const sourceTableId of group) failures[sourceTableId] = message;
+            failureGroups.push(group);
             continue;
         }
 
@@ -416,9 +475,51 @@ export async function importTableStructures(
                 delete tableIdMap[sourceTableId];
                 failures[sourceTableId] = `Grid table creation failed: ${cloneErrorMessage(err)}`;
             }
+            failureGroups.push(group);
         }
     }
 
     const failedSourceTableIds = Object.keys(failures).sort();
-    return { tableIdMap, failures, failedSourceTableIds, skippedSourceTableIds };
+    const outcomes: TableCloneOutcome[] = [];
+    for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
+        const snapshot = snapshots[sourceTableId];
+        const destinationSqlName = plans.get(sourceTableId)?.destinationSqlName ?? snapshot.sqlName;
+        outcomes.push({
+            type: "cloned",
+            sourceTableId,
+            destinationTableId,
+            tableName: snapshot.name,
+            sqlName: destinationSqlName,
+            selected: requestedSourceTableIds?.has(sourceTableId) ?? true,
+        });
+        if (requestedSourceTableIds && !requestedSourceTableIds.has(sourceTableId)) {
+            outcomes.push({ type: "dependency-added", sourceTableId, tableName: snapshot.name });
+        }
+        if (destinationSqlName !== snapshot.sqlName) {
+            outcomes.push({
+                type: "renamed",
+                sourceTableId,
+                tableName: snapshot.name,
+                from: snapshot.sqlName,
+                to: destinationSqlName,
+            });
+        }
+        for (const relation of plans.get(sourceTableId)?.reservedRelations ?? []) {
+            outcomes.push({ type: "rebound", sourceTableId, tableName: snapshot.name, relation });
+        }
+    }
+    for (const sourceTableId of skippedSourceTableIds) {
+        const snapshot = snapshots[sourceTableId];
+        if (snapshot) outcomes.push({ type: "reuse-offered", sourceTableId, tableName: snapshot.name });
+    }
+    for (const sourceTableIds of failureGroups) {
+        const reason = failures[sourceTableIds[0]];
+        outcomes.push({
+            type: "failed-group",
+            sourceTableIds,
+            tableNames: sourceTableIds.map(sourceTableId => snapshots[sourceTableId]?.name ?? sourceTableId),
+            reason,
+        });
+    }
+    return { tableIdMap, failures, failedSourceTableIds, skippedSourceTableIds, outcomes };
 }
