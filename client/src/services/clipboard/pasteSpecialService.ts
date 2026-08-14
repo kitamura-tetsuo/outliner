@@ -98,7 +98,7 @@ export async function executePasteSpecialVariant(
             operation: structured.operation,
             isDestinationCurrent: () => generalStore.project?.ydoc === destinationDoc,
             noData: variant === "independent-copy-no-data",
-        } as any);
+        } as Parameters<typeof cloneGridTablesAcrossProjects>[0]);
 
         if (cloneResult === undefined) return undefined;
 

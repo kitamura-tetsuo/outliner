@@ -2415,15 +2415,14 @@ export class KeyEventHandler {
     static async handlePasteSpecialShortcut(): Promise<void> {
         if (typeof window === "undefined") return;
 
-        let text = "";
+        let text: string;
+
         let encodedItems = "";
-        let encodedHtmlItems = "";
+        const encodedHtmlItems = "";
 
         if ((window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText) {
             text = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedText as string;
-            encodedItems =
-                (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems as string
-                || "";
+            encodedItems = (window as Window & typeof globalThis & { [key: string]: unknown; }).lastCopiedStructuredItems as string || "";
         } else if (navigator.clipboard && navigator.clipboard.readText) {
             try {
                 text = await navigator.clipboard.readText();
@@ -2451,7 +2450,7 @@ export class KeyEventHandler {
             new CustomEvent("paste-special-menu", {
                 detail: {
                     text,
-                    structuredItems,
+                    structuredItems
                 },
             }),
         );
