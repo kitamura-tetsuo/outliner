@@ -70,9 +70,12 @@ test("checks an unchecked parent when its last unchecked child is deleted", asyn
 
     // Clear "[ ] Child B" and delete the now-empty item by merging it into Child A.
     await page.keyboard.press("End");
-    for (let i = 0; i < "[ ] Child B".length + 1; i++) {
-        await page.keyboard.press("Backspace");
-    }
+    await page.waitForTimeout(200);
+    await page.keyboard.press("Shift+Home");
+    await page.waitForTimeout(200);
+    await page.keyboard.press("Backspace"); // Deletes text
+    await page.waitForTimeout(200);
+    await page.keyboard.press("Backspace"); // Merges with previous item
     await page.waitForTimeout(500);
 
     // Only "[x] Child A" is left, so the parent must become checked.
