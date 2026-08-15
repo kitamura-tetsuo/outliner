@@ -209,13 +209,21 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     // clipboard depth negative, which the strict serializer correctly rejects.
     // Use the shallowest selected item so every depth remains portable while
     // preserving the hierarchy within the copied range.
-    const baseDepth = entries.reduce(
+    //
+    // The page title is excluded from that measurement: Ctrl/Cmd+A selects it
+    // along with the outline, and it sits one level above every item, so taking
+    // it as the baseline would nest the whole page under its own heading when
+    // pasted. Its own depth clamps to the baseline instead.
+    const pageItemId = generalStore.currentPage?.id;
+    const outlineEntries = entries.filter(entry => entry.item.id !== pageItemId);
+    const measured = outlineEntries.length > 0 ? outlineEntries : entries;
+    const baseDepth = measured.reduce(
         (shallowestDepth, entry) => Math.min(shallowestDepth, entry.depth),
-        entries[0].depth,
+        measured[0].depth,
     );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
-        entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
+        entries.map(entry => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
