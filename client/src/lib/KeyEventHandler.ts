@@ -2978,6 +2978,14 @@ export class KeyEventHandler {
                 }
             }
 
+            // The outward text flavor renders a Grid as its rows (spec §7), so
+            // it holds one line per row where the payload holds one host item.
+            // An in-app paste has to follow the payload, or the copied items
+            // and the pasted lines drift apart and the component bindings land
+            // on the wrong items. `values-only` deliberately wants the rendered
+            // text and leaves `structuredItems` unset, so it keeps this text.
+            if (structuredItems && structured) text = clipboardPlainText(structured);
+
             // Treat as multi-item paste if normal multi-line text or portable structured items.
             if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
