@@ -1149,9 +1149,19 @@
         ];
         let previous = base;
         let lastItemId = base.id;
+        // How the run's own depths map onto those levels. A step is read
+        // against the line before it rather than against the first line, which
+        // may be the deepest of the run: a selection that starts inside a
+        // subtree and continues past its parent carries depths like [1, 0, 1],
+        // where the last line is a child of the middle one. Measuring from the
+        // first line would flatten all three.
+        let previousDepth = depths[0] ?? 0;
+        let previousLevel = 0;
 
         for (let index = 1; index < texts.length; index++) {
-            let depth = Math.max(0, (depths[index] ?? 0) - (depths[0] ?? 0));
+            const rawDepth = depths[index] ?? 0;
+            let depth = Math.max(0, Math.min(previousLevel + rawDepth - previousDepth, previousLevel + 1));
+            previousDepth = rawDepth;
             if (depth >= levels.length) {
                 const children = previous.items as Items;
                 levels.push(children);
@@ -1161,6 +1171,7 @@
                 levels.length = depth + 1;
                 nextIndex.length = depth + 1;
             }
+            previousLevel = depth;
 
             const siblings = levels[depth];
             const insertAt = nextIndex[depth]++;

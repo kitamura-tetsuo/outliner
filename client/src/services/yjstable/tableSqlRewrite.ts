@@ -79,6 +79,21 @@ const QUERY_HEAD_KEYWORDS = new Set(["select", "with", "values", "insert", "upda
  */
 const NON_STATEMENT_UPDATE_PREDECESSORS = new Set(["for", "no", "key", "do"]);
 
+/** Words that can follow an INSERT/UPDATE/DELETE target instead of an alias. */
+const DML_TARGET_FOLLOW_KEYWORDS = new Set([
+    "set",
+    "values",
+    "select",
+    "default",
+    "overriding",
+    "on",
+    "where",
+    "returning",
+    "from",
+    "using",
+    "with",
+]);
+
 const FROM_TERMINATORS = new Set([
     "where",
     "group",
@@ -236,6 +251,27 @@ function replacementIdentifier(token: Token, destination: string): string {
 
 function replacementString(destination: string): string {
     return `'${destination.replaceAll("'", "''")}'`;
+}
+
+/**
+ * The alias of an INSERT/UPDATE/DELETE target, or `undefined` when it has
+ * none. A DML target is not followed by the same words a FROM relation is —
+ * `SET`, `VALUES` and a bare column list all mean "no alias" — so it needs its
+ * own reading. Postgres replaces the relation name with the alias when one is
+ * given, which is why the two cases are handled differently by the caller.
+ */
+function dmlTargetAlias(tokens: Token[], relationIndex: number): string | undefined {
+    let cursor = nextSignificant(tokens, relationIndex);
+    if (cursor === undefined) return undefined;
+    if (word(tokens[cursor], "as")) {
+        cursor = nextSignificant(tokens, cursor) ?? -1;
+        if (cursor < 0) return undefined;
+        return identifierValue(tokens[cursor]);
+    }
+    const alias = identifierValue(tokens[cursor]);
+    if (alias === undefined) return undefined;
+    if (tokens[cursor].kind === "word" && DML_TARGET_FOLLOW_KEYWORDS.has(alias)) return undefined;
+    return alias;
 }
 
 function relationAlias(tokens: Token[], relationIndex: number): string | undefined {
@@ -511,11 +547,21 @@ export function rewriteTableQuerySql(
             const destination = mapping.get(relation);
             if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
                 token.text = replacementIdentifier(token, destination);
+                // A renamed target is still spelled out in full by anything
+                // that qualifies a column with it — `ON CONFLICT … DO UPDATE
+                // SET v = tasks.v` is the common one — and leaving those behind
+                // produces SQL that passes validation and then fails on a
+                // missing relation. An aliased target needs no such rewrite:
+                // Postgres makes the alias the only usable qualifier.
+                if (dmlTargetAlias(tokens, i) === undefined && destination !== relation) {
+                    qualifierScopes.push({
+                        name: relation,
+                        destination,
+                        start: (enclosingOpen[i] ?? -1) + 1,
+                        end: enclosingClose[i] ?? tokens.length,
+                    });
+                }
             }
-            // No qualifier scope is registered: a DML target may be followed by
-            // a column list rather than an alias, so the alias scan cannot run
-            // here. References that spell the target out in full keep the
-            // source name and have to be fixed by hand.
             continue;
         }
         if (token.kind === "symbol" && token.value === "," && fromActive.get(depth)) {

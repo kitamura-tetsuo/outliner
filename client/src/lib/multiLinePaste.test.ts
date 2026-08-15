@@ -37,6 +37,16 @@ describe("derivePasteLineLayout", () => {
     it("leaves unindented lines flat", () => {
         expect(derivePasteLineLayout(["one", "two", "three"]).depths).toEqual([0, 0, 0]);
     });
+
+    it("keeps leading whitespace that does not add up to a level", () => {
+        // One space is not half an indent, it is part of the line.
+        expect(derivePasteLineLayout([" value"])).toEqual({ texts: [" value"], depths: [0] });
+        // Three spaces spend two on one level and leave the third alone.
+        expect(derivePasteLineLayout(["parent", "   value"])).toEqual({
+            texts: ["parent", " value"],
+            depths: [0, 1],
+        });
+    });
 });
 
 describe("spliceMultiLinePaste", () => {

@@ -195,3 +195,29 @@ SELECT id, task_key, title, cadence, done FROM inserted`;
         ).toBe("INSERT INTO tasks_2 (id) VALUES ('1') ON CONFLICT (id) DO UPDATE SET id = '1'");
     });
 });
+
+describe("rewriteTableQuerySql on qualified DML targets", () => {
+    it("rewrites a column qualified by a renamed INSERT target", () => {
+        const result = rewriteTableQuerySql(
+            "INSERT INTO tasks (id, value) VALUES ('1', 2) "
+                + "ON CONFLICT (id) DO UPDATE SET value = tasks.value RETURNING *",
+            { tasks: "tasks_2" },
+        );
+        expect(result.sql).toBe(
+            "INSERT INTO tasks_2 (id, value) VALUES ('1', 2) "
+                + "ON CONFLICT (id) DO UPDATE SET value = tasks_2.value RETURNING *",
+        );
+    });
+
+    it("rewrites a column qualified by a renamed UPDATE target", () => {
+        expect(
+            rewriteTableQuerySql("UPDATE tasks SET value = tasks.value + 1", { tasks: "tasks_2" }).sql,
+        ).toBe("UPDATE tasks_2 SET value = tasks_2.value + 1");
+    });
+
+    it("leaves an aliased target's qualifier alone, since the alias replaces the name", () => {
+        expect(
+            rewriteTableQuerySql("UPDATE tasks AS t SET value = t.value + 1", { tasks: "tasks_2" }).sql,
+        ).toBe("UPDATE tasks_2 AS t SET value = t.value + 1");
+    });
+});

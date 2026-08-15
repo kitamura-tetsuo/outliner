@@ -8,14 +8,30 @@ export interface PasteLineLayout {
     depths: number[];
 }
 
-function indentLevel(line: string): number {
+/**
+ * The nesting level a line's indentation encodes, and how much of that
+ * indentation was spent saying so. Whitespace past the last whole level is not
+ * structure — a single leading space is part of the text, not half an indent —
+ * so it stays on the line.
+ */
+function readIndent(line: string): { level: number; consumed: number; } {
     let width = 0;
-    for (const character of line) {
+    let index = 0;
+    let consumed = 0;
+    let level = 0;
+    for (; index < line.length; index++) {
+        const character = line[index];
         if (character === " ") width += 1;
         else if (character === "\t") width += SPACES_PER_LEVEL;
         else break;
+        // Record the position at which each whole level completes, so partial
+        // indentation past it is left alone.
+        if (width % SPACES_PER_LEVEL === 0) {
+            level = width / SPACES_PER_LEVEL;
+            consumed = index + 1;
+        }
     }
-    return Math.floor(width / SPACES_PER_LEVEL);
+    return { level, consumed };
 }
 
 /**
@@ -30,8 +46,9 @@ function indentLevel(line: string): number {
  * than snapping back to the top level.
  */
 export function derivePasteLineLayout(lines: readonly string[]): PasteLineLayout {
-    const texts = lines.map(line => line.replace(/^[ \t]+/, ""));
-    const rawDepths = lines.map((line, index) => texts[index] === "" ? undefined : indentLevel(line));
+    const indents = lines.map(readIndent);
+    const texts = lines.map((line, index) => line.slice(indents[index].consumed));
+    const rawDepths = lines.map((_line, index) => texts[index].trim() === "" ? undefined : indents[index].level);
     const measured = rawDepths.filter((depth): depth is number => depth !== undefined);
     const shallowest = measured.length > 0 ? Math.min(...measured) : 0;
 
