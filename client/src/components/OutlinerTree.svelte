@@ -20,7 +20,7 @@
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
-    import { spliceMultiLinePaste } from "../lib/multiLinePaste";
+    import { derivePasteLineLayout, type PasteLineLayout, spliceMultiLinePaste } from "../lib/multiLinePaste";
     import type { ClipboardItem } from "../services/clipboard/itemClipboard";
     import {
         GRID_PASTE_CANCEL_EVENT,
@@ -1108,6 +1108,73 @@
         return items.addNode(currentUser);
     }
 
+    /**
+     * The shape of a pasted run. An in-app copy carries the real depth of every
+     * item, so it is authoritative; anything else only has its indentation to
+     * go on.
+     */
+    function pasteLayout(lines: string[], structuredItems?: ClipboardItem[]): PasteLineLayout {
+        if (structuredItems && structuredItems.length === lines.length) {
+            return { texts: lines, depths: structuredItems.map((item) => item.depth) };
+        }
+        return derivePasteLineLayout(lines);
+    }
+
+    /**
+     * Create the items of a pasted run below `base`, reproducing the copied
+     * hierarchy. `texts[0]` belongs to `base` and is written by the caller;
+     * every following line is placed relative to it, one level deeper meaning
+     * "child of the last item at the level above".
+     *
+     * Returns the id of the last item the run produced.
+     */
+    function insertPastedRun(
+        base: Item,
+        texts: string[],
+        depths: number[],
+        structuredItems?: ClipboardItem[],
+    ): string {
+        // The page title stands outside the outline, so a run anchored on it
+        // starts at the top of the page instead of after a sibling.
+        const isPageTitle = base.id === pageItem.id;
+        const rootLevel = isPageTitle
+            ? pageItem.items as Items
+            : base.parent ?? (pageItem.items as Items);
+        const baseIndex = isPageTitle ? -1 : rootLevel.indexOf(base);
+        // Each level remembers where its next sibling goes: the run continues
+        // after `base` at its own level and appends within levels it creates.
+        const levels: Items[] = [rootLevel];
+        const nextIndex: number[] = [
+            isPageTitle ? 0 : baseIndex >= 0 ? baseIndex + 1 : rootLevel.length,
+        ];
+        let previous = base;
+        let lastItemId = base.id;
+
+        for (let index = 1; index < texts.length; index++) {
+            let depth = Math.max(0, (depths[index] ?? 0) - (depths[0] ?? 0));
+            if (depth >= levels.length) {
+                const children = previous.items as Items;
+                levels.push(children);
+                nextIndex.push(children.length);
+                depth = levels.length - 1;
+            } else {
+                levels.length = depth + 1;
+                nextIndex.length = depth + 1;
+            }
+
+            const siblings = levels[depth];
+            const insertAt = nextIndex[depth]++;
+            let newItem = siblings.addNode(currentUser, insertAt);
+            if (!newItem) newItem = siblings.at(insertAt) as Item;
+            if (!newItem) continue;
+            newItem.updateText(texts[index]);
+            applyClipboardMetadata(newItem, structuredItems?.[index]);
+            previous = newItem;
+            lastItemId = newItem.id;
+        }
+        return lastItemId;
+    }
+
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
@@ -1191,32 +1258,19 @@
 
         const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
         const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
-        const splice = spliceMultiLinePaste(text, offset, lines);
-        const isPageTitle = baseOriginal.id === pageItem.id;
-        const siblings = isPageTitle
-            ? pageItem.items as Items
-            : baseOriginal.parent ?? (pageItem.items as Items);
-        const foundIndex = isPageTitle ? -1 : siblings.indexOf(baseOriginal);
-        // An anchor whose parent no longer lists it cannot position the new
-        // items relative to itself; append them to the end of its level.
-        const baseIndex = isPageTitle || foundIndex >= 0 ? foundIndex : siblings.length - 1;
+        const layout = pasteLayout(lines, structuredItems);
+        const splice = spliceMultiLinePaste(text, offset, layout.texts);
 
         let lastItemId = firstItemId;
         const run = () => {
             baseOriginal.updateText(splice.firstText);
             applyStructuredItem(baseOriginal, 0);
-            splice.siblingTexts.forEach((siblingText, index) => {
-                const newIndex = baseIndex + index + 1;
-                let newItem = siblings.addNode(currentUser, newIndex);
-                if (!newItem) {
-                    newItem = siblings.at(newIndex) as import("../schema/app-schema").Item;
-                }
-                if (newItem) {
-                    newItem.updateText(siblingText);
-                    applyStructuredItem(newItem, index + 1);
-                    lastItemId = newItem.id;
-                }
-            });
+            lastItemId = insertPastedRun(
+                baseOriginal,
+                [splice.firstText, ...splice.siblingTexts],
+                layout.depths,
+                structuredItems,
+            );
         };
         const doc = baseOriginal.ydoc;
         if (doc) {
@@ -1278,13 +1332,15 @@
         }
 
         const items = pageItem.items as Items;
+        const layout = pasteLayout(lines, structuredItems);
+        let startItem: Item | undefined;
 
         // Delete items in selection (delete backwards)
         for (let i = actualEndIndex; i >= actualStartIndex; i--) {
             if (i === actualStartIndex) {
                 // Do not delete start item, update text instead
-                const startItem = displayItems[i].model.original;
-                startItem.updateText(lines[0] || "");
+                startItem = displayItems[i].model.original;
+                startItem.updateText(layout.texts[0] || "");
                 applyClipboardMetadata(startItem, structuredItems?.[0]);
 
                 if (
@@ -1292,7 +1348,7 @@
                     window.DEBUG_MODE
                 ) {
                     logger.debug(
-                        `Updated first item text to: "${lines[0] || ""}"`,
+                        `Updated first item text to: "${layout.texts[0] || ""}"`,
                     );
                 }
             } else {
@@ -1307,23 +1363,9 @@
             }
         }
 
-        // Add remaining lines as new items
-        for (let i = 1; i < lines.length; i++) {
-            const newIndex = actualStartIndex + i;
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(
-                    `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
-                );
-            }
-            let newItem = items.addNode(currentUser, newIndex);
-            if (!newItem) {
-
-                newItem = items.at(newIndex) as import("../schema/app-schema").Item;
-            }
-            if (newItem) {
-                newItem.updateText(lines[i]);
-                applyClipboardMetadata(newItem, structuredItems?.[i]);
-            }
+        // Add remaining lines as new items, reproducing the copied hierarchy
+        if (startItem) {
+            insertPastedRun(startItem, layout.texts, layout.depths, structuredItems);
         }
 
         // Update cursor position
@@ -1382,9 +1424,9 @@
             return;
         }
 
-        const items = pageItem.items as Items;
         const item = displayItems[itemIndex].model.original;
         const text: string = (item.text as { toString?: () => string })?.toString?.() ?? "";
+        const layout = pasteLayout(lines, structuredItems);
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Original text: "${text}"`);
@@ -1397,7 +1439,7 @@
             // For single line paste, replace selection
             const newText =
                 text.substring(0, startOffset) +
-                lines[0] +
+                layout.texts[0] +
                 text.substring(endOffset);
             item.updateText(newText);
             applyClipboardMetadata(item, structuredItems?.[0]);
@@ -1409,7 +1451,7 @@
             // Update cursor position
             editorOverlayStore.setCursor({
                 itemId,
-                offset: startOffset + lines[0].length,
+                offset: startOffset + layout.texts[0].length,
                 isActive: true,
                 userId: "local",
             });
@@ -1419,7 +1461,7 @@
         } else {
             // For multi-line paste
             // First line replaces selection in current item
-            const newFirstText = text.substring(0, startOffset) + lines[0];
+            const newFirstText = text.substring(0, startOffset) + layout.texts[0];
             item.updateText(newFirstText);
             applyClipboardMetadata(item, structuredItems?.[0]);
 
@@ -1427,57 +1469,20 @@
                 logger.debug(`Updated first item text to: "${newFirstText}"`);
             }
 
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                const newIndex = itemIndex + i;
+            // Add remaining lines as new items, reproducing the copied
+            // hierarchy. The text the selection left behind rides on the last
+            // line, so the item keeps everything that followed the caret.
+            const runTexts = [...layout.texts];
+            runTexts[0] = newFirstText;
+            runTexts[runTexts.length - 1] += text.substring(endOffset);
+            // The run reports where it ended: a nested paste does not land at a
+            // predictable index of the flattened display list.
+            const lastItemId = insertPastedRun(item, runTexts, layout.depths, structuredItems);
 
-                if (
-                    typeof window !== "undefined" &&
-                    window.DEBUG_MODE
-                ) {
-                    logger.debug(`Adding new item at index ${newIndex}`);
-                }
-
-                let newItem = items.addNode(currentUser, newIndex);
-                if (!newItem) {
-
-                    newItem = items.at(newIndex) as import("../schema/app-schema").Item;
-                }
-                if (newItem) {
-                    applyClipboardMetadata(newItem, structuredItems?.[i]);
-                    if (i === lines.length - 1) {
-                        // For last line, add text following selection
-                        const lastItemText =
-                            lines[i] + text.substring(endOffset);
-                        newItem.updateText(lastItemText);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            window.DEBUG_MODE
-                        ) {
-                            logger.debug(
-                                `Last item text set to: "${lastItemText}"`,
-                            );
-                        }
-                    } else {
-                        newItem.updateText(lines[i]);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            window.DEBUG_MODE
-                        ) {
-                            logger.debug(`Item ${i} text set to: "${lines[i]}"`);
-                        }
-                    }
-                }
-            }
-
-            // Update cursor position (end of last item)
-            const lastItemIndex = itemIndex + lines.length - 1;
-            const lastItemId = displayItems[lastItemIndex]?.model.id;
+            // Update cursor position (end of last pasted line, before the text
+            // the selection left behind)
             if (lastItemId) {
-                const lastLine = lines[lines.length - 1];
-                const newOffset = lastLine.length;
+                const newOffset = layout.texts[layout.texts.length - 1].length;
 
                 if (
                     typeof window !== "undefined" &&
@@ -1500,15 +1505,6 @@
 
                 // Clear selection
                 editorOverlayStore.clearSelections();
-            } else {
-                if (
-                    typeof window !== "undefined" &&
-                    window.DEBUG_MODE
-                ) {
-                    logger.debug(
-                        `Could not find last item at index ${lastItemIndex}`,
-                    );
-                }
             }
         }
     }
