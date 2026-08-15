@@ -2849,8 +2849,11 @@ export class KeyEventHandler {
             }
 
             let structuredItems = specialVariant === "values-only" ? undefined : sameProjectItems;
+            // Tables this paste created, and tables an earlier paste already
+            // created here that this one binds to instead. Only the former may
+            // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
-            let pastedSkippedTableIds: string[] = [];
+            let reusedTableIdMap: Record<string, string> = {};
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2897,7 +2900,7 @@ export class KeyEventHandler {
                         });
                         if (cloneResult === undefined) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
-                        pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+                        reusedTableIdMap = cloneResult.reusedTableIdMap;
                     } else {
                         pastedTableIdMap = {};
                     }
@@ -2936,11 +2939,13 @@ export class KeyEventHandler {
                         }
                     }
 
-                    // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
-                    // (because ALL items were skipped due to provenance!).
-                    // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
+                    // The mapping still runs when `pastedTableIdMap` is empty:
+                    // every table may have been reused from an earlier paste,
+                    // and those hosts must still bind to something.
                     if (pastedTableIdMap || Object.keys(pastedCalendarIdMap).length > 0) {
-                        const tableIdMap = pastedTableIdMap || {};
+                        // A reused table is as good a binding target as a fresh
+                        // clone; only the undo entry distinguishes them.
+                        const tableIdMap = { ...reusedTableIdMap, ...pastedTableIdMap };
                         const calendarIdMap = pastedCalendarIdMap;
                         let anyKept = false;
                         const mappedItems = structured.items.map(item => {
@@ -2949,10 +2954,6 @@ export class KeyEventHandler {
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
                                 if (destinationTableId === undefined) {
-                                    if (item.yjsTableId && pastedSkippedTableIds.includes(item.yjsTableId)) {
-                                        anyKept = true;
-                                        return { ...item, yjsTableId: undefined };
-                                    }
                                     return { text: item.text, depth: item.depth };
                                 }
                                 anyKept = true;

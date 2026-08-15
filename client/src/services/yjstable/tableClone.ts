@@ -43,6 +43,13 @@ export function copyTableData(source: TableHandles, destination: TableHandles): 
 export interface TableCloneResult {
     /** Source table id to fresh destination table id for successful clones. */
     tableIdMap: Record<string, string>;
+    /**
+     * Source table id to the destination table an earlier paste already made
+     * from it. These tables are not created again; the pasted host binds to the
+     * existing one so the page renders the same Grid instead of an empty
+     * create panel.
+     */
+    reusedTableIdMap: Record<string, string>;
     /** Source table id to a safe, user-presentable failure reason. */
     failures: Record<string, string>;
     failedSourceTableIds: string[];
@@ -64,7 +71,7 @@ export type TableCloneOutcome =
     | { type: "renamed"; sourceTableId: string; tableName: string; from: string; to: string; }
     | { type: "rebound"; sourceTableId: string; tableName: string; relation: string; }
     | { type: "failed-group"; sourceTableIds: string[]; tableNames: string[]; reason: string; }
-    | { type: "reuse-offered"; sourceTableId: string; tableName: string; };
+    | { type: "reused"; sourceTableId: string; destinationTableId: string; tableName: string; };
 
 interface PlannedTable {
     snapshot: GridTableSnapshot;
@@ -354,14 +361,19 @@ export async function importTableStructures(
         }
     }
 
+    const reusedTableIdMap: Record<string, string> = {};
     if (sourceProjectId && allowProvenanceReuse) {
         for (const [sourceTableId, _snapshot] of [...basic.entries()]) {
             const key = `${sourceProjectId}:${sourceTableId}`;
-            if (existingTableMap.has(key)) {
-                // Table already exists with matching provenance.
-                // We skip cloning it to let the block component fall back to its "Existing Table" UI.
+            const existingTableId = existingTableMap.get(key);
+            if (existingTableId !== undefined) {
+                // An earlier paste already made this table here. Creating a
+                // second one would silently fork the data, so the paste binds
+                // to the existing table instead; Paste Special's independent
+                // copy is how a user asks for a real duplicate.
                 basic.delete(sourceTableId);
                 skippedSourceTableIds.push(sourceTableId);
+                reusedTableIdMap[sourceTableId] = existingTableId;
             }
         }
     }
@@ -511,7 +523,10 @@ export async function importTableStructures(
     }
     for (const sourceTableId of skippedSourceTableIds) {
         const snapshot = snapshots[sourceTableId];
-        if (snapshot) outcomes.push({ type: "reuse-offered", sourceTableId, tableName: snapshot.name });
+        const destinationTableId = reusedTableIdMap[sourceTableId];
+        if (snapshot && destinationTableId !== undefined) {
+            outcomes.push({ type: "reused", sourceTableId, destinationTableId, tableName: snapshot.name });
+        }
     }
     for (const sourceTableIds of failureGroups) {
         const reason = failures[sourceTableIds[0]];
@@ -522,5 +537,5 @@ export async function importTableStructures(
             reason,
         });
     }
-    return { tableIdMap, failures, failedSourceTableIds, skippedSourceTableIds, outcomes };
+    return { tableIdMap, reusedTableIdMap, failures, failedSourceTableIds, skippedSourceTableIds, outcomes };
 }

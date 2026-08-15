@@ -178,6 +178,12 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
                 ruleName: "Daily routines",
             },
             { type: "cut-source-retained", tableNames: ["Q3 report"] },
+            {
+                type: "reused",
+                sourceTableId: "contacts",
+                destinationTableId: "existing-contacts",
+                tableName: "Contacts",
+            },
         ])).toEqual([
             "Q3 report pasted as an independent copy, with 1,240 rows.",
             "Also copied 1 table its query depends on: sales.",
@@ -186,6 +192,8 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
             "Open tasks now reads this project's outline_items.",
             "routine_occurrences has schedule rule Daily routines that was not copied — recreate it here if the rows should keep generating.",
             "Cut left the source table in place: Q3 report.",
+            "Contacts is already in this project — this copy shows the same table. "
+            + "Use Paste Special to paste an independent copy instead.",
         ]);
     });
 });

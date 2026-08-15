@@ -111,10 +111,10 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
                     }.`,
                 );
                 break;
-            case "reuse-offered":
+            case "reused":
                 lines.push(
-                    `You already pasted ${outcome.tableName} into this project — paste again to make a second copy, `
-                        + "or reuse the existing one.",
+                    `${outcome.tableName} is already in this project — this copy shows the same table. `
+                        + "Use Paste Special to paste an independent copy instead.",
                 );
                 break;
         }
@@ -141,7 +141,10 @@ export async function cloneGridTablesAcrossProjects(
     options: CrossProjectGridPasteOptions,
 ): Promise<
     {
+        /** Tables this paste created. Only these may be rolled back or undone. */
         tableIdMap: Record<string, string>;
+        /** Tables an earlier paste already created here, reused by this one. */
+        reusedTableIdMap: Record<string, string>;
         skippedSourceTableIds: string[];
         outcomes: GridPasteOutcome[];
     } | undefined
@@ -186,6 +189,7 @@ export async function cloneGridTablesAcrossProjects(
             allowProvenanceReuse,
         );
         tableIdMap = cloneResult.tableIdMap;
+        const reusedTableIdMap = cloneResult.reusedTableIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
             rollback();
@@ -241,7 +245,7 @@ export async function cloneGridTablesAcrossProjects(
                 ? { state: "complete-with-data", report }
                 : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
         );
-        return { tableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [], outcomes };
+        return { tableIdMap, reusedTableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [], outcomes };
     } finally {
         if (typeof window !== "undefined") {
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
