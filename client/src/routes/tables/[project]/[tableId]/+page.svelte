@@ -311,7 +311,7 @@
                     <div class="mb-4">
                         <h3 class="font-semibold text-gray-900 mb-1">Grid references ({dependencies.directGridReferences.length})</h3>
                         <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
-                            {#each dependencies.directGridReferences as ref}
+                            {#each dependencies.directGridReferences as ref (ref.itemKey)}
                                 <li>Page "{ref.pageTitle}"
                                     {#if ref.itemText} - "{ref.itemText.substring(0, 30)}{ref.itemText.length > 30 ? '...' : ''}"{/if}
                                 </li>
@@ -324,7 +324,7 @@
                     <div class="mb-4">
                         <h3 class="font-semibold text-gray-900 mb-1">Schedule targets ({dependencies.scheduledTargets.length})</h3>
                         <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
-                            {#each dependencies.scheduledTargets as ref}
+                            {#each dependencies.scheduledTargets as ref (ref.ruleId)}
                                 <li>Schedule "{ref.ruleName}"</li>
                             {/each}
                         </ul>
@@ -336,7 +336,7 @@
                         <h3 class="font-semibold text-yellow-800 mb-1">Indirect SQL dependencies ({dependencies.indirectSqlReferences.length})</h3>
                         <p class="text-xs text-yellow-700 mb-2">These queries explicitly reference the SQL name <code>{tableSqlName}</code> and may fail after deletion.</p>
                         <ul class="list-disc pl-5 text-sm text-yellow-700 max-h-32 overflow-y-auto">
-                            {#each dependencies.indirectSqlReferences as ref}
+                            {#each dependencies.indirectSqlReferences as ref (ref.name)}
                                 <li>{ref.type}: "{ref.name}"</li>
                             {/each}
                         </ul>
