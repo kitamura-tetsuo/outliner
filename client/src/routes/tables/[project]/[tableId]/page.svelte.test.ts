@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { canModifyTable } from "../../../../services/permissions";
 import * as Y from "yjs";
+import { canModifyTable } from "../../../../services/permissions";
 
 // Mocked Svelte store for `$app/stores`; the route reads `$page.params`.
 const mockPageStore = { params: { project: "demo", tableId: "demo-table-sales" } };
