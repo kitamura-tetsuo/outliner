@@ -33,30 +33,6 @@ function childrenKeys(tree: YTree, parentKey: string): string[] {
     }
 }
 
-function resolveOverlayStore(): typeof editorOverlayStore | undefined {
-    return (globalThis as typeof globalThis & {
-        editorOverlayStore?: typeof import("../../stores/EditorOverlayStore.svelte").editorOverlayStore;
-    }).editorOverlayStore ?? editorOverlayStore;
-}
-
-function resolvePresenceStore(): typeof presenceStore | undefined {
-    return presenceStore;
-}
-
-function resolveUserColor(userId: string, provided?: string): string {
-    if (provided) return provided;
-    const globalColorForUser = (globalThis as typeof globalThis & { colorForUser?: (id: string) => string; })
-        .colorForUser as ((id: string) => string) | undefined;
-    if (typeof globalColorForUser === "function") {
-        try {
-            return globalColorForUser(userId);
-        } catch (_e) {
-            logger.error(_e);
-        }
-    }
-    return colorForUser(userId);
-}
-
 function applyPresenceToOverlay(
     overlay: typeof editorOverlayStore | undefined,
     user: { userId: string; name?: string; color?: string; },
@@ -83,7 +59,7 @@ function applyPresenceToOverlay(
         return;
     }
 
-    const color = resolveUserColor(user.userId, user.color);
+    const color = user.color || colorForUser(user.userId);
     if (presence?.cursor) {
         overlay.setCursor({
             itemId: presence.cursor.itemId,
@@ -263,19 +239,18 @@ export const yjsService = {
 
         const clientUserMap = new Map<number, { userId: string; name?: string; color?: string; }>();
         const update = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[]; }) => {
-            // Prefer the globally-registered store when running in the browser.
-            const target = resolvePresenceStore();
+            const target = presenceStore;
             if (!target) return;
             const states = awareness.getStates();
             const clientId = (awareness as Awareness & { clientID: number; }).clientID;
-            const overlay = resolveOverlayStore();
+            const overlay = editorOverlayStore;
 
             [...added, ...updated].forEach((id: number) => {
                 const s = states.get(id);
                 const user = s?.user;
                 if (!user) return;
                 clientUserMap.set(id, user);
-                const color = resolveUserColor(user.userId, user.color);
+                const color = user.color || colorForUser(user.userId);
                 // Update synchronously because tests expect immediate reflection.
                 target.setUser({ userId: user.userId, userName: user.name, color });
 
@@ -312,7 +287,7 @@ export const yjsService = {
     },
 
     reapplyAllPresences(awareness: Awareness) {
-        const overlay = resolveOverlayStore();
+        const overlay = editorOverlayStore;
         if (!overlay) return;
         const states = awareness.getStates();
         const clientId = (awareness as Awareness & { clientID: number; }).clientID;
