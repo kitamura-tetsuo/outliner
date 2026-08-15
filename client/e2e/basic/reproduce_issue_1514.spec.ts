@@ -17,7 +17,7 @@ test.describe("Item Component Type Selector Test", () => {
         const item = page.locator(`.outliner-item[data-item-id="${firstItemId}"]`);
 
         // Right click the item to open context menu
-        await item.click({ button: "right" });
+        await item.locator(".item-content").click({ button: "right" });
 
         // The context menu should be visible
         const contextMenu = page.locator(".context-menu");
