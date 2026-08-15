@@ -203,7 +203,16 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         }
     }
 
-    const baseDepth = entries[0].depth;
+    // A selection may begin in a nested item and continue past its parent to a
+    // shallower sibling (for example, the Recurring Tasks explanation followed
+    // by its Grid). Normalizing against the first item would make that sibling's
+    // clipboard depth negative, which the strict serializer correctly rejects.
+    // Use the shallowest selected item so every depth remains portable while
+    // preserving the hierarchy within the copied range.
+    const baseDepth = entries.reduce(
+        (shallowestDepth, entry) => Math.min(shallowestDepth, entry.depth),
+        entries[0].depth,
+    );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
         entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
