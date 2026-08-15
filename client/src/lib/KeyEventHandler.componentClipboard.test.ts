@@ -197,6 +197,27 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         expect(data.get("text/plain")).toBe("text\nDatabase tables\nTrailing");
     });
 
+    it("copies from a nested item through a shallower Grid without producing a negative depth", () => {
+        state.visible = [
+            { model: { id: "a", original: makeItem("a", "Nested explanation") }, depth: 2 },
+            { model: { id: "b", original: makeItem("b", "Database tables", tableId) }, depth: 1 },
+        ];
+        state.selection = {
+            startItemId: "a",
+            startOffset: 0,
+            endItemId: "b",
+            endOffset: "Database tables".length,
+            userId: "local",
+        };
+        const { event, data } = copyEvent();
+
+        expect(() => KeyEventHandler.handleCopy(event)).not.toThrow();
+        expect(copiedItems(data)).toEqual([
+            { text: "Nested explanation", depth: 1 },
+            { text: "Database tables", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+        ]);
+    });
+
     it("names a text-less Grid host from the project's table registry", () => {
         state.visible[1] = { model: { id: "b", original: makeItem("b", "", tableId) }, depth: 0 };
         state.selection = { startItemId: "a", startOffset: 6, endItemId: "c", endOffset: 8, userId: "local" };
