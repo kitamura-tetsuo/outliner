@@ -144,3 +144,54 @@ WHERE EXISTS (SELECT 1 FROM orders nested WHERE nested.customer_id = c.id)`;
             .toThrow(/Multiple SQL statements/);
     });
 });
+
+describe("rewriteTableQuerySql on data-modifying statements", () => {
+    // Schedule rules are the only SQL that writes; a copied rule has to point
+    // at the destination's relations, target included.
+    const routineRuleSql = `WITH inserted AS (
+    INSERT INTO routine_occurrences (id, task_key, title, cadence, occurrence_date, done)
+    SELECT
+        t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
+        t.task_key,
+        t.title,
+        t.cadence,
+        (current_setting('job.occurrence')::timestamptz)::date,
+        false
+    FROM routine_templates t
+    WHERE t.cadence = 'daily'
+    ON CONFLICT (id) DO NOTHING
+    RETURNING *
+)
+SELECT id, task_key, title, cadence, done FROM inserted`;
+
+    it("rewrites the INSERT target and the relations a data-modifying CTE reads", () => {
+        const result = rewriteTableQuerySql(routineRuleSql, {
+            routine_occurrences: "routine_occurrences_2",
+            routine_templates: "routine_templates_2",
+        });
+
+        expect(result.sql).toContain("INSERT INTO routine_occurrences_2 (id, task_key");
+        expect(result.sql).toContain("FROM routine_templates_2 t");
+        // The CTE name is not a relation of the project and must survive.
+        expect(result.sql).toContain("FROM inserted");
+        expect(result.relationDependencies.sort()).toEqual(["routine_occurrences", "routine_templates"]);
+    });
+
+    it("rewrites an UPDATE and a DELETE target", () => {
+        expect(rewriteTableQuerySql("UPDATE tasks SET done = true WHERE id = '1'", { tasks: "tasks_2" }).sql)
+            .toBe("UPDATE tasks_2 SET done = true WHERE id = '1'");
+        expect(rewriteTableQuerySql("DELETE FROM tasks WHERE id = '1'", { tasks: "tasks_2" }).sql)
+            .toBe("DELETE FROM tasks_2 WHERE id = '1'");
+    });
+
+    it("leaves UPDATE alone where it is a locking clause or a conflict action", () => {
+        expect(rewriteTableQuerySql("SELECT * FROM tasks FOR UPDATE", { tasks: "tasks_2" }).sql)
+            .toBe("SELECT * FROM tasks_2 FOR UPDATE");
+        expect(
+            rewriteTableQuerySql(
+                "INSERT INTO tasks (id) VALUES ('1') ON CONFLICT (id) DO UPDATE SET id = '1'",
+                { tasks: "tasks_2" },
+            ).sql,
+        ).toBe("INSERT INTO tasks_2 (id) VALUES ('1') ON CONFLICT (id) DO UPDATE SET id = '1'");
+    });
+});

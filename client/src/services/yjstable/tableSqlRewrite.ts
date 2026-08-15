@@ -65,6 +65,20 @@ const RELATION_FOLLOW_KEYWORDS = new Set([
     "tablesample",
 ]);
 
+/**
+ * Words that open a query inside parentheses. A data-modifying CTE
+ * (`WITH x AS (INSERT … RETURNING *)`) is a query too: treating it as a scalar
+ * expression would hide its FROM clause from the relation scanner.
+ */
+const QUERY_HEAD_KEYWORDS = new Set(["select", "with", "values", "insert", "update", "delete"]);
+
+/**
+ * Words that make a following UPDATE a locking clause or a conflict action
+ * (`FOR UPDATE`, `FOR NO KEY UPDATE`, `DO UPDATE`) rather than the head of an
+ * UPDATE statement, so no relation name follows.
+ */
+const NON_STATEMENT_UPDATE_PREDECESSORS = new Set(["for", "no", "key", "do"]);
+
 const FROM_TERMINATORS = new Set([
     "where",
     "group",
@@ -410,6 +424,11 @@ export function rewriteTableQuerySql(
     const reservedDependencies = new Set<string>();
     const fromActive = new Map<number, boolean>();
     const expectRelation = new Map<number, boolean>();
+    // The relation an INSERT or UPDATE writes to. It is not a FROM/JOIN
+    // relation — it may be followed by a column list — so it is scanned
+    // separately. Schedule rules are the only queries that reach here with a
+    // DML statement in them (docs/schedule-sql-conventions.md).
+    const expectDmlTarget = new Map<number, boolean>();
     const expressionDepths = new Set<number>();
     const qualifierScopes: QualifierScope[] = [];
     let depth = 0;
@@ -425,8 +444,7 @@ export function rewriteTableQuerySql(
         if (token.kind === "symbol" && token.value === "(") {
             const firstInside = nextSignificant(tokens, i);
             const beginsQuery = firstInside !== undefined
-                && (word(tokens[firstInside], "select") || word(tokens[firstInside], "with")
-                    || word(tokens[firstInside], "values"));
+                && QUERY_HEAD_KEYWORDS.has(tokens[firstInside].kind === "word" ? tokens[firstInside].value ?? "" : "");
             if (expectRelation.get(depth)) {
                 if (!beginsQuery) fail("Parenthesized joined relation expressions are not supported");
                 expectRelation.set(depth, false);
@@ -438,6 +456,7 @@ export function rewriteTableQuerySql(
         if (token.kind === "symbol" && token.value === ")") {
             fromActive.delete(depth);
             expectRelation.delete(depth);
+            expectDmlTarget.delete(depth);
             expressionDepths.delete(depth);
             depth--;
             continue;
@@ -458,6 +477,45 @@ export function rewriteTableQuerySql(
         if (keyword === "join") {
             fromActive.set(depth, true);
             expectRelation.set(depth, true);
+            continue;
+        }
+        if (keyword === "into") {
+            expectDmlTarget.set(depth, true);
+            continue;
+        }
+        if (keyword === "update") {
+            const previous = previousSignificant(tokens, i);
+            const previousWord = previous === undefined ? undefined : tokens[previous].value;
+            if (
+                tokens[previous ?? -1]?.kind !== "word" || previousWord === undefined
+                || !NON_STATEMENT_UPDATE_PREDECESSORS.has(previousWord)
+            ) {
+                expectDmlTarget.set(depth, true);
+            }
+            continue;
+        }
+
+        if (expectDmlTarget.get(depth)) {
+            if (keyword === "only") continue;
+            expectDmlTarget.set(depth, false);
+            const relation = identifierValue(token);
+            if (relation === undefined) fail("Unsupported relation expression after INSERT INTO or UPDATE");
+            const next = nextSignificant(tokens, i);
+            if (next !== undefined && tokens[next].kind === "symbol" && tokens[next].value === ".") {
+                fail(`Schema-qualified relation "${relation}" is not supported`);
+            }
+            // A CTE cannot be written to, but `INSERT ... RETURNING` inside one
+            // makes the CTE's own name visible here; leave it alone.
+            if (isCteReference(relation, i, cteScopes)) continue;
+            recordDependency(relation);
+            const destination = mapping.get(relation);
+            if (destination !== undefined && !RESERVED_RELATION_NAMES.has(relation)) {
+                token.text = replacementIdentifier(token, destination);
+            }
+            // No qualifier scope is registered: a DML target may be followed by
+            // a column list rather than an alias, so the alias scan cannot run
+            // here. References that spell the target out in full keep the
+            // source name and have to be fixed by hand.
             continue;
         }
         if (token.kind === "symbol" && token.value === "," && fromActive.get(depth)) {

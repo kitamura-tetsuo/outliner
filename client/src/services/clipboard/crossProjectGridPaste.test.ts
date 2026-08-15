@@ -1,3 +1,4 @@
+import { Project } from "$shared/app-schema";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { resetPgliteForTests } from "../yjstable/pgliteService";
@@ -54,6 +55,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
 
         const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             requestedSourceTableIds: [ordersId],
@@ -75,6 +77,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
 
         const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             requestedSourceTableIds: [ordersId],
@@ -99,6 +102,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
 
         const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: doc,
+            destinationProject: Project.fromDoc(doc),
             sourceProjectId: doc.guid,
             snapshots: { [ordersId]: exportTableStructure(doc, ordersId) },
             requestedSourceTableIds: [ordersId],
@@ -117,6 +121,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
 
         const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: doc,
+            destinationProject: Project.fromDoc(doc),
             sourceProjectId: doc.guid,
             snapshots: { [ordersId]: exportTableStructure(doc, ordersId) },
             requestedSourceTableIds: [ordersId],
@@ -137,6 +142,7 @@ describe("cloneGridTablesAcrossProjects", { timeout: 30000 }, () => {
 
         const cloneResult = await cloneGridTablesAcrossProjects({
             destinationDoc: destination,
+            destinationProject: Project.fromDoc(destination),
             sourceProjectId: SOURCE_PROJECT_ID,
             snapshots: { [ordersId]: exportTableStructure(source, ordersId) },
             requestedSourceTableIds: [ordersId],

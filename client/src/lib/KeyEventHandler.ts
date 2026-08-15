@@ -2854,6 +2854,7 @@ export class KeyEventHandler {
             // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
             let reusedTableIdMap: Record<string, string> = {};
+            let pastedRuleIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2886,6 +2887,7 @@ export class KeyEventHandler {
                         );
                         const cloneResult = await cloneGridTablesAcrossProjects({
                             destinationDoc,
+                            destinationProject: generalStore.project!,
                             sourceProjectId: structured.sourceProjectId,
                             snapshots: referencedSnapshots,
                             requestedSourceTableIds: [...referencedTableIds],
@@ -2901,6 +2903,7 @@ export class KeyEventHandler {
                         if (cloneResult === undefined) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
+                        pastedRuleIds = cloneResult.createdRuleIds;
                     } else {
                         pastedTableIdMap = {};
                     }
@@ -3005,8 +3008,9 @@ export class KeyEventHandler {
                         }),
                     );
 
-                    // If a cross-project paste created tables, group the new tables and the item insertion
-                    // into a single undoable unit so undo removes everything and redo restores all of it.
+                    // If a cross-project paste created tables, group the new tables, the schedule rules
+                    // that came with them and the item insertion into a single undoable unit so undo
+                    // removes everything and redo restores all of it.
                     if (
                         pastedTableIdMap && Object.keys(pastedTableIdMap).length > 0 && destinationDoc
                         && generalStore.undoManager
@@ -3016,6 +3020,7 @@ export class KeyEventHandler {
                             generalStore.undoManager,
                             destinationDoc,
                             Object.values(pastedTableIdMap),
+                            pastedRuleIds,
                         );
                     }
                     if (
