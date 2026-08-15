@@ -35,7 +35,7 @@ test.describe("Standalone Table Page (#3867)", () => {
         await page.click('[data-testid="yjs-table-create"]');
 
         // Wait for table to render embedded
-        await page.waitForSelector(".yjs-table-grid", { timeout: 15000 }); // Optional wait if it fails due to being flaky
+        await expect(page.getByTestId("yjs-table-grid").first()).toBeVisible({ timeout: 15000 }); // Optional wait if it fails due to being flaky
 
         // 2. Open sidebar and find table entry
         // Open sidebar if it's not already open
@@ -60,7 +60,7 @@ test.describe("Standalone Table Page (#3867)", () => {
         await expect(page).toHaveURL(new RegExp(`/tables/.*/[a-f0-9-]{36}`));
 
         // Ensure table is rendered on standalone page
-        await page.waitForSelector(".yjs-table-grid", { timeout: 15000 });
+        await expect(page.getByTestId("yjs-table-grid").first()).toBeVisible({ timeout: 15000 });
 
         // Check breadcrumb
         await expect(page.locator("nav, .breadcrumb")).toContainText(tableName);

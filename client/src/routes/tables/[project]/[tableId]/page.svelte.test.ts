@@ -58,6 +58,8 @@ vi.mock("../../../../components/yjstable/YjsTableView.svelte", async () => {
     return { default: Stub };
 });
 
+
+
 import TableStandalonePage from "./+page.svelte";
 
 describe("standalone table route access gate", () => {

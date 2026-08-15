@@ -12,8 +12,7 @@
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
-    import { canModifyTable } from "../../../../services/permissions";
-    import { isPublicProject } from "../../../../lib/publicProject";
+        import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
 
@@ -45,7 +44,7 @@
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
-    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo && canModifyTable());
+    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
     let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function startDelete() {
