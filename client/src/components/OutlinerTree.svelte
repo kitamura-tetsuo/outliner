@@ -79,11 +79,12 @@
     }
 
     /**
-     * Discard local selections that point outside this page. Only the top-level
-     * tree may do this: an embedded tree renders a single subtree, so items of
-     * the surrounding page are unknown to it and must not count as stale.
+     * Discard local editor state that points outside this page: selections and
+     * the active item alike. Only the top-level tree may do this: an embedded
+     * tree renders a single subtree, so items of the surrounding page are
+     * unknown to it and must not count as stale.
      */
-    function dropStaleLocalSelections() {
+    function dropStaleLocalEditorState() {
         if (isEmbedded) return;
         const resolvable = resolvableItemIds();
         const hasStale = Object.values(editorOverlayStore.selections).some(
@@ -92,6 +93,14 @@
                 && (!resolvable.has(sel.startItemId) || !resolvable.has(sel.endItemId)),
         );
         if (hasStale) editorOverlayStore.clearSelectionForUser("local");
+
+        // The active item is the paste target. Left over from the previous
+        // page it resolves to nothing here, which used to drop the paste in
+        // silence; clearing it lets the paste fall back to this page's end.
+        const activeItemId = editorOverlayStore.getActiveItem();
+        if (activeItemId && !resolvable.has(activeItemId)) {
+            editorOverlayStore.setActiveItem(null);
+        }
     }
 
     onMount(() => {
@@ -123,7 +132,7 @@
                 // gives up - a paste is dropped whole (#4816 follow-up: a Grid
                 // copied from another project cloned its table but never
                 // reached the outline). Drop what this page cannot resolve.
-                dropStaleLocalSelections();
+                dropStaleLocalEditorState();
 
                 // Re-apply presences for this new page
                 const awareness = yjsStore.yjsClient?.getAwareness();
@@ -1077,6 +1086,28 @@
         }
     }
 
+    /**
+     * The item a caret paste writes into. Falls back to the end of this page
+     * when the active item belongs elsewhere (stale state left by the page the
+     * content was copied from) or when nothing is active at all — pasting right
+     * after opening a page used to be dropped in silence, taking a
+     * cross-project Grid clone with it and leaving its tables orphaned.
+     */
+    function resolvePasteAnchor(activeItemId: string | null | undefined): Item | undefined {
+        const active = activeItemId
+            ? displayItems.find((entry) => entry.model.id === activeItemId)?.model.original
+            : undefined;
+        if (active) return active;
+
+        const last = displayItems.at(-1)?.model.original;
+        if (last) return last;
+
+        // An empty page has nothing to anchor to, so the paste creates its
+        // first item instead of refusing.
+        const items = pageItem.items as Items;
+        return items.addNode(currentUser);
+    }
+
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
@@ -1150,22 +1181,14 @@
             }
         }
 
-        // If no selection, paste into active item
-        // Based on first selected item
-        const firstItemId = activeItemId;
-        const itemIndex = displayItems.findIndex(
-            (d) => d.model.id === firstItemId,
-        );
+        // If no selection, paste into the active item. When that item belongs
+        // to another page — or there is no active item at all, which is the
+        // normal state right after navigating to a page — the paste must still
+        // land: it appends to the end of this page rather than disappearing.
+        const baseOriginal = resolvePasteAnchor(activeItemId);
+        if (!baseOriginal) return;
+        const firstItemId = baseOriginal.id;
 
-        // Use first item if active item not found
-        if (itemIndex < 0) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(`Active item not found, aborting paste`);
-            }
-            return;
-        }
-
-        const baseOriginal = displayItems[itemIndex].model.original;
         const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
         const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
         const splice = spliceMultiLinePaste(text, offset, lines);
@@ -1173,8 +1196,10 @@
         const siblings = isPageTitle
             ? pageItem.items as Items
             : baseOriginal.parent ?? (pageItem.items as Items);
-        const baseIndex = isPageTitle ? -1 : siblings.indexOf(baseOriginal);
-        if (!isPageTitle && baseIndex < 0) return;
+        const foundIndex = isPageTitle ? -1 : siblings.indexOf(baseOriginal);
+        // An anchor whose parent no longer lists it cannot position the new
+        // items relative to itself; append them to the end of its level.
+        const baseIndex = isPageTitle || foundIndex >= 0 ? foundIndex : siblings.length - 1;
 
         let lastItemId = firstItemId;
         const run = () => {
