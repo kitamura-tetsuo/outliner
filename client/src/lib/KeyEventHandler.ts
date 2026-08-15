@@ -209,7 +209,10 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     // clipboard depth negative, which the strict serializer correctly rejects.
     // Use the shallowest selected item so every depth remains portable while
     // preserving the hierarchy within the copied range.
-    const baseDepth = Math.min(...entries.map(entry => entry.depth));
+    const baseDepth = entries.reduce(
+        (shallowestDepth, entry) => Math.min(shallowestDepth, entry.depth),
+        entries[0].depth,
+    );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
         entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
