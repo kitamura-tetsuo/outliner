@@ -1,5 +1,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { canModifyTable } from "../../../../services/permissions";
 import * as Y from "yjs";
 
 // Mocked Svelte store for `$app/stores`; the route reads `$page.params`.
@@ -57,6 +58,10 @@ vi.mock("../../../../components/yjstable/YjsTableView.svelte", async () => {
     const Stub = (await import("./__fixtures__/TableViewStub.svelte")).default;
     return { default: Stub };
 });
+
+vi.mock("../../../../services/permissions", () => ({
+    canModifyTable: () => false,
+}));
 
 import TableStandalonePage from "./+page.svelte";
 
