@@ -20,7 +20,7 @@
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
-    import { spliceMultiLinePaste } from "../lib/multiLinePaste";
+    import { derivePasteLineLayout, type PasteLineLayout, spliceMultiLinePaste } from "../lib/multiLinePaste";
     import type { ClipboardItem } from "../services/clipboard/itemClipboard";
     import {
         GRID_PASTE_CANCEL_EVENT,
@@ -79,11 +79,12 @@
     }
 
     /**
-     * Discard local selections that point outside this page. Only the top-level
-     * tree may do this: an embedded tree renders a single subtree, so items of
-     * the surrounding page are unknown to it and must not count as stale.
+     * Discard local editor state that points outside this page: selections and
+     * the active item alike. Only the top-level tree may do this: an embedded
+     * tree renders a single subtree, so items of the surrounding page are
+     * unknown to it and must not count as stale.
      */
-    function dropStaleLocalSelections() {
+    function dropStaleLocalEditorState() {
         if (isEmbedded) return;
         const resolvable = resolvableItemIds();
         const hasStale = Object.values(editorOverlayStore.selections).some(
@@ -92,6 +93,14 @@
                 && (!resolvable.has(sel.startItemId) || !resolvable.has(sel.endItemId)),
         );
         if (hasStale) editorOverlayStore.clearSelectionForUser("local");
+
+        // The active item is the paste target. Left over from the previous
+        // page it resolves to nothing here, which used to drop the paste in
+        // silence; clearing it lets the paste fall back to this page's end.
+        const activeItemId = editorOverlayStore.getActiveItem();
+        if (activeItemId && !resolvable.has(activeItemId)) {
+            editorOverlayStore.setActiveItem(null);
+        }
     }
 
     onMount(() => {
@@ -123,7 +132,7 @@
                 // gives up - a paste is dropped whole (#4816 follow-up: a Grid
                 // copied from another project cloned its table but never
                 // reached the outline). Drop what this page cannot resolve.
-                dropStaleLocalSelections();
+                dropStaleLocalEditorState();
 
                 // Re-apply presences for this new page
                 const awareness = yjsStore.yjsClient?.getAwareness();
@@ -1077,6 +1086,106 @@
         }
     }
 
+    /**
+     * The item a caret paste writes into. Falls back to the end of this page
+     * when the active item belongs elsewhere (stale state left by the page the
+     * content was copied from) or when nothing is active at all — pasting right
+     * after opening a page used to be dropped in silence, taking a
+     * cross-project Grid clone with it and leaving its tables orphaned.
+     */
+    function resolvePasteAnchor(activeItemId: string | null | undefined): Item | undefined {
+        const active = activeItemId
+            ? displayItems.find((entry) => entry.model.id === activeItemId)?.model.original
+            : undefined;
+        if (active) return active;
+
+        const last = displayItems.at(-1)?.model.original;
+        if (last) return last;
+
+        // An empty page has nothing to anchor to, so the paste creates its
+        // first item instead of refusing.
+        const items = pageItem.items as Items;
+        return items.addNode(currentUser);
+    }
+
+    /**
+     * The shape of a pasted run. An in-app copy carries the real depth of every
+     * item, so it is authoritative; anything else only has its indentation to
+     * go on.
+     */
+    function pasteLayout(lines: string[], structuredItems?: ClipboardItem[]): PasteLineLayout {
+        if (structuredItems && structuredItems.length === lines.length) {
+            return { texts: lines, depths: structuredItems.map((item) => item.depth) };
+        }
+        return derivePasteLineLayout(lines);
+    }
+
+    /**
+     * Create the items of a pasted run below `base`, reproducing the copied
+     * hierarchy. `texts[0]` belongs to `base` and is written by the caller;
+     * every following line is placed relative to it, one level deeper meaning
+     * "child of the last item at the level above".
+     *
+     * Returns the id of the last item the run produced.
+     */
+    function insertPastedRun(
+        base: Item,
+        texts: string[],
+        depths: number[],
+        structuredItems?: ClipboardItem[],
+    ): string {
+        // The page title stands outside the outline, so a run anchored on it
+        // starts at the top of the page instead of after a sibling.
+        const isPageTitle = base.id === pageItem.id;
+        const rootLevel = isPageTitle
+            ? pageItem.items as Items
+            : base.parent ?? (pageItem.items as Items);
+        const baseIndex = isPageTitle ? -1 : rootLevel.indexOf(base);
+        // Each level remembers where its next sibling goes: the run continues
+        // after `base` at its own level and appends within levels it creates.
+        const levels: Items[] = [rootLevel];
+        const nextIndex: number[] = [
+            isPageTitle ? 0 : baseIndex >= 0 ? baseIndex + 1 : rootLevel.length,
+        ];
+        let previous = base;
+        let lastItemId = base.id;
+        // How the run's own depths map onto those levels. A step is read
+        // against the line before it rather than against the first line, which
+        // may be the deepest of the run: a selection that starts inside a
+        // subtree and continues past its parent carries depths like [1, 0, 1],
+        // where the last line is a child of the middle one. Measuring from the
+        // first line would flatten all three.
+        let previousDepth = depths[0] ?? 0;
+        let previousLevel = 0;
+
+        for (let index = 1; index < texts.length; index++) {
+            const rawDepth = depths[index] ?? 0;
+            let depth = Math.max(0, Math.min(previousLevel + rawDepth - previousDepth, previousLevel + 1));
+            previousDepth = rawDepth;
+            if (depth >= levels.length) {
+                const children = previous.items as Items;
+                levels.push(children);
+                nextIndex.push(children.length);
+                depth = levels.length - 1;
+            } else {
+                levels.length = depth + 1;
+                nextIndex.length = depth + 1;
+            }
+            previousLevel = depth;
+
+            const siblings = levels[depth];
+            const insertAt = nextIndex[depth]++;
+            let newItem = siblings.addNode(currentUser, insertAt);
+            if (!newItem) newItem = siblings.at(insertAt) as Item;
+            if (!newItem) continue;
+            newItem.updateText(texts[index]);
+            applyClipboardMetadata(newItem, structuredItems?.[index]);
+            previous = newItem;
+            lastItemId = newItem.id;
+        }
+        return lastItemId;
+    }
+
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
@@ -1150,48 +1259,29 @@
             }
         }
 
-        // If no selection, paste into active item
-        // Based on first selected item
-        const firstItemId = activeItemId;
-        const itemIndex = displayItems.findIndex(
-            (d) => d.model.id === firstItemId,
-        );
+        // If no selection, paste into the active item. When that item belongs
+        // to another page — or there is no active item at all, which is the
+        // normal state right after navigating to a page — the paste must still
+        // land: it appends to the end of this page rather than disappearing.
+        const baseOriginal = resolvePasteAnchor(activeItemId);
+        if (!baseOriginal) return;
+        const firstItemId = baseOriginal.id;
 
-        // Use first item if active item not found
-        if (itemIndex < 0) {
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(`Active item not found, aborting paste`);
-            }
-            return;
-        }
-
-        const baseOriginal = displayItems[itemIndex].model.original;
         const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
         const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
-        const splice = spliceMultiLinePaste(text, offset, lines);
-        const isPageTitle = baseOriginal.id === pageItem.id;
-        const siblings = isPageTitle
-            ? pageItem.items as Items
-            : baseOriginal.parent ?? (pageItem.items as Items);
-        const baseIndex = isPageTitle ? -1 : siblings.indexOf(baseOriginal);
-        if (!isPageTitle && baseIndex < 0) return;
+        const layout = pasteLayout(lines, structuredItems);
+        const splice = spliceMultiLinePaste(text, offset, layout.texts);
 
         let lastItemId = firstItemId;
         const run = () => {
             baseOriginal.updateText(splice.firstText);
             applyStructuredItem(baseOriginal, 0);
-            splice.siblingTexts.forEach((siblingText, index) => {
-                const newIndex = baseIndex + index + 1;
-                let newItem = siblings.addNode(currentUser, newIndex);
-                if (!newItem) {
-                    newItem = siblings.at(newIndex) as import("../schema/app-schema").Item;
-                }
-                if (newItem) {
-                    newItem.updateText(siblingText);
-                    applyStructuredItem(newItem, index + 1);
-                    lastItemId = newItem.id;
-                }
-            });
+            lastItemId = insertPastedRun(
+                baseOriginal,
+                [splice.firstText, ...splice.siblingTexts],
+                layout.depths,
+                structuredItems,
+            );
         };
         const doc = baseOriginal.ydoc;
         if (doc) {
@@ -1253,13 +1343,15 @@
         }
 
         const items = pageItem.items as Items;
+        const layout = pasteLayout(lines, structuredItems);
+        let startItem: Item | undefined;
 
         // Delete items in selection (delete backwards)
         for (let i = actualEndIndex; i >= actualStartIndex; i--) {
             if (i === actualStartIndex) {
                 // Do not delete start item, update text instead
-                const startItem = displayItems[i].model.original;
-                startItem.updateText(lines[0] || "");
+                startItem = displayItems[i].model.original;
+                startItem.updateText(layout.texts[0] || "");
                 applyClipboardMetadata(startItem, structuredItems?.[0]);
 
                 if (
@@ -1267,7 +1359,7 @@
                     window.DEBUG_MODE
                 ) {
                     logger.debug(
-                        `Updated first item text to: "${lines[0] || ""}"`,
+                        `Updated first item text to: "${layout.texts[0] || ""}"`,
                     );
                 }
             } else {
@@ -1282,23 +1374,9 @@
             }
         }
 
-        // Add remaining lines as new items
-        for (let i = 1; i < lines.length; i++) {
-            const newIndex = actualStartIndex + i;
-            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                logger.debug(
-                    `Adding new item at index ${newIndex} with text: "${lines[i]}"`,
-                );
-            }
-            let newItem = items.addNode(currentUser, newIndex);
-            if (!newItem) {
-
-                newItem = items.at(newIndex) as import("../schema/app-schema").Item;
-            }
-            if (newItem) {
-                newItem.updateText(lines[i]);
-                applyClipboardMetadata(newItem, structuredItems?.[i]);
-            }
+        // Add remaining lines as new items, reproducing the copied hierarchy
+        if (startItem) {
+            insertPastedRun(startItem, layout.texts, layout.depths, structuredItems);
         }
 
         // Update cursor position
@@ -1357,9 +1435,9 @@
             return;
         }
 
-        const items = pageItem.items as Items;
         const item = displayItems[itemIndex].model.original;
         const text: string = (item.text as { toString?: () => string })?.toString?.() ?? "";
+        const layout = pasteLayout(lines, structuredItems);
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Original text: "${text}"`);
@@ -1372,7 +1450,7 @@
             // For single line paste, replace selection
             const newText =
                 text.substring(0, startOffset) +
-                lines[0] +
+                layout.texts[0] +
                 text.substring(endOffset);
             item.updateText(newText);
             applyClipboardMetadata(item, structuredItems?.[0]);
@@ -1384,7 +1462,7 @@
             // Update cursor position
             editorOverlayStore.setCursor({
                 itemId,
-                offset: startOffset + lines[0].length,
+                offset: startOffset + layout.texts[0].length,
                 isActive: true,
                 userId: "local",
             });
@@ -1394,7 +1472,7 @@
         } else {
             // For multi-line paste
             // First line replaces selection in current item
-            const newFirstText = text.substring(0, startOffset) + lines[0];
+            const newFirstText = text.substring(0, startOffset) + layout.texts[0];
             item.updateText(newFirstText);
             applyClipboardMetadata(item, structuredItems?.[0]);
 
@@ -1402,57 +1480,20 @@
                 logger.debug(`Updated first item text to: "${newFirstText}"`);
             }
 
-            // Add remaining lines as new items
-            for (let i = 1; i < lines.length; i++) {
-                const newIndex = itemIndex + i;
+            // Add remaining lines as new items, reproducing the copied
+            // hierarchy. The text the selection left behind rides on the last
+            // line, so the item keeps everything that followed the caret.
+            const runTexts = [...layout.texts];
+            runTexts[0] = newFirstText;
+            runTexts[runTexts.length - 1] += text.substring(endOffset);
+            // The run reports where it ended: a nested paste does not land at a
+            // predictable index of the flattened display list.
+            const lastItemId = insertPastedRun(item, runTexts, layout.depths, structuredItems);
 
-                if (
-                    typeof window !== "undefined" &&
-                    window.DEBUG_MODE
-                ) {
-                    logger.debug(`Adding new item at index ${newIndex}`);
-                }
-
-                let newItem = items.addNode(currentUser, newIndex);
-                if (!newItem) {
-
-                    newItem = items.at(newIndex) as import("../schema/app-schema").Item;
-                }
-                if (newItem) {
-                    applyClipboardMetadata(newItem, structuredItems?.[i]);
-                    if (i === lines.length - 1) {
-                        // For last line, add text following selection
-                        const lastItemText =
-                            lines[i] + text.substring(endOffset);
-                        newItem.updateText(lastItemText);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            window.DEBUG_MODE
-                        ) {
-                            logger.debug(
-                                `Last item text set to: "${lastItemText}"`,
-                            );
-                        }
-                    } else {
-                        newItem.updateText(lines[i]);
-
-                        if (
-                            typeof window !== "undefined" &&
-                            window.DEBUG_MODE
-                        ) {
-                            logger.debug(`Item ${i} text set to: "${lines[i]}"`);
-                        }
-                    }
-                }
-            }
-
-            // Update cursor position (end of last item)
-            const lastItemIndex = itemIndex + lines.length - 1;
-            const lastItemId = displayItems[lastItemIndex]?.model.id;
+            // Update cursor position (end of last pasted line, before the text
+            // the selection left behind)
             if (lastItemId) {
-                const lastLine = lines[lines.length - 1];
-                const newOffset = lastLine.length;
+                const newOffset = layout.texts[layout.texts.length - 1].length;
 
                 if (
                     typeof window !== "undefined" &&
@@ -1475,15 +1516,6 @@
 
                 // Clear selection
                 editorOverlayStore.clearSelections();
-            } else {
-                if (
-                    typeof window !== "undefined" &&
-                    window.DEBUG_MODE
-                ) {
-                    logger.debug(
-                        `Could not find last item at index ${lastItemIndex}`,
-                    );
-                }
             }
         }
     }

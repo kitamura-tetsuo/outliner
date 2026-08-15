@@ -261,7 +261,7 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(sourceComponents.get("amount")!.get("label")).toBe("source changed");
     });
 
-    it("skips cloning a table if a table with the same provenance already exists", async () => {
+    it("reuses the table a previous import made from the same source", async () => {
         const destination = new Y.Doc({ guid: "destination-repeat-provenance" });
         const snapshot = simpleSnapshot("source-one", "tasks");
 
@@ -269,13 +269,19 @@ describe("table structure import", { timeout: 30000 }, () => {
         const second = await importTableStructures(destination, { "source-one": snapshot }, "source-project");
 
         expect(Object.keys(first.tableIdMap)).toEqual(["source-one"]);
-        // The second import skips it, so no tableIdMap entry is returned for "source-one"
+        // The second import creates nothing and reports the table it already made.
         expect(Object.keys(second.tableIdMap)).toEqual([]);
+        expect(second.reusedTableIdMap).toEqual({ "source-one": first.tableIdMap["source-one"] });
 
         // And the table is only created once
         expect(listTables(destination).map(table => table.sqlName)).toEqual(["tasks"]);
         expect(second.outcomes).toEqual([
-            { type: "reuse-offered", sourceTableId: "source-one", tableName: "TASKS" },
+            {
+                type: "reused",
+                sourceTableId: "source-one",
+                destinationTableId: first.tableIdMap["source-one"],
+                tableName: "TASKS",
+            },
         ]);
     });
 

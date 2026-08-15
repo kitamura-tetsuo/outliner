@@ -58,19 +58,15 @@ const existingTables = $derived.by(() => {
     return item.ydoc ? listTables(item.ydoc) : [];
 });
 
-// Select best matching table. In the case of cross-project paste, the clipboard carries sourceProjectId.
-// If not available, we can't reliably auto-select by provenance, so we'll just pick the first.
-// A more robust way would be comparing with the clipboard source, but we don't have it here.
-// Actually, we can just select the first one, or maybe sort it by provenance? Let's just select the first one.
-// The Acceptance Criteria does not strictly demand auto-selecting the specific matching table, just that
-// it's offered and we bind to it when selected. However, picking the exact match if we can is better.
-$effect(() => {
-    if (creationMode === "existing" && existingTables.length > 0 && !selectedExistingTableId) {
-        // If there are tables with provenance, maybe one of them is the target?
-        // Since we don't know the incoming clipboard source, we'll just default to the first.
-        selectedExistingTableId = existingTables[0].tableId;
-    }
-});
+// Opening the "Existing Table" tab preselects the first table so the Select
+// button is never armed with nothing. A cross-project paste no longer reaches
+// this panel: a repeat paste binds its host to the table its provenance
+// already points at (see services/yjstable/tableClone.ts), so the choice is
+// only ever made by hand from here.
+function showExistingTables() {
+    creationMode = "existing";
+    if (!selectedExistingTableId) selectedExistingTableId = existingTables[0]?.tableId;
+}
 
 const handles = $derived.by(() => {
     void registryVersion;
@@ -163,7 +159,7 @@ function createFromPreset() {
             <div class="mode-tabs">
                 <button type="button" class="mode-tab" class:active={creationMode === "new"} onclick={() => creationMode = "new"}>New Table</button>
                 {#if existingTables.length > 0}
-                    <button type="button" class="mode-tab" class:active={creationMode === "existing"} onclick={() => creationMode = "existing"}>Existing Table</button>
+                    <button type="button" class="mode-tab" class:active={creationMode === "existing"} onclick={showExistingTables}>Existing Table</button>
                 {/if}
             </div>
 

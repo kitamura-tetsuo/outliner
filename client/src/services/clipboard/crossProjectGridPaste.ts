@@ -1,7 +1,9 @@
+import type { Project } from "$shared/app-schema";
 import type * as Y from "yjs";
 import { getLogger } from "../../lib/logger";
+import { cloneScheduleRules, rollbackClonedScheduleRules } from "../schedule/scheduleRuleClone";
 import { copyTableData, importTableStructures, type TableCloneOutcome } from "../yjstable/tableClone";
-import { destroyTableUndoManager, getTableHandles, removeTable } from "../yjstable/tableDocs";
+import { destroyTableUndoManager, getTableHandles, getTableSqlName, removeTable } from "../yjstable/tableDocs";
 import {
     GRID_PASTE_CANCEL_EVENT,
     GRID_PASTE_PROGRESS_EVENT,
@@ -32,6 +34,8 @@ function destinationAcceptsWrites(): boolean {
 
 export interface CrossProjectGridPasteOptions {
     destinationDoc: Y.Doc;
+    /** The destination project, which receives the copied schedule rules. */
+    destinationProject: Project;
     /** Room id of the project the Grids were copied from. */
     sourceProjectId: string;
     /** Portable structure carried by the clipboard, keyed by source table id. */
@@ -51,13 +55,21 @@ export interface CrossProjectGridPasteOptions {
 
 export type GridPasteOutcome =
     | TableCloneOutcome
+    | { type: "schedule-copied"; sourceTableId: string; tableName: string; ruleName: string; }
     | { type: "schedule-skipped"; sourceTableId: string; tableName: string; ruleName: string; }
     | { type: "source-data-unavailable"; tableNames: string[]; reason: string; }
     | { type: "cut-source-retained"; tableNames: string[]; };
 
+interface ScheduleRuleOutcome {
+    sourceTableId: string;
+    ruleName: string;
+}
+
 interface SourceCopyResult {
     unavailableReason?: string;
-    skippedSchedules: Array<{ sourceTableId: string; ruleName: string; }>;
+    copiedSchedules: ScheduleRuleOutcome[];
+    skippedSchedules: ScheduleRuleOutcome[];
+    createdRuleIds: string[];
     rowCounts: Record<string, number>;
 }
 
@@ -96,6 +108,11 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
             case "rebound":
                 lines.push(`${outcome.tableName} now reads this project's ${outcome.relation}.`);
                 break;
+            case "schedule-copied":
+                lines.push(
+                    `${outcome.tableName} came with schedule rule ${outcome.ruleName}, copied switched off \u2014 enable it here to keep the rows generating.`,
+                );
+                break;
             case "schedule-skipped":
                 lines.push(
                     `${outcome.tableName} has schedule rule ${outcome.ruleName} that was not copied \u2014 recreate it here if the rows should keep generating.`,
@@ -111,10 +128,10 @@ export function formatGridPasteReport(outcomes: readonly GridPasteOutcome[]): st
                     }.`,
                 );
                 break;
-            case "reuse-offered":
+            case "reused":
                 lines.push(
-                    `You already pasted ${outcome.tableName} into this project — paste again to make a second copy, `
-                        + "or reuse the existing one.",
+                    `${outcome.tableName} is already in this project — this copy shows the same table. `
+                        + "Use Paste Special to paste an independent copy instead.",
                 );
                 break;
         }
@@ -141,13 +158,19 @@ export async function cloneGridTablesAcrossProjects(
     options: CrossProjectGridPasteOptions,
 ): Promise<
     {
+        /** Tables this paste created. Only these may be rolled back or undone. */
         tableIdMap: Record<string, string>;
+        /** Tables an earlier paste already created here, reused by this one. */
+        reusedTableIdMap: Record<string, string>;
+        /** Schedule rules this paste copied, disabled. Part of its undo unit. */
+        createdRuleIds: string[];
         skippedSourceTableIds: string[];
         outcomes: GridPasteOutcome[];
     } | undefined
 > {
     const {
         destinationDoc,
+        destinationProject,
         sourceProjectId,
         snapshots,
         requestedSourceTableIds,
@@ -171,7 +194,10 @@ export async function cloneGridTablesAcrossProjects(
     const cancelled = () => controller.signal.aborted || !isDestinationCurrent();
 
     let tableIdMap: Record<string, string> = {};
+    let createdRuleIds: string[] = [];
     const rollback = () => {
+        rollbackClonedScheduleRules(destinationDoc, createdRuleIds);
+        createdRuleIds = [];
         rollbackCrossProjectPaste(destinationDoc, Object.values(tableIdMap));
         tableIdMap = {};
     };
@@ -186,6 +212,7 @@ export async function cloneGridTablesAcrossProjects(
             allowProvenanceReuse,
         );
         tableIdMap = cloneResult.tableIdMap;
+        const reusedTableIdMap = cloneResult.reusedTableIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
             rollback();
@@ -193,11 +220,31 @@ export async function cloneGridTablesAcrossProjects(
             return undefined;
         }
 
+        // A relation may have been renamed on the way in (`deriveSqlName`), and
+        // a copied schedule rule has to follow it.
+        const sqlNameMap = new Map<string, string>();
+        for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
+            const sourceSqlName = snapshots[sourceTableId]?.sqlName;
+            const destinationSqlName = getTableSqlName(destinationDoc, destinationTableId);
+            if (sourceSqlName !== undefined && destinationSqlName !== undefined) {
+                sqlNameMap.set(sourceSqlName, destinationSqlName);
+            }
+        }
+
         const sourceCopy = copyData
             ? sourceProjectId === destinationDoc.guid
-                ? copyRowsFromSameProject(destinationDoc, tableIdMap)
-                : await copyRowsFromSource(sourceProjectId, tableIdMap, destinationDoc, controller.signal, cancelled)
-            : { skippedSchedules: [], rowCounts: {} };
+                ? copyRowsFromSameProject(destinationDoc, destinationProject, tableIdMap, sqlNameMap)
+                : await copyRowsFromSource({
+                    sourceProjectId,
+                    destinationProject,
+                    tableIdMap,
+                    sqlNameMap,
+                    destinationDoc,
+                    signal: controller.signal,
+                    cancelled,
+                })
+            : { copiedSchedules: [], skippedSchedules: [], createdRuleIds: [], rowCounts: {} };
+        createdRuleIds = sourceCopy.createdRuleIds;
         if (cancelled()) {
             rollback();
             reportProgress({ state: "cancelled" });
@@ -209,6 +256,14 @@ export async function cloneGridTablesAcrossProjects(
                 ? { ...outcome, rowCount: sourceCopy.rowCounts[outcome.sourceTableId] }
                 : outcome
         );
+        for (const schedule of sourceCopy.copiedSchedules) {
+            outcomes.push({
+                type: "schedule-copied",
+                sourceTableId: schedule.sourceTableId,
+                tableName: snapshots[schedule.sourceTableId]?.name ?? schedule.sourceTableId,
+                ruleName: schedule.ruleName,
+            });
+        }
         for (const schedule of sourceCopy.skippedSchedules) {
             outcomes.push({
                 type: "schedule-skipped",
@@ -241,7 +296,13 @@ export async function cloneGridTablesAcrossProjects(
                 ? { state: "complete-with-data", report }
                 : { state: "complete-without-data", reason: sourceCopy.unavailableReason, report },
         );
-        return { tableIdMap, skippedSourceTableIds: skippedSourceTableIds ?? [], outcomes };
+        return {
+            tableIdMap,
+            reusedTableIdMap,
+            createdRuleIds,
+            skippedSourceTableIds: skippedSourceTableIds ?? [],
+            outcomes,
+        };
     } finally {
         if (typeof window !== "undefined") {
             window.removeEventListener(GRID_PASTE_CANCEL_EVENT, cancel);
@@ -251,7 +312,9 @@ export async function cloneGridTablesAcrossProjects(
 
 function copyRowsFromSameProject(
     projectDoc: Y.Doc,
+    project: Project,
     tableIdMap: Record<string, string>,
+    sqlNameMap: ReadonlyMap<string, string>,
 ): SourceCopyResult {
     const rowCounts: Record<string, number> = {};
     for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
@@ -261,20 +324,36 @@ function copyRowsFromSameProject(
         copyTableData(source, destination);
         rowCounts[sourceTableId] = destination.data.size;
     }
-    return { skippedSchedules: [], rowCounts };
+    const schedules = cloneScheduleRules(project, project, tableIdMap, sqlNameMap);
+    return {
+        copiedSchedules: schedules.copied,
+        skippedSchedules: schedules.skipped,
+        createdRuleIds: schedules.createdRuleIds,
+        rowCounts,
+    };
+}
+
+interface SourceCopyOptions {
+    sourceProjectId: string;
+    destinationProject: Project;
+    tableIdMap: Record<string, string>;
+    sqlNameMap: ReadonlyMap<string, string>;
+    destinationDoc: Y.Doc;
+    signal: AbortSignal;
+    cancelled: () => boolean;
+}
+
+function noScheduleRules(): Pick<SourceCopyResult, "copiedSchedules" | "skippedSchedules" | "createdRuleIds"> {
+    return { copiedSchedules: [], skippedSchedules: [], createdRuleIds: [] };
 }
 
 /**
- * Fill every freshly created destination table from its source table.
+ * Fill every freshly created destination table from its source table, and bring
+ * across the schedule rules that write into them.
  * Returns the reason the rows could not be read, or `undefined` on success.
  */
-async function copyRowsFromSource(
-    sourceProjectId: string,
-    tableIdMap: Record<string, string>,
-    destinationDoc: Y.Doc,
-    signal: AbortSignal,
-    cancelled: () => boolean,
-): Promise<SourceCopyResult> {
+async function copyRowsFromSource(options: SourceCopyOptions): Promise<SourceCopyResult> {
+    const { sourceProjectId, destinationProject, tableIdMap, sqlNameMap, destinationDoc, signal, cancelled } = options;
     // Imported lazily: the provider stack and the project registry are only
     // needed by this one branch of paste, and a static edge from the key
     // handler to the Yjs service would drag both into every module that
@@ -290,7 +369,7 @@ async function copyRowsFromSource(
         if (!acquired) {
             return {
                 unavailableReason: "The source project is not available.",
-                skippedSchedules: [],
+                ...noScheduleRules(),
                 rowCounts: {},
             };
         }
@@ -298,7 +377,7 @@ async function copyRowsFromSource(
         let unavailableReason: string | undefined;
         const rowCounts: Record<string, number> = {};
         for (const [sourceTableId, destinationTableId] of Object.entries(tableIdMap)) {
-            if (cancelled()) return { skippedSchedules: [], rowCounts };
+            if (cancelled()) return { ...noScheduleRules(), rowCounts };
 
             const sourceHandles = getTableHandles(acquired.client.project.ydoc, sourceTableId);
             const destinationHandles = getTableHandles(destinationDoc, destinationTableId);
@@ -326,22 +405,24 @@ async function copyRowsFromSource(
                 destroyTableUndoManager(sourceHandles.doc);
             }
         }
-        const skippedSchedules: SourceCopyResult["skippedSchedules"] = [];
-        acquired.client.project.schedules.forEach((rule, ruleId) => {
-            const targetTableId = rule.get("targetTableId");
-            if (typeof targetTableId !== "string" || tableIdMap[targetTableId] === undefined) return;
-            const name = rule.get("name");
-            skippedSchedules.push({
-                sourceTableId: targetTableId,
-                ruleName: typeof name === "string" && name.length > 0 ? name : ruleId,
-            });
-        });
-        return { unavailableReason, skippedSchedules, rowCounts };
+        const schedules = cloneScheduleRules(
+            acquired.client.project,
+            destinationProject,
+            tableIdMap,
+            sqlNameMap,
+        );
+        return {
+            unavailableReason,
+            copiedSchedules: schedules.copied,
+            skippedSchedules: schedules.skipped,
+            createdRuleIds: schedules.createdRuleIds,
+            rowCounts,
+        };
     } catch (error) {
         logger.warn({ error, sourceProjectId }, "[cloneGridTablesAcrossProjects] source rows could not be read");
         return {
             unavailableReason: error instanceof Error ? error.message : "The source project is not available.",
-            skippedSchedules: [],
+            ...noScheduleRules(),
             rowCounts: {},
         };
     } finally {

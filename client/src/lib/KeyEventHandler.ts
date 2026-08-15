@@ -209,13 +209,21 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     // clipboard depth negative, which the strict serializer correctly rejects.
     // Use the shallowest selected item so every depth remains portable while
     // preserving the hierarchy within the copied range.
-    const baseDepth = entries.reduce(
+    //
+    // The page title is excluded from that measurement: Ctrl/Cmd+A selects it
+    // along with the outline, and it sits one level above every item, so taking
+    // it as the baseline would nest the whole page under its own heading when
+    // pasted. Its own depth clamps to the baseline instead.
+    const pageItemId = generalStore.currentPage?.id;
+    const outlineEntries = entries.filter(entry => entry.item.id !== pageItemId);
+    const measured = outlineEntries.length > 0 ? outlineEntries : entries;
+    const baseDepth = measured.reduce(
         (shallowestDepth, entry) => Math.min(shallowestDepth, entry.depth),
-        entries[0].depth,
+        measured[0].depth,
     );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
-        entries.map(entry => ({ ...entry, depth: entry.depth - baseDepth })),
+        entries.map(entry => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
@@ -2849,8 +2857,12 @@ export class KeyEventHandler {
             }
 
             let structuredItems = specialVariant === "values-only" ? undefined : sameProjectItems;
+            // Tables this paste created, and tables an earlier paste already
+            // created here that this one binds to instead. Only the former may
+            // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
-            let pastedSkippedTableIds: string[] = [];
+            let reusedTableIdMap: Record<string, string> = {};
+            let pastedRuleIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
                 structuredItems === undefined
@@ -2883,6 +2895,7 @@ export class KeyEventHandler {
                         );
                         const cloneResult = await cloneGridTablesAcrossProjects({
                             destinationDoc,
+                            destinationProject: generalStore.project!,
                             sourceProjectId: structured.sourceProjectId,
                             snapshots: referencedSnapshots,
                             requestedSourceTableIds: [...referencedTableIds],
@@ -2897,7 +2910,8 @@ export class KeyEventHandler {
                         });
                         if (cloneResult === undefined) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
-                        pastedSkippedTableIds = cloneResult.skippedSourceTableIds;
+                        reusedTableIdMap = cloneResult.reusedTableIdMap;
+                        pastedRuleIds = cloneResult.createdRuleIds;
                     } else {
                         pastedTableIdMap = {};
                     }
@@ -2936,11 +2950,13 @@ export class KeyEventHandler {
                         }
                     }
 
-                    // We also need to map `structuredItems` if `pastedTableIdMap` is completely empty
-                    // (because ALL items were skipped due to provenance!).
-                    // So we shouldn't skip the mapping just because `Object.keys(pastedTableIdMap).length === 0`.
+                    // The mapping still runs when `pastedTableIdMap` is empty:
+                    // every table may have been reused from an earlier paste,
+                    // and those hosts must still bind to something.
                     if (pastedTableIdMap || Object.keys(pastedCalendarIdMap).length > 0) {
-                        const tableIdMap = pastedTableIdMap || {};
+                        // A reused table is as good a binding target as a fresh
+                        // clone; only the undo entry distinguishes them.
+                        const tableIdMap = { ...reusedTableIdMap, ...pastedTableIdMap };
                         const calendarIdMap = pastedCalendarIdMap;
                         let anyKept = false;
                         const mappedItems = structured.items.map(item => {
@@ -2949,10 +2965,6 @@ export class KeyEventHandler {
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
                                 if (destinationTableId === undefined) {
-                                    if (item.yjsTableId && pastedSkippedTableIds.includes(item.yjsTableId)) {
-                                        anyKept = true;
-                                        return { ...item, yjsTableId: undefined };
-                                    }
                                     return { text: item.text, depth: item.depth };
                                 }
                                 anyKept = true;
@@ -2977,6 +2989,14 @@ export class KeyEventHandler {
                 }
             }
 
+            // The outward text flavor renders a Grid as its rows (spec §7), so
+            // it holds one line per row where the payload holds one host item.
+            // An in-app paste has to follow the payload, or the copied items
+            // and the pasted lines drift apart and the component bindings land
+            // on the wrong items. `values-only` deliberately wants the rendered
+            // text and leaves `structuredItems` unset, so it keeps this text.
+            if (structuredItems && structured) text = clipboardPlainText(structured);
+
             // Treat as multi-item paste if normal multi-line text or portable structured items.
             if (text.includes("\n") || structuredItems) {
                 const cursor = store.getLocalCursorInstances().find(value => value.isActive);
@@ -2996,8 +3016,9 @@ export class KeyEventHandler {
                         }),
                     );
 
-                    // If a cross-project paste created tables, group the new tables and the item insertion
-                    // into a single undoable unit so undo removes everything and redo restores all of it.
+                    // If a cross-project paste created tables, group the new tables, the schedule rules
+                    // that came with them and the item insertion into a single undoable unit so undo
+                    // removes everything and redo restores all of it.
                     if (
                         pastedTableIdMap && Object.keys(pastedTableIdMap).length > 0 && destinationDoc
                         && generalStore.undoManager
@@ -3007,6 +3028,7 @@ export class KeyEventHandler {
                             generalStore.undoManager,
                             destinationDoc,
                             Object.values(pastedTableIdMap),
+                            pastedRuleIds,
                         );
                     }
                     if (

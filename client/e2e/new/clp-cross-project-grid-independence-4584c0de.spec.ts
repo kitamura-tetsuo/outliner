@@ -1,10 +1,10 @@
 /** @feature CLP-4584c0de */
 import { expect, test } from "@playwright/test";
 import {
-    clickItemAndWaitForCursor,
     configureGrid,
     copyGridHosts,
     createBlankGrid,
+    openPasteSpecialAtAnchor,
     openProjectPage,
     pasteAtAnchor,
     readGridProjectState,
@@ -129,23 +129,11 @@ test.describe("cross-project Grid clone independence", () => {
         const firstCloneId = firstClone.id;
         const firstCloneGuid = firstClone.guid;
 
-        // Paste the same clipboard content again in a second, separate paste
-        // operation. This must not reuse the first clone.
-        await clickItemAndWaitForCursor(
-            page,
-            page.locator(".outliner-item[data-item-id]").first().locator(".item-content"),
-        );
-        await page.keyboard.press("Control+v");
-
-        // With provenance tracking, the second paste finds the existing clone and skips recreating it silently.
-        // It renders the Create/Existing UI instead. Wait for it:
-        const createPanel = page.getByTestId("yjs-table-create-panel").last();
-        await expect(createPanel).toBeVisible({ timeout: 60000 });
-
-        // The Acceptance Criteria requires that choosing to "make another copy" creates an independent table.
-        // That means we click "New Table" and create it.
-        await createPanel.locator("button:has-text('New Table')").click();
-        await createPanel.getByTestId("yjs-table-create").click();
+        // Paste the same clipboard again. A plain Ctrl+V now binds to the
+        // clone whose provenance already matches (spec §9.3), so asking for a
+        // second independent copy is what Paste Special is for.
+        await openPasteSpecialAtAnchor(page);
+        await page.getByTestId("paste-special-copy-with-data").click();
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(3, { timeout: 60000 });
 
@@ -154,7 +142,6 @@ test.describe("cross-project Grid clone independence", () => {
         const secondClone = afterSecondPaste.tables.find(t => t.id !== warmupTableId && t.id !== firstCloneId)!;
         expect(secondClone).toBeTruthy();
         expect(secondClone.guid).not.toBe(firstCloneGuid);
-        expect(secondClone.dataSize).toBe(0);
         // The two paste-created hosts point at two distinct destination
         // tables, in addition to the warm-up table's own host.
         expect(new Set(afterSecondPaste.hostTableIds).size).toBe(3);

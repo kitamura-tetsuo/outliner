@@ -30,7 +30,13 @@ const logger = getLogger("undoRouter");
  * objects and arrays, so the `Y.UndoManager` entries themselves are stored as
  * they are and identity comparisons keep working.
  */
+import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { rollbackCrossProjectPaste } from "../clipboard/crossProjectGridPaste";
+import {
+    captureClonedScheduleRules,
+    restoreClonedScheduleRules,
+    rollbackClonedScheduleRules,
+} from "../schedule/scheduleRuleClone";
 import { getTableRegistry } from "../yjstable/tableDocs";
 import { tableDocGuid } from "../yjstable/tableDocs";
 
@@ -39,8 +45,14 @@ export interface CompositeUndoEntry {
     mainManager: Y.UndoManager;
     projectDoc: Y.Doc;
     createdTableIds: string[];
-    savedRegistryEntries: Record<string, { name: string; sqlName: string; }>;
+    savedRegistryEntries: Record<
+        string,
+        { name: string; sqlName: string; sourceProjectId?: string; sourceTableId?: string; }
+    >;
     savedSubdocStates: Record<string, Uint8Array>;
+    /** Schedule rules the paste copied, and enough of each to put it back. */
+    createdRuleIds: string[];
+    savedRules: Record<string, Record<string, ScheduleRuleValueType>>;
 }
 
 export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry;
@@ -153,20 +165,32 @@ export class UndoRouter {
      * Group a cross-project paste into a single entry that can be cleanly
      * undone and redone as one unit.
      */
-    public captureCrossProjectPaste(mainManager: Y.UndoManager, projectDoc: Y.Doc, createdTableIds: string[]): void {
+    public captureCrossProjectPaste(
+        mainManager: Y.UndoManager,
+        projectDoc: Y.Doc,
+        createdTableIds: string[],
+        createdRuleIds: string[] = [],
+    ): void {
         if (this.undoStack.length === 0) return;
         const top = this.undoStack[this.undoStack.length - 1];
         if (top === mainManager) {
-            const savedRegistryEntries: Record<string, { name: string; sqlName: string; }> = {};
+            const savedRegistryEntries: CompositeUndoEntry["savedRegistryEntries"] = {};
             const savedSubdocStates: Record<string, Uint8Array> = {};
             const registry = getTableRegistry(projectDoc);
 
             for (const tableId of createdTableIds) {
                 const entry = registry.get(tableId);
                 if (entry) {
+                    const sourceProjectId = entry.get("sourceProjectId");
+                    const sourceTableId = entry.get("sourceTableId");
                     savedRegistryEntries[tableId] = {
                         name: String(entry.get("name") ?? ""),
                         sqlName: String(entry.get("sqlName") ?? ""),
+                        // Provenance decides whether a later paste of the same
+                        // clipboard reuses this table or makes another; a redone
+                        // paste that lost it would silently start duplicating.
+                        ...(typeof sourceProjectId === "string" ? { sourceProjectId } : {}),
+                        ...(typeof sourceTableId === "string" ? { sourceTableId } : {}),
                     };
                     const subdoc = entry.get("doc");
                     if (subdoc instanceof Y.Doc) {
@@ -182,6 +206,8 @@ export class UndoRouter {
                 createdTableIds,
                 savedRegistryEntries,
                 savedSubdocStates,
+                createdRuleIds,
+                savedRules: captureClonedScheduleRules(projectDoc, createdRuleIds),
             };
         }
     }
@@ -230,6 +256,7 @@ export class UndoRouter {
                 if ("type" in entry && entry.type === "composite") {
                     if (apply(entry.mainManager)) {
                         if (isUndo) {
+                            rollbackClonedScheduleRules(entry.projectDoc, entry.createdRuleIds);
                             rollbackCrossProjectPaste(entry.projectDoc, entry.createdTableIds);
                         } else {
                             const registry = getTableRegistry(entry.projectDoc);
@@ -246,11 +273,18 @@ export class UndoRouter {
                                         const mapEntry = new Y.Map<unknown>();
                                         mapEntry.set("name", savedRegistry.name);
                                         mapEntry.set("sqlName", savedRegistry.sqlName);
+                                        if (savedRegistry.sourceProjectId !== undefined) {
+                                            mapEntry.set("sourceProjectId", savedRegistry.sourceProjectId);
+                                        }
+                                        if (savedRegistry.sourceTableId !== undefined) {
+                                            mapEntry.set("sourceTableId", savedRegistry.sourceTableId);
+                                        }
                                         mapEntry.set("doc", subdoc);
                                         registry.set(tableId, mapEntry);
                                     }
                                 }
                             });
+                            restoreClonedScheduleRules(entry.projectDoc, entry.savedRules);
                         }
                         to.push(entry);
                         return;

@@ -23,8 +23,10 @@ acceptance:
 - A copy-time selection does not survive navigation to another page or project, so a Ctrl/Cmd+A copy of a page pastes all of its lines and Grid blocks into the destination instead of being silently dropped.
 - A cross-project Calendar paste reproduces query, view type, timezone, all role columns, grouping axes, lane order and the remaining view settings.
 - A cross-project Grid clone copies and safely rewrites the display metadata, SQL schema/name, complete UI definition, and rows resolved from the live source at paste time; its Data Storage remains independent of the source project.
-- A later, separate cross-project paste creates another fresh independent Grid clone.
+- A later, separate cross-project paste of the same clipboard binds its host to the clone the first paste made, rather than creating a second table or an unbound create panel; Paste Special's independent copy still creates another fresh clone.
 - A mouse drag that stops inside the first or last item still copies any Grid or Calendar host it crosses; the partly selected edge items contribute only their selected text.
+- 'A paste always lands: with no item of the current page active, it appends to the end of the page instead of being discarded together with the tables it had already created.'
+- A paste reproduces the copied outline shape, taking the depth of each item from the in-app payload and, for plain text, from its leading whitespace.
 - A read-only destination is untouched, and cancelling or navigating away during a Grid paste removes every table created by the operation.
 - A same-project Calendar paste still retains its shared binding.
 - A v1/v2 clipboard payload still pastes correctly.
@@ -39,6 +41,7 @@ acceptance:
 - Paste Special keeps impossible choices visible and disabled with a reason, and reports the selected outcome.
 - Pasting a Grid into another project creates one fresh destination table per copied source table, with a fresh table ID and destination-derived subdocument GUID; copied hosts that shared a source table share that one clone within the paste operation.
 - Pasting a Grid within the same project creates another live view of the existing table, retaining its shared binding and Data Storage.
+- Pasting a page whose Grids are populated creates one item per copied item, not one per rendered table row.
 - Structured component metadata has a portable HTML clipboard representation when the private MIME type is unavailable.
 - 'The Grid export never truncates silently: a result past the row cap, or a chart image past the size cap, carries a notice in the copied content.'
 - The private in-app payload still names the Grid, so pasting back into Outliner behaves exactly as before.
@@ -53,12 +56,16 @@ tests:
 - client/e2e/new/clp-mouse-drag-copy-grid-6b2f41d7.spec.ts
 - client/e2e/new/clp-multi-item-formatting.spec.ts
 - client/e2e/new/clp-paste-report-unreachable-8f2c1a7d.spec.ts
+- client/e2e/new/clp-paste-restores-hierarchy-5d1e73b4.spec.ts
 - client/e2e/new/clp-paste-special-cross-project-4584c0de.spec.ts
 - client/e2e/new/clp-paste-special-same-project-4584c0de.spec.ts
+- client/e2e/new/clp-paste-without-active-item-3f8a12d6.spec.ts
+- client/e2e/new/clp-repeat-paste-binds-existing-grid-9c47b0e2.spec.ts
 - client/e2e/new/clp-select-all-copy-paste-grid-7c3d90b1.spec.ts
 - client/src/components/PasteSpecialDialog.test.ts
 - client/src/components/yjstable/TableChartPanel.test.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/lib/multiLinePaste.test.ts
 - client/src/services/clipboard/crossProjectGridPaste.test.ts
 - client/src/services/clipboard/gridClipboardExport.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts

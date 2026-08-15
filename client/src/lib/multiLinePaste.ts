@@ -1,3 +1,71 @@
+/** Two spaces, or one tab, per level of nesting. */
+const SPACES_PER_LEVEL = 2;
+
+export interface PasteLineLayout {
+    /** Line texts, with the indentation that encoded their depth removed. */
+    texts: string[];
+    /** Depth of each line, relative to the shallowest one. */
+    depths: number[];
+}
+
+/**
+ * The nesting level a line's indentation encodes, and how much of that
+ * indentation was spent saying so. Whitespace past the last whole level is not
+ * structure — a single leading space is part of the text, not half an indent —
+ * so it stays on the line.
+ */
+function readIndent(line: string): { level: number; consumed: number; } {
+    let width = 0;
+    let index = 0;
+    let consumed = 0;
+    let level = 0;
+    for (; index < line.length; index++) {
+        const character = line[index];
+        if (character === " ") width += 1;
+        else if (character === "\t") width += SPACES_PER_LEVEL;
+        else break;
+        // Record the position at which each whole level completes, so partial
+        // indentation past it is left alone.
+        if (width % SPACES_PER_LEVEL === 0) {
+            level = width / SPACES_PER_LEVEL;
+            consumed = index + 1;
+        }
+    }
+    return { level, consumed };
+}
+
+/**
+ * Read the outline shape out of a run of plain clipboard lines.
+ *
+ * Indentation is the only structure plain text carries, and it is read with
+ * the convention the demo seeder writes (`addLinesToPage` in
+ * `server/src/demo-content.ts`): two spaces or one tab per level, and a line
+ * may never be more than one level deeper than the line above it. Depths are
+ * relative to the shallowest line, so a copied subtree pastes flush with
+ * wherever it lands. A blank line keeps the depth of the line before it rather
+ * than snapping back to the top level.
+ */
+export function derivePasteLineLayout(lines: readonly string[]): PasteLineLayout {
+    const indents = lines.map(readIndent);
+    const texts = lines.map((line, index) => line.slice(indents[index].consumed));
+    const rawDepths = lines.map((_line, index) => texts[index].trim() === "" ? undefined : indents[index].level);
+    const measured = rawDepths.filter((depth): depth is number => depth !== undefined);
+    const shallowest = measured.length > 0 ? Math.min(...measured) : 0;
+
+    const depths: number[] = [];
+    let previous = -1;
+    for (const rawDepth of rawDepths) {
+        if (rawDepth === undefined) {
+            depths.push(Math.max(previous, 0));
+            continue;
+        }
+        const depth = Math.min(Math.max(rawDepth - shallowest, 0), previous + 1);
+        depths.push(depth);
+        previous = depth;
+    }
+    return { texts, depths };
+}
+
 export interface MultiLinePasteSplice {
     firstText: string;
     siblingTexts: string[];
