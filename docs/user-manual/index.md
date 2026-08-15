@@ -182,8 +182,10 @@ When a copied selection contains a component block:
 
 - Pasting a **Grid** in the same project creates another live view of the same table and Data Storage.
 - Across projects, paste instead creates an independent Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL names are rewritten.
-- **Calendar** blocks are not cloned across projects. This public demo has only one project, so it demonstrates the same-project live-view behavior only.
+- **Calendar** blocks retain their portable settings when pasted across projects.
+- Press `Ctrl+Shift+V` (or `Cmd+Shift+V`) for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why.
 - Cut and paste moves the view without deleting its data.
+- When a cross-project paste has a hidden consequence—such as copying query dependencies, renaming SQL relations, rebinding outline_items, omitting schedule rules, or leaving a cut table in the source—a transient summary names exactly what happened.
 - Outside Outliner the same copy pastes as what you see: a spreadsheet receives the Grid's rows as cells, a document receives them as a table, and with the Chart view open the picture travels with the numbers.
 
 ---
@@ -207,7 +209,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks).
 - **History / Diff:** Track changes and view differences over time using the **History / Diff** button in the document toolbar.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (gear icon in the top right). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
 ---
