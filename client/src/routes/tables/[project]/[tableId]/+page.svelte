@@ -10,7 +10,9 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
-    import { isPublicProject } from "../../../../lib/publicProject";
+    import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../../../services/yjstable/tableDependencies";
+    import { goto } from "$app/navigation";
+        import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
 
@@ -33,11 +35,54 @@
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
+    let showDeleteDialog = $state(false);
+    let dependencies = $state<TableDependencies | undefined>(undefined);
+    let deleteActionError = $state<string | undefined>(undefined);
+    let isDeleting = $state(false);
+
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
+    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
     let canAccess = $derived(isAuthenticated || isPublicDemo);
+
+    function startDelete() {
+        if (!hasWriteAccess || !store.project || !routeTableId) return;
+        dependencies = getTableDependencies(store.project, routeTableId);
+        showDeleteDialog = true;
+        deleteActionError = undefined;
+    }
+
+    async function executeDelete(policy: DeleteTablePolicy) {
+        if (!hasWriteAccess || !store.project || !routeTableId) return;
+        isDeleting = true;
+        deleteActionError = undefined;
+        try {
+            // Unmount table view before destroying document
+            const currentHandles = tableHandles;
+            tableHandles = undefined;
+            if (currentHandles?.doc) {
+                destroyTableUndoManager(currentHandles.doc);
+            }
+
+            const result = removeTableWithPolicy(store.project, routeTableId, policy);
+
+            if (result) {
+                logger.info(`Deleted table ${routeTableId} with policy ${policy}`);
+            }
+            showDeleteDialog = false;
+            goto(`/${encodeURIComponent(projectName)}`);
+        } catch (err) {
+            logger.error({ error: err }, "Failed to delete table");
+            deleteActionError = err instanceof Error ? err.message : "An error occurred while deleting the table.";
+            isDeleting = false;
+            // Recover handles if deletion failed
+            if (store.project) {
+                tableHandles = getTableHandles(store.project.ydoc, routeTableId);
+            }
+        }
+    }
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
@@ -143,6 +188,17 @@
         <h1 class="text-2xl font-bold">
             {tableName || "Table"}
         </h1>
+        {#if hasWriteAccess && !isLoading && tableHandles}
+            <div class="ml-auto">
+                <button
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium"
+                    onclick={startDelete}
+                    aria-label="Delete table"
+                >
+                    Delete table
+                </button>
+            </div>
+        {/if}
     </div>
 
     <!-- Authentication component -->
@@ -237,4 +293,104 @@
     {/if}
 </main>
 
+{#if showDeleteDialog && dependencies}
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 id="delete-dialog-title" class="text-lg font-bold text-gray-900">Delete table "{tableName}"</h2>
+            </div>
+
+            <div class="px-6 py-4 overflow-y-auto flex-grow">
+                <p class="text-gray-700 mb-4">
+                    Table deletion is destructive and cannot be undone using the global Undo button.
+                    Please review the references to this table below:
+                </p>
+
+                {#if dependencies.directGridReferences.length > 0}
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">Grid references ({dependencies.directGridReferences.length})</h3>
+                        <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
+                            {#each dependencies.directGridReferences as ref (ref.itemKey)}
+                                <li>Page "{ref.pageTitle}"
+                                    {#if ref.itemText} - "{ref.itemText.substring(0, 30)}{ref.itemText.length > 30 ? '...' : ''}"{/if}
+                                </li>
+                            {/each}
+                        </ul>
+                    </div>
+                {/if}
+
+                {#if dependencies.scheduledTargets.length > 0}
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">Schedule targets ({dependencies.scheduledTargets.length})</h3>
+                        <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
+                            {#each dependencies.scheduledTargets as ref (ref.ruleId)}
+                                <li>Schedule "{ref.ruleName}"</li>
+                            {/each}
+                        </ul>
+                    </div>
+                {/if}
+
+                {#if dependencies.indirectSqlReferences.length > 0}
+                    <div class="mb-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+                        <h3 class="font-semibold text-yellow-800 mb-1">Indirect SQL dependencies ({dependencies.indirectSqlReferences.length})</h3>
+                        <p class="text-xs text-yellow-700 mb-2">These queries explicitly reference the SQL name <code>{tableSqlName}</code> and may fail after deletion.</p>
+                        <ul class="list-disc pl-5 text-sm text-yellow-700 max-h-32 overflow-y-auto">
+                            {#each dependencies.indirectSqlReferences as ref (ref.name)}
+                                <li>{ref.type}: "{ref.name}"</li>
+                            {/each}
+                        </ul>
+                    </div>
+                {/if}
+
+                {#if dependencies.directGridReferences.length === 0 && dependencies.scheduledTargets.length === 0 && dependencies.indirectSqlReferences.length === 0}
+                    <p class="text-sm text-gray-600 italic">No dependencies found in this project.</p>
+                {/if}
+
+                {#if deleteActionError}
+                    <div class="mt-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+                        {deleteActionError}
+                    </div>
+                {/if}
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200 flex flex-col gap-3">
+                {#if dependencies.directGridReferences.length > 0 || dependencies.scheduledTargets.length > 0}
+                    <button
+                        type="button"
+                        class="w-full px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 font-medium disabled:opacity-50"
+                        onclick={() => executeDelete("keep-references")}
+                        disabled={isDeleting}
+                    >
+                        Delete table and keep references
+                    </button>
+                    <button
+                        type="button"
+                        class="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium disabled:opacity-50"
+                        onclick={() => executeDelete("remove-direct-references")}
+                        disabled={isDeleting}
+                    >
+                        Delete table and remove direct references
+                    </button>
+                {:else}
+                    <button
+                        type="button"
+                        class="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium disabled:opacity-50"
+                        onclick={() => executeDelete("keep-references")}
+                        disabled={isDeleting}
+                    >
+                        Delete table
+                    </button>
+                {/if}
+                <button
+                    type="button"
+                    class="w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium disabled:opacity-50"
+                    onclick={() => { showDeleteDialog = false; }}
+                    disabled={isDeleting}
+                >
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+{/if}
 

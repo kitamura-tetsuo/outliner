@@ -40,7 +40,7 @@ export interface QueryEditability {
     rowIdentity?: "id" | "source";
 }
 
-function stripSqlNoise(sql: string): string {
+export function stripSqlNoise(sql: string): string {
     return sql
         .replace(/--[^\n]*/g, " ")
         .replace(/\/\*[\s\S]*?\*\//g, " ")
@@ -137,4 +137,24 @@ export function analyzeQueryEditability(
         if (!identityColumns.has(column) && schemaColumns.has(column)) editableColumns.add(column);
     }
     return { editable: true, editableColumns, rowIdentity };
+}
+
+/**
+ * Parses SQL queries into a set of identifiers (lower-cased for unquoted identifiers,
+ * exact-case for quoted identifiers), ignoring comments and string literals.
+ */
+export function parseIdentifiers(sql: string): Set<string> {
+    const stripped = stripSqlNoise(sql);
+    const identifiers = new Set<string>();
+    // Match quoted identifiers `"my_table"` or unquoted identifiers `my_table`
+    const regex = /"([^"]+)"|\b([a-zA-Z_][a-zA-Z0-9_]*)\b/g;
+    let match;
+    while ((match = regex.exec(stripped)) !== null) {
+        if (match[1]) {
+            identifiers.add(match[1]);
+        } else if (match[2]) {
+            identifiers.add(match[2].toLowerCase());
+        }
+    }
+    return identifiers;
 }
