@@ -1,0 +1,8 @@
+name: schedule-run-now-endpoint
+title: "Manual Schedule Execution Endpoint"
+uuid: 4f8d9b1c-7e3f-4e9b-a1b2-c3d4e5f6a7b8
+description: "Provides an authenticated HTTP endpoint on the Yjs server to run a schedule rule's SQL immediately, bridging the client UI to the backend executor."
+type: backend
+tests:
+  - "server/tests/scheduler/schedule-run-api.test.ts"
+  - "client/src/services/schedule/scheduleRunService.test.ts"
