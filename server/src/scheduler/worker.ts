@@ -3,6 +3,19 @@ import { parentPort } from "node:worker_threads";
 import { logger } from "../logger.js";
 import { JobData } from "./worker-types.js";
 
+// Keep a single global PGlite instance for the worker to avoid V8 WASM crash
+// on repeated db.close() calls. Jobs run sequentially via a mutex.
+let globalDb: PGlite | null = null;
+let jobMutex = Promise.resolve();
+
+async function getDb() {
+    if (!globalDb) {
+        globalDb = new PGlite();
+        await globalDb.waitReady;
+    }
+    return globalDb;
+}
+
 async function executeJob(data: JobData) {
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;
 
@@ -28,10 +41,10 @@ async function executeJob(data: JobData) {
         }
     }
 
-    const db = new PGlite();
-    await db.waitReady;
+    const db = await getDb();
 
     try {
+        await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
         await db.exec(`CREATE SCHEMA "${pgSchema}";`);
 
         await db.exec(`BEGIN;`);
@@ -105,18 +118,24 @@ async function executeJob(data: JobData) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
     } finally {
-        await db.close();
+        try {
+            await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
     }
 }
 
-parentPort?.on("message", async (msg) => {
+parentPort?.on("message", (msg) => {
     if (msg.type === "execute") {
-        try {
-            const result = await executeJob(msg.data);
-            parentPort?.postMessage({ id: msg.id, result });
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
-        }
+        jobMutex = jobMutex.then(async () => {
+            try {
+                const result = await executeJob(msg.data);
+                parentPort?.postMessage({ id: msg.id, result });
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
+            }
+        });
     }
 });
