@@ -12,6 +12,7 @@ import { checkContainerAccess as defaultCheckAccess } from "./access-control.js"
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
+import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
@@ -258,7 +259,7 @@ export async function startServer(
 
                 const room = parseRoom(data.documentName);
 
-                if (room?.project === "demo") {
+                if (room && isDemoProjectSlug(room.project)) {
                     logger.debug(`[Hocuspocus] onAuthenticate: Anonymous demo access for room=${data.documentName}`);
                     return {
                         user: { uid: "anonymous-demo" },
@@ -338,7 +339,9 @@ export async function startServer(
                 return data.document;
             },
             async afterLoadDocument(data: import("@hocuspocus/server").onLoadDocumentPayload<ConnectionContext>) {
-                if (data.documentName === "projects/demo") {
+                // Project documents only: a table subdoc carries no isResetting flag.
+                const demoRoom = parseRoom(data.documentName);
+                if (demoRoom && !demoRoom.table && isDemoProjectSlug(demoRoom.project)) {
                     try {
                         const doc = data.document;
                         const meta = doc.getMap("metadata");
@@ -489,7 +492,7 @@ export async function startServer(
                 return rejectSync(4001, "INVALID_ROOM");
             }
 
-            const isDemoRoom = room.project === "demo";
+            const isDemoRoom = isDemoProjectSlug(room.project);
 
             // 4. Validate token presence (synchronous, no network calls)
             // Note: We bypass strict HTTP Upgrade token presence validation because the client
