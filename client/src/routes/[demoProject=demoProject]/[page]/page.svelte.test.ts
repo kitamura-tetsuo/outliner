@@ -57,7 +57,10 @@ vi.mock("../../../utils/pageUtils", () => ({
 }));
 
 // Mock $app/stores by hoisting
-const mockPageStore = { params: { page: "TestPage" }, url: new URL("http://localhost/demo/TestPage") };
+const mockPageStore = {
+    params: { demoProject: "demo", page: "TestPage" },
+    url: new URL("http://localhost/demo/TestPage"),
+};
 vi.mock("$app/stores", () => {
     return {
         page: {

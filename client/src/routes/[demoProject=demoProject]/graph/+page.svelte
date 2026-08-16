@@ -7,9 +7,13 @@
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { getLogger } from "../../../lib/logger";
+    import { projectBasePath } from "../../../lib/publicProject";
 
     const logger = getLogger("DemoGraphView");
-    const projectName = "Demo";
+
+    let { data }: { data: { project: string; }; } = $props();
+    // Which demo project this route is showing (`demo`, `demo-ja`, …).
+    const projectName = $derived(data.project);
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -23,7 +27,7 @@
 
             if (!yjsStore.yjsClient || !store.project) {
                 // Connects immediately; freshness validation runs in parallel.
-                await initializeDemoProject({
+                await initializeDemoProject(projectName, {
                     isDestroyed: () => isDestroyed,
                     onValidated: (update) => {
                         seedWarning = update.seedFailure === "network"
@@ -41,14 +45,18 @@
         }
     }
 
+    // Captured at mount: `$derived` is not readable from onDestroy.
+    let acquiredProject = "";
+
     onMount(() => {
+        acquiredProject = projectName;
         initializeDemo();
     });
 
     onDestroy(() => {
         isDestroyed = true;
         try {
-            releaseDemoProject();
+            releaseDemoProject(acquiredProject);
         } catch (_e) { logger.error(_e); }
     });
 
@@ -62,7 +70,7 @@
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: "Demo Project", href: "/demo" },
+            { label: "Demo Project", href: projectBasePath(projectName) },
             { label: "Graph View" }
         ]} />
 

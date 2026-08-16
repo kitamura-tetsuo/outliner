@@ -93,6 +93,7 @@ import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
+    import { projectPagePath } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -337,7 +338,7 @@ function handleAliasNavigation(pageTitle: string, targetId: string, e: Event) {
     isAliasDropdownOpen = false;
     const projectTitle = generalStore.project?.title;
     if (projectTitle && pageTitle) {
-        if (projectTitle === "demo" || window.location.pathname.startsWith("/demo")) { goto(resolvePath(`/demo/${encodeURIComponent(pageTitle)}`)); } else { goto(resolvePath(`/${encodeURIComponent(projectTitle)}/${encodeURIComponent(pageTitle)}`)); }
+        goto(resolvePath(projectPagePath(projectTitle, pageTitle)));
     }
 }
 

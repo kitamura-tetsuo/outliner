@@ -6,13 +6,14 @@ import { onMount, onDestroy } from "svelte";
 import SnapshotDiffModal from "../../../../components/SnapshotDiffModal.svelte";
 import Breadcrumb from "../../../../components/Breadcrumb.svelte";
 import { exportItemToMarkdown } from "../../../../services";
-import { DEMO_PROJECT_NAME } from "../../../../lib/demoSeed";
 import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../../lib/demoInit";
 import type { DemoProjectHandle } from "../../../../lib/demoInit";
 import { findPageByName } from "../../../../utils/pageUtils";
 import { userManager } from "../../../../auth/UserManager";
+import { projectBasePath, projectPagePath } from "../../../../lib/publicProject";
 
-let project = $state(DEMO_PROJECT_NAME);
+// Which demo project this route is showing (`demo`, `demo-ja`, …).
+let project = $derived($page.params.demoProject as string);
 let pageTitle = $state("");
 let content = $state("");
 let user = $derived(userManager.getCurrentUser()?.name ?? "Guest");
@@ -46,12 +47,17 @@ function bind(handle: DemoProjectHandle, pTitle: string) {
     handle.project.ydoc.on("update", updateObserver);
 }
 
+// The project whose reference this route holds. Captured here because
+// `$derived` is not readable from onDestroy.
+let acquiredProject = "";
+
 async function loadLiveContent(proj: string, pTitle: string) {
     try {
+        acquiredProject = project;
         isLoading = true;
         // Connects immediately; template freshness is validated in parallel and
         // only reported back when the server actually rebuilt the document.
-        const handle = await initializeDemoProject({
+        const handle = await initializeDemoProject(project, {
             isDestroyed: () => isDestroyed,
             onValidated: (update) => {
                 if (update.reset && update.handle) {
@@ -95,7 +101,7 @@ onDestroy(() => {
     isDestroyed = true;
     try {
         unbind();
-        releaseDemoProject();
+        releaseDemoProject(acquiredProject);
     } catch (_e) {
         logger.error(_e);
     }
@@ -110,8 +116,8 @@ onDestroy(() => {
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: "Demo Project", href: "/demo" },
-            ...(pageTitle ? [{ label: pageTitle, href: `/demo/${encodeURIComponent(pageTitle)}` }] : []),
+            { label: "Demo Project", href: projectBasePath(project) },
+            ...(pageTitle ? [{ label: pageTitle, href: projectPagePath(project, pageTitle) }] : []),
             { label: "History" }
         ]} />
     </div>

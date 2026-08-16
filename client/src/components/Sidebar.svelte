@@ -16,6 +16,7 @@ import type * as Y from "yjs";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
+    import { projectPagePath } from "../lib/publicProject";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -30,8 +31,12 @@ import type * as Y from "yjs";
     // user navigated with) over store.project.title, which may be stale or, for
     // projects whose Yjs metadata never had a title set, corrupted with a raw
     // container UUID.
+    // The demo routes name their project `demoProject`; every other project
+    // route names it `project`. Reading the param rather than testing the
+    // pathname is what keeps `/demo-ja` from being mistaken for `/demo` —
+    // `"/demo-ja/…".startsWith("/demo")` is true.
     let currentProjectName = $derived(
-        $pageStore.url.pathname.startsWith('/demo') ? "demo" : ($pageStore.params.project || "Untitled Project"),
+        $pageStore.params.demoProject || $pageStore.params.project || "Untitled Project",
     );
 
     // Tables reactivity
@@ -273,7 +278,7 @@ import type * as Y from "yjs";
                                 const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
                                 const newPage = store.project.addPage(title, authorId);
                                 const pageHref = resolvePath(
-                                    currentProjectName === "demo" ? `/demo/${encodeURIComponent(newPage.text.trimEnd())}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(newPage.text.trimEnd())}`
+                                    projectPagePath(currentProjectName, newPage.text.trimEnd()),
                                 );
                                 goto(pageHref);
                             }
@@ -313,9 +318,7 @@ import type * as Y from "yjs";
                         <li class="sidebar-placeholder">No pages available</li>
                     {:else}
                         {#each pages as page (page.id)}
-                            {@const pageHref = resolvePath(
-                                currentProjectName === "demo" ? `/demo/${encodeURIComponent(page.text.trimEnd())}` : `/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(page.text.trimEnd())}`,
-                            )}
+                            {@const pageHref = resolvePath(projectPagePath(currentProjectName, page.text.trimEnd()))}
                             <li>
                                 <a
                                     class="page-item"

@@ -5,28 +5,32 @@ import * as Y from "yjs";
 import { YTree } from "yjs-orderedtree";
 import { type Config } from "./config.js";
 import {
-    DEMO_PROJECT_TITLE,
     DEMO_TEMPLATE_VERSION,
-    demoPages,
-    demoTables,
+    demoPagesFor,
+    demoTablesFor,
     populateDemoProject,
     seedDemoTableDoc,
 } from "./demo-content.js";
+import { DEFAULT_DEMO_SLUG, demoLocaleForSlug, isDemoProjectSlug } from "./demo-projects.js";
 import { logger } from "./logger.js";
 import { Project } from "./schema/app-schema.js";
 import { getClientIp } from "./utils/ip.js";
 
 type HocuspocusInstance = Hocuspocus;
 
-const DEMO_PROJECT_ID = "demo";
 const RESET_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const FORCE_RESET_RATE_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 
+// Every piece of per-demo state below is keyed by room (`projects/<slug>`), so
+// the locales stay independent: reseeding `/demo` must not invalidate, block or
+// rate-limit `/demo-ja`, and vice versa.
 const inFlightResets = new Map<string, Promise<{ success: boolean; reset: boolean; }>>();
+// Keyed by `<ip>|<project>` so one visitor forcing a reset of one locale does
+// not lock them out of the others.
 const forceRateLimits = new Map<string, number>();
-let lastGlobalForceReset = 0;
+const lastGlobalForceResets = new Map<string, number>();
 
-let demoFastPath: { stateVectorHex: string; missingTemplatePages: boolean; } | null = null;
+const demoFastPaths = new Map<string, { stateVectorHex: string; missingTemplatePages: boolean; }>();
 
 // How long a "template is fresh" verdict may be reused without re-opening the
 // demo document. The verdict is additionally invalidated the moment the demo
@@ -42,30 +46,40 @@ interface DemoWarmState {
     onDocChanged: () => void;
 }
 
-// Authoritative "nothing to do" state for the demo room. While it is set, a
-// non-forced POST /api/seed-demo answers without opening a direct connection,
-// loading the document from storage, or scanning the ordered tree.
-let demoWarmState: DemoWarmState | undefined;
+// Authoritative "nothing to do" state, per demo room. While a room's entry is
+// set, a non-forced POST /api/seed-demo for that room answers without opening a
+// direct connection, loading the document from storage, or scanning the tree.
+const demoWarmStates = new Map<string, DemoWarmState>();
 
-function clearDemoWarmState(): void {
-    if (!demoWarmState) return;
-    const { doc, onDocChanged } = demoWarmState;
-    demoWarmState = undefined;
-    try {
-        doc.off("update", onDocChanged);
-        doc.off("destroy", onDocChanged);
-    } catch (_e) {
-        // The document may already be destroyed; nothing left to detach.
+/** Drop the warm verdict of one room, or of every room when `room` is omitted. */
+function clearDemoWarmState(room?: string): void {
+    const rooms = room === undefined ? [...demoWarmStates.keys()] : [room];
+    for (const key of rooms) {
+        const state = demoWarmStates.get(key);
+        if (!state) continue;
+        demoWarmStates.delete(key);
+        try {
+            state.doc.off("update", state.onDocChanged);
+            state.doc.off("destroy", state.onDocChanged);
+        } catch (_e) {
+            // The document may already be destroyed; nothing left to detach.
+        }
     }
 }
 
 // Remember that `doc` currently holds a complete, up-to-date template. Any
 // update to the document (an edit by a visitor, a rename, a page deletion) or
 // unloading it from memory drops the verdict, so the next request revalidates.
-function rememberDemoWarmState(doc: Y.Doc, lastReset: number, templateVersion: number, now: number): void {
-    clearDemoWarmState();
-    const onDocChanged = () => clearDemoWarmState();
-    demoWarmState = { lastReset, templateVersion, verifiedAt: now, doc, onDocChanged };
+function rememberDemoWarmState(
+    room: string,
+    doc: Y.Doc,
+    lastReset: number,
+    templateVersion: number,
+    now: number,
+): void {
+    clearDemoWarmState(room);
+    const onDocChanged = () => clearDemoWarmState(room);
+    demoWarmStates.set(room, { lastReset, templateVersion, verifiedAt: now, doc, onDocChanged });
     doc.on("update", onDocChanged);
     doc.on("destroy", onDocChanged);
 }
@@ -73,8 +87,8 @@ function rememberDemoWarmState(doc: Y.Doc, lastReset: number, templateVersion: n
 // True when the last validation proved the template is fresh and nothing has
 // happened since that could invalidate it (including crossing the 24h reset
 // boundary or a template version bump after a deploy).
-export function isDemoWarm(now: number): boolean {
-    const state = demoWarmState;
+export function isDemoWarm(room: string, now: number): boolean {
+    const state = demoWarmStates.get(room);
     if (!state) return false;
     if (state.templateVersion !== DEMO_TEMPLATE_VERSION) return false;
     if (now - state.verifiedAt > WARM_PATH_TTL_MS) return false;
@@ -82,9 +96,12 @@ export function isDemoWarm(now: number): boolean {
     return true;
 }
 
-// Drop the warm-path verdict. Exported so tests can start from a cold server.
-export function resetDemoWarmState(): void {
-    clearDemoWarmState();
+/**
+ * Drop the warm-path verdict. Exported so tests can start from a cold server;
+ * with no argument it clears every demo room, which is what a test wants.
+ */
+export function resetDemoWarmState(room?: string): void {
+    clearDemoWarmState(room);
 }
 
 export interface DemoResetState {
@@ -120,23 +137,41 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
         };
         try {
             const force = req.body?.force === true;
-            logger.info({ event: "seed_demo_request", force });
+            // Older clients predate the multilingual demo and send no project;
+            // they mean the English one.
+            const project = typeof req.body?.project === "string" ? req.body.project : DEFAULT_DEMO_SLUG;
+            logger.info({ event: "seed_demo_request", force, project });
 
-            let clientIpForRateLimit: string | undefined;
+            // This endpoint is unauthenticated: without an exact-match check on
+            // a registered slug it would open and rewrite any Hocuspocus room a
+            // caller names.
+            if (!isDemoProjectSlug(project)) {
+                logger.warn({ event: "seed_demo_unknown_project", project });
+                res.status(400).json({
+                    error: "Bad Request",
+                    message: "Unknown demo project",
+                });
+                return;
+            }
+            const locale = demoLocaleForSlug(project)!;
+            const projectRoom = `projects/${project}`;
+
+            let rateLimitKeyForForce: string | undefined;
 
             if (force) {
                 const clientIp = getClientIp(req, config);
-                const lastForce = forceRateLimits.get(clientIp) || 0;
+                const rateLimitKey = `${clientIp}|${project}`;
+                const lastForce = forceRateLimits.get(rateLimitKey) || 0;
                 const now = Date.now();
 
                 // Evict expired entries
-                for (const [ip, timestamp] of forceRateLimits.entries()) {
+                for (const [key, timestamp] of forceRateLimits.entries()) {
                     if (now - timestamp >= FORCE_RESET_RATE_LIMIT_MS) {
-                        forceRateLimits.delete(ip);
+                        forceRateLimits.delete(key);
                     }
                 }
                 if (now - lastForce < FORCE_RESET_RATE_LIMIT_MS) {
-                    logger.warn({ event: "seed_demo_rate_limit_exceeded", ip: clientIp });
+                    logger.warn({ event: "seed_demo_rate_limit_exceeded", ip: clientIp, project });
                     res.status(429).json({
                         error: "Too Many Requests",
                         message: "Force reset is rate limited",
@@ -144,8 +179,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     });
                     return;
                 }
-                if (now - lastGlobalForceReset < FORCE_RESET_RATE_LIMIT_MS) {
-                    logger.warn({ event: "seed_demo_global_rate_limit_exceeded", ip: clientIp });
+                if (now - (lastGlobalForceResets.get(projectRoom) ?? 0) < FORCE_RESET_RATE_LIMIT_MS) {
+                    logger.warn({ event: "seed_demo_global_rate_limit_exceeded", ip: clientIp, project });
                     res.status(429).json({
                         error: "Too Many Requests",
                         message: "Force reset is rate limited",
@@ -153,14 +188,12 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     });
                     return;
                 }
-                clientIpForRateLimit = clientIp;
+                rateLimitKeyForForce = rateLimitKey;
                 // A forced reset is about to rebuild the document: the warm
                 // verdict is stale from this moment, not only once the document
                 // has been opened.
-                clearDemoWarmState();
+                clearDemoWarmState(projectRoom);
             }
-
-            const projectRoom = `projects/${DEMO_PROJECT_ID}`;
 
             // Joining an in-flight run takes precedence over the warm verdict:
             // that run may be a reset, and this visitor has to hear about it.
@@ -177,7 +210,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
             // Warm path: a previous request already proved the template is
             // complete and current, and the document has not changed since.
             // Answer without touching the document at all.
-            if (!force && isDemoWarm(Date.now())) {
+            if (!force && isDemoWarm(projectRoom, Date.now())) {
                 logger.info({ event: "seed_demo_warm_path", projectRoom });
                 reportTiming("warm");
                 res.json({ success: true, reset: false, warm: true });
@@ -211,10 +244,20 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                     if (!isEmpty) {
                         const currentStateVector = Buffer.from(Y.encodeStateVector(doc)).toString("hex");
 
-                        if (!force && demoFastPath && demoFastPath.stateVectorHex === currentStateVector) {
-                            missingTemplatePages = demoFastPath.missingTemplatePages;
+                        const fastPath = demoFastPaths.get(projectRoom);
+                        if (!force && fastPath && fastPath.stateVectorHex === currentStateVector) {
+                            missingTemplatePages = fastPath.missingTemplatePages;
                         } else {
-                            const expectedTemplateIds = new Set(demoPages.map(p => p.title.trim().toLowerCase()));
+                            // `templatePageId` is locale-stable (the page's `key`)
+                            // while the title it should carry is translated, so the
+                            // two are compared through this locale's title map.
+                            // That is what still makes renaming a page force a
+                            // reseed, in every locale.
+                            const localePages = demoPagesFor(locale);
+                            const expectedTemplateIds = new Set(localePages.map(p => p.key));
+                            const expectedTitleByKey = new Map(
+                                localePages.map(p => [p.key, p.title.trim().toLowerCase()]),
+                            );
                             const existingTemplateIds = new Set<string>();
 
                             // We read directly from the underlying Y.Map to prevent YTree observer memory leaks
@@ -242,7 +285,9 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                                     // ignore
                                                 }
                                             }
-                                            if (textStr.trim().toLowerCase() === templatePageId) {
+                                            if (
+                                                textStr.trim().toLowerCase() === expectedTitleByKey.get(templatePageId)
+                                            ) {
                                                 existingTemplateIds.add(templatePageId);
                                             }
                                         }
@@ -256,7 +301,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                     break;
                                 }
                             }
-                            demoFastPath = { stateVectorHex: currentStateVector, missingTemplatePages };
+                            demoFastPaths.set(projectRoom, {
+                                stateVectorHex: currentStateVector,
+                                missingTemplatePages,
+                            });
                         }
                     }
 
@@ -279,8 +327,8 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                             meta.set("resetStartedAt", now);
                         });
 
-                        demoFastPath = null;
-                        clearDemoWarmState();
+                        demoFastPaths.delete(projectRoom);
+                        clearDemoWarmState(projectRoom);
 
                         try {
                             const docProject = Project.fromDoc(doc as unknown as Y.Doc);
@@ -333,19 +381,24 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
                                 // Re-initialize metadata
                                 const meta = ydoc.getMap("metadata");
-                                meta.set("title", DEMO_PROJECT_TITLE);
+                                // The title is the slug, which is also the room
+                                // id and the first URL segment. Internal links
+                                // are rendered from it, so a localized demo
+                                // titled "demo" would send every link into the
+                                // English demo instead of its own pages.
+                                meta.set("title", project);
                             });
 
                             // Rebuild the template directly in the live document.
                             // This is done sequentially outside the transaction because
                             // yjs-orderedtree relies on synchronous observeDeep callbacks
                             // which are suspended during a transaction.
-                            populateDemoProject(docProject, "seed-server");
+                            populateDemoProject(docProject, "seed-server", locale, project);
 
                             // Seed each demo table's own room (the table
                             // content lives in a subdoc, not the project doc).
-                            for (const template of demoTables) {
-                                const tableRoom = `projects/${DEMO_PROJECT_ID}/tables/${template.tableId}`;
+                            for (const template of demoTablesFor(locale)) {
+                                const tableRoom = `${projectRoom}/tables/${template.tableId}`;
                                 const tableConnection = await hocuspocus.openDirectConnection(tableRoom, {
                                     isSeeding: true,
                                 });
@@ -378,13 +431,19 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
 
                     if (shouldReset) {
                         // The document we just rebuilt is by definition current.
-                        rememberDemoWarmState(doc as unknown as Y.Doc, now, DEMO_TEMPLATE_VERSION, Date.now());
+                        rememberDemoWarmState(
+                            projectRoom,
+                            doc as unknown as Y.Doc,
+                            now,
+                            DEMO_TEMPLATE_VERSION,
+                            Date.now(),
+                        );
                     } else if (lastReset !== undefined && templateVersion !== undefined) {
-                        rememberDemoWarmState(doc as unknown as Y.Doc, lastReset, templateVersion, now);
+                        rememberDemoWarmState(projectRoom, doc as unknown as Y.Doc, lastReset, templateVersion, now);
 
                         // Independently verify each demo table room and re-seed if missing or stale
-                        for (const template of demoTables) {
-                            const tableRoom = `projects/${DEMO_PROJECT_ID}/tables/${template.tableId}`;
+                        for (const template of demoTablesFor(locale)) {
+                            const tableRoom = `${projectRoom}/tables/${template.tableId}`;
                             const tableConnection = await hocuspocus.openDirectConnection(tableRoom, {
                                 isSeeding: true,
                             });
@@ -406,7 +465,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                         }
                     }
 
-                    return { success: true, reset: shouldReset };
+                    return { success: true, reset: shouldReset, project };
                 } finally {
                     // Must disconnect to prevent memory leak
                     await directConnection.disconnect();
@@ -416,10 +475,10 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
             inFlightResets.set(projectRoom, resetPromise);
             try {
                 const result = await resetPromise;
-                if (clientIpForRateLimit && result.reset) {
+                if (rateLimitKeyForForce && result.reset) {
                     const finishTime = Date.now();
-                    forceRateLimits.set(clientIpForRateLimit, finishTime);
-                    lastGlobalForceReset = finishTime;
+                    forceRateLimits.set(rateLimitKeyForForce, finishTime);
+                    lastGlobalForceResets.set(projectRoom, finishTime);
                 }
                 reportTiming(result.reset ? "reset" : "validated");
                 res.json(result);

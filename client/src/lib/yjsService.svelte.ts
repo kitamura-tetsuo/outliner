@@ -1,4 +1,5 @@
 // High-level Yjs service providing shared document utilities
+import { isDemoProjectSlug } from "$shared/demoProjects";
 import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
@@ -417,10 +418,15 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
 
     if (signal?.aborted) return undefined;
 
-    // Special bypass for demo project
-    if (projectTitle === "demo") {
+    // Special bypass for the public demo projects.
+    //
+    // This is what keeps a demo's room id equal to its title: it skips the
+    // stableIdFromTitle hashing every other project goes through, so `demo-ja`
+    // connects to `projects/demo-ja` and its internal links resolve to
+    // /demo-ja/<page>. See shared/src/demoProjects.ts.
+    if (isDemoProjectSlug(projectTitle)) {
         const userId = userManager.getCurrentUser()?.id || "anonymous-demo";
-        const projectId = "demo";
+        const projectId = projectTitle;
 
         if (registry.has(keyFor(userId, projectId))) {
             const [c] = registry.get(keyFor(userId, projectId))!;
@@ -433,7 +439,7 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
         }
         if (signal?.aborted) return undefined;
 
-        return await connectAndRegister(projectId, "Demo", userId);
+        return await connectAndRegister(projectId, projectTitle, userId);
     }
 
     // First, check the registry for a matching client
@@ -572,7 +578,8 @@ export function cleanupClient() {
  * Used by the demo manual reset to re-sync after the server reseeds the doc.
  */
 export function removeClientByProjectId(projectId: string): void {
-    const userId = userManager.getCurrentUser()?.id || (projectId === "demo" ? "anonymous-demo" : undefined);
+    const userId = userManager.getCurrentUser()?.id
+        || (isDemoProjectSlug(projectId) ? "anonymous-demo" : undefined);
     const key = keyFor(userId, projectId);
     const entry = registry.get(key);
     if (entry) {
@@ -585,33 +592,48 @@ export function removeClientByProjectId(projectId: string): void {
     }
 }
 
-let demoRefCount = 0;
-let demoAcquirePromise: Promise<YjsClient | undefined> | null = null;
+// Reference counts and in-flight connections, per demo project: the demo ships
+// one project per locale, and a visitor moving between them must not have one
+// locale's routes release the other's client.
+/* eslint-disable svelte/prefer-svelte-reactivity -- Plain bookkeeping: no UI reads these. */
+const demoRefCounts = new Map<string, number>();
+const demoAcquirePromises = new Map<string, Promise<YjsClient | undefined>>();
+/* eslint-enable svelte/prefer-svelte-reactivity */
 
-export async function acquireDemoClient(signal?: AbortSignal): Promise<YjsClient | undefined> {
-    if (demoRefCount === 0 || !demoAcquirePromise) {
-        demoAcquirePromise = getClientByProjectTitle("demo", signal);
+export async function acquireDemoClient(
+    project: string,
+    signal?: AbortSignal,
+): Promise<YjsClient | undefined> {
+    let promise = demoAcquirePromises.get(project);
+    if ((demoRefCounts.get(project) ?? 0) === 0 || !promise) {
+        promise = getClientByProjectTitle(project, signal);
+        demoAcquirePromises.set(project, promise);
     }
-    const client = await demoAcquirePromise;
+    const client = await promise;
     if (client && !signal?.aborted) {
-        demoRefCount++;
+        demoRefCounts.set(project, (demoRefCounts.get(project) ?? 0) + 1);
     }
     return client;
 }
 
-export function releaseDemoClient(): number {
-    if (demoRefCount > 0) {
-        demoRefCount--;
+export function releaseDemoClient(project: string): number {
+    const next = Math.max(0, (demoRefCounts.get(project) ?? 0) - 1);
+    demoRefCounts.set(project, next);
+    if (next === 0) {
+        demoAcquirePromises.delete(project);
     }
-    if (demoRefCount === 0) {
-        demoAcquirePromise = null;
-    }
-    return demoRefCount;
+    return next;
 }
 
-export function resetDemoClientState(): void {
-    demoRefCount = 0;
-    demoAcquirePromise = null;
+/** Reset one demo project's state, or every project when `project` is omitted. */
+export function resetDemoClientState(project?: string): void {
+    if (project === undefined) {
+        demoRefCounts.clear();
+        demoAcquirePromises.clear();
+        return;
+    }
+    demoRefCounts.delete(project);
+    demoAcquirePromises.delete(project);
 }
 
 export async function deleteProject(projectId: string): Promise<boolean> {

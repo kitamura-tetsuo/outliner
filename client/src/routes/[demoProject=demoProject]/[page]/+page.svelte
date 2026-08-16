@@ -7,9 +7,9 @@ import { goto } from "$app/navigation";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
-    import { DEMO_PROJECT_NAME } from "../../../lib/demoSeed";
     import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
+    import { projectBasePath, projectPagePath } from "../../../lib/publicProject";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
@@ -20,6 +20,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     const logger = getLogger("DemoPageView");
 
     let pageName: string = $derived($page.params.page || "");
+    // Which demo project this route is showing (`demo`, `demo-ja`, …).
+    let demoProject: string = $derived($page.params.demoProject as string);
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -64,8 +66,14 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         return sharedFindPageByName(store.project.items, name) || undefined;
     }
 
+    // The project whose reference this route holds. Captured here because
+    // `$derived` is not readable from onDestroy, and the release must name the
+    // same project the acquire did.
+    let acquiredProject = "";
+
     async function loadDemoPage() {
         try {
+            acquiredProject = demoProject;
             isLoading = true;
             error = undefined;
             pageNotFound = false;
@@ -74,7 +82,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
                 // Connects immediately; freshness validation runs in parallel.
-                await initializeDemoProject({
+                await initializeDemoProject(demoProject, {
                     isDestroyed: () => isDestroyed,
                     onValidated: (update) => {
                         seedWarning = update.seedFailure === "network"
@@ -127,7 +135,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             const trimmedTitle = textStr.trim();
             const decodedPageName = safeDecodeURIComponent(pageName).trim();
             if (trimmedTitle && trimmedTitle !== decodedPageName && pageName) {
-                const newRoute = resolvePath(`/demo/${encodeURIComponent(trimmedTitle)}`);
+                const newRoute = resolvePath(projectPagePath(demoProject, trimmedTitle));
                 goto(newRoute, { replaceState: true });
             }
         }
@@ -170,7 +178,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     onDestroy(() => {
         isDestroyed = true;
         try {
-            releaseDemoProject();
+            releaseDemoProject(acquiredProject);
         } catch (_e) { logger.error(_e); }
     });
 </script>
@@ -183,13 +191,13 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: "Demo Project", href: "/demo" },
+            { label: "Demo Project", href: projectBasePath(demoProject) },
             { label: pageName }
         ]} />
 
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">
-                <span class="text-gray-600">Demo /</span>
+                <span class="text-gray-600">{demoProject} /</span>
                 {pageName}
             </h1>
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
@@ -202,7 +210,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 >
                     Search
                 </button>
-                <a href={resolvePath(`/demo/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={resolvePath(`${projectBasePath(demoProject)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">
@@ -281,14 +289,14 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         {#key `${lastReset}-${store.currentPage.id}`}
             <OutlinerBase
                 pageItem={store.currentPage}
-                projectName={DEMO_PROJECT_NAME}
+                projectName={demoProject}
                 pageName={pageName}
                 isReadOnly={false}
                 onEdit={undefined}
             />
 
             <!-- Backlink Panel -->
-            <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+            <BacklinkPanel {pageName} projectName={demoProject} />
         {/key}
     {/if}
 
