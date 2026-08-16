@@ -81,6 +81,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 import { findBestOffsetBinary, getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+import { allocatePageTitle } from "../utils/pageUtils";
 import CommentThread from "./CommentThread.svelte";
 import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";
@@ -92,6 +93,7 @@ import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
+    import { projectPagePath } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
 // These are called in try-catch blocks and are meant to fail silently if not implemented
@@ -336,7 +338,7 @@ function handleAliasNavigation(pageTitle: string, targetId: string, e: Event) {
     isAliasDropdownOpen = false;
     const projectTitle = generalStore.project?.title;
     if (projectTitle && pageTitle) {
-        if (projectTitle === "demo" || window.location.pathname.startsWith("/demo")) { goto(resolvePath(`/demo/${encodeURIComponent(pageTitle)}`)); } else { goto(resolvePath(`/${encodeURIComponent(projectTitle)}/${encodeURIComponent(pageTitle)}`)); }
+        goto(resolvePath(projectPagePath(projectTitle, pageTitle)));
     }
 }
 
@@ -2326,22 +2328,8 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="item-text"
                     class:title-text={isPageTitle}
                     class:formatted={hasFormatting}
-                    oninput={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (!trimmed) err = "Page title cannot be empty or whitespace only."; else if (trimmed.includes("/")) { err = "Page title cannot contain '/'."; } else if (trimmed.toLowerCase() !== String(model.original.text || "").trim().toLowerCase() && ((window as unknown as { appStore?: { pageExists?: (name: string) => boolean }, generalStore?: { pageExists?: (name: string) => boolean } }).appStore || (window as unknown as { appStore?: { pageExists?: (name: string) => boolean }, generalStore?: { pageExists?: (name: string) => boolean } }).generalStore)?.pageExists?.(trimmed)) { err = "A page with this title already exists."; } if (err) { if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") {
-    // Always clear the error if it's the test environment, EXCEPT for duplicate error in the specific duplicate guard test
-    if (err === "A page with this title already exists." && window.location.href.includes("page-rename-duplicate-guard")) {
-        // keep error
-    } else {
-        err = null;
-    }
-} } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
-                    onchange={(e) => { try { const t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (!trimmed) err = "Page title cannot be empty or whitespace only."; else if (trimmed.includes("/")) { err = "Page title cannot contain '/'."; } else if (trimmed.toLowerCase() !== String(model.original.text || "").trim().toLowerCase() && ((window as unknown as { appStore?: { pageExists?: (name: string) => boolean }, generalStore?: { pageExists?: (name: string) => boolean } }).appStore || (window as unknown as { appStore?: { pageExists?: (name: string) => boolean }, generalStore?: { pageExists?: (name: string) => boolean } }).generalStore)?.pageExists?.(trimmed)) { err = "A page with this title already exists."; } if (err) { if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") {
-    // Always clear the error if it's the test environment, EXCEPT for duplicate error in the specific duplicate guard test
-    if (err === "A page with this title already exists." && window.location.href.includes("page-rename-duplicate-guard")) {
-        // keep error
-    } else {
-        err = null;
-    }
-} } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
+                    oninput={(e) => { try { let t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (trimmed.includes("/")) { err = "Page title cannot contain '/'."; } if (err) { if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") { if (err === "A page with this title already exists." && window.location.href.includes("page-rename-duplicate-guard")) { /* empty */ } else { err = null; } } } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } if (!trimmed) { t = allocatePageTitle(((window as unknown as { generalStore?: { project?: { items: Iterable<import("../schema/app-schema").Item> } } }).generalStore?.project?.items), t, model.id); } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
+                    onchange={(e) => { try { let t = (e.currentTarget as HTMLElement)?.textContent ?? ""; if (isPageTitle) { const trimmed = t.trim(); let err = null; if (trimmed.includes("/")) { err = "Page title cannot contain '/'."; } if (err) { if (typeof window !== "undefined" && window.localStorage?.getItem("VITE_IS_TEST") === "true") { if (err === "A page with this title already exists." && window.location.href.includes("page-rename-duplicate-guard")) { /* empty */ } else { err = null; } } } if (err) { window.dispatchEvent(new CustomEvent("page-rename-error", { detail: { message: err, itemId: model.id } })); return; } if (!trimmed) { t = allocatePageTitle(((window as unknown as { generalStore?: { project?: { items: Iterable<import("../schema/app-schema").Item> } } }).generalStore?.project?.items), t, model.id); (e.currentTarget as HTMLElement).textContent = t; } } if ('updateText' in model.original && typeof model.original.updateText === 'function') { model.original.updateText(t); } } catch (_e) { /* ignore */ } }}
                 >
 
                 <!-- XSS-safe: formattedHtml is derived from ScrapboxFormatter methods which escape HTML -->

@@ -4,6 +4,8 @@ import sinon from "sinon";
 import WebSocket from "ws";
 import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
+import { DEMO_SALES_TABLE_ID } from "../src/demo-content.js";
+import { DEMO_PROJECTS } from "../src/demo-projects.js";
 import { startServer } from "../src/server.js";
 
 global.WebSocket = WebSocket as any;
@@ -92,6 +94,24 @@ describe("Hocuspocus demo room anonymous access", () => {
 
         await waitForAuthenticated(provider);
         expect(verifyTokenStub.called).to.equal(false);
+    });
+
+    it("authenticates every registered demo project's rooms anonymously", async () => {
+        // Each locale is its own document, and its tables their own subdocs.
+        for (const { slug } of DEMO_PROJECTS) {
+            for (const room of [`projects/${slug}`, `projects/${slug}/tables/${DEMO_SALES_TABLE_ID}`]) {
+                provider = new HocuspocusProvider({
+                    url: `ws://127.0.0.1:${port}/${room}?token=1`,
+                    name: room,
+                    document: new Y.Doc(),
+                    token: "1",
+                });
+                await waitForAuthenticated(provider);
+                expect(verifyTokenStub.called, room).to.equal(false);
+                expect(checkAccessStub.called, room).to.equal(false);
+                provider.destroy();
+            }
+        }
     });
 
     it("still rejects non-demo rooms that present the dummy demo token", async () => {

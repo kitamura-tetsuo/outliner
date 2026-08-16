@@ -12,7 +12,9 @@ import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
 import { pageViewStore } from "../stores/PageViewStore.svelte";
 import { getBacklinkCount } from "../lib/backlinkCollector";
 import { store } from "../stores/store.svelte";
-import { findPageByName, generateDefaultPageTitle } from "../utils/pageUtils";
+import { allocatePageTitle, findPageByName, generateDefaultPageTitle } from "../utils/pageUtils";
+import { DEFAULT_DEMO_SLUG } from "$shared/demoProjects";
+import { projectBasePath, projectPagePath } from "../lib/publicProject";
 
 interface Props {
     projectName?: string;
@@ -27,7 +29,7 @@ let {
     rootItems,
     currentUser = "anonymous",
     onPageSelected,
-    projectName = project?.title || "demo"
+    projectName = project?.title || DEFAULT_DEMO_SLUG
 }: Props = $props();
 
 const dispatch = createEventDispatcher();
@@ -104,7 +106,7 @@ function handleCreatePage() {
         if (existingPage) {
             selectPage(existingPage);
             const encodedTitle = encodeURIComponent(existingPage.text.trimEnd());
-            const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
+            const basePath = projectBasePath(projectName);
             goto(resolvePath(`${basePath}/${encodedTitle}`));
             pageTitle = "";
             return;
@@ -112,12 +114,13 @@ function handleCreatePage() {
     }
 
     // Add a page directly to the project
-    const newPage = project.addPage(pageTitle, currentUser);
+    const allocatedTitle = allocatePageTitle(project.items, pageTitle);
+    const newPage = project.addPage(allocatedTitle, currentUser);
     selectPage(newPage);
 
     // Also explicitly route to the new page when created via UI (e.g. hitting Enter)
     const encodedTitle = encodeURIComponent(newPage.text.trimEnd());
-    const basePath = projectName === "demo" ? "/demo" : `/${encodeURIComponent(projectName)}`;
+    const basePath = projectBasePath(projectName);
     goto(resolvePath(`${basePath}/${encodedTitle}`));
 
     pageTitle = isDev ? generateDefaultPageTitle() : "";
@@ -222,7 +225,7 @@ function selectPage(page: Item) {
 
     <ul class="m-0 list-none gap-4 p-0 {isGridView ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'flex flex-col'}">
         {#each sortedItems as page (page.id)}
-            <PageListItem {page} {isGridView} href={resolvePath(projectName === "demo" ? `/demo/${encodeURIComponent(page.text.trimEnd())}` : `/${encodeURIComponent(projectName)}/${encodeURIComponent(page.text.trimEnd())}`)} onPageClick={() => selectPage(page)} />
+            <PageListItem {page} {isGridView} href={resolvePath(projectPagePath(projectName, page.text.trimEnd()))} onPageClick={() => selectPage(page)} />
         {/each}
 
         {#if sortedItems.length === 0}

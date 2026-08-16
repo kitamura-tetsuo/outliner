@@ -127,3 +127,76 @@ describe("Demo API", () => {
         expect(mockTableConnection.transact).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("Demo API localized projects", () => {
+    // The demo ships one project per locale; the endpoint seeds the room the
+    // request names, with that locale's content and title.
+    function makeStub() {
+        const docs = new Map<string, Y.Doc>();
+        const opened: string[] = [];
+        const hocuspocus = {
+            openDirectConnection: jest.fn(async (room: string) => {
+                opened.push(room);
+                let doc = docs.get(room);
+                if (!doc) {
+                    doc = new Y.Doc();
+                    docs.set(room, doc);
+                }
+                const target = doc;
+                return {
+                    document: target,
+                    transact: jest.fn((cb: any) => cb(target)),
+                    disconnect: jest.fn(),
+                };
+            }),
+        };
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(hocuspocus as any));
+        return { app, docs, opened };
+    }
+
+    beforeEach(() => {
+        resetDemoWarmState();
+    });
+
+    it("titles each demo document with its own slug so internal links stay inside it", async () => {
+        // project.title is what renders internal links. A demo-ja document
+        // titled "demo" would point every link at the English demo, at pages
+        // whose Japanese titles do not exist there.
+        for (const slug of ["demo", "demo-ja"]) {
+            const { app, docs } = makeStub();
+            const response = await request(app).post("/api/seed-demo").send({ project: slug });
+
+            expect(response.status).toBe(200);
+            expect(response.body.reset).toBe(true);
+            expect(response.body.project).toBe(slug);
+            expect(docs.get(`projects/${slug}`)!.getMap("metadata").get("title")).toBe(slug);
+        }
+    });
+
+    it("seeds a localized demo's tables in its own rooms", async () => {
+        const { app, opened } = makeStub();
+        await request(app).post("/api/seed-demo").send({ project: "demo-ja" });
+
+        const tableRooms = opened.filter(room => room.includes("/tables/"));
+        expect(tableRooms.length).toBeGreaterThan(0);
+        for (const room of tableRooms) {
+            expect(room.startsWith("projects/demo-ja/tables/")).toBe(true);
+        }
+    });
+
+    it("seeds the locale's own page titles", async () => {
+        const { app, docs } = makeStub();
+        await request(app).post("/api/seed-demo").send({ project: "demo-ja" });
+
+        const project = Project.fromDoc(docs.get("projects/demo-ja")! as any);
+        const titles: string[] = [];
+        for (let i = 0; i < project.items.length; i++) {
+            const page = project.items.at(i);
+            if (page) titles.push(page.text);
+        }
+        expect(titles).toContain("ようこそ");
+        expect(titles).not.toContain("Welcome");
+    });
+});

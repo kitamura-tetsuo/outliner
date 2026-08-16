@@ -29,7 +29,7 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
 
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p) continue;
-        let textString: string;
+        let textString = "";
         try {
             if (typeof p.text?.toString === "function") {
                 textString = p.text.toString();
@@ -37,7 +37,7 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
                 textString = String(p.text ?? "");
             }
         } catch (_e) {
-            textString = "";
+            // Ignore error since textString is already empty
         }
 
         const currentName = textString.trim().toLowerCase();
@@ -48,4 +48,40 @@ export function findPageByName(items: Iterable<Item> | undefined | null, name: s
     }
 
     return null;
+}
+
+export function allocatePageTitle(
+    items: Iterable<Item> | undefined | null,
+    rawTitle: string,
+    currentItemId?: string,
+): string {
+    const trimmedTitle = rawTitle.trim();
+    const baseTitle = trimmedTitle === "" ? "Untitled" : trimmedTitle;
+
+    if (!items) return baseTitle;
+
+    const existingNames = new Set<string>();
+    for (const p of iterateItems(items) as Iterable<Item>) {
+        if (!p || (currentItemId && (p.id === currentItemId || p.key === currentItemId))) continue;
+        let textString = "";
+        try {
+            if (typeof p.text?.toString === "function") {
+                textString = p.text.toString();
+            } else {
+                textString = String(p.text ?? "");
+            }
+        } catch (_e) {
+            // Error handling ignored
+        }
+        existingNames.add(textString.trim().toLowerCase());
+    }
+
+    let allocatedTitle = baseTitle;
+    let counter = 2;
+    while (existingNames.has(allocatedTitle.toLowerCase())) {
+        allocatedTitle = `${baseTitle}_${counter}`;
+        counter++;
+    }
+
+    return allocatedTitle;
 }

@@ -1,10 +1,17 @@
+import { DEFAULT_DEMO_SLUG } from "$shared/demoProjects";
 import { getLogger } from "./logger";
 import { resolveApiBaseUrl } from "./yjsApiUrl";
 
 const logger = getLogger("demoSeed");
 
-// Room id of the public demo project (room: projects/demo)
-export const DEMO_PROJECT_NAME = "demo";
+/**
+ * The English demo (room: projects/demo).
+ *
+ * The demo ships one project per locale, so this is only the default — every
+ * demo entry point passes the project it is actually showing. See
+ * shared/src/demoProjects.ts for the registry.
+ */
+export const DEMO_PROJECT_NAME = DEFAULT_DEMO_SLUG;
 
 export class SeedDemoError extends Error {
     rateLimitMs?: number;
@@ -25,7 +32,7 @@ export interface SeedDemoResult {
 }
 
 /**
- * Seed (or reset) the public demo project via the backend API.
+ * Seed (or reset) one public demo project via the backend API.
  * Failures are logged but never thrown: the demo should still open
  * with whatever content is currently in the shared document.
  *
@@ -33,6 +40,7 @@ export interface SeedDemoResult {
  * when the demo content was last seeded.
  */
 export async function seedDemo(
+    project: string,
     options: { force?: boolean; throwOnError?: boolean; } = {},
 ): Promise<SeedDemoResult> {
     try {
@@ -47,7 +55,7 @@ export async function seedDemo(
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ force: options.force === true }),
+            body: JSON.stringify({ force: options.force === true, project }),
         });
         if (!response.ok) {
             let errorMsg = response.statusText;

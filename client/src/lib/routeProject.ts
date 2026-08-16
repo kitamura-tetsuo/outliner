@@ -15,7 +15,7 @@ const NOOP_HANDLE: RouteProjectHandle = { release: () => {} };
  * Connect the standalone table, schedule and calendar routes to their project
  * and publish it on `store.project`.
  *
- * The public demo needs the shared `/demo*` initialization rather than a bare
+ * A public demo needs the shared demo initialization rather than a bare
  * registry lookup: a visitor opening one of these URLs directly (or reloading)
  * has no demo client yet, and nothing else would issue the `POST /api/seed-demo`
  * that creates or refreshes the document. Without it `listTables()` finds no
@@ -29,8 +29,8 @@ export async function openRouteProject(
     if (isPublicProject(projectName)) {
         // Sets `yjsStore.yjsClient` and `store.project` itself, and seeds the
         // demo document when the template is missing or stale.
-        await initializeDemoProject({ isDestroyed });
-        return { release: releaseDemoProject };
+        await initializeDemoProject(projectName, { isDestroyed });
+        return { release: () => releaseDemoProject(projectName) };
     }
 
     const client = await getYjsClientByProjectTitle(projectName);

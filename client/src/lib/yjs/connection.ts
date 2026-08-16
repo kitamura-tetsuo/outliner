@@ -2,6 +2,7 @@ import { getLogger } from "../logger";
 
 const logger = getLogger("yjs-connection");
 
+import { isDemoProjectSlug } from "$shared/demoProjects";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { type Auth, onAuthStateChanged } from "firebase/auth";
 import { IndexeddbPersistence } from "y-indexeddb";
@@ -306,7 +307,7 @@ export async function setupProviderForRoom(
     options: SetupProviderOptions = {},
 ): Promise<ProviderSetup> {
     const { setAwarenessUser = false, bindPresence = false, attachTokenRefreshHook = false } = options;
-    const isDemo = projectId === "demo";
+    const isDemo = isDemoProjectSlug(projectId);
     let forceTokenRefresh = false;
     let authRetries = 0;
     const MAX_AUTH_RETRIES = 1;
