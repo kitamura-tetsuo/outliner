@@ -3,6 +3,7 @@
     import { resolvePath } from "../../../utils/pathUtils";
     // Use SvelteKit page store from $app/stores (not $app/state)
     import { page } from "$app/stores";
+import { goto } from "$app/navigation";
     import { onDestroy, onMount } from "svelte";
 
     import { userManager } from "../../../auth/UserManager";
@@ -17,6 +18,7 @@
     import { getLogger } from "../../../lib/logger";
     import type { Project as AppProject } from "../../../schema/app-schema";
     import { iterateItems } from "../../../utils/itemTraversal";
+import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
@@ -270,6 +272,22 @@
         }
     });
 
+
+        // Sync URL when page title is changed
+    $effect(() => {
+        const cp = store.currentPage;
+        if (cp && cp.text) {
+            // Track the text to re-evaluate when it changes
+            const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
+            const trimmedTitle = textStr.trim();
+            const decodedPageName = safeDecodeURIComponent(pageName).trim();
+            if (trimmedTitle && trimmedTitle !== decodedPageName && pageName && !__loadingInProgress) {
+                const newRoute = resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(trimmedTitle)}`);
+                logger.info(`Title changed from "${decodedPageName}" to "${trimmedTitle}", updating URL to ${newRoute}`);
+                goto(newRoute, { replaceState: true });
+            }
+        }
+    });
 
     // Monitor route parameter changes reactively
     $effect(() => {

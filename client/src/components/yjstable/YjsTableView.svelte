@@ -31,6 +31,8 @@ import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import TableSchedulePanel from "./TableSchedulePanel.svelte";
+import { store } from "../../stores/store.svelte";
+import { summarizeTableSchedules, type TableScheduleSummary } from "../../services/schedule/scheduleRuleService";
 
 const logger = getLogger("YjsTableView");
 
@@ -69,6 +71,8 @@ let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
 let showSchedule = $state(false);
+
+let scheduleSummary = $state<TableScheduleSummary>({ total: 0, hasEnabled: false });
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
@@ -133,6 +137,10 @@ const clipboardSource: TableClipboardSource = {
     getChartImage: () => (showChart ? chartPanel?.getImage() : undefined),
 };
 
+const scheduleObserver = () => {
+    scheduleSummary = summarizeTableSchedules(store.project, handles.tableId);
+};
+
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
@@ -141,6 +149,8 @@ let unsubscribe: (() => void) | undefined;
 onMount(() => {
     refreshUiMirror();
     handles.uiDef.observeDeep(uiMirrorObserver);
+    projectDoc.getMap("schedules").observeDeep(scheduleObserver);
+    scheduleObserver();
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
     void (async () => {
@@ -158,6 +168,7 @@ onMount(() => {
 
 onDestroy(() => {
     handles.uiDef.unobserveDeep(uiMirrorObserver);
+    projectDoc.getMap("schedules").unobserveDeep(scheduleObserver);
     unsubscribe?.();
     unregisterTableClipboardSource(handles.tableId, clipboardSource);
     session.dispose();
@@ -228,10 +239,34 @@ onDestroy(() => {
                 class:active={showSchedule}
                 aria-pressed={showSchedule}
                 data-testid="yjs-table-toggle-schedule"
+                title={scheduleSummary.total === 0 ? "Schedule" : (scheduleSummary.hasEnabled ? `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, active)` : `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, all disabled)`)}
+                aria-label={scheduleSummary.total === 0 ? "Schedule" : (scheduleSummary.hasEnabled ? `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, active)` : `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, all disabled)`)}
                 onclick={() => {
                     showSchedule = !showSchedule;
                 }}
-            >Schedule</button>
+            >
+                {#if scheduleSummary.total > 0}
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        width="14"
+                        height="14"
+                        class:schedule-icon-disabled={!scheduleSummary.hasEnabled}
+                        data-testid="yjs-table-schedule-indicator"
+                        data-schedule-state={scheduleSummary.hasEnabled ? "enabled" : "disabled"}
+                        aria-hidden="true"
+                    >
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                {/if}
+                Schedule
+            </button>
         </div>
     </div>
 
@@ -313,6 +348,9 @@ onDestroy(() => {
 </div>
 
 <style>
+    .schedule-icon-disabled {
+        opacity: 0.35;
+    }
 .yjs-table-view {
     display: flex;
     flex-direction: column;

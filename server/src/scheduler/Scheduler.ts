@@ -89,6 +89,7 @@ export class JobScheduler {
     private hocuspocus: Hocuspocus;
     private sqliteDb: BetterSqlite3.Database | undefined;
     private ticking = false;
+    private runQueue: Promise<void> = Promise.resolve();
 
     constructor(hocuspocus: Hocuspocus) {
         this.hocuspocus = hocuspocus;
@@ -134,12 +135,94 @@ export class JobScheduler {
         // Jobs share a single PGlite instance in the worker, so ticks must not
         // overlap: a long-running job would otherwise race the next tick.
         if (this.ticking) return;
+
+        // Use a promise queue so a manual run and a scheduled tick never overlap
         this.ticking = true;
-        try {
-            await this.runTick();
-        } finally {
-            this.ticking = false;
-        }
+        this.runQueue = this.runQueue.then(async () => {
+            try {
+                await this.runTick();
+            } finally {
+                this.ticking = false;
+            }
+        });
+        await this.runQueue;
+    }
+
+    async runRuleNow(room: string, ruleId: string): Promise<{ success: boolean; error?: string; }> {
+        // A manual run waits in the queue instead of being dropped
+        const task = async () => {
+            const conn = await this.hocuspocus.openDirectConnection(room);
+            let ruleSql = "";
+            let targetTableId = "";
+            let timezone = "UTC";
+            try {
+                if (!conn.document) {
+                    return { success: false, error: "Document not found" };
+                }
+                const schedulesMap = conn.document.getMap("schedules");
+                const ruleItem = schedulesMap.get(ruleId) as Y.Map<unknown> | undefined;
+                if (!ruleItem) {
+                    return { success: false, error: "Rule not found" };
+                }
+                ruleSql = (ruleItem.get("sql") as string) || "";
+                targetTableId = (ruleItem.get("targetTableId") as string) || "";
+                timezone = (ruleItem.get("timezone") as string) || "UTC";
+            } finally {
+                conn.disconnect();
+            }
+
+            if (!ruleSql || !targetTableId) {
+                return { success: false, error: "Missing required rule data (sql or targetTableId)" };
+            }
+
+            // Either reuse the indexed row or synthesize it.
+            let row: ScheduleIndexRow | undefined;
+            if (this.sqliteDb) {
+                row = this.sqliteDb.prepare(`
+                    SELECT * FROM schedule_index
+                    WHERE room = ? AND rule_id = ?
+                `).get(room, ruleId) as ScheduleIndexRow | undefined;
+            }
+
+            if (!row) {
+                row = {
+                    room,
+                    rule_id: ruleId,
+                    target_table_id: targetTableId,
+                    timezone,
+                    rrule: "",
+                    dtstart: "",
+                    next_run_at: null,
+                    occurrence_seq: 0,
+                    state: "disabled",
+                };
+            }
+
+            let dispatchResult: { success: boolean; error?: string; } = { success: true };
+            try {
+                dispatchResult = await this.dispatchJob(row, DateTime.utc().toISO()!, ruleSql);
+            } catch (err: unknown) {
+                dispatchResult.success = false;
+                dispatchResult.error = err instanceof Error ? err.message : String(err);
+            }
+
+            return dispatchResult;
+        };
+
+        let result: { success: boolean; error?: string; } = { success: false };
+        this.runQueue = this.runQueue.then(async () => {
+            try {
+                this.ticking = true;
+                result = await task();
+            } catch (err: unknown) {
+                result = { success: false, error: err instanceof Error ? err.message : String(err) };
+            } finally {
+                this.ticking = false;
+            }
+        });
+        await this.runQueue;
+
+        return result;
     }
 
     private async runTick() {
@@ -373,7 +456,11 @@ export class JobScheduler {
         return tables;
     }
 
-    private async dispatchJob(rule: ScheduleIndexRow, occurrenceIso: string, ruleSql: string) {
+    private async dispatchJob(
+        rule: ScheduleIndexRow,
+        occurrenceIso: string,
+        ruleSql: string,
+    ): Promise<{ success: boolean; error?: string; }> {
         // Table contents live in their own room (see client roomPath.ts:
         // `projects/<projectId>/tables/<tableId>`).
         const docName = `${rule.room}/tables/${rule.target_table_id}`;
@@ -388,7 +475,7 @@ export class JobScheduler {
         try {
             const dataMap = doc.getMap("data");
             const { schemaSql, records } = this.readTableDoc(doc);
-            if (!schemaSql) return;
+            if (!schemaSql) return { success: true };
 
             const jobData = {
                 ruleId: rule.rule_id,
@@ -470,6 +557,8 @@ export class JobScheduler {
                 }
             }
             mainRoomConn2.disconnect();
+
+            return { success: result.success, error: result.error };
         } finally {
             directConnection.disconnect();
         }

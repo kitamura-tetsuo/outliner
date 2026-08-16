@@ -2,6 +2,7 @@
     import { projectStore } from "../stores/projectStore.svelte";
     import { store } from "../stores/store.svelte";
     import { resolvePath } from "../utils/pathUtils";
+    import { allocatePageTitle } from "../utils/pageUtils";
     import { isArrayLikeItems } from "../utils/typeGuards";
     import { goto } from "$app/navigation";
 
@@ -273,12 +274,7 @@ import type * as Y from "yjs";
                         onclick={(e) => {
                             e.stopPropagation();
                             if (store.project) {
-                                let title = "Untitled";
-                                let counter = 2;
-                                while (store.pageExists(title)) {
-                                    title = `Untitled ${counter}`;
-                                    counter++;
-                                }
+                                const title = allocatePageTitle(store.project.items, "");
                                 const authorId = userManager.getCurrentUser()?.id ?? "anonymous";
                                 const newPage = store.project.addPage(title, authorId);
                                 const pageHref = resolvePath(
