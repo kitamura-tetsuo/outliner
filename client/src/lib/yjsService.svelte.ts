@@ -595,8 +595,8 @@ export function removeClientByProjectId(projectId: string): void {
 // Reference counts and in-flight connections, per demo project: the demo ships
 // one project per locale, and a visitor moving between them must not have one
 // locale's routes release the other's client.
-const demoRefCounts = new Map<string, number>();
-const demoAcquirePromises = new Map<string, Promise<YjsClient | undefined>>();
+const demoRefCounts = new SvelteMap<string, number>();
+const demoAcquirePromises = new SvelteMap<string, Promise<YjsClient | undefined>>();
 
 export async function acquireDemoClient(
     project: string,
