@@ -45,6 +45,10 @@ Use the keyboard arrow keys (`↑`, `↓`, `←`, `→`) to freely move your cur
 - Move to the beginning of the line: `Home`
 - Move to the end of the line: `End`
 
+### User Authentication
+
+The user profile button located in the top right corner of the navigation bar indicates your current login state. For guest users or when accessing a public space, it may display "Not signed in". You can click it to manage your account or sign in.
+
 ### Sidebar Navigation
 
 Click the sidebar toggle button (hamburger menu) in the top-left corner to access the main sidebar navigation. Sections in the sidebar can be expanded or collapsed by clicking their headers. The sidebar provides quick access to:
