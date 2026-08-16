@@ -7,13 +7,12 @@ import type { Item } from "../schema/app-schema";
 import { getLogger } from "../lib/logger";
 
 
-interface HasObservableAttachments { attachments?: { toArray?: () => unknown[], observe?: (obs: unknown) => void, unobserve?: (obs: unknown) => void } }
-interface HasUnobserve { unobserve?: (cb: () => void) => void }
-interface HasToArrayAttachments { attachments?: { toArray?: () => unknown[] } }
+interface ObservableArray { toArray?: () => unknown[], observe?: (obs: () => void) => void, unobserve?: (obs: () => void) => void }
+interface ObservableMap { observe?: (obs: (event: MapEvent) => void) => void, unobserve?: (obs: (event: MapEvent) => void) => void }
+interface MapEvent { changes?: { keys?: Map<string, unknown> } }
+interface HasObservableAttachments { attachments?: ObservableArray, yMap?: ObservableMap }
 
 const logger = getLogger("OutlinerItemAttachments");
-
-const IS_TEST: boolean = (import.meta.env.MODE === 'test') ;
 
 interface Props {
     modelId: string;
@@ -32,60 +31,63 @@ interface AttachmentData {
 
 let attachmentsMirror = $state<AttachmentData[]>([]);
 
-// Subscribe to attachments via Yjs observe
+// Subscribe to attachments via Yjs observe (mirror pattern: Yjs -> $state).
+// The array observer is (re)bound through the item's Y.Map, because
+// `Item.attachments` only returns the live array once the "attachments" key
+// exists on the map: an item that has never had an attachment hands out a
+// detached placeholder, and a remote client may replace the array wholesale.
+// Watching the map keeps the mirror bound to whichever array is current.
 onMount(() => {
-    try {
-        const yArr = (item as unknown as HasObservableAttachments)?.attachments;
-        const read = () => {
-            try {
-                const arr = (yArr?.toArray?.() ?? []);
-                attachmentsMirror = arr.map(u => {
-                    if (Array.isArray(u)) {
-                        if (u.length >= 3) return { url: String(u[0]), mime: String(u[1]), name: String(u[2]) };
-                        return { url: String(u[0]) };
-                    }
-                    return { url: String(u) };
-                });
-                logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][Yjs] attachments observe ->');
-            } catch (_e) { /* ignore */ }
-        };
-        if (yArr && typeof yArr.observe === 'function' && typeof yArr.unobserve === 'function') {
-            read(); // Initial reflection
-            const yHandler = () => { read(); };
-            yArr.observe(yHandler);
-            return () => { try { (yArr as unknown as HasUnobserve)?.unobserve?.(yHandler); } catch (_e) { /* ignore */ } };
-        } else {
-            // Fallback: Reflect once even if observe is unavailable
-            attachmentsMirror = (((item as unknown as HasToArrayAttachments)?.attachments?.toArray?.() ?? []) as unknown[]).map((u: unknown) => Array.isArray(u) ? u[0] : u);
-        }
-    } catch (_e) { /* ignore */ }
-});
+    let observedArray: ObservableArray | undefined;
 
-// Event listener for test environment
-onMount(() => {
-    const onAtt = (_e: Event | CustomEvent) => {
+    const read = () => {
         try {
-            const eid = String((_e && (_e as CustomEvent).detail && (_e as CustomEvent).detail.id) ?? "");
-            logger.debug({ eid, id: modelId }, '[OutlinerItemAttachments][TEST] item-attachments-changed received');
-            if (eid && String(modelId) !== eid) return;
-            const yArr = (item as unknown as HasObservableAttachments)?.attachments;
-            const arr = (yArr?.toArray?.() ?? []);
-            if (arr.length > 0) {
-                attachmentsMirror = arr.map(u => {
-                    if (Array.isArray(u)) {
-                        if (u.length >= 3) return { url: String(u[0]), mime: String(u[1]), name: String(u[2]) };
-                        return { url: String(u[0]) };
-                    }
-                    return { url: String(u) };
-                });
-            }
-            logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][TEST] mirror updated ->');
+            const arr = (observedArray?.toArray?.() ?? []);
+            attachmentsMirror = arr.map(u => {
+                if (Array.isArray(u)) {
+                    if (u.length >= 3) return { url: String(u[0]), mime: String(u[1]), name: String(u[2]) };
+                    return { url: String(u[0]) };
+                }
+                return { url: String(u) };
+            });
+            logger.debug({ count: attachmentsMirror.length, id: modelId }, '[OutlinerItemAttachments][Yjs] attachments observe ->');
         } catch (_e) { /* ignore */ }
     };
-    try {
-        if (IS_TEST) window.addEventListener('item-attachments-changed', onAtt as EventListener, { passive: true });
-    } catch (_e) { /* ignore */ }
-    return () => { try { window.removeEventListener('item-attachments-changed', onAtt as EventListener); } catch (_e) { /* ignore */ } };
+
+    const onArrayChange = () => { read(); };
+
+    const detachArray = () => {
+        try { observedArray?.unobserve?.(onArrayChange); } catch (_e) { /* ignore */ }
+        observedArray = undefined;
+    };
+
+    // Bind to the current attachments array (creating no Yjs state) and mirror it.
+    const bindArray = () => {
+        try {
+            const next = (item as unknown as HasObservableAttachments)?.attachments;
+            if (next === observedArray) { read(); return; }
+            detachArray();
+            observedArray = next;
+            try { observedArray?.observe?.(onArrayChange); } catch (_e) { /* ignore */ }
+            read();
+        } catch (_e) { /* ignore */ }
+    };
+
+    const onMapChange = (event: MapEvent) => {
+        try {
+            if (event?.changes?.keys?.has?.('attachments')) bindArray();
+        } catch (_e) { /* ignore */ }
+    };
+
+    bindArray();
+
+    const yMap = (item as unknown as HasObservableAttachments)?.yMap;
+    try { yMap?.observe?.(onMapChange); } catch (_e) { /* ignore */ }
+
+    return () => {
+        detachArray();
+        try { yMap?.unobserve?.(onMapChange); } catch (_e) { /* ignore */ }
+    };
 });
 
 const attachments = $derived.by(() => {
@@ -112,20 +114,50 @@ function getAttachmentLabel(url: string, name?: string): string {
     return "View attachment";
 }
 
-function isImage(att: AttachmentData): boolean {
-    if (att.isImageFallback) return false;
-    if (att.mime && att.mime.startsWith("image/")) return true;
+// Base for relative attachment URLs. Resolved lazily and defensively so the
+// extension check below still works where `window.location` is absent (SSR,
+// component tests), instead of silently reporting "not an image".
+function urlBase(): string | undefined {
     try {
-        const urlObj = new URL(att.url, window.location.origin);
-        const pathname = urlObj.pathname.toLowerCase();
-        if (pathname.match(/\.(jpeg|jpg|gif|png|webp|svg|avif)$/)) return true;
+        return globalThis.location?.origin;
     } catch { /* ignore */ }
-    // If no mime type and no known extension, we still try to render as image for legacy URLs,
-    // and rely on the onerror fallback to mark it as non-image if it fails.
-    return !att.mime;
+    return undefined;
+}
+
+function hasImageExtension(url: string): boolean {
+    try {
+        const urlObj = new URL(url, urlBase());
+        const pathname = urlObj.pathname.toLowerCase();
+        return /\.(jpeg|jpg|gif|png|webp|svg|avif)$/.test(pathname);
+    } catch { /* ignore */ }
+    return false;
+}
+
+/**
+ * True when the attachment states its own type: an explicit mime type or a
+ * known image extension. Such an attachment keeps that type regardless of
+ * whether the resource can currently be fetched.
+ */
+function hasDeclaredType(att: AttachmentData): boolean {
+    return !!att.mime || hasImageExtension(att.url);
+}
+
+function isImage(att: AttachmentData): boolean {
+    // A declared type wins: a failed load means the resource is unreachable
+    // (offline, expired signed URL, blocked host), not that a .png stopped
+    // being an image, so `isImageFallback` must not override it.
+    if (att.mime) return att.mime.startsWith("image/");
+    if (hasImageExtension(att.url)) return true;
+    // Type unknown (legacy URLs with no mime and no extension): render
+    // optimistically as an image and retract that guess if the load fails.
+    return !att.isImageFallback;
 }
 
 function handleImageError(att: AttachmentData) {
+    // Only the optimistic guess above is retractable. Attachments that declare
+    // an image type stay images and show the browser's broken-image preview,
+    // which keeps rendering independent of network availability.
+    if (hasDeclaredType(att)) return;
     att.isImageFallback = true;
 }
 </script>

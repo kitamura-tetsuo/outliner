@@ -16,6 +16,9 @@ tradeoffs:
 notes:
 - Since attachments supports both iterable/array, it is converted to array on UI side for rendering
 - Migrated to observation mirror method (Yjs observe -> $state mirror), UI renders only mirror array
-- E2E fallback reduced (removed 1px image and delay timer). During testing, drop -> model.addAttachment -> observe reflects immediately, leaving only minimal necessary test-only CustomEvent - injectAttachmentPreviewDom removed (DOM direct insertion preview abolished, unified to pure Yjs display)
+- E2E fallback reduced (removed 1px image and delay timer). During testing, drop -> model.addAttachment -> observe reflects immediately - injectAttachmentPreviewDom removed (DOM direct insertion preview abolished, unified to pure Yjs display)
+- The mirror binds to the attachments array through the item's Y.Map, so it follows the array that is actually stored on the item even when that array is created or replaced after mount. The test-only item-attachments-changed listener in the component was removed; producers still dispatch the event for tests that observe it directly
+- Preview type is decided by the declared type (mime type or image extension). A load failure no longer reclassifies a declared image as a generic file, so rendering does not depend on the attachment host being reachable; the optimistic guess for untyped URLs is still retracted on load failure
 tests:
 - client/e2e/new/att-attachments-reactive-7c19a2b4.spec.ts
+- client/src/components/OutlinerItemAttachments.test.ts

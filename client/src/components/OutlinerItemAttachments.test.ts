@@ -1,5 +1,7 @@
-import { render, screen } from "@testing-library/svelte";
+import { fireEvent, render, screen } from "@testing-library/svelte";
+import { tick } from "svelte";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import * as Y from "yjs";
 import { Item } from "../schema/app-schema";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
 
@@ -77,5 +79,118 @@ describe("OutlinerItemAttachments", () => {
 
         const link = screen.getByRole("link", { name: /^View attachment$/i });
         expect(link).toBeInTheDocument();
+    });
+
+    // An unreachable image (offline, blocked host, expired signed URL) must not
+    // be reclassified as a generic file: the type is declared by the extension
+    // or the mime type, so rendering stays independent of network availability.
+    it("keeps rendering an <img> when an image URL fails to load", async () => {
+        const item = new Item({ id: "test-id" });
+        item.addAttachment("https://example.com/a.png");
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        const img = container.querySelector("img");
+        expect(img).toBeInTheDocument();
+
+        await fireEvent.error(img!);
+        await tick();
+
+        expect(container.querySelectorAll("img").length).toBe(1);
+        expect(container.querySelector(".attachment-file-chip")).not.toBeInTheDocument();
+    });
+
+    it("keeps rendering an <img> for a declared image mime type that fails to load", async () => {
+        const item = new Item({ id: "test-id" });
+        item.addAttachment("https://example.com/photo", "image/png", "photo");
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        const img = container.querySelector("img");
+        expect(img).toBeInTheDocument();
+
+        await fireEvent.error(img!);
+        await tick();
+
+        expect(container.querySelectorAll("img").length).toBe(1);
+    });
+
+    // The optimistic guess for URLs without a mime type or a known extension is
+    // still retracted when the browser reports it cannot decode the resource.
+    it("falls back to a file chip when an untyped URL fails to load", async () => {
+        const item = new Item({ id: "test-id" });
+        item.addAttachment("https://example.com/download");
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        const img = container.querySelector("img");
+        expect(img).toBeInTheDocument();
+
+        await fireEvent.error(img!);
+        await tick();
+
+        expect(container.querySelector("img")).not.toBeInTheDocument();
+        expect(container.querySelector(".attachment-file-chip")).toBeInTheDocument();
+    });
+
+    it("reflects add and remove through the Yjs observer", async () => {
+        const item = new Item({ id: "test-id" });
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        expect(container.querySelectorAll("img").length).toBe(0);
+
+        item.addAttachment("https://example.com/a.png");
+        await tick();
+        expect(container.querySelectorAll("img").length).toBe(1);
+
+        item.addAttachment("https://example.com/b.png");
+        await tick();
+        expect(container.querySelectorAll("img").length).toBe(2);
+
+        item.removeAttachment("https://example.com/a.png");
+        await tick();
+        expect(container.querySelectorAll("img").length).toBe(1);
+        expect(container.querySelector("img")).toHaveAttribute("src", "https://example.com/b.png");
+
+        item.removeAttachment("https://example.com/b.png");
+        await tick();
+        expect(container.querySelector(".attachments")).not.toBeInTheDocument();
+    });
+
+    // The mirror must follow the array actually stored on the item, even when
+    // that array is created or replaced after the component mounted (a remote
+    // client writing the "attachments" key does exactly this).
+    it("rebinds when the attachments array is replaced on the item", async () => {
+        const item = new Item({ id: "test-id" });
+
+        const { container } = render(OutlinerItemAttachments, {
+            modelId: "test-id",
+            item: item,
+        });
+
+        const replacement = new Y.Array<string>();
+        item.yMap.set("attachments", replacement as unknown as never);
+        replacement.push(["https://example.com/replaced.png"]);
+
+        await tick();
+        expect(container.querySelectorAll("img").length).toBe(1);
+        expect(container.querySelector("img")).toHaveAttribute("src", "https://example.com/replaced.png");
+
+        replacement.delete(0, 1);
+        await tick();
+        expect(container.querySelectorAll("img").length).toBe(0);
     });
 });

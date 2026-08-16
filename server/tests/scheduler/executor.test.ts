@@ -49,4 +49,30 @@ describe("JobExecutor timeout recovery", function() {
         expect(result.success).to.be.true;
         expect(result.rows).to.deep.equal([{ result: 1 }]);
     });
+
+    it("rejects a job that was still awaiting the worker when shutdown began", async function() {
+        // The job suspends on the pending spawn, so stopWorker()'s pass over
+        // the outstanding jobs happens before this one can register itself. It
+        // must not be left posting into a terminated worker and hanging until
+        // its 20s timeout.
+        const pending = executor.executeJob({
+            schemaSql: "CREATE TABLE t (id INT);",
+            ruleSql: "SELECT 1 as result;",
+            records: [],
+            timezone: "UTC",
+            occurrenceUtcIso: "2023-01-01T00:00:00Z",
+            ruleId: "shutdown-race-rule",
+        });
+        await executor.stopWorker();
+
+        let rejection: Error | undefined;
+        try {
+            await pending;
+        } catch (e) {
+            rejection = e as Error;
+        }
+
+        expect(rejection, "the job settles instead of hanging").to.be.instanceOf(Error);
+        expect(rejection?.message).to.equal("Worker terminated");
+    });
 });

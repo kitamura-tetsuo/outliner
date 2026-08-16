@@ -3,17 +3,79 @@ import { parentPort } from "node:worker_threads";
 import { logger } from "../logger.js";
 import { JobData } from "./worker-types.js";
 
-// Keep a single global PGlite instance for the worker to avoid V8 WASM crash
-// on repeated db.close() calls. Jobs run sequentially via a mutex.
-let globalDb: PGlite | null = null;
-let jobMutex = Promise.resolve();
+/**
+ * One PGlite instance for the lifetime of the worker.
+ *
+ * Every `new PGlite()` instantiates the Postgres WASM module and closing it
+ * frees the JIT pages again. Doing that once per job crashed the process:
+ * V8's thread-isolation bookkeeping fatals on a repeated
+ * instantiate/free cycle in a worker thread
+ * ("Check failed: jit_page_->allocations_.erase(addr) == 1" in
+ * UnregisterWasmAllocation), which took the whole server test run down with
+ * exit code 133. Reusing the instance also removes the ~1.7s startup each job
+ * was paying. Isolation between jobs comes from resetSession, not from the
+ * instance boundary.
+ */
+let dbPromise: Promise<PGlite> | undefined;
 
-async function getDb() {
-    if (!globalDb) {
-        globalDb = new PGlite();
-        await globalDb.waitReady;
+function getDb(): Promise<PGlite> {
+    if (!dbPromise) {
+        dbPromise = (async () => {
+            const instance = new PGlite();
+            await instance.waitReady;
+            return instance;
+        })();
+        // A failed startup must not be cached, or every later job inherits it.
+        dbPromise.catch(() => {
+            dbPromise = undefined;
+        });
     }
-    return globalDb;
+    return dbPromise;
+}
+
+/**
+ * Return the shared instance to a pristine state between jobs.
+ *
+ * A rule's SQL is arbitrary and comes from its own project, so the per-job
+ * schema alone is not an isolation boundary: a rule can name another schema
+ * explicitly. Since one instance now serves every project, each job is undone
+ * on three levels — its transaction is rolled back (which also removes the DDL
+ * it ran), the session is discarded, and any schema that still managed to
+ * survive is dropped.
+ *
+ * If the cleanup itself fails the instance cannot be proven clean, so it is
+ * dropped and the next job builds a fresh one.
+ */
+async function resetSession(db: PGlite) {
+    try {
+        await db.exec("ROLLBACK;");
+        // Resets session state a rule could have changed outside the
+        // transaction (settings, temp tables, prepared statements).
+        await db.exec("DISCARD ALL;");
+        await db.exec(`
+            DO $$
+            DECLARE s text;
+            BEGIN
+                FOR s IN
+                    SELECT nspname FROM pg_namespace
+                    WHERE nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+                      AND nspname NOT LIKE 'pg\\_temp\\_%'
+                      AND nspname NOT LIKE 'pg\\_toast\\_temp\\_%'
+                LOOP
+                    EXECUTE format('DROP SCHEMA %I CASCADE', s);
+                END LOOP;
+            END $$;
+            CREATE SCHEMA IF NOT EXISTS public;
+        `);
+    } catch (err) {
+        logger.warn({ err }, "PGlite session reset failed; recycling the instance");
+        dbPromise = undefined;
+        try {
+            await db.close();
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
+    }
 }
 
 async function executeJob(data: JobData) {
@@ -44,10 +106,14 @@ async function executeJob(data: JobData) {
     const db = await getDb();
 
     try {
-        await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
-        await db.exec(`CREATE SCHEMA "${pgSchema}";`);
-
+        // Everything the job touches happens inside a transaction that is
+        // always discarded (see resetSession): the rule's output is handed back
+        // to the scheduler, which writes it into Yjs, so nothing has any reason
+        // to survive in Postgres. `ruleSql` is authored per project, and the
+        // instance is now shared, so a rule must not be able to leave anything
+        // behind for another project's job to read.
         await db.exec(`BEGIN;`);
+        await db.exec(`CREATE SCHEMA "${pgSchema}";`);
         await db.exec(`SET LOCAL search_path TO "${pgSchema}";`);
 
         // Each table's records go into the relation its own CREATE TABLE just
@@ -106,36 +172,31 @@ async function executeJob(data: JobData) {
             await db.query(`SELECT set_config('job.occurrence', $1, true);`, [occurrenceUtcIso]);
         }
 
+        // The rows are read out of the transaction before it is discarded:
+        // RETURNING gives them to us without anything being committed.
         const result = await db.query(ruleSql);
-        await db.exec(`COMMIT;`);
         return { success: true, rows: result.rows };
     } catch (error: unknown) {
-        try {
-            await db.exec("ROLLBACK;");
-        } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
-        }
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
     } finally {
-        try {
-            await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
-        } catch (_e) {
-            logger.warn({ err: _e }, "Silenced error");
-        }
+        await resetSession(db);
     }
 }
 
+// Jobs share one PGlite instance, so they must not interleave: each job runs
+// its own transaction and the shared connection has only one session.
+let queue: Promise<void> = Promise.resolve();
+
 parentPort?.on("message", (msg) => {
-    if (msg.type === "execute") {
-        jobMutex = jobMutex.then(async () => {
-            try {
-                const result = await executeJob(msg.data);
-                parentPort?.postMessage({ id: msg.id, result });
-            } catch (error: unknown) {
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
-            }
-        });
-    }
+    if (msg.type !== "execute") return;
+    queue = queue.then(async () => {
+        try {
+            const result = await executeJob(msg.data);
+            parentPort?.postMessage({ id: msg.id, result });
+        } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
+        }
+    });
 });
