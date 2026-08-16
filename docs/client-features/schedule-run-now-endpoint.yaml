@@ -8,4 +8,4 @@ type: backend
 tests:
 - client/src/services/schedule/scheduleRunService.test.ts
 - server/tests/scheduler/schedule-run-api.test.ts
-title-ja: Manual Schedule Execution Endpoint
+title-ja: スケジュール手動実行エンドポイント

@@ -1,5 +1,5 @@
 import { render } from "@testing-library/svelte";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { ScheduleRule } from "../../services/schedule/scheduleRuleService";
 import ScheduleRuleList from "./ScheduleRuleList.svelte";
 
@@ -23,9 +23,11 @@ function renderList(rule: { id: string; rule: ScheduleRule; }, runningRuleId?: s
     return render(ScheduleRuleList, {
         rules: [rule],
         runningRuleId,
-        onRunNow: vi.fn(),
-        onEdit: vi.fn(),
-        onDelete: vi.fn(),
+        // Plain no-ops: these tests assert rendering only, so the callbacks are
+        // required props rather than something to inspect.
+        onRunNow: () => {},
+        onEdit: () => {},
+        onDelete: () => {},
     });
 }
 
