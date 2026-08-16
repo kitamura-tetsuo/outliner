@@ -71,7 +71,7 @@ export function allocatePageTitle(
                 textString = String(p.text ?? "");
             }
         } catch (_e) {
-            textString = "";
+            // ignore
         }
         existingNames.add(textString.trim().toLowerCase());
     }

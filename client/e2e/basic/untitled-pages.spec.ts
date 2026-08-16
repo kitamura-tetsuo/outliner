@@ -2,9 +2,9 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Untitled pages", () => {
-    test("clearing titles generates Untitled and Untitled_2, and routes correctly", async ({ page, browser }) => {
+    test("clearing titles generates Untitled and Untitled_2, and routes correctly", async ({ page }) => {
         // Seed a project with one page
-        const { projectName, pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info(), ["Line 1"]);
+        const { pageName } = await TestHelpers.seedProjectAndNavigate(page, test.info(), ["Line 1"]);
 
         await TestHelpers.waitForAppReady(page);
 

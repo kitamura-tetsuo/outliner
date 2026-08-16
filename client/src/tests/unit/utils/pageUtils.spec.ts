@@ -97,7 +97,7 @@ describe("pageUtils", () => {
         });
 
         it("should allocate names deterministically when repairing multiple blank titles sequentially", () => {
-            const items = [] as any[];
+            const items = [] as Item[];
             const title1 = allocatePageTitle(items, "");
             items.push({ text: title1 });
             const title2 = allocatePageTitle(items, "");

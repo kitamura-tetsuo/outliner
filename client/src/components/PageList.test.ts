@@ -25,7 +25,7 @@ describe("PageList", () => {
         it("uses allocatePageTitle when creating a new page", async () => {
             project.addPage("Untitled", "u1");
 
-            const { getByText, getByPlaceholderText, container } = render(PageList, {
+            const { getByText, getByPlaceholderText } = render(PageList, {
                 props: {
                     project,
                     rootItems: project.items,
