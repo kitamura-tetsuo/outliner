@@ -58,11 +58,18 @@ test.describe("Schedule Rule Run Now", () => {
 
         await runNowBtn.click();
 
-        // Ensure "Running..." appears
+        // Ensure "Running..." appears while the request is in flight
         await expect(runNowBtn).toHaveText("Running…", { timeout: 5000 });
+        await expect(runNowBtn).toBeDisabled();
 
-        // Wait for server execution to sync
-        await expect(ruleItem.locator("text=(OK)")).toBeVisible({ timeout: 15000 });
+        // Once the request resolves successfully the button becomes usable again
+        // and no inline error is shown. The "(OK)" badge is driven by the
+        // lastRunStatus the server writes back into the Yjs schedules map, which
+        // the mocked endpoint above never performs; that path is covered by
+        // ScheduleRuleList.test.ts and server/tests/scheduler/scheduler-run-now.test.ts.
+        await expect(runNowBtn).toHaveText("Run now", { timeout: 15000 });
+        await expect(runNowBtn).toBeEnabled();
+        await expect(schedulePanel.locator(".bg-red-50.border-red-100")).toHaveCount(0);
     });
 
     test("should display inline error on invalid SQL", async ({ page }) => {
