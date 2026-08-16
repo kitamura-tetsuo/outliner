@@ -24,7 +24,9 @@ describe("Job Scheduler", () => {
     });
 
     afterEach(async () => {
-        scheduler.stop();
+        // Awaited so the next test's worker is not spawned while this one is
+        // still tearing down its Postgres WASM heap.
+        await scheduler.stop();
     });
 
     it("should trigger a tick without crashing", async () => {

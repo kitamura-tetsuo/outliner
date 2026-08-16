@@ -116,12 +116,18 @@ export class JobScheduler {
         this.interval = setInterval(runTick, intervalMs);
     }
 
-    stop() {
+    /**
+     * Await the returned promise before starting another scheduler in the same
+     * process: the executor's worker holds Postgres as a WASM module, and
+     * spawning the next worker before this one has finished terminating aborts
+     * the process (see JobExecutor.workerReady).
+     */
+    stop(): Promise<void> {
         if (this.interval) {
             clearInterval(this.interval);
             this.interval = null;
         }
-        this.executor.stopWorker();
+        return this.executor.stopWorker();
     }
 
     async tick() {
