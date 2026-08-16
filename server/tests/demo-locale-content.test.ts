@@ -125,6 +125,65 @@ describe("Demo locale content", () => {
         });
     });
 
+    describe("translation coverage", () => {
+        // The English fallback works per page: a page a locale has not
+        // translated seeds in English. A page it *has* translated is owned by
+        // that locale wholesale — so extending the English version of an
+        // already-translated page does not reach it.
+        //
+        // That is deliberate (interleaving new English bullets into translated
+        // prose would produce a half-translated page in arbitrary order), but
+        // it means "the demo demonstrates the current feature set" only holds
+        // for a translated page if the translation is kept in step. This test
+        // is what makes that enforceable rather than aspirational: it fails,
+        // naming the page, the moment an English page grows past its
+        // translation.
+        const countNodes = (items: { children?: unknown[]; }[] | undefined): number => {
+            let total = 0;
+            for (const item of items ?? []) {
+                total += 1 + countNodes(item.children as { children?: unknown[]; }[] | undefined);
+            }
+            return total;
+        };
+        const entryCount = (page: { lines?: string[]; items?: { children?: unknown[]; }[]; }): number =>
+            (page.lines?.length ?? 0) + countNodes(page.items);
+
+        it("keeps every translated page in step with its English original", () => {
+            const english = new Map(demoPagesFor("en").map(p => [p.key, p]));
+            for (const locale of CONTENT_LOCALES) {
+                if (locale === "en") continue;
+                for (const page of demoPagesFor(locale)) {
+                    const base = english.get(page.key)!;
+                    // An untranslated page *is* the English one; nothing to check.
+                    if (page === base) continue;
+                    expect(
+                        entryCount(page),
+                        `${locale}: page "${page.key}" has ${entryCount(page)} entries but English has `
+                            + `${entryCount(base)} — translate the new content, or drop the override to fall back`,
+                    ).to.equal(entryCount(base));
+                }
+            }
+        });
+
+        it("uses the same content shape as English for a translated page", () => {
+            // A page written with `lines` in English but `items` in a locale
+            // would silently drop the structured seeding (components, votes,
+            // comments, attachments) that only `items` can express.
+            const english = new Map(demoPagesFor("en").map(p => [p.key, p]));
+            for (const locale of CONTENT_LOCALES) {
+                if (locale === "en") continue;
+                for (const page of demoPagesFor(locale)) {
+                    const base = english.get(page.key)!;
+                    if (page === base) continue;
+                    expect(Boolean(page.lines), `${locale}: page "${page.key}" lines form`)
+                        .to.equal(Boolean(base.lines));
+                    expect(Boolean(page.items), `${locale}: page "${page.key}" items form`)
+                        .to.equal(Boolean(base.items));
+                }
+            }
+        });
+    });
+
     describe("shared structure", () => {
         it("keeps table ids, SQL and queries identical across locales", () => {
             const base = demoTablesFor("en");

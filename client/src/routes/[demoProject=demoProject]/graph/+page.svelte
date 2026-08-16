@@ -7,6 +7,7 @@
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import { getLogger } from "../../../lib/logger";
+    import { projectBasePath } from "../../../lib/publicProject";
 
     const logger = getLogger("DemoGraphView");
 
@@ -69,7 +70,7 @@
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: "Demo Project", href: "/demo" },
+            { label: "Demo Project", href: projectBasePath(projectName) },
             { label: "Graph View" }
         ]} />
 

@@ -8,6 +8,7 @@
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
+    import { projectBasePath } from "../../../lib/publicProject";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { store } from "../../../stores/store.svelte";
@@ -173,13 +174,13 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     <div class="mb-4">
         <Breadcrumb items={[
             { label: "Home", href: "/" },
-            { label: "Demo Project", href: "/demo" },
+            { label: "Demo Project", href: projectBasePath(demoProject) },
             { label: pageName }
         ]} />
 
         <div class="flex items-center justify-between">
             <h1 class="text-2xl font-bold">
-                <span class="text-gray-600">Demo /</span>
+                <span class="text-gray-600">{demoProject} /</span>
                 {pageName}
             </h1>
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
@@ -192,7 +193,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
                 >
                     Search
                 </button>
-                <a href={resolvePath(`/demo/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={resolvePath(`${projectBasePath(demoProject)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">

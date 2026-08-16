@@ -27,7 +27,8 @@ acceptance:
 - /demo-ja shows the Japanese demo project's page list without requiring login
 - A demo document is titled with its own slug, so its internal links stay inside its own locale
 - Adding a locale is one entry in shared/src/demoProjects.ts plus one demo-content.<locale>.ts pack
-- Demo content added in English only still seeds in every other locale, untranslated, rather than disappearing
+- A demo page a locale has not translated seeds in English rather than disappearing from that locale
+- Extending an English page a locale already overrides fails a test naming that page, so a translated demo cannot silently fall behind the feature set
 - Each locale is a separate Yjs document, named projects/<slug>, readable anonymously
 - Internal page links in a locale's content name page titles of that same locale
 - Navigating within a localized demo (links, search, sidebar, graph, breadcrumbs) never leaves that locale

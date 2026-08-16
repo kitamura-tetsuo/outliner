@@ -114,7 +114,10 @@ When you implement a new end-user feature (anything recorded in
      Give it a `key` — lowercase, locale-stable, never translated.
    - Structure (tables, calendars, schedule rules, ids, SQL) belongs in
      `server/src/demo-content.ts`, shared by every locale.
-2. **Translate it into the other locales**, or accept the fallback (below).
+2. **Translate it into the other locales.** Required when you extended a page a
+   locale already overrides — the English fallback is per page, not per line, so
+   that locale would otherwise never see the addition. A test enforces this; see
+   the translation policy below.
 3. **Bump `DEMO_TEMPLATE_VERSION`** so already-seeded demo documents are
    re-seeded with the new content. One number covers every locale: each
    document stores its own `metadata.templateVersion`, so a single bump
@@ -123,21 +126,37 @@ When you implement a new end-user feature (anything recorded in
    `client/e2e/core/dmo-demo-project-feature-tour-7d3e9a1c.spec.ts` and, when
    the structure changes, `server/tests/demo-seed-content.test.ts`.
 
-### Translation policy: English fallback, per page
+### Translation policy: English fallback, whole pages only
 
-A locale pack is a **sparse override** of the English one, merged by `key`. A
-page (or a table name, or a single record value) that locale has not translated
-still seeds — in English — rather than disappearing from that locale's demo. So
-adding a feature in English only never leaves a locale with a smaller demo than
-the product has features.
+A locale pack is a **sparse override** of the English one, merged by `key`. Know
+exactly how coarse that merge is:
 
-The fallback has one trap, and `server/tests/demo-locale-content.test.ts`
-enforces the way out of it: **internal links must name page titles of their own
-locale**. A landing page translated to link `[書式]` while the Formatting page
-fell back to English "Formatting" leaves a link no page in that project answers
-to. In practice this means translating any page also means translating the
-landing page's link to it. Cross-project links carry the slug too
-(`[/demo-ja/公開と共有/schedule]`), so they move with the translation.
+- A page a locale has **not** translated seeds in English. Adding a whole new
+  feature page in English alone is therefore safe — it appears, untranslated,
+  in every locale.
+- A page a locale **has** translated is owned by that locale wholesale. Adding a
+  line to the English version of an already-translated page does **not** reach
+  it. Since extending an existing page is the normal way a new feature enters
+  the demo, this is the case that actually comes up.
+
+Merging at the item level was considered and rejected: a demo page is an ordered
+list of free-form prose with no stable per-item identity, so interleaving new
+English bullets into a translated page yields a half-translated page in
+arbitrary order — worse to read than a translation that is briefly behind.
+
+Instead the drift is made **detectable**.
+`server/tests/demo-locale-content.test.ts` compares the entry count of every
+translated page against its English original and fails, naming the page, the
+moment one grows past the other. So extending an English page that a locale
+overrides is not silently lossy: CI tells you, and you either translate the new
+content or drop that locale's override so the page falls back wholesale.
+
+The fallback has one further trap, enforced by the same test: **internal links
+must name page titles of their own locale**. A landing page translated to link
+`[書式]` while the Formatting page fell back to English "Formatting" leaves a
+link no page in that project answers to. In practice, translating any page also
+means translating the landing page's link to it. Cross-project links carry the
+slug too (`[/demo-ja/公開と共有/schedule]`), so they move with the translation.
 
 Writing guidelines for demo pages:
 
