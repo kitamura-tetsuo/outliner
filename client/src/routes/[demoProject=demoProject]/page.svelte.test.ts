@@ -4,6 +4,17 @@ import { store } from "../../stores/store.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import DemoPage from "./+page.svelte";
 
+// The route reads its project from the URL, so the page store must supply it.
+const mockPageStore = { params: { demoProject: "demo" }, url: new URL("http://localhost/demo") };
+vi.mock("$app/stores", () => ({
+    page: {
+        subscribe: (fn: (value: typeof mockPageStore) => void) => {
+            fn(mockPageStore);
+            return () => {};
+        },
+    },
+}));
+
 // Mock dependencies
 vi.mock("../../lib/demoSeed", () => ({
     seedDemo: vi.fn().mockResolvedValue({ ok: true, reset: false }),

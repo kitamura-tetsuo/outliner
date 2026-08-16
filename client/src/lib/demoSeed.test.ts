@@ -20,9 +20,9 @@ describe("seedDemo", () => {
             json: async () => ({ rateLimitMs: 5000, message: "Rate limited" }),
         } as Response);
 
-        await expect(seedDemo({ throwOnError: true })).rejects.toThrow(SeedDemoError);
+        await expect(seedDemo("demo", { throwOnError: true })).rejects.toThrow(SeedDemoError);
         try {
-            await seedDemo({ throwOnError: true });
+            await seedDemo("demo", { throwOnError: true });
         } catch (err) {
             expect(err).toBeInstanceOf(SeedDemoError);
             const seedErr = err as SeedDemoError;
@@ -38,14 +38,16 @@ describe("seedDemo", () => {
             json: async () => ({ error: "Invalid data" }),
         } as Response);
 
-        await expect(seedDemo({ throwOnError: true })).rejects.toThrow("Invalid data");
-        await expect(seedDemo({ throwOnError: true })).rejects.not.toThrow(SeedDemoError);
+        await expect(seedDemo("demo", { throwOnError: true })).rejects.toThrow("Invalid data");
+        await expect(seedDemo("demo", { throwOnError: true })).rejects.not.toThrow(SeedDemoError);
     });
 
     it("wraps TypeError (network rejection) in 'Failed to connect' error", async () => {
         globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Load failed"));
 
-        await expect(seedDemo({ throwOnError: true })).rejects.toThrow("Failed to connect to the server: Load failed");
+        await expect(seedDemo("demo", { throwOnError: true })).rejects.toThrow(
+            "Failed to connect to the server: Load failed",
+        );
     });
 
     it("reports the server's reset verdict so callers know whether to reconnect", async () => {
@@ -55,7 +57,7 @@ describe("seedDemo", () => {
             json: async () => ({ success: true, reset: true }),
         } as Response);
 
-        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: true, warm: false });
+        await expect(seedDemo("demo")).resolves.toEqual({ ok: true, reset: true, warm: false });
     });
 
     it("reports the warm fast path as a no-reset result", async () => {
@@ -65,7 +67,7 @@ describe("seedDemo", () => {
             json: async () => ({ success: true, reset: false, warm: true }),
         } as Response);
 
-        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: false, warm: true });
+        await expect(seedDemo("demo")).resolves.toEqual({ ok: true, reset: false, warm: true });
     });
 
     it("treats an unparsable success body as 'nothing to do'", async () => {
@@ -77,17 +79,42 @@ describe("seedDemo", () => {
             },
         } as unknown as Response);
 
-        await expect(seedDemo()).resolves.toEqual({ ok: true, reset: false, warm: false });
+        await expect(seedDemo("demo")).resolves.toEqual({ ok: true, reset: false, warm: false });
     });
 
     it("does not throw if throwOnError is false or omitted", async () => {
         globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Load failed"));
 
-        await expect(seedDemo()).resolves.toEqual({ ok: false, reset: false, reason: "network" });
-        await expect(seedDemo({ throwOnError: false })).resolves.toEqual({
+        await expect(seedDemo("demo")).resolves.toEqual({ ok: false, reset: false, reason: "network" });
+        await expect(seedDemo("demo", { throwOnError: false })).resolves.toEqual({
             ok: false,
             reset: false,
             reason: "network",
         });
+    });
+});
+
+describe("seedDemo project targeting", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+        globalThis.fetch = originalFetch;
+        vi.restoreAllMocks();
+    });
+
+    it("tells the server which demo project to seed", async () => {
+        // The server keys every demo document, warm verdict and cooldown by
+        // project, so the request has to name one.
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            statusText: "OK",
+            json: async () => ({ success: true, reset: false }),
+        } as Response);
+        globalThis.fetch = fetchMock;
+
+        await seedDemo("demo-ja", { force: true });
+
+        const [, init] = fetchMock.mock.calls[0];
+        expect(JSON.parse(init.body as string)).toEqual({ force: true, project: "demo-ja" });
     });
 });

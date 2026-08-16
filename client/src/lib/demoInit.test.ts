@@ -67,7 +67,7 @@ describe("demoInit", () => {
         // A validation request that never settles must not delay the connection.
         (seedDemo as Mock).mockImplementation(() => new Promise(() => {}));
 
-        const handle = await initializeDemoProject();
+        const handle = await initializeDemoProject("demo");
 
         expect((handle.client as unknown as { id: string; }).id).toBe("first");
         expect(services.acquireDemoClient).toHaveBeenCalledTimes(1);
@@ -84,7 +84,7 @@ describe("demoInit", () => {
             return Promise.resolve(makeClient("first"));
         });
 
-        await initializeDemoProject();
+        await initializeDemoProject("demo");
 
         expect(order).toEqual(["seed", "connect"]);
     });
@@ -96,7 +96,7 @@ describe("demoInit", () => {
             .mockResolvedValueOnce(makeClient("fresh"));
 
         const updates: unknown[] = [];
-        const handle = await initializeDemoProject({ onValidated: (update) => updates.push(update) });
+        const handle = await initializeDemoProject("demo", { onValidated: (update) => updates.push(update) });
         expect((handle.client as unknown as { id: string; }).id).toBe("stale");
 
         await vi.waitFor(() => expect(updates.length).toBe(1));
@@ -106,7 +106,7 @@ describe("demoInit", () => {
 
     it("keeps the connected client when no reset happened", async () => {
         const updates: { reset: boolean; }[] = [];
-        await initializeDemoProject({ onValidated: (update) => updates.push(update) });
+        await initializeDemoProject("demo", { onValidated: (update) => updates.push(update) });
 
         await vi.waitFor(() => expect(updates.length).toBe(1));
         expect(updates[0].reset).toBe(false);
@@ -118,7 +118,7 @@ describe("demoInit", () => {
         (seedDemo as Mock).mockResolvedValue({ ok: false, reset: false, reason: "network" });
 
         const updates: { seedFailure?: string; }[] = [];
-        const handle = await initializeDemoProject({ onValidated: (update) => updates.push(update) });
+        const handle = await initializeDemoProject("demo", { onValidated: (update) => updates.push(update) });
 
         await vi.waitFor(() => expect(updates.length).toBe(1));
         expect(updates[0].seedFailure).toBe("network");
@@ -127,20 +127,20 @@ describe("demoInit", () => {
     });
 
     it("reuses one validation request across demo routes", async () => {
-        await initializeDemoProject();
-        await initializeDemoProject();
-        startDemoValidation();
+        await initializeDemoProject("demo");
+        await initializeDemoProject("demo");
+        startDemoValidation("demo");
         expect(seedDemo).toHaveBeenCalledTimes(1);
     });
 
     it("keeps the memo across a route swap, since SvelteKit destroys before it mounts", async () => {
-        await initializeDemoProject();
+        await initializeDemoProject("demo");
 
         // The outgoing route releases the last reference before the incoming
         // route mounts; that must not cost another seed request.
         (services.releaseDemoClient as Mock).mockReturnValue(0);
-        releaseDemoProject();
-        await initializeDemoProject();
+        releaseDemoProject("demo");
+        await initializeDemoProject("demo");
 
         expect(seedDemo).toHaveBeenCalledTimes(1);
     });
@@ -149,11 +149,11 @@ describe("demoInit", () => {
         const start = Date.now();
         const clock = vi.spyOn(Date, "now").mockReturnValue(start);
         try {
-            await initializeDemoProject();
+            await initializeDemoProject("demo");
             expect(seedDemo).toHaveBeenCalledTimes(1);
 
             clock.mockReturnValue(start + 61000);
-            startDemoValidation();
+            startDemoValidation("demo");
             expect(seedDemo).toHaveBeenCalledTimes(2);
         } finally {
             clock.mockRestore();
@@ -173,7 +173,7 @@ describe("demoInit", () => {
 
         let destroyed = false;
         const updates: unknown[] = [];
-        await initializeDemoProject({ isDestroyed: () => destroyed, onValidated: (u) => updates.push(u) });
+        await initializeDemoProject("demo", { isDestroyed: () => destroyed, onValidated: (u) => updates.push(u) });
 
         // The route goes away while the replacement connection is in flight.
         await vi.waitFor(() => expect(finishReconnect).toBeDefined());
@@ -192,6 +192,41 @@ describe("demoInit", () => {
         (services.acquireDemoClient as Mock).mockResolvedValue(undefined);
         (seedDemo as Mock).mockResolvedValue({ ok: false, reset: false, reason: "network" });
 
-        await expect(initializeDemoProject()).rejects.toThrow("Can't reach the demo server");
+        await expect(initializeDemoProject("demo")).rejects.toThrow("Can't reach the demo server");
+    });
+});
+
+describe("demo project isolation", () => {
+    beforeEach(() => {
+        resetDemoValidationState();
+        (seedDemo as Mock).mockReset().mockResolvedValue({ ok: true, reset: false });
+    });
+
+    afterEach(() => {
+        resetDemoValidationState();
+    });
+
+    it("validates each demo project independently", () => {
+        // One project per locale: validating /demo says nothing about whether
+        // /demo-ja is fresh, so the memo cannot be shared between them.
+        startDemoValidation("demo");
+        startDemoValidation("demo-ja");
+        startDemoValidation("demo");
+
+        expect(seedDemo).toHaveBeenCalledTimes(2);
+        expect((seedDemo as Mock).mock.calls.map(([project]) => project)).toEqual(["demo", "demo-ja"]);
+    });
+
+    it("forgets only the named project's validation", () => {
+        startDemoValidation("demo");
+        startDemoValidation("demo-ja");
+        expect(seedDemo).toHaveBeenCalledTimes(2);
+
+        resetDemoValidationState("demo");
+        startDemoValidation("demo-ja");
+        expect(seedDemo, "demo-ja stayed memoized").toHaveBeenCalledTimes(2);
+
+        startDemoValidation("demo");
+        expect(seedDemo, "demo revalidated").toHaveBeenCalledTimes(3);
     });
 });

@@ -3,13 +3,13 @@ import { acquireDemoClient, releaseDemoClient, removeYjsClientByProjectId, reset
 import { store } from "../stores/store.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import type { YjsClient } from "../yjs/YjsClient";
-import { DEMO_PROJECT_NAME, seedDemo, type SeedDemoResult } from "./demoSeed";
+import { seedDemo, type SeedDemoResult } from "./demoSeed";
 import { getLogger } from "./logger";
 
 const logger = getLogger("demoInit");
 
 /**
- * Shared initialization workflow for every `/demo*` route.
+ * Shared initialization workflow for every demo route, in every locale.
  *
  * The warm path (template already valid, no reset needed) must not pay for a
  * seed round trip before the browser is allowed to open its own Yjs
@@ -23,33 +23,44 @@ const VALIDATION_TIMEOUT_MS = 15000;
 /** Re-validate freshness at most this often while the demo stays open. */
 const VALIDATION_TTL_MS = 60000;
 
-let validationPromise: Promise<SeedDemoResult> | undefined;
-let validationStartedAt = 0;
+// Keyed by project: the demo ships one project per locale, and validating
+// `/demo` says nothing about whether `/demo-ja` is fresh.
+const validations = new Map<string, { promise: Promise<SeedDemoResult>; startedAt: number; }>();
 
 /**
- * Start (or reuse) the demo freshness validation request. Svelte-managed
- * navigation between demo routes reuses the same in-flight/settled promise, so
- * moving between `/demo`, `/demo/[page]` and `/demo/graph` issues no extra
- * `POST /api/seed-demo`.
+ * Start (or reuse) a demo project's freshness validation request. Svelte-managed
+ * navigation between that project's demo routes reuses the same
+ * in-flight/settled promise, so moving between `/demo`, `/demo/[page]` and
+ * `/demo/graph` issues no extra `POST /api/seed-demo`.
  */
-export function startDemoValidation(): Promise<SeedDemoResult> {
+export function startDemoValidation(project: string): Promise<SeedDemoResult> {
     const now = Date.now();
-    if (!validationPromise || now - validationStartedAt > VALIDATION_TTL_MS) {
-        validationStartedAt = now;
-        validationPromise = seedDemo();
+    const existing = validations.get(project);
+    if (existing && now - existing.startedAt <= VALIDATION_TTL_MS) {
+        return existing.promise;
     }
-    return validationPromise;
+    const promise = seedDemo(project);
+    validations.set(project, { promise, startedAt: now });
+    return promise;
 }
 
-/** Forget the memoized validation so the next visit revalidates. */
-export function resetDemoValidationState(): void {
-    validationPromise = undefined;
-    validationStartedAt = 0;
+/**
+ * Forget a memoized validation so the next visit revalidates. With no argument
+ * every project is forgotten, which is what a test wants.
+ */
+export function resetDemoValidationState(project?: string): void {
+    if (project === undefined) {
+        validations.clear();
+        return;
+    }
+    validations.delete(project);
 }
 
 export interface DemoProjectHandle {
     client: YjsClient;
     project: AppProject;
+    /** Which demo project this handle belongs to (`demo`, `demo-ja`, …). */
+    slug: string;
 }
 
 export interface DemoInitOptions {
@@ -69,11 +80,11 @@ export interface DemoValidationUpdate {
     seedFailure?: "network" | "http" | "rate-limit";
 }
 
-function attachDemoProject(client: YjsClient): DemoProjectHandle {
+function attachDemoProject(client: YjsClient, slug: string): DemoProjectHandle {
     yjsStore.yjsClient = client;
     const project = AppProject.fromDoc(client.getProject().ydoc);
     store.project = project;
-    return { client, project };
+    return { client, project, slug };
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
@@ -98,16 +109,16 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
  * rebuilt the shared document, so the page reflects the reseeded content
  * instead of a document state the old client already diverged from.
  */
-export async function reconnectDemoProject(): Promise<DemoProjectHandle | undefined> {
-    resetDemoClientState();
-    removeYjsClientByProjectId(DEMO_PROJECT_NAME);
+export async function reconnectDemoProject(project: string): Promise<DemoProjectHandle | undefined> {
+    resetDemoClientState(project);
+    removeYjsClientByProjectId(project);
     yjsStore.yjsClient = undefined;
     store.project = undefined;
     store.currentPage = undefined;
 
-    const client = await acquireDemoClient();
+    const client = await acquireDemoClient(project);
     if (!client) return undefined;
-    return attachDemoProject(client);
+    return attachDemoProject(client, project);
 }
 
 /**
@@ -115,16 +126,19 @@ export async function reconnectDemoProject(): Promise<DemoProjectHandle | undefi
  * Resolves as soon as the project client is usable; a reseed discovered by the
  * parallel validation is reported through `onValidated`.
  */
-export async function initializeDemoProject(options: DemoInitOptions = {}): Promise<DemoProjectHandle> {
+export async function initializeDemoProject(
+    project: string,
+    options: DemoInitOptions = {},
+): Promise<DemoProjectHandle> {
     const isDestroyed = options.isDestroyed ?? (() => false);
 
     // Kick off both immediately: the connection must not queue behind validation.
-    const validation = startDemoValidation();
-    const clientPromise = acquireDemoClient();
+    const validation = startDemoValidation(project);
+    const clientPromise = acquireDemoClient(project);
 
     const client = await clientPromise;
     if (isDestroyed()) {
-        if (client) releaseDemoClient();
+        if (client) releaseDemoClient(project);
         throw new DemoInitAborted();
     }
     if (!client) {
@@ -136,7 +150,7 @@ export async function initializeDemoProject(options: DemoInitOptions = {}): Prom
         throw new Error("Failed to connect to the demo project.");
     }
 
-    const handle = attachDemoProject(client);
+    const handle = attachDemoProject(client, project);
 
     // Content is on screen from here on; handle the validation verdict in the
     // background so a slow or delayed response never hides synced content.
@@ -145,13 +159,13 @@ export async function initializeDemoProject(options: DemoInitOptions = {}): Prom
         if (isDestroyed() || !seedResult) return;
         if (seedResult.reset) {
             logger.info("Demo document was reseeded; reconnecting with a fresh client");
-            const next = await reconnectDemoProject();
+            const next = await reconnectDemoProject(project);
             if (isDestroyed()) {
                 // The route was destroyed while the replacement was connecting.
                 // Its destroy handler released the old reference only, so the
                 // replacement's reference (and the shared stores) are ours to
                 // clean up.
-                if (next) releaseDemoProject();
+                if (next) releaseDemoProject(project);
                 return;
             }
             options.onValidated?.({ handle: next, reset: true });
@@ -179,10 +193,10 @@ export class DemoInitAborted extends Error {
  * Manually trigger the reset that otherwise runs every 24 hours and reconnect
  * so the UI reflects the reseeded content.
  */
-export async function forceResetDemoProject(): Promise<DemoProjectHandle | undefined> {
-    resetDemoValidationState();
-    await seedDemo({ force: true, throwOnError: true });
-    return reconnectDemoProject();
+export async function forceResetDemoProject(project: string): Promise<DemoProjectHandle | undefined> {
+    resetDemoValidationState(project);
+    await seedDemo(project, { force: true, throwOnError: true });
+    return reconnectDemoProject(project);
 }
 
 /**
@@ -194,8 +208,8 @@ export async function forceResetDemoProject(): Promise<DemoProjectHandle | undef
  * every navigation inside `/demo` issue another seed request. It expires on its
  * own after VALIDATION_TTL_MS.
  */
-export function releaseDemoProject(): number {
-    const remaining = releaseDemoClient();
+export function releaseDemoProject(project: string): number {
+    const remaining = releaseDemoClient(project);
     if (remaining === 0) {
         yjsStore.yjsClient = undefined;
         store.project = undefined;

@@ -6,10 +6,10 @@ status: implemented
 components:
 - client/src/lib/demoInit.ts
 - client/src/lib/demoSeed.ts
-- client/src/routes/demo/+page.svelte
-- client/src/routes/demo/[page]/+page.svelte
-- client/src/routes/demo/[page]/diff/+page.svelte
-- client/src/routes/demo/graph/+page.svelte
+- client/src/routes/[demoProject=demoProject]/+page.svelte
+- client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
+- client/src/routes/[demoProject=demoProject]/[page]/diff/+page.svelte
+- client/src/routes/[demoProject=demoProject]/graph/+page.svelte
 services:
 - server/src/demo-api.ts
 tests:

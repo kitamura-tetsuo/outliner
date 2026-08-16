@@ -6,7 +6,6 @@
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
     import OutlinerBase from "../../../components/OutlinerBase.svelte";
     import SearchPanel from "../../../components/SearchPanel.svelte";
-    import { DEMO_PROJECT_NAME } from "../../../lib/demoSeed";
     import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
     import type { Item } from "../../../schema/app-schema";
@@ -18,6 +17,8 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     const logger = getLogger("DemoPageView");
 
     let pageName: string = $derived($page.params.page || "");
+    // Which demo project this route is showing (`demo`, `demo-ja`, …).
+    let demoProject: string = $derived($page.params.demoProject as string);
 
     let isLoading = $state(true);
     let error: string | undefined = $state(undefined);
@@ -62,8 +63,14 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         return sharedFindPageByName(store.project.items, name) || undefined;
     }
 
+    // The project whose reference this route holds. Captured here because
+    // `$derived` is not readable from onDestroy, and the release must name the
+    // same project the acquire did.
+    let acquiredProject = "";
+
     async function loadDemoPage() {
         try {
+            acquiredProject = demoProject;
             isLoading = true;
             error = undefined;
             pageNotFound = false;
@@ -72,7 +79,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             // Connect once; page switches within /demo reuse the same client
             if (!yjsStore.yjsClient || !store.project) {
                 // Connects immediately; freshness validation runs in parallel.
-                await initializeDemoProject({
+                await initializeDemoProject(demoProject, {
                     isDestroyed: () => isDestroyed,
                     onValidated: (update) => {
                         seedWarning = update.seedFailure === "network"
@@ -153,7 +160,7 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
     onDestroy(() => {
         isDestroyed = true;
         try {
-            releaseDemoProject();
+            releaseDemoProject(acquiredProject);
         } catch (_e) { logger.error(_e); }
     });
 </script>
@@ -264,14 +271,14 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
         {#key `${lastReset}-${store.currentPage.id}`}
             <OutlinerBase
                 pageItem={store.currentPage}
-                projectName={DEMO_PROJECT_NAME}
+                projectName={demoProject}
                 pageName={pageName}
                 isReadOnly={false}
                 onEdit={undefined}
             />
 
             <!-- Backlink Panel -->
-            <BacklinkPanel {pageName} projectName={DEMO_PROJECT_NAME} />
+            <BacklinkPanel {pageName} projectName={demoProject} />
         {/key}
     {/if}
 

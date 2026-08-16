@@ -14,6 +14,7 @@ const logger = getLogger("SearchBox");
     import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
     import { store } from "../stores/store.svelte";
     import { iterateItems } from "../utils/itemTraversal";
+    import { projectPagePath } from "../lib/publicProject";
 
     // Type alias for backward compatibility
     type Item = ItemLike;
@@ -239,13 +240,10 @@ const logger = getLogger("SearchBox");
             // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
             let projTitle = resolveProjectTitle(targetPage);
             // Encode path segments to ensure correct routing for titles with spaces/special characters
-            if (projTitle === "demo" || (typeof window !== "undefined" && window.location.pathname.startsWith("/demo"))) {
-                goto(resolvePath(`/demo/${encodeURIComponent(title)}`));
-            } else {
-                goto(
-                    resolvePath(`/${encodeURIComponent(projTitle)}/${encodeURIComponent(title)}`),
-                );
-            }
+            // `projTitle` is already the demo's own slug when we are in a demo,
+            // so no special case is needed. The pathname test that used to be
+            // here also matched `/demo-ja`, sending those visitors to `/demo`.
+            goto(resolvePath(projectPagePath(projTitle, title)));
         } else if (query) {
             goto(resolvePath(`/search?query=${encodeURIComponent(query)}`));
         }

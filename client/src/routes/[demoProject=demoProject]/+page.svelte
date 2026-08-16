@@ -1,5 +1,6 @@
 <script lang="ts">
     import Loader from "../../components/Loader.svelte";
+    import { page as pageStore } from "$app/stores";
     import { onDestroy, onMount } from "svelte";
     import PageList from "../../components/PageList.svelte";
     import { SeedDemoError } from "../../lib/demoSeed";
@@ -11,6 +12,10 @@
     import { yjsStore } from "../../stores/yjsStore.svelte";
         import Breadcrumb from "../../components/Breadcrumb.svelte";
     import ConfirmDialog from "../../components/ConfirmDialog.svelte";
+
+    // Which demo project this route is showing (`demo`, `demo-ja`, …). The
+    // matcher in src/params/demoProject.ts guarantees it is a registered slug.
+    const demoProject = $derived($pageStore.params.demoProject as string);
 
     let isLoading = $state(true);
     let isResetting = $state(false);
@@ -35,7 +40,7 @@
 
             // Connects immediately; template freshness is validated in parallel
             // and only reported back when it changed something.
-            await initializeDemoProject({
+            await initializeDemoProject(demoProject, {
                 isDestroyed: () => isDestroyed,
                 onValidated: (update) => {
                     if (update.seedFailure === "network") {
@@ -64,7 +69,7 @@
             resetDone = false;
             resetError = undefined;
             error = undefined;
-            const handle = await forceResetDemoProject();
+            const handle = await forceResetDemoProject(demoProject);
             if (isDestroyed) return;
             if (!handle) {
                 throw new Error("Failed to connect to the demo project.");
@@ -85,14 +90,19 @@
         }
     }
 
+    // Captured at mount: `$derived` is not readable once the component is
+    // destroyed, and the release must name the project it acquired.
+    let acquiredProject = "";
+
     onMount(() => {
+        acquiredProject = demoProject;
         initializeDemo();
     });
 
     onDestroy(() => {
         isDestroyed = true;
         try {
-            releaseDemoProject();
+            releaseDemoProject(acquiredProject);
         } catch (_e) { logger.error(_e); }
     });
 </script>

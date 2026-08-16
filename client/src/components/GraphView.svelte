@@ -15,6 +15,7 @@ const logger = getLogger("GraphView");
     import { yjsStore } from "../stores/yjsStore.svelte";
     import { page } from "$app/stores";
     import { get } from "svelte/store";
+    import { projectPagePath } from "../lib/publicProject";
 
     let graphDiv: HTMLDivElement;
     let chart: echarts.ECharts | undefined = $state(undefined);
@@ -240,14 +241,15 @@ const logger = getLogger("GraphView");
     function getPageUrl(pageName: string) {
         if (!pageName) return "#";
         const pageStore = get(page);
-        const projectName = pageStore.url.pathname.startsWith('/demo') ? "demo" : (pageStore.params.project || store.project?.title);
-        if (projectName === "demo") {
-            return resolvePath(`/demo/${encodeURIComponent(pageName)}`);
-        } else if (projectName) {
-            return resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}`);
-        } else {
-            return resolvePath(`/${encodeURIComponent(pageName)}`);
+        // The demo routes name their project `demoProject`; reading the param
+        // avoids the prefix test that also matched `/demo-ja`.
+        const projectName = pageStore.params.demoProject
+            || pageStore.params.project
+            || store.project?.title;
+        if (projectName) {
+            return resolvePath(projectPagePath(projectName, pageName));
         }
+        return resolvePath(`/${encodeURIComponent(pageName)}`);
     }
 
     onMount(() => {
