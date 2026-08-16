@@ -14,6 +14,13 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("ATT-7c19a2b4: attachments reflect Yjs add/remove", () => {
     test("add/remove attachment updates preview list", async ({ page }, testInfo) => {
+        // The preview URLs below point at a host the test environment cannot reach,
+        // so whether the browser reports a load failure — and how quickly — used to
+        // decide whether the preview stayed an <img> or turned into a file chip.
+        // Fail every request up front so the assertions below always run against
+        // the unreachable-image case instead of racing the network.
+        await page.route("https://example.com/**", (route) => route.abort());
+
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [
             "PAGE TITLE",
             "ITEM with attachments",
