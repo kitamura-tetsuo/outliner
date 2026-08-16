@@ -24,3 +24,4 @@ testInstructions: '1. Open a project and navigate to a page containing a Yjs tab
 title-ja: Table Schedule Rule UI Feature
 tests:
 - client/e2e/core/tbl-table-schedule-rule-ui.spec.ts
+- client/e2e/schedule/sch-table-schedule-indicator-8f579b32.spec.ts
