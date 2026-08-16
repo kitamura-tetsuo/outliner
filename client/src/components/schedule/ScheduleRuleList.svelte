@@ -5,13 +5,11 @@ import { formatDateTime } from "../../utils/dateUtils";
 
 interface Props {
     rules: { id: string, rule: ScheduleRule }[];
-    onRunNow: (id: string) => void;
-    runningRuleId?: string;
     onEdit: (id: string, rule: ScheduleRule) => void;
     onDelete: (id: string) => void;
 }
 
-let { rules, onRunNow, runningRuleId, onEdit, onDelete }: Props = $props();
+let { rules, onEdit, onDelete }: Props = $props();
 
 function getHumanReadable(rruleStr: string) {
     try {
@@ -58,15 +56,6 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                             {/if}
                         </div>
                         <div class="space-x-2">
-                            <button
-                                class="text-gray-700 hover:text-gray-900 text-sm disabled:opacity-50"
-                                onclick={() => onRunNow(id)}
-                                disabled={runningRuleId === id}
-                                data-testid="schedule-rule-run-now"
-                                data-rule-id={id}
-                            >
-                                {runningRuleId === id ? "Running…" : "Run now"}
-                            </button>
                             <button class="text-blue-600 hover:text-blue-800 text-sm" onclick={() => onEdit(id, rule)}>Edit</button>
                             <button class="text-red-600 hover:text-red-800 text-sm" onclick={() => onDelete(id)}>Delete</button>
                         </div>

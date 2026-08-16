@@ -4,7 +4,6 @@
     import ScheduleRuleList from "../schedule/ScheduleRuleList.svelte";
     import ScheduleRuleEditor from "../schedule/ScheduleRuleEditor.svelte";
     import { createScheduleRule, deleteScheduleRule, updateScheduleRule, type ScheduleRule } from "../../services/schedule/scheduleRuleService";
-    import { runScheduleRuleNow } from "../../services/schedule/scheduleRunService";
 
     interface Props {
         tableId: string;
@@ -16,8 +15,6 @@
     let isEditing = $state(false);
     let currentRuleId: string | undefined = $state(undefined);
     let currentRule: Partial<ScheduleRule> | undefined = $state(undefined);
-    let runningRuleId: string | undefined = $state(undefined);
-    let runError: string | undefined = $state(undefined);
 
     function loadRules() {
         if (!store.project || !tableId) return;
@@ -105,20 +102,6 @@
             deleteScheduleRule(store.project, id);
         }
     }
-
-    async function handleRunNow(id: string) {
-        if (!store.project) return;
-        runError = undefined;
-        runningRuleId = id;
-        try {
-            const res = await runScheduleRuleNow(store.project.id, id);
-            if (!res.ok) {
-                runError = res.error || "Failed to run rule";
-            }
-        } finally {
-            runningRuleId = undefined;
-        }
-    }
 </script>
 
 <div class="table-schedule-panel" data-testid="yjs-table-schedule-panel">
@@ -142,15 +125,8 @@
                 onCancel={cancelEdit}
             />
         {:else}
-            {#if runError}
-                <div class="mb-3 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-100 font-mono">
-                    {runError}
-                </div>
-            {/if}
             <ScheduleRuleList
                 {rules}
-                {runningRuleId}
-                onRunNow={handleRunNow}
                 onEdit={startEdit}
                 onDelete={handleDelete}
             />

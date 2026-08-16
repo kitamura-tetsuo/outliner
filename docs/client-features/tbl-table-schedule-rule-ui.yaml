@@ -18,13 +18,10 @@ testInstructions: '1. Open a project and navigate to a page containing a Yjs tab
 
   6. Save the rule and verify it appears in the list.
 
-  7. Click "Run now" and verify that the rule is executed and updates the `Last run` status to OK or shows an inline error.
-
-  8. Verify the rule can be edited and deleted.
+  7. Verify the rule can be edited and deleted.
 
   '
 title-ja: Table Schedule Rule UI Feature
 tests:
 - client/e2e/core/tbl-table-schedule-rule-ui.spec.ts
 - client/e2e/schedule/sch-table-schedule-indicator-8f579b32.spec.ts
-- client/e2e/core/sch-schedule-rule-run-now-3a4b5c6d.spec.ts
