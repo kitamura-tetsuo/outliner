@@ -103,3 +103,30 @@ export function updateScheduleRule(
 export function deleteScheduleRule(project: Project, ruleId: string): void {
     project.schedules.delete(ruleId);
 }
+
+export interface TableScheduleSummary {
+    /** Number of schedule rules whose targetTableId is this table. */
+    total: number;
+    /** True when at least one of those rules has enabled !== false. */
+    hasEnabled: boolean;
+}
+
+export function summarizeTableSchedules(project: Project | undefined, tableId: string): TableScheduleSummary {
+    if (!project || !project.schedules) {
+        return { total: 0, hasEnabled: false };
+    }
+
+    let total = 0;
+    let hasEnabled = false;
+
+    project.schedules.forEach((ruleMap) => {
+        if (ruleMap.get("targetTableId") === tableId) {
+            total++;
+            if (ruleMap.get("enabled") !== false) {
+                hasEnabled = true;
+            }
+        }
+    });
+
+    return { total, hasEnabled };
+}
