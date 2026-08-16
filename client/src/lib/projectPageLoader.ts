@@ -3,8 +3,8 @@ import type { Item } from "../schema/app-schema";
 import { getYjsClientByProjectTitle } from "../services";
 import { store } from "../stores/store.svelte";
 import { yjsStore } from "../stores/yjsStore.svelte";
-import { findPageByName as sharedFindPageByName, allocatePageTitle } from "../utils/pageUtils";
 import { iterateItems } from "../utils/itemTraversal";
+import { allocatePageTitle, findPageByName as sharedFindPageByName } from "../utils/pageUtils";
 import type { YjsClient } from "../yjs/YjsClient";
 import { getLogger } from "./logger";
 
@@ -75,10 +75,16 @@ export async function loadProjectAndPage(projectName: string, pageName: string):
             blankPages.sort((a, b) => (a.key || a.id || "").localeCompare(b.key || b.id || ""));
 
             for (const blankPage of blankPages) {
-                const textStr = typeof blankPage.text?.toString === "function" ? blankPage.text.toString() : String(blankPage.text ?? "");
+                const textStr = typeof blankPage.text?.toString === "function"
+                    ? blankPage.text.toString()
+                    : String(blankPage.text ?? "");
                 if (!textStr.trim()) {
-                    const newTitle = allocatePageTitle(project.items as unknown as Iterable<Item>, "", blankPage.id || blankPage.key);
-                    if ('updateText' in blankPage && typeof blankPage.updateText === 'function') {
+                    const newTitle = allocatePageTitle(
+                        project.items as unknown as Iterable<Item>,
+                        "",
+                        blankPage.id || blankPage.key,
+                    );
+                    if ("updateText" in blankPage && typeof blankPage.updateText === "function") {
                         blankPage.updateText(newTitle);
                     }
                 }

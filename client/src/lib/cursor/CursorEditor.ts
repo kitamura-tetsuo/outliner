@@ -8,8 +8,8 @@ import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
-import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { allocatePageTitle } from "../../utils/pageUtils";
+import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { KeyEventHandler } from "../KeyEventHandler";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
@@ -58,11 +58,11 @@ export class CursorEditor {
         return getSingleItemSelectionForUser(this.cursor.userId, itemId);
     }
 
-        private validateRename(
+    private validateRename(
         node: import("../../schema/app-schema").Item,
         changeText: string,
         action: "insert" | "deleteBackward" | "deleteForward" | "paste",
-    ): { valid: boolean; overrideText?: string } {
+    ): { valid: boolean; overrideText?: string; } {
         let isRoot = false;
         try {
             isRoot = node.tree?.getNodeParentFromKey?.(node.id || node.key) === "root";

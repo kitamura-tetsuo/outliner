@@ -85,7 +85,9 @@ describe("pageUtils", () => {
         });
 
         it("should skip existing suffixes and find the next gap", () => {
-            const items = [{ text: "Untitled" }, { text: "Untitled_2" }, { text: "Untitled_4" }] as unknown as Iterable<Item>;
+            const items = [{ text: "Untitled" }, { text: "Untitled_2" }, { text: "Untitled_4" }] as unknown as Iterable<
+                Item
+            >;
             expect(allocatePageTitle(items, "")).toBe("Untitled_3");
         });
 

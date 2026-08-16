@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Untitled pages", () => {
@@ -26,9 +26,7 @@ test.describe("Untitled pages", () => {
             if (btn) (btn as HTMLElement).click();
         });
 
-
         // Wait for URL to update to Untitled_2
         await expect(page).toHaveURL(/.*Untitled(_|%20)2/);
-
     });
 });
