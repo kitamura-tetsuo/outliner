@@ -608,9 +608,11 @@ export async function startServer(
         logger.info({ port: config.PORT }, "Hocuspocus server listening");
     });
 
-    const shutdown = () => {
+    const shutdown = async () => {
         intervals.forEach(clearInterval);
-        jobScheduler?.stop();
+        // Awaited so the scheduler's worker releases its Postgres WASM heap
+        // before the process goes down.
+        await jobScheduler?.stop();
         if (typeof (hocuspocus as unknown as { destroy?: () => void; }).destroy === "function") {
             (hocuspocus as unknown as { destroy?: () => void; }).destroy?.();
         } else {

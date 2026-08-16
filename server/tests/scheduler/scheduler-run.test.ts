@@ -115,7 +115,9 @@ describe("Job scheduler run", function() {
     });
 
     afterEach(async function() {
-        scheduler.stop();
+        // Awaited so the next test's worker is not spawned while this one is
+        // still tearing down its Postgres WASM heap.
+        await scheduler.stop();
     });
 
     it("runs a due rule against the table's own room and stores the generated rows", async function() {

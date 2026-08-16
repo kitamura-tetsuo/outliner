@@ -3,6 +3,36 @@ import { parentPort } from "node:worker_threads";
 import { logger } from "../logger.js";
 import { JobData } from "./worker-types.js";
 
+/**
+ * One PGlite instance for the lifetime of the worker.
+ *
+ * Every `new PGlite()` instantiates the Postgres WASM module and closing it
+ * frees the JIT pages again. Doing that once per job crashed the process:
+ * V8's thread-isolation bookkeeping fatals on a repeated
+ * instantiate/free cycle in a worker thread
+ * ("Check failed: jit_page_->allocations_.erase(addr) == 1" in
+ * UnregisterWasmAllocation), which took the whole server test run down with
+ * exit code 133. Reusing the instance also removes the ~1.7s startup each job
+ * was paying. Jobs stay isolated from each other through their own schema,
+ * which is dropped once the job is done.
+ */
+let dbPromise: Promise<PGlite> | undefined;
+
+function getDb(): Promise<PGlite> {
+    if (!dbPromise) {
+        dbPromise = (async () => {
+            const instance = new PGlite();
+            await instance.waitReady;
+            return instance;
+        })();
+        // A failed startup must not be cached, or every later job inherits it.
+        dbPromise.catch(() => {
+            dbPromise = undefined;
+        });
+    }
+    return dbPromise;
+}
+
 async function executeJob(data: JobData) {
     const { schemaSql, ruleSql, records, timezone, occurrenceUtcIso, ruleId } = data;
 
@@ -28,10 +58,12 @@ async function executeJob(data: JobData) {
         }
     }
 
-    const db = new PGlite();
-    await db.waitReady;
+    const db = await getDb();
 
     try {
+        // The instance is shared across jobs, so a schema left behind by an
+        // earlier run of the same rule is cleared before it is recreated.
+        await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
         await db.exec(`CREATE SCHEMA "${pgSchema}";`);
 
         await db.exec(`BEGIN;`);
@@ -105,12 +137,23 @@ async function executeJob(data: JobData) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         return { success: false, error: errorMessage };
     } finally {
-        await db.close();
+        // CREATE SCHEMA ran outside the transaction, so a ROLLBACK does not
+        // undo it: the job's relations are dropped explicitly.
+        try {
+            await db.exec(`DROP SCHEMA IF EXISTS "${pgSchema}" CASCADE;`);
+        } catch (_e) {
+            logger.warn({ err: _e }, "Silenced error");
+        }
     }
 }
 
-parentPort?.on("message", async (msg) => {
-    if (msg.type === "execute") {
+// Jobs share one PGlite instance, so they must not interleave: each job runs
+// its own transaction and the shared connection has only one session.
+let queue: Promise<void> = Promise.resolve();
+
+parentPort?.on("message", (msg) => {
+    if (msg.type !== "execute") return;
+    queue = queue.then(async () => {
         try {
             const result = await executeJob(msg.data);
             parentPort?.postMessage({ id: msg.id, result });
@@ -118,5 +161,5 @@ parentPort?.on("message", async (msg) => {
             const errorMessage = error instanceof Error ? error.message : String(error);
             parentPort?.postMessage({ id: msg.id, result: { success: false, error: errorMessage } });
         }
-    }
+    });
 });

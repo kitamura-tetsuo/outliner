@@ -28,12 +28,14 @@ describe("Demo routine schedule rule SQL", function() {
 
     let executor: JobExecutor;
 
-    beforeEach(function() {
+    // One worker for the whole file: each job runs in its own Postgres schema,
+    // so the tests stay isolated without paying a WASM startup per test.
+    before(function() {
         executor = new JobExecutor();
         executor.startWorker();
     });
 
-    afterEach(async function() {
+    after(async function() {
         await executor.stopWorker();
     });
 
