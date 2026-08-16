@@ -89,6 +89,13 @@ export class JobExecutor {
             throw new Error("Worker not started");
         }
         const worker = await ready;
+        // stopWorker() may have run while this job was awaiting the spawn: its
+        // pass over `resolvers` happened before this job could register one, so
+        // posting now would strand the job until its timeout (and the exit
+        // handler deliberately stays quiet for a worker it no longer owns).
+        if (this.workerReady !== ready) {
+            throw new Error("Worker terminated");
+        }
 
         return new Promise<JobResult>((resolve, reject) => {
             const id = this.msgId++;
