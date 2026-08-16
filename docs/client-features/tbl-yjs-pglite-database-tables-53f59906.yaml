@@ -35,6 +35,8 @@ tests:
 - client/src/services/yjstable/tableDocs.test.ts
 - client/src/services/yjstable/tableEngine.test.ts
 - client/src/services/yjstable/tableEngineItems.test.ts
+- client/src/services/yjstable/tableEngineWarmCache.test.ts
+- client/src/services/yjstable/tableEngineWarmEviction.test.ts
 - client/src/services/yjstable/tableRelationProvider.test.ts
 - client/src/services/yjstable/tableSqlRewrite.test.ts
 - client/src/services/yjstable/tableSyncAdapter.test.ts

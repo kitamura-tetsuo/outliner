@@ -32,7 +32,10 @@ Where this is stated in the codebase:
   synchronization. Data Storage (Y.Map of records) is the source of truth."
 - `client/src/services/yjstable/tableEngine.ts` — a table is materialized
   exactly once per project; entries no longer reachable from a live session are
-  swept, so a query can never read stale rows.
+  swept, so a query can never read stale rows. Losing the last view leaves an
+  entry _warm_ rather than destroying it, so revisiting a grid within the
+  session is cheap; the warm set is bounded by a retention window and an LRU
+  limit, and a relation whose document is destroyed is dropped at once.
 - `server/src/scheduler/` — the scheduler writes only Yjs. Its SQLite
   `schedule_index` is an index derived from documents in the Hocuspocus
   `onStoreDocument` hook; documents are never scanned.
@@ -260,7 +263,8 @@ implement it as `rowId → Data Storage Y.Map key`
 (`tableRelationProvider.ts`); items implement it as `item key → node value
 field` (`itemsRelation.ts`). `tableEngine.ts` owns both kinds behind one
 entry/sweep model, so the projection is materialized once per project and
-dropped when no session can reach it.
+dropped once nothing can reach it — neither a live session nor an entry the
+bounded warm cache still retains.
 
 This keeps the inverse mapping closed per relation, and keeps the invariant that
 no component writes to PGlite.
