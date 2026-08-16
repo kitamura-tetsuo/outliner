@@ -81,6 +81,7 @@ import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { presenceStore } from "../stores/PresenceStore.svelte";
 import { findBestOffsetBinary, getMeasurementSpan } from '../utils/domUtils';
 import { ScrapboxFormatter } from "../utils/ScrapboxFormatter";
+import { allocatePageTitle } from "../utils/pageUtils";
 import CommentThread from "./CommentThread.svelte";
 import { goto } from "$app/navigation";
 import { resolvePath } from "../utils/pathUtils";

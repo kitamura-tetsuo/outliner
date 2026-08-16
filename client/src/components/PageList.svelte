@@ -12,7 +12,7 @@ import { searchHistoryStore } from "../stores/SearchHistoryStore.svelte";
 import { pageViewStore } from "../stores/PageViewStore.svelte";
 import { getBacklinkCount } from "../lib/backlinkCollector";
 import { store } from "../stores/store.svelte";
-import { findPageByName, generateDefaultPageTitle } from "../utils/pageUtils";
+import { findPageByName, generateDefaultPageTitle, allocatePageTitle } from "../utils/pageUtils";
 
 interface Props {
     projectName?: string;
@@ -112,7 +112,8 @@ function handleCreatePage() {
     }
 
     // Add a page directly to the project
-    const newPage = project.addPage(pageTitle, currentUser);
+    const allocatedTitle = allocatePageTitle(project.items, pageTitle);
+    const newPage = project.addPage(allocatedTitle, currentUser);
     selectPage(newPage);
 
     // Also explicitly route to the new page when created via UI (e.g. hitting Enter)

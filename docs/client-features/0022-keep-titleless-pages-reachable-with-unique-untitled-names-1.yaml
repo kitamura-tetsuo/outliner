@@ -1,0 +1,10 @@
+id: 0022-keep-titleless-pages-reachable-with-unique-untitled-names-1
+title: Keep titleless pages reachable with unique Untitled names
+status: stable
+description: 'When a page title is cleared, it is assigned "Untitled" or "Untitled_<n>" (if collisions exist). This ensures titleless pages remain addressable and reachable. Older blank pages are repaired deterministically on project load.
+
+  '
+area: UI
+tests:
+- e2e/basic/untitled-pages.spec.ts
+title-ja: Keep titleless pages reachable with unique Untitled names

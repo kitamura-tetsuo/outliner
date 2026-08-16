@@ -9,6 +9,7 @@ import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.sve
 import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
+import { allocatePageTitle } from "../../utils/pageUtils";
 import { KeyEventHandler } from "../KeyEventHandler";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
@@ -57,16 +58,16 @@ export class CursorEditor {
         return getSingleItemSelectionForUser(this.cursor.userId, itemId);
     }
 
-    private validateRename(
+        private validateRename(
         node: import("../../schema/app-schema").Item,
         changeText: string,
         action: "insert" | "deleteBackward" | "deleteForward" | "paste",
-    ): boolean {
+    ): { valid: boolean; overrideText?: string } {
         let isRoot = false;
         try {
             isRoot = node.tree?.getNodeParentFromKey?.(node.id || node.key) === "root";
         } catch {}
-        if (!isRoot) return true;
+        if (!isRoot) return { valid: true };
 
         const currentText = node.text?.toString?.() ?? "";
         let newText = currentText;
@@ -98,24 +99,8 @@ export class CursorEditor {
 
         const trimmed = newText.trim();
         let err = null;
-        if (!trimmed) err = "Page title cannot be empty or whitespace only.";
-        else if (trimmed.includes("/")) err = "Page title cannot contain '/'.";
-        else {
-            const oldTitle = currentText.trim().toLowerCase();
-            const newTitle = trimmed.toLowerCase();
-            const gStore = typeof window !== "undefined"
-                ? ((window as unknown as {
-                    appStore?: { pageExists?: (name: string) => boolean; };
-                    generalStore?: { pageExists?: (name: string) => boolean; };
-                }).appStore
-                    || (window as unknown as {
-                        appStore?: { pageExists?: (name: string) => boolean; };
-                        generalStore?: { pageExists?: (name: string) => boolean; };
-                    }).generalStore)
-                : null;
-            if (oldTitle !== newTitle && gStore?.pageExists?.(trimmed)) {
-                err = "A page with this title already exists.";
-            }
+        if (trimmed.includes("/")) {
+            err = "Page title cannot contain '/'.";
         }
 
         if (err) {
@@ -137,9 +122,15 @@ export class CursorEditor {
                     new CustomEvent("page-rename-error", { detail: { message: err, itemId: node.id || node.key } }),
                 );
             }
-            return false;
+            return { valid: false };
         }
-        return true;
+
+        if (!trimmed) {
+            const allocatedTitle = allocatePageTitle(generalStore.project?.items, newText, node.id || node.key);
+            return { valid: true, overrideText: allocatedTitle };
+        }
+
+        return { valid: true };
     }
 
     insertText(ch: string) {
@@ -149,7 +140,21 @@ export class CursorEditor {
             logger.error(`insertText: Target item not found for itemId: ${cursor.itemId}`);
             return;
         }
-        if (!this.validateRename(node, ch, "insert")) return;
+        const validation = this.validateRename(node, ch, "insert");
+        if (!validation.valid) return;
+        if (validation.overrideText !== undefined) {
+            node.updateText(validation.overrideText);
+            this.cursor.offset = validation.overrideText.length;
+            this.cursor.clearSelection();
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+            const textarea = store.getTextareaRef();
+            if (textarea && !store.isComposing) {
+                textarea.value = validation.overrideText;
+                store.applyTextareaSelectionRange(textarea, this.cursor.offset, this.cursor.offset);
+            }
+            return;
+        }
 
         const currentText = node.text?.toString?.() ?? "";
         const fullSelection = this.getSelection();
@@ -213,7 +218,21 @@ export class CursorEditor {
         const cursor = this.cursor;
         const node = cursor.findTarget();
         if (!node) return;
-        if (!this.validateRename(node, "", "deleteBackward")) return;
+        const validation = this.validateRename(node, "", "deleteBackward");
+        if (!validation.valid) return;
+        if (validation.overrideText !== undefined) {
+            node.updateText(validation.overrideText);
+            this.cursor.offset = validation.overrideText.length;
+            this.cursor.clearSelection();
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+            const textarea = store.getTextareaRef();
+            if (textarea && !store.isComposing) {
+                textarea.value = validation.overrideText;
+                store.applyTextareaSelectionRange(textarea, this.cursor.offset, this.cursor.offset);
+            }
+            return;
+        }
 
         const selection = this.getSelection();
 
@@ -272,7 +291,21 @@ export class CursorEditor {
         const cursor = this.cursor;
         const node = cursor.findTarget();
         if (!node) return;
-        if (!this.validateRename(node, "", "deleteForward")) return;
+        const validation = this.validateRename(node, "", "deleteForward");
+        if (!validation.valid) return;
+        if (validation.overrideText !== undefined) {
+            node.updateText(validation.overrideText);
+            this.cursor.offset = validation.overrideText.length;
+            this.cursor.clearSelection();
+            this.cursor.applyToStore();
+            store.triggerOnEdit();
+            const textarea = store.getTextareaRef();
+            if (textarea && !store.isComposing) {
+                textarea.value = validation.overrideText;
+                store.applyTextareaSelectionRange(textarea, this.cursor.offset, this.cursor.offset);
+            }
+            return;
+        }
 
         const selection = this.getSelection();
 
