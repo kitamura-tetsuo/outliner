@@ -121,6 +121,13 @@ interface Entry {
      * an entry can only be released after it was last used.
      */
     warmSince: number | undefined;
+    /**
+     * False once the subdoc connection could not be established. Such an entry
+     * still serves the views that hold it, offline, but it is never kept warm:
+     * a revisit has to be a fresh attempt at connecting, not a reunion with an
+     * adapter that will never receive anything.
+     */
+    warmable: boolean;
     /** Entry keys this relation's query pulled in. */
     deps: Set<string>;
     provider: RelationProvider;
@@ -143,16 +150,17 @@ function entryKey(pgSchema: string, id: string): string {
 }
 
 /**
- * Reuse the entry under `key`, unless it is a warm leftover of a project
- * document that has since been replaced: such an entry observes a document
- * nobody writes to any more, so it would serve rows that stopped updating.
- * Entries a session still holds are left alone — sharing one materialization
- * between live views is what the engine is for.
+ * Reuse the entry under `key`. A warm one is only worth reusing while it still
+ * mirrors the live project document over a connection that came up: an entry
+ * of a document that has since been replaced observes something nobody writes
+ * to any more, and one whose connection failed would hand the revisit the same
+ * offline adapter instead of trying again. Entries a session still holds are
+ * left alone — sharing one materialization between live views is the point.
  */
 function reusableEntry(key: string, projectDoc: Y.Doc): Entry | undefined {
     const entry = entries.get(key);
     if (!entry) return undefined;
-    if (entry.refs === 0 && entry.projectDoc !== projectDoc) {
+    if (entry.refs === 0 && (entry.projectDoc !== projectDoc || !entry.warmable)) {
         entries.delete(key);
         scheduleDestroy(entry);
         return undefined;
@@ -178,7 +186,7 @@ function watchDoc(entry: Entry, doc: Y.Doc): void {
 /** Recency for the warm cache: an entry just used is the last one to evict. */
 function touch(entry: Entry): void {
     if (entry.refs > 0) entry.warmSince = undefined;
-    else if (entry.rooted) entry.warmSince = nowMs();
+    else if (entry.rooted && entry.warmable) entry.warmSince = nowMs();
 }
 
 function createTableEntry(
@@ -222,6 +230,7 @@ function createTableEntry(
         refs: 0,
         rooted: false,
         warmSince: undefined,
+        warmable: true,
         deps: new Set(),
         provider: new TableRelationProvider(handles, adapter, ready),
         ready,
@@ -245,6 +254,9 @@ function createTableEntry(
             } catch (err) {
                 logger.warn({ err, tableId }, "[tableEngine] table doc connection failed; continuing offline");
                 remoteSynced = false;
+                // The views holding it keep working offline, but a revisit
+                // must connect again rather than reuse this adapter.
+                entry.warmable = false;
             }
         } else {
             remoteSynced = true;
@@ -271,6 +283,7 @@ function createItemsEntry(projectDoc: Y.Doc, pgSchema: string): Entry {
         refs: 0,
         rooted: false,
         warmSince: undefined,
+        warmable: true,
         deps: new Set(),
         provider,
         ready: provider.materialize(),
@@ -359,7 +372,7 @@ function sweep(): void {
     // Entries that just lost their last live reference become warm, and their
     // retention starts now.
     for (const entry of entries.values()) {
-        if (entry.rooted && entry.refs === 0 && entry.warmSince === undefined) {
+        if (entry.rooted && entry.warmable && entry.refs === 0 && entry.warmSince === undefined) {
             entry.warmSince = now;
         }
     }
@@ -421,7 +434,12 @@ async function destroyEntry(entry: Entry): Promise<void> {
     const relationName = entry.provider.sqlName;
     entry.unwatchDoc?.();
     entry.provider.dispose();
-    if (relationName) {
+    // Destruction is queued, so a revisit may have replaced this entry while it
+    // waited. The replacement materializes the same relation from the same
+    // document, and dropping it here would leave the reopened view without the
+    // table it just built — the successor owns the name now.
+    const replaced = entries.has(entry.key);
+    if (relationName && !replaced) {
         try {
             await enqueueWrite(async (db) => {
                 await db.exec(
