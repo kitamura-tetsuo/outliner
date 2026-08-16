@@ -5,7 +5,7 @@
  * polling that can be safely removed.
  */
 
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -14,7 +14,6 @@ import {
     initPollingMonitor,
     type PollingTestResult,
     startPollingMonitor,
-    testWithoutPolling,
 } from "../utils/pollingTestHelper";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
