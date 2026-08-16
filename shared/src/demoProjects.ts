@@ -39,6 +39,7 @@ export const DEFAULT_DEMO_SLUG = "demo";
 
 export const DEMO_PROJECTS: readonly DemoProjectDescriptor[] = [
     { slug: DEFAULT_DEMO_SLUG, locale: "en" },
+    { slug: "demo-ja", locale: "ja" },
 ];
 
 export const DEMO_PROJECT_SLUGS: readonly string[] = DEMO_PROJECTS.map(p => p.slug);

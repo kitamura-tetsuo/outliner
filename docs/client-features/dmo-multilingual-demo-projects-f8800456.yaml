@@ -1,0 +1,35 @@
+id: FTR-f8800456
+title: Multilingual Demo Projects
+description: The public demo ships one project per language, each at its own top-level route (/demo in English, /demo-ja in Japanese), so a visitor can try every feature in their own language.
+category: demo
+status: implemented
+components:
+- client/src/lib/demoInit.ts
+- client/src/lib/publicProject.ts
+- client/src/params/demoProject.ts
+- client/src/routes/[demoProject=demoProject]/+page.svelte
+- client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
+services:
+- shared/src/demoProjects.ts
+- server/src/demo-api.ts
+- server/src/demo-content.ts
+- server/src/demo-content.en.ts
+- server/src/demo-content.ja.ts
+tests:
+- client/e2e/core/dmo-multilingual-demo-projects-f8800456.spec.ts
+- client/src/lib/publicProject.test.ts
+- client/src/params/demoProject.test.ts
+- server/tests/demo-locale-content.test.ts
+- server/tests/demo-locale-isolation.test.ts
+- server/tests/demo-projects-registry.test.ts
+acceptance:
+- /demo keeps its existing English content and byte-identical URLs
+- /demo-ja shows the Japanese demo project's page list without requiring login
+- A demo document is titled with its own slug, so its internal links stay inside its own locale
+- Adding a locale is one entry in shared/src/demoProjects.ts plus one demo-content.<locale>.ts pack
+- Demo content added in English only still seeds in every other locale, untranslated, rather than disappearing
+- Each locale is a separate Yjs document, named projects/<slug>, readable anonymously
+- Internal page links in a locale's content name page titles of that same locale
+- Navigating within a localized demo (links, search, sidebar, graph, breadcrumbs) never leaves that locale
+- The seed endpoint rejects any project that is not a registered demo slug
+title-ja: 多言語デモプロジェクト

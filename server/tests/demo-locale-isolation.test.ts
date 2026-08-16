@@ -3,15 +3,12 @@ import express from "express";
 import request from "supertest";
 import * as Y from "yjs";
 import { createDemoRouter, isDemoWarm, resetDemoWarmState } from "../src/demo-api.js";
+import { DEMO_PROJECTS } from "../src/demo-projects.js";
 
 // The demo API's per-room state (warm verdict, fast path, force cooldowns) used
 // to be module-level singletons. With one demo project per locale they became
 // maps, and these are the regressions that conversion exists to prevent:
 // nothing about `/demo` may leak into `/demo-ja` or vice versa.
-//
-// `demo-ja` is deliberately not registered in shared/src/demoProjects.ts yet, so
-// the two rooms exercised here are `projects/demo` (registered) and an
-// unregistered slug, which must be rejected outright.
 
 function makeApp(hocuspocus: unknown) {
     const app = express();
@@ -60,23 +57,26 @@ describe("Demo seeding project isolation", () => {
         }
     });
 
-    it("keeps the warm verdict of one room out of another", () => {
-        const now = Date.now();
-        // A room nothing has validated is never warm, whatever another room's
-        // verdict says.
-        expect(isDemoWarm("projects/demo", now)).to.be.false;
-        expect(isDemoWarm("projects/demo-ja", now)).to.be.false;
+    it("seeds the room named by the request, not a fixed one", async () => {
+        for (const { slug } of DEMO_PROJECTS) {
+            const hocuspocus = stubHocuspocus();
+            const res = await request(makeApp(hocuspocus)).post("/api/seed-demo").send({ project: slug });
+            expect(res.status, slug).to.equal(200);
+            expect(res.body.project, slug).to.equal(slug);
+            expect(hocuspocus.opened[0], slug).to.equal(`projects/${slug}`);
+        }
     });
 
-    it("clears only the named room's warm verdict", async () => {
+    it("keeps a warm verdict from leaking between demo projects", async () => {
         const hocuspocus = stubHocuspocus();
         const app = makeApp(hocuspocus);
 
-        // Seeding an empty document resets it, which leaves the room warm.
+        // Seeding an empty document resets it, which leaves that room warm.
         await request(app).post("/api/seed-demo").send({ project: "demo" }).expect(200);
         expect(isDemoWarm("projects/demo", Date.now()), "demo is warm after seeding").to.be.true;
+        expect(isDemoWarm("projects/demo-ja", Date.now()), "demo-ja is unaffected").to.be.false;
 
-        // Clearing an unrelated room must not disturb it...
+        // Clearing the other locale must not disturb it...
         resetDemoWarmState("projects/demo-ja");
         expect(isDemoWarm("projects/demo", Date.now()), "demo stayed warm").to.be.true;
 
@@ -86,15 +86,18 @@ describe("Demo seeding project isolation", () => {
     });
 
     it("seeds each demo project's table rooms under its own project segment", async () => {
-        const hocuspocus = stubHocuspocus();
-        await request(makeApp(hocuspocus)).post("/api/seed-demo").send({ project: "demo" }).expect(200);
+        for (const { slug } of DEMO_PROJECTS) {
+            const hocuspocus = stubHocuspocus();
+            await request(makeApp(hocuspocus)).post("/api/seed-demo").send({ project: slug }).expect(200);
 
-        const tableRooms = hocuspocus.opened.filter(room => room.includes("/tables/"));
-        expect(tableRooms.length).to.be.greaterThan(0);
-        for (const room of tableRooms) {
-            expect(room, `${room} is not namespaced by its project`).to.match(
-                /^projects\/demo\/tables\/[A-Za-z0-9_-]+$/,
-            );
+            const tableRooms = hocuspocus.opened.filter(room => room.includes("/tables/"));
+            expect(tableRooms.length, slug).to.be.greaterThan(0);
+            for (const room of tableRooms) {
+                // Table ids are shared across locales; the rooms must not be.
+                expect(room, `${room} is not namespaced by its project`).to.match(
+                    new RegExp(`^projects/${slug}/tables/[A-Za-z0-9_-]+$`),
+                );
+            }
         }
     });
 });
