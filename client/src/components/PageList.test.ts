@@ -14,7 +14,7 @@ describe("PageList", () => {
         project = Project.createInstance("test_project");
     });
 
-        it("renders empty state correctly", () => {
+    it("renders empty state correctly", () => {
         const { getByText } = render(PageList, {
             props: {
                 project,
