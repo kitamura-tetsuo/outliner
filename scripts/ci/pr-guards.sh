@@ -77,17 +77,18 @@ scope_guard() {
 # ---------------------------------------------------------------------------
 # Guard 2: tracked debris files
 # ---------------------------------------------------------------------------
-debris_guard() {
-    local violations
-    # Root-level scratch patterns (mirrors .gitignore) plus known one-off names
-    # and client/ output dumps. Legit root files (README.md, package.json, ...)
-    # do not match any of these.
-    #
-    # Root-level plan files (plan.md, plan.txt, plan_foo.md, ...) are agent
-    # work-in-progress notes: in PR #4939 an agent committed plan.md alongside
-    # the implementation and left it in the tree. Plans belong in scratch space,
-    # never in the repository.
-    violations="$(git ls-files | grep -E \
+
+# Keeps only the debris paths of a newline-separated path list on stdin.
+#
+# Root-level scratch patterns (mirrors .gitignore) plus known one-off names
+# and client/ output dumps. Legit root files (README.md, package.json, ...)
+# do not match any of these.
+#
+# Root-level plan files (plan.md, plan.txt, plan_foo.md, ...) are agent
+# work-in-progress notes: in PR #4939 an agent committed plan.md and nothing
+# else. Plans belong in scratch space, never in the repository.
+debris_paths() {
+    grep -E \
         -e '^(fix|observe|debug|check|print|sed|revert|patch)[_-][^/]*$' \
         -e '^(get|test|update)[_-][^/]*\.(cjs|mjs|js|py|txt)$' \
         -e '^test\.(cjs|mjs|js|py)$' \
@@ -98,7 +99,12 @@ debris_guard() {
         -e '^(demo|verify|add_coverage|cleanup-coverage)[_-][^/]*$' \
         -e '^[Pp][Ll][Aa][Nn][Ss]?([_-][^/]*)?\.(md|txt)$' \
         -e '^client/(demo[_-][^/]*\.png|[^/]*_output\.txt|svelte-check\.txt|test-bold-matching\.js|unit_test_output\.txt)$' \
-        || true)"
+        || true
+}
+
+debris_guard() {
+    local violations
+    violations="$(git ls-files | debris_paths)"
 
     if [ -n "$violations" ]; then
         echo "::error::[debris] Debris/scratch files are tracked in this tree. Remove them (they" \
@@ -123,6 +129,8 @@ debris_guard() {
 # are undone in HEAD but NOT undone in the base tip itself.
 # Commits merely missing from a stale branch are not ancestors and are skipped,
 # so ordinary out-of-date PRs do not trigger this guard.
+# Commits that only touch debris files are skipped too: deleting debris is what
+# the debris guard asks for, and it can never clobber real work.
 
 # True when the patch in $2 applies cleanly onto the tree of commit-ish $1
 # (checked against a throwaway index; the working tree is not touched).
@@ -139,6 +147,15 @@ patch_applies_to() {
     return $rc
 }
 
+# True when every file the commit $1 touches is a debris path.
+touches_only_debris() {
+    local touched debris
+    touched="$(git show "$1" --format= --name-only)"
+    [ -n "$touched" ] || return 1
+    debris="$(printf '%s\n' "$touched" | debris_paths)"
+    [ "$(printf '%s\n' "$touched" | wc -l)" -eq "$(printf '%s\n' "$debris" | grep -c . || true)" ]
+}
+
 revert_guard() {
     local base patch_file c undone=0
     base="$(resolve_base)"
@@ -146,6 +163,10 @@ revert_guard() {
 
     for c in $(git rev-list --no-merges -n "$REVERT_SCAN_COMMITS" "$base"); do
         git merge-base --is-ancestor "$c" HEAD || continue
+        if touches_only_debris "$c"; then
+            echo "[revert] skipping debris-only base commit $(git log -1 --format='%h %s' "$c")"
+            continue
+        fi
         git show "$c" --format= --patch > "$patch_file"
         [ -s "$patch_file" ] || continue
         if patch_applies_to HEAD "$patch_file" && ! patch_applies_to "$base" "$patch_file"; then

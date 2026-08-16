@@ -158,12 +158,15 @@ docs/.vitepress/dist/
 
 # Agent scratch/debris guards (see scripts/ci/pr-guards.sh)
 /patch_*
-/plan.md
-/plan.txt
-/plan[_-]*.md
-/plan[_-]*.txt
-/plans.md
-/plans.txt
+# Agent plan files, in every spelling the debris guard rejects
+/[Pp][Ll][Aa][Nn].md
+/[Pp][Ll][Aa][Nn].txt
+/[Pp][Ll][Aa][Nn][Ss].md
+/[Pp][Ll][Aa][Nn][Ss].txt
+/[Pp][Ll][Aa][Nn][_-]*.md
+/[Pp][Ll][Aa][Nn][_-]*.txt
+/[Pp][Ll][Aa][Nn][Ss][_-]*.md
+/[Pp][Ll][Aa][Nn][Ss][_-]*.txt
 /*.png
 /COMMIT_EDITMSG
 /PARENT_ISSUE_COMPLETION.md

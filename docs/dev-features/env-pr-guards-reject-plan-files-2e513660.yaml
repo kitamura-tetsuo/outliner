@@ -1,7 +1,7 @@
 id: ENV-2e513660
 title: PR guards reject committed agent plan files
 title-ja: PRガードがコミットされたエージェントの計画ファイルを拒否する
-description: The debris guard in scripts/ci/pr-guards.sh fails a PR whose tree tracks a root-level plan file (plan.md, plan.txt, plans.md, plan_*.md, ...). These are coding-agent work-in-progress notes that belong in scratch space; PR
+description: The debris guard in scripts/ci/pr-guards.sh fails a PR whose tree tracks a root-level plan file (plan.md, PLAN.md, plans.md, plan_*.md, ...). These are coding-agent work-in-progress notes that belong in scratch space; PR 4939 landed plan.md and nothing else. .gitignore covers the same filename set so the files cannot be staged by accident, and the revert guard skips base commits that touch only debris files so cleaning debris up is never mistaken for clobbering real work.
 category: environment
 status: implemented
 components:
