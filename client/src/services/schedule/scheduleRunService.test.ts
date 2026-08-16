@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
-import { runScheduleRuleNow } from "./scheduleRunService";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { userManager } from "../../auth/UserManager";
 import * as yjsApiUrl from "../../lib/yjsApiUrl";
+import { runScheduleRuleNow } from "./scheduleRunService";
 
 vi.mock("../../auth/UserManager", () => ({
     userManager: {
         getCurrentUser: vi.fn(),
-        auth: { currentUser: null }
-    }
+        auth: { currentUser: null },
+    },
 }));
 
 vi.mock("../../lib/yjsApiUrl", () => ({
-    resolveApiBaseUrl: vi.fn()
+    resolveApiBaseUrl: vi.fn(),
 }));
 
 const mockFetch = vi.fn();
@@ -32,13 +32,13 @@ describe("runScheduleRuleNow", () => {
         (userManager.getCurrentUser as Mock).mockReturnValue({ id: "1" });
         Object.defineProperty(userManager.auth, "currentUser", {
             value: { getIdToken: vi.fn().mockResolvedValue("token123") },
-            configurable: true
+            configurable: true,
         });
         (yjsApiUrl.resolveApiBaseUrl as Mock).mockReturnValue("http://localhost:7093/");
 
         mockFetch.mockResolvedValue({
             ok: true,
-            json: vi.fn().mockResolvedValue({ ok: true })
+            json: vi.fn().mockResolvedValue({ ok: true }),
         });
 
         const res = await runScheduleRuleNow("proj1", "rule1");
@@ -47,9 +47,9 @@ describe("runScheduleRuleNow", () => {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer token123"
+                "Authorization": "Bearer token123",
             },
-            body: JSON.stringify({ projectId: "proj1", ruleId: "rule1" })
+            body: JSON.stringify({ projectId: "proj1", ruleId: "rule1" }),
         });
     });
 
@@ -57,7 +57,7 @@ describe("runScheduleRuleNow", () => {
         (userManager.getCurrentUser as Mock).mockReturnValue({ id: "1" });
         Object.defineProperty(userManager.auth, "currentUser", {
             value: { getIdToken: vi.fn().mockResolvedValue("token123") },
-            configurable: true
+            configurable: true,
         });
         (yjsApiUrl.resolveApiBaseUrl as Mock).mockReturnValue("http://localhost:7093");
 
@@ -71,14 +71,14 @@ describe("runScheduleRuleNow", () => {
         (userManager.getCurrentUser as Mock).mockReturnValue({ id: "1" });
         Object.defineProperty(userManager.auth, "currentUser", {
             value: { getIdToken: vi.fn().mockResolvedValue("token123") },
-            configurable: true
+            configurable: true,
         });
         (yjsApiUrl.resolveApiBaseUrl as Mock).mockReturnValue("http://localhost:7093");
 
         mockFetch.mockResolvedValue({
             ok: false,
             statusText: "Not Found",
-            json: vi.fn().mockResolvedValue({ error: "Rule not found" })
+            json: vi.fn().mockResolvedValue({ error: "Rule not found" }),
         });
 
         const res = await runScheduleRuleNow("proj1", "rule1");

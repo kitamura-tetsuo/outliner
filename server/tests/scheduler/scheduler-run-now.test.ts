@@ -1,7 +1,7 @@
 import { expect } from "chai";
+import sinon from "sinon";
 import * as Y from "yjs";
 import { JobScheduler } from "../../src/scheduler/Scheduler.js";
-import sinon from "sinon";
 
 describe("Job Scheduler - runRuleNow", () => {
     let scheduler: JobScheduler;
@@ -32,8 +32,8 @@ describe("Job Scheduler - runRuleNow", () => {
                     dtstart: "",
                     next_run_at: "2023-01-01T00:00:00.000Z",
                     occurrence_seq: 1,
-                    state: "active"
-                })
+                    state: "active",
+                }),
             }),
         };
 
