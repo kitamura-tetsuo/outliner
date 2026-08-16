@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import { fireEvent, render } from "@testing-library/svelte";
 import { tick } from "svelte";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { Project } from "../schema/app-schema";
 import PageList from "./PageList.svelte";
 
