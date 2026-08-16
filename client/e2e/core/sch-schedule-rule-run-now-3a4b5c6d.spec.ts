@@ -44,10 +44,10 @@ test.describe("Schedule Rule Run Now", () => {
         await expect(schedulePanel.locator("button:has-text('Save')")).toBeHidden({ timeout: 10000 });
 
         const ruleItem = schedulePanel.locator(".schedule-rule-list li").first();
-        await ruleItem.waitFor({ state: 'visible', timeout: 30000 });
+        await ruleItem.waitFor({ state: "visible", timeout: 30000 });
 
         const runNowBtn = ruleItem.locator("[data-testid='schedule-rule-run-now']");
-        await runNowBtn.waitFor({ state: 'visible' });
+        await runNowBtn.waitFor({ state: "visible" });
 
         await runNowBtn.click();
 
@@ -98,10 +98,10 @@ test.describe("Schedule Rule Run Now", () => {
         await expect(schedulePanel.locator("button:has-text('Save')")).toBeHidden({ timeout: 10000 });
 
         const ruleItem = schedulePanel.locator(".schedule-rule-list li").first();
-        await ruleItem.waitFor({ state: 'visible', timeout: 30000 });
+        await ruleItem.waitFor({ state: "visible", timeout: 30000 });
 
         const runNowBtn = ruleItem.locator("[data-testid='schedule-rule-run-now']");
-        await runNowBtn.waitFor({ state: 'visible' });
+        await runNowBtn.waitFor({ state: "visible" });
         await runNowBtn.click();
 
         const errorBox = schedulePanel.locator(".bg-red-50.border-red-100");
