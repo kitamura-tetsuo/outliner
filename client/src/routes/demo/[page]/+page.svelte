@@ -1,6 +1,7 @@
 <script lang="ts">
     import Loader from "../../../components/Loader.svelte";
     import { page } from "$app/stores";
+import { goto } from "$app/navigation";
     import { resolvePath } from "../../../utils/pathUtils";
     import { onDestroy, untrack } from "svelte";
     import BacklinkPanel from "../../../components/BacklinkPanel.svelte";
@@ -11,6 +12,7 @@
     import { getLogger } from "../../../lib/logger";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
+import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../components/Breadcrumb.svelte";
@@ -115,6 +117,21 @@ import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils
             pageNotFound = false;
         }
     }
+
+        // Sync URL when page title is changed
+    $effect(() => {
+        const cp = store.currentPage;
+        if (cp && cp.text) {
+            // Track the text to re-evaluate when it changes
+            const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
+            const trimmedTitle = textStr.trim();
+            const decodedPageName = safeDecodeURIComponent(pageName).trim();
+            if (trimmedTitle && trimmedTitle !== decodedPageName && pageName) {
+                const newRoute = resolvePath(`/demo/${encodeURIComponent(trimmedTitle)}`);
+                goto(newRoute, { replaceState: true });
+            }
+        }
+    });
 
     // Follow route parameter changes (e.g. internal links between demo pages)
     let lastLoaded: string | undefined;
