@@ -185,6 +185,7 @@ Mocks are generally forbidden. Limited exceptions:
 - Always track your working directory. Client code is in `client`, server code in `server`, and scripts in `scripts` (ENV-* tests are in `scripts/tests`). When using `launch-process`, set the `cwd` explicitly.
 - Keep Svelte HTML elements reactive and prioritize performance. Prefer patterns where reactive variables are updated asynchronously, while overall processing remains synchronous when possible.
 - After implementing changes, run `npm run build` in the `client` directory to confirm the code compiles correctly.
+- Never commit work-in-progress notes. Root-level plan files (`plan.md`, `plan.txt`, `plans.md`, `plan_*.md`, ...) are rejected by the debris guard in `scripts/ci/pr-guards.sh` and ignored by `.gitignore`; keep planning notes in scratch space outside the repository.
 
 ### Merge Workflow
 
