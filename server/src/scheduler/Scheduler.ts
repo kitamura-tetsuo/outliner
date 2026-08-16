@@ -148,7 +148,7 @@ export class JobScheduler {
         await this.runQueue;
     }
 
-    async runRuleNow(room: string, ruleId: string): Promise<{ success: boolean; error?: string }> {
+    async runRuleNow(room: string, ruleId: string): Promise<{ success: boolean; error?: string; }> {
         // A manual run waits in the queue instead of being dropped
         const task = async () => {
             const conn = await this.hocuspocus.openDirectConnection(room);
@@ -194,11 +194,11 @@ export class JobScheduler {
                     dtstart: "",
                     next_run_at: null,
                     occurrence_seq: 0,
-                    state: "disabled"
+                    state: "disabled",
                 };
             }
 
-            let dispatchResult: { success: boolean; error?: string } = { success: true };
+            let dispatchResult: { success: boolean; error?: string; } = { success: true };
             try {
                 dispatchResult = await this.dispatchJob(row, DateTime.utc().toISO()!, ruleSql);
             } catch (err: unknown) {
@@ -209,7 +209,7 @@ export class JobScheduler {
             return dispatchResult;
         };
 
-        let result: { success: boolean; error?: string } = { success: false };
+        let result: { success: boolean; error?: string; } = { success: false };
         this.runQueue = this.runQueue.then(async () => {
             try {
                 this.ticking = true;
