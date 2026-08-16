@@ -158,6 +158,12 @@ docs/.vitepress/dist/
 
 # Agent scratch/debris guards (see scripts/ci/pr-guards.sh)
 /patch_*
+/plan.md
+/plan.txt
+/plan[_-]*.md
+/plan[_-]*.txt
+/plans.md
+/plans.txt
 /*.png
 /COMMIT_EDITMSG
 /PARENT_ISSUE_COMPLETION.md

@@ -82,6 +82,11 @@ debris_guard() {
     # Root-level scratch patterns (mirrors .gitignore) plus known one-off names
     # and client/ output dumps. Legit root files (README.md, package.json, ...)
     # do not match any of these.
+    #
+    # Root-level plan files (plan.md, plan.txt, plan_foo.md, ...) are agent
+    # work-in-progress notes: in PR #4939 an agent committed plan.md alongside
+    # the implementation and left it in the tree. Plans belong in scratch space,
+    # never in the repository.
     violations="$(git ls-files | grep -E \
         -e '^(fix|observe|debug|check|print|sed|revert|patch)[_-][^/]*$' \
         -e '^(get|test|update)[_-][^/]*\.(cjs|mjs|js|py|txt)$' \
@@ -91,6 +96,7 @@ debris_guard() {
         -e '^The commit message' \
         -e '^(eslint|server_eslint)_[^/]*\.json$' \
         -e '^(demo|verify|add_coverage|cleanup-coverage)[_-][^/]*$' \
+        -e '^[Pp][Ll][Aa][Nn][Ss]?([_-][^/]*)?\.(md|txt)$' \
         -e '^client/(demo[_-][^/]*\.png|[^/]*_output\.txt|svelte-check\.txt|test-bold-matching\.js|unit_test_output\.txt)$' \
         || true)"
 
