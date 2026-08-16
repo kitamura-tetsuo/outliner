@@ -23,7 +23,7 @@ registerCoverageHooks();
 
 test.describe("ENV-POLL-0001: Polling Removability Test", () => {
     const results: PollingTestResult[] = [];
-    let projectInfo: { projectName: string; pageName: string };
+    let projectInfo: { projectName: string; pageName: string; };
 
     test.beforeEach(async ({ page }) => {
         await initPollingMonitor(page);
@@ -40,7 +40,11 @@ test.describe("ENV-POLL-0001: Polling Removability Test", () => {
     });
 
     test("Check statistics", async ({ page }) => {
-        await page.goto(`http://localhost:7090/${encodeURIComponent(projectInfo.projectName)}/${encodeURIComponent(projectInfo.pageName)}`);
+        await page.goto(
+            `http://localhost:7090/${encodeURIComponent(projectInfo.projectName)}/${
+                encodeURIComponent(projectInfo.pageName)
+            }`,
+        );
         await page.waitForSelector("[data-item-id]", { timeout: 5000 });
 
         // Wait a bit for polling to run
