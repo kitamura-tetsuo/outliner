@@ -3,8 +3,8 @@ import { resolveApiBaseUrl } from "../../lib/yjsApiUrl";
 
 export async function runScheduleRuleNow(
     projectId: string,
-    ruleId: string,
-): Promise<{ ok: boolean; error?: string; }> {
+    ruleId: string
+): Promise<{ ok: boolean; error?: string }> {
     try {
         const user = userManager.getCurrentUser();
         if (!user || !userManager.auth.currentUser) {
@@ -21,7 +21,7 @@ export async function runScheduleRuleNow(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`,
+                "Authorization": `Bearer ${token}`
             },
             body: JSON.stringify({ projectId, ruleId }),
         });

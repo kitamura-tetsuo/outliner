@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import express from "express";
-import sinon from "sinon";
 import request from "supertest";
 import * as Y from "yjs";
-import * as accessControl from "../../src/access-control.js";
 import { createScheduleRunRouter } from "../../src/scheduler/schedule-run-api.js";
-import { JobScheduler } from "../../src/scheduler/Scheduler.js";
+import * as accessControl from "../../src/access-control.js";
 import * as websocketAuth from "../../src/websocket-auth.js";
+import { JobScheduler } from "../../src/scheduler/Scheduler.js";
+import sinon from "sinon";
 
 describe("Schedule Run API", () => {
     let app: express.Express;
@@ -23,13 +23,10 @@ describe("Schedule Run API", () => {
 
         app = express();
         app.use(express.json());
-        app.use(
-            "/api",
-            createScheduleRunRouter(hocuspocus, () => scheduler as unknown as JobScheduler, {
-                verifyIdTokenCached: authStub,
-                checkContainerAccess: accessStub,
-            }),
-        );
+        app.use("/api", createScheduleRunRouter(hocuspocus, () => scheduler as unknown as JobScheduler, {
+            verifyIdTokenCached: authStub,
+            checkContainerAccess: accessStub
+        }));
     });
 
     afterEach(() => {

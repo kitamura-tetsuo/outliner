@@ -8,7 +8,7 @@ import { JobScheduler } from "./Scheduler.js";
 
 const ScheduleRunRequestSchema = z.object({
     projectId: z.string().min(1).max(255),
-    ruleId: z.string().min(1),
+    ruleId: z.string().min(1)
 });
 
 export function createScheduleRunRouter(
@@ -17,7 +17,7 @@ export function createScheduleRunRouter(
     overrides?: {
         checkContainerAccess?: typeof defaultCheckAccess;
         verifyIdTokenCached?: typeof defaultVerifyToken;
-    },
+    }
 ) {
     const checkContainerAccess = overrides?.checkContainerAccess || defaultCheckAccess;
     const verifyIdTokenCached = overrides?.verifyIdTokenCached || defaultVerifyToken;
@@ -81,10 +81,7 @@ export function createScheduleRunRouter(
                 return;
             }
         } catch (authError) {
-            logger.error(
-                { error: authError as Error, event: "schedule_run_auth_check_error" },
-                "schedule_run_auth_check_error",
-            );
+            logger.error({ error: authError as Error, event: "schedule_run_auth_check_error" }, "schedule_run_auth_check_error");
             res.status(500).json({ error: "Internal Server Error during authorization check" });
             return;
         }
