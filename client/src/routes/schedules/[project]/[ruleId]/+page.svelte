@@ -15,6 +15,7 @@
         updateScheduleRule,
         type ScheduleRule,
     } from "../../../../services/schedule/scheduleRuleService";
+    import { runScheduleRuleNow } from "../../../../services/schedule/scheduleRunService";
     import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
@@ -30,6 +31,7 @@
     let isAuthenticated = $state(false);
     let notFound = $state(false);
     let isLoading = $state(true);
+    let isRunning = $state(false);
 
     // Editor state
     let tables = $state<TableRegistryEntry[]>([]);
@@ -75,6 +77,18 @@
         currentRule = rule;
         selectedTableId = rule.targetTableId || tables[0]?.tableId || "";
         ruleLoaded = true;
+    }
+
+    function loadRuleMetadata() {
+        if (!store.project?.schedules) return;
+        const ruleMap = store.project.schedules.get(ruleId);
+        if (!ruleMap || !currentRule) return;
+
+        currentRule.lastRunAt = ruleMap.get("lastRunAt") as string | undefined;
+        currentRule.lastRunStatus = ruleMap.get("lastRunStatus") as "ok" | "error" | undefined;
+        currentRule.lastRunError = ruleMap.get("lastRunError") as string | undefined;
+        currentRule.completedAt = ruleMap.get("completedAt") as string | undefined;
+        currentRule.validationError = ruleMap.get("validationError") as string | undefined;
     }
 
     async function handleAuthSuccess() {
@@ -132,8 +146,12 @@
     onMount(() => {
         isAuthenticated = userManager.getCurrentUser() !== null;
 
+        const observer = () => loadRuleMetadata();
+        store.project?.schedules.observeDeep(observer);
+
         return () => {
             isDestroyed = true;
+            store.project?.schedules.unobserveDeep(observer);
             projectHandle?.release();
             projectHandle = undefined;
         };
@@ -162,6 +180,20 @@
             backToProject();
         }
     }
+
+    async function handleRunNow() {
+        if (!store.project) return;
+        isRunning = true;
+        error = undefined;
+        try {
+            const res = await runScheduleRuleNow(store.project.id, ruleId);
+            if (!res.ok) {
+                error = res.error || "Failed to run rule";
+            }
+        } finally {
+            isRunning = false;
+        }
+    }
 </script>
 
 <svelte:head>
@@ -180,13 +212,24 @@
     <div class="mb-4 flex items-center justify-between flex-shrink-0">
         <h1 class="text-2xl font-bold">Edit Scheduled SQL</h1>
         {#if ruleLoaded}
-            <button
-                class="px-4 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50"
-                onclick={handleDelete}
-                data-testid="delete-schedule"
-            >
-                Delete
-            </button>
+            <div class="flex space-x-2">
+                <button
+                    class="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onclick={handleRunNow}
+                    disabled={isRunning || isPublicDemo}
+                    title={isPublicDemo ? "Run now is disabled for guest access" : "Runs the saved SQL"}
+                    data-testid="run-now-schedule"
+                >
+                    {isRunning ? "Running…" : "Run now"}
+                </button>
+                <button
+                    class="px-4 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50"
+                    onclick={handleDelete}
+                    data-testid="delete-schedule"
+                >
+                    Delete
+                </button>
+            </div>
         {/if}
     </div>
 
