@@ -12,6 +12,13 @@
 // referencing session are swept — a mark phase, so two tables whose queries
 // reference each other are collected too.
 //
+// Losing the last view does not destroy an entry immediately: it becomes
+// *warm* — still connected, still observing Yjs, still materialized — so
+// reopening the same grid reuses the adapter and its last result instead of
+// paying the cold cost again. The warm set is bounded by a TTL and an LRU
+// limit, and eviction goes through the very same mark phase, so a relation is
+// only ever dropped when nothing reachable still needs it.
+//
 // Two kinds of relation share this machinery, behind one `RelationProvider`
 // interface: a table (a subdoc's Data Storage) and the system `items`
 // projection (outline items carrying a date).
@@ -38,6 +45,23 @@ const INITIAL_SYNC_TIMEOUT_MS = 10000;
 
 /** Entry key suffix of the project's single items projection. */
 const ITEMS_ENTRY_ID = `@${ITEMS_RELATION_NAME}`;
+
+/**
+ * How long a relation stays materialized after its last view closed. Long
+ * enough to cover navigating away and back within a working session, short
+ * enough that a page left open on another screen does not hold subdoc
+ * connections for the rest of the day.
+ */
+export const WARM_RETENTION_MS = 10 * 60 * 1000;
+
+/**
+ * How many released relations stay warm at once. Deliberately conservative:
+ * every warm root pins a Yjs subdoc connection and a PGlite table in the one
+ * shared in-memory engine, and revisits cluster on the few grids a user is
+ * actually working with. Relations a warm root's query pulled in do not count
+ * against the limit — they are held by their root, not by the cache.
+ */
+export const WARM_CACHE_MAX_ROOTS = 8;
 
 export interface TableDocConnection {
     waitForInitialSync: (timeoutMs?: number) => Promise<{ synced: boolean; }>;
@@ -83,21 +107,86 @@ export interface TableEngineSession {
 interface Entry {
     key: string;
     pgSchema: string;
+    /** The project document this relation was built from. */
+    projectDoc: Y.Doc;
     /** References held by live sessions. */
     refs: number;
+    /** True once a session referenced it directly, rather than a query pulling it in. */
+    rooted: boolean;
+    /**
+     * When the entry last became warm — a root nothing live references any
+     * more. Undefined while a session holds it, and for relations that only
+     * ever existed as another query's dependency. Doubles as the recency the
+     * TTL and the LRU limit are measured against, which is the same instant:
+     * an entry can only be released after it was last used.
+     */
+    warmSince: number | undefined;
+    /**
+     * False once the subdoc connection could not be established. Such an entry
+     * still serves the views that hold it, offline, but it is never kept warm:
+     * a revisit has to be a fresh attempt at connecting, not a reunion with an
+     * adapter that will never receive anything.
+     */
+    warmable: boolean;
     /** Entry keys this relation's query pulled in. */
     deps: Set<string>;
     provider: RelationProvider;
     /** Resolves once the relation finished loading and materializing. */
     ready: Promise<unknown>;
     disposeConnection?: () => Promise<void> | void;
+    /** Stops watching the document this relation mirrors. */
+    unwatchDoc?: () => void;
 }
 
 const entries = new Map<string, Entry>();
 let pendingWork: Promise<unknown> = Promise.resolve();
+let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+
+/** Overridable so tests can expire the warm cache without waiting for it. */
+let nowMs: () => number = () => Date.now();
 
 function entryKey(pgSchema: string, id: string): string {
     return `${pgSchema}::${id}`;
+}
+
+/**
+ * Reuse the entry under `key`. A warm one is only worth reusing while it still
+ * mirrors the live project document over a connection that came up: an entry
+ * of a document that has since been replaced observes something nobody writes
+ * to any more, and one whose connection failed would hand the revisit the same
+ * offline adapter instead of trying again. Entries a session still holds are
+ * left alone — sharing one materialization between live views is the point.
+ */
+function reusableEntry(key: string, projectDoc: Y.Doc): Entry | undefined {
+    const entry = entries.get(key);
+    if (!entry) return undefined;
+    if (entry.refs === 0 && (entry.projectDoc !== projectDoc || !entry.warmable)) {
+        entries.delete(key);
+        scheduleDestroy(entry);
+        return undefined;
+    }
+    return entry;
+}
+
+/**
+ * A relation may outlive its views, but never its document. Deleting a table
+ * destroys the subdoc it mirrors, and an entry left warm behind it would
+ * answer a later query with the rows of something that no longer exists.
+ */
+function watchDoc(entry: Entry, doc: Y.Doc): void {
+    const onDestroy = () => {
+        if (entries.get(entry.key) !== entry) return;
+        entries.delete(entry.key);
+        scheduleDestroy(entry);
+    };
+    doc.on("destroy", onDestroy);
+    entry.unwatchDoc = () => doc.off("destroy", onDestroy);
+}
+
+/** Recency for the warm cache: an entry just used is the last one to evict. */
+function touch(entry: Entry): void {
+    if (entry.refs > 0) entry.warmSince = undefined;
+    else if (entry.rooted && entry.warmable) entry.warmSince = nowMs();
 }
 
 function createTableEntry(
@@ -137,11 +226,16 @@ function createTableEntry(
     const entry: Entry = {
         key,
         pgSchema,
+        projectDoc,
         refs: 0,
+        rooted: false,
+        warmSince: undefined,
+        warmable: true,
         deps: new Set(),
         provider: new TableRelationProvider(handles, adapter, ready),
         ready,
     };
+    watchDoc(entry, handles.doc);
 
     void (async () => {
         if (projectId) {
@@ -160,6 +254,9 @@ function createTableEntry(
             } catch (err) {
                 logger.warn({ err, tableId }, "[tableEngine] table doc connection failed; continuing offline");
                 remoteSynced = false;
+                // The views holding it keep working offline, but a revisit
+                // must connect again rather than reuse this adapter.
+                entry.warmable = false;
             }
         } else {
             remoteSynced = true;
@@ -182,11 +279,16 @@ function createItemsEntry(projectDoc: Y.Doc, pgSchema: string): Entry {
     const entry: Entry = {
         key: entryKey(pgSchema, ITEMS_ENTRY_ID),
         pgSchema,
+        projectDoc,
         refs: 0,
+        rooted: false,
+        warmSince: undefined,
+        warmable: true,
         deps: new Set(),
         provider,
         ready: provider.materialize(),
     };
+    watchDoc(entry, projectDoc);
     entries.set(entry.key, entry);
     return entry;
 }
@@ -199,8 +301,10 @@ async function acquireInternal(
     connect: TableDocConnector,
 ): Promise<AcquiredTable | undefined> {
     const key = entryKey(pgSchema, tableId);
-    const entry = entries.get(key) ?? createTableEntry(projectDoc, projectId, pgSchema, tableId, connect);
+    const entry = reusableEntry(key, projectDoc)
+        ?? createTableEntry(projectDoc, projectId, pgSchema, tableId, connect);
     if (!entry) return undefined;
+    touch(entry);
     return await entry.ready as AcquiredTable;
 }
 
@@ -219,7 +323,8 @@ async function resolveRelationInternal(
 ): Promise<{ entry: Entry; provider: RelationProvider; } | undefined> {
     if (sqlName === ITEMS_RELATION_NAME) {
         const key = entryKey(pgSchema, ITEMS_ENTRY_ID);
-        const entry = entries.get(key) ?? createItemsEntry(projectDoc, pgSchema);
+        const entry = reusableEntry(key, projectDoc) ?? createItemsEntry(projectDoc, pgSchema);
+        touch(entry);
         await entry.ready;
         if (!await entry.provider.materialize()) return undefined;
         return { entry, provider: entry.provider };
@@ -234,16 +339,46 @@ async function resolveRelationInternal(
     return { entry, provider: entry.provider };
 }
 
-/** Destroy every entry that no live session can reach. */
-function sweep(): void {
-    const reachable = new Set<string>();
-    const queue: string[] = [];
+/**
+ * The roots the cache holds on to: every entry a live session references, plus
+ * the warm entries that are still within both the TTL and the LRU limit.
+ */
+function retainedRoots(now: number): Set<string> {
+    const roots = new Set<string>();
+    const warm: Entry[] = [];
     for (const entry of entries.values()) {
-        if (entry.refs > 0) {
-            reachable.add(entry.key);
-            queue.push(entry.key);
+        if (entry.refs > 0) roots.add(entry.key);
+        else if (entry.warmSince !== undefined && now - entry.warmSince < WARM_RETENTION_MS) {
+            warm.push(entry);
         }
     }
+    // Most recently released first, so the tail beyond the limit is the least
+    // recently used part of the warm set.
+    warm.sort((a, b) => b.warmSince! - a.warmSince!);
+    for (const entry of warm.slice(0, WARM_CACHE_MAX_ROOTS)) roots.add(entry.key);
+    return roots;
+}
+
+/**
+ * Destroy every entry no retained root can reach.
+ *
+ * A mark phase rather than a per-entry decision, for the same reason it always
+ * was: relations pulled in by a retained root's query must survive with it,
+ * and two tables whose queries reference each other must still be collected
+ * once nothing holds either of them.
+ */
+function sweep(): void {
+    const now = nowMs();
+    // Entries that just lost their last live reference become warm, and their
+    // retention starts now.
+    for (const entry of entries.values()) {
+        if (entry.rooted && entry.warmable && entry.refs === 0 && entry.warmSince === undefined) {
+            entry.warmSince = now;
+        }
+    }
+
+    const reachable = retainedRoots(now);
+    const queue = [...reachable];
     while (queue.length > 0) {
         const current = entries.get(queue.pop()!);
         if (!current) continue;
@@ -258,16 +393,53 @@ function sweep(): void {
     for (const entry of [...entries.values()]) {
         if (reachable.has(entry.key)) continue;
         entries.delete(entry.key);
-        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch((err) =>
-            logger.warn({ err }, "[tableEngine] destroying entry failed")
-        );
+        scheduleDestroy(entry);
     }
+    scheduleWarmExpiry(now);
+}
+
+function scheduleDestroy(entry: Entry): void {
+    pendingWork = pendingWork.then(() => destroyEntry(entry)).catch((err) =>
+        logger.warn({ err }, "[tableEngine] destroying entry failed")
+    );
+}
+
+/**
+ * Arm a single timer for the next warm entry to expire, instead of polling.
+ *
+ * Only entries whose TTL is still ahead are considered: one that already
+ * expired but survived the sweep is being kept alive by a root that reaches
+ * it, and no timer can change that — whatever releases that root sweeps again.
+ */
+function scheduleWarmExpiry(now: number): void {
+    let next: number | undefined;
+    for (const entry of entries.values()) {
+        if (entry.warmSince === undefined) continue;
+        const expiresAt = entry.warmSince + WARM_RETENTION_MS;
+        if (expiresAt > now && (next === undefined || expiresAt < next)) next = expiresAt;
+    }
+    if (expiryTimer !== undefined) clearTimeout(expiryTimer);
+    expiryTimer = undefined;
+    if (next === undefined) return;
+    expiryTimer = setTimeout(() => {
+        expiryTimer = undefined;
+        sweep();
+    }, next - now);
+    // A cache timer must never be the reason a Node process (a test run, say)
+    // stays alive; browsers have no unref and do not need one.
+    (expiryTimer as unknown as { unref?: () => void; }).unref?.();
 }
 
 async function destroyEntry(entry: Entry): Promise<void> {
     const relationName = entry.provider.sqlName;
+    entry.unwatchDoc?.();
     entry.provider.dispose();
-    if (relationName) {
+    // Destruction is queued, so a revisit may have replaced this entry while it
+    // waited. The replacement materializes the same relation from the same
+    // document, and dropping it here would leave the reopened view without the
+    // table it just built — the successor owns the name now.
+    const replaced = entries.has(entry.key);
+    if (relationName && !replaced) {
         try {
             await enqueueWrite(async (db) => {
                 await db.exec(
@@ -303,6 +475,8 @@ export function createTableEngineSession(options: {
     /** Reference an entry for this session's lifetime. */
     const hold = (entry: Entry): void => {
         entry.refs++;
+        entry.rooted = true;
+        entry.warmSince = undefined;
         held.push(entry.key);
     };
 
@@ -312,7 +486,7 @@ export function createTableEngineSession(options: {
             const key = entryKey(pgSchema, tableId);
             // Reference before awaiting so a concurrent sweep cannot collect
             // the entry while it is still being built.
-            const existing = entries.get(key)
+            const existing = reusableEntry(key, projectDoc)
                 ?? createTableEntry(projectDoc, projectId, pgSchema, tableId, connect);
             if (!existing) return undefined;
             hold(existing);
@@ -326,12 +500,12 @@ export function createTableEngineSession(options: {
             // referenced) before the first await.
             if (sqlName === ITEMS_RELATION_NAME) {
                 const key = entryKey(pgSchema, ITEMS_ENTRY_ID);
-                hold(entries.get(key) ?? createItemsEntry(projectDoc, pgSchema));
+                hold(reusableEntry(key, projectDoc) ?? createItemsEntry(projectDoc, pgSchema));
             } else {
                 const targetId = findTableIdBySqlName(projectDoc, sqlName);
                 if (!targetId) return undefined;
                 const key = entryKey(pgSchema, targetId);
-                const entry = entries.get(key)
+                const entry = reusableEntry(key, projectDoc)
                     ?? createTableEntry(projectDoc, projectId, pgSchema, targetId, connect);
                 if (!entry) return undefined;
                 hold(entry);
@@ -353,19 +527,42 @@ export function createTableEngineSession(options: {
     };
 }
 
-/** Test-only: drop every materialization and wait for the cleanup to settle. */
+/**
+ * Test-only: drop every materialization — warm ones included, ignoring their
+ * remaining retention — clear the eviction bookkeeping, restore the real
+ * clock, and wait for the cleanup to settle.
+ */
 export async function resetTableEngineForTests(): Promise<void> {
     const all = [...entries.values()];
     entries.clear();
-    for (const entry of all) {
-        pendingWork = pendingWork.then(() => destroyEntry(entry)).catch((err) =>
-            logger.warn({ err }, "[tableEngine] destroying entry failed")
-        );
-    }
+    if (expiryTimer !== undefined) clearTimeout(expiryTimer);
+    expiryTimer = undefined;
+    nowMs = () => Date.now();
+    for (const entry of all) scheduleDestroy(entry);
     await pendingWork;
 }
 
 /** Test-only: wait until pending releases finished. */
 export async function waitForTableEngineIdle(): Promise<void> {
     await pendingWork;
+}
+
+/**
+ * Test-only: drive the warm cache's clock, so retention can be tested without
+ * waiting for it. `resetTableEngineForTests()` restores the real clock, which
+ * makes an `afterEach` reset enough to keep the override from leaking.
+ */
+export function setTableEngineClockForTests(clock: () => number): void {
+    nowMs = clock;
+}
+
+/** Test-only: run the pass the expiry timer would run, and let it settle. */
+export async function runWarmEvictionForTests(): Promise<void> {
+    sweep();
+    await pendingWork;
+}
+
+/** Test-only: whether an eviction is still armed. */
+export function hasWarmExpiryTimerForTests(): boolean {
+    return expiryTimer !== undefined;
 }

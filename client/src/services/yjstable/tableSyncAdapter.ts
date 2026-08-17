@@ -177,7 +177,10 @@ export class TableSyncAdapter {
 
     /** Parse the current schema text, build the PGlite table, load every record. */
     async start(): Promise<void> {
-        if (this.started) return;
+        // Disposed before it ever started: the entry that owned this adapter
+        // was released while its connection was still being set up, and
+        // observing a table nobody will read is pure leak.
+        if (this.started || this.disposed) return;
         this.started = true;
         this.handles.data.observeDeep(this.dataObserver);
         this.handles.schemaText.observe(this.schemaObserver);

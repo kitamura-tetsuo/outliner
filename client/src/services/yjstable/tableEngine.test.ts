@@ -89,7 +89,7 @@ describe("cross-table aggregation", { timeout: 30000 }, () => {
         }
     });
 
-    it("drops released tables so a later query cannot read stale rows", async () => {
+    it("drops evicted tables so a later query cannot read stale rows", async () => {
         const projectId = "proj-release";
         const { projectDoc, ordersId, orders } = seedProject(projectId);
         orders.uiDef.set("query", "SELECT COUNT(*) AS n FROM orders JOIN customers ON true");
@@ -101,10 +101,15 @@ describe("cross-table aggregation", { timeout: 30000 }, () => {
         const schema = projectSchemaName(projectId);
         await expect(runSelect(`SELECT * FROM "${schema}"."customers"`)).resolves.toBeDefined();
 
+        // Closing the view only makes the entry warm: the relation survives a
+        // release for a while, so revisiting the grid is cheap.
         session.dispose();
-        await resetTableEngineForTests();
+        await waitForTableEngineIdle();
+        await expect(runSelect(`SELECT * FROM "${schema}"."customers"`)).resolves.toBeDefined();
 
-        // Both the table itself and the relation its query pulled in are gone.
+        // Eviction is what drops them — the table itself and the relation its
+        // query pulled in alike.
+        await resetTableEngineForTests();
         await expect(runSelect(`SELECT * FROM "${schema}"."customers"`)).rejects.toThrow(/does not exist/);
         await expect(runSelect(`SELECT * FROM "${schema}"."orders"`)).rejects.toThrow(/does not exist/);
     });

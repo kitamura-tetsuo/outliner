@@ -65,7 +65,7 @@ describe("items relation in the table engine", { timeout: 30000 }, () => {
         }
     });
 
-    it("hands out a write-back provider for `outline_items` and drops the relation when released", async () => {
+    it("hands out a write-back provider for `outline_items` and drops the relation when evicted", async () => {
         const projectId = "proj-items-write";
         const { projectDoc, scheduled } = seedProject(projectId);
         const pgSchema = projectSchemaName(projectId);
