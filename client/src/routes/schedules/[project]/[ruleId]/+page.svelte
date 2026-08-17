@@ -186,7 +186,7 @@
         isRunning = true;
         error = undefined;
         try {
-            const res = await runScheduleRuleNow(store.project.id, ruleId);
+            const res = await runScheduleRuleNow(projectName, ruleId);
             if (!res.ok) {
                 error = res.error || "Failed to run rule";
             }

@@ -297,7 +297,7 @@ onDestroy(() => {
 
     {#if showSchedule}
         <section class="panel">
-            <TableSchedulePanel tableId={handles.tableId} />
+            <TableSchedulePanel tableId={handles.tableId} projectId={projectId || ''} />
         </section>
     {/if}
 

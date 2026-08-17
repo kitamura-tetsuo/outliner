@@ -10,6 +10,7 @@
     import ScheduleRuleList from "../../../../../components/schedule/ScheduleRuleList.svelte";
     import ScheduleRuleEditor from "../../../../../components/schedule/ScheduleRuleEditor.svelte";
     import { createScheduleRule, deleteScheduleRule, updateScheduleRule, type ScheduleRule } from "../../../../../services/schedule/scheduleRuleService";
+    import { runScheduleRuleNow } from "../../../../../services/schedule/scheduleRunService";
     import { isPublicProject } from "../../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../../lib/routeProject";
@@ -32,6 +33,8 @@
     let isEditing = $state(false);
     let currentRuleId: string | undefined = $state(undefined);
     let currentRule: Partial<ScheduleRule> | undefined = $state(undefined);
+    let runningRuleId: string | undefined = $state(undefined);
+    let runError: string | undefined = $state(undefined);
 
     // Reactive rules derived from the project doc
     let rules = $state<{ id: string, rule: ScheduleRule }[]>([]);
@@ -208,6 +211,20 @@
             deleteScheduleRule(store.project, id);
         }
     }
+
+    async function handleRunNow(id: string) {
+        if (!projectName) return;
+        runError = undefined;
+        runningRuleId = id;
+        try {
+            const res = await runScheduleRuleNow(projectName, id);
+            if (!res.ok) {
+                runError = res.error || "Failed to run rule";
+            }
+        } finally {
+            runningRuleId = undefined;
+        }
+    }
 </script>
 
 <svelte:head>
@@ -278,8 +295,15 @@
                     onCancel={cancelEdit}
                 />
             {:else}
+                {#if runError}
+                    <div class="mb-3 mx-4 mt-4 text-xs text-red-700 bg-red-50 p-2 rounded border border-red-100 font-mono">
+                        {runError}
+                    </div>
+                {/if}
                 <ScheduleRuleList
                     rules={rules}
+                    runningRuleId={runningRuleId}
+                    onRunNow={handleRunNow}
                     onEdit={startEdit}
                     onDelete={handleDelete}
                 />

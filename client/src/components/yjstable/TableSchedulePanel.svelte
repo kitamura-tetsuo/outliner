@@ -8,9 +8,10 @@
 
     interface Props {
         tableId: string;
+        projectId: string;
     }
 
-    let { tableId }: Props = $props();
+    let { tableId, projectId }: Props = $props();
 
     let rules = $state<{ id: string, rule: ScheduleRule }[]>([]);
     let isEditing = $state(false);
@@ -111,7 +112,7 @@
         runError = undefined;
         runningRuleId = id;
         try {
-            const res = await runScheduleRuleNow(store.project.id, id);
+            const res = await runScheduleRuleNow(projectId, id);
             if (!res.ok) {
                 runError = res.error || "Failed to run rule";
             }
