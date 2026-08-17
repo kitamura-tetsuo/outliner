@@ -1,0 +1,21 @@
+id: FTR-6f2ad91c
+title: Demo Page Rename Keeps Its Route
+description: Renaming the page that is open in a public demo project keeps that page open and replaces the route with the new title, instead of falling into the demo route's "Page not found" state.
+category: demo
+status: implemented
+components:
+- client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
+- client/src/utils/pageUtils.ts
+tests:
+- client/e2e/core/dmo-demo-page-rename-route-6f2ad91c.spec.ts
+- client/src/routes/[demoProject=demoProject]/[page]/page.svelte.test.ts
+- client/src/tests/unit/utils/pageUtils.spec.ts
+acceptance:
+- A demo page that genuinely does not exist still shows the missing-page UI with its Create Page button, and the route keeps the requested name
+- A title-only route change reuses the demo client and project; nothing is reacquired or reset
+- Navigating to another demo page still loads that page, and the route it asked for is never rewritten back
+- Renaming the open demo page never shows "Page not found"
+- The demo page stays mounted with its content and caret while the rename lands
+- The renamed demo URL resolves after a reload, including non-ASCII titles, which are percent-encoded
+- The route follows the new title through replace-state navigation, so the previous title leaves no history entry
+title-ja: デモページ名変更時のルート追従

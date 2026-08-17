@@ -11,7 +11,7 @@ import { goto } from "$app/navigation";
     import { getLogger } from "../../../lib/logger";
     import { projectBasePath, projectPagePath } from "../../../lib/publicProject";
     import type { Item } from "../../../schema/app-schema";
-import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
+import { findPageByKey, isPageNamed, findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
@@ -71,6 +71,25 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     // same project the acquire did.
     let acquiredProject = "";
 
+    /**
+     * True when the open page is still one of the project's pages — asked only
+     * once the route's title has stopped resolving, where it means the page was
+     * renamed rather than removed.
+     *
+     * A demo route's page segment is a page title, so renaming the open page
+     * leaves the URL naming something no page is called any more, and the
+     * lookup by name fails until the route catches up. Identity is what settles
+     * it, and it is re-read from the project every time: a demo reset replaces
+     * page instances, and a stale item must never keep the route pinned.
+     */
+    function isOpenPageRenamed(): boolean {
+        const cp = store.currentPage;
+        if (!cp) return false;
+        const items = store.project?.items;
+        if (!items) return false;
+        return findPageByKey(items, cp.key ?? cp.id) !== undefined;
+    }
+
     async function loadDemoPage() {
         try {
             acquiredProject = demoProject;
@@ -126,18 +145,43 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         }
     }
 
-        // Sync URL when page title is changed
+    /**
+     * The open page's title as this route last saw it, with the page's identity.
+     * A route and a title can drift apart for two opposite reasons — the title
+     * moved (a rename, which the URL must follow) or the route moved (ordinary
+     * navigation, which the URL owns) — and only the previous title tells them
+     * apart.
+     */
+    let observedTitle: { key: string; title: string; } | undefined;
+
+    // Sync URL when page title is changed
     $effect(() => {
+        // `Item.text` reads straight out of Yjs and carries no signal of its
+        // own, so the store's document-change counter is what tells this effect
+        // that the open page may have been retitled.
+        void store.pagesVersion;
         const cp = store.currentPage;
-        if (cp && cp.text) {
-            // Track the text to re-evaluate when it changes
-            const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
-            const trimmedTitle = textStr.trim();
-            const decodedPageName = safeDecodeURIComponent(pageName).trim();
-            if (trimmedTitle && trimmedTitle !== decodedPageName && pageName) {
-                const newRoute = resolvePath(projectPagePath(demoProject, trimmedTitle));
-                goto(newRoute, { replaceState: true });
-            }
+        if (!cp || !cp.text) {
+            observedTitle = undefined;
+            return;
+        }
+
+        const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
+        const trimmedTitle = textStr.trim();
+        const previous = observedTitle;
+        observedTitle = { key: cp.key ?? cp.id, title: trimmedTitle };
+
+        // Only the open page being retitled may move the route.
+        if (!previous || previous.key !== observedTitle.key || previous.title === trimmedTitle) return;
+
+        const decodedPageName = safeDecodeURIComponent(pageName).trim();
+        if (trimmedTitle && trimmedTitle !== decodedPageName && pageName) {
+            const newRoute = resolvePath(projectPagePath(demoProject, trimmedTitle));
+            logger.info(`Title changed from "${decodedPageName}" to "${trimmedTitle}", updating URL to ${newRoute}`);
+            // The visitor is typing in the title this route is following:
+            // `keepFocus`/`noScroll` stop SvelteKit's post-navigation focus and
+            // scroll reset from throwing the caret back to the start of it.
+            goto(newRoute, { replaceState: true, keepFocus: true, noScroll: true });
         }
     });
 
@@ -149,6 +193,11 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
         if (currentName !== lastLoaded) {
             lastLoaded = currentName;
+            // The route update a rename produces names the page that is already
+            // open. Reloading for it would unmount the page mid-edit and hand
+            // the new title to a lookup that has not indexed it yet, so keep the
+            // mounted instance and let the resolution effect below confirm it.
+            if (untrack(() => isPageNamed(store.currentPage, currentName))) return;
             untrack(() => loadDemoPage());
         }
     });
@@ -167,6 +216,15 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                     store.currentPage = targetPage;
                     pageNotFound = false;
                 }
+            } else if (untrack(() => isOpenPageRenamed())) {
+                // Nothing answers to this route's title any more because the
+                // open page was just renamed. The page itself is still here —
+                // the URL is what is stale, and the title-sync effect above
+                // replaces it — so the missing-page path must not run.
+                // `untrack`, because the branch below assigns `store.currentPage`
+                // and the store notifies on every assignment: tracking the read
+                // would make this effect retrigger itself forever.
+                pageNotFound = false;
             } else if (!isSyncing) {
                 // Done syncing and still not found
                 store.currentPage = undefined;
