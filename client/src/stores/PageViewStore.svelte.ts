@@ -37,6 +37,20 @@ class PageViewStore {
         persist(this._counts);
     }
 
+    /**
+     * Follow a page rename so the view count stays with the page instead of
+     * being stranded under a title that no longer exists.
+     */
+    rename(oldTitle: string, newTitle: string) {
+        if (!oldTitle || !newTitle || oldTitle === newTitle) return;
+        if (!(oldTitle in this._counts)) return;
+        const newCounts = { ...this._counts };
+        newCounts[newTitle] = (newCounts[newTitle] || 0) + newCounts[oldTitle];
+        delete newCounts[oldTitle];
+        this._counts = newCounts;
+        persist(this._counts);
+    }
+
     reset() {
         this._counts = {};
         persist(this._counts);

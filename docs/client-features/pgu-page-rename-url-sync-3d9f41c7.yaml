@@ -1,0 +1,14 @@
+id: PGU-3d9f41c7
+title: Page Rename Keeps the URL in Sync
+title-ja: ページ名変更に追従するURL
+description: Renaming the open page in a normal project rewrites the browser URL to the new title through SvelteKit navigation (replaceState, focus preserved). The edited page instance stays mounted with its content intact, no transient "Page not found" appears, the title is encoded exactly once so non-ASCII and URL-sensitive characters survive, and the renamed URL still resolves on reload. Navigating to a page that genuinely does not exist still reports "Page not found".
+category: navigation
+status: implemented
+components:
+- client/src/routes/[project]/[page]/+page.svelte
+- client/src/stores/PageViewStore.svelte.ts
+- client/src/stores/SearchHistoryStore.svelte.ts
+tests:
+- client/e2e/core/pgu-page-rename-url-sync-3d9f41c7.spec.ts
+- client/src/stores/PageViewStore.test.ts
+- client/src/stores/SearchHistoryStore.test.ts
