@@ -189,10 +189,13 @@ const logger = getLogger("SearchPanel");
         // Exact first-segment match, never a prefix: `/demo-ja/…` and
         // `/demonstration` both start with `/demo`.
         const demoProject = demoProjectFromPath(currentPage.url.pathname);
+        // A rename rewrites where the open page lives; it is not a visit to a
+        // different page, so it replaces the entry instead of stacking history.
+        const options = { replaceState: true, keepFocus: true, noScroll: true };
         if (demoProject) {
-            goto(resolvePath(projectPagePath(demoProject, newTitle)));
+            goto(resolvePath(projectPagePath(demoProject, newTitle)), options);
         } else if (project) {
-            goto(resolvePath(projectPagePath(project.title, newTitle)));
+            goto(resolvePath(projectPagePath(project.title, newTitle)), options);
         }
     }
 

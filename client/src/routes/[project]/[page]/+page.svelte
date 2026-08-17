@@ -20,6 +20,7 @@ import { goto } from "$app/navigation";
     import { iterateItems } from "../../../utils/itemTraversal";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
+    import { projectPagePath } from "../../../lib/publicProject";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
@@ -70,6 +71,61 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     let lastLoadKey: string | null = null;
     let __loadingInProgress = false; // Re-entry prevention
 
+    // Identity of the page the current URL addresses.
+    // A title rename mutates this very item, so the URL has to follow the item
+    // instead of the route being resolved by the old name again. Keeping the key
+    // and the title the route was resolved with makes a rename ("same item, new
+    // title") distinguishable from a navigation ("different item").
+    // Plain variables on purpose: these are written from within $effect and must
+    // not feed back into reactivity.
+    let routedPageKey: string | undefined;
+    let routedPageTitle: string | undefined;
+
+    /** The title stored on an item, trimmed. */
+    function titleOf(item: import("../../../schema/app-schema").Item | undefined): string {
+        if (!item) return "";
+        try {
+            const raw = typeof item.text?.toString === "function"
+                ? item.text.toString()
+                : String(item.text ?? "");
+            return raw.trim();
+        } catch (_e) {
+            return "";
+        }
+    }
+
+    /**
+     * Whether a route segment addresses `title`. SvelteKit hands params over
+     * already decoded, but a segment that survived encoding is tolerated too so
+     * the comparison matches `findPageByName`.
+     */
+    function namesEqual(title: string, routeSegment: string): boolean {
+        const t = title.trim().toLowerCase();
+        if (!t) return false;
+        const raw = routeSegment.trim().toLowerCase();
+        return t === raw
+            || t === safeDecodeURIComponent(routeSegment).trim().toLowerCase();
+    }
+
+    /** Remember which item the URL currently stands for. */
+    function markRoutedPage(item: import("../../../schema/app-schema").Item | undefined) {
+        routedPageKey = item?.key;
+        routedPageTitle = titleOf(item);
+    }
+
+    /**
+     * True when the route already points at the page that is open — the state a
+     * title rename leaves behind once the URL has followed the new title.
+     */
+    function routeMatchesActivePage(pj: string, pg: string): boolean {
+        const cp = store.currentPage;
+        if (!cp || !store.project || routedPageKey === undefined || cp.key !== routedPageKey) {
+            return false;
+        }
+        if (!namesEqual(String(store.project.title ?? ""), pj)) return false;
+        return namesEqual(titleOf(cp), pg);
+    }
+
     /**
      * Evaluate load conditions and start loading if necessary
      */
@@ -94,6 +150,20 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
         if (__loadingInProgress || lastLoadKey === key) {
             return;
         }
+
+        if (routeMatchesActivePage(pj, pg)) {
+            // The renamed page is already the open one. Reloading here would drop
+            // the edited item on the floor and flash "Page not found" while the
+            // project is re-resolved under a name that no longer exists.
+            logger.info(
+                `scheduleLoadIfNeeded: route followed a rename to "${pg}", keeping the open page`,
+            );
+            lastLoadKey = key;
+            routedPageTitle = titleOf(store.currentPage);
+            pageNotFound = false;
+            return;
+        }
+
         lastLoadKey = key;
 
         // Defer to event loop to avoid reactivity depth issues
@@ -225,6 +295,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             // 5. Set current page and hydration
             if (targetPage) {
                 store.currentPage = targetPage;
+                markRoutedPage(store.currentPage);
 
                 // Wait for page list store update (optional)
                 if (!store.pages) {
@@ -233,6 +304,8 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 }
             } else {
                 // If creation failed, etc.
+                routedPageKey = undefined;
+                routedPageTitle = undefined;
                 pageNotFound = true;
                 logger.info(`loadProjectAndPage: Page "${pageName}" not found or failed to create`);
             }
@@ -273,20 +346,37 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     });
 
 
-        // Sync URL when page title is changed
+    // Sync the URL when the open page is renamed.
+    //
+    // `Item.text` reads straight through to Yjs, so it carries no reactivity of
+    // its own: an in-place rename is only observable through the store's pages
+    // signal. The rename is attributed to the item the route was resolved with,
+    // which keeps a stale `currentPage` during a navigation from dragging the
+    // URL back to the page being left.
     $effect(() => {
+        void store.pagesVersion;
+
         const cp = store.currentPage;
-        if (cp && cp.text) {
-            // Track the text to re-evaluate when it changes
-            const textStr = typeof cp.text.toString === "function" ? cp.text.toString() : String(cp.text);
-            const trimmedTitle = textStr.trim();
-            const decodedPageName = safeDecodeURIComponent(pageName).trim();
-            if (trimmedTitle && trimmedTitle !== decodedPageName && pageName && !__loadingInProgress) {
-                const newRoute = resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(trimmedTitle)}`);
-                logger.info(`Title changed from "${decodedPageName}" to "${trimmedTitle}", updating URL to ${newRoute}`);
-                goto(newRoute, { replaceState: true });
-            }
+        if (!cp || !pageName || __loadingInProgress) return;
+        if (routedPageKey === undefined || cp.key !== routedPageKey) return;
+
+        const title = titleOf(cp);
+        if (!title || title === routedPageTitle) return;
+
+        const previousTitle = routedPageTitle;
+        routedPageTitle = title;
+        if (namesEqual(title, pageName)) return;
+
+        const newRoute = resolvePath(projectPagePath(projectName, title));
+        logger.info(`Title changed from "${previousTitle}" to "${title}", updating URL to ${newRoute}`);
+        if (previousTitle) {
+            searchHistoryStore.rename(previousTitle, title);
+            pageViewStore.rename(previousTitle, title);
         }
+        // Svelte-managed navigation, replacing the entry so a rename does not
+        // pile up history, and keeping focus so typing the next character is
+        // not interrupted.
+        goto(newRoute, { replaceState: true, keepFocus: true, noScroll: true });
     });
 
     // Monitor route parameter changes reactively
@@ -311,6 +401,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             if (latestPage && latestPage.key !== store.currentPage.key) {
                 logger.info(`Page instance changed for "${pageName}", updating currentPage`);
                 store.currentPage = latestPage;
+                markRoutedPage(store.currentPage);
             }
         }
     });
@@ -348,6 +439,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
             const created = store.project.addPage(pageName, currentUserId);
             if (created) {
                 store.currentPage = created;
+                markRoutedPage(store.currentPage);
                 pageNotFound = false;
                 scheduleLoadIfNeeded({ project: projectName, page: pageName });
             }

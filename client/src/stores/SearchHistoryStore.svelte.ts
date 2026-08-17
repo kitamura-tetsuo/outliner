@@ -35,6 +35,21 @@ class SearchHistoryStore {
         persist(list);
     }
 
+    /**
+     * Follow a page rename. History entries are keyed by title, so without this
+     * the recent-page list keeps offering a title that no longer resolves.
+     */
+    rename(oldTitle: string, newTitle: string) {
+        if (!oldTitle || !newTitle || oldTitle === newTitle) return;
+        const idx = this._history.indexOf(oldTitle);
+        if (idx === -1) return;
+        const list = [...this._history];
+        list[idx] = newTitle;
+        // A page already listed under the new title would now appear twice.
+        this._history = list.filter((title, i) => i === idx || title !== newTitle);
+        persist(this._history);
+    }
+
     reset() {
         this._history = [];
         persist(this._history);
