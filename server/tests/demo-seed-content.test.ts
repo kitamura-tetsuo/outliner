@@ -137,7 +137,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(43);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(44);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -432,6 +432,16 @@ describe("Demo seed content", () => {
         expect(weekly.get("rrule")).to.equal("RRULE:FREQ=WEEKLY;BYDAY=MO");
         // The weekly rule starts on a Monday.
         expect(new Date(`${String(weekly.get("dtstart")).slice(0, 10)}T00:00:00Z`).getUTCDay()).to.equal(1);
+    });
+
+    it("the Schedule Rules page documents the Run now action", () => {
+        const page = findChildByText(project.items, "Schedule Rules");
+        expect(page, "Schedule Rules page exists").to.not.equal(undefined);
+
+        const guidance = childTexts(page!.items).find(text => text.startsWith("Run now"));
+        expect(guidance, "Run now guidance is seeded").to.not.equal(undefined);
+        expect(guidance).to.contain("without waiting for the next occurrence");
+        expect(guidance).to.contain("while the rule is disabled");
     });
 
     it("the rule SQL is valid, deterministic and idempotent by construction", () => {

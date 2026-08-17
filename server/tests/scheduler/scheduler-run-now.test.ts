@@ -125,6 +125,95 @@ describe("Job Scheduler - runRuleNow", () => {
         expect(ruleMap.get("lastRunAt")).to.be.a("string");
     });
 
+    // The manual run is an extra execution, not an occurrence of the schedule:
+    // the recurrence cursor in schedule_index must survive it untouched.
+    it("should not advance next_run_at or occurrence_seq", async () => {
+        seedRunnableRule();
+        const statements: string[] = [];
+        sqliteDb.prepare = (sql: string) => {
+            statements.push(sql);
+            return {
+                all: () => [],
+                run: () => {},
+                get: () => ({
+                    room: "projects/proj1",
+                    rule_id: "rule1",
+                    target_table_id: "table1",
+                    timezone: "UTC",
+                    rrule: "FREQ=DAILY",
+                    dtstart: "2023-01-01T00:00:00.000Z",
+                    next_run_at: "2023-01-02T00:00:00.000Z",
+                    occurrence_seq: 1,
+                    state: "active",
+                }),
+            };
+        };
+        sinon.stub((scheduler as any).executor, "executeJob").resolves({ success: true, rows: [] });
+
+        const res = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(res.success).to.be.true;
+        expect(statements.some(sql => /UPDATE\s+schedule_index/i.test(sql))).to.be.false;
+    });
+
+    // Trying the SQL out before enabling the schedule is the point of the button.
+    it("should run a disabled rule", async () => {
+        const ruleMap = seedRunnableRule();
+        ruleMap.set("enabled", false);
+        sqliteDb.prepare = () => ({ all: () => [], run: () => {}, get: () => undefined });
+        const executeJob = sinon.stub((scheduler as any).executor, "executeJob").resolves({
+            success: true,
+            rows: [],
+        });
+
+        const res = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(res.success).to.be.true;
+        expect(executeJob.calledOnce).to.be.true;
+    });
+
+    // The index only catches up with an edit once the document is stored, so a
+    // run right after retargeting a rule must still use the new target table.
+    it("should use the rule document's target table rather than the indexed one", async () => {
+        const ruleMap = seedRunnableRule();
+        ruleMap.set("targetTableId", "table-new");
+        sqliteDb.prepare = () => ({
+            all: () => [],
+            run: () => {},
+            get: () => ({
+                room: "projects/proj1",
+                rule_id: "rule1",
+                target_table_id: "table-stale",
+                timezone: "UTC",
+                rrule: "FREQ=DAILY",
+                dtstart: "",
+                next_run_at: "2023-01-02T00:00:00.000Z",
+                occurrence_seq: 1,
+                state: "active",
+            }),
+        });
+        const dispatch = sinon.stub(scheduler as any, "dispatchJob").resolves({ success: true });
+
+        const res = await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        expect(res.success).to.be.true;
+        expect(dispatch.firstCall.args[0].target_table_id).to.equal("table-new");
+    });
+
+    // current_setting('job.occurrence') must resolve to the moment the button
+    // was pressed, not to a scheduled slot.
+    it("should pass the current time as the occurrence", async () => {
+        seedRunnableRule();
+        const dispatch = sinon.stub(scheduler as any, "dispatchJob").resolves({ success: true });
+        const before = Date.now();
+
+        await scheduler.runRuleNow("projects/proj1", "rule1");
+
+        const occurrence = Date.parse(dispatch.firstCall.args[1] as string);
+        expect(occurrence).to.be.at.least(before);
+        expect(occurrence).to.be.at.most(Date.now());
+    });
+
     it("should return error from dispatchJob", async () => {
         const schedules = doc.getMap("schedules");
         const ruleMap = new Y.Map();

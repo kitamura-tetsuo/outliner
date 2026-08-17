@@ -140,6 +140,10 @@ export function demoContentEn(): DemoLocaleContent {
                         text:
                             "Open the Schedule tab of a table (for example on the [Tasks and Habits] page) to create a rule of your own.",
                     },
+                    {
+                        text:
+                            "Run now next to Edit and Delete runs a rule's SQL immediately, so you can try it out without waiting for the next occurrence. It leaves the recurrence untouched and works even while the rule is disabled.",
+                    },
                 ],
             },
             {

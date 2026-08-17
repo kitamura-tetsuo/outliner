@@ -175,28 +175,30 @@ export class JobScheduler {
                 return { success: false, error: "Missing required rule data (sql or targetTableId)" };
             }
 
-            // Either reuse the indexed row or synthesize it.
-            let row: ScheduleIndexRow | undefined;
-            if (this.sqliteDb) {
-                row = this.sqliteDb.prepare(`
+            // The recurrence fields come from the index when the rule is
+            // scheduled, and are left empty when it is not (a manual run reads
+            // none of them). The target table and timezone always come from the
+            // rule document: the index lags an edit until the document is
+            // stored, and trying the SQL out right after editing it is what the
+            // button is for.
+            const indexed = this.sqliteDb
+                ? this.sqliteDb.prepare(`
                     SELECT * FROM schedule_index
                     WHERE room = ? AND rule_id = ?
-                `).get(room, ruleId) as ScheduleIndexRow | undefined;
-            }
+                `).get(room, ruleId) as ScheduleIndexRow | undefined
+                : undefined;
 
-            if (!row) {
-                row = {
-                    room,
-                    rule_id: ruleId,
-                    target_table_id: targetTableId,
-                    timezone,
-                    rrule: "",
-                    dtstart: "",
-                    next_run_at: null,
-                    occurrence_seq: 0,
-                    state: "disabled",
-                };
-            }
+            const row: ScheduleIndexRow = {
+                room,
+                rule_id: ruleId,
+                target_table_id: targetTableId,
+                timezone,
+                rrule: indexed?.rrule ?? "",
+                dtstart: indexed?.dtstart ?? "",
+                next_run_at: indexed?.next_run_at ?? null,
+                occurrence_seq: indexed?.occurrence_seq ?? 0,
+                state: indexed?.state ?? "disabled",
+            };
 
             let dispatchResult: { success: boolean; error?: string; } = { success: true };
             try {

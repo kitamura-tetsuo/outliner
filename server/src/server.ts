@@ -19,6 +19,7 @@ import { getMetrics, recordMessage } from "./metrics.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
+import { createScheduleRunRouter } from "./scheduler/schedule-run-api.js";
 import { JobScheduler } from "./scheduler/Scheduler.js";
 import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
@@ -370,6 +371,11 @@ export async function startServer(
 
     const wss = new WebSocketServer({ noServer: true });
 
+    // Schedule rule execution (SQL jobs against table docs). Declared here so
+    // the "Run now" route below can reach it; it is constructed once the
+    // persistence database is known (see further down).
+    let jobScheduler: JobScheduler | undefined;
+
     // API Routes
     app.get("/", (_req, res) => {
         res.send("ok");
@@ -384,6 +390,17 @@ export async function startServer(
 
     // Demo API - anonymous access for the public demo page
     app.use("/api", createDemoRouter(hocuspocus, config));
+
+    // Manual "Run now" execution of a schedule rule. The scheduler is created
+    // further down (it needs the persistence database), so the route resolves
+    // it lazily and answers 503 until it exists.
+    app.use(
+        "/api",
+        createScheduleRunRouter(hocuspocus as unknown as Hocuspocus, () => jobScheduler, {
+            checkContainerAccess,
+            verifyIdTokenCached,
+        }),
+    );
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {
@@ -593,11 +610,10 @@ export async function startServer(
         });
     });
 
-    // Schedule rule execution (SQL jobs against table docs). The index of due
-    // rules lives in the persistence database, so the scheduler only runs when
-    // persistence is enabled. The database itself is opened asynchronously by
-    // the extension, so the scheduler resolves it on one of its first ticks.
-    let jobScheduler: JobScheduler | undefined;
+    // The index of due rules lives in the persistence database, so the
+    // scheduler only runs when persistence is enabled. The database itself is
+    // opened asynchronously by the extension, so the scheduler resolves it on
+    // one of its first ticks.
     if (persistence && process.env.DISABLE_JOB_SCHEDULER !== "true") {
         jobScheduler = new JobScheduler(hocuspocus as unknown as Hocuspocus);
         if (persistence.db) jobScheduler.setDb(persistence.db);
