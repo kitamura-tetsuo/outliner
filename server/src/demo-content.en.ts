@@ -16,6 +16,7 @@ import {
     DEMO_CALENDAR_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
+    DEMO_HOUR_MAP_CALENDAR_ID,
     DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
@@ -461,6 +462,15 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text: "Deadline only, no start — renders as a marker, not a block",
                         due: `${demoUtcDate(3)}T17:00:00.000Z`,
+                    },
+                    {
+                        text:
+                            "Hour Map (#4972): the same day, folded. Each row is one wall-clock hour and the row's own width is that hour's 00-60 minutes, so a long entry wraps across hour rows like a narrow text box — and horizontal length always means real elapsed minutes. Overlapping entries therefore stack into sub-lanes (growing only that hour's row) instead of splitting the width, and the title is drawn once, in the first fragment with room for it.",
+                    },
+                    {
+                        text: "Today by the hour",
+                        componentType: "calendar",
+                        calendarId: DEMO_HOUR_MAP_CALENDAR_ID,
                     },
                     {
                         text:

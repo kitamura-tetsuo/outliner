@@ -17,7 +17,13 @@ import {
     wallTimeToUtcMs,
 } from "$shared/utils/zonedTime";
 
-export type CalendarViewType = "day" | "days" | "week" | "month";
+/**
+ * `hours` is the single-day Hour Map (#4972): the same one-local-day window as
+ * `day`, laid out as an hour x minute matrix rather than a vertical time
+ * column. It is a distinct stored view type rather than a flag on `day` so a
+ * calendar remembers which of the two the user chose.
+ */
+export type CalendarViewType = "day" | "hours" | "days" | "week" | "month";
 
 /**
  * Gantt's own axis granularity (#4350), independent of `CalendarViewType`:
@@ -107,6 +113,7 @@ export function computeViewRange(
 
     switch (viewType) {
         case "day":
+        case "hours":
             return { start: dayStart, end: addWallDays(dayStart, 1, timeZone) };
         case "days":
             return { start: dayStart, end: addWallDays(dayStart, Math.max(1, dayCount), timeZone) };
@@ -154,6 +161,7 @@ export function shiftAnchor(
     const dayStart = startOfWallDay(anchorUtcMs, timeZone);
     switch (viewType) {
         case "day":
+        case "hours":
             return addWallDays(dayStart, direction * 1, timeZone);
         case "days":
             return addWallDays(dayStart, direction * Math.max(1, dayCount), timeZone);

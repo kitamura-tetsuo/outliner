@@ -34,6 +34,7 @@ import {
     type CalendarViewType,
 } from "../../services/calendar/calendarGridRange";
 import { computeDayHeaders } from "../../services/calendar/calendarDayHeaders";
+import { layoutHourMinuteGrid } from "../../services/calendar/calendarHourMinuteLayout";
 import {
     collapseLanePath,
     entryAxisValues,
@@ -71,6 +72,7 @@ import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjsta
 import CalendarGanttChart from "./CalendarGanttChart.svelte";
 import CalendarCreateEntryDialog from "./CalendarCreateEntryDialog.svelte";
 import CalendarDeleteEntryDialog from "./CalendarDeleteEntryDialog.svelte";
+import CalendarHourMinuteGrid from "./CalendarHourMinuteGrid.svelte";
 import CalendarLaneTimeGrid from "./CalendarLaneTimeGrid.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
 import CalendarRoleEditor from "./CalendarRoleEditor.svelte";
@@ -94,6 +96,7 @@ const EMPTY_SETTINGS: CalendarSettings = {
 
 const VIEW_TYPE_OPTIONS: { value: string; label: string; }[] = [
     { value: "day", label: "Day" },
+    { value: "hours", label: "Hour Map" },
     { value: "days", label: "Multi-day" },
     { value: "week", label: "Week" },
     { value: "month", label: "Month" },
@@ -129,7 +132,7 @@ const timeZoneOptions = listSupportedTimeZones();
 const weekStart = $derived(settings.weekStart ?? resolveDefaultWeekStart());
 const workingHoursStart = $derived(settings.workingHoursStartMinutes ?? DEFAULT_WORKING_HOURS_START_MINUTES);
 const workingHoursEnd = $derived(settings.workingHoursEndMinutes ?? DEFAULT_WORKING_HOURS_END_MINUTES);
-const KNOWN_VIEW_TYPES = new Set<CalendarViewType>(["day", "days", "week", "month"]);
+const KNOWN_VIEW_TYPES = new Set<CalendarViewType>(["day", "hours", "days", "week", "month"]);
 const isGantt = $derived(settings.viewType === "gantt");
 // A stored viewType this component does not know how to grid (a stale
 // value) falls back to "week" rather than crashing the range computation,
@@ -189,10 +192,25 @@ const monthFilteredEntries = $derived(
         : placedEntries,
 );
 
+const isHourMap = $derived(!isGantt && viewType === "hours");
 const timeGridLayout = $derived(
-    isGantt || viewType === "month" || groupingActive
+    isGantt || isHourMap || viewType === "month" || groupingActive
         ? undefined
         : layoutTimeGrid(placedEntries, range.start, range.end),
+);
+// The Hour Map (#4972) is a single-day projection of the *same* entries every
+// other view already has: same query, same optimistic overrides, same
+// writability. Its overlap lanes are vertical sub-lanes of one day, which is a
+// different thing from the grouping-axis swimlanes — so a calendar with a
+// grouping axis still renders the hour map, ungrouped, rather than silently
+// falling back to the lane time grid.
+const hourMinuteLayout = $derived(
+    isHourMap
+        ? layoutHourMinuteGrid(placedEntries, range.start, range.end, timeZone, {
+            workingHoursStartMinutes: workingHoursStart,
+            workingHoursEndMinutes: workingHoursEnd,
+        })
+        : undefined,
 );
 const monthCells = $derived(
     !isGantt && viewType === "month" ? layoutMonthGrid(monthFilteredEntries, range.start, range.end) : undefined,
@@ -597,6 +615,23 @@ onDestroy(() => {
             onLeafResizeEnd={commitDuration}
             onLeafKeyboardMove={commitStart}
             onSubtreeDragEnd={commitSubtreeShift}
+        />
+    {:else if hourMinuteLayout}
+        <CalendarHourMinuteGrid
+            layout={hourMinuteLayout}
+            {timeZone}
+            dayHeader={computeDayHeaders(range.start, 1, timeZone)[0]}
+            {isStartWritable}
+            {isDurationWritable}
+            onDragMove={previewStart}
+            onDragEnd={commitStart}
+            onDragCancel={cancelDrag}
+            onResizeMove={previewDuration}
+            onResizeEnd={commitDuration}
+            onKeyboardMove={commitStart}
+            onKeyboardResize={commitDuration}
+            {isDeletable}
+            onDeleteRequest={requestDelete}
         />
     {:else if viewType === "month" && monthCells}
         {#if groupingActive}

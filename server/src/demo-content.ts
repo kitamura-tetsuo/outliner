@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 45;
+export const DEMO_TEMPLATE_VERSION = 46;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -599,7 +599,8 @@ export interface DemoCalendarTemplate {
     name: string;
     query: string;
     // Defaults to "week" (day/multi-day/week/month grid views, #4347).
-    // "gantt" selects the Gantt view (#4350) instead.
+    // "gantt" selects the Gantt view (#4350) and "hours" the single-day Hour
+    // Map (#4972) instead.
     viewType?: string;
     roleTitle?: string;
     roleStart?: string;
@@ -611,6 +612,7 @@ export interface DemoCalendarTemplate {
 
 export const DEMO_CALENDAR_ID = "demo-calendar-tasks";
 export const DEMO_GANTT_CALENDAR_ID = "demo-calendar-gantt";
+export const DEMO_HOUR_MAP_CALENDAR_ID = "demo-calendar-hour-map";
 
 const demoCalendarsEn: DemoCalendarTemplate[] = [
     {
@@ -643,6 +645,21 @@ const demoCalendarsEn: DemoCalendarTemplate[] = [
         query: "SELECT id, text AS title, due, all_day, start_on, start_at, duration, parent_id, "
             + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
         viewType: "gantt",
+        roleTitle: "title",
+        roleStart: "start_at",
+        roleAllDay: "all_day",
+        roleDuration: "duration",
+        roleDue: "due",
+    },
+    {
+        calendarId: DEMO_HOUR_MAP_CALENDAR_ID,
+        name: "Today by the Hour",
+        // Same query and roles as the tasks calendar — the Hour Map (#4972) is
+        // purely a different projection of the same entries, so the only thing
+        // that differs is `viewType`.
+        query: "SELECT id, text AS title, due, all_day, start_on, start_at, duration, "
+            + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+        viewType: "hours",
         roleTitle: "title",
         roleStart: "start_at",
         roleAllDay: "all_day",
