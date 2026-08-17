@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "../../../schema/app-schema";
-import { allocatePageTitle, findPageByName, generateDefaultPageTitle } from "../../../utils/pageUtils";
+import {
+    allocatePageTitle,
+    findPageByKey,
+    findPageByName,
+    generateDefaultPageTitle,
+    isPageNamed,
+} from "../../../utils/pageUtils";
 
 describe("pageUtils", () => {
     describe("generateDefaultPageTitle", () => {
@@ -54,6 +60,49 @@ describe("pageUtils", () => {
             >;
             expect(findPageByName(items, "Stringified Text")).toEqual({ text: { toString: expect.any(Function) } });
             expect(findPageByName(items, "Non-existent")).toBeNull();
+        });
+    });
+
+    describe("findPageByKey", () => {
+        const first = { key: "k1", id: "i1", text: "Alpha" };
+        const second = { key: "k2", id: "i2", text: "Beta" };
+        const items = [first, second] as unknown as Iterable<Item>;
+
+        it("finds a page by key regardless of its current title", () => {
+            expect(findPageByKey(items, "k2")).toBe(second);
+        });
+
+        it("accepts the id as an identity too", () => {
+            expect(findPageByKey(items, "i1")).toBe(first);
+        });
+
+        it("returns undefined for an unknown key or empty input", () => {
+            expect(findPageByKey(items, "k3")).toBeUndefined();
+            expect(findPageByKey(items, undefined)).toBeUndefined();
+            expect(findPageByKey(undefined, "k1")).toBeUndefined();
+        });
+    });
+
+    describe("isPageNamed", () => {
+        const item = { key: "k1", id: "i1", text: "  Test Page  " } as unknown as Item;
+
+        it("matches the route segment a page's title produces", () => {
+            expect(isPageNamed(item, "Test Page")).toBe(true);
+            expect(isPageNamed(item, "test page")).toBe(true);
+            expect(isPageNamed(item, "Test%20Page")).toBe(true);
+        });
+
+        it("matches encoded non-ASCII titles", () => {
+            const japanese = { text: "書式" } as unknown as Item;
+            expect(isPageNamed(japanese, "書式")).toBe(true);
+            expect(isPageNamed(japanese, encodeURIComponent("書式"))).toBe(true);
+        });
+
+        it("does not match another page's name, an untitled page or an empty route", () => {
+            expect(isPageNamed(item, "Another Page")).toBe(false);
+            expect(isPageNamed(item, "")).toBe(false);
+            expect(isPageNamed(undefined, "Test Page")).toBe(false);
+            expect(isPageNamed({ text: "   " } as unknown as Item, "Test Page")).toBe(false);
         });
     });
 
