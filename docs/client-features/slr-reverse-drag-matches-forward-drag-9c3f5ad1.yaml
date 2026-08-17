@@ -1,0 +1,13 @@
+id: SLR-9c3f5ad1
+title: Reverse drag selection matches forward drag
+title-ja: 逆方向ドラッグの選択表示が順方向と一致する
+description: Selecting bottom-to-top highlights exactly the same characters as selecting the same logical range top-to-bottom. The highlighted interval follows visual document order, while the anchor/focus direction is kept only for endpoint semantics.
+category: selection-range
+status: implemented
+acceptance:
+- A bottom-to-top drag highlights the same area as the equivalent top-to-bottom drag
+- Copying a reverse selection yields the same text as the forward selection
+- Partially selected first and last items are highlighted from the correct offsets
+tests:
+- client/e2e/core/slr-reverse-drag-matches-forward-drag-9c3f5ad1.spec.ts
+- client/src/lib/selectionGeometry.test.ts
