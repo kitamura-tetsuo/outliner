@@ -31,6 +31,14 @@ describe("computeViewRange — pinned to UTC", () => {
         expect(range.end - range.start).toBe(DAY);
     });
 
+    it("hours (Hour Map) view is the same single local day as day view", () => {
+        const anchor = Date.parse("2026-03-15T14:30:00Z");
+        expect(computeViewRange(anchor, "hours", 0, "UTC")).toEqual(computeViewRange(anchor, "day", 0, "UTC"));
+        expect(computeViewRange(anchor, "hours", 0, "Asia/Tokyo")).toEqual(
+            computeViewRange(anchor, "day", 0, "Asia/Tokyo"),
+        );
+    });
+
     it("days view spans the requested day count", () => {
         const anchor = Date.parse("2026-03-15T14:30:00Z");
         const range = computeViewRange(anchor, "days", 0, "UTC", 3);
@@ -97,6 +105,13 @@ describe("computeViewRange — DST correctness (America/New_York)", () => {
         const range = computeViewRange(anchor, "day", 0, "America/New_York");
         expect(range.end - range.start).toBe(25 * HOUR);
     });
+
+    it("the hours view inherits the same DST-sized windows", () => {
+        const spring = computeViewRange(Date.parse("2024-03-10T12:00:00-05:00"), "hours", 0, "America/New_York");
+        const fall = computeViewRange(Date.parse("2024-11-03T12:00:00-04:00"), "hours", 0, "America/New_York");
+        expect(spring.end - spring.start).toBe(23 * HOUR);
+        expect(fall.end - fall.start).toBe(25 * HOUR);
+    });
 });
 
 describe("shiftAnchor", () => {
@@ -104,6 +119,15 @@ describe("shiftAnchor", () => {
         const anchor = Date.parse("2026-03-15T14:00:00Z");
         expect(shiftAnchor(anchor, "day", 0, "UTC", 1)).toBe(Date.parse("2026-03-16T00:00:00Z"));
         expect(shiftAnchor(anchor, "day", 0, "UTC", -1)).toBe(Date.parse("2026-03-14T00:00:00Z"));
+    });
+
+    it("steps an hours view by one local calendar day, like the day view", () => {
+        const anchor = Date.parse("2026-03-15T14:00:00Z");
+        expect(shiftAnchor(anchor, "hours", 0, "UTC", 1)).toBe(Date.parse("2026-03-16T00:00:00Z"));
+        expect(shiftAnchor(anchor, "hours", 0, "UTC", -1)).toBe(Date.parse("2026-03-14T00:00:00Z"));
+        // And in the calendar's own zone, not the runtime's.
+        expect(shiftAnchor(Date.parse("2026-03-15T20:00:00Z"), "hours", 0, "Asia/Tokyo", 1))
+            .toBe(Date.parse("2026-03-17T00:00:00+09:00"));
     });
 
     it("steps a week view forward/backward by seven days", () => {

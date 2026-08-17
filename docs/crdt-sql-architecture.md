@@ -674,6 +674,63 @@ Dependency links between entries — finish-to-start arrows, critical path — a
 and belong in their own decision rather than smuggled into the calendar's.
 No dependency-link data or UI was added here.
 
+### 6.8 Hour Map (single-day hour x minute view)
+
+_Implemented_ — `client/src/services/calendar/calendarHourMinuteLayout.ts`
+(hour rows, fragmentation, overlap lanes, title selection, drag arithmetic),
+`client/src/components/calendar/CalendarHourMinuteGrid.svelte`, and the
+`hours` case of `computeViewRange`/`shiftAnchor` in
+`client/src/services/calendar/calendarGridRange.ts`, tracked by #4972.
+
+A second way to read a single day: the y axis is one row per wall-clock hour
+(00-23) and the x axis _inside_ each row is that hour's minutes (00-60). A
+timed entry is clipped to the visible day, split at local hour boundaries, and
+rendered as one DOM fragment per hour it touches, so a long entry wraps down
+the rows like a narrow text box folded every hour. It is a distinct stored
+`viewType` (`hours`), never a flag on `day`, and the existing day/multi-day/
+week/month/Gantt views are unchanged.
+
+The whole geometry follows from one rule: **horizontal extent is elapsed
+minutes**. It is therefore never repurposed for overlap layout the way the
+time grid's `assignOverlapColumns` splits a day column — halving a full-hour
+entry's width would make it read as a 30-minute entry, which is the same
+"the picture says something the data does not" failure §6.1 removes from the
+time model. Overlaps stack into vertical sub-lanes instead, and only the hour
+rows that need them grow taller. Lanes are assigned once over the whole
+visible day (deterministic greedy first-fit) rather than per hour, so a
+multi-hour entry keeps one lane across every row it touches and its fragments
+still read as a single wrapped object; non-overlapping entries reuse a lane.
+The title renders once per entry — the first fragment with room for it,
+otherwise the earliest later one, otherwise none inline — so a wrapped entry
+never repeats its own name down the rows.
+
+Hour rows come from the calendar's timezone through the same DST-safe
+wall-clock conversion the range itself uses (§6.5), never from
+`dayStart + hour * 3_600_000`. The day is walked forward: each row starts where
+the previous one ended and is labelled by the wall clock's own reading there,
+so the rows tile the window exactly while no row ever covers more elapsed time
+than its 00-60 axis can honestly show. A wall hour the clock skipped entirely
+gets no row; a wall hour the clock repeated gets _two_ rows with the same
+label, the second marked as the repeat — one double-width row would draw 120
+real minutes on a 60-minute axis, which is the very failure this view exists to
+avoid. A zone whose transition falls mid-hour (Australia/Lord_Howe jumps
+02:00 -> 02:30) keeps the surviving part as a partial row occupying only its
+real slice of the axis, so a 02:30 event is still drawn at the 30-minute mark.
+None of this is write behaviour: drag/resize arithmetic is expressed in row
+starts plus a minute offset, so a move or resize across a transition writes the
+instant the wall clock actually names rather than one an hour off.
+
+Move and resize resolve vertical (hour rows) and horizontal (minutes) travel
+into one continuous wall-clock destination and cross hour edges naturally —
+10:50 dragged 20 minutes later is 11:10, not a clamp at 10:59. Like every
+other view, this one writes nothing itself: it reports the proposed
+start/duration to `CalendarView`, which keeps ownership of writability
+(§6.3), optimistic placement, undo and requery. All-day entries and due-only
+milestones stay out of the hour geometry in their own band (§6.1).
+
+A week/multi-day hour-minute matrix is **out of scope**: this view is
+single-day only, and navigation moves by one local calendar day.
+
 ## 7. What must not be done
 
 - Do not persist the item projection into any table's Data Storage. It is a
@@ -688,4 +745,6 @@ No dependency-link data or UI was added here.
   exclusive-end rule is for event ends only.
 - Do not render in an ambient timezone, and do not let the SQL session zone
   differ from the view's.
+- Do not repurpose the Hour Map's horizontal axis (§6.8) for overlap layout,
+  and do not derive its rows by adding fixed UTC hours to local midnight.
 - Do not speculatively execute schedule-rule SQL to preview future occurrences.

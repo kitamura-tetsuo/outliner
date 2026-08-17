@@ -145,6 +145,46 @@ describe("CalendarView", { timeout: 30000 }, () => {
         destroyCalendarUndoManager(project.ydoc);
     });
 
+    it("selects and persists the Hour Map view, rendering the entry as hour fragments (#4972)", async () => {
+        const projectId = "proj-calendar-view-hour-map";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        item.text = "Workshop";
+        // 09:45 UTC for 95 minutes, so the entry wraps across the 09, 10 and 11
+        // hour rows in a UTC calendar regardless of the runner's own zone.
+        item.start = `${todayIso()}T09:45:00.000Z`;
+        item.allDay = false;
+        item.duration = "PT1H35M";
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            timezone: "UTC",
+            query: "SELECT id, text AS title, all_day, start_at, duration, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+            roleDuration: "duration",
+        });
+
+        const { container, getByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        await waitFor(() => expect(getByTestId("calendar-view-type")).toBeTruthy());
+
+        await fireEvent.change(getByTestId("calendar-view-type"), { target: { value: "hours" } });
+        expect(getCalendar(project, calendarId)?.viewType).toBe("hours");
+
+        await waitFor(() => expect(getByTestId("calendar-hour-minute-grid")).toBeTruthy());
+        await waitFor(() =>
+            expect(
+                container.querySelectorAll(`[data-entry-key="outline_items:${item.key}"]`).length,
+            ).toBe(3)
+        );
+        // The day view's vertical grid is not rendered alongside it.
+        expect(container.querySelector('[data-testid="calendar-time-grid"]')).toBeNull();
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
     it("Prev/Today/Next update the displayed range label", async () => {
         const projectId = "proj-calendar-view-nav";
         const { project } = seedProject(projectId);

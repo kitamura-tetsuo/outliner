@@ -23,6 +23,7 @@ import {
     DEMO_DAILY_RULE_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
+    DEMO_HOUR_MAP_CALENDAR_ID,
     DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
@@ -71,6 +72,7 @@ export function demoContentJa(): DemoLocaleContent {
         calendarNames: {
             [DEMO_CALENDAR_ID]: "タスクカレンダー",
             [DEMO_GANTT_CALENDAR_ID]: "プロジェクト計画（ガント）",
+            [DEMO_HOUR_MAP_CALENDAR_ID]: "今日の時間割（アワーマップ）",
         },
 
         ruleNames: {
@@ -510,6 +512,15 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text: "期限のみ、開始なし — ブロックではなくマーカーとして描画されます",
                         due: `${demoUtcDate(3)}T17:00:00.000Z`,
+                    },
+                    {
+                        text:
+                            "アワーマップ (#4972): 同じ1日を折り返して表示します。各行が壁時計の1時間で、その行の幅がその時間の 00〜60 分にあたるため、長いエントリは細長いテキストボックスのように時間の行をまたいで折り返され、横方向の長さは常に実際の経過分数を表します。したがって重なり合うエントリは幅を分け合わず、その時間の行だけを高くしてサブレーンに積み重なります。タイトルは、十分な幅がある最初の断片に一度だけ描画されます。",
+                    },
+                    {
+                        text: "今日の時間割",
+                        componentType: "calendar",
+                        calendarId: DEMO_HOUR_MAP_CALENDAR_ID,
                     },
                     {
                         text:

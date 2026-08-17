@@ -12,6 +12,7 @@ import {
     DEMO_DAILY_RULE_ID,
     DEMO_GANTT_CALENDAR_ID,
     DEMO_HABITS_TABLE_ID,
+    DEMO_HOUR_MAP_CALENDAR_ID,
     DEMO_LANDING_PAGE_TITLE,
     DEMO_PROJECT_TITLE,
     DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
@@ -137,7 +138,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(45);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(46);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -553,6 +554,24 @@ describe("Demo seed content", () => {
         // The reserved relation name itself, not an arbitrary label — a write
         // must resolve back to `outline_items` via `resolveRelation`.
         expect(template!.query).to.contain("'outline_items' AS source_kind");
+    });
+
+    it("seeds a live Hour Map calendar component (#4972) on the same entries as the tasks calendar", () => {
+        const calendarsPage = findChildByText(project.items, "Calendars");
+        expect(calendarsPage).to.not.equal(undefined);
+
+        const hourMapItem = findChildByText(calendarsPage!.items, "Today by the hour");
+        expect(hourMapItem, "hour map calendar item exists").to.not.equal(undefined);
+        expect(hourMapItem!.componentType).to.equal("calendar");
+        expect(hourMapItem!.calendarId).to.equal(DEMO_HOUR_MAP_CALENDAR_ID);
+
+        const template = demoCalendars.find((t) => t.calendarId === DEMO_HOUR_MAP_CALENDAR_ID);
+        expect(template, "hour map calendar template exists").to.not.equal(undefined);
+        // A distinct stored view type, never an overloaded "day".
+        expect(template!.viewType).to.equal("hours");
+        expect(template!.query).to.contain("'outline_items' AS source_kind");
+        expect(template!.roleStart).to.equal("start_at");
+        expect(template!.roleDuration).to.equal("duration");
     });
 
     it("seeds a nested demo hierarchy so a parent's Gantt bar can roll up from its children", () => {
