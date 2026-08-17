@@ -242,6 +242,18 @@ describe("CalendarHourMinuteGrid", () => {
         expect(onKeyboardMove).not.toHaveBeenCalled();
     });
 
+    it("resizes from the duration the entry is drawn with when it carries none", async () => {
+        const noDuration: CalendarEntry = { key: "a", title: "a", raw: {}, allDay: false, startMs: at("10:00") };
+        const { getByTestId, onResizeEnd, onKeyboardResize } = setup([noDuration]);
+        // Layout draws a 30-minute block, so a press-and-release with no
+        // movement must commit 30 minutes, not some smaller assumed default.
+        await drag(getByTestId("calendar-entry-resize-a"), xOfMinutes(30), yOfHour(10), xOfMinutes(30), yOfHour(10));
+        expect(onResizeEnd).toHaveBeenCalledWith(expect.objectContaining({ key: "a" }), 30 * MINUTE_MS);
+        // And a keyboard resize steps from that same visible length.
+        await fireEvent.keyDown(getByTestId("calendar-entry-resize-a"), { key: "ArrowRight" });
+        expect(onKeyboardResize).toHaveBeenLastCalledWith(expect.objectContaining({ key: "a" }), 45 * MINUTE_MS);
+    });
+
     it("requests a delete from the entry's anchor fragment", async () => {
         const { getByTestId, onDeleteRequest } = setup([timed("a", "10:00", 30)]);
         await fireEvent.click(getByTestId("calendar-entry-delete-a"));

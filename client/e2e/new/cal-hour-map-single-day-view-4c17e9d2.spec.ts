@@ -17,17 +17,21 @@ test.describe("FTR-4c17e9d2: Hour Map single-day calendar view", () => {
         // 09:45 local for 95 minutes: the entry must span the 09, 10 and 11
         // rows. The calendar's timezone stays viewer-local (the default), so
         // the wall-clock hours the browser sees are the ones it renders.
-        await page.evaluate(() => {
-            const items = (globalThis as any).generalStore.currentPage.items;
+        // Both seeded rows are found by text and addressed by their own key,
+        // never by position (AGENTS.md §2): "Workshop" becomes the calendar's
+        // data, and "Calendar anchor" is the row converted into the calendar.
+        const anchorKey = await page.evaluate(() => {
+            const items = [...(globalThis as any).generalStore.currentPage.items];
             const local = new Date();
             local.setHours(9, 45, 0, 0);
-            const item = items.at(1);
-            item.start = local.toISOString();
-            item.allDay = false;
-            item.duration = "PT1H35M";
+            const workshop = items.find((i: any) => i.text === "Workshop");
+            workshop.start = local.toISOString();
+            workshop.allDay = false;
+            workshop.duration = "PT1H35M";
+            return items.find((i: any) => i.text === "Calendar anchor").key as string;
         });
 
-        const item = page.locator(".outliner-item").nth(1);
+        const item = page.locator(`.outliner-item[data-item-id="${anchorKey}"]`);
         await expect(item).toBeVisible({ timeout: 10000 });
         await item.click();
         await page.waitForTimeout(300);

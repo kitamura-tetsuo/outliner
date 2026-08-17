@@ -22,14 +22,21 @@
 // fixed UTC-hour arithmetic would silently shift every row after the
 // transition. See `computeHourRows` for what each transition does to the rows.
 
-import { utcMsToWallTime, wallTimeExists, wallTimeToUtcMs } from "$shared/utils/zonedTime";
+import { utcMsToWallTime, wallTimeToUtcMs } from "$shared/utils/zonedTime";
 import type { CalendarEntry } from "./calendarEntries";
 
 const HOUR_MS = 3_600_000;
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
-const DEFAULT_TIMED_DURATION_MS = 30 * MINUTE_MS;
 const MIN_TIMED_DURATION_MS = MINUTE_MS;
+
+/**
+ * What a timed entry with no duration of its own is drawn as. Exported because
+ * the renderer's resize must start from the length the user can actually see:
+ * beginning a resize from some other assumed length would make a press-and-
+ * release with no movement commit a duration the entry never showed.
+ */
+export const DEFAULT_TIMED_DURATION_MS = 30 * MINUTE_MS;
 
 /**
  * How many minutes wide a fragment must be before an inline title is drawn in
@@ -41,28 +48,32 @@ export const MIN_TITLE_FRAGMENT_MINUTES = 15;
 
 /** One wall-clock hour row of the map. */
 export interface HourMinuteRow {
-    /** Position of this row in `HourMinuteLayout.rows`. Equals `hour` except on a spring-forward day. */
+    /** Position of this row in `HourMinuteLayout.rows`. Equals `hour` only on a day with no DST transition. */
     rowIndex: number;
     /** Wall-clock hour label, 0..23. */
     hour: number;
-    /** UTC instant at which this row's wall-clock hour begins. */
+    /** UTC instant at which this row begins. */
     startUtcMs: number;
     /** UTC instant at which the next row begins (or the day ends). */
     endUtcMs: number;
     /**
-     * Real minutes this row covers — 60 on an ordinary day. A fall-back
-     * transition repeats a wall-clock hour, and both passes render in that one
-     * row, so it reads 120 (see `isDstExpanded`); the minute axis stays
-     * proportional to the row's own span, so nothing is lost or duplicated.
+     * Where this row sits on its hour's own 00-60 minute axis. A whole hour is
+     * 0..60; a row shortened by a DST transition covers only the part of the
+     * axis its wall clock actually visited (e.g. 30..60 for a zone that jumps
+     * at HH:30), so a 02:30 event is still drawn at the 30-minute mark and
+     * never at the left edge of the row.
      */
+    startMinute: number;
+    endMinute: number;
+    /** `endMinute - startMinute`; also the row's real elapsed minutes. 60 for a whole hour. */
     spanMinutes: number;
-    /** True when this row absorbed a repeated wall-clock hour (fall back). */
-    isDstExpanded: boolean;
+    /** True for the second pass of a wall-clock hour a fall-back transition repeats. */
+    isRepeatedHour: boolean;
     /** Vertical sub-lanes this row needs; 1 when nothing in it overlaps. */
     laneCount: number;
     /** This row's fragments, ordered by lane then start minute (deterministic). */
     fragments: HourMinuteFragment[];
-    /** Working-hours overlay, in this row's minutes; undefined when the row is wholly outside it. */
+    /** Working-hours overlay, on the same 00-60 axis; undefined when the row is wholly outside it. */
     workingStartMinute?: number;
     workingEndMinute?: number;
 }
@@ -74,9 +85,9 @@ export interface HourMinuteFragment {
     hour: number;
     /** Index of that row in `HourMinuteLayout.rows`. */
     rowIndex: number;
-    /** Minutes from the row's start; 0..`spanMinutes`. */
+    /** Position on the hour's own 00-60 minute axis. */
     startMinute: number;
-    /** Minutes from the row's start; always > `startMinute`. */
+    /** Position on the hour's own 00-60 minute axis; always > `startMinute`. */
     endMinute: number;
     /** Vertical sub-lane, stable across every row this entry touches. */
     laneIndex: number;
@@ -113,48 +124,63 @@ export interface HourMinuteLayoutOptions {
 /**
  * The visible day's wall-clock hour rows, in `timeZone`.
  *
- * Each candidate hour 00..23 is converted through the same DST-safe
- * conversion the grid range itself uses, and a row runs until the next
- * existing hour begins, so the rows always tile `[rangeStart, rangeEnd)`
- * exactly:
+ * The day is walked forward from `rangeStart`: each row starts where the
+ * previous one ended, is labelled by the wall clock's own reading at that
+ * instant, and ends either where the clock next reaches `HH+1:00` or after the
+ * rest of that wall hour has elapsed, whichever comes first. That keeps the
+ * rows tiling `[rangeStart, rangeEnd)` exactly while never letting a row cover
+ * more elapsed time than its own 00-60 axis can honestly represent:
  *
- *  - ordinary day: 24 rows, 60 minutes each;
- *  - spring forward: the skipped wall hour has no row at all (its label never
- *    existed locally), so 23 rows — `rowIndex` and `hour` stop agreeing;
- *  - fall back: the repeated wall hour keeps one row, spanning both passes
- *    (`spanMinutes` 120, `isDstExpanded`). Rendering it as two rows would need
- *    two rows with the same `00`-`60` label; rendering only one pass would
- *    drop real events. Minute geometry inside it stays proportional to the
- *    row's span, so an event there is never placed at the wrong end of the
- *    hour — it is only drawn at half the usual minute scale.
+ *  - ordinary day: 24 rows, 0..60 each;
+ *  - spring forward: no row at all for a wall hour the clock skipped entirely,
+ *    so `rowIndex` and `hour` stop agreeing. A zone whose transition falls
+ *    mid-hour (Australia/Lord_Howe jumps 02:00 -> 02:30) keeps the surviving
+ *    part as a partial row — axis 30..60 — rather than dropping the hour or
+ *    stretching its neighbour over the gap;
+ *  - fall back: the repeated wall hour becomes *two* rows with the same label,
+ *    the second flagged `isRepeatedHour`. One double-width row would have to
+ *    draw 120 real minutes on a 60-minute axis, which is exactly the
+ *    "horizontal length lies about duration" failure this view exists to
+ *    avoid; two rows keep every minute at its true scale.
+ *
+ * Row starts always come from the zone's own wall clock, never from
+ * `rangeStart + hour * 3_600_000`.
  */
 export function computeHourRows(rangeStart: number, rangeEnd: number, timeZone: string): HourMinuteRow[] {
-    const dayWall = utcMsToWallTime(rangeStart, timeZone);
-    const starts: { hour: number; startUtcMs: number; }[] = [];
+    const rows: HourMinuteRow[] = [];
+    let cursor = rangeStart;
 
-    for (let hour = 0; hour < 24; hour++) {
-        const wall = { ...dayWall, hour, minute: 0, second: 0 };
-        if (!wallTimeExists(wall, timeZone)) continue; // spring-forward gap
-        const startUtcMs = wallTimeToUtcMs(wall, timeZone);
-        if (startUtcMs < rangeStart || startUtcMs >= rangeEnd) continue;
-        if (starts.length > 0 && startUtcMs <= starts[starts.length - 1].startUtcMs) continue;
-        starts.push({ hour, startUtcMs });
-    }
+    // A day has at most 24 rows plus one per transition; the bound only stops a
+    // pathological zone from looping forever.
+    for (let guard = 0; cursor < rangeEnd && guard < 48; guard++) {
+        const wall = utcMsToWallTime(cursor, timeZone);
+        const startMinute = wall.minute + wall.second / 60;
+        // Where this row would end if the clock ran on undisturbed...
+        const wallHourEnd = cursor + (60 - startMinute) * MINUTE_MS;
+        // ...and where it actually next reads HH+1:00. A skipped or repeated
+        // hour makes the latter useless (not after `cursor`, or further off
+        // than a whole hour of real time), and the undisturbed end wins.
+        const nextHourStart = wallTimeToUtcMs({ ...wall, hour: wall.hour + 1, minute: 0, second: 0 }, timeZone);
+        const boundary = nextHourStart > cursor && nextHourStart < wallHourEnd ? nextHourStart : wallHourEnd;
+        const endUtcMs = Math.min(boundary, rangeEnd);
+        const spanMinutes = (endUtcMs - cursor) / MINUTE_MS;
 
-    return starts.map((s, index) => {
-        const endUtcMs = index + 1 < starts.length ? starts[index + 1].startUtcMs : rangeEnd;
-        const spanMinutes = (endUtcMs - s.startUtcMs) / MINUTE_MS;
-        return {
-            rowIndex: index,
-            hour: s.hour,
-            startUtcMs: s.startUtcMs,
+        rows.push({
+            rowIndex: rows.length,
+            hour: wall.hour,
+            startUtcMs: cursor,
             endUtcMs,
+            startMinute,
+            endMinute: startMinute + spanMinutes,
             spanMinutes,
-            isDstExpanded: spanMinutes > 60,
+            isRepeatedHour: rows.length > 0 && rows[rows.length - 1].hour === wall.hour,
             laneCount: 1,
             fragments: [],
-        };
-    });
+        });
+        cursor = endUtcMs;
+    }
+
+    return rows;
 }
 
 interface LaneItem {
@@ -198,7 +224,7 @@ function workingBand(
     endMinutes: number | undefined,
 ): { start: number; end: number; } | undefined {
     if (startMinutes === undefined || endMinutes === undefined) return undefined;
-    const clamp = (v: number) => Math.max(0, Math.min(row.spanMinutes, v));
+    const clamp = (v: number) => Math.max(row.startMinute, Math.min(row.endMinute, v));
     const start = clamp(startMinutes - row.hour * 60);
     const end = clamp(endMinutes - row.hour * 60);
     return end > start ? { start, end } : undefined;
@@ -264,8 +290,11 @@ export function layoutHourMinuteGrid(
                 entry,
                 hour: row.hour,
                 rowIndex: row.rowIndex,
-                startMinute: (fragStart - row.startUtcMs) / MINUTE_MS,
-                endMinute: (fragEnd - row.startUtcMs) / MINUTE_MS,
+                // Positions on the hour's own axis, so a row the clock entered
+                // late (a mid-hour DST jump) still draws its events at their
+                // true minute rather than flush against the row's left edge.
+                startMinute: row.startMinute + (fragStart - row.startUtcMs) / MINUTE_MS,
+                endMinute: row.startMinute + (fragEnd - row.startUtcMs) / MINUTE_MS,
                 laneIndex,
                 laneCount: 1, // filled in below, once the row's lanes are known
                 isFirst: false,

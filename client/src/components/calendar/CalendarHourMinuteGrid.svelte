@@ -17,12 +17,18 @@
 import type { DayHeader } from "../../services/calendar/calendarDayHeaders";
 import { formatDragMoveLabel, formatDragResizeLabel, formatDuration } from "../../services/calendar/calendarDragLabel";
 import type { CalendarEntry } from "../../services/calendar/calendarEntries";
-import { type HourMinuteLayout, shiftInstant } from "../../services/calendar/calendarHourMinuteLayout";
+import {
+    DEFAULT_TIMED_DURATION_MS,
+    type HourMinuteLayout,
+    shiftInstant,
+} from "../../services/calendar/calendarHourMinuteLayout";
 import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 
 const MIN_DURATION_MS = 5 * 60 * 1000;
 const LANE_HEIGHT_PX = 22;
 const KEYBOARD_STEP_MINUTES = 15;
+/** Every row's minute track spans one whole hour, whatever slice of it the row itself covers. */
+const MINUTES_PER_ROW = 60;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MINUTE_TICKS = [0, 15, 30, 45];
 
@@ -72,7 +78,6 @@ let drag = $state<{
     startRowIndex: number
     originStartMs: number
     originDurationMs: number
-    spanMinutes: number
 } | undefined>(undefined);
 
 let dragLabel = $state<string | undefined>(undefined);
@@ -101,6 +106,11 @@ function rowIndexAtClientY(clientY: number): number {
     return index;
 }
 
+/** The duration `layoutHourMinuteGrid` drew this entry with. */
+function renderedDurationMs(entry: CalendarEntry): number {
+    return Math.max(MIN_DURATION_MS, entry.durationMs ?? DEFAULT_TIMED_DURATION_MS);
+}
+
 function beginDrag(kind: "move" | "resize", entry: CalendarEntry, rowIndex: number, e: PointerEvent) {
     if (kind === "move" && !isStartWritable(entry)) return;
     if (kind === "resize" && !isDurationWritable(entry)) return;
@@ -114,10 +124,10 @@ function beginDrag(kind: "move" | "resize", entry: CalendarEntry, rowIndex: numb
         startClientX: e.clientX,
         startRowIndex: rowIndex,
         originStartMs: entry.startMs ?? layout.rows[0]?.startUtcMs ?? 0,
-        originDurationMs: entry.durationMs ?? MIN_DURATION_MS,
-        // The row the gesture began in sets the minute scale; only a
-        // DST-expanded row differs from the usual 60 (see the layout module).
-        spanMinutes: layout.rows[rowIndex]?.spanMinutes ?? 60,
+        // The length the entry is actually drawn with (the layout's own
+        // default when the row carries none), so releasing a resize without
+        // moving commits exactly what was already on screen.
+        originDurationMs: renderedDurationMs(entry),
     };
 }
 
@@ -126,7 +136,7 @@ function dragDeltaMinutes(e: PointerEvent): number {
     if (!drag) return 0;
     const width = trackWidthPx();
     if (width <= 0) return 0;
-    return Math.round(((e.clientX - drag.startClientX) / width) * drag.spanMinutes);
+    return Math.round(((e.clientX - drag.startClientX) / width) * MINUTES_PER_ROW);
 }
 
 function dragDeltaRows(e: PointerEvent): number {
@@ -215,7 +225,7 @@ function onResizeKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (!step) return;
     e.preventDefault();
     e.stopPropagation(); // prevent bubbling to onEntryKeydown
-    const currentDurationMs = entry.durationMs ?? MIN_DURATION_MS;
+    const currentDurationMs = renderedDurationMs(entry);
     const newEnd = shiftInstant(layout.rows, entry.startMs + currentDurationMs, step.rows, step.minutes);
     onKeyboardResize(entry, Math.max(MIN_DURATION_MS, newEnd - entry.startMs));
 }
@@ -297,20 +307,22 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
         {#each layout.rows as row (row.rowIndex)}
             <div
                 class="hour-row"
-                class:dst-expanded={row.isDstExpanded}
-                data-testid={`calendar-hour-row-${row.hour}`}
+                class:repeated-hour={row.isRepeatedHour}
+                data-testid={row.isRepeatedHour ? `calendar-hour-row-${row.hour}-repeated` : `calendar-hour-row-${row.hour}`}
                 data-lane-count={row.laneCount}
                 style={`height: ${row.laneCount * LANE_HEIGHT_PX}px`}
                 bind:this={rowEls[row.rowIndex]}
             >
-                <div class="hour-gutter">{String(row.hour).padStart(2, "0")}</div>
+                <div class="hour-gutter" title={row.isRepeatedHour ? "Repeated hour (DST)" : undefined}>
+                    {String(row.hour).padStart(2, "0")}{row.isRepeatedHour ? "*" : ""}
+                </div>
                 <div class="minute-track" bind:this={trackEls[row.rowIndex]}>
                     {#if row.workingStartMinute !== undefined && row.workingEndMinute !== undefined}
                         <div
                             class="working-hours-band"
                             data-testid={`calendar-hour-working-band-${row.hour}`}
-                            style={`left: ${(row.workingStartMinute / row.spanMinutes) * 100}%; width: ${
-                                ((row.workingEndMinute - row.workingStartMinute) / row.spanMinutes) * 100
+                            style={`left: ${(row.workingStartMinute / MINUTES_PER_ROW) * 100}%; width: ${
+                                ((row.workingEndMinute - row.workingStartMinute) / MINUTES_PER_ROW) * 100
                             }%`}
                         ></div>
                     {/if}
@@ -327,8 +339,8 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                             : `calendar-entry-fragment-${f.entry.key}-${f.hour}`}
                             data-entry-key={f.entry.key}
                             data-hour={f.hour}
-                            style={`left: ${(f.startMinute / row.spanMinutes) * 100}%; width: ${
-                                ((f.endMinute - f.startMinute) / row.spanMinutes) * 100
+                            style={`left: ${(f.startMinute / MINUTES_PER_ROW) * 100}%; width: ${
+                                ((f.endMinute - f.startMinute) / MINUTES_PER_ROW) * 100
                             }%; top: ${f.laneIndex * LANE_HEIGHT_PX}px; height: ${LANE_HEIGHT_PX - 2}px`}
                             onpointerdown={(e) => {
                                 beginDrag("move", f.entry, row.rowIndex, e);
@@ -365,8 +377,8 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                                     tabindex="0"
                                     aria-orientation="horizontal"
                                     aria-valuemin={MIN_DURATION_MS / 60000}
-                                    aria-valuenow={(f.entry.durationMs ?? MIN_DURATION_MS) / 60000}
-                                    aria-valuetext={formatDuration(f.entry.durationMs ?? MIN_DURATION_MS)}
+                                    aria-valuenow={renderedDurationMs(f.entry) / 60000}
+                                    aria-valuetext={formatDuration(renderedDurationMs(f.entry))}
                                     aria-label={`Resize ${f.entry.title}`}
                                     class="resize-handle"
                                     data-testid={`calendar-entry-resize-${f.entry.key}`}
@@ -464,7 +476,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
     box-sizing: border-box;
 }
 
-.hour-row.dst-expanded .hour-gutter {
+.hour-row.repeated-hour .hour-gutter {
     color: #b45309;
 }
 

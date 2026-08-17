@@ -706,13 +706,19 @@ never repeats its own name down the rows.
 
 Hour rows come from the calendar's timezone through the same DST-safe
 wall-clock conversion the range itself uses (§6.5), never from
-`dayStart + hour * 3_600_000`. A spring-forward day simply has no row for the
-skipped wall hour; a fall-back day keeps one row for the repeated hour,
-spanning both passes and flagged as expanded, with minute geometry
-proportional to that row's real span. Both are documented rendering
-constraints, not write behaviour: drag/resize arithmetic is expressed in row
-starts plus a minute offset, so a move or resize across a transition writes
-the instant the wall clock actually names rather than one an hour off.
+`dayStart + hour * 3_600_000`. The day is walked forward: each row starts where
+the previous one ended and is labelled by the wall clock's own reading there,
+so the rows tile the window exactly while no row ever covers more elapsed time
+than its 00-60 axis can honestly show. A wall hour the clock skipped entirely
+gets no row; a wall hour the clock repeated gets _two_ rows with the same
+label, the second marked as the repeat — one double-width row would draw 120
+real minutes on a 60-minute axis, which is the very failure this view exists to
+avoid. A zone whose transition falls mid-hour (Australia/Lord_Howe jumps
+02:00 -> 02:30) keeps the surviving part as a partial row occupying only its
+real slice of the axis, so a 02:30 event is still drawn at the 30-minute mark.
+None of this is write behaviour: drag/resize arithmetic is expressed in row
+starts plus a minute offset, so a move or resize across a transition writes the
+instant the wall clock actually names rather than one an hour off.
 
 Move and resize resolve vertical (hour rows) and horizontal (minutes) travel
 into one continuous wall-clock destination and cross hour edges naturally —

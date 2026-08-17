@@ -287,19 +287,74 @@ describe("DST transition days", () => {
         expect(frag.startMinute).toBe(30);
     });
 
-    it("absorbs the repeated wall hour into one expanded row on a fall-back day", () => {
+    it("gives a repeated wall hour two full rows on a fall-back day, keeping the minute scale exact", () => {
         // 2026-11-01: America/New_York repeats 01:00, a 25-hour day.
         const start = Date.parse("2026-11-01T04:00:00Z"); // local midnight EDT
         const end = Date.parse("2026-11-02T05:00:00Z"); // local midnight EST (25h later)
         const rows = computeHourRows(start, end, NY);
         expect(end - start).toBe(25 * HOUR_MS);
-        expect(rows).toHaveLength(24);
-        const repeated = rows.find((r) => r.hour === 1)!;
-        expect(repeated.spanMinutes).toBe(120);
-        expect(repeated.isDstExpanded).toBe(true);
-        expect(rows.filter((r) => r.isDstExpanded)).toHaveLength(1);
+        expect(rows).toHaveLength(25);
+        const ones = rows.filter((r) => r.hour === 1);
+        expect(ones).toHaveLength(2);
+        // Never a double-width row: 120 real minutes drawn on a 60-minute axis
+        // is exactly the "length lies about duration" failure this view avoids.
+        expect(ones.every((r) => r.spanMinutes === 60 && r.startMinute === 0 && r.endMinute === 60)).toBe(true);
+        expect(ones[0].isRepeatedHour).toBe(false);
+        expect(ones[1].isRepeatedHour).toBe(true);
+        expect(rows.filter((r) => r.isRepeatedHour)).toHaveLength(1);
         expect(rows[rows.length - 1].endUtcMs).toBe(end);
         for (let i = 1; i < rows.length; i++) expect(rows[i].startUtcMs).toBe(rows[i - 1].endUtcMs);
+    });
+
+    it("puts each pass of a repeated hour in its own row, at its own minute", () => {
+        const start = Date.parse("2026-11-01T04:00:00Z");
+        const end = Date.parse("2026-11-02T05:00:00Z");
+        // 01:30 EDT (05:30Z) and 01:30 EST (06:30Z) are two distinct instants
+        // that read the same on the wall clock.
+        const first = entry({
+            key: "edt",
+            allDay: false,
+            startMs: Date.parse("2026-11-01T05:30:00Z"),
+            durationMs: 15 * MINUTE_MS,
+        });
+        const second = entry({
+            key: "est",
+            allDay: false,
+            startMs: Date.parse("2026-11-01T06:30:00Z"),
+            durationMs: 15 * MINUTE_MS,
+        });
+        const l = layoutHourMinuteGrid([first, second], start, end, NY);
+        const rows = l.rows.filter((r) => r.hour === 1);
+        expect(rows[0].fragments.map((f) => f.entry.key)).toEqual(["edt"]);
+        expect(rows[1].fragments.map((f) => f.entry.key)).toEqual(["est"]);
+        // Both at :30, both a quarter of the row wide — the true minute scale.
+        expect(rows[0].fragments[0].startMinute).toBe(30);
+        expect(rows[1].fragments[0].startMinute).toBe(30);
+    });
+
+    it("keeps the surviving part of a wall hour when a zone jumps mid-hour", () => {
+        // Australia/Lord_Howe shifts by 30 minutes: on 2026-10-04 the clock
+        // jumps 02:00 -> 02:30, so 02:00-02:29 never happens but 02:30-02:59
+        // does. That half hour must stay on its own `02` row rather than being
+        // dropped or absorbed into the `01` row below it.
+        const LH = "Australia/Lord_Howe";
+        const start = Date.parse("2026-10-03T13:30:00Z"); // local midnight, +10:30
+        const end = Date.parse("2026-10-04T13:00:00Z"); // next local midnight, +11:00
+        const rows = computeHourRows(start, end, LH);
+        expect(end - start).toBe(23.5 * HOUR_MS);
+        const hourOne = rows.find((r) => r.hour === 1)!;
+        const hourTwo = rows.find((r) => r.hour === 2)!;
+        expect([hourOne.startMinute, hourOne.endMinute]).toEqual([0, 60]);
+        expect([hourTwo.startMinute, hourTwo.endMinute]).toEqual([30, 60]);
+        expect(hourTwo.spanMinutes).toBe(30);
+        for (let i = 1; i < rows.length; i++) expect(rows[i].startUtcMs).toBe(rows[i - 1].endUtcMs);
+
+        // An event in the surviving half draws at its real wall minute.
+        const e = entry({ key: "a", allDay: false, startMs: hourTwo.startUtcMs, durationMs: 15 * MINUTE_MS });
+        const l = layoutHourMinuteGrid([e], start, end, LH);
+        const frag = l.rows.flatMap((r) => r.fragments)[0];
+        expect(frag.hour).toBe(2);
+        expect([frag.startMinute, frag.endMinute]).toEqual([30, 45]);
     });
 
     it("shifts a start across a spring-forward gap without losing or gaining an hour", () => {
