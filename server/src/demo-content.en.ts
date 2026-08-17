@@ -164,6 +164,8 @@ export function demoContentEn(): DemoLocaleContent {
                 lines: [
                     "Select text with the mouse or with Shift+Arrow keys.",
                     "Selections can span multiple items: keep extending past the end of an item.",
+                    "Drag in either direction: selecting bottom-to-top highlights exactly the same text as top-to-bottom.",
+                    "This line is deliberately long so that it wraps onto more than one line at most window widths; select part of it and the highlight follows each rendered line instead of running past the right edge.",
                     "On a phone or tablet:",
                     "  Tap any character to put the caret there and open the keyboard.",
                     "  Press and hold to select the word under your finger.",

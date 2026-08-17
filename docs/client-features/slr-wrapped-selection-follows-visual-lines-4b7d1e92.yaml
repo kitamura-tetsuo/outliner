@@ -1,0 +1,13 @@
+id: SLR-4b7d1e92
+title: Wrapped selection follows visual lines
+title-ja: 折り返し選択が表示行に沿う
+description: A selection inside an item whose text wraps is drawn as one highlight per rendered visual line, derived from the DOM range geometry, instead of a single unwrapped rectangle that runs past the right edge of the item.
+category: selection-range
+status: implemented
+acceptance:
+- A selection contained in one visual line still renders as a single fragment
+- A selection spanning wrapped lines renders one highlight fragment per visual line
+- No selection fragment extends beyond the rendered text box of the item
+tests:
+- client/e2e/core/slr-wrapped-selection-follows-visual-lines-4b7d1e92.spec.ts
+- client/src/lib/selectionGeometry.test.ts

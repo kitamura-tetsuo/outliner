@@ -7,6 +7,16 @@ import { createEventDispatcher, onDestroy, onMount } from 'svelte';
 import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStore.svelte';
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 import { escapeId, getMeasurementSpan } from '../utils/domUtils';
+import {
+    convertClientRectsToOverlayRects,
+    createRangeForOffsets,
+    findTextPositionInElement,
+    getItemSelectionInterval,
+    mergeRectsIntoLines,
+    normalizeSelectionByVisualOrder,
+    type NormalizedSelectionRange,
+    type OverlayRect,
+} from '../lib/selectionGeometry';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 import { hasStructuredClipboardSelection, isEditorClipboardEvent } from '../lib/KeyEventHandler';
@@ -418,6 +428,9 @@ function measureTextWidthCanvas(itemId: string, text: string): number {
     return m.width || 0;
 }
 
+// Compensation for the .outliner-item's padding-top, shared by caret and selection geometry
+const SELECTION_TOP_ADJUST = 4;
+
 // Function to calculate pixel position of selection range
 function calculateCursorPixelPosition(itemId: string, offset: number): { left: number; top: number } | null {
     const itemInfo = positionMap[itemId];
@@ -452,54 +465,14 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const contentRect = contentContainer?.getBoundingClientRect() || textRect;
             // Calculate position relative to the tree container
             const relativeLeft = contentRect.left - treeContainerRect.left;
-            // Subtract 4px to compensate for the .outliner-item's padding-top
-            const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
+            // Compensate for the .outliner-item's padding-top
+            const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - SELECTION_TOP_ADJUST;
             return { left: relativeLeft, top: relativeTop };
         }
 
-        // Find the correct text node and offset for the given character position
-        const findTextPosition = (element: Node, targetOffset: number): { node: Text, offset: number } | null => {
-            if (targetOffset < 0) return null;
-            let currentOffset = 0;
-            let lastTextNode: Text | null = null;
-
-            const walker = document.createTreeWalker(
-                element,
-                NodeFilter.SHOW_TEXT,
-                {
-                    acceptNode: function() {
-                        return NodeFilter.FILTER_ACCEPT;
-                    }
-                }
-            );
-
-            while (walker.nextNode()) {
-                const textNode = walker.currentNode as Text;
-                lastTextNode = textNode;
-                const textLength = textNode.textContent?.length || 0;
-
-                if (targetOffset < currentOffset + textLength) {
-                    return {
-                        node: textNode,
-                        offset: targetOffset - currentOffset
-                    };
-                }
-
-                currentOffset += textLength;
-            }
-
-            if (targetOffset === currentOffset && lastTextNode) {
-                return {
-                    node: lastTextNode,
-                    offset: lastTextNode.textContent?.length || 0
-                };
-            }
-
-            return null;
-        };
-
-        // Word wrap support: Prioritize Range API
-        const textPosition = findTextPosition(textElement, offset);
+        // Word wrap support: Prioritize Range API.
+        // The same offset -> DOM position mapping is used by the selection fragments below.
+        const textPosition = findTextPositionInElement(textElement, offset);
         if (textPosition) {
             const range = document.createRange();
             const safeOffset = Math.max(0, Math.min(textPosition.offset, textPosition.node.textContent?.length || 0));
@@ -510,8 +483,8 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
             const caretRect = rects.length > 0 ? rects[0] : range.getBoundingClientRect();
             // Calculate position relative to the tree container (not viewport)
             const relativeLeft = caretRect.left - treeContainerRect.left;
-            // Subtract 4px to compensate for the .outliner-item's padding-top
-            const relativeTop = caretRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
+            // Compensate for the .outliner-item's padding-top
+            const relativeTop = caretRect.top - treeContainerRect.top + treeContainer.scrollTop - SELECTION_TOP_ADJUST;
             return { left: relativeLeft, top: relativeTop };
         }
 
@@ -522,8 +495,8 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
         // Calculate position relative to the tree container
         const relativeLeft = (contentRect.left - treeContainerRect.left) + cursorWidth;
-        // Subtract 4px to compensate for the .outliner-item's padding-top
-        const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
+        // Compensate for the .outliner-item's padding-top
+        const relativeTop = contentRect.top - treeContainerRect.top + treeContainer.scrollTop - SELECTION_TOP_ADJUST;
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`Cursor for ${itemId} at offset ${offset}:`, { relativeLeft, relativeTop });
         }
@@ -534,27 +507,33 @@ function calculateCursorPixelPosition(itemId: string, offset: number): { left: n
     }
 }
 
-// Function to calculate pixel position of selection range
-function calculateSelectionPixelRange(
+/**
+ * Calculate the visual rectangles covering a selected character interval of one item.
+ *
+ * A selection that wraps spans several visual lines, so this returns one rectangle per
+ * line rather than a single unwrapped box. Geometry comes from the DOM Range API, which
+ * already knows the real layout; the Canvas measurement below is only a fallback for
+ * environments without layout (jsdom) and is clipped to the rendered text box.
+ */
+function calculateSelectionPixelFragments(
     itemId: string,
     startOffset: number,
-    endOffset: number,
-    isReversed?: boolean
-): { left: number; top: number; width: number; height: number } | null {
+    endOffset: number
+): OverlayRect[] {
     // Do not display if start and end positions are the same
     if (startOffset === endOffset) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            logger.debug(`calculateSelectionPixelRange: zero-width selection for ${itemId}`);
+            logger.debug(`calculateSelectionPixelFragments: zero-width selection for ${itemId}`);
         }
-        return null;
+        return [];
     }
 
     const itemInfo = positionMap[itemId];
     if (!itemInfo) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            logger.debug(`calculateSelectionPixelRange: no itemInfo for ${itemId}`, Object.keys(positionMap));
+            logger.debug(`calculateSelectionPixelFragments: no itemInfo for ${itemId}`, Object.keys(positionMap));
         }
-        return null;
+        return [];
     }
 
     const { textElement, lineHeight } = itemInfo;
@@ -563,71 +542,98 @@ function calculateSelectionPixelRange(
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) {
         if (typeof window !== 'undefined' && window.DEBUG_MODE) {
-            logger.debug(`calculateSelectionPixelRange: tree container not found for ${itemId}`);
+            logger.debug(`calculateSelectionPixelFragments: tree container not found for ${itemId}`);
         }
-        return null;
+        return [];
     }
 
     try {
         // Always measure anew to get the latest position information
-        // Absolute position of text element
         const textRect = textElement.getBoundingClientRect();
-
-        // Absolute position of tree container
         const treeContainerRect = treeContainer.getBoundingClientRect();
-
-        // Get text content
         const text = textElement.textContent || '';
 
         // Swap if start and end are reversed
-        const actualStart = Math.min(startOffset, endOffset);
-        const actualEnd = Math.max(startOffset, endOffset);
+        const actualStart = Math.max(0, Math.min(text.length, Math.min(startOffset, endOffset)));
+        const actualEnd = Math.max(0, Math.min(text.length, Math.max(startOffset, endOffset)));
 
+        const range = createRangeForOffsets(textElement, actualStart, actualEnd);
+        if (range) {
+            const fragments = mergeRectsIntoLines(
+                convertClientRectsToOverlayRects(range.getClientRects(), treeContainerRect, {
+                    scrollTop: treeContainer.scrollTop,
+                    topAdjust: SELECTION_TOP_ADJUST,
+                    // Wrapped highlights must never run past the rendered text box
+                    clipLeft: textRect.left,
+                    clipRight: textRect.right,
+                })
+            );
+
+            if (fragments.length > 0) {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug(`Selection fragments for ${itemId} from ${actualStart} to ${actualEnd}:`, fragments);
+                }
+                return fragments;
+            }
+        }
+
+        // Fallback: measure with Canvas (no DOM geometry available, e.g. jsdom)
         const textBeforeStart = text.substring(0, actualStart);
         const selectedText = text.substring(actualStart, actualEnd);
-
-        // Calculate start position
         const startX = measureTextWidthCanvas(itemId, textBeforeStart);
+        const measuredWidth = measureTextWidthCanvas(itemId, selectedText) || 5; // Minimum width
 
-        // Calculate selection width
-        const width = measureTextWidthCanvas(itemId, selectedText) || 5; // Minimum width
-
-        // Distance from the left edge of the text element
         const contentContainer = textElement.closest('.item-content-container');
         const contentRect = contentContainer?.getBoundingClientRect() || textRect;
-
-        // Position relative to tree container
         const contentLeft = contentRect.left - treeContainerRect.left;
 
-        // Final position calculation
         const relativeLeft = contentLeft + startX;
-        // Subtract 4px to compensate for the .outliner-item's padding-top
-        const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop - 4;
-
-        // Use line height for height
+        const relativeTop = textRect.top - treeContainerRect.top + treeContainer.scrollTop - SELECTION_TOP_ADJUST;
+        // Keep the fallback inside the rendered text box as well
+        const availableWidth = (textRect.right - treeContainerRect.left) - relativeLeft;
+        const width = availableWidth > 0 ? Math.min(measuredWidth, availableWidth) : measuredWidth;
         const height = lineHeight || textRect.height || 20;
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Selection for ${itemId} from ${actualStart} to ${actualEnd}:`, {
+            logger.debug(`Selection (fallback) for ${itemId} from ${actualStart} to ${actualEnd}:`, {
                 relativeLeft, relativeTop, width, height,
-                contentLeft,
-                textRectTop: textRect.top,
-                treeContainerTop: treeContainerRect.top,
-                selectedText: selectedText.replaceAll('\n', '\\n'),
-                isReversed
+                selectedText: selectedText.replaceAll('\n', '\\n')
             });
         }
 
-        return {
-            left: relativeLeft,
-            top: relativeTop,
-            width,
-            height
-        };
+        return [{ left: relativeLeft, top: relativeTop, width, height }];
     } catch (error) {
           logger.error({ error }, "Error calculating selection range");
-        return null;
+        return [];
     }
+}
+
+/**
+ * Compare two items by document order. Negative when `a` comes first.
+ * Unknown items sort last so a stale id cannot flip the order of the remaining one.
+ */
+function compareItemsInDom(a: string, b: string): number {
+    if (a === b) return 0;
+    const aEl = document.querySelector(`[data-item-id="${escapeId(a)}"]`);
+    const bEl = document.querySelector(`[data-item-id="${escapeId(b)}"]`);
+    if (!aEl || !bEl) return aEl ? -1 : bEl ? 1 : 0;
+
+    const comparison = aEl.compareDocumentPosition(bEl);
+    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+    if (comparison & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+    return 0;
+}
+
+/** Normalize a selection to visual document order, independently of anchor/focus direction. */
+function normalizeSelection(sel: SelectionRange): NormalizedSelectionRange {
+    return normalizeSelectionByVisualOrder(sel, compareItemsInDom);
+}
+
+/** Selected interval of one item within a normalized multi-item selection. */
+function selectionIntervalForItem(itemId: string, normalized: NormalizedSelectionRange) {
+    const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`);
+    const textLength = textEl?.textContent?.length || 0;
+    return getItemSelectionInterval(itemId, normalized, textLength);
 }
 
 // Function to update position mapping when DOM changes
@@ -1535,16 +1541,18 @@ function handlePaste(event: ClipboardEvent) {
                 <!-- In case of rectangular selection (box selection) -->
                 {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
 
-                    {@const rect = calculateSelectionPixelRange(range.itemId, range.startOffset, range.endOffset, sel.isReversed)}
+                    {@const fragments = calculateSelectionPixelFragments(range.itemId, range.startOffset, range.endOffset)}
 
-                    {#if rect}
+                    {#each fragments as rect, fragmentIndex (`${selKey}-${range.itemId}-${index}-${fragmentIndex}`)}
                         {@const isPageTitle = range.itemId === "page-title"}
                         {@const isFirstRange = index === 0}
                         {@const isLastRange = index === sel.boxSelectionRanges.length - 1}
                         {@const isStartItem = range.itemId === sel.startItemId}
                         {@const isEndItem = range.itemId === sel.endItemId}
+                        {@const isFirstFragment = fragmentIndex === 0}
+                        {@const isLastFragment = fragmentIndex === fragments.length - 1}
 
-                        {@const boxKey = `${selKey}:${index}`}
+                        {@const boxKey = `${selKey}:${index}:${fragmentIndex}`}
 
 
                         <!-- Temporary marker (for test detection). Exists only while isUpdating=true -->
@@ -1561,11 +1569,13 @@ function handlePaste(event: ClipboardEvent) {
                             class:selection-box-last={isLastRange}
                             class:selection-box-start={isStartItem}
                             class:selection-box-end={isEndItem}
+                            data-selection-item-id={range.itemId}
+                            data-selection-fragment={fragmentIndex}
                             style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                         ></div>
 
                         <!-- Markers for start and end positions -->
-                        {#if isStartItem}
+                        {#if isStartItem && isFirstFragment}
                             <div
                                 class="selection-box-marker selection-box-start-marker"
                                 style="position:absolute; left:{rect.left - 2}px; top:{rect.top - 2}px; pointer-events:none; background-color:{selectionStyle.markerStart};"
@@ -1573,65 +1583,58 @@ function handlePaste(event: ClipboardEvent) {
                             ></div>
                         {/if}
 
-                        {#if isEndItem}
+                        {#if isEndItem && isLastFragment}
                             <div
                                 class="selection-box-marker selection-box-end-marker"
                                 style="position:absolute; left:{rect.left + rect.width - 4}px; top:{rect.top + rect.height - 4}px; pointer-events:none; background-color:{selectionStyle.markerEnd};"
                                 title="Selection end position"
                             ></div>
                         {/if}
-                    {/if}
+                    {/each}
                 {/each}
             {:else if sel.startItemId === sel.endItemId}
-                <!-- Single item selection -->
-                {@const rect = calculateSelectionPixelRange(sel.startItemId, sel.startOffset, sel.endOffset, sel.isReversed)}
-                {#if rect}
-                    {@const isPageTitle = sel.startItemId === "page-title"}
+                <!-- Single item selection: one fragment per visual line -->
+                {@const fragments = calculateSelectionPixelFragments(sel.startItemId, sel.startOffset, sel.endOffset)}
+                {@const isPageTitle = sel.startItemId === "page-title"}
+                {#each fragments as rect, fragmentIndex (`${selKey}-${fragmentIndex}`)}
+                        <!-- The direction marker belongs on the focus end only, not on every wrapped line -->
                         <div
                             class="selection"
                             class:page-title-selection={isPageTitle}
-                            class:selection-reversed={sel.isReversed}
-                            class:selection-forward={!sel.isReversed}
+                            class:selection-reversed={sel.isReversed && fragmentIndex === 0}
+                            class:selection-forward={!sel.isReversed && fragmentIndex === fragments.length - 1}
+                            data-selection-item-id={sel.startItemId}
+                            data-selection-fragment={fragmentIndex}
                             style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                         ></div>
-                {/if}
+                {/each}
             {:else}
                 <!-- Multi-item selection -->
                 {@const itemsInRange = getItemsInRange(sel.startItemId, sel.endItemId)}
 
                 {#if itemsInRange.length > 0}
-                    {@const forward = !sel.isReversed}
+                    <!-- Which characters are highlighted follows document order, not anchor/focus direction -->
+                    {@const normalized = normalizeSelection(sel)}
 
                     <!-- Draw selection range for each item within range -->
                     {#each itemsInRange as itemId (itemId)}
-                        {@const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`) as HTMLElement}
-                        {@const len = textEl?.textContent?.length || 0}
-
-                        <!-- offset calculation: start item, end item, others -->
-                        {@const startOff = itemId === sel.startItemId
-                            ? (forward ? sel.startOffset : 0)
-                            : itemId === sel.endItemId
-                            ? (forward ? 0 : sel.endOffset)
-                            : 0}
-                        {@const endOff = itemId === sel.startItemId
-                            ? (forward ? len : sel.startOffset)
-                            : itemId === sel.endItemId
-                            ? (forward ? sel.endOffset : len)
-                            : len}
+                        {@const interval = selectionIntervalForItem(itemId, normalized)}
 
                         <!-- Draw only if selection range actually exists -->
-                        {#if startOff !== endOff}
-                            {@const rect = calculateSelectionPixelRange(itemId, startOff, endOff, sel.isReversed)}
-                            {#if rect}
-                                {@const isPageTitle = itemId === 'page-title'}
+                        {#if interval}
+                            {@const fragments = calculateSelectionPixelFragments(itemId, interval.startOffset, interval.endOffset)}
+                            {@const isPageTitle = itemId === 'page-title'}
+                            {#each fragments as rect, fragmentIndex (`${selKey}-${itemId}-${fragmentIndex}`)}
                                 <div
                                     class="selection selection-multi-item"
                                     class:page-title-selection={isPageTitle}
-                                    class:selection-reversed={sel.isReversed && itemId === sel.startItemId}
-                                    class:selection-forward={!sel.isReversed && itemId === sel.endItemId}
+                                    class:selection-reversed={sel.isReversed && itemId === normalized.firstItemId && fragmentIndex === 0}
+                                    class:selection-forward={!sel.isReversed && itemId === normalized.lastItemId && fragmentIndex === fragments.length - 1}
+                                    data-selection-item-id={itemId}
+                                    data-selection-fragment={fragmentIndex}
                                     style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
                                 ></div>
-                            {/if}
+                            {/each}
                         {/if}
                     {/each}
                 {/if}
