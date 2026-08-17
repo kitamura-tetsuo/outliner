@@ -4,7 +4,7 @@ import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
 
-/** @feature DMO-6f2ad91c
+/** @feature FTR-6f2ad91c
  *  Title   : Demo page rename keeps its route
  *  Source  : docs/client-features.yaml
  *
@@ -49,7 +49,7 @@ async function expectRouteFor(page: Page, demoProject: string, title: string): P
     }).toPass({ timeout: 15000 });
 }
 
-test.describe("DMO-6f2ad91c: renaming the open demo page", () => {
+test.describe("FTR-6f2ad91c: renaming the open demo page", () => {
     test("moves the route to the new title and keeps the page open", async ({ page }) => {
         const original = uniqueTitle("Rename Demo");
         await createDemoPage(page, "demo", original);
