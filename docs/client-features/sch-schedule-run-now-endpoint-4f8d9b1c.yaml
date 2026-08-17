@@ -1,0 +1,13 @@
+id: SCH-4f8d9b1c
+name: sch-schedule-run-now-endpoint
+status: implemented
+title: Manual Schedule Execution Endpoint
+uuid: 4f8d9b1c-7e3f-4e9b-a1b2-c3d4e5f6a7b8
+description: 'Provides an authenticated HTTP endpoint (POST /api/schedules/run-now) on the Yjs server to run a schedule rule''s SQL immediately, bridging the client UI to the backend executor. The run uses the current time as the occurrence, records lastRunAt/lastRunStatus/lastRunError on the rule, works for disabled rules, and leaves the recurrence cursor (next_run_at, occurrence_seq, state) untouched.'
+type: backend
+tests:
+- client/src/services/schedule/scheduleRunService.test.ts
+- server/tests/scheduler/schedule-run-api.test.ts
+- server/tests/scheduler/schedule-run-api-mount.test.ts
+- server/tests/scheduler/scheduler-run-now.test.ts
+title-ja: スケジュール手動実行エンドポイント

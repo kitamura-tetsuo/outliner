@@ -191,6 +191,10 @@ export function demoContentJa(): DemoLocaleContent {
                         text:
                             "テーブルの Schedule タブ（たとえば [タスクと習慣] ページ）を開くと、自分でルールを作成できます。",
                     },
+                    {
+                        text:
+                            "Edit / Delete の左にある Run now を押すと、次回の実行を待たずにルールの SQL をその場で実行できます。定期実行のスケジュールは変わらず、ルールが無効でも実行できます。",
+                    },
                 ],
             },
             {
