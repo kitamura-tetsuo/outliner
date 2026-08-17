@@ -187,6 +187,41 @@ describe("mergeRectsIntoLines", () => {
         ]);
     });
 
+    it("keeps horizontally separated boxes on one line apart", () => {
+        // Bidirectional text can put two genuinely separate selected runs on the same line
+        const merged = mergeRectsIntoLines([
+            { left: 0, top: 0, width: 30, height: 20 },
+            { left: 90, top: 0, width: 40, height: 20 },
+        ]);
+
+        expect(merged).toEqual([
+            { left: 0, top: 0, width: 30, height: 20 },
+            { left: 90, top: 0, width: 40, height: 20 },
+        ]);
+    });
+
+    it("still merges across a hairline seam between inline boxes", () => {
+        const merged = mergeRectsIntoLines([
+            { left: 0, top: 0, width: 30, height: 20 },
+            { left: 30.5, top: 0, width: 20, height: 20 },
+        ]);
+
+        expect(merged).toEqual([{ left: 0, top: 0, width: 50.5, height: 20 }]);
+    });
+
+    it("merges a run that continues after a separated gap on the same line", () => {
+        const merged = mergeRectsIntoLines([
+            { left: 0, top: 0, width: 30, height: 20 },
+            { left: 90, top: 0, width: 40, height: 20 },
+            { left: 130, top: 0, width: 20, height: 20 },
+        ]);
+
+        expect(merged).toEqual([
+            { left: 0, top: 0, width: 30, height: 20 },
+            { left: 90, top: 0, width: 60, height: 20 },
+        ]);
+    });
+
     it("merges boxes of differing height on the same line", () => {
         const merged = mergeRectsIntoLines([
             { left: 0, top: 2, width: 30, height: 16 },

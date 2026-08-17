@@ -136,12 +136,18 @@ export function convertClientRectsToOverlayRects(
     return result;
 }
 
+/** Largest gap, in pixels, still treated as two boxes touching rather than being separated. */
+const FRAGMENT_JOIN_TOLERANCE = 1;
+
 /**
  * Merge rectangles that belong to the same visual line into a single fragment.
  *
  * Formatted text produces one rectangle per inline box, which would otherwise render as a
  * row of adjacent highlights with hairline seams between them. Rectangles are considered to
- * be on the same line when their vertical centers fall inside each other's span.
+ * be on the same line when their vertical centers fall inside each other's span, and are
+ * only merged when they also touch or overlap horizontally: a range over bidirectional text
+ * can put two genuinely separated runs on one line, and bridging them would highlight the
+ * unselected characters in between.
  */
 export function mergeRectsIntoLines(rects: OverlayRect[]): OverlayRect[] {
     if (rects.length <= 1) return [...rects];
@@ -155,8 +161,11 @@ export function mergeRectsIntoLines(rects: OverlayRect[]): OverlayRect[] {
         const sameLine = current !== undefined
             && center >= current.top
             && center <= current.top + current.height;
+        const touchesHorizontally = current !== undefined
+            && rect.left <= current.left + current.width + FRAGMENT_JOIN_TOLERANCE
+            && rect.left + rect.width >= current.left - FRAGMENT_JOIN_TOLERANCE;
 
-        if (!sameLine) {
+        if (!sameLine || !touchesHorizontally) {
             lines.push({ ...rect });
             continue;
         }

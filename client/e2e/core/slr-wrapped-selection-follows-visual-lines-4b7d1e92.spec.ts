@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features.yaml
  */
 import { expect, test } from "@playwright/test";
+import { pointForOffset } from "../utils/selectionGeometryHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 // Long enough to wrap over several visual lines at the default desktop viewport width
@@ -13,30 +14,6 @@ const WRAPPED_TEXT = "This item deliberately contains a very long sentence so th
     + "onto several visual lines, which is exactly the situation where a selection highlight used to be drawn "
     + "as a single unwrapped rectangle running far past the right edge of the item instead of following each "
     + "rendered line of the paragraph.";
-
-/** Viewport point at the left edge of the character at `offset`, using the real rendered layout. */
-async function pointForOffset(page: import("@playwright/test").Page, itemId: string, offset: number) {
-    return await page.evaluate(({ itemId, offset }) => {
-        const el = document.querySelector(`[data-item-id="${itemId}"] .item-text`);
-        if (!el) return undefined;
-
-        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-        let consumed = 0;
-        while (walker.nextNode()) {
-            const node = walker.currentNode as Text;
-            const length = node.textContent?.length ?? 0;
-            if (offset <= consumed + length) {
-                const range = document.createRange();
-                range.setStart(node, offset - consumed);
-                range.collapse(true);
-                const rect = range.getClientRects()[0] ?? range.getBoundingClientRect();
-                return { x: rect.left + 1, y: rect.top + rect.height / 2 };
-            }
-            consumed += length;
-        }
-        return undefined;
-    }, { itemId, offset });
-}
 
 test.describe("SLR-4b7d1e92: Wrapped selection follows visual lines", () => {
     let itemId: string;
@@ -58,8 +35,7 @@ test.describe("SLR-4b7d1e92: Wrapped selection follows visual lines", () => {
         expect(textBox.height).toBeGreaterThan(lineHeight * 1.5);
 
         // Drag from the first character to a point on the last visual line
-        const start = (await pointForOffset(page, itemId, 0))!;
-        expect(start).toBeTruthy();
+        const start = await pointForOffset(page, itemId, 0);
         await page.mouse.move(start.x, start.y);
         await page.mouse.down();
         await page.mouse.move(textBox.x + textBox.width * 0.3, textBox.y + textBox.height - 3, { steps: 10 });
@@ -97,8 +73,8 @@ test.describe("SLR-4b7d1e92: Wrapped selection follows visual lines", () => {
         await textEl.waitFor({ state: "visible" });
         const textBox = (await textEl.boundingBox())!;
 
-        const start = (await pointForOffset(page, itemId, 5))!;
-        const end = (await pointForOffset(page, itemId, 20))!;
+        const start = await pointForOffset(page, itemId, 5);
+        const end = await pointForOffset(page, itemId, 20);
         expect(start.y).toBe(end.y);
 
         await page.mouse.move(start.x, start.y);

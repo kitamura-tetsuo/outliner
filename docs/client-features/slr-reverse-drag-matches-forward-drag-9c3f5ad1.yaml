@@ -10,4 +10,5 @@ acceptance:
 - Partially selected first and last items are highlighted from the correct offsets
 tests:
 - client/e2e/core/slr-reverse-drag-matches-forward-drag-9c3f5ad1.spec.ts
+- client/e2e/core/slr-reverse-drag-single-item-9c3f5ad1.spec.ts
 - client/src/lib/selectionGeometry.test.ts
