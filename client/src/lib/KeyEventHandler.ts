@@ -1111,53 +1111,39 @@ export class KeyEventHandler {
             // open AliasPicker afterwards based on pre-detection flag
             if (shouldOpenAliasPickerAfterDefault) {
                 try {
-                    setTimeout(() => {
+                    queueMicrotask(() => {
                         try {
                             const w: unknown = typeof window !== "undefined"
                                 ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                 : null;
-                            const tryOpen = (attempt = 0) => {
+                            const activeId = store.getActiveItem?.();
+                            if (activeId) {
+                                (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
+                                    ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                 try {
-                                    const activeId = store.getActiveItem?.();
-                                    if (activeId) {
-                                        (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
-                                            ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
-                                        try {
-                                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                logger.debug(
-                                                    "KeyEventHandler(Post): showing AliasPicker for activeId",
-                                                    activeId,
-                                                    " after default handler. before=",
-                                                    earlyBeforeForLog,
-                                                );
-                                            }
-                                        } catch (_e) {
-                                            logger.error(_e);
-                                        }
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        logger.warn(
-                                            "KeyEventHandler(Post): active item not found to open AliasPicker",
+                                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                        logger.debug(
+                                            "KeyEventHandler(Post): showing AliasPicker for activeId",
+                                            activeId,
+                                            " after default handler. before=",
+                                            earlyBeforeForLog,
                                         );
                                     }
-                                } catch (e) {
-                                    logger.warn(
-                                        "KeyEventHandler(Post): error while trying to open AliasPicker via active item",
-                                        e,
-                                    );
+                                } catch (_e) {
+                                    logger.error(_e);
                                 }
-                            };
-                            tryOpen(0);
+                            } else {
+                                logger.warn(
+                                    "KeyEventHandler(Post): active item not found to open AliasPicker",
+                                );
+                            }
                         } catch (e) {
                             logger.warn(
                                 "KeyEventHandler(Post): failed to schedule AliasPicker open after default handler",
                                 e,
                             );
                         }
-                    }, 0);
+                    });
                 } catch (_e) {
                     logger.error(_e);
                 }
@@ -1208,51 +1194,37 @@ export class KeyEventHandler {
             // Post-processing to open AliasPicker after normal processing (cursor.onKeyDown etc.)
             if (shouldOpenAliasPickerAfterDefault) {
                 try {
-                    setTimeout(() => {
+                    queueMicrotask(() => {
                         try {
                             const w: unknown = typeof window !== "undefined"
                                 ? (window as Window & typeof globalThis & { [key: string]: unknown; })
                                 : null;
-                            const tryOpen = (attempt = 0) => {
+                            const activeId = store.getActiveItem?.();
+                            if (activeId) {
+                                (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
+                                    ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
                                 try {
-                                    const activeId = store.getActiveItem?.();
-                                    if (activeId) {
-                                        (((w as unknown as { aliasPickerStore?: typeof aliasPickerStore; })
-                                            ?.aliasPickerStore) ?? aliasPickerStore).show(activeId);
-                                        try {
-                                            if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                                                logger.debug(
-                                                    "KeyEventHandler(Post2): showing AliasPicker for activeId",
-                                                    activeId,
-                                                );
-                                            }
-                                        } catch (_e) {
-                                            logger.error(_e);
-                                        }
-                                        return;
-                                    }
-                                    if (attempt < 10) {
-                                        setTimeout(() => tryOpen(attempt + 1), 10);
-                                    } else {
-                                        logger.warn(
-                                            "KeyEventHandler(Post2): active item not found to open AliasPicker",
+                                    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                                        logger.debug(
+                                            "KeyEventHandler(Post2): showing AliasPicker for activeId",
+                                            activeId,
                                         );
                                     }
-                                } catch (e) {
-                                    logger.warn(
-                                        "KeyEventHandler(Post2): error while trying to open AliasPicker via active item",
-                                        e,
-                                    );
+                                } catch (_e) {
+                                    logger.error(_e);
                                 }
-                            };
-                            tryOpen(0);
+                            } else {
+                                logger.warn(
+                                    "KeyEventHandler(Post2): active item not found to open AliasPicker",
+                                );
+                            }
                         } catch (e) {
                             logger.warn(
                                 "KeyEventHandler(Post2): failed to schedule AliasPicker open after cursor.onKeyDown",
                                 e,
                             );
                         }
-                    }, 0);
+                    });
                 } catch (_e) {
                     logger.error(_e);
                 }
