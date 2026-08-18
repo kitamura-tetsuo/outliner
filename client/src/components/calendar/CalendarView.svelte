@@ -295,7 +295,16 @@ const session = createTableEngineSession({ projectDoc: project.ydoc, projectId }
 
 async function runQuery() {
     const generation = ++queryGeneration;
-    const outcome = await runCalendarQuery(session, pgSchema, settings.query, queryRange, timeZone);
+
+    // Extract derived variables to local variables before the await call to avoid
+    // reading a derived belonging to a now-destroyed effect, which could result in stale values.
+    const currentQuery = settings.query;
+    const currentRange = queryRange;
+    const currentTimeZone = timeZone;
+    const currentSettings = settings;
+    const currentRangeBounds = { startUtcMs: range.start, endUtcMs: range.end };
+
+    const outcome = await runCalendarQuery(session, pgSchema, currentQuery, currentRange, currentTimeZone);
     if (generation !== queryGeneration) return;
     if (outcome.result) {
         result = outcome.result;
@@ -303,7 +312,7 @@ async function runQuery() {
         // The query result is authoritative: drop any optimistic placement
         // whose row has now come back, whether or not it agrees with the
         // local guess (a concurrent remote move wins either way).
-        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, settings, timeZone, project, { startUtcMs: range.start, endUtcMs: range.end }));
+        optimisticOverrides = reconcileOptimisticOverrides(optimisticOverrides, buildCalendarEntries(result, currentSettings, currentTimeZone, project, currentRangeBounds));
     } else {
         queryError = outcome.error;
     }
