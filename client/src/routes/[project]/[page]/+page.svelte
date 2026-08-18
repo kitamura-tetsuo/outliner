@@ -28,7 +28,6 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { searchHistoryStore } from "../../../stores/SearchHistoryStore.svelte";
     import { pageViewStore } from "../../../stores/PageViewStore.svelte";
     import { store } from "../../../stores/store.svelte";
-    import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     // Get URL parameters (follow SvelteKit page store)
     // NOTE: Must reference the value of $page (not the store object).
@@ -586,22 +585,10 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
-        <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            ...(projectName ? [{ label: projectName, href: `/${encodeURIComponent(projectName)}` }] : []),
-            ...(pageName ? [{ label: pageName }] : [])
-        ]} />
-
-        <!-- Page Title and Search Button -->
-        <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">
-                {#if projectName && pageName}
-                    <span class="text-gray-600">{projectName} /</span>
-                    {pageName}
-                {:else}
-                    Page
-                {/if}
-            </h1>
+        <!-- Page identity lives in two places only: the global toolbar names the
+             project, the editor below owns the editable page title. This row
+             carries actions, never identity. -->
+        <div class="flex items-center justify-end">
             <div class="flex items-center space-x-2" data-testid="page-toolbar">
                 <button type="button"
                     onclick={toggleSearchPanel}

@@ -15,7 +15,6 @@ import { findPageByKey, isPageNamed, findPageByName as sharedFindPageByName } fr
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { store } from "../../../stores/store.svelte";
     import { yjsStore } from "../../../stores/yjsStore.svelte";
-    import Breadcrumb from "../../../components/Breadcrumb.svelte";
 
     const logger = getLogger("DemoPageView");
 
@@ -247,17 +246,10 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
 
 <main class="w-full max-w-7xl mx-auto px-4 py-8 md:px-8">
     <div class="mb-4">
-        <Breadcrumb items={[
-            { label: "Home", href: "/" },
-            { label: "Demo Project", href: projectBasePath(demoProject) },
-            { label: pageName }
-        ]} />
-
-        <div class="flex items-center justify-between">
-            <h1 class="text-2xl font-bold">
-                <span class="text-gray-600">{demoProject} /</span>
-                {pageName}
-            </h1>
+        <!-- Identity is the global toolbar's job (project) and the editor's
+             (page title); this row only carries actions. The demo notice below
+             conveys state, not identity, so it stays. -->
+        <div class="flex items-center justify-end">
             <div class="flex items-center space-x-2" data-testid="demo-page-toolbar">
                 <button type="button"
                     onclick={toggleSearchPanel}

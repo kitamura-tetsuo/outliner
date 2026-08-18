@@ -1,15 +1,15 @@
 id: NAV-0002
 title: Link function to project page
-description: Feature to display a link to the project page as breadcrumb navigation when displaying a page
+description: Every page view offers a way back to its project. Since HDR-6a4c2f1e the link lives in the global toolbar rather than in a breadcrumb above the editor - the toolbar names the open project and links to its page list - while the project page keeps its own "Home / project" breadcrumb.
 category: navigation
 status: implemented
 acceptance:
-- A link to home is displayed in breadcrumb navigation
-- A link to the project page is displayed in breadcrumb navigation
-- Breadcrumb navigation is displayed when displaying a page
-- Clicking the home link navigates to the home page
-- Clicking the project page link navigates to the project page
-- The current page name is displayed in breadcrumb navigation
+- A page view offers a link back to its project through the global toolbar
+- A page view renders no breadcrumb navigation
+- Clicking the home link on the project page navigates to the home page
+- Clicking the toolbar project name navigates to the project page
+- The project page displays a link to home in breadcrumb navigation
+- The toolbar project name matches the open project
 tests:
 - client/e2e/core/nav-link-function-to-project-page-a0e7d28a.spec.ts
 title-ja: プロジェクトページへのリンク機能

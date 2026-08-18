@@ -34,8 +34,9 @@ test.describe("Page Creation and Reload Persistence", () => {
         console.log(`Expecting URL pattern: ${expectedUrlPattern}`);
         await expect(page).toHaveURL(expectedUrlPattern);
 
-        // Wait for page to be ready
-        await expect(page.locator("h1")).toContainText(newPageName);
+        // Wait for page to be ready. The editable title in the editor is the
+        // page-title display; the page view renders no heading of its own.
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText(newPageName);
         await TestHelpers.waitForAppReady(page);
 
         // 5. Add some content
@@ -61,7 +62,7 @@ test.describe("Page Creation and Reload Persistence", () => {
         await expect(page).toHaveURL(expectedUrlPattern);
 
         // Wait for page to load again
-        await expect(page.locator("h1")).toContainText(newPageName);
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText(newPageName);
         await TestHelpers.waitForAppReady(page);
 
         // Check if content is still there

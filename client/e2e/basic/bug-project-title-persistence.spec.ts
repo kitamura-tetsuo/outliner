@@ -36,8 +36,9 @@ test.describe("Bug Fix Verification: Project title persistence", () => {
             skipAppReady: false,
         });
 
-        // Verify we are on the project page and title is correct in the header
-        await expect(page.locator("h1")).toContainText(projectName);
+        // Verify we are on the project page and the title is correct in the
+        // global header (the page view itself renders no heading).
+        await expect(page.getByTestId("toolbar-project-name")).toHaveText(projectName);
 
         // 2. Go to Home Page to see the Project Selector
         await page.goto("/");

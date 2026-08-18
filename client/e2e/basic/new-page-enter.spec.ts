@@ -37,8 +37,8 @@ test.describe("New Page Creation with Enter", () => {
         try {
             await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
         } catch {
-            console.log("Outliner not found, checking for page title in header as fallback verification");
-            await expect(page.locator("h1")).toContainText(newPageName);
+            console.log("Outliner not found, checking the editable page title as fallback verification");
+            await expect(page.locator(".outliner-item.page-title").first()).toContainText(newPageName);
         }
     });
 });

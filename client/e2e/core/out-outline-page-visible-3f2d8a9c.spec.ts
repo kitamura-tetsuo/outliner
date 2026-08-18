@@ -38,10 +38,11 @@ test("shows search box and at least one outliner item", async () => {
     await expect(items.first()).toBeVisible();
 });
 
-test("displays breadcrumb with project and page names", async () => {
-    const breadcrumb = page.locator("nav");
-    await expect(breadcrumb).toContainText(ids.projectName);
-    await expect(breadcrumb).toContainText(ids.pageName);
+test("names the project in the global header and the page in the editable title", async () => {
+    // The page view carries no breadcrumb any more (HDR-6a4c2f1e): the toolbar
+    // holds the project identity and the editor holds the page title.
+    await expect(page.getByTestId("toolbar-project-name")).toHaveText(ids.projectName);
+    await expect(page.locator(".outliner-item.page-title").first()).toContainText(ids.pageName);
 });
 
 test("allows editing the first outliner item", async () => {

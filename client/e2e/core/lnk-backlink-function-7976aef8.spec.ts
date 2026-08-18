@@ -84,9 +84,6 @@ test.describe("LNK-0007: Backlink Functionality", () => {
         // Save the URL of the first page
         const sourceUrl = page.url(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
-        // Get the title of the first page
-        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
-
         // Generate target page name for testing
         const targetPageName = "backlink-target-" + Date.now().toString().slice(-6);
 
@@ -298,9 +295,6 @@ test.describe("LNK-0007: Backlink Functionality", () => {
 
         // Save the URL of the first page
         const sourceUrl = page.url();
-
-        // Get the title of the first page
-        const sourceTitle = await page.locator("h1").textContent(); // eslint-disable-line @typescript-eslint/no-unused-vars
 
         // Generate target page name for testing
         const targetPageName = "click-target-" + Date.now().toString().slice(-6);

@@ -172,8 +172,50 @@ describe("Demo Page View", () => {
 
         expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
 
-        const elements = screen.getAllByText("TestPage");
-        expect(elements.length).toBeGreaterThan(0);
+        // The editor is the page-title display now that the route renders no
+        // heading of its own, so the outliner being mounted is what to assert.
+        expect(screen.getByTestId("outliner-base")).toBeInTheDocument();
+        expect(document.title).toContain("TestPage");
+    });
+
+    it("drops the breadcrumb and the duplicate heading, keeping actions and the demo notice", async () => {
+        const mockPageItem = {
+            id: "page-1",
+            text: "TestPage",
+            key: "page-1",
+            created: 0,
+            lastChanged: 0,
+            yMap: { observe: vi.fn(), unobserve: vi.fn(), get: vi.fn() },
+            isDeleted: false,
+            items: { root: { items: { toArray: () => [] } } },
+        };
+
+        const { findPageByName } = await import("../../../utils/pageUtils");
+        (findPageByName as Mock).mockReturnValue(mockPageItem);
+
+        const { container } = render(DemoPageView);
+
+        await vi.waitFor(() => {
+            expect(screen.queryByText("Loading Demo...")).not.toBeInTheDocument();
+        }, { timeout: 2000, interval: 50 });
+
+        // Identity chrome is gone: the global toolbar names the project and the
+        // editor owns the editable page title.
+        expect(container.querySelector('nav[aria-label="Breadcrumb"]')).toBeNull();
+        expect(screen.queryByText("Home")).not.toBeInTheDocument();
+        expect(container.querySelector("h1")).toBeNull();
+
+        // Actions and the state message stay.
+        expect(screen.getByTestId("demo-page-toolbar")).toBeInTheDocument();
+        expect(screen.getByTestId("search-toggle-button")).toBeInTheDocument();
+        expect(screen.getByTestId("graph-view-button")).toBeInTheDocument();
+        expect(
+            screen.getByText("This is a public, collaborative demo space. Content resets every 24 hours."),
+        ).toBeInTheDocument();
+
+        // The action row carries no project or page identity.
+        expect(screen.getByTestId("demo-page-toolbar").textContent).not.toContain("demo");
+        expect(screen.getByTestId("demo-page-toolbar").textContent).not.toContain("TestPage");
     });
 
     it("should render reset state when isResetting is true", async () => {
@@ -312,7 +354,9 @@ describe("Demo Page View", () => {
             expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
             expect(store.currentPage).toBe(pageItem);
             await vi.waitFor(() => {
-                expect(screen.getAllByText("Renamed Page").length).toBeGreaterThan(0);
+                // The route settled on the new title, and the document title —
+                // the remaining non-editor surface — followed it.
+                expect(document.title).toContain("Renamed Page");
             }, { timeout: 2000, interval: 50 });
             expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
 
@@ -335,7 +379,7 @@ describe("Demo Page View", () => {
 
             expect(screen.queryByText("Page not found")).not.toBeInTheDocument();
             await vi.waitFor(() => {
-                expect(screen.getAllByText("書式ノート").length).toBeGreaterThan(0);
+                expect(document.title).toContain("書式ノート");
             }, { timeout: 2000, interval: 50 });
         });
 

@@ -8,81 +8,66 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
+// The route to a project used to be a breadcrumb above the editor. Page views
+// no longer carry that chrome (HDR-6a4c2f1e): the global toolbar names the
+// project and links to it, and the project page keeps its own breadcrumb.
 test.describe("NAV-0002: Navigation Link Functionality to Project Page", () => {
     let projectName: string;
-    let pageName: string;
 
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(90000); // Increase timeout for CI environment
         const result = await TestHelpers.seedProjectAndNavigate(page, testInfo);
         projectName = result.projectName;
-        pageName = result.pageName;
     });
 
-    test("Breadcrumb navigation is displayed when page is shown", async ({ page }) => {
-        // Verify that breadcrumb navigation is displayed
-        const breadcrumbNav = page.locator("nav");
-        await expect(breadcrumbNav).toBeVisible();
+    test("The project link lives in the global toolbar, not in a page breadcrumb", async ({ page }) => {
+        const projectLink = page.getByTestId("toolbar-project-name");
+        await expect(projectLink).toBeVisible({ timeout: 30000 });
+        await expect(projectLink).toHaveText(projectName);
+        await expect(projectLink).toHaveAttribute("href", new RegExp(`/${encodeURIComponent(projectName)}$`));
+
+        await expect(page.locator('nav[aria-label="Breadcrumb"]')).toHaveCount(0);
     });
 
-    test("Home link is displayed in breadcrumb navigation", async ({ page }) => {
-        // Verify that home link is displayed
-        const homeLink = page.locator('nav a:has-text("Home")');
-        await expect(homeLink).toBeVisible();
-        await expect(homeLink).toHaveClass(/text-blue-600/);
-    });
-
-    test("Project page link is displayed in breadcrumb navigation", async ({ page }) => {
-        // Verify that project page link is displayed
-        const projectLink = page.locator(`nav a:has-text("${projectName}")`);
-        await expect(projectLink).toBeVisible();
-        await expect(projectLink).toHaveClass(/text-blue-600/);
-    });
-
-    test("Current page name is displayed in breadcrumb navigation", async ({ page }) => {
-        // Verify that current page name is displayed
-        const currentPageName = page.locator(`nav span:has-text("${pageName}")`);
-        await expect(currentPageName).toBeVisible();
-        await expect(currentPageName).toHaveClass(/text-gray-900/);
-    });
-
-    test("Clicking project page link navigates to project page", async ({ page }) => {
-        // Click the project page link
-        const projectLink = page.locator(`nav a:has-text("${projectName}")`);
+    test("Clicking the toolbar project name navigates to the project page", async ({ page }) => {
+        const projectLink = page.getByTestId("toolbar-project-name");
+        await expect(projectLink).toBeVisible({ timeout: 30000 });
         await projectLink.click();
 
-        // Verify transition to project page
         await expect(page).toHaveURL(`/${projectName}`);
 
-        // Wait for project page to fully load
-        // await page.waitForLoadState("networkidle"); // Removed flaky wait
-
-        // Verify that project page title is displayed
-        // Verify that project name is displayed somewhere on the page (considering possibilities other than h1 elements)
-        // Target the h1 specifically to avoid strict mode violations with the breadcrumb
         const projectElement = page.locator(`h1:has-text("${projectName}")`);
         await expect(projectElement).toBeVisible({ timeout: 15000 });
     });
 
-    test("Clicking home link navigates to home page", async ({ page }) => {
-        // Click the home link
-        const homeLink = page.locator('nav a:has-text("Home")');
-        await homeLink.click();
+    test("The project page keeps its breadcrumb back to home", async ({ page }) => {
+        await page.goto(`/${encodeURIComponent(projectName)}`);
 
-        // Verify transition to home page
-        await expect(page).toHaveURL("/");
+        const breadcrumb = page.locator('nav[aria-label="Breadcrumb"]').first();
+        await expect(breadcrumb).toBeVisible({ timeout: 30000 });
 
-        // Verify that home page title is displayed
-        const pageTitle = page.locator('h1:has-text("Outliner")');
-        await expect(pageTitle).toBeVisible();
+        const homeLink = breadcrumb.locator('a:has-text("Home")');
+        await expect(homeLink).toBeVisible();
+        await expect(homeLink).toHaveClass(/text-blue-600/);
+
+        const currentProject = breadcrumb.locator(`span:has-text("${projectName}")`);
+        await expect(currentProject).toBeVisible();
+        await expect(currentProject).toHaveClass(/text-gray-900/);
+
+        // Home / Project — one separator.
+        const separators = breadcrumb.locator('li:has-text("/")');
+        await expect(separators).toHaveCount(1);
+        await expect(separators.first()).toHaveClass(/text-gray-500/);
     });
 
-    test("Separator characters in breadcrumb navigation are displayed correctly", async ({ page }) => {
-        // Verify that separator characters are displayed correctly
-        const separators = page.locator('nav li:has-text("/")');
-        await expect(separators).toHaveCount(2); // Home / Project / Page
+    test("Clicking home from the project page navigates to the home page", async ({ page }) => {
+        await page.goto(`/${encodeURIComponent(projectName)}`);
 
-        // Verify that separator character style is correct
-        await expect(separators.first()).toHaveClass(/text-gray-500/);
+        const homeLink = page.locator('nav[aria-label="Breadcrumb"] a:has-text("Home")').first();
+        await expect(homeLink).toBeVisible({ timeout: 30000 });
+        await homeLink.click();
+
+        await expect(page).toHaveURL("/");
+        await expect(page.locator('h1:has-text("Outliner")')).toBeVisible();
     });
 });
