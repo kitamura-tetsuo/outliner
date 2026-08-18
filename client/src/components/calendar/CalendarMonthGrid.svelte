@@ -32,6 +32,10 @@ interface Props {
      * grouping axis is assigned.
      */
     laneLabel?: (entry: CalendarEntry) => string;
+    /** True when double-clicking `entry` would reach an outline item (#4982). */
+    isSourceNavigable?: (entry: CalendarEntry) => boolean;
+    /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
+    onOpenSource?: (entry: CalendarEntry) => void;
 }
 
 let {
@@ -45,6 +49,8 @@ let {
     onDeleteRequest,
     isDeletable = () => false,
     laneLabel,
+    isSourceNavigable = () => false,
+    onOpenSource,
 }: Props = $props();
 
 const weekdayHeaders = $derived(
@@ -91,6 +97,18 @@ function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
     if (deltaDays === undefined) return;
     e.preventDefault();
     onKeyboardMove(entry, entry.startMs + deltaDays * DAY_MS);
+}
+
+/**
+ * Double-click opens the entry's source item. Stopped here so it never
+ * reaches the outliner item hosting this calendar block, and `preventDefault`
+ * keeps the browser from turning the gesture into a text selection.
+ */
+function onEntryDoubleClick(entry: CalendarEntry, e: MouseEvent) {
+    if (!isSourceNavigable(entry)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenSource?.(entry);
 }
 
 let draggingKey: string | undefined = $state();
@@ -185,7 +203,9 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         tabindex="0"
                         class="milestone-chip"
                         data-testid={`calendar-entry-milestone-${m.key}`}
+                        data-navigable={isSourceNavigable(m) ? "true" : undefined}
                         onkeydown={(e) => onCellKeydown(m, e)}
+                        ondblclick={(e) => onEntryDoubleClick(m, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">◆ {m.title}</span>
                         {#if isDeletable(m)}
@@ -212,9 +232,11 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         data-testid={`calendar-entry-${entry.key}`}
                         data-lane={laneLabel?.(entry)}
                         style={laneLabel && isStartWritable(entry) ? `background: ${laneColor(laneLabel(entry))}` : undefined}
+                        data-navigable={isSourceNavigable(entry) ? "true" : undefined}
                         ondragstart={(e) => onDragStart(entry, e)}
                         ondragend={clearDragLabel}
                         onkeydown={(e) => onCellKeydown(entry, e)}
+                        ondblclick={(e) => onEntryDoubleClick(entry, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">{entry.title}</span>
                         {#if isDeletable(entry)}

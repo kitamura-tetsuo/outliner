@@ -30,6 +30,8 @@ import CalendarDragTooltip from "./CalendarDragTooltip.svelte";
 const DAY_MS = 86_400_000;
 const MIN_DURATION_MS = 5 * 60 * 1000;
 const ROW_HEIGHT_PX = 48; // pixels per hour
+/** Pointer travel below this is a click, not a drag (#4982). */
+const CLICK_TOLERANCE_PX = 4;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface Props {
@@ -56,6 +58,10 @@ interface Props {
     /** Present only when this grid is one lane band of `CalendarLaneTimeGrid.svelte` (#4348). */
     isLaneWritable?: (entry: CalendarEntry) => boolean;
     onLaneDragStart?: (entry: CalendarEntry, e: DragEvent) => void;
+    /** True when double-clicking `entry` would reach an outline item (#4982). */
+    isSourceNavigable?: (entry: CalendarEntry) => boolean;
+    /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
+    onOpenSource?: (entry: CalendarEntry) => void;
 }
 
 let {
@@ -79,6 +85,8 @@ let {
     isDeletable = () => false,
     isLaneWritable,
     onLaneDragStart,
+    isSourceNavigable = () => false,
+    onOpenSource,
 }: Props = $props();
 
 const dayHeightPx = 24 * ROW_HEIGHT_PX;
@@ -167,6 +175,18 @@ function onPointerMove(e: PointerEvent) {
 function onPointerUp(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
 
+    // A move that never travelled is a click, not a drag: committing it would
+    // write the start the entry already has, and the second press of a
+    // double-click (#4982) would do so again mid-navigation. A *resize*
+    // release is left alone — committing the drawn length is what turns an
+    // entry's implicit default duration into an explicit one.
+    if (drag.kind === "move" && isWithinClickTolerance(e)) {
+        onDragCancel(drag.entry);
+        drag = undefined;
+        dragLabel = undefined;
+        return;
+    }
+
     if (drag.kind === "resize") {
         onResizeEnd(drag.entry, resizedDurationMs(e));
     } else {
@@ -174,6 +194,25 @@ function onPointerUp(e: PointerEvent) {
     }
     drag = undefined;
     dragLabel = undefined;
+}
+
+/** Pointer travel small enough that the browser would still report a click/double-click. */
+function isWithinClickTolerance(e: PointerEvent): boolean {
+    if (!drag) return false;
+    return Math.abs(e.clientX - drag.startClientX) <= CLICK_TOLERANCE_PX
+        && Math.abs(e.clientY - drag.startClientY) <= CLICK_TOLERANCE_PX;
+}
+
+/**
+ * Double-click opens the entry's source item. The event is stopped here so it
+ * never reaches the outliner item hosting this calendar block, where a
+ * double-click would start editing instead.
+ */
+function onEntryDoubleClick(entry: CalendarEntry, e: MouseEvent) {
+    if (!isSourceNavigable(entry)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenSource?.(entry);
 }
 
 function onPointerCancel(e: PointerEvent) {
@@ -257,9 +296,12 @@ onMount(() => {
                     class:not-writable={!isStartWritable(p.entry)}
                     style={`grid-column: ${p.dayIndex + 1} / span ${p.spanDays}`}
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
+                    data-navigable={isSourceNavigable(p.entry) ? "true" : undefined}
+                    title={isSourceNavigable(p.entry) ? "Double-click to open the source item" : undefined}
                     onpointerdown={(e) => {
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
+                    ondblclick={(e) => onEntryDoubleClick(p.entry, e)}
                 >
                     <div
                         role="button"
@@ -289,9 +331,12 @@ onMount(() => {
                     class="milestone-entry"
                     style={`grid-column: ${m.dayIndex + 1}`}
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
+                    data-navigable={isSourceNavigable(m.entry) ? "true" : undefined}
+                    title={isSourceNavigable(m.entry) ? "Double-click to open the source item" : undefined}
                     onpointerdown={(e) => {
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
+                    ondblclick={(e) => onEntryDoubleClick(m.entry, e)}
                 >
                     <div
                         role="button"
@@ -350,10 +395,13 @@ onMount(() => {
                     }%); width: calc(${100 / layout.dayCount / p.columnCount}% - 2px); top: ${
                         p.startFraction * dayHeightPx
                     }px; height: ${(p.endFraction - p.startFraction) * dayHeightPx}px`}
+                    data-navigable={isSourceNavigable(p.entry) ? "true" : undefined}
+                    title={isSourceNavigable(p.entry) ? "Double-click to open the source item" : undefined}
                     onpointerdown={(e) => {
                         beginDrag("move", p.entry, e);
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
+                    ondblclick={(e) => onEntryDoubleClick(p.entry, e)}
                 >
                     <div
                         role="button"

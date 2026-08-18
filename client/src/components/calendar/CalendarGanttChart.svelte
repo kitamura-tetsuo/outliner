@@ -50,6 +50,14 @@ interface Props {
     onLeafResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onLeafKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onSubtreeDragEnd: (row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) => void;
+    /**
+     * True when double-clicking a row would reach an outline item (#4982).
+     * A roll-up row is navigable on exactly the same terms as a leaf: its bar
+     * is synthetic, but the entry under it is a concrete parent item.
+     */
+    isSourceNavigable?: (entry: CalendarEntry) => boolean;
+    /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
+    onOpenSource?: (entry: CalendarEntry) => void;
 }
 
 let {
@@ -71,9 +79,25 @@ let {
     onLeafResizeEnd,
     onLeafKeyboardMove,
     onSubtreeDragEnd,
+    isSourceNavigable = () => false,
+    onOpenSource,
 }: Props = $props();
 
+/** Pointer travel below this is a click, not a drag (#4982). */
+const CLICK_TOLERANCE_PX = 4;
+
 const collapsedKeys = new SvelteSet<string>();
+
+/**
+ * Double-click opens the row's source item. Stopped here so it never reaches
+ * the outliner item hosting this calendar block.
+ */
+function onRowDoubleClick(row: GanttRow, e: MouseEvent) {
+    if (!isSourceNavigable(row.entry)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenSource?.(row.entry);
+}
 
 const layout = $derived(layoutGantt(entries, groupAxes, collapsedKeys));
 
@@ -201,6 +225,19 @@ function onPointerMove(e: PointerEvent) {
 function endDrag(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
     const rawDeltaMs = (e.clientX - drag.startClientX) * msPerPixel();
+
+    // A move that never travelled is a click, not a drag: releasing it must
+    // not commit the start the bar already has, and the second press of a
+    // double-click (#4982) must not either. A leaf *resize* release still
+    // commits, which is how a sub-day length gets snapped onto this axis.
+    if (drag.kind !== "leaf-resize" && Math.abs(e.clientX - drag.startClientX) <= CLICK_TOLERANCE_PX) {
+        if (drag.kind === "leaf-move") onLeafDragCancel(drag.row.entry);
+        subtreePreviewRowKey = undefined;
+        subtreePreviewDeltaMs = undefined;
+        drag = undefined;
+        dragLabel = undefined;
+        return;
+    }
 
     if (drag.kind === "leaf-resize") {
         onLeafResizeEnd(drag.row.entry, snappedDurationMs(drag.originDurationMs, rawDeltaMs));
@@ -345,9 +382,11 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     class:rollup={row.isRollup}
                     class:not-writable={!row.isRollup && !isLeafStartWritable(row.entry)}
                     data-testid={`calendar-gantt-bar-${row.key}`}
+                    data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${barLeftPct(row)}%; width: ${barWidthPct(row)}%`}
                     onpointerdown={(e) => row.isRollup ? beginSubtreeDrag(row, e) : beginLeafDrag(row, e)}
                     onkeydown={(e) => onRowKeydown(row, e)}
+                    ondblclick={(e) => onRowDoubleClick(row, e)}
                 >
                     <span class="bar-title">{row.entry.title}</span>
                     {#if !row.isRollup && isLeafDurationWritable(row.entry)}
@@ -361,17 +400,23 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     {/if}
                 </div>
             {:else if row.startPointMs !== undefined && pointLeftPct(row.startPointMs) !== undefined}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     class="start-point"
                     data-testid={`calendar-gantt-point-${row.key}`}
+                    data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.startPointMs)}%`}
+                    ondblclick={(e) => onRowDoubleClick(row, e)}
                 >● {row.entry.title}</div>
             {/if}
             {#if row.dueMarkerMs !== undefined && pointLeftPct(row.dueMarkerMs) !== undefined}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                     class="due-marker"
                     data-testid={`calendar-gantt-milestone-${row.key}`}
+                    data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.dueMarkerMs)}%`}
+                    ondblclick={(e) => onRowDoubleClick(row, e)}
                 >◆</div>
             {/if}
         </div>

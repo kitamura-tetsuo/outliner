@@ -430,6 +430,10 @@ export function demoContentEn(): DemoLocaleContent {
                                 text:
                                     '"New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.',
                             },
+                            {
+                                text:
+                                    "Double-click any event to jump to the outline item it came from. The jump follows the row's own source identity, not its title, so it lands on the right item even when two say the same thing: it routes to the page that owns the item (or stays put when that page is already open), expands whatever branch the item is buried under, scrolls to it and puts the caret on it. Rows that are not outline items — a generated table row unioned into the same calendar — simply do not offer it.",
+                            },
                         ],
                     },
                     {

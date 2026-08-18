@@ -29,6 +29,7 @@
         type GridPasteProgress,
     } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
+    import { outlineRevealStore } from "../services/navigation/outlineItemNavigation.svelte";
     import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
@@ -367,6 +368,10 @@
     let displayItems = $derived.by<DisplayItem[]>(() => {
         // Dependency: Recalculate whenever __lastUpdateInfo updates
         const info = __lastUpdateInfo;
+        // ...and whenever a branch was expanded from outside this component, to
+        // reveal an item navigated to from elsewhere (#4982). Collapse state
+        // lives in the view model, so nothing else would signal the change.
+        void outlineRevealStore.expandVersion;
         // Update view model from latest model
         viewModel.updateFromModel(pageItem, info.changedKeys, info.structureChanged);
         // Return flat display array
