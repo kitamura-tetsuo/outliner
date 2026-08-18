@@ -26,8 +26,9 @@ test.describe("Intra-project Client-side Navigation", () => {
         const encodedInitialPage = encodeURIComponent(initialPage).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         await expect(page).toHaveURL(new RegExp(`/${encodedProjectName}/${encodedInitialPage}`));
 
-        // Check for PageA title
-        await expect(page.locator("h1")).toContainText(initialPage);
+        // Check for PageA title. The page view has no heading of its own; the
+        // editable title in the editor is the page-title display.
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText(initialPage);
         await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
 
         // Go back to the project page first
@@ -56,7 +57,7 @@ test.describe("Intra-project Client-side Navigation", () => {
 
         // Verify the new page outline appears
         await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
-        await expect(page.locator("h1")).toContainText("PageZ");
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText("PageZ");
 
         // Navigate client-side back to the first page (PageA) using the same technique
         await page.evaluate((url) => {
@@ -70,7 +71,7 @@ test.describe("Intra-project Client-side Navigation", () => {
         await page.click("#temp-nav-link-2", { force: true });
 
         // Wait for it to load
-        await expect(page.locator("h1")).toContainText("PageA");
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText("PageA");
         await page.waitForSelector(".outliner", { state: "visible", timeout: 15000 });
     });
 });

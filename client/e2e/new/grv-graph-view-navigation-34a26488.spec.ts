@@ -92,8 +92,11 @@ test.describe("GRV-0001: Graph View navigation", () => {
             return y && y.isConnected;
         }, { timeout: 30000 }).catch(() => console.log("Warning: Yjs connect wait timed out after navigation"));
 
-        // Check for page title instead of items, as Page1 is empty (leaf node)
-        await expect(page.locator("h1")).toContainText(firstPageName, { timeout: 15000 });
+        // Check for page title instead of items, as Page1 is empty (leaf node).
+        // The editable title in the editor is the page-title display.
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText(firstPageName, {
+            timeout: 15000,
+        });
 
         // Confirm navigation was successful
         // Check the actual URL before performing appropriate validation

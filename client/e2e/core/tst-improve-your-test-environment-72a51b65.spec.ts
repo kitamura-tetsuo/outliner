@@ -358,8 +358,10 @@ test.describe("LNK-0005: Link Preview Functionality", () => {
         if (await previewElementAfterForce.count() > 0) {
             await expect(previewElementAfterForce).toBeVisible();
 
-            // Move mouse to another location
-            await page.hover("h1");
+            // Move the mouse off the link. This used to hover the page view's
+            // heading, which no longer exists; the pointer only has to leave
+            // the link, so move it to a corner.
+            await page.mouse.move(5, 5);
             await page.waitForTimeout(500);
 
             // Force trigger mouseout event

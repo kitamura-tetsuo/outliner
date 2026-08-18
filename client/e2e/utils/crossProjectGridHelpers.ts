@@ -76,6 +76,26 @@ export async function seedCrossProjectFixture(page: Page, testInfo: TestInfo): P
 }
 
 /**
+ * Return to the home page with Svelte-managed navigation.
+ *
+ * Page views carry no breadcrumb any more (HDR-6a4c2f1e): the global toolbar
+ * names the project and links to its page list, and the project page is where
+ * the "Home" breadcrumb still lives. From a page view that is one hop further
+ * than it used to be.
+ */
+export async function goHome(page: Page): Promise<void> {
+    const homeLink = page.locator('nav a:has-text("Home")');
+    if (await homeLink.count() === 0) {
+        const projectLink = page.getByTestId("toolbar-project-name");
+        await expect(projectLink).toBeVisible({ timeout: 15000 });
+        await projectLink.click();
+        await expect(homeLink.first()).toBeVisible({ timeout: 15000 });
+    }
+    await homeLink.first().click();
+    await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
+}
+
+/**
  * Navigate via Home -> project selector -> page link, all Svelte-managed.
  * Re-asserts both fixture projects as accessible right before selecting: the
  * emulator-backed test user is shared across parallel workers/tests, so a
@@ -91,8 +111,7 @@ export async function openProjectPage(
     const project = target === "source" ? fixture.sourceProject : fixture.destinationProject;
     const pageName = target === "source" ? fixture.sourcePage : fixture.destinationPage;
 
-    await page.locator('nav a:has-text("Home")').click();
-    await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
+    await goHome(page);
     await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
     // A repeat visit to a project already opened earlier in this test can hit
     // yjsService's "Test Project" fallback title (createClient()'s default
@@ -123,8 +142,7 @@ export async function openProjectPage(
     await expect(async () => {
         const url = page.url();
         if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
-            await page.locator('nav a:has-text("Home")').click();
-            await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
+            await goHome(page);
             await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
             await page.evaluate(title => {
                 (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;

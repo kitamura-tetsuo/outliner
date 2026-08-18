@@ -2208,6 +2208,11 @@ export function setSelectionPosition(start: number, end: number = start) {
 
 
 
+<!-- The page title carries `role="heading"` with `aria-level=1`: the page
+     routes render no heading of their own any more, so the editable title is
+     the only thing heading navigation can find the page by. It is rendered
+     outside the tree role (see OutlinerTree), so it breaks no
+     aria-required-children rule. -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
     class="outliner-item"
@@ -2224,11 +2229,11 @@ export function setSelectionPosition(start: number, end: number = start) {
     class:touch-selecting={isTouchSelecting}
 
     id={isPageTitle ? undefined : model.id}
-    role={isPageTitle ? "presentation" : "treeitem"}
+    role={isPageTitle ? "heading" : "treeitem"}
     aria-labelledby={!isPageTitle && model.original.text ? `item-text-${model.id}` : undefined}
     aria-label={!isPageTitle && !model.original.text ? "Blank outline item" : undefined}
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
-    aria-level={isPageTitle ? undefined : depth}
+    aria-level={isPageTitle ? 1 : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
     aria-selected={isPageTitle ? undefined : isItemActive}
     aria-setsize={isPageTitle ? undefined : ariaSetSize}

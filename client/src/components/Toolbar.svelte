@@ -4,12 +4,15 @@ import { getLogger } from "../lib/logger";
 const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
-import { store } from "../stores/store.svelte";
+import { isProvisionalProject, store } from "../stores/store.svelte";
+import { page as pageStore } from "$app/stores";
 import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { preventEditorBlur, restoreEditorFocus } from "../lib/editorFocus";
+import { projectBasePath } from "../lib/publicProject";
+import { resolvePath } from "../utils/pathUtils";
 
 interface Props {
     onToggleDatabaseSidebar?: () => void;
@@ -22,10 +25,52 @@ let toolbarEl: HTMLDivElement | null = null;
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
 
+// The project segment of the current route, which is how a project without a
+// title of its own is addressed. Demo routes carry it under their own param.
+// `params` is absent outside a routed context (component tests), hence `?.`.
+let routedProjectName: string = $derived(
+    ($pageStore.params?.demoProject as string | undefined) ?? $pageStore.params?.project ?? "",
+);
+
 // The router's stacks are `$state`, so availability tracks every recorded and
 // consumed operation across the outline, the tables and the calendar.
 let canUndo = $derived(globalUndoRouter.canUndo());
 let canRedo = $derived(globalUndoRouter.canRedo());
+
+// The title a project carries lives in its Yjs metadata map, which has no
+// reactivity of its own and is often still empty at the moment the document is
+// opened — the server writes it as part of the first sync. So it is mirrored
+// into `$state` through an observer rather than read once.
+let projectTitle = $state("");
+
+/**
+ * Bind the mirror to `target`'s metadata, returning the unbind.
+ *
+ * The provisional project the store seeds at startup is titled from the URL's
+ * first segment, so showing it would put "Untitled Project" in the header on
+ * routes that name no project: identity appears only once the real document is
+ * open. A loaded project with no title of its own falls back to the route's
+ * project segment, which is what such a document is addressed by.
+ */
+function bindProjectTitle(target: Project | null, routedProject: string): () => void {
+    if (!target?.ydoc || isProvisionalProject(target)) {
+        projectTitle = "";
+        return () => {};
+    }
+    const meta = target.ydoc.getMap("metadata");
+    const syncTitle = () => {
+        projectTitle = String(meta.get("title") ?? "").trim() || routedProject;
+    };
+    syncTitle();
+    meta.observe(syncTitle);
+    return () => meta.unobserve(syncTitle);
+}
+
+// The project a mounted toolbar shows changes at runtime, and so does the
+// document its title has to be read from, so the observer has to be rebound
+// and released as that happens — the one thing `onMount`/`onDestroy` cannot
+// express. This is the Yjs mirror pattern AGENTS.md prescribes.
+$effect(() => bindProjectTitle(effectiveProject, routedProjectName));
 
 function handleUndo() {
     globalUndoRouter.undo();
@@ -118,14 +163,16 @@ function handleRedo() {
 	                }
 	                if (!project) {
 	                    const pathParts = window.location.pathname.split("/").filter(Boolean).map(safeDecodeURIComponent);
-	                    let projectTitle = "";
+	                    // Named apart from the reactive `projectTitle` mirror above:
+	                    // this is only the URL guess used to look a client up.
+	                    let titleFromPath = "";
 	                    if (pathParts[0]) {
-	                        projectTitle = pathParts[0];
+	                        titleFromPath = pathParts[0];
 	                    }
 	                    const service = globals.__FLUID_SERVICE__;
-	                    if (service && projectTitle) {
+	                    if (service && titleFromPath) {
 	                        const getClient = service.getClientByProjectTitle ?? service.getFluidClientByProjectTitle;
-	                        const client = getClient ? await Promise.resolve(getClient(projectTitle)) : undefined;
+	                        const client = getClient ? await Promise.resolve(getClient(titleFromPath)) : undefined;
 	                        if (client) project = client.getProject();
 	                    }
 	                }
@@ -144,6 +191,17 @@ function handleRedo() {
 <div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} >
     <div class="main-toolbar-content" >
         <div class="toolbar-left">
+            {#if projectTitle}
+                <!-- Project identity for the whole shell: page views no longer
+                     repeat it above the editable page title. -->
+                <a
+                    class="project-name"
+                    data-testid="toolbar-project-name"
+                    href={resolvePath(projectBasePath(projectTitle))}
+                    title={projectTitle}
+                    aria-label={`Project: ${projectTitle}`}
+                >{projectTitle}</a>
+            {/if}
             <button type="button"
                 class="add-database-btn"
                 aria-label="Add Database"
@@ -252,6 +310,35 @@ function handleRedo() {
     flex: 1 1 auto;
 }
 
+.project-name {
+    /* Clears the fixed sidebar toggle (left: 1rem, width: 2.5rem). */
+    margin-left: 3.5rem;
+    margin-right: 1rem;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #111827;
+    text-decoration: none;
+    flex: 0 1 auto;
+    /* WCAG 2.2 SC 2.5.8: every interactive target stays at least 24x24. */
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    min-width: 1.5rem;
+}
+
+.project-name:hover {
+    text-decoration: underline;
+}
+
+/* The label already cleared the toggle; the button must not clear it twice. */
+.project-name + .add-database-btn {
+    margin-left: 0;
+}
+
 .add-database-btn {
     margin-left: 3.5rem;
     margin-right: 1rem;
@@ -339,6 +426,16 @@ function handleRedo() {
     .main-toolbar-content {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .toolbar-left {
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
+    }
+
+    .project-name {
+        max-width: calc(100% - 3.5rem);
+        font-size: 0.9375rem;
     }
 
     .add-database-btn {

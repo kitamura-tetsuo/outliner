@@ -28,7 +28,7 @@ test.describe("LNK-0004: Temporary Page Display", () => {
         const currentUrl = page.url();
         expect(currentUrl).toContain(nonExistentPage);
 
-        const pageTitle = await page.locator("h1").textContent();
+        const pageTitle = await page.locator(".outliner-item.page-title").first().textContent();
         expect(pageTitle).not.toBe("");
     });
 });

@@ -49,8 +49,10 @@ test.describe("Server-side Seeding Verification", () => {
             throw e;
         }
         // 5. Verify Content
-        // The page title should be visible
-        await expect(page.locator("h1")).toContainText(pageName, { timeout: 10000 });
+        // The editable page title in the editor is the page-title display.
+        await expect(page.locator(".outliner-item.page-title").first()).toContainText(pageName, {
+            timeout: 10000,
+        });
 
         // The lines should be visible as items
         // We expect "Line 1", "Line 2", "Line 3"
