@@ -44,6 +44,7 @@ import {
 import { isLaneDropWritable, writeCalendarLaneDrop } from "../../services/calendar/calendarLaneWrite";
 import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale";
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
+import { isOutlineItemAddressable, navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation.svelte";
 import {
     applyOptimisticOverrides,
     clearOptimisticOverrideFields,
@@ -233,6 +234,29 @@ function isDeletable(entry: CalendarEntry): boolean {
 
 function isLaneWritable(entry: CalendarEntry): boolean {
     return isLaneDropWritable(entry, groupAxis, writableColumns);
+}
+
+/**
+ * Whether double-clicking `entry` can lead anywhere (#4982): its
+ * `sourceKind`/`sourceId` identity must resolve to a live outline item.
+ * `source_kind` is a query-chosen literal, not an enum this component could
+ * match against, so what makes a row "an outline item" is exactly that its
+ * `source_id` names a node of the project tree — a table-derived row's id
+ * never does, and neither does an item deleted since the query ran. Every
+ * grid gates its own affordance on this, so a non-navigable row never
+ * pretends otherwise.
+ */
+function isSourceNavigable(entry: CalendarEntry): boolean {
+    return entry.sourceId !== undefined && isOutlineItemAddressable(project, entry.sourceId);
+}
+
+/**
+ * Open the outline item behind `entry`. Recurrence occurrences carry the
+ * source (or override) identity of the row they were expanded from, so this
+ * follows `sourceId` like every other entry and never matches on title.
+ */
+function openEntrySource(entry: CalendarEntry): void {
+    void navigateToOutlineItem(project, entry.sourceId);
 }
 
 function readSettingsFromMap(): CalendarSettings | undefined {
@@ -615,6 +639,8 @@ onDestroy(() => {
             onLeafResizeEnd={commitDuration}
             onLeafKeyboardMove={commitStart}
             onSubtreeDragEnd={commitSubtreeShift}
+            {isSourceNavigable}
+            onOpenSource={openEntrySource}
         />
     {:else if hourMinuteLayout}
         <CalendarHourMinuteGrid
@@ -632,6 +658,8 @@ onDestroy(() => {
             onKeyboardResize={commitDuration}
             {isDeletable}
             onDeleteRequest={requestDelete}
+            {isSourceNavigable}
+            onOpenSource={openEntrySource}
         />
     {:else if viewType === "month" && monthCells}
         {#if groupingActive}
@@ -663,6 +691,8 @@ onDestroy(() => {
             {isDeletable}
             onDeleteRequest={requestDelete}
             laneLabel={groupingActive ? laneLabelForEntry : undefined}
+            {isSourceNavigable}
+            onOpenSource={openEntrySource}
         />
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
@@ -687,6 +717,8 @@ onDestroy(() => {
             onLaneDrop={commitLaneDrop}
             {isDeletable}
             onDeleteRequest={requestDelete}
+            {isSourceNavigable}
+            onOpenSource={openEntrySource}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -708,6 +740,8 @@ onDestroy(() => {
             onKeyboardResize={commitDuration}
             {isDeletable}
             onDeleteRequest={requestDelete}
+            {isSourceNavigable}
+            onOpenSource={openEntrySource}
         />
     {/if}
 </div>

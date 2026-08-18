@@ -31,6 +31,8 @@ const KEYBOARD_STEP_MINUTES = 15;
 const MINUTES_PER_ROW = 60;
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MINUTE_TICKS = [0, 15, 30, 45];
+/** Pointer travel below this is a click, not a drag (#4982). */
+const CLICK_TOLERANCE_PX = 4;
 
 interface Props {
     layout: HourMinuteLayout;
@@ -48,6 +50,10 @@ interface Props {
     onKeyboardResize: (entry: CalendarEntry, newDurationMs: number) => void;
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    /** True when double-clicking `entry` would reach an outline item (#4982). */
+    isSourceNavigable?: (entry: CalendarEntry) => boolean;
+    /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
+    onOpenSource?: (entry: CalendarEntry) => void;
 }
 
 let {
@@ -65,6 +71,8 @@ let {
     onKeyboardResize,
     onDeleteRequest,
     isDeletable = () => false,
+    isSourceNavigable = () => false,
+    onOpenSource,
 }: Props = $props();
 
 let trackEls: (HTMLDivElement | undefined)[] = $state([]);
@@ -181,10 +189,33 @@ function onPointerMove(e: PointerEvent) {
 
 function onPointerUp(e: PointerEvent) {
     if (!drag || e.pointerId !== drag.pointerId) return;
+    // A move that never travelled is a click, not a drag — see the same guard
+    // (and the resize carve-out) in CalendarTimeGrid.svelte (#4982).
+    if (
+        drag.kind === "move"
+        && Math.abs(e.clientX - drag.startClientX) <= CLICK_TOLERANCE_PX
+        && dragDeltaRows(e) === 0
+    ) {
+        onDragCancel(drag.entry);
+        drag = undefined;
+        dragLabel = undefined;
+        return;
+    }
     if (drag.kind === "resize") onResizeEnd(drag.entry, resizedDurationMs(e));
     else onDragEnd(drag.entry, movedStartMs(e));
     drag = undefined;
     dragLabel = undefined;
+}
+
+/**
+ * Double-click opens the entry's source item. Stopped here so it never
+ * reaches the outliner item hosting this calendar block.
+ */
+function onEntryDoubleClick(entry: CalendarEntry, e: MouseEvent) {
+    if (!isSourceNavigable(entry)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onOpenSource?.(entry);
 }
 
 function onPointerCancel(e: PointerEvent) {
@@ -256,6 +287,8 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     class="all-day-entry"
                     class:not-writable={!isStartWritable(entry)}
                     data-testid={`calendar-entry-allday-${entry.key}`}
+                    data-navigable={isSourceNavigable(entry) ? "true" : undefined}
+                    ondblclick={(e) => onEntryDoubleClick(entry, e)}
                 >
                     <div
                         role="button"
@@ -281,6 +314,8 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     aria-label={entry.title}
                     class="milestone-entry"
                     data-testid={`calendar-entry-milestone-${entry.key}`}
+                    data-navigable={isSourceNavigable(entry) ? "true" : undefined}
+                    ondblclick={(e) => onEntryDoubleClick(entry, e)}
                 >
                     <div
                         role="button"
@@ -342,10 +377,12 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                             style={`left: ${(f.startMinute / MINUTES_PER_ROW) * 100}%; width: ${
                                 ((f.endMinute - f.startMinute) / MINUTES_PER_ROW) * 100
                             }%; top: ${f.laneIndex * LANE_HEIGHT_PX}px; height: ${LANE_HEIGHT_PX - 2}px`}
+                            data-navigable={isSourceNavigable(f.entry) ? "true" : undefined}
                             onpointerdown={(e) => {
                                 beginDrag("move", f.entry, row.rowIndex, e);
                                 (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                             }}
+                            ondblclick={(e) => onEntryDoubleClick(f.entry, e)}
                         >
                             {#if f.isTitleAnchor}
                                 <div
