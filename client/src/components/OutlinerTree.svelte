@@ -29,7 +29,7 @@
         type GridPasteProgress,
     } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
-    import { outlineRevealStore } from "../services/navigation/outlineItemNavigation.svelte";
+    import { registerPageOutline } from "../services/navigation/outlinePageRegistry";
     import { setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
@@ -160,6 +160,7 @@
     // Create view store
     const viewModel = new OutlinerViewModel();
     generalStore.activeViewModel = viewModel;
+
 
     let treeContainer = $state<HTMLDivElement | null>(null);
     let showScrollTop = $state(false);
@@ -297,6 +298,42 @@
 
     let __lastUpdateInfo = $state({ tick: 0, changedKeys: new SvelteSet<string>(), structureChanged: true });
 
+    /**
+     * Expand `itemIds` on behalf of a navigation from elsewhere (#4982).
+     *
+     * Toggling the view model alone is not enough: `toggleCollapsed` refreshes
+     * the order only from the toggled item's own root, and the next
+     * `updateFromModel` may take its fast path (whenever the last Yjs batch was
+     * non-structural) and skip rebuilding the display list altogether —
+     * leaving the branch expanded in the model but still absent from the DOM.
+     * So this signals a structural change exactly as `handleToggleCollapse`
+     * does for a user's own click.
+     */
+    function expandItemsForReveal(itemIds: string[]): boolean {
+        let expanded = false;
+        for (const itemId of itemIds) {
+            if (!viewModel.isCollapsed(itemId)) continue;
+            viewModel.toggleCollapsed(itemId);
+            expanded = true;
+        }
+        if (expanded) {
+            __lastUpdateInfo = { tick: Date.now(), changedKeys: new SvelteSet(), structureChanged: true };
+        }
+        return expanded;
+    }
+
+    // Publish this page so a navigation from elsewhere can reveal an item on
+    // it. Only the top-level tree: an embedded alias tree renders someone
+    // else's subtree and owns no page, and it would otherwise be the one an
+    // incoming navigation expands, since whichever tree mounted last owns
+    // `generalStore.activeViewModel`. Registered from onMount and torn down by
+    // its cleanup: this component is remounted per page (OutlinerBase's
+    // {#key}), so one mount is one page.
+    onMount(() => {
+        if (isEmbedded || !pageItem?.key) return;
+        return registerPageOutline(pageItem.key, { expandItems: expandItemsForReveal });
+    });
+
     onMount(() => {
         try {
             const ymap = pageItem?.ydoc?.getMap?.("orderedTree");
@@ -368,10 +405,6 @@
     let displayItems = $derived.by<DisplayItem[]>(() => {
         // Dependency: Recalculate whenever __lastUpdateInfo updates
         const info = __lastUpdateInfo;
-        // ...and whenever a branch was expanded from outside this component, to
-        // reveal an item navigated to from elsewhere (#4982). Collapse state
-        // lives in the view model, so nothing else would signal the change.
-        void outlineRevealStore.expandVersion;
         // Update view model from latest model
         viewModel.updateFromModel(pageItem, info.changedKeys, info.structureChanged);
         // Return flat display array
