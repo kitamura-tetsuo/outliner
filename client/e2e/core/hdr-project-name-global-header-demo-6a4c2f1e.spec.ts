@@ -24,6 +24,7 @@ test.describe("HDR-6a4c2f1e: Project name in the global header (demo pages)", ()
         const titleItem = page.locator(".outliner-item.page-title[data-item-id]").first();
         await expect(titleItem).toBeVisible({ timeout: 30000 });
         await expect(titleItem).toContainText("Formatting");
+        await expect(page.getByRole("heading", { name: "Formatting" })).toBeVisible();
     });
 
     test("demo controls and the state message survive the cleanup", async ({ page }) => {

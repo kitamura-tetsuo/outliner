@@ -10,6 +10,8 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test("project page is reachable", async ({ page }, testInfo) => {
     const { projectName, pageName } = await TestHelpers.seedProjectAndNavigateForProject(page, testInfo, [], undefined);
-    // On a project page, the heading shows the project and page title
-    await expect(page.getByRole("heading", { name: `${projectName} / ${pageName}` })).toBeVisible();
+    // Identity is split in two since HDR-6a4c2f1e: the global toolbar names the
+    // project, and the editable page title is the page's level-one heading.
+    await expect(page.getByTestId("toolbar-project-name")).toHaveText(projectName);
+    await expect(page.getByRole("heading", { name: pageName })).toBeVisible();
 });

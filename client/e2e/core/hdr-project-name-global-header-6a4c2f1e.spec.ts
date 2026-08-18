@@ -27,10 +27,15 @@ test.describe("HDR-6a4c2f1e: Project name in the global header (project pages)",
         await expect(page.locator('nav a:has-text("Home")')).toHaveCount(0);
         await expect(page.locator("main h1")).toHaveCount(0);
 
-        // The editable page title stays the single primary page-title display.
+        // The editable page title stays the single primary page-title display,
+        // and carries the page's heading semantics now that the route's own
+        // <h1> is gone.
         const titleItem = page.locator(".outliner-item.page-title[data-item-id]").first();
         await expect(titleItem).toBeVisible({ timeout: 30000 });
         await expect(titleItem).toContainText(pageName);
+        await expect(titleItem).toHaveAttribute("role", "heading");
+        await expect(titleItem).toHaveAttribute("aria-level", "1");
+        await expect(page.getByRole("heading", { name: pageName })).toBeVisible();
     });
 
     test("the editable page title still accepts edits", async ({ page }, testInfo) => {

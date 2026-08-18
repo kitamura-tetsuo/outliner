@@ -5,6 +5,7 @@ const logger = getLogger("Toolbar");
 import type { Project } from "../schema/app-schema";
 import SearchBox from "./SearchBox.svelte";
 import { isProvisionalProject, store } from "../stores/store.svelte";
+import { page as pageStore } from "$app/stores";
 import { onMount, onDestroy } from "svelte";
 import LoginStatusIndicator from "./LoginStatusIndicator.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -24,35 +25,52 @@ let toolbarEl: HTMLDivElement | null = null;
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
 
+// The project segment of the current route, which is how a project without a
+// title of its own is addressed. Demo routes carry it under their own param.
+// `params` is absent outside a routed context (component tests), hence `?.`.
+let routedProjectName: string = $derived(
+    ($pageStore.params?.demoProject as string | undefined) ?? $pageStore.params?.project ?? "",
+);
+
 // The router's stacks are `$state`, so availability tracks every recorded and
 // consumed operation across the outline, the tables and the calendar.
 let canUndo = $derived(globalUndoRouter.canUndo());
 let canRedo = $derived(globalUndoRouter.canRedo());
 
-// The project title lives in the Yjs metadata map, which carries no reactivity
-// of its own, so a plain `$derived` would go stale on a rename. Mirror it into
-// `$state` and keep the mirror in sync through an observer: switching projects
-// re-runs the effect, renaming the open one fires the observer.
+// The title a project carries lives in its Yjs metadata map, which has no
+// reactivity of its own and is often still empty at the moment the document is
+// opened — the server writes it as part of the first sync. So it is mirrored
+// into `$state` through an observer rather than read once.
 let projectTitle = $state("");
 
-$effect(() => {
-    const current = effectiveProject;
-    // The provisional project the store seeds at startup is titled from the
-    // URL's first segment, so it would put "Untitled Project" in the header on
-    // routes that name no project. Identity is only shown once the real
-    // document is loaded.
-    if (!current?.ydoc || isProvisionalProject(current)) {
+/**
+ * Bind the mirror to `target`'s metadata, returning the unbind.
+ *
+ * The provisional project the store seeds at startup is titled from the URL's
+ * first segment, so showing it would put "Untitled Project" in the header on
+ * routes that name no project: identity appears only once the real document is
+ * open. A loaded project with no title of its own falls back to the route's
+ * project segment, which is what such a document is addressed by.
+ */
+function bindProjectTitle(target: Project | null, routedProject: string): () => void {
+    if (!target?.ydoc || isProvisionalProject(target)) {
         projectTitle = "";
-        return;
+        return () => {};
     }
-    const meta = current.ydoc.getMap("metadata");
+    const meta = target.ydoc.getMap("metadata");
     const syncTitle = () => {
-        projectTitle = String(meta.get("title") ?? "");
+        projectTitle = String(meta.get("title") ?? "").trim() || routedProject;
     };
     syncTitle();
     meta.observe(syncTitle);
     return () => meta.unobserve(syncTitle);
-});
+}
+
+// The project a mounted toolbar shows changes at runtime, and so does the
+// document its title has to be read from, so the observer has to be rebound
+// and released as that happens — the one thing `onMount`/`onDestroy` cannot
+// express. This is the Yjs mirror pattern AGENTS.md prescribes.
+$effect(() => bindProjectTitle(effectiveProject, routedProjectName));
 
 function handleUndo() {
     globalUndoRouter.undo();

@@ -5,6 +5,7 @@ description: The global toolbar names the project that is open and links to its 
 category: navigation
 status: implemented
 components:
+- client/src/components/OutlinerItem.svelte
 - client/src/components/Toolbar.svelte
 - client/src/routes/[demoProject=demoProject]/[page]/+page.svelte
 - client/src/routes/[project]/[page]/+page.svelte
@@ -12,15 +13,17 @@ tests:
 - client/e2e/basic/mobile/toolbar-overlap.spec.ts
 - client/e2e/core/hdr-project-name-global-header-6a4c2f1e.spec.ts
 - client/e2e/core/hdr-project-name-global-header-demo-6a4c2f1e.spec.ts
-- client/src/components/Toolbar.test.ts
+- client/src/components/ToolbarProjectName.test.ts
 - client/src/routes/[demoProject=demoProject]/[page]/page.svelte.test.ts
 acceptance:
 - A demo page view shows no "Home / Demo Project / page" breadcrumb
 - A normal page view shows no "Home / project / page" breadcrumb
+- A project whose document carries no title of its own falls back to the route's project segment
 - No project label is shown while only the provisional startup project exists, so a route naming no project shows none
 - On a narrow viewport the project label overlaps neither the sidebar toggle nor the page content
 - Search, Graph View and the public-demo state message stay available on demo page views
 - Search, Schedule and Graph View stay available on normal page views
+- The editable page title carries the page's level-one heading semantics, so heading navigation still finds the page
 - The editable page title in the editor remains visible and editable
 - The global toolbar shows the current project's title once the project is loaded
 - The non-editable "{project} / {page}" heading above the editor is gone from both page views
