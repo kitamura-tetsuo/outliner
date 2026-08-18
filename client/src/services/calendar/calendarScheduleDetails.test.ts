@@ -54,6 +54,19 @@ describe("formatOccurrenceTiming", () => {
         ).toBe("Mon, Mar 16 – Wed, Mar 18 (all day)");
     });
 
+    it("advances an all-day span in calendar days, not elapsed milliseconds, across a DST change", () => {
+        // 2026-03-07 00:00 in New York, two all-day days: Mar 7 and Mar 8.
+        // The clocks go forward on Mar 8, so the span is 47 elapsed hours —
+        // adding two fixed days would name Mar 9.
+        const midnightNewYork = Date.parse("2026-03-07T05:00:00.000Z");
+        expect(
+            formatOccurrenceTiming(
+                { entryKey: "e", title: "Retreat", allDay: true, startMs: midnightNewYork, durationMs: 2 * 86_400_000 },
+                "America/New_York",
+            ),
+        ).toBe("Sat, Mar 7 – Sun, Mar 8 (all day)");
+    });
+
     it("renders a due-only occurrence as a deadline", () => {
         expect(
             formatOccurrenceTiming({ entryKey: "e", title: "Report", dueMs: MARCH_16_0900_UTC }, "UTC"),

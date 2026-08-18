@@ -11,9 +11,9 @@
 // registry is observed for query/role/timezone/name edits and for calendars
 // created or deleted, and the outline tree is observed for the data changes a
 // drag, a resize, a cleared date or a deleted item make. Nothing polls. Tree
-// events are filtered down to the fields `outline_items` actually projects
-// (`touchesProjectedFields`), so writing a comment or a vote — which no query
-// can see — costs nothing.
+// events are filtered down to the fields a published membership can depend on
+// (`touchesScheduleRelevantFields`), so writing a comment or a vote — which
+// neither a query nor an occurrence expansion can see — costs nothing.
 //
 // The refresh is debounced by `REQUERY_DEBOUNCE_MS`, the same delay a table
 // view uses after a Yjs change: the `outline_items` projection applies its own
@@ -60,14 +60,19 @@ export function membershipWindow(nowMs: number): { startUtcMs: number; endUtcMs:
 }
 
 /**
- * The item fields `outline_items` projects as columns — the only ones a
- * calendar query can possibly select or filter on (`COLUMN_TO_FIELD` in
- * itemsRelation.ts, plus the structural recurrence markers). Everything else
- * an item carries — comments, votes, attachments, aliases, its component type
- * — cannot change a query result, so a change to one of them must not cost
- * every calendar of the project a re-run.
+ * The item fields a calendar's published memberships can depend on: the ones
+ * `outline_items` projects as columns, so a query can select or filter on
+ * them (`COLUMN_TO_FIELD` in itemsRelation.ts, plus the structural recurrence
+ * markers), and `recurrenceExdate`, which no column carries but
+ * `expandItemOccurrencesWithOverrides` reads straight off the item — deleting
+ * one occurrence of a recurring plan writes only that array, and the
+ * indicator has to lose the occurrence for it.
+ *
+ * Everything else an item carries — comments, votes, attachments, aliases,
+ * its component type — can change neither, so writing one must not cost every
+ * calendar of the project a re-run.
  */
-const PROJECTED_ITEM_FIELDS: ReadonlySet<string> = new Set([
+const SCHEDULE_RELEVANT_ITEM_FIELDS: ReadonlySet<string> = new Set([
     "text",
     "due",
     "done",
@@ -78,13 +83,15 @@ const PROJECTED_ITEM_FIELDS: ReadonlySet<string> = new Set([
     "rrule",
     "recurrenceDtstart",
     "recurrenceTimezone",
+    "recurrenceExdate",
     "recurrenceParentId",
     "recurrenceOccurrenceId",
 ]);
 
 /**
- * Whether a batch of outline-tree events could have changed a query result:
- * an item added, removed or reparented, or a projected field written.
+ * Whether a batch of outline-tree events could have changed what a calendar
+ * publishes: an item added, removed or reparented, or a schedule-relevant
+ * field written.
  *
  * `yjs-orderedtree` nests an item one level below its tree key — the node is
  * a wrapper map of `value` (the item's own fields) and `_parentHistory` — so
@@ -92,7 +99,7 @@ const PROJECTED_ITEM_FIELDS: ReadonlySet<string> = new Set([
  * and an edit inside a field (typing into the item's `Y.Text`) as
  * `[key, "value", field]`.
  */
-function touchesProjectedFields(events: Y.YEvent<Y.AbstractType<unknown>>[]): boolean {
+function touchesScheduleRelevantFields(events: Y.YEvent<Y.AbstractType<unknown>>[]): boolean {
     for (const event of events) {
         // Nodes added to or removed from the tree.
         if (event.path.length === 0) return true;
@@ -102,11 +109,11 @@ function touchesProjectedFields(events: Y.YEvent<Y.AbstractType<unknown>>[]): bo
         if (String(event.path[1]) !== "value") return true;
         if (event.path.length === 2) {
             for (const key of event.changes.keys.keys()) {
-                if (PROJECTED_ITEM_FIELDS.has(String(key))) return true;
+                if (SCHEDULE_RELEVANT_ITEM_FIELDS.has(String(key))) return true;
             }
             continue;
         }
-        if (PROJECTED_ITEM_FIELDS.has(String(event.path[2]))) return true;
+        if (SCHEDULE_RELEVANT_ITEM_FIELDS.has(String(event.path[2]))) return true;
     }
     return false;
 }
@@ -219,7 +226,7 @@ export function startCalendarMembershipIndexing(
     }
 
     const treeObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
-        if (touchesProjectedFields(events)) scheduleRefresh();
+        if (touchesScheduleRelevantFields(events)) scheduleRefresh();
     };
     treeMap.observeDeep(treeObserver);
     const unobserveCalendars = observeCalendars(project, scheduleRefresh);

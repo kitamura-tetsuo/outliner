@@ -268,4 +268,71 @@ describe("buildCalendarEntries", () => {
         expect(entries[1].title).toBe("Standup");
         expect(entries[1].startMs).toBe(Date.parse("2026-08-10T09:00:00Z"));
     });
+
+    it("expands recurrence for every source-kind literal that names the outline relation", () => {
+        // The reserved relation name is `outline_items`, and the shipped
+        // example queries alias it to `item`; keying expansion on the bare
+        // `items` spelling alone left those rows as a single anchor.
+        for (const sourceKind of ["outline_items", "item"]) {
+            const project = Project.createInstance("test");
+            const items = new Items(project.ydoc, project.tree, "root");
+            const source = items.addNode("author");
+            source.text = "Standup";
+            source.rrule = "FREQ=WEEKLY;BYDAY=MO;COUNT=2";
+            source.recurrenceDtstart = "2026-08-03T09:00:00";
+            source.recurrenceTimezone = "UTC";
+            source.duration = "PT30M";
+
+            const entries = buildCalendarEntries(
+                {
+                    columns: ["source_kind", "source_id", "text", "rrule"],
+                    rows: [{
+                        source_kind: sourceKind,
+                        source_id: source.key,
+                        text: "Standup",
+                        rrule: "FREQ=WEEKLY;BYDAY=MO;COUNT=2",
+                    }],
+                },
+                { roleTitle: "text" },
+                "UTC",
+                project,
+                { startUtcMs: Date.parse("2026-08-01T00:00:00Z"), endUtcMs: Date.parse("2026-08-31T00:00:00Z") },
+            );
+
+            expect(entries.map((e) => e.startMs), sourceKind).toEqual([
+                Date.parse("2026-08-03T09:00:00Z"),
+                Date.parse("2026-08-10T09:00:00Z"),
+            ]);
+            // One key per occurrence: two occurrences of one source item must
+            // never collapse onto the same entry key.
+            expect(new Set(entries.map((e) => e.key)).size).toBe(2);
+        }
+    });
+
+    it("leaves a recurring row from a foreign relation unexpanded", () => {
+        const project = Project.createInstance("test");
+        const items = new Items(project.ydoc, project.tree, "root");
+        const source = items.addNode("author");
+        source.rrule = "FREQ=WEEKLY;BYDAY=MO;COUNT=2";
+        source.recurrenceDtstart = "2026-08-03T09:00:00";
+        source.recurrenceTimezone = "UTC";
+
+        const entries = buildCalendarEntries(
+            {
+                columns: ["source_kind", "source_id", "text", "rrule"],
+                rows: [{
+                    source_kind: "tasks",
+                    source_id: source.key,
+                    text: "Standup",
+                    rrule: "FREQ=WEEKLY;BYDAY=MO;COUNT=2",
+                }],
+            },
+            { roleTitle: "text" },
+            "UTC",
+            project,
+            { startUtcMs: Date.parse("2026-08-01T00:00:00Z"), endUtcMs: Date.parse("2026-08-31T00:00:00Z") },
+        );
+
+        expect(entries).toHaveLength(1);
+    });
 });

@@ -7,8 +7,29 @@
 // pinned to `Asia/Tokyo` reads the same for a viewer in Berlin as it does for
 // one in Tokyo. All-day entries are dates, never midnight instants.
 
+import { floatingDateToUtcMs, utcMsToFloatingDate } from "$shared/utils/zonedTime";
 import { formatDuration, formatZonedDate, formatZonedTime } from "./calendarDragLabel";
 import type { CalendarMembership, ScheduleOccurrence } from "./calendarScheduleIndex.svelte";
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The last day an all-day entry covers, as an instant inside that day in
+ * `timeZone`.
+ *
+ * An all-day span is a count of *calendar* days, so it is advanced in
+ * wall-clock days rather than by adding its millisecond duration: a two-day
+ * entry starting the night the clocks go forward is only 47 elapsed hours, and
+ * `start + duration` would name the day after the one it actually ends on.
+ */
+function allDayEndInstantMs(startMs: number, durationMs: number, timeZone: string): number | undefined {
+    const days = Math.max(1, Math.round(durationMs / DAY_MS));
+    if (days === 1) return undefined;
+    const startDate = utcMsToFloatingDate(startMs, timeZone);
+    const [year, month, day] = startDate.split("-").map(Number);
+    const lastDay = new Date(Date.UTC(year, month - 1, day + days - 1));
+    return floatingDateToUtcMs(utcMsToFloatingDate(lastDay.getTime(), "UTC"), timeZone);
+}
 
 /** `Mon, Aug 3 09:15 – 09:45 (30m)`, `Mon, Aug 3 (all day)`, `due Mon, Aug 3 17:00`. */
 export function formatOccurrenceTiming(occurrence: ScheduleOccurrence, timeZone: string): string {
@@ -18,7 +39,7 @@ export function formatOccurrenceTiming(occurrence: ScheduleOccurrence, timeZone:
         const date = formatZonedDate(occurrence.startMs, timeZone);
         if (occurrence.allDay) {
             const endMs = occurrence.durationMs !== undefined
-                ? occurrence.startMs + occurrence.durationMs - 1
+                ? allDayEndInstantMs(occurrence.startMs, occurrence.durationMs, timeZone)
                 : undefined;
             const endDate = endMs !== undefined ? formatZonedDate(endMs, timeZone) : undefined;
             parts.push(

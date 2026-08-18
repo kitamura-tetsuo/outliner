@@ -23,6 +23,10 @@ const localConnector: TableDocConnector = async () => ({
 const QUERY = "SELECT id, text AS title, all_day, start_at, duration, due, "
     + "'item' AS source_kind, id AS source_id FROM outline_items";
 
+/** The same projection plus `rrule`, which is what makes a recurring row expand. */
+const RECURRING_QUERY = "SELECT id, text AS title, all_day, start_at, duration, due, rrule, "
+    + "'item' AS source_kind, id AS source_id FROM outline_items";
+
 const ROLES = {
     roleTitle: "title",
     roleStart: "start_at",
@@ -223,6 +227,51 @@ describe("startCalendarMembershipIndexing", { timeout: 60000 }, () => {
                 "the rescheduled entry",
             );
             expect(refreshes).toBeGreaterThan(before);
+        } finally {
+            indexer.dispose();
+            session.dispose();
+            destroyCalendarUndoManager(projectDoc);
+        }
+    });
+
+    it("lists a recurring item's occurrences, and drops one the moment it is excluded", async () => {
+        const projectId = "proj-membership-recurrence";
+        const { projectDoc, project, scheduled } = seedProject(projectId);
+        // A daily plan anchored at 09:00 UTC: `rrule` alone makes the item
+        // projected, and the query below carries the column that tells
+        // `buildCalendarEntries` to expand it.
+        scheduled.start = todayAt(9);
+        scheduled.allDay = false;
+        scheduled.duration = "PT30M";
+        scheduled.rrule = "FREQ=DAILY;COUNT=5";
+        scheduled.recurrenceDtstart = `${todayAt(9).slice(0, 10)}T09:00:00`;
+        scheduled.recurrenceTimezone = "UTC";
+
+        createCalendar(project, { name: "Team", query: RECURRING_QUERY, timezone: "UTC", ...ROLES });
+
+        const session = createTableEngineSession({ projectDoc, projectId, connect: localConnector });
+        const indexer = startCalendarMembershipIndexing(project, projectId, { session });
+        try {
+            const memberships = await waitForIndex(
+                () => calendarScheduleIndex.lookupItem(scheduled.key),
+                (m) => (m[0]?.occurrences.length ?? 0) > 1,
+                "the recurring item's occurrences",
+            );
+            // The plan is one source item, so collapsing by source id would
+            // show a single date; each occurrence keeps its own entry key.
+            const keys = memberships[0].occurrences.map((o) => o.entryKey);
+            expect(new Set(keys).size).toBe(keys.length);
+            expect(memberships[0].occurrences.length + memberships[0].hiddenOccurrenceCount).toBe(5);
+
+            // Deleting one occurrence writes only `recurrenceExdate`, which no
+            // projected column carries — the indicator must still follow it.
+            const excluded = memberships[0].occurrences[0].startMs!;
+            scheduled.addRecurrenceExdate(new Date(excluded).toISOString().slice(0, 19));
+            await waitForIndex(
+                () => calendarScheduleIndex.lookupItem(scheduled.key),
+                (m) => m.length === 1 && m[0].occurrences.every((o) => o.startMs !== excluded),
+                "the excluded occurrence to disappear",
+            );
         } finally {
             indexer.dispose();
             session.dispose();

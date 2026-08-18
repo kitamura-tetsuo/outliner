@@ -15,6 +15,7 @@ import { Item, Items } from "../../schema/app-schema";
 import type { Project } from "../../schema/app-schema";
 import { expandItemOccurrencesWithOverrides } from "../yjstable/recurrenceExpansion";
 import type { CalendarSettings } from "./calendarService";
+import { isOutlineItemSourceKind } from "./calendarSourceIdentity";
 import { parsePgIntervalMs } from "./pgInterval";
 
 export interface CalendarEntry {
@@ -130,7 +131,13 @@ export function buildCalendarEntries(
 
         const rrule = toStringValue(row["rrule"]);
 
-        if (rrule && sourceKind === "items" && sourceId && project && queryRange) {
+        // Any of the source-kind literals that name the outline-items
+        // relation, not just the bare `items` this first checked: the
+        // reserved name is `outline_items` and shipped queries also alias it
+        // to `item`, so keying expansion on one spelling silently left a
+        // recurring row as a single anchor bar in exactly the queries the
+        // demo and the docs use (see calendarSourceIdentity.ts).
+        if (rrule && isOutlineItemSourceKind(sourceKind) && sourceId && project && queryRange) {
             try {
                 const item = new Item(project.ydoc, project.tree, sourceId);
                 const parentKey = project.tree.getNodeParentFromKey(sourceId);
