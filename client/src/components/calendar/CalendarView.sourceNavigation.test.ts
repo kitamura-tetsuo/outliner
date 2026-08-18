@@ -1,14 +1,17 @@
-// Double-clicking a calendar event opens its source outline item (#4982).
+// Which calendar rows offer navigation to their source outline item (#4982).
 //
-// Same real-PGlite harness as CalendarView.test.ts (AGENTS.md §2: the table
-// engine is never mocked). What *is* stubbed is only the last step —
-// `navigateToOutlineItem`, which would need a mounted outliner page and
-// SvelteKit routing to do anything here — so these tests still exercise the
-// real decision this feature turns on: which rows are navigable, and which
-// identity a double-click hands over.
+// Same real-PGlite harness as CalendarView.test.ts, and nothing here is
+// mocked at all — this covers exactly the decision CalendarView owns: a row
+// is navigable when its `source_id` resolves to a live node of the project
+// tree, and not otherwise. `source_kind` cannot decide it, since it is a
+// query-chosen literal rather than an enum.
+//
+// The navigation itself — routing, ancestor expansion, scroll and focus — is
+// exercised for real in outlineItemNavigation.test.ts and end to end in
+// client/e2e/new/cal-open-source-*.spec.ts.
 
-import { configure, fireEvent, render, waitFor } from "@testing-library/svelte";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { configure, render, waitFor } from "@testing-library/svelte";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Items, Project } from "../../schema/app-schema";
 import { createCalendar, destroyCalendarUndoManager } from "../../services/calendar/calendarService";
@@ -16,22 +19,6 @@ import { globalUndoRouter } from "../../services/undo/undoRouter.svelte";
 import { resetPgliteForTests } from "../../services/yjstable/pgliteService";
 import { resetTableEngineForTests } from "../../services/yjstable/tableEngine";
 import CalendarView from "./CalendarView.svelte";
-
-type NavigateToOutlineItem =
-    typeof import("../../services/navigation/outlineItemNavigation.svelte")["navigateToOutlineItem"];
-
-// `vi.hoisted`, because the mock factory below is hoisted above this file's
-// own initialization and would otherwise read the binding before it exists.
-const { navigateToOutlineItem } = vi.hoisted(() => ({
-    navigateToOutlineItem: vi.fn<NavigateToOutlineItem>(async () => true),
-}));
-
-// Partial mock: `isOutlineItemAddressable` stays real, because "is this row an
-// outline item?" is exactly what is under test here.
-vi.mock("../../services/navigation/outlineItemNavigation.svelte", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../../services/navigation/outlineItemNavigation.svelte")>();
-    return { ...actual, navigateToOutlineItem };
-});
 
 configure({ asyncUtilTimeout: 15000 });
 
@@ -48,7 +35,6 @@ function seedProject(projectId: string) {
 }
 
 afterEach(async () => {
-    navigateToOutlineItem.mockClear();
     await resetTableEngineForTests();
     globalUndoRouter.clear();
 });
@@ -58,7 +44,7 @@ afterAll(async () => {
 });
 
 describe("CalendarView source navigation", { timeout: 30000 }, () => {
-    it("double-clicking a timed entry opens its source item, addressed by source_id", async () => {
+    it("marks a timed entry backed by an outline item as navigable", async () => {
         const projectId = "proj-calendar-open-source-timed";
         const { projectDoc, project, page } = seedProject(projectId);
         const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
@@ -83,18 +69,15 @@ describe("CalendarView source navigation", { timeout: 30000 }, () => {
         await waitFor(() => {
             entry = getByTestId(`calendar-entry-item:${item.key}`);
         });
+        // `source_kind` here is the literal "item", which names no relation —
+        // navigability follows the resolvable `source_id`, not the label.
         expect(entry.getAttribute("data-navigable")).toBe("true");
-
-        await fireEvent.dblClick(entry);
-
-        expect(navigateToOutlineItem).toHaveBeenCalledTimes(1);
-        expect(navigateToOutlineItem.mock.calls[0][1]).toBe(item.key);
 
         destroyCalendarUndoManager(projectDoc);
         unmount();
     });
 
-    it("double-clicking an all-day entry in month view opens its source item", async () => {
+    it("marks an all-day entry navigable in month view too", async () => {
         const projectId = "proj-calendar-open-source-month";
         const { projectDoc, project, page } = seedProject(projectId);
         const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
@@ -120,16 +103,11 @@ describe("CalendarView source navigation", { timeout: 30000 }, () => {
         });
         expect(entry.getAttribute("data-navigable")).toBe("true");
 
-        await fireEvent.dblClick(entry);
-
-        expect(navigateToOutlineItem).toHaveBeenCalledTimes(1);
-        expect(navigateToOutlineItem.mock.calls[0][1]).toBe(item.key);
-
         destroyCalendarUndoManager(projectDoc);
         unmount();
     });
 
-    it("a row whose source_id names no outline item is neither marked navigable nor navigates", async () => {
+    it("leaves a row whose source_id names no outline item non-navigable", async () => {
         const projectId = "proj-calendar-open-source-foreign";
         const { projectDoc, project, page } = seedProject(projectId);
         const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
@@ -157,43 +135,35 @@ describe("CalendarView source navigation", { timeout: 30000 }, () => {
         });
         expect(entry.getAttribute("data-navigable")).toBeNull();
 
-        await fireEvent.dblClick(entry);
-
-        expect(navigateToOutlineItem).not.toHaveBeenCalled();
-
         destroyCalendarUndoManager(projectDoc);
         unmount();
     });
 
-    it("a single click on an entry does not navigate", async () => {
-        const projectId = "proj-calendar-open-source-single-click";
+    it("leaves a row carrying no source identity at all non-navigable", async () => {
+        const projectId = "proj-calendar-open-source-unaddressable";
         const { projectDoc, project, page } = seedProject(projectId);
         const item = new Items(projectDoc, project.tree, page.key).addNode("tester");
-        item.text = "Standup";
+        item.text = "Untracked";
         item.start = `${todayIso()}T09:00:00.000Z`;
         item.allDay = false;
-        item.duration = "PT30M";
 
         const calendarId = createCalendar(project, {
             name: "Cal",
-            query: "SELECT id, text AS title, all_day, start_at, duration, "
-                + "'item' AS source_kind, id AS source_id FROM outline_items",
+            query: "SELECT id, text AS title, all_day, start_at FROM outline_items",
             roleTitle: "title",
             roleStart: "start_at",
             roleAllDay: "all_day",
-            roleDuration: "duration",
         });
 
         const { getByTestId, unmount } = render(CalendarView, { props: { project, projectId, calendarId } });
 
         let entry!: HTMLElement;
         await waitFor(() => {
-            entry = getByTestId(`calendar-entry-item:${item.key}`);
+            // No source columns: the row falls back to its bare `id` for a
+            // layout key, but carries no source identity to navigate by.
+            entry = getByTestId(`calendar-entry-${item.key}`);
         });
-
-        await fireEvent.click(entry);
-
-        expect(navigateToOutlineItem).not.toHaveBeenCalled();
+        expect(entry.getAttribute("data-navigable")).toBeNull();
 
         destroyCalendarUndoManager(projectDoc);
         unmount();

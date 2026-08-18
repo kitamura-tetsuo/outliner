@@ -31,6 +31,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { resolvePath } from "../../utils/pathUtils";
 import { type OutlineItemLocation, resolveOutlineItemLocation } from "./outlineItemLocation";
+import { getPageOutline } from "./outlinePageRegistry";
 
 const logger = getLogger("outlineItemNavigation");
 
@@ -40,22 +41,8 @@ const DEFAULT_REVEAL_TIMEOUT_MS = 8000;
 /** Upper bound on one wait between expand-and-find attempts. */
 const RECHECK_INTERVAL_MS = 250;
 
-/**
- * Bumped whenever this module expands a branch. `OutlinerTree` recomputes its
- * display list from the view model on every change of this counter: the
- * expansion happens outside the component (collapse state lives in the view
- * model, which the component owns), so without an explicit signal the tree
- * would keep rendering the pre-expansion list.
- */
-class OutlineRevealStore {
-    expandVersion = $state(0);
-
-    bumpExpandVersion(): void {
-        this.expandVersion++;
-    }
-}
-
-export const outlineRevealStore = new OutlineRevealStore();
+/** The root `OutlinerTree` renders as `.outliner`; an alias's inner tree adds `.embedded`. */
+const EMBEDDED_OUTLINER_SELECTOR = ".outliner.embedded";
 
 export interface NavigateToOutlineItemOptions {
     /** Route segment naming the project; defaults to the demo slug in the current URL, else the project title. */
@@ -80,22 +67,31 @@ export function isOutlineItemAddressable(project: Project | undefined, itemKey: 
     return resolveOutlineItemLocation(project, itemKey) !== undefined;
 }
 
-/** Clear the collapsed flag on every ancestor that still carries one. */
+/**
+ * Clear the collapsed flag on every ancestor that still carries one, through
+ * the owning page's own tree. Absent until that tree mounts, which is exactly
+ * when there is nothing to expand yet; the caller retries.
+ */
 function expandAncestors(location: OutlineItemLocation): void {
-    const viewModel = generalStore.activeViewModel;
-    if (!viewModel) return;
-    let expanded = false;
-    for (const ancestorId of location.ancestorIds) {
-        if (!viewModel.isCollapsed(ancestorId)) continue;
-        viewModel.toggleCollapsed(ancestorId);
-        expanded = true;
-    }
-    if (expanded) outlineRevealStore.bumpExpandVersion();
+    getPageOutline(location.pageKey)?.expandItems(location.ancestorIds);
 }
 
+/**
+ * The item's row on its own page.
+ *
+ * An expanded alias mounts a second tree over the alias target, so one
+ * `data-item-id` can appear several times in the document — and the alias copy
+ * may well come first. Scrolling to that copy would land the user on a
+ * transclusion of the item rather than the item, so every candidate inside an
+ * embedded tree is skipped.
+ */
 function findItemElement(itemId: string): HTMLElement | undefined {
     if (typeof document === "undefined") return undefined;
-    return document.querySelector<HTMLElement>(`[data-item-id="${escapeId(itemId)}"]`) ?? undefined;
+    const candidates = document.querySelectorAll<HTMLElement>(`[data-item-id="${escapeId(itemId)}"]`);
+    for (const candidate of candidates) {
+        if (!candidate.closest(EMBEDDED_OUTLINER_SELECTOR)) return candidate;
+    }
+    return undefined;
 }
 
 /** Resolve on the next DOM mutation, or after `timeoutMs`, whichever comes first. */
@@ -138,7 +134,10 @@ async function revealOutlineItem(location: OutlineItemLocation, timeoutMs: numbe
         element = findItemElement(location.itemId);
     }
 
-    element.scrollIntoView({ block: "center", inline: "nearest" });
+    // Scrolling is the cosmetic half; focus is the point. Guarded so an
+    // environment without `scrollIntoView` (jsdom) loses the scroll rather
+    // than the whole navigation.
+    element.scrollIntoView?.({ block: "center", inline: "nearest" });
     editorOverlayStore.setActiveItem(location.itemId);
     editorOverlayStore.setCursor({ itemId: location.itemId, offset: 0, isActive: true, userId: "local" });
     return true;
@@ -167,6 +166,10 @@ export async function navigateToOutlineItem(
         if (!alreadyOpen) {
             const projectName = options.projectName ?? routeProjectName(project);
             if (!projectName) return false;
+            // `resolvePath` is this repository's wrapper around SvelteKit's own
+            // `resolve`, which the lint rule cannot see through (same disable as
+            // lib/debug.ts).
+            /* eslint-disable-next-line svelte/no-navigation-without-resolve */
             await goto(resolvePath(projectPagePath(projectName, location.pageTitle)));
         }
         return await revealOutlineItem(location, options.timeoutMs ?? DEFAULT_REVEAL_TIMEOUT_MS);

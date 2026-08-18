@@ -44,7 +44,7 @@ import {
 import { isLaneDropWritable, writeCalendarLaneDrop } from "../../services/calendar/calendarLaneWrite";
 import { resolveDefaultWeekStart } from "../../services/calendar/calendarLocale";
 import { layoutMonthGrid } from "../../services/calendar/calendarMonthGridLayout";
-import { isOutlineItemAddressable, navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation.svelte";
+import { isOutlineItemAddressable, navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation";
 import {
     applyOptimisticOverrides,
     clearOptimisticOverrideFields,
