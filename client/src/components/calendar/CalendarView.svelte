@@ -782,6 +782,21 @@ onDestroy(() => {
     padding: 2px 10px;
     cursor: pointer;
     font-size: 0.8rem;
+    position: relative;
+}
+
+.nav-controls button::before,
+.undo-controls button::before,
+.view-toolbar > button::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 24px;
+    min-height: 24px;
+    width: 100%;
+    height: 100%;
 }
 
 :global(.view-toolbar > button.active) {
