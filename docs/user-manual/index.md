@@ -86,7 +86,7 @@ Powerful item manipulation features expected in an outliner.
 
 ### Adding New Items
 
-Press `Enter` to insert a new item below the current one.
+Press `Enter` to insert a new item below the current one. You can also click the **Add Item** button in the document toolbar.
 
 ### Indenting Items
 
@@ -200,7 +200,7 @@ You can easily add attachments to your items.
 
 ### Uploading Attachments
 
-You can upload attachments by dragging and dropping an image or file directly onto the editor.
+You can upload attachments by dragging and dropping an image or file directly onto the editor. Alternatively, you can click the **Add Image** button in the document toolbar.
 
 ---
 
@@ -212,7 +212,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Aliases:** An item can mirror another item and stay in sync with the original.
 - **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). 'Run now', next to Edit and Delete in the Schedule panel and on the Edit Scheduled SQL page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
-- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions.
+- **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** button in the document toolbar.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
 ---
