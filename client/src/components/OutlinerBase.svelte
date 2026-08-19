@@ -13,6 +13,8 @@ const logger = getLogger("OutlinerBase");
     import PresenceAvatars from "./PresenceAvatars.svelte";
     import SlashCommandPalette from "./SlashCommandPalette.svelte";
     import AliasPicker from "./AliasPicker.svelte";
+    import CalendarMembershipScope from "./calendar/CalendarMembershipScope.svelte";
+    import { yjsStore } from "../stores/yjsStore.svelte";
 
     interface Props {
         pageItem?: Item; // Allow undefined to enable constant mounting
@@ -85,6 +87,16 @@ const logger = getLogger("OutlinerBase");
             <div class="reset-banner" role="status" aria-live="polite">
                 Demo content is being reset — editing is paused.
             </div>
+        {/if}
+        {#if effectivePageItem.ydoc}
+            <!-- Project-scoped calendar membership index (#4981): keyed by the
+                 document and the connected project id, not the page, so
+                 navigating pages of one project keeps the same index alive
+                 while connecting (which is what resolves the SQL schema the
+                 calendar queries run against) remounts it. -->
+            {#key `${(effectivePageItem.ydoc as { guid?: string }).guid ?? ""}:${yjsStore.currentProjectId ?? ""}`}
+                <CalendarMembershipScope ydoc={effectivePageItem.ydoc} />
+            {/key}
         {/if}
         {#key `${effectivePageItem?.ydoc ? (effectivePageItem.ydoc as { guid?: string }).guid ?? "" : ""}:${effectivePageItem?.id ?? `${projectName}:${pageName}`}`}
             <OutlinerTree

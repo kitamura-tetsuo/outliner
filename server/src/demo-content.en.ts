@@ -428,6 +428,10 @@ export function demoContentEn(): DemoLocaleContent {
                             },
                             {
                                 text:
+                                    "Every outline item a calendar currently shows carries a small calendar icon of its own — the dated items below this block have one. Hover it, or focus it from the keyboard, to read which calendars the item is on and when it is scheduled, formatted in each calendar's own timezone. An item on two calendars lists both, and the icon disappears by itself once no calendar's query matches the item any more.",
+                            },
+                            {
+                                text:
                                     '"New entry" always asks which page to create it under — there is no implicit inbox — and offers previously used destinations first. Deleting an entry always prompts between removing it and just clearing its date, so a keystroke never silently discards writing.',
                             },
                             {

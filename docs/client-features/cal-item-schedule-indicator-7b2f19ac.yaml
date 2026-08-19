@@ -1,0 +1,19 @@
+id: FTR-7b2f19ac
+title: Calendar indicator and schedule details on the source outline item
+title-ja: ソースとなるアウトライン項目へのカレンダー表示とスケジュール詳細
+description: 'An outline item that is currently represented by one or more calendar entries carries a small calendar icon of its own, so the outline says an item is scheduled without the calendar having to be open. Hovering the icon — and equally focusing it from the keyboard, since the same information must not be pointer-only — shows the scheduling details: the calendar''s name, the date and time for a timed entry, the date alone for an all-day one, the end time and duration when the entry has them, and the deadline for a due-only entry or one that also carries a due role. Times are formatted in the *owning calendar''s* timezone, never in an unrelated viewer-local interpretation, reusing the same zoned formatting helpers the drag destination chip uses. An item that appears on more than one calendar lists every membership rather than silently choosing one, and the icon carries the count.
+
+
+  Membership is authoritative rather than incidental: a project-scoped index service owns one query lifecycle for every calendar of the project and publishes its result keyed by source identity, so the icon does not depend on whether a calendar block happens to be mounted, and an outline row never runs a query, a poll or a tree scan of its own — the lookup from item to memberships is a constant-time map read. Identity is structural: a row counts as an outline item when its `source_id` names a node that actually exists in the project''s outline tree, the same key `outline_items` projects as `id`, never a title or text comparison. Refreshes are event-driven: the calendars registry is observed for query, role, timezone, name, creation and deletion changes, and the outline tree for the writes a drag, a resize, a cleared date or a deleted item make, so the indicator appears, updates and disappears reactively. A recurring item lists its current and upcoming occurrences rather than collapsing them into one, and reports how many further occurrences it did not list instead of dropping them silently.
+
+  '
+category: client
+status: implemented
+tests:
+- client/e2e/new/cal-item-schedule-indicator-7b2f19ac.spec.ts
+- client/e2e/new/cal-item-schedule-indicator-multi-7b2f19ac.spec.ts
+- client/src/components/OutlinerItemCalendarIndicator.test.ts
+- client/src/services/calendar/calendarMembershipService.test.ts
+- client/src/services/calendar/calendarScheduleDetails.test.ts
+- client/src/services/calendar/calendarScheduleIndex.test.ts
+- client/src/services/calendar/calendarSourceIdentity.test.ts

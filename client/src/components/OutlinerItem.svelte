@@ -88,6 +88,7 @@ import { resolvePath } from "../utils/pathUtils";
 
 import OutlinerItemAlias from "./OutlinerItemAlias.svelte";
 import OutlinerItemAttachments from "./OutlinerItemAttachments.svelte";
+import OutlinerItemCalendarIndicator from "./OutlinerItemCalendarIndicator.svelte";
 import OutlinerItemCommentButton from "./OutlinerItemCommentButton.svelte";
 import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
@@ -2357,6 +2358,10 @@ export function setSelectionPosition(start: number, end: number = start) {
                     />
                 {/if}
                 {#if !isPageTitle}
+                    <!-- Calendar membership of this very item, from the
+                         project-level reverse index (#4981): no query, no
+                         timer and no tree scan per row. -->
+                    <OutlinerItemCalendarIndicator itemId={model.id} />
                     <OutlinerItemCommentButton
                         modelId={model.id}
                         commentCount={commentCountVisual}
