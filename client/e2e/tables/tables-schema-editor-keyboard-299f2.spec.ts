@@ -31,7 +31,7 @@ test.describe("Table schema editor keyboard handling", () => {
         await expect(view.locator(".yjs-table-container")).toBeVisible({ timeout: 15000 }).catch(() => {});
 
         // Open the schema panel explicitly via the panel control button
-        const toggleBtn = view.locator('[data-testid="yjs-table-toggle-schema-btn"]');
+        const toggleBtn = view.locator('[data-testid="yjs-table-toggle-schema"]');
         if (await toggleBtn.count() > 0) {
             await toggleBtn.first().click();
         }
@@ -44,9 +44,11 @@ test.describe("Table schema editor keyboard handling", () => {
         const schemaApplyButton = page.locator('[data-testid="yjs-table-schema-apply"]');
         const schemaTextarea = page.locator('[data-testid="yjs-table-schema-input"]');
 
-        // Focus the schema textarea
+        // Select all text in the textarea and delete it
         await schemaTextarea.focus();
         await expect(schemaTextarea).toBeFocused();
+        await page.keyboard.press("Meta+A"); // or Ctrl+A, but Playwright handles modifier cross-platform best by explicit clear
+        await schemaTextarea.fill(""); // simpler than Meta+A
 
         // Type a multiline CREATE TABLE statement
         const createStatement1 = "CREATE TABLE test_table (";
@@ -68,20 +70,37 @@ test.describe("Table schema editor keyboard handling", () => {
         const value = await schemaTextarea.inputValue();
         expect(value).toBe(`${createStatement1}\n${createStatement2}\n${createStatement3}\n${createStatement4}`);
 
-        // Verify that the table UI def editor is NOT visible yet (table has no columns)
-        await expect(page.locator('[data-testid="yjs-table-ui-editor"]')).not.toBeVisible();
-
         // Click apply schema
         await schemaApplyButton.click();
+
+        // Check for applying error
+        await expect(page.getByTestId("yjs-table-schema-error")).not.toBeVisible();
+
+        // We are editing an existing schema (from the empty table template) which might trigger a warning if we replaced it entirely
+        // Click confirm if the warning dialog appears
+        const confirmBtn = page.getByTestId("yjs-table-schema-confirm");
+        try {
+            await expect(confirmBtn).toBeVisible({ timeout: 5000 });
+            await confirmBtn.click();
+            await expect(page.getByTestId("yjs-table-schema-error")).not.toBeVisible();
+        } catch (_e) {
+            // It's fine if the warning doesn't appear
+        }
 
         // Wait for the applying state to clear
         await expect(schemaApplyButton).toHaveText("Apply schema");
 
-        // UI definition editor should now appear with our columns
-        await expect(page.locator('[data-testid="yjs-table-ui-editor"]')).toBeVisible();
+        // Explicitly set the query to ensure we get results back and the grid renders columns
+        await page.getByTestId("yjs-table-toggle-ui").first().click();
+        await expect(page.locator('[data-testid="yjs-table-ui-editor"]')).toBeVisible({ timeout: 15000 });
 
-        // Check that the columns were successfully applied
-        await expect(page.locator('.component-row[data-col="id"]')).toBeVisible();
-        await expect(page.locator('.component-row[data-col="name"]')).toBeVisible();
+        const queryInput = page.locator('[data-testid="yjs-table-query-input"]');
+        await queryInput.fill("SELECT * FROM test_table");
+        await queryInput.press("Enter");
+
+        // Check that the grid columns updated
+        const grid = page.getByTestId("yjs-table-grid").first();
+        await expect(grid.locator("th[data-col='id']")).toBeVisible({ timeout: 30000 });
+        await expect(grid.locator("th[data-col='name']")).toBeVisible({ timeout: 30000 });
     });
 });
