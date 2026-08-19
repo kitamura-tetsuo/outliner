@@ -86,7 +86,7 @@ acceptance:
 - Copy/duplicate preserves the children's order, spans and component-copy semantics
 - Span changes made by a collaborator update the rendered layout reactively
 - Grid and Calendar rendering outside a Layout is unaffected
-- "Change to Layout" is withheld for an item whose children are not all eligible
-  visual blocks, so converting can never hide an existing branch
+- The Change to Layout action is withheld for an item whose children are not all
+  eligible visual blocks, so converting can never hide an existing branch
 - Converting an item to or from a Layout rebuilds the outline's visible order
   immediately, without waiting for the next structural edit
