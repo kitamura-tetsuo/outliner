@@ -202,6 +202,10 @@ function handleContextMenu(e: MouseEvent) {
 function handleMenuKeyDown(e: KeyboardEvent) {
     if (isPageTitle) return;
 
+    // Clicks on foreign inputs (e.g. the schema editor's own input/textarea) must not
+    // trigger outline shortcuts like Enter or arrow navigation.
+    if (isForeignInput(e.target)) return;
+
     // While the context menu owns focus, let it handle its own keys.
     if (isContextMenuOpen && e.key !== 'ContextMenu' && !(e.shiftKey && e.key === 'F10')) return;
 
