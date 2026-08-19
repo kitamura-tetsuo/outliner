@@ -346,7 +346,10 @@ export function isForeignInput(target: EventTarget | null): boolean {
  */
 export function isEditorClipboardEvent(event: Event): boolean {
     if (typeof document === "undefined") return false;
-    if (isForeignInput(event.target) || isForeignInput(document.activeElement)) return false;
+    const target = (event.composedPath && event.composedPath().length > 0)
+        ? (event.composedPath()[0] as EventTarget)
+        : event.target;
+    if (isForeignInput(target) || isForeignInput(document.activeElement)) return false;
 
     const active = document.activeElement as HTMLElement | null;
     if (!active) return false;
@@ -2473,6 +2476,9 @@ export class KeyEventHandler {
         ) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(`KeyEventHandler.handlePaste called`);
         }
+
+        // Do nothing when the paste belongs to another input or to a plain page selection
+        if (!isEditorClipboardEvent(event)) return;
 
         // Prevent browser default paste action to avoid native insertion before await completes
         event.preventDefault();

@@ -1362,6 +1362,10 @@ function handlePaste(event: ClipboardEvent) {
   // the paste (including Clipboard API fallback reads).
   if (event.defaultPrevented) return;
 
+  // Same ownership check as handleCopy/handleCut: never intercept paste on behalf of
+  // another input or of a plain page selection.
+  if (!isEditorClipboardEvent(event)) return;
+
   // Provide fallback for paste to temporary textarea (#clipboard-test) for E2E tests
   // This path is for E2E test environment only and is not executed in production
   const target = event.target as HTMLTextAreaElement | null;
