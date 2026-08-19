@@ -53,7 +53,6 @@ interface Props {
     /** Requests the delete-disposition prompt for an entry; addressability (not writability) gates this. */
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
-    onContextMenu?: (entry: CalendarEntry, e: MouseEvent) => void;
     /** Present only when this grid is one lane band of `CalendarLaneTimeGrid.svelte` (#4348). */
     isLaneWritable?: (entry: CalendarEntry) => boolean;
     onLaneDragStart?: (entry: CalendarEntry, e: DragEvent) => void;
@@ -78,7 +77,6 @@ let {
     onKeyboardResize,
     onDeleteRequest,
     isDeletable = () => false,
-    onContextMenu,
     isLaneWritable,
     onLaneDragStart,
 }: Props = $props();
@@ -259,9 +257,7 @@ onMount(() => {
                     class:not-writable={!isStartWritable(p.entry)}
                     style={`grid-column: ${p.dayIndex + 1} / span ${p.spanDays}`}
                     data-testid={`calendar-entry-allday-${p.entry.key}`}
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(p.entry, e); }}
                     onpointerdown={(e) => {
-                        if (e.button === 2) return;
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                 >
@@ -293,9 +289,7 @@ onMount(() => {
                     class="milestone-entry"
                     style={`grid-column: ${m.dayIndex + 1}`}
                     data-testid={`calendar-entry-milestone-${m.entry.key}`}
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(m.entry, e); }}
                     onpointerdown={(e) => {
-                        if (e.button === 2) return;
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                 >
@@ -356,9 +350,7 @@ onMount(() => {
                     }%); width: calc(${100 / layout.dayCount / p.columnCount}% - 2px); top: ${
                         p.startFraction * dayHeightPx
                     }px; height: ${(p.endFraction - p.startFraction) * dayHeightPx}px`}
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(p.entry, e); }}
                     onpointerdown={(e) => {
-                        if (e.button === 2) return;
                         beginDrag("move", p.entry, e);
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
@@ -394,7 +386,7 @@ onMount(() => {
                             aria-label={`Resize ${p.entry.title}`}
                             class="resize-handle"
                             data-testid={`calendar-entry-resize-${p.entry.key}`}
-                            onpointerdown={(e) => { if (e.button === 2) return; beginDrag("resize", p.entry, e); }}
+                            onpointerdown={(e) => beginDrag("resize", p.entry, e)}
                             onkeydown={(e) => onResizeKeydown(p.entry, e)}
                         ></div>
                     {/if}

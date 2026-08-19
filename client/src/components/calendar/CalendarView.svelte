@@ -72,7 +72,6 @@ import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjsta
 import CalendarGanttChart from "./CalendarGanttChart.svelte";
 import CalendarCreateEntryDialog from "./CalendarCreateEntryDialog.svelte";
 import CalendarDeleteEntryDialog from "./CalendarDeleteEntryDialog.svelte";
-import CalendarEntryContextMenu from "./CalendarEntryContextMenu.svelte";
 import CalendarHourMinuteGrid from "./CalendarHourMinuteGrid.svelte";
 import CalendarLaneTimeGrid from "./CalendarLaneTimeGrid.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
@@ -116,9 +115,6 @@ let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides(
 let showCreateDialog = $state(false);
 let createDefaultStartMs = $state<number | undefined>(undefined);
 let deletingEntry = $state<CalendarEntry | undefined>(undefined);
-let contextMenuEntry = $state<CalendarEntry | undefined>(undefined);
-let contextMenuX = $state(0);
-let contextMenuY = $state(0);
 
 let showSettings = $state(false);
 let isInitialSyncDone = false;
@@ -465,14 +461,6 @@ function onDeleteCancelled() {
     deletingEntry = undefined;
 }
 
-function openContextMenu(entry: CalendarEntry, e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    contextMenuEntry = entry;
-    contextMenuX = e.clientX;
-    contextMenuY = e.clientY;
-}
-
 /**
  * Drop `entry` onto a lane (#4348). Mirror the target membership
  * optimistically: the Yjs -> PGlite projection is asynchronous, so waiting
@@ -627,7 +615,6 @@ onDestroy(() => {
             onLeafResizeEnd={commitDuration}
             onLeafKeyboardMove={commitStart}
             onSubtreeDragEnd={commitSubtreeShift}
-            onContextMenu={openContextMenu}
         />
     {:else if hourMinuteLayout}
         <CalendarHourMinuteGrid
@@ -645,7 +632,6 @@ onDestroy(() => {
             onKeyboardResize={commitDuration}
             {isDeletable}
             onDeleteRequest={requestDelete}
-            onContextMenu={openContextMenu}
         />
     {:else if viewType === "month" && monthCells}
         {#if groupingActive}
@@ -677,7 +663,6 @@ onDestroy(() => {
             {isDeletable}
             onDeleteRequest={requestDelete}
             laneLabel={groupingActive ? laneLabelForEntry : undefined}
-            onContextMenu={openContextMenu}
         />
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
@@ -702,7 +687,6 @@ onDestroy(() => {
             onLaneDrop={commitLaneDrop}
             {isDeletable}
             onDeleteRequest={requestDelete}
-            onContextMenu={openContextMenu}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -724,21 +708,9 @@ onDestroy(() => {
             onKeyboardResize={commitDuration}
             {isDeletable}
             onDeleteRequest={requestDelete}
-            onContextMenu={openContextMenu}
         />
     {/if}
 </div>
-
-{#if contextMenuEntry}
-    <CalendarEntryContextMenu
-        x={contextMenuX}
-        y={contextMenuY}
-        entry={contextMenuEntry}
-        {isDeletable}
-        onDeleteRequest={requestDelete}
-        onClose={() => { contextMenuEntry = undefined; }}
-    />
-{/if}
 
 {#if showCreateDialog}
     <CalendarCreateEntryDialog

@@ -50,7 +50,6 @@ interface Props {
     onLeafResizeEnd: (entry: CalendarEntry, newDurationMs: number) => void;
     onLeafKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onSubtreeDragEnd: (row: GanttRow, deltaMs: number, analysis: GanttSubtreeShiftAnalysis) => void;
-    onContextMenu?: (entry: CalendarEntry, e: MouseEvent) => void;
 }
 
 let {
@@ -72,7 +71,6 @@ let {
     onLeafResizeEnd,
     onLeafKeyboardMove,
     onSubtreeDragEnd,
-    onContextMenu,
 }: Props = $props();
 
 const collapsedKeys = new SvelteSet<string>();
@@ -137,7 +135,6 @@ function snappedDurationMs(originDurationMs: number, rawDeltaMs: number): number
 
 function beginLeafDrag(row: GanttRow, e: PointerEvent) {
     if (row.isRollup || row.barStartMs === undefined || !isLeafStartWritable(row.entry)) return;
-    if (e.button === 2) return;
     if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -146,7 +143,6 @@ function beginLeafDrag(row: GanttRow, e: PointerEvent) {
 
 function beginLeafResize(row: GanttRow, e: PointerEvent) {
     if (row.isRollup || row.barStartMs === undefined || row.barEndMs === undefined || !isLeafDurationWritable(row.entry)) return;
-    if (e.button === 2) return;
     if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -163,7 +159,6 @@ function beginSubtreeDrag(row: GanttRow, e: PointerEvent) {
     if (!row.isRollup) return;
     const analysis = analyzeSubtreeShift(row);
     if (!analysis.shiftable || analysis.members.length === 0) return;
-    if (e.button === 2) return;
     if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -351,7 +346,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     class:not-writable={!row.isRollup && !isLeafStartWritable(row.entry)}
                     data-testid={`calendar-gantt-bar-${row.key}`}
                     style={`left: ${barLeftPct(row)}%; width: ${barWidthPct(row)}%`}
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row.entry, e); }}
                     onpointerdown={(e) => row.isRollup ? beginSubtreeDrag(row, e) : beginLeafDrag(row, e)}
                     onkeydown={(e) => onRowKeydown(row, e)}
                 >
@@ -371,8 +365,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     class="start-point"
                     data-testid={`calendar-gantt-point-${row.key}`}
                     style={`left: ${pointLeftPct(row.startPointMs)}%`}
-                    role="presentation"
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row.entry, e); }}
                 >● {row.entry.title}</div>
             {/if}
             {#if row.dueMarkerMs !== undefined && pointLeftPct(row.dueMarkerMs) !== undefined}
@@ -380,8 +372,6 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     class="due-marker"
                     data-testid={`calendar-gantt-milestone-${row.key}`}
                     style={`left: ${pointLeftPct(row.dueMarkerMs)}%`}
-                    role="presentation"
-                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(row.entry, e); }}
                 >◆</div>
             {/if}
         </div>

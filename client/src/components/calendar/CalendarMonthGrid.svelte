@@ -26,7 +26,6 @@ interface Props {
     onKeyboardMove: (entry: CalendarEntry, newStartMs: number) => void;
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
-    onContextMenu?: (entry: CalendarEntry, e: MouseEvent) => void;
     /**
      * A lane is "not a layout" in month view (docs/crdt-sql-architecture.md
      * §6.3) — grouping shows up as a colour per entry instead. Absent when no
@@ -46,7 +45,6 @@ let {
     onDeleteRequest,
     isDeletable = () => false,
     laneLabel,
-    onContextMenu,
 }: Props = $props();
 
 const weekdayHeaders = $derived(
@@ -187,7 +185,6 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         tabindex="0"
                         class="milestone-chip"
                         data-testid={`calendar-entry-milestone-${m.key}`}
-                        oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(m, e); }}
                         onkeydown={(e) => onCellKeydown(m, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">◆ {m.title}</span>
@@ -215,7 +212,6 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         data-testid={`calendar-entry-${entry.key}`}
                         data-lane={laneLabel?.(entry)}
                         style={laneLabel && isStartWritable(entry) ? `background: ${laneColor(laneLabel(entry))}` : undefined}
-                        oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(entry, e); }}
                         ondragstart={(e) => onDragStart(entry, e)}
                         ondragend={clearDragLabel}
                         onkeydown={(e) => onCellKeydown(entry, e)}
