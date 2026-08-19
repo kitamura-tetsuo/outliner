@@ -48,6 +48,7 @@ interface Props {
     onKeyboardResize: (entry: CalendarEntry, newDurationMs: number) => void;
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    onContextMenu?: (entry: CalendarEntry, e: MouseEvent) => void;
 }
 
 let {
@@ -65,6 +66,7 @@ let {
     onKeyboardResize,
     onDeleteRequest,
     isDeletable = () => false,
+    onContextMenu,
 }: Props = $props();
 
 let trackEls: (HTMLDivElement | undefined)[] = $state([]);
@@ -256,6 +258,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     class="all-day-entry"
                     class:not-writable={!isStartWritable(entry)}
                     data-testid={`calendar-entry-allday-${entry.key}`}
+                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(entry, e); }}
                 >
                     <div
                         role="button"
@@ -281,6 +284,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     aria-label={entry.title}
                     class="milestone-entry"
                     data-testid={`calendar-entry-milestone-${entry.key}`}
+                    oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(entry, e); }}
                 >
                     <div
                         role="button"
@@ -342,7 +346,9 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                             style={`left: ${(f.startMinute / MINUTES_PER_ROW) * 100}%; width: ${
                                 ((f.endMinute - f.startMinute) / MINUTES_PER_ROW) * 100
                             }%; top: ${f.laneIndex * LANE_HEIGHT_PX}px; height: ${LANE_HEIGHT_PX - 2}px`}
+                            oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); onContextMenu?.(f.entry, e); }}
                             onpointerdown={(e) => {
+                                if (e.button === 2) return;
                                 beginDrag("move", f.entry, row.rowIndex, e);
                                 (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                             }}
@@ -382,7 +388,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                                     aria-label={`Resize ${f.entry.title}`}
                                     class="resize-handle"
                                     data-testid={`calendar-entry-resize-${f.entry.key}`}
-                                    onpointerdown={(e) => beginDrag("resize", f.entry, row.rowIndex, e)}
+                                    onpointerdown={(e) => { if (e.button === 2) return; beginDrag("resize", f.entry, row.rowIndex, e); }}
                                     onkeydown={(e) => onResizeKeydown(f.entry, e)}
                                 ></div>
                             {/if}

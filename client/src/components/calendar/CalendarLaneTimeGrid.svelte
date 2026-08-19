@@ -46,6 +46,7 @@ interface Props {
     /** Delete affordance, passed straight through to each lane's grid (#4349). */
     onDeleteRequest?: (entry: CalendarEntry) => void;
     isDeletable?: (entry: CalendarEntry) => boolean;
+    onContextMenu?: (entry: CalendarEntry, e: MouseEvent) => void;
 }
 
 let {
@@ -70,6 +71,7 @@ let {
     onLaneDrop,
     onDeleteRequest,
     isDeletable = () => false,
+    onContextMenu,
 }: Props = $props();
 
 const bands = $derived(lanes.map((lane) => ({ lane, layout: layoutTimeGrid(lane.entries, rangeStart, rangeEnd) })));
@@ -181,6 +183,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
                 {onKeyboardResize}
                 {isDeletable}
                 {onDeleteRequest}
+                {onContextMenu}
                 isLaneWritable={(entry) => isLaneWritable(entry)}
                 onLaneDragStart={onHandleDragStart}
             />

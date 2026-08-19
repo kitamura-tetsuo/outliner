@@ -110,4 +110,48 @@ test.describe("FTR-ac999163: deleting a calendar entry always prompts for the di
             timeout: 15000,
         });
     });
+
+
+    test("right-clicking an entry opens the entry context menu and allows deletion", async ({ page }) => {
+        await attachWritableCalendar(page);
+        await createEntry(page, "Context Menu Delete");
+
+        const entryChip = page.locator('[data-testid^="calendar-entry-outline_items:"]', {
+            hasText: "Context Menu Delete",
+        }).first();
+        await expect(entryChip).toBeVisible({ timeout: 15000 });
+
+        // Right-click the entry
+        await entryChip.click({ button: 'right' });
+
+        // Verify the calendar context menu appears and the general outliner context menu does not hijack the click
+        const calendarMenu = page.locator('.calendar-context-menu');
+        await expect(calendarMenu).toBeVisible({ timeout: 10000 });
+
+        // The calendar context menu should have our delete button.
+        const deleteOption = calendarMenu.getByTestId("calendar-context-menu-delete");
+        await expect(deleteOption).toBeVisible();
+
+        // Ensure the dialog isn't present yet
+        const dialog = page.getByTestId("calendar-delete-dialog").first();
+        await expect(dialog).toHaveCount(0);
+
+        // Click delete
+        await deleteOption.click();
+
+        // Wait for Svelte reactivity
+        await page.waitForTimeout(300);
+
+        // Verify the dialog opens
+        await expect(dialog).toBeVisible({ timeout: 10000 });
+
+        // Clear date to ensure the deletion flow completes properly
+        await page.getByTestId("calendar-delete-clear-field").first().click();
+        await expect(dialog).toHaveCount(0, { timeout: 10000 });
+
+        await expect(page.locator('[data-testid^="calendar-entry-outline_items:"]', {
+            hasText: "Context Menu Delete",
+        })).toHaveCount(0, { timeout: 15000 });
+    });
+
 });
