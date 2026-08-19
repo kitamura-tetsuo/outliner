@@ -2,11 +2,9 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Table schema editor keyboard handling", () => {
-    let projectInfo: { projectId: string; projectName: string; pageName: string; };
-
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed a project with a single table container item
-        projectInfo = await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table container"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table container"]);
 
         // Wait for connection to settle
         await page.waitForTimeout(500);
