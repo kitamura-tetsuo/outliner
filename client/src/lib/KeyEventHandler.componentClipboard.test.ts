@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { Project } from "../schema/app-schema";
 import { GRID_EXPORT_ROW_LIMIT } from "../services/clipboard/gridClipboardExport";
 import {
     deserializeClipboardItems,
@@ -365,6 +366,58 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         KeyEventHandler.handleCopy(event);
 
         expect(deserializeClipboardItems(data.get(OUTLINER_ITEMS_MIME) ?? "")?.version).toBe(1);
+    });
+
+    it("carries a Layout's hidden children and their descendants, with their spans (#4997)", () => {
+        // A Layout renders its own children, so they are never visible rows and
+        // a copy driven by the visible list would otherwise lose the whole
+        // branch. Real schema objects here: the traversal walks the tree.
+        const project = Project.fromDoc(state.doc);
+        const page = project.addPage("Layout page", "tester");
+        const intro = page.items.addNode("tester");
+        intro.updateText("Intro");
+        const layout = page.items.addNode("tester");
+        layout.componentType = "layout";
+        const first = layout.items.addNode("tester");
+        first.componentType = "yjstable";
+        first.yjsTableId = tableId;
+        first.columnSpan = 4;
+        const note = first.items.addNode("tester");
+        note.updateText("Nested note");
+        const deeper = note.items.addNode("tester");
+        deeper.updateText("Deeper still");
+        const second = layout.items.addNode("tester");
+        second.componentType = "yjstable";
+        second.yjsTableId = tableId;
+        second.columnSpan = 8;
+        const outro = page.items.addNode("tester");
+        outro.updateText("Outro");
+
+        state.visible = [
+            { model: { id: intro.id, original: intro }, depth: 0 },
+            { model: { id: layout.id, original: layout }, depth: 0 },
+            { model: { id: outro.id, original: outro }, depth: 0 },
+        ];
+        state.selection = {
+            startItemId: intro.id,
+            startOffset: 0,
+            endItemId: outro.id,
+            endOffset: "Outro".length,
+            userId: "local",
+        };
+
+        const { event, data } = copyEvent();
+        KeyEventHandler.handleCopy(event);
+
+        expect(copiedItems(data)).toEqual([
+            { text: "Intro", depth: 0 },
+            { text: "", depth: 0, componentType: "layout" },
+            { text: "Sales", depth: 1, componentType: "yjstable", yjsTableId: tableId, columnSpan: 4 },
+            { text: "Nested note", depth: 2 },
+            { text: "Deeper still", depth: 3 },
+            { text: "Sales", depth: 1, componentType: "yjstable", yjsTableId: tableId, columnSpan: 8 },
+            { text: "Outro", depth: 0 },
+        ]);
     });
 });
 

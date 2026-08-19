@@ -1,10 +1,11 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
+import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
-export type CommandType = "yjstable" | "alias";
+export type CommandType = "yjstable" | "alias" | typeof LAYOUT_COMPONENT_TYPE;
 
 interface Position {
     top: number;
@@ -22,9 +23,10 @@ class CommandPaletteStore {
     private commandCursorOffset: number = 0;
     private commandStartOffset: number = 0; // Position of slash
 
-    readonly commands = [
-        { label: "Database", type: "yjstable" as const },
-        { label: "Alias", type: "alias" as const },
+    readonly commands: ReadonlyArray<{ label: string; type: CommandType; }> = [
+        { label: "Database", type: "yjstable" },
+        { label: "Alias", type: "alias" },
+        { label: "Layout", type: LAYOUT_COMPONENT_TYPE },
     ];
 
     // Visible list is calculated by getter

@@ -58,3 +58,27 @@ Outliner does not support deleting individual pages. Pages are append-only and p
 ### FLD-NON Ability to retrieve FluidClient
 
 The ability to retrieve a `FluidClient` instance by project title was removed during the Yjs migration, as the API no longer exists.
+
+## Layout
+
+### LAY-NON Arbitrary content columns and freeform placement
+
+The Layout container
+(`docs/client-features/lay-visual-block-layout-container-9d3f57c1.yaml`) is a
+narrowly scoped visual composition primitive: a normal tree container that
+arranges _visual blocks_ (Grid, Calendar) on a fixed 12-column grid, with an
+integer `columnSpan` per child as the only placement state.
+
+Deliberately out of scope, so the outline stays one-dimensional and placement
+needs no second reconciliation model beside the tree:
+
+- Notion-style arbitrary text/content columns, or converting any block into a
+  column.
+- Freeform x/y positioning, and persisted grid row or column-start coordinates.
+- Custom per-track fractions or widths (`1fr 2fr`), and pixel widths.
+- Row spans and masonry/Pinterest packing.
+- Nested Layout containers.
+- A presentation/canvas/page-design system.
+- Any change to Grid or Calendar data ownership and entity models: a Layout
+  child keeps binding to its own table or calendar exactly as it does outside a
+  Layout.

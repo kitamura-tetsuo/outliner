@@ -16,6 +16,7 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
+import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
@@ -147,7 +148,8 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
-        const isComponent = Boolean(tableId || calendarId);
+        const isLayout = isLayoutItem(item);
+        const isComponent = Boolean(tableId || calendarId) || isLayout;
         const fallbackText = tableId
             ? getTableName(project.ydoc, tableId)
             : calendarId
@@ -168,12 +170,39 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             const exported = renderedGridExport(tableId);
             if (exported) gridExports.set(tableId, exported);
         }
-        return [{
+        const collected = [{
             item,
             depth: entry.depth,
             fallbackText,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
+        // A Layout renders its own children, so neither they nor anything
+        // beneath them are visible rows of the outline, and a copy would
+        // otherwise leave them behind. They are ordinary tree items, so the
+        // whole subtree travels as deeper clipboard items at its own relative
+        // depth - no Layout-specific clipboard format (#4997).
+        if (isLayout) {
+            const collectSubtree = (node: typeof item, depth: number) => {
+                const nodeTableId = getItemTableId(node);
+                const nodeCalendarId = getItemCalendarId(node);
+                collected.push({
+                    item: node,
+                    depth,
+                    fallbackText: nodeTableId
+                        ? getTableName(project.ydoc, nodeTableId)
+                        : nodeCalendarId
+                        ? getCalendar(project, nodeCalendarId)?.name
+                        : undefined,
+                    // The serializer reads the item's own text; only a
+                    // partially selected edge item overrides it, and none of
+                    // these are edges of the selection.
+                    text: undefined,
+                });
+                for (const descendant of node.items) collectSubtree(descendant, depth + 1);
+            };
+            for (const child of layoutChildren(item)) collectSubtree(child, entry.depth + 1);
+        }
+        return collected;
     });
     if (entries.length === 0) return undefined;
     if (!coversWholeRange && !hasComponent) return undefined;

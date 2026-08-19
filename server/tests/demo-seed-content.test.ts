@@ -138,7 +138,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(47);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(48);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -613,5 +613,29 @@ describe("Demo seed content", () => {
 
         const allDay = findChildByText(calendarsPage!.items, "All-day conference");
         expect(allDay!.tags).to.deep.equal(["work", "travel"]);
+    });
+
+    it("seeds a Layout page whose container arranges a Grid and a Calendar side by side (#4997)", () => {
+        const layoutPage = findChildByText(project.items, "Layout");
+        expect(layoutPage, "Layout page exists").to.not.equal(undefined);
+
+        const layout = findChildByText(layoutPage!.items, "A dashboard: sales next to the week's schedule.");
+        expect(layout, "layout container exists").to.not.equal(undefined);
+        expect(layout!.componentType).to.equal("layout");
+        // The container itself carries no placement metadata.
+        expect(layout!.columnSpan).to.equal(undefined);
+
+        const children = childTexts(layout!.items);
+        expect(children).to.deep.equal(["Sales", "This week"]);
+
+        const grid = findChildByText(layout!.items, "Sales");
+        expect(grid!.componentType).to.equal("yjstable");
+        expect(grid!.yjsTableId).to.equal(DEMO_SALES_TABLE_ID);
+        expect(grid!.columnSpan).to.equal(6);
+
+        const calendar = findChildByText(layout!.items, "This week");
+        expect(calendar!.componentType).to.equal("calendar");
+        expect(calendar!.calendarId).to.equal(DEMO_CALENDAR_ID);
+        expect(calendar!.columnSpan).to.equal(6);
     });
 });

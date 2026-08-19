@@ -1,5 +1,7 @@
 import type { YTree } from "yjs-orderedtree";
 import type { Item } from "../schema/app-schema";
+import { DEFAULT_COLUMN_SPAN } from "../services/layout/layoutModel";
+import { canAcceptAsLayoutChild, isLayoutItem } from "../services/layout/layoutTree";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { safeGetNodeParent } from "../utils/treeUtils";
@@ -96,6 +98,18 @@ export class TreeDnD {
         const sourceKey = sourceItem.key!;
         const targetKey = targetItem.key!;
 
+        // A Layout container (#4997) accepts only visual blocks as direct
+        // children. A nested drop of anything else - ordinary text, or another
+        // Layout - is refused here and leaves the tree exactly as it was,
+        // rather than being silently converted or rehomed.
+        const droppingIntoLayout = position === "middle" && isLayoutItem(targetItem);
+        if (droppingIntoLayout && !canAcceptAsLayoutChild(sourceItem)) {
+            logger.debug(
+                `Rejected drop into layout: item ${sourceItemId} is not a visual block`,
+            );
+            return;
+        }
+
         try {
             const tree: YTree = items.tree;
             const doc = pageItem?.ydoc;
@@ -114,6 +128,11 @@ export class TreeDnD {
                     }
 
                     tree.setNodeOrderToEnd(sourceKey);
+                    // A block entering a Layout needs a width; everything else
+                    // about its placement follows from tree order.
+                    if (droppingIntoLayout && sourceItem.columnSpan === undefined) {
+                        sourceItem.columnSpan = DEFAULT_COLUMN_SPAN;
+                    }
                     return;
                 }
 

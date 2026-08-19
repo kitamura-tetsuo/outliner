@@ -1,8 +1,9 @@
 import type { CalendarSettings } from "../calendar/calendarService";
+import { LAYOUT_COLUMN_COUNT, LAYOUT_COMPONENT_TYPE, normalizeColumnSpan } from "../layout/layoutModel";
 export const OUTLINER_ITEMS_MIME = "application/x-outliner-items";
 const OUTLINER_ITEMS_HTML_ATTRIBUTE = "data-outliner-items";
 
-export type ClipboardComponentType = "yjstable" | "calendar";
+export type ClipboardComponentType = "yjstable" | "calendar" | typeof LAYOUT_COMPONENT_TYPE;
 
 export interface ClipboardItem {
     text: string;
@@ -10,6 +11,12 @@ export interface ClipboardItem {
     componentType?: ClipboardComponentType;
     yjsTableId?: string;
     calendarId?: string;
+    /**
+     * Width inside a Layout container (#4997). Carried per item so a copied
+     * Layout pastes with its arrangement intact; the children's order is the
+     * clipboard's own item order, exactly as the tree stores it.
+     */
+    columnSpan?: number;
 }
 
 export interface GridUiComponentDto {
@@ -93,7 +100,7 @@ const CALENDAR_SETTINGS_KEYS = new Set([
     "workingHoursEndMinutes",
     "ganttScale",
 ]);
-const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "calendarId"]);
+const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "calendarId", "columnSpan"]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder"]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
@@ -118,8 +125,20 @@ function hasOnlyKeys(value: Record<string, unknown>, allowed: ReadonlySet<string
 function isClipboardItem(value: unknown): value is ClipboardItem {
     if (!isRecord(value) || !hasOnlyKeys(value, ITEM_KEYS)) return false;
     if (typeof value.text !== "string" || !Number.isInteger(value.depth) || (value.depth as number) < 0) return false;
+    if (
+        value.columnSpan !== undefined
+        && (!Number.isInteger(value.columnSpan) || (value.columnSpan as number) < 1
+            || (value.columnSpan as number) > LAYOUT_COLUMN_COUNT)
+    ) {
+        return false;
+    }
 
     if (value.componentType === undefined) {
+        return value.yjsTableId === undefined && value.calendarId === undefined;
+    }
+    // A Layout carries no binding of its own: it owns ordinary tree children,
+    // which travel as the following, deeper clipboard items.
+    if (value.componentType === LAYOUT_COMPONENT_TYPE) {
         return value.yjsTableId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
@@ -220,16 +239,26 @@ export function serializeClipboardItems(
     const serialized = items.map(({ item, depth, fallbackText, text: textOverride }) => {
         const value = nodeValue(item);
         const rawType = value?.get?.("componentType");
-        const componentType = rawType === "yjstable" || rawType === "calendar" ? rawType : undefined;
-        const bindingField = componentType ? bindings[componentType] : undefined;
+        const isBoundComponent = rawType === "yjstable" || rawType === "calendar";
+        const componentType = isBoundComponent || rawType === LAYOUT_COMPONENT_TYPE ? rawType : undefined;
+        const bindingField = isBoundComponent ? bindings[rawType] : undefined;
         const binding = bindingField ? value?.get?.(bindingField) : undefined;
+        const rawSpan = value?.get?.("columnSpan");
+        // Repaired on the way out, by the same rule rendering uses, so a broken
+        // stored span cannot travel to another document.
+        const columnSpan = typeof rawSpan === "number" && Number.isFinite(rawSpan)
+            ? normalizeColumnSpan(rawSpan)
+            : undefined;
         const text = (textOverride ?? String(item.text ?? "")) || fallbackText || "";
+        const carriesComponent = componentType === LAYOUT_COMPONENT_TYPE
+            || (componentType !== undefined && typeof binding === "string" && binding.length > 0);
         return {
             text,
             depth,
-            ...(componentType && typeof binding === "string" && binding.length > 0
-                ? { componentType, [bindingField!]: binding }
+            ...(carriesComponent
+                ? (bindingField ? { componentType, [bindingField]: binding } : { componentType })
                 : {}),
+            ...(carriesComponent && columnSpan !== undefined ? { columnSpan } : {}),
         } as ClipboardItem;
     });
 

@@ -195,4 +195,63 @@ describe("item clipboard", () => {
             },
         }))).toBeUndefined();
     });
+
+    it("round-trips a copied Layout: the container, then its children with their spans", () => {
+        // The Layout carries no binding of its own - it owns ordinary tree
+        // children, which travel as the deeper items that follow it (#4997).
+        const encoded = serializeClipboardItems("project-a", [
+            { item: item("", { componentType: "layout" }), depth: 0 },
+            { item: item("grid", { componentType: "yjstable", yjsTableId: "table-1", columnSpan: 4 }), depth: 1 },
+            { item: item("cal", { componentType: "calendar", calendarId: "cal-1", columnSpan: 8 }), depth: 1 },
+        ]);
+
+        expect(deserializeClipboardItems(encoded)).toEqual({
+            version: 1,
+            sourceProjectId: "project-a",
+            items: [
+                { text: "", depth: 0, componentType: "layout" },
+                { text: "grid", depth: 1, componentType: "yjstable", yjsTableId: "table-1", columnSpan: 4 },
+                { text: "cal", depth: 1, componentType: "calendar", calendarId: "cal-1", columnSpan: 8 },
+            ],
+        });
+    });
+
+    it("normalizes a copied span into the 12-column range", () => {
+        const encoded = serializeClipboardItems("project-a", [
+            { item: item("wide", { componentType: "yjstable", yjsTableId: "t", columnSpan: 99 }), depth: 0 },
+            { item: item("narrow", { componentType: "yjstable", yjsTableId: "t", columnSpan: 0 }), depth: 0 },
+            { item: item("fractional", { componentType: "yjstable", yjsTableId: "t", columnSpan: 4.7 }), depth: 0 },
+        ]);
+
+        expect(deserializeClipboardItems(encoded)!.items.map(entry => entry.columnSpan)).toEqual([12, 1, 4]);
+    });
+
+    it("leaves a span off an ordinary text item, which has no layout width", () => {
+        const encoded = serializeClipboardItems("project-a", [
+            { item: item("note", { columnSpan: 6 }), depth: 0 },
+        ]);
+
+        expect(deserializeClipboardItems(encoded)!.items).toEqual([{ text: "note", depth: 0 }]);
+    });
+
+    it("rejects a payload whose span is outside the 12-column range", () => {
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 13 }],
+        }))).toBeUndefined();
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 2.5 }],
+        }))).toBeUndefined();
+    });
+
+    it("rejects a Layout payload that claims a component binding", () => {
+        expect(deserializeClipboardItems(JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [{ text: "", depth: 0, componentType: "layout", yjsTableId: "t" }],
+        }))).toBeUndefined();
+    });
 });

@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
+import { isLayoutComponentType } from "../services/layout/layoutModel";
 import { iterateItems } from "../utils/itemTraversal";
 import { userPreferencesStore } from "./UserPreferencesStore.svelte";
 
@@ -10,6 +11,15 @@ const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getIte
     || import.meta.env.VITE_IS_TEST === "true";
 const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__ && typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(...args);
+};
+
+/** True for a Layout container, whose children are rendered by the block itself. */
+const isLayoutContainer = (item: Item): boolean => {
+    try {
+        return isLayoutComponentType((item as unknown as { componentType?: string; }).componentType);
+    } catch {
+        return false;
+    }
 };
 
 const isItemLike = (obj: unknown): boolean => {
@@ -62,6 +72,11 @@ export class OutlinerViewModel {
     // Collapsed state map
     private collapsedMap = new Map<string, boolean>();
 
+    // Items that were Layout containers when the current order was built. A
+    // Layout hides its own children from the flat outline, so becoming one (or
+    // ceasing to be one) changes the order even though nothing moved.
+    private layoutContainerIds = new Set<string>();
+
     // Updating flag
     private _isUpdating = false;
 
@@ -100,7 +115,10 @@ export class OutlinerViewModel {
                 (pageItem.items as unknown as { length?: number; })?.length || 0,
             );
 
-            if (!structureChanged && changedItemIds && changedItemIds.size > 0 && this.visibleOrder.length > 0) {
+            if (
+                !structureChanged && changedItemIds && changedItemIds.size > 0 && this.visibleOrder.length > 0
+                && !this.layoutRoleChanged(changedItemIds, pageItem)
+            ) {
                 // FAST PATH: Update only specific items without re-walking or re-calculating order
                 for (const itemId of changedItemIds) {
                     const existingViewModel = this.viewModels.get(itemId);
@@ -145,6 +163,26 @@ export class OutlinerViewModel {
         } finally {
             this._isUpdating = false;
         }
+    }
+
+    /**
+     * True when one of the changed items has just become - or stopped being - a
+     * Layout container.
+     *
+     * Yjs reports a `componentType` write as a value change on the node's own
+     * map, which the tree observer classifies as non-structural, so the fast
+     * path would otherwise keep the previous order: a freshly converted Layout
+     * would show its children both in the grid and as ordinary rows, and a
+     * Layout converted back to text would keep them hidden until the next
+     * structural edit.
+     */
+    private layoutRoleChanged(changedItemIds: Set<string>, pageItem: Item): boolean {
+        for (const itemId of changedItemIds) {
+            const item = this.viewModels.get(itemId)?.original ?? (itemId === pageItem.id ? pageItem : undefined);
+            if (!item) continue;
+            if (isLayoutContainer(item) !== this.layoutContainerIds.has(itemId)) return true;
+        }
+        return false;
     }
 
     /**
@@ -292,6 +330,7 @@ export class OutlinerViewModel {
         // Initialize display order and depth first
         if (depth === 0) {
             this.visibleOrder = [];
+            this.layoutContainerIds.clear();
         }
 
         for (const child of iterateItems(items)) {
@@ -311,6 +350,7 @@ export class OutlinerViewModel {
         // Initialize display order first (only for root item)
         if (depth === 0) {
             this.visibleOrder = [];
+            this.layoutContainerIds.clear();
         }
 
         debugLog(
@@ -341,7 +381,17 @@ export class OutlinerViewModel {
             }`,
         );
 
-        if (hasChildren && !isCollapsed) {
+        // A Layout container (#4997) arranges its own direct children on a
+        // 12-column grid, so they must not also appear as ordinary rows of the
+        // flat outline. Their order still comes from the tree - this only
+        // decides who renders them. The role is remembered, children or not, so
+        // a later `componentType` change is recognized as an order change.
+        const isLayout = isLayoutContainer(item);
+        if (isLayout) this.layoutContainerIds.add(item.id);
+
+        if (hasChildren && isLayout) {
+            debugLog(`OutlinerViewModel: Layout "${item.text}" renders its own children`);
+        } else if (hasChildren && !isCollapsed) {
             const children = item.items;
             debugLog(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
@@ -442,6 +492,9 @@ export class OutlinerViewModel {
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
+        // A Layout's children never join the flat outline, so it has nothing to
+        // expand or collapse from the tree's point of view.
+        if (isLayoutContainer(model.original)) return false;
         const ch = (model.original as unknown as { items?: unknown; }).items as {
             length?: number;
             at: (i: number) => import("../schema/app-schema").Item | undefined;
@@ -465,5 +518,6 @@ export class OutlinerViewModel {
         this.depthMap.clear();
         this.parentMap.clear();
         this.collapsedMap.clear();
+        this.layoutContainerIds.clear();
     }
 }

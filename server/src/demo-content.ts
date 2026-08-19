@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 47;
+export const DEMO_TEMPLATE_VERSION = 48;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -47,7 +47,11 @@ export interface DemoItem {
     // The item's plain text. Optional for component/alias items.
     text?: string;
     // Render this item as a live component instead of plain text.
-    componentType?: "yjstable" | "calendar";
+    componentType?: "yjstable" | "calendar" | "layout";
+    // For "layout" children (#4997): how many of the Layout's 12 columns this
+    // item occupies. Order comes from the item's position among its siblings,
+    // so this is the only placement value the template carries.
+    columnSpan?: number;
     // For "yjstable" components: id of the demo table (see demoTables below)
     // this item embeds.
     yjsTableId?: string;
@@ -838,6 +842,7 @@ function addDemoItems(
         if (def.componentType) node.componentType = def.componentType;
         if (def.yjsTableId !== undefined) node.yjsTableId = def.yjsTableId;
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
+        if (def.columnSpan !== undefined) node.columnSpan = def.columnSpan;
         if (def.start !== undefined) node.start = def.start;
         if (def.allDay !== undefined) node.allDay = def.allDay;
         if (def.duration !== undefined) node.duration = def.duration;
