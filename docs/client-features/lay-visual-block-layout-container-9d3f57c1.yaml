@@ -55,8 +55,10 @@ tests:
 - client/e2e/new/lay-layout-span-and-unwrap-9d3f57c1.spec.ts
 - client/e2e/new/lay-visual-block-layout-container-9d3f57c1.spec.ts
 - client/src/components/layout/LayoutBlock.test.ts
+- client/src/lib/KeyEventHandler.componentClipboard.test.ts
 - client/src/lib/TreeDnD.layout.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
+- client/src/services/dnd/blockDndOwnership.test.ts
 - client/src/services/layout/layoutModel.test.ts
 - client/src/services/layout/layoutTree.test.ts
 - client/src/stores/OutlinerViewModel.test.ts
@@ -84,3 +86,7 @@ acceptance:
 - Copy/duplicate preserves the children's order, spans and component-copy semantics
 - Span changes made by a collaborator update the rendered layout reactively
 - Grid and Calendar rendering outside a Layout is unaffected
+- "Change to Layout" is withheld for an item whose children are not all eligible
+  visual blocks, so converting can never hide an existing branch
+- Converting an item to or from a Layout rebuilds the outline's visible order
+  immediately, without waiting for the next structural edit

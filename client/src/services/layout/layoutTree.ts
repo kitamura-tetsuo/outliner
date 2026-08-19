@@ -59,6 +59,18 @@ export function canAcceptAsLayoutChild(candidate: Item | undefined): boolean {
     }
 }
 
+/**
+ * True when this item may be turned into a Layout: a Layout renders only visual
+ * blocks, and its children leave the flat outline, so converting an item whose
+ * children are ordinary text would make that branch unreachable. Such an item
+ * has to be emptied or rearranged first.
+ */
+export function canConvertToLayout(item: Item | undefined): boolean {
+    if (!item) return false;
+    if (isLayoutItem(item)) return false;
+    return layoutChildren(item).every(child => canAcceptAsLayoutChild(child));
+}
+
 /** The rendered span of a Layout child, repaired into 1..12. */
 export function columnSpanOf(item: Item): number {
     try {

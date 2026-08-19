@@ -274,4 +274,20 @@ describe("LayoutBlock", () => {
         await waitFor(() => expect(children[0].columnSpan).toBe(1));
         unmount();
     });
+
+    it("keeps an unexpected non-visual child visible as a plain-text cell", () => {
+        // Both the drop guard and the "Change to Layout" guard prevent this,
+        // but a document written elsewhere could still contain it, and the
+        // item must not silently disappear.
+        const { layout } = buildLayout([{ type: "yjstable", span: 6 }]);
+        const stray = layout.items.addNode("tester");
+        stray.updateText("a stray note");
+        stray.columnSpan = 6;
+
+        const { container, getByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        expect(spansOf(container)).toEqual(["6", "6"]);
+        expect(getByTestId("layout-cell-fallback").textContent?.trim()).toBe("a stray note");
+        unmount();
+    });
 });

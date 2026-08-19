@@ -5,6 +5,7 @@ import { DEFAULT_COLUMN_SPAN, LAYOUT_COLUMN_COUNT, LAYOUT_COMPONENT_TYPE } from 
 import {
     adjustColumnSpan,
     canAcceptAsLayoutChild,
+    canConvertToLayout,
     columnSpanOf,
     isLayoutItem,
     layoutChildren,
@@ -287,6 +288,45 @@ describe("layoutTree", () => {
 
         it("normalizes bad spans before wrapping", () => {
             expect(rowIndexOfChild([99, 1], 1)).toBe(1);
+        });
+    });
+
+    describe("canConvertToLayout", () => {
+        it("accepts an item with no children", () => {
+            const { page } = buildPage();
+            expect(canConvertToLayout(addText(page.items, "empty"))).toBe(true);
+        });
+
+        it("accepts an item whose children are all visual blocks", () => {
+            const { page } = buildPage();
+            const parent = addText(page.items, "parent");
+            addGrid(parent.items, "t1");
+            addCalendar(parent.items, "c1");
+
+            expect(canConvertToLayout(parent)).toBe(true);
+        });
+
+        it("refuses an item with a text child, which a Layout could not render", () => {
+            const { page } = buildPage();
+            const parent = addText(page.items, "parent");
+            addGrid(parent.items, "t1");
+            addText(parent.items, "note");
+
+            expect(canConvertToLayout(parent)).toBe(false);
+        });
+
+        it("refuses an item with a nested Layout child", () => {
+            const { page } = buildPage();
+            const parent = addText(page.items, "parent");
+            addLayout(parent.items);
+
+            expect(canConvertToLayout(parent)).toBe(false);
+        });
+
+        it("refuses an item that is already a Layout", () => {
+            const { page } = buildPage();
+            expect(canConvertToLayout(addLayout(page.items))).toBe(false);
+            expect(canConvertToLayout(undefined)).toBe(false);
         });
     });
 });

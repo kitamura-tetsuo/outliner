@@ -18,7 +18,7 @@ import type { Item } from "../../schema/app-schema";
 import { getLogger } from "../../lib/logger";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
-import { LAYOUT_CHILD_DND_TYPE, LAYOUT_COLUMN_COUNT } from "../../services/layout/layoutModel";
+import { isVisualComponentType, LAYOUT_CHILD_DND_TYPE, LAYOUT_COLUMN_COUNT } from "../../services/layout/layoutModel";
 import {
     adjustColumnSpan,
     canAcceptAsLayoutChild,
@@ -71,6 +71,16 @@ const spans = $derived.by(() => {
     return new Map(children.map(child => [child.id, columnSpanOf(child)]));
 });
 
+/** Identity of the document this block is bound to; see the {#key} below. */
+const docKey = $derived.by(() => {
+    void treeVersion;
+    try {
+        return item.ydoc?.guid ?? item.id;
+    } catch {
+        return "";
+    }
+});
+
 const layoutItemId = $derived.by(() => {
     void treeVersion;
     try {
@@ -110,6 +120,16 @@ function componentTypeOf(child: Item): string | undefined {
     } catch {
         return undefined;
     }
+}
+
+/**
+ * Only visual blocks belong here, and both the drop guard and the "Change to
+ * Layout" guard enforce that. A child that is not one can still reach this
+ * point from an older or third-party document, and it must not become
+ * invisible: it gets a plain-text cell instead of a component.
+ */
+function isVisualChild(child: Item): boolean {
+    return isVisualComponentType(componentTypeOf(child));
 }
 
 onMount(() => {
@@ -280,6 +300,11 @@ function handleMoveOut(child: Item) {
 }
 </script>
 
+<!-- Bound 1:1 to this item's Y.Doc: keying the render body on the doc guid
+     (falling back to the item id) remounts everything if the underlying
+     document is ever swapped, so no observer rebinding lives in here
+     (AGENTS.md, "Yjs-bound components and Svelte key"). -->
+{#key docKey}
 <div
     class="layout-block"
     class:editing={isEditing}
@@ -338,7 +363,7 @@ function handleMoveOut(child: Item) {
                             ondragend={clearDragState}
                         >⠿</span>
 
-                        {#if childText(child)}
+                        {#if childText(child) && isVisualChild(child)}
                             <span class="layout-cell-caption">{childText(child)}</span>
                         {/if}
 
@@ -375,9 +400,15 @@ function handleMoveOut(child: Item) {
                     </div>
 
                     <div class="layout-cell-body">
-                        {#await import("../OutlinerItemComponentRenderer.svelte") then { default: ComponentRenderer }}
-                            <ComponentRenderer componentType={componentTypeOf(child)} item={child} />
-                        {/await}
+                        {#if isVisualChild(child)}
+                            {#await import("../OutlinerItemComponentRenderer.svelte") then { default: ComponentRenderer }}
+                                <ComponentRenderer componentType={componentTypeOf(child)} item={child} />
+                            {/await}
+                        {:else}
+                            <div class="layout-cell-fallback" data-testid="layout-cell-fallback">
+                                {childText(child) || "(empty item)"}
+                            </div>
+                        {/if}
                     </div>
 
                     <!-- Span resize: whole-column drag, with the same control
@@ -414,6 +445,7 @@ function handleMoveOut(child: Item) {
         {/if}
     </div>
 </div>
+{/key}
 
 <style>
 .layout-block {
@@ -532,6 +564,12 @@ function handleMoveOut(child: Item) {
 
 .layout-cell-body {
     min-width: 0;
+}
+
+.layout-cell-fallback {
+    padding: 4px 6px;
+    color: #6b7280;
+    overflow-wrap: anywhere;
 }
 
 .layout-cell-resizer {

@@ -7,11 +7,13 @@
         voted: boolean;
         isCommentsVisible: boolean;
         componentType: string;
+        /** False when this item's children are not all eligible Layout blocks. */
+        canBecomeLayout?: boolean;
         onClose: () => void;
         onAction: (action: string) => void;
     }
 
-    let { x, y, voted, isCommentsVisible, componentType, onClose, onAction }: Props = $props();
+    let { x, y, voted, isCommentsVisible, componentType, canBecomeLayout = true, onClose, onAction }: Props = $props();
     let menuRef: HTMLDivElement;
     let previousFocus: HTMLElement | null = null;
     let activeIndex = $state(0);
@@ -120,12 +122,16 @@
         Change to {componentType === 'calendar' ? 'Text' : 'Calendar'}
     </button>
 
-    <button type="button" role="menuitem" tabindex={activeIndex === 6 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-layout-type'); }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line>
-        </svg>
-        Change to {componentType === 'layout' ? 'Text' : 'Layout'}
-    </button>
+    <!-- Withheld when the item's children are not all visual blocks: a Layout
+         renders only those, so converting would hide the rest (#4997). -->
+    {#if componentType === 'layout' || canBecomeLayout}
+        <button type="button" role="menuitem" tabindex={activeIndex === 6 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-layout-type'); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line>
+            </svg>
+            Change to {componentType === 'layout' ? 'Text' : 'Layout'}
+        </button>
+    {/if}
 
     {#if componentType === 'layout'}
         <!-- Distinct from "Delete item": unwrapping keeps the arranged blocks

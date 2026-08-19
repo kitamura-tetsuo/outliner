@@ -176,25 +176,31 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             fallbackText,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
-        // A Layout renders its own children, so they are not visible rows of
-        // the outline and would otherwise be left behind by a copy. They are
-        // ordinary tree children, so they travel as deeper clipboard items —
-        // no Layout-specific clipboard format (#4997).
+        // A Layout renders its own children, so neither they nor anything
+        // beneath them are visible rows of the outline, and a copy would
+        // otherwise leave them behind. They are ordinary tree items, so the
+        // whole subtree travels as deeper clipboard items at its own relative
+        // depth - no Layout-specific clipboard format (#4997).
         if (isLayout) {
-            for (const child of layoutChildren(item)) {
-                const childTableId = getItemTableId(child);
-                const childCalendarId = getItemCalendarId(child);
+            const collectSubtree = (node: typeof item, depth: number) => {
+                const nodeTableId = getItemTableId(node);
+                const nodeCalendarId = getItemCalendarId(node);
                 collected.push({
-                    item: child,
-                    depth: entry.depth + 1,
-                    fallbackText: childTableId
-                        ? getTableName(project.ydoc, childTableId)
-                        : childCalendarId
-                        ? getCalendar(project, childCalendarId)?.name
+                    item: node,
+                    depth,
+                    fallbackText: nodeTableId
+                        ? getTableName(project.ydoc, nodeTableId)
+                        : nodeCalendarId
+                        ? getCalendar(project, nodeCalendarId)?.name
                         : undefined,
+                    // The serializer reads the item's own text; only a
+                    // partially selected edge item overrides it, and none of
+                    // these are edges of the selection.
                     text: undefined,
                 });
-            }
+                for (const descendant of node.items) collectSubtree(descendant, depth + 1);
+            };
+            for (const child of layoutChildren(item)) collectSubtree(child, entry.depth + 1);
         }
         return collected;
     });

@@ -89,4 +89,57 @@ describe("OutlinerViewModel", () => {
         // An ordinary container still flattens as before.
         expect(vm.hasChildren("root")).toBe(true);
     });
+
+    it("rebuilds the visible order when an item becomes a Layout, even on the fast path", () => {
+        const layout = tree.items.addNode("u");
+        layout.id = "layout";
+        const grid = layout.items.addNode("u");
+        grid.id = "grid";
+        grid.componentType = "yjstable";
+
+        vm.updateFromModel(tree);
+        expect(vm.getVisibleItems().map(i => i.model.id)).toContain("grid");
+
+        // Yjs reports a componentType write as a value change on the item's own
+        // map, which the tree observer classifies as non-structural.
+        layout.componentType = "layout";
+        vm.updateFromModel(tree, new Set(["layout"]), false);
+
+        expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grid");
+    });
+
+    it("rebuilds the visible order when a Layout is converted back to text", () => {
+        const layout = tree.items.addNode("u");
+        layout.id = "layout";
+        layout.componentType = "layout";
+        const grid = layout.items.addNode("u");
+        grid.id = "grid";
+        grid.componentType = "yjstable";
+
+        vm.updateFromModel(tree);
+        expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grid");
+
+        layout.componentType = undefined;
+        vm.updateFromModel(tree, new Set(["layout"]), false);
+
+        expect(vm.getVisibleItems().map(i => i.model.id)).toContain("grid");
+    });
+
+    it("keeps the fast path for a change that does not touch an item's Layout role", () => {
+        const layout = tree.items.addNode("u");
+        layout.id = "layout";
+        layout.componentType = "layout";
+        const grid = layout.items.addNode("u");
+        grid.id = "grid";
+        grid.componentType = "yjstable";
+
+        vm.updateFromModel(tree);
+        const orderBefore = vm.getVisibleItems().map(i => i.model.id);
+
+        (tree.items as unknown as Item[])[0].text = "edited";
+        vm.updateFromModel(tree, new Set(["child1"]), false);
+
+        expect(vm.getVisibleItems().map(i => i.model.id)).toEqual(orderBefore);
+        expect(vm.getViewModel("child1")?.text).toBe("edited");
+    });
 });
