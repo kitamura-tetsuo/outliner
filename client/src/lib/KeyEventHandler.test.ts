@@ -59,6 +59,12 @@ describe("KeyEventHandler.handlePaste", () => {
         (globalThis as Window & typeof globalThis & { __testMocks: Record<string, unknown>; }).__testMocks;
 
     beforeEach(() => {
+        vi.spyOn(document, "activeElement", "get").mockReturnValue(
+            {
+                classList: { contains: (cls: string) => cls === "global-textarea" },
+                closest: () => null,
+            } as unknown as Element,
+        );
         vi.clearAllMocks();
         (window as Window & typeof globalThis & { lastCopiedText?: string; }).lastCopiedText = undefined;
     });

@@ -36,6 +36,7 @@ test.describe("VS Code clipboard behavior", () => {
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
             const handler = (globalThis as any).__KEY_EVENT_HANDLER__;
+            (document.querySelector(".global-textarea") as HTMLElement)?.focus();
             await handler.handlePaste(evt);
         });
 
@@ -57,6 +58,7 @@ test.describe("VS Code clipboard behavior", () => {
             data.setData("application/vscode-editor", JSON.stringify(metadata));
             const evt = new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true });
             const handler = (globalThis as any).__KEY_EVENT_HANDLER__;
+            (document.querySelector(".global-textarea") as HTMLElement)?.focus();
             await handler.handlePaste(evt);
         });
 
