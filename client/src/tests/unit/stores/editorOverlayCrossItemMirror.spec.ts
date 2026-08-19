@@ -87,6 +87,39 @@ describe("EditorOverlayStore.syncSelectionFromTextarea with a cross-item mirror"
         expect(Object.values(editorOverlayStore.selections)[0].isReversed).toBe(true);
     });
 
+    it("narrows to a single-item selection when the OS moves both handles into one line", () => {
+        editorOverlayStore.setActiveItem(ITEMS[0].id);
+        selectAcrossItems(true);
+
+        // Both software-keyboard handles pulled into the second line
+        const lineStart = ITEMS[0].text.length + 1;
+        textarea.setSelectionRange(lineStart + 7, lineStart + 11);
+        editorOverlayStore.syncSelectionFromTextarea();
+
+        const selection = Object.values(editorOverlayStore.selections)[0];
+        expect(selection.startItemId).toBe(ITEMS[1].id);
+        expect(selection.startOffset).toBe(7);
+        expect(selection.endItemId).toBe(ITEMS[1].id);
+        expect(selection.endOffset).toBe(11);
+        expect(editorOverlayStore.getActiveItem()).toBe(ITEMS[1].id);
+    });
+
+    it("follows a cross-item range the OS moved to different items", () => {
+        editorOverlayStore.setActiveItem(ITEMS[2].id);
+        selectAcrossItems(false);
+
+        // Handles moved so the range now runs from the first item into the second one
+        const secondLineStart = ITEMS[0].text.length + 1;
+        textarea.setSelectionRange(3, secondLineStart + 4);
+        editorOverlayStore.syncSelectionFromTextarea();
+
+        const selection = Object.values(editorOverlayStore.selections)[0];
+        expect(selection.startItemId).toBe(ITEMS[0].id);
+        expect(selection.startOffset).toBe(3);
+        expect(selection.endItemId).toBe(ITEMS[1].id);
+        expect(selection.endOffset).toBe(4);
+    });
+
     it("drops the selection and places the caret on the right item when the mirror collapses", () => {
         editorOverlayStore.setActiveItem(ITEMS[2].id);
         selectAcrossItems(false);

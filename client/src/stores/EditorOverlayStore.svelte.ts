@@ -89,9 +89,15 @@ export class EditorOverlayStore {
     _selectionSyncTimeout: number | null = null;
     lastSetSelection = { start: -1, end: -1, direction: "none" as "none" | "forward" | "backward" };
     // Items the hidden mirror currently spans, in document order, together with the text that
-    // was written for them. Only cross-item selections record one; it is what lets an offset
-    // in the combined mirror text be mapped back to the item it addresses.
-    private mirrorSpan: { value: string; itemIds: string[]; } | undefined = undefined;
+    // was written for them and the range last applied to it. Only cross-item selections record
+    // one; it is what lets an offset in the combined mirror text be mapped back to the item it
+    // addresses, and what tells a replay of our own range apart from a real change.
+    private mirrorSpan: {
+        value: string;
+        itemIds: string[];
+        appliedStart?: number;
+        appliedEnd?: number;
+    } | undefined = undefined;
     // onEdit callback
     onEditCallback: (() => void) | null = null;
     private presenceSyncScheduled = false;
@@ -1610,6 +1616,12 @@ export class EditorOverlayStore {
     ) {
         this.suppressSelectionResync = true;
         textarea.setSelectionRange(start, end, direction);
+        // Remember what we put in the cross-item mirror, so reading it back can tell our own
+        // range apart from one the software keyboard moved.
+        if (this.mirrorSpan && this.mirrorSpan.value === textarea.value) {
+            this.mirrorSpan.appliedStart = start;
+            this.mirrorSpan.appliedEnd = end;
+        }
         // Do not clear the flag in a microtask. Wait for the selectionchange event.
         // The event handler will clear it, or a timeout will clear it as a fallback.
         if (this._selectionSyncTimeout) {
@@ -1877,26 +1889,54 @@ export class EditorOverlayStore {
      * is enough to trigger it: copying replays one once the drag has already ended, which threw
      * away both endpoints and the drag direction of the selection the user had just made.
      *
-     * A range therefore changes nothing here — the mirror was written from the store's
-     * cross-item selection, which stays authoritative. A collapsed mirror is the software
-     * keyboard dropping the selection (see `settleTextareaAfterSelectionCleared`), so the local
-     * selection goes away and the caret moves to the item the mirror offset really points at.
+     * Every offset is therefore mapped back through the mirror to the item it addresses. A
+     * replay of the range we wrote ourselves changes nothing, since the store's selection is
+     * what produced it; anything else is the software keyboard moving the selection (see
+     * `settleTextareaAfterSelectionCleared`) and becomes the new local selection, or, when it
+     * collapsed, the caret alone.
      */
     private syncSelectionFromCrossItemMirror(textarea: HTMLTextAreaElement, start: number, end: number) {
-        if (start !== end) return;
-
-        const position = this.resolveMirrorOffset(textarea.value, start);
-        if (position) {
-            this.setActiveItem(position.itemId);
-            this.setCursor({
-                itemId: position.itemId,
-                offset: position.offset,
-                isActive: true,
-                userId: "local",
-            });
+        const span = this.mirrorSpan;
+        if (span && span.value === textarea.value && span.appliedStart === start && span.appliedEnd === end) {
+            return;
         }
 
-        this.clearSelectionForUser("local");
+        const startPosition = this.resolveMirrorOffset(textarea.value, start);
+        const endPosition = start === end ? startPosition : this.resolveMirrorOffset(textarea.value, end);
+
+        // Without the mapping the offsets belong to no item in particular, so the store keeps
+        // what it has rather than attributing them to the active item.
+        if (!startPosition || !endPosition) return;
+
+        const isReversed = start !== end && textarea.selectionDirection === "backward";
+        const focus = isReversed ? startPosition : endPosition;
+
+        this.setActiveItem(focus.itemId);
+        this.setCursor({
+            itemId: focus.itemId,
+            offset: focus.offset,
+            isActive: true,
+            userId: "local",
+        });
+
+        if (start === end) {
+            this.clearSelectionForUser("local");
+            return;
+        }
+
+        // Drop the local selection the mirror replaces, keeping other users' and box selections
+        const remainingEntries = Object.entries(this.selections).filter(
+            ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
+        );
+        this.selections = Object.fromEntries(remainingEntries);
+        this.setSelection({
+            startItemId: startPosition.itemId,
+            startOffset: startPosition.offset,
+            endItemId: endPosition.itemId,
+            endOffset: endPosition.offset,
+            userId: "local",
+            isReversed,
+        });
     }
 
     /**
