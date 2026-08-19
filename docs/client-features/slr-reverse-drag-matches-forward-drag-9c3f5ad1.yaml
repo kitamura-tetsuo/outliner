@@ -6,9 +6,11 @@ category: selection-range
 status: implemented
 acceptance:
 - A bottom-to-top drag highlights the same area as the equivalent top-to-bottom drag
+- Copying a cross-item selection leaves both endpoints and the drag direction intact
 - Copying a reverse selection yields the same text as the forward selection
 - Partially selected first and last items are highlighted from the correct offsets
 tests:
 - client/e2e/core/slr-reverse-drag-matches-forward-drag-9c3f5ad1.spec.ts
 - client/e2e/core/slr-reverse-drag-single-item-9c3f5ad1.spec.ts
 - client/src/lib/selectionGeometry.test.ts
+- client/src/tests/unit/stores/editorOverlayCrossItemMirror.spec.ts
