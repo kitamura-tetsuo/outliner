@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@testing-library/svelte';
-import TableSchemaEditor from './TableSchemaEditor.svelte';
+import { fireEvent, render } from "@testing-library/svelte";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import TableSchemaEditor from "./TableSchemaEditor.svelte";
 
-describe('TableSchemaEditor', () => {
+describe("TableSchemaEditor", () => {
     let mockAdapter: any;
     let mockHandles: any;
 
@@ -13,19 +13,19 @@ describe('TableSchemaEditor', () => {
         };
 
         mockHandles = {
-            schemaText: { toString: () => "CREATE TABLE test (id TEXT PRIMARY KEY)" }
+            schemaText: { toString: () => "CREATE TABLE test (id TEXT PRIMARY KEY)" },
         };
     });
 
-    it('handles paste without applying schema', async () => {
+    it("handles paste without applying schema", async () => {
         const { getByTestId } = render(TableSchemaEditor, { handles: mockHandles, adapter: mockAdapter });
 
-        const textarea = getByTestId('yjs-table-schema-input') as HTMLTextAreaElement;
+        const textarea = getByTestId("yjs-table-schema-input") as HTMLTextAreaElement;
 
         await fireEvent.paste(textarea, {
             clipboardData: {
-                getData: (format: string) => format === 'text/plain' ? 'pasted_table' : ''
-            }
+                getData: (format: string) => format === "text/plain" ? "pasted_table" : "",
+            },
         });
 
         // Adapter should not be called merely on paste
