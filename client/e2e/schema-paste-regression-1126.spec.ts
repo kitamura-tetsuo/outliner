@@ -5,7 +5,7 @@ test.describe("Grid Schema Editor Paste", () => {
     test("handles textarea paste without intercepting outliner items", async ({ page }) => {
         const testInfo = test.info();
         testInfo.title = "paste-regression";
-        const projectInfo = await TestHelpers.seedProjectAndNavigate(page, testInfo, {
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, {
             lines: ["Line 1"],
         });
 

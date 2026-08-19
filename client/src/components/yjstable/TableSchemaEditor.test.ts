@@ -1,20 +1,22 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { TableHandles } from "../../services/yjstable/tableDocs";
+import type { TableSyncAdapter } from "../../services/yjstable/tableSyncAdapter";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 
 describe("TableSchemaEditor", () => {
-    let mockAdapter: any;
-    let mockHandles: any;
+    let mockAdapter: TableSyncAdapter;
+    let mockHandles: TableHandles;
 
     beforeEach(() => {
         mockAdapter = {
             prepareSchemaChange: vi.fn(),
             applySchema: vi.fn(),
-        };
+        } as unknown as TableSyncAdapter;
 
         mockHandles = {
             schemaText: { toString: () => "CREATE TABLE test (id TEXT PRIMARY KEY)" },
-        };
+        } as unknown as TableHandles;
     });
 
     it("handles paste without applying schema", async () => {
