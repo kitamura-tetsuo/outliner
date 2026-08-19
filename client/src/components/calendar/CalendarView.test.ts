@@ -307,6 +307,45 @@ describe("CalendarView", { timeout: 30000 }, () => {
         destroyCalendarUndoManager(projectDoc);
     });
 
+    it("owns an entry context menu and routes Delete to that exact entry's disposition prompt", async () => {
+        const projectId = "proj-calendar-entry-context-delete";
+        const { projectDoc, project, page } = seedProject(projectId);
+        const first = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        first.text = "First event";
+        first.start = `${todayIso()}T09:00:00.000Z`;
+        first.allDay = false;
+        const second = new Items(projectDoc, project.tree, page.key).addNode("tester");
+        second.text = "Second event";
+        second.start = `${todayIso()}T10:00:00.000Z`;
+        second.allDay = false;
+
+        const calendarId = createCalendar(project, {
+            name: "Cal",
+            query: "SELECT id, text AS title, all_day, start_at, "
+                + "'outline_items' AS source_kind, id AS source_id FROM outline_items",
+            roleTitle: "title",
+            roleStart: "start_at",
+            roleAllDay: "all_day",
+        });
+        const { getByTestId, queryByTestId } = render(CalendarView, { props: { project, projectId, calendarId } });
+        const firstEntry = await waitFor(() => getByTestId(`calendar-entry-outline_items:${first.key}`));
+        await waitFor(() => expect(getByTestId(`calendar-entry-outline_items:${second.key}`)).toBeTruthy());
+
+        await fireEvent.contextMenu(firstEntry, { clientX: 40, clientY: 50 });
+        expect(getByTestId("calendar-entry-context-menu")).toBeTruthy();
+        expect(queryByTestId("calendar-delete-dialog")).toBeFalsy();
+
+        await fireEvent.click(getByTestId("calendar-entry-context-delete"));
+        const dialog = await waitFor(() => getByTestId("calendar-delete-dialog"));
+        expect(dialog.textContent).toContain('Delete "First event"?');
+        expect(dialog.textContent).not.toContain('Delete "Second event"?');
+        expect([...new Items(projectDoc, project.tree, page.key)].map((item) => item.key)).toEqual(
+            expect.arrayContaining([first.key, second.key]),
+        );
+
+        destroyCalendarUndoManager(projectDoc);
+    });
+
     it("groups entries into tag swimlanes in the week view (#4348)", async () => {
         const projectId = "proj-calendar-view-lanes-week";
         const { projectDoc, project, page } = seedProject(projectId);

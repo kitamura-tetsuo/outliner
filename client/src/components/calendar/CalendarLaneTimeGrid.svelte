@@ -49,6 +49,7 @@ interface Props {
     /** Source navigation (#4982), passed straight through to each lane's grid. */
     isSourceNavigable?: (entry: CalendarEntry) => boolean;
     onOpenSource?: (entry: CalendarEntry) => void;
+    onEntryContextMenu?: (entry: CalendarEntry, event: MouseEvent | KeyboardEvent) => void;
 }
 
 let {
@@ -75,6 +76,7 @@ let {
     isDeletable = () => false,
     isSourceNavigable = () => false,
     onOpenSource,
+    onEntryContextMenu,
 }: Props = $props();
 
 const bands = $derived(lanes.map((lane) => ({ lane, layout: layoutTimeGrid(lane.entries, rangeStart, rangeEnd) })));
@@ -188,6 +190,7 @@ function onBandDrop(lane: CalendarLane, e: DragEvent) {
                 {onDeleteRequest}
                 {isSourceNavigable}
                 {onOpenSource}
+                {onEntryContextMenu}
                 isLaneWritable={(entry) => isLaneWritable(entry)}
                 onLaneDragStart={onHandleDragStart}
             />

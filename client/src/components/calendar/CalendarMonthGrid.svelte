@@ -36,6 +36,7 @@ interface Props {
     isSourceNavigable?: (entry: CalendarEntry) => boolean;
     /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
     onOpenSource?: (entry: CalendarEntry) => void;
+    onEntryContextMenu?: (entry: CalendarEntry, event: MouseEvent | KeyboardEvent) => void;
 }
 
 let {
@@ -51,6 +52,7 @@ let {
     laneLabel,
     isSourceNavigable = () => false,
     onOpenSource,
+    onEntryContextMenu,
 }: Props = $props();
 
 const weekdayHeaders = $derived(
@@ -87,6 +89,10 @@ function keyToDeltaDays(key: string): number | undefined {
 }
 
 function onCellKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && isDeletable(entry)) {
+        onEntryContextMenu?.(entry, e);
+        return;
+    }
     if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
         e.preventDefault();
         onDeleteRequest?.(entry);
@@ -206,6 +212,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         data-navigable={isSourceNavigable(m) ? "true" : undefined}
                         onkeydown={(e) => onCellKeydown(m, e)}
                         ondblclick={(e) => onEntryDoubleClick(m, e)}
+                        oncontextmenu={(e) => onEntryContextMenu?.(m, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">◆ {m.title}</span>
                         {#if isDeletable(m)}
@@ -237,6 +244,7 @@ function onDrop(cell: MonthCell, e: DragEvent) {
                         ondragend={clearDragLabel}
                         onkeydown={(e) => onCellKeydown(entry, e)}
                         ondblclick={(e) => onEntryDoubleClick(entry, e)}
+                        oncontextmenu={(e) => onEntryContextMenu?.(entry, e)}
                     >
                         <span class="chip-title" data-testid="calendar-entry-title">{entry.title}</span>
                         {#if isDeletable(entry)}

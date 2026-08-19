@@ -62,6 +62,7 @@ interface Props {
     isSourceNavigable?: (entry: CalendarEntry) => boolean;
     /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
     onOpenSource?: (entry: CalendarEntry) => void;
+    onEntryContextMenu?: (entry: CalendarEntry, event: MouseEvent | KeyboardEvent) => void;
 }
 
 let {
@@ -87,6 +88,7 @@ let {
     onLaneDragStart,
     isSourceNavigable = () => false,
     onOpenSource,
+    onEntryContextMenu,
 }: Props = $props();
 
 const dayHeightPx = 24 * ROW_HEIGHT_PX;
@@ -117,6 +119,7 @@ function columnWidthPx(): number {
 }
 
 function beginDrag(kind: "move" | "resize", entry: CalendarEntry, e: PointerEvent) {
+    if (e.button !== 0) return;
     if (kind === "move" && !isStartWritable(entry)) return;
     if (kind === "resize" && !isDurationWritable(entry)) return;
     if (e.pointerType === "mouse") e.preventDefault();
@@ -232,6 +235,10 @@ function keyToDeltaMs(key: string): number | undefined {
 
 /** Arrow-key moves: Up/Down = 15 minutes, Left/Right = 1 day. Immediate, one write per press. */
 function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && isDeletable(entry)) {
+        onEntryContextMenu?.(entry, e);
+        return;
+    }
     if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
         e.preventDefault();
         onDeleteRequest?.(entry);
@@ -302,6 +309,7 @@ onMount(() => {
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                     ondblclick={(e) => onEntryDoubleClick(p.entry, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(p.entry, e)}
                 >
                     <div
                         role="button"
@@ -337,6 +345,7 @@ onMount(() => {
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                     ondblclick={(e) => onEntryDoubleClick(m.entry, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(m.entry, e)}
                 >
                     <div
                         role="button"
@@ -402,6 +411,7 @@ onMount(() => {
                         (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                     }}
                     ondblclick={(e) => onEntryDoubleClick(p.entry, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(p.entry, e)}
                 >
                     <div
                         role="button"
