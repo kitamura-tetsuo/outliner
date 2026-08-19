@@ -53,6 +53,16 @@ test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () =>
         expect(forwardOffsets.endOffset).toBeLessThan(forwardOffsets.endTextLength);
         expect(forwardText).toContain("Second item stays fully selected");
 
+        // Ensure a clean slate before reversing
+        await page.evaluate(() => {
+            const selection = globalThis.getSelection();
+            if (selection) selection.removeAllRanges();
+            // Try to notify the app's selection handler
+            document.dispatchEvent(new Event("selectionchange"));
+        });
+        await page.keyboard.press("ArrowRight");
+        await expect(page.locator(".editor-overlay .selection")).toBeHidden();
+
         // Same logical range, dragged bottom-to-top
         await dragBetween(page, lower, upper);
         await expect(page.locator(".editor-overlay .selection").first()).toBeVisible();
@@ -66,6 +76,8 @@ test.describe("SLR-9c3f5ad1: Reverse drag selection matches forward drag", () =>
         expect(reverseGeometry).toEqual(forwardGeometry);
 
         // The direction itself is still recorded, it just does not move the highlight
-        expect((await selectionEndpoints(page)).isReversed).toBe(true);
+        await expect(async () => {
+            expect((await selectionEndpoints(page)).isReversed).toBe(true);
+        }).toPass({ timeout: 5000 });
     });
 });
