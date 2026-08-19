@@ -88,6 +88,16 @@ export class EditorOverlayStore {
     suppressSelectionResync = false;
     _selectionSyncTimeout: number | null = null;
     lastSetSelection = { start: -1, end: -1, direction: "none" as "none" | "forward" | "backward" };
+    // Items the hidden mirror currently spans, in document order, together with the text that
+    // was written for them and the range last applied to it. Only cross-item selections record
+    // one; it is what lets an offset in the combined mirror text be mapped back to the item it
+    // addresses, and what tells a replay of our own range apart from a real change.
+    private mirrorSpan: {
+        value: string;
+        itemIds: string[];
+        appliedStart?: number;
+        appliedEnd?: number;
+    } | undefined = undefined;
     // onEdit callback
     onEditCallback: (() => void) | null = null;
     private presenceSyncScheduled = false;
@@ -1606,6 +1616,12 @@ export class EditorOverlayStore {
     ) {
         this.suppressSelectionResync = true;
         textarea.setSelectionRange(start, end, direction);
+        // Remember what we put in the cross-item mirror, so reading it back can tell our own
+        // range apart from one the software keyboard moved.
+        if (this.mirrorSpan && this.mirrorSpan.value === textarea.value) {
+            this.mirrorSpan.appliedStart = start;
+            this.mirrorSpan.appliedEnd = end;
+        }
         // Do not clear the flag in a microtask. Wait for the selectionchange event.
         // The event handler will clear it, or a timeout will clear it as a fallback.
         if (this._selectionSyncTimeout) {
@@ -1695,10 +1711,12 @@ export class EditorOverlayStore {
                     },
                 });
                 walker.currentNode = firstEl;
+                const mirroredItemIds: string[] = [];
 
                 while (walker.currentNode) {
                     const current = walker.currentNode as HTMLElement;
                     const itemId = current.getAttribute("data-item-id");
+                    mirroredItemIds.push(itemId ?? "");
 
                     let text = "";
                     if (itemId) {
@@ -1728,6 +1746,7 @@ export class EditorOverlayStore {
                 if (textarea.value !== combinedText) {
                     textarea.value = combinedText;
                 }
+                this.mirrorSpan = { value: combinedText, itemIds: mirroredItemIds };
 
                 // Handle reversed selection
                 if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) {
@@ -1790,6 +1809,7 @@ export class EditorOverlayStore {
                 if (textarea.value !== combinedText) {
                     textarea.value = combinedText;
                 }
+                this.mirrorSpan = { value: combinedText, itemIds: visibleItems.slice(firstIndex, lastIndex + 1) };
 
                 // Handle reversed selection
                 if (!isReversed) {
@@ -1812,6 +1832,13 @@ export class EditorOverlayStore {
 
         const currentStart = textarea.selectionStart;
         const currentEnd = textarea.selectionEnd;
+
+        // Items never contain newlines, so a newline means the mirror holds the combined text
+        // of a cross-item selection and its offsets no longer describe the active item.
+        if (textarea.value.includes("\n")) {
+            this.syncSelectionFromCrossItemMirror(textarea, currentStart, currentEnd);
+            return;
+        }
 
         // When there is no selection range
         if (currentStart === currentEnd) {
@@ -1851,6 +1878,91 @@ export class EditorOverlayStore {
                 isReversed: isReversed,
             });
         }
+    }
+
+    /**
+     * Read a selection change back out of a mirror that spans several items.
+     *
+     * The mirror then holds those items' texts joined by newlines, so its offsets address the
+     * combined text and not the active item. Reading them as the active item's own offsets
+     * collapsed the whole cross-item selection onto that one item, and a stray selectionchange
+     * is enough to trigger it: copying replays one once the drag has already ended, which threw
+     * away both endpoints and the drag direction of the selection the user had just made.
+     *
+     * Every offset is therefore mapped back through the mirror to the item it addresses. A
+     * replay of the range we wrote ourselves changes nothing, since the store's selection is
+     * what produced it; anything else is the software keyboard moving the selection (see
+     * `settleTextareaAfterSelectionCleared`) and becomes the new local selection, or, when it
+     * collapsed, the caret alone.
+     */
+    private syncSelectionFromCrossItemMirror(textarea: HTMLTextAreaElement, start: number, end: number) {
+        const span = this.mirrorSpan;
+        if (span && span.value === textarea.value && span.appliedStart === start && span.appliedEnd === end) {
+            return;
+        }
+
+        const startPosition = this.resolveMirrorOffset(textarea.value, start);
+        const endPosition = start === end ? startPosition : this.resolveMirrorOffset(textarea.value, end);
+
+        // Without the mapping the offsets belong to no item in particular, so the store keeps
+        // what it has rather than attributing them to the active item.
+        if (!startPosition || !endPosition) return;
+
+        const isReversed = start !== end && textarea.selectionDirection === "backward";
+        const focus = isReversed ? startPosition : endPosition;
+
+        this.setActiveItem(focus.itemId);
+        this.setCursor({
+            itemId: focus.itemId,
+            offset: focus.offset,
+            isActive: true,
+            userId: "local",
+        });
+
+        if (start === end) {
+            this.clearSelectionForUser("local");
+            return;
+        }
+
+        // Drop the local selection the mirror replaces, keeping other users' and box selections
+        const remainingEntries = Object.entries(this.selections).filter(
+            ([, s]) => (s.userId ?? "local") !== "local" || s.isBoxSelection,
+        );
+        this.selections = Object.fromEntries(remainingEntries);
+        this.setSelection({
+            startItemId: startPosition.itemId,
+            startOffset: startPosition.offset,
+            endItemId: endPosition.itemId,
+            endOffset: endPosition.offset,
+            userId: "local",
+            isReversed,
+        });
+    }
+
+    /**
+     * Map an offset in a cross-item mirror back to the item and offset it addresses.
+     * Returns undefined when the mirror is not the one this store wrote, since nothing then
+     * ties its lines to items.
+     */
+    private resolveMirrorOffset(mirrorValue: string, offset: number): { itemId: string; offset: number; } | undefined {
+        const span = this.mirrorSpan;
+        if (!span || span.value !== mirrorValue) return undefined;
+
+        const lines = mirrorValue.split("\n");
+        if (lines.length !== span.itemIds.length) return undefined;
+
+        let consumed = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const lineEnd = consumed + lines[i].length;
+            if (offset <= lineEnd) {
+                return { itemId: span.itemIds[i], offset: offset - consumed };
+            }
+            // Step over the newline that joins this item to the next one
+            consumed = lineEnd + 1;
+        }
+
+        const lastIndex = lines.length - 1;
+        return { itemId: span.itemIds[lastIndex], offset: lines[lastIndex].length };
     }
 
     syncTextareaToActiveItem() {
