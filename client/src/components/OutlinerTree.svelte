@@ -1570,8 +1570,14 @@
         const target = event.target as HTMLElement;
         if (target.closest(".outliner-item")) return;
 
-        // Clear selection
-        editorOverlayStore.clearSelections();
+        // Clear cursor and selection
+        editorOverlayStore.clearCursorAndSelection("local", true);
+
+        // Blur the hidden global textarea to dismiss virtual keyboards and fully clear focus state
+        const textarea = editorOverlayStore.getTextareaRef();
+        if (textarea) {
+            textarea.blur();
+        }
     }
 
     // Tree-wide mouse up event handler
