@@ -1,7 +1,7 @@
 <script lang="ts">
-import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
+import { commandPaletteStore, type CommandType } from "../stores/CommandPaletteStore.svelte";
 
-function handleClick(type: "yjstable" | "alias") {
+function handleClick(type: CommandType) {
     commandPaletteStore.insert(type);
     commandPaletteStore.hide();
 }
