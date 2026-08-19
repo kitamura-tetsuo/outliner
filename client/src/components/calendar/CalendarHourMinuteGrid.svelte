@@ -54,6 +54,7 @@ interface Props {
     isSourceNavigable?: (entry: CalendarEntry) => boolean;
     /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
     onOpenSource?: (entry: CalendarEntry) => void;
+    onEntryContextMenu?: (entry: CalendarEntry, event: MouseEvent | KeyboardEvent) => void;
 }
 
 let {
@@ -73,6 +74,7 @@ let {
     isDeletable = () => false,
     isSourceNavigable = () => false,
     onOpenSource,
+    onEntryContextMenu,
 }: Props = $props();
 
 let trackEls: (HTMLDivElement | undefined)[] = $state([]);
@@ -120,6 +122,7 @@ function renderedDurationMs(entry: CalendarEntry): number {
 }
 
 function beginDrag(kind: "move" | "resize", entry: CalendarEntry, rowIndex: number, e: PointerEvent) {
+    if (e.button !== 0) return;
     if (kind === "move" && !isStartWritable(entry)) return;
     if (kind === "resize" && !isDurationWritable(entry)) return;
     if (e.pointerType === "mouse") e.preventDefault();
@@ -230,6 +233,10 @@ function onPointerCancel(e: PointerEvent) {
  * view's own axes: Left/Right steps minutes, Up/Down steps a whole hour row.
  */
 function onEntryKeydown(entry: CalendarEntry, e: KeyboardEvent) {
+    if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && isDeletable(entry)) {
+        onEntryContextMenu?.(entry, e);
+        return;
+    }
     if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(entry)) {
         e.preventDefault();
         onDeleteRequest?.(entry);
@@ -289,6 +296,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     data-testid={`calendar-entry-allday-${entry.key}`}
                     data-navigable={isSourceNavigable(entry) ? "true" : undefined}
                     ondblclick={(e) => onEntryDoubleClick(entry, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(entry, e)}
                 >
                     <div
                         role="button"
@@ -316,6 +324,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                     data-testid={`calendar-entry-milestone-${entry.key}`}
                     data-navigable={isSourceNavigable(entry) ? "true" : undefined}
                     ondblclick={(e) => onEntryDoubleClick(entry, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(entry, e)}
                 >
                     <div
                         role="button"
@@ -383,6 +392,7 @@ const hasBand = $derived(layout.allDay.length > 0 || layout.milestones.length > 
                                 (e.currentTarget.querySelector('.entry-title') as HTMLElement | null)?.focus();
                             }}
                             ondblclick={(e) => onEntryDoubleClick(f.entry, e)}
+                            oncontextmenu={(e) => onEntryContextMenu?.(f.entry, e)}
                         >
                             {#if f.isTitleAnchor}
                                 <div

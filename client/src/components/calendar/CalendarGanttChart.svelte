@@ -58,6 +58,9 @@ interface Props {
     isSourceNavigable?: (entry: CalendarEntry) => boolean;
     /** Open the outline item behind `entry`; the parent owns page resolution and routing. */
     onOpenSource?: (entry: CalendarEntry) => void;
+    isDeletable?: (entry: CalendarEntry) => boolean;
+    onDeleteRequest?: (entry: CalendarEntry) => void;
+    onEntryContextMenu?: (entry: CalendarEntry, event: MouseEvent | KeyboardEvent) => void;
 }
 
 let {
@@ -81,6 +84,9 @@ let {
     onSubtreeDragEnd,
     isSourceNavigable = () => false,
     onOpenSource,
+    isDeletable = () => false,
+    onDeleteRequest,
+    onEntryContextMenu,
 }: Props = $props();
 
 /** Pointer travel below this is a click, not a drag (#4982). */
@@ -158,6 +164,7 @@ function snappedDurationMs(originDurationMs: number, rawDeltaMs: number): number
 }
 
 function beginLeafDrag(row: GanttRow, e: PointerEvent) {
+    if (e.button !== 0) return;
     if (row.isRollup || row.barStartMs === undefined || !isLeafStartWritable(row.entry)) return;
     if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
@@ -166,6 +173,7 @@ function beginLeafDrag(row: GanttRow, e: PointerEvent) {
 }
 
 function beginLeafResize(row: GanttRow, e: PointerEvent) {
+    if (e.button !== 0) return;
     if (row.isRollup || row.barStartMs === undefined || row.barEndMs === undefined || !isLeafDurationWritable(row.entry)) return;
     if (e.pointerType === "mouse") e.preventDefault();
     e.stopPropagation();
@@ -180,6 +188,7 @@ function beginLeafResize(row: GanttRow, e: PointerEvent) {
 }
 
 function beginSubtreeDrag(row: GanttRow, e: PointerEvent) {
+    if (e.button !== 0) return;
     if (!row.isRollup) return;
     const analysis = analyzeSubtreeShift(row);
     if (!analysis.shiftable || analysis.members.length === 0) return;
@@ -265,6 +274,15 @@ function onPointerCancel(e: PointerEvent) {
 
 /** Keyboard: Left/Right shift a writable leaf bar or a shiftable subtree by one day. */
 function onRowKeydown(row: GanttRow, e: KeyboardEvent) {
+    if ((e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) && isDeletable(row.entry)) {
+        onEntryContextMenu?.(row.entry, e);
+        return;
+    }
+    if ((e.key === "Delete" || e.key === "Backspace") && isDeletable(row.entry)) {
+        e.preventDefault();
+        onDeleteRequest?.(row.entry);
+        return;
+    }
     let deltaMs: number;
     if (e.key === "ArrowLeft") deltaMs = -DAY_MS;
     else if (e.key === "ArrowRight") deltaMs = DAY_MS;
@@ -387,6 +405,7 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     onpointerdown={(e) => row.isRollup ? beginSubtreeDrag(row, e) : beginLeafDrag(row, e)}
                     onkeydown={(e) => onRowKeydown(row, e)}
                     ondblclick={(e) => onRowDoubleClick(row, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(row.entry, e)}
                 >
                     <span class="bar-title">{row.entry.title}</span>
                     {#if !row.isRollup && isLeafDurationWritable(row.entry)}
@@ -407,6 +426,7 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.startPointMs)}%`}
                     ondblclick={(e) => onRowDoubleClick(row, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(row.entry, e)}
                 >● {row.entry.title}</div>
             {/if}
             {#if row.dueMarkerMs !== undefined && pointLeftPct(row.dueMarkerMs) !== undefined}
@@ -417,6 +437,7 @@ function pointLeftPct(ms: number | undefined): number | undefined {
                     data-navigable={isSourceNavigable(row.entry) ? "true" : undefined}
                     style={`left: ${pointLeftPct(row.dueMarkerMs)}%`}
                     ondblclick={(e) => onRowDoubleClick(row, e)}
+                    oncontextmenu={(e) => onEntryContextMenu?.(row.entry, e)}
                 >◆</div>
             {/if}
         </div>

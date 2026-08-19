@@ -73,6 +73,7 @@ import { REQUERY_DEBOUNCE_MS, type TableQueryResult } from "../../services/yjsta
 import CalendarGanttChart from "./CalendarGanttChart.svelte";
 import CalendarCreateEntryDialog from "./CalendarCreateEntryDialog.svelte";
 import CalendarDeleteEntryDialog from "./CalendarDeleteEntryDialog.svelte";
+import CalendarEntryContextMenu from "./CalendarEntryContextMenu.svelte";
 import CalendarHourMinuteGrid from "./CalendarHourMinuteGrid.svelte";
 import CalendarLaneTimeGrid from "./CalendarLaneTimeGrid.svelte";
 import CalendarMonthGrid from "./CalendarMonthGrid.svelte";
@@ -116,6 +117,10 @@ let optimisticOverrides = $state<OptimisticOverrides>(createOptimisticOverrides(
 let showCreateDialog = $state(false);
 let createDefaultStartMs = $state<number | undefined>(undefined);
 let deletingEntry = $state<CalendarEntry | undefined>(undefined);
+let contextEntry = $state<CalendarEntry | undefined>(undefined);
+let contextMenuX = $state(0);
+let contextMenuY = $state(0);
+let contextReturnFocus = $state<HTMLElement | undefined>(undefined);
 
 let showSettings = $state(false);
 let isInitialSyncDone = false;
@@ -476,6 +481,22 @@ function onCreateCancelled() {
 function requestDelete(entry: CalendarEntry) {
     deletingEntry = entry;
 }
+function openEntryContextMenu(entry: CalendarEntry, event: MouseEvent | KeyboardEvent) {
+    if (!isDeletable(entry)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const target = event.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    contextEntry = entry;
+    contextReturnFocus = target.matches('[tabindex="0"]')
+        ? target
+        : target.querySelector<HTMLElement>('[tabindex="0"]') ?? target;
+    contextMenuX = event instanceof MouseEvent && event.clientX > 0 ? event.clientX : rect.left + Math.min(24, rect.width / 2);
+    contextMenuY = event instanceof MouseEvent && event.clientY > 0 ? event.clientY : rect.top + Math.min(24, rect.height / 2);
+}
+function closeEntryContextMenu() {
+    contextEntry = undefined;
+}
 function onEntryDeleted() {
     deletingEntry = undefined;
     writeError = undefined;
@@ -641,6 +662,9 @@ onDestroy(() => {
             onSubtreeDragEnd={commitSubtreeShift}
             {isSourceNavigable}
             onOpenSource={openEntrySource}
+            onEntryContextMenu={openEntryContextMenu}
+            {isDeletable}
+            onDeleteRequest={requestDelete}
         />
     {:else if hourMinuteLayout}
         <CalendarHourMinuteGrid
@@ -660,6 +684,7 @@ onDestroy(() => {
             onDeleteRequest={requestDelete}
             {isSourceNavigable}
             onOpenSource={openEntrySource}
+            onEntryContextMenu={openEntryContextMenu}
         />
     {:else if viewType === "month" && monthCells}
         {#if groupingActive}
@@ -693,6 +718,7 @@ onDestroy(() => {
             laneLabel={groupingActive ? laneLabelForEntry : undefined}
             {isSourceNavigable}
             onOpenSource={openEntrySource}
+            onEntryContextMenu={openEntryContextMenu}
         />
     {:else if groupingActive && lanes}
         <CalendarLaneTimeGrid
@@ -719,6 +745,7 @@ onDestroy(() => {
             onDeleteRequest={requestDelete}
             {isSourceNavigable}
             onOpenSource={openEntrySource}
+            onEntryContextMenu={openEntryContextMenu}
         />
     {:else if timeGridLayout}
         <CalendarTimeGrid
@@ -742,9 +769,21 @@ onDestroy(() => {
             onDeleteRequest={requestDelete}
             {isSourceNavigable}
             onOpenSource={openEntrySource}
+            onEntryContextMenu={openEntryContextMenu}
         />
     {/if}
 </div>
+
+{#if contextEntry}
+    <CalendarEntryContextMenu
+        x={contextMenuX}
+        y={contextMenuY}
+        entryTitle={contextEntry.title}
+        returnFocus={contextReturnFocus}
+        onDelete={() => requestDelete(contextEntry!)}
+        onClose={closeEntryContextMenu}
+    />
+{/if}
 
 {#if showCreateDialog}
     <CalendarCreateEntryDialog

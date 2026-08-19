@@ -73,8 +73,16 @@ test.describe("FTR-ac999163: deleting a calendar entry always prompts for the di
         }).first();
         await expect(entryChip).toBeVisible({ timeout: 15000 });
 
-        const deleteButton = entryChip.locator('[data-testid^="calendar-entry-delete-"]');
-        await deleteButton.click();
+        // Empty calendar space must not acquire an arbitrary event target.
+        await page.getByTestId("calendar-day-column-0").click({ button: "right", position: { x: 5, y: 5 } });
+        await expect(page.getByTestId("calendar-entry-context-menu")).toHaveCount(0);
+        await page.keyboard.press("Escape");
+
+        // The event owns this gesture: its Delete action must enter the same
+        // disposition flow as the explicit × button and keyboard Delete.
+        await entryChip.click({ button: "right" });
+        await expect(page.getByTestId("calendar-entry-context-menu")).toBeVisible();
+        await page.getByTestId("calendar-entry-context-delete").click();
         const dialog = page.getByTestId("calendar-delete-dialog").first();
         await expect(dialog).toBeVisible({ timeout: 10000 });
 
@@ -87,6 +95,8 @@ test.describe("FTR-ac999163: deleting a calendar entry always prompts for the di
         })).toHaveCount(0, { timeout: 15000 });
         // ...but the item itself survives in the outline.
         await expect(page.locator(".outliner-item", { hasText: "Keep me, clear my date" })).toBeVisible();
+        // The calendar block containing the entry was never the delete target.
+        await expect(page.getByTestId("calendar-view").first()).toBeVisible();
     });
 
     test("deleting the item removes it from both the calendar and the outline", async ({ page }) => {
