@@ -16,6 +16,7 @@ import {
     type PasteSpecialVariant,
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
+import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
@@ -147,7 +148,8 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
-        const isComponent = Boolean(tableId || calendarId);
+        const isLayout = isLayoutItem(item);
+        const isComponent = Boolean(tableId || calendarId) || isLayout;
         const fallbackText = tableId
             ? getTableName(project.ydoc, tableId)
             : calendarId
@@ -168,12 +170,33 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
             const exported = renderedGridExport(tableId);
             if (exported) gridExports.set(tableId, exported);
         }
-        return [{
+        const collected = [{
             item,
             depth: entry.depth,
             fallbackText,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
+        // A Layout renders its own children, so they are not visible rows of
+        // the outline and would otherwise be left behind by a copy. They are
+        // ordinary tree children, so they travel as deeper clipboard items —
+        // no Layout-specific clipboard format (#4997).
+        if (isLayout) {
+            for (const child of layoutChildren(item)) {
+                const childTableId = getItemTableId(child);
+                const childCalendarId = getItemCalendarId(child);
+                collected.push({
+                    item: child,
+                    depth: entry.depth + 1,
+                    fallbackText: childTableId
+                        ? getTableName(project.ydoc, childTableId)
+                        : childCalendarId
+                        ? getCalendar(project, childCalendarId)?.name
+                        : undefined,
+                    text: undefined,
+                });
+            }
+        }
+        return collected;
     });
     if (entries.length === 0) return undefined;
     if (!coversWholeRange && !hasComponent) return undefined;

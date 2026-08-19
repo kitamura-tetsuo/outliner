@@ -119,6 +119,24 @@
         </svg>
         Change to {componentType === 'calendar' ? 'Text' : 'Calendar'}
     </button>
+
+    <button type="button" role="menuitem" tabindex={activeIndex === 6 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-layout-type'); }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line>
+        </svg>
+        Change to {componentType === 'layout' ? 'Text' : 'Layout'}
+    </button>
+
+    {#if componentType === 'layout'}
+        <!-- Distinct from "Delete item": unwrapping keeps the arranged blocks
+             and removes only the arrangement. -->
+        <button type="button" role="menuitem" tabindex={activeIndex === 7 ? 0 : -1} onclick={() => { handleClose(); onAction('unwrap-layout'); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            Remove layout (keep blocks)
+        </button>
+    {/if}
 </div>
 
 <style>

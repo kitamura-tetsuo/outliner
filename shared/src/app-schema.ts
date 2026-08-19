@@ -509,6 +509,24 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    /**
+     * How many columns of a Layout container's fixed 12-column track system
+     * this item occupies (#4997). Persisted on the child, never on the Layout:
+     * tree order plus this span is the entire placement model, so no
+     * coordinates, row numbers, column starts or pixel widths exist to
+     * reconcile. Undefined outside a Layout — and harmless there, since only a
+     * Layout reads it.
+     */
+    get columnSpan(): number | undefined {
+        const raw = this.value.get("columnSpan");
+        return typeof raw === "number" ? raw : undefined;
+    }
+    set columnSpan(v: number | undefined) {
+        if (v === undefined) this.value.delete("columnSpan");
+        else this.value.set("columnSpan", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     // tableSchema stored in Y.Map
     get tableSchema(): string | undefined {
         return this.value.get("tableSchema") as string | undefined;

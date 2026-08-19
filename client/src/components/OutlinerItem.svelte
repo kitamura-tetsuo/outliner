@@ -94,6 +94,8 @@ import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
+import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
+import { unwrapLayout } from "../services/layout/layoutTree";
     import { projectPagePath } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
@@ -312,6 +314,17 @@ function handleContextMenuAction(action: string) {
         case 'toggle-calendar-type': {
             const newType = (componentType ?? compTypeValue) === 'calendar' ? 'none' : 'calendar';
             handleComponentTypeChange(newType);
+            break;
+        }
+        case 'toggle-layout-type': {
+            const newType = (componentType ?? compTypeValue) === LAYOUT_COMPONENT_TYPE ? 'none' : LAYOUT_COMPONENT_TYPE;
+            handleComponentTypeChange(newType);
+            break;
+        }
+        case 'unwrap-layout': {
+            // Keep the arranged blocks, drop only the arrangement (#4997):
+            // children move up to this item's position, then the Layout goes.
+            unwrapLayout(model.original);
             break;
         }
     }

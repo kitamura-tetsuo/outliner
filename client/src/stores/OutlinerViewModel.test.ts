@@ -70,4 +70,23 @@ describe("OutlinerViewModel", () => {
         vm.updateFromModel(tree);
         expect(vm.getViewModel("child1")?.commentCount).toBe(0);
     });
+
+    it("keeps a Layout's children out of the flat outline - the Layout renders them", () => {
+        const layout = tree.items.addNode("u");
+        layout.id = "layout";
+        layout.componentType = "layout";
+        const grid = layout.items.addNode("u");
+        grid.id = "grid";
+        grid.componentType = "yjstable";
+
+        vm.updateFromModel(tree);
+
+        const ids = vm.getVisibleItems().map(i => i.model.id);
+        expect(ids).toEqual(["root", "child1", "child2", "layout"]);
+        expect(ids).not.toContain("grid");
+        // Nothing to expand or collapse: the block owns the arrangement.
+        expect(vm.hasChildren("layout")).toBe(false);
+        // An ordinary container still flattens as before.
+        expect(vm.hasChildren("root")).toBe(true);
+    });
 });

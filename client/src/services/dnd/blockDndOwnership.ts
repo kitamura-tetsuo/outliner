@@ -18,8 +18,10 @@
 export const BLOCK_DND_OWNER_ATTRIBUTE = "data-block-dnd-owner";
 
 /**
- * Optional attribute narrowing ownership to drags carrying this `DataTransfer`
- * type. Without it the block claims every drag inside its subtree.
+ * Optional attribute narrowing ownership to drags carrying one of these
+ * `DataTransfer` types, separated by commas. Without it the block claims every
+ * drag inside its subtree. A Layout names two: its own child reordering and the
+ * outliner-item drag that moves a visual block into it.
  */
 export const BLOCK_DND_TYPE_ATTRIBUTE = "data-block-dnd-type";
 
@@ -31,12 +33,15 @@ export function isBlockOwnedDragEvent(event: Event): boolean {
     const owner = target?.closest?.(BLOCK_DND_OWNER_SELECTOR);
     if (!owner) return false;
 
-    const requiredType = owner.getAttribute(BLOCK_DND_TYPE_ATTRIBUTE);
-    if (requiredType === null || requiredType === "") return true;
+    const requiredTypes = (owner.getAttribute(BLOCK_DND_TYPE_ATTRIBUTE) ?? "")
+        .split(",").map(type => type.trim()).filter(type => type.length > 0);
+    if (requiredTypes.length === 0) return true;
 
     // `DataTransfer.types` stays readable while the drag is in protected mode
     // (dragenter/dragover), unlike `getData`, so the payload can be identified
     // before the drop.
     const types = (event as DragEvent).dataTransfer?.types;
-    return types !== undefined && Array.from(types).includes(requiredType);
+    if (types === undefined) return false;
+    const carried = new Set(Array.from(types));
+    return requiredTypes.some(type => carried.has(type));
 }

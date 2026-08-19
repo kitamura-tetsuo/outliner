@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { Item, Items } from "../schema/app-schema";
+import { isLayoutComponentType } from "../services/layout/layoutModel";
 import { iterateItems } from "../utils/itemTraversal";
 import { userPreferencesStore } from "./UserPreferencesStore.svelte";
 
@@ -10,6 +11,15 @@ const __IS_E2E__ = (typeof window !== "undefined" && window.localStorage?.getIte
     || import.meta.env.VITE_IS_TEST === "true";
 const debugLog = (...args: unknown[]) => {
     if (!__IS_E2E__ && typeof window !== "undefined" && window.DEBUG_MODE) logger.debug(...args);
+};
+
+/** True for a Layout container, whose children are rendered by the block itself. */
+const isLayoutContainer = (item: Item): boolean => {
+    try {
+        return isLayoutComponentType((item as unknown as { componentType?: string; }).componentType);
+    } catch {
+        return false;
+    }
 };
 
 const isItemLike = (obj: unknown): boolean => {
@@ -341,7 +351,13 @@ export class OutlinerViewModel {
             }`,
         );
 
-        if (hasChildren && !isCollapsed) {
+        // A Layout container (#4997) arranges its own direct children on a
+        // 12-column grid, so they must not also appear as ordinary rows of the
+        // flat outline. Their order still comes from the tree - this only
+        // decides who renders them.
+        if (hasChildren && isLayoutContainer(item)) {
+            debugLog(`OutlinerViewModel: Layout "${item.text}" renders its own children`);
+        } else if (hasChildren && !isCollapsed) {
             const children = item.items;
             debugLog(
                 `OutlinerViewModel: Processing ${children.length} children for "${item.text}"`,
@@ -442,6 +458,9 @@ export class OutlinerViewModel {
     hasChildren(itemId: string): boolean {
         const model = this.viewModels.get(itemId);
         if (!model || !model.original || !model.original.items) return false;
+        // A Layout's children never join the flat outline, so it has nothing to
+        // expand or collapse from the tree's point of view.
+        if (isLayoutContainer(model.original)) return false;
         const ch = (model.original as unknown as { items?: unknown; }).items as {
             length?: number;
             at: (i: number) => import("../schema/app-schema").Item | undefined;

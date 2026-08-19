@@ -1229,6 +1229,9 @@
         item.componentType = metadata.componentType;
         setItemTableId(item, metadata.componentType === "yjstable" ? metadata.yjsTableId : undefined);
         setItemCalendarId(item, metadata.componentType === "calendar" ? metadata.calendarId : undefined);
+        // Layout width travels with the child (#4997); order is the pasted
+        // item order, so nothing else about placement needs restoring.
+        item.columnSpan = metadata.columnSpan;
     }
 
     // Add new items when pasting multiple lines

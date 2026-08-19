@@ -88,4 +88,35 @@ describe("isBlockOwnedDragEvent", () => {
             expect(isBlockOwnedDragEvent(event)).toBe(true);
         });
     });
+
+    describe("a block that claims more than one payload", () => {
+        // A Layout owns both its child reordering and the outliner-item drag
+        // that moves a visual block into it (#4997).
+        const SECOND_TYPE = "application/x-outliner-item";
+
+        it("is true for either declared type", () => {
+            const { inside } = buildTree(`${OWN_TYPE},${SECOND_TYPE}`);
+            const first = dragEventWithTypes([OWN_TYPE]);
+            inside.dispatchEvent(first);
+            expect(isBlockOwnedDragEvent(first)).toBe(true);
+
+            const second = dragEventWithTypes(["text/plain", SECOND_TYPE]);
+            inside.dispatchEvent(second);
+            expect(isBlockOwnedDragEvent(second)).toBe(true);
+        });
+
+        it("is false for a drag carrying neither", () => {
+            const { inside } = buildTree(`${OWN_TYPE},${SECOND_TYPE}`);
+            const event = dragEventWithTypes(["Files"]);
+            inside.dispatchEvent(event);
+            expect(isBlockOwnedDragEvent(event)).toBe(false);
+        });
+
+        it("ignores surrounding whitespace and empty entries in the list", () => {
+            const { inside } = buildTree(` ${OWN_TYPE} , , ${SECOND_TYPE} `);
+            const event = dragEventWithTypes([SECOND_TYPE]);
+            inside.dispatchEvent(event);
+            expect(isBlockOwnedDragEvent(event)).toBe(true);
+        });
+    });
 });

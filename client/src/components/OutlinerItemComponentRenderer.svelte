@@ -1,5 +1,6 @@
 <script lang="ts">
 import type { Item } from "../schema/app-schema";
+import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
 
 interface Props {
     componentType: string | undefined;
@@ -19,6 +20,12 @@ let { componentType, item }: Props = $props();
     {#await import("./calendar/CalendarBlock.svelte") then { default: CalendarBlock }}
         <div class="component-wrapper">
             <CalendarBlock item={item} />
+        </div>
+    {/await}
+{:else if componentType === LAYOUT_COMPONENT_TYPE}
+    {#await import("./layout/LayoutBlock.svelte") then { default: LayoutBlock }}
+        <div class="component-wrapper">
+            <LayoutBlock item={item} />
         </div>
     {/await}
 {/if}
