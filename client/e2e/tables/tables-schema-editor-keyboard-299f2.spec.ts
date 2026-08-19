@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Table schema editor keyboard handling", () => {
-    let projectInfo: { projectId: string; projectName: string; pageName: string };
+    let projectInfo: { projectId: string; projectName: string; pageName: string; };
 
     test.beforeEach(async ({ page }, testInfo) => {
         // Seed a project with a single table container item
@@ -39,7 +39,7 @@ test.describe("Table schema editor keyboard handling", () => {
         }
 
         // Wait for the schema editor to appear
-        await page.locator('[data-testid="yjs-table-schema-input"]').waitFor({ state: 'visible', timeout: 15000 });
+        await page.locator('[data-testid="yjs-table-schema-input"]').waitFor({ state: "visible", timeout: 15000 });
     });
 
     test("Enter key inserts newline in schema editor and retains focus", async ({ page }) => {
