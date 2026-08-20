@@ -338,6 +338,21 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
         const client = (window as any).__YJS_STORE__?.yjsClient;
         const project = client?.getProject();
         if (!project?.ydoc) throw new Error("Current Yjs project is unavailable");
+        // Grid state (query + column UI) lives in the project-level `yjsGrids`
+        // registry, not the Table subdoc: the Table owns schema + data only.
+        // Report the first Grid over each Table as that Table's `ui` so the
+        // cross-project assertions keep reading one presentation per Table.
+        const gridUiBySourceTable = new Map<string, Record<string, unknown>>();
+        project.ydoc.getMap("yjsGrids").forEach((grid: any) => {
+            const sourceTableId = String(grid.get("sourceTableId") ?? "");
+            if (!sourceTableId || gridUiBySourceTable.has(sourceTableId)) return;
+            const componentsMap = grid.get("components");
+            gridUiBySourceTable.set(sourceTableId, {
+                query: grid.get("query"),
+                components: componentsMap?.toJSON ? componentsMap.toJSON() : {},
+                columnOrder: grid.get("columnOrder") ?? [],
+            });
+        });
         const tables: GridTableState[] = [];
         project.ydoc.getMap("yjsTables").forEach((entry: any, id: string) => {
             const doc = entry.get("doc");
@@ -347,7 +362,7 @@ export async function readGridProjectState(page: Page): Promise<GridProjectState
                 sqlName: String(entry.get("sqlName") ?? ""),
                 guid: String(doc.guid),
                 schema: doc.getText("schema").toString(),
-                ui: doc.getMap("ui").toJSON(),
+                ui: gridUiBySourceTable.get(id) ?? {},
                 dataSize: doc.getMap("data").size,
                 data: doc.getMap("data").toJSON(),
             });

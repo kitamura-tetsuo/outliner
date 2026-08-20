@@ -30,7 +30,7 @@
     } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
     import { registerPageOutline } from "../services/navigation/outlinePageRegistry";
-    import { setItemTableId } from "../services/yjstable/itemBinding";
+    import { setItemGridId, setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
     import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
@@ -1227,6 +1227,10 @@
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
+        // The Grid id is the authoritative binding on new payloads; the
+        // legacy yjsTableId field is still written so anything that inspects
+        // provenance (e.g. cut/detach or older tooling) can find the Table.
+        setItemGridId(item, metadata.componentType === "yjstable" ? metadata.yjsGridId : undefined);
         setItemTableId(item, metadata.componentType === "yjstable" ? metadata.yjsTableId : undefined);
         setItemCalendarId(item, metadata.componentType === "calendar" ? metadata.calendarId : undefined);
         // Layout width travels with the child (#4997); order is the pasted

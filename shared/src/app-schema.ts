@@ -498,6 +498,17 @@ export class Item {
         this.value.set("lastChanged", Date.now());
     }
 
+    // Id of the Grid definition (project-level registry entry) this item
+    // renders. Grid owns the SELECT and column UI; the Grid points at a source
+    // Table for schema+data. New yjstable hosts bind through this field.
+    get yjsGridId(): string | undefined {
+        return this.value.get("yjsGridId") as string | undefined;
+    }
+    set yjsGridId(v: string | undefined) {
+        this.value.set("yjsGridId", v);
+        this.value.set("lastChanged", Date.now());
+    }
+
     // Id of the calendar (an entry in the project's `calendars` map) embedded
     // by this item (componentType "calendar"). Unlike a table, a calendar has
     // no subdoc of its own to reference — this is a plain id lookup.

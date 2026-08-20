@@ -2,18 +2,20 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { calculateDropIndex, moveColumn, orderColumns, writeColumnOrder } from "./columnOrder";
-import type { TableHandles } from "./tableDocs";
+import { createGrid, getGridHandles } from "./gridDocs";
+import { createTable } from "./tableDocs";
 
 describe("columnOrder", () => {
     describe("writeColumnOrder", () => {
         it("does not duplicate columns on concurrent reorders", () => {
             const docA = new Y.Doc();
             const docB = new Y.Doc();
-            const uiA = docA.getMap("uiDef");
-            const uiB = docB.getMap("uiDef");
+            const tableId = createTable(docA, "T", "t");
+            const gridId = createGrid(docA, tableId, { name: "G" });
+            Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
 
-            const handlesA = { doc: docA, uiDef: uiA } as TableHandles;
-            const handlesB = { doc: docB, uiDef: uiB } as TableHandles;
+            const handlesA = getGridHandles(docA, gridId)!;
+            const handlesB = getGridHandles(docB, gridId)!;
 
             writeColumnOrder(handlesA, ["month", "revenue", "region"]);
             Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
@@ -24,8 +26,8 @@ describe("columnOrder", () => {
             Y.applyUpdate(docB, Y.encodeStateAsUpdate(docA));
             Y.applyUpdate(docA, Y.encodeStateAsUpdate(docB));
 
-            const finalOrderA = uiA.get("columnOrder") as string[];
-            const finalOrderB = uiB.get("columnOrder") as string[];
+            const finalOrderA = handlesA.entry.get("columnOrder") as string[];
+            const finalOrderB = handlesB.entry.get("columnOrder") as string[];
 
             expect(finalOrderA).toEqual(finalOrderB);
             expect(finalOrderA.length).toBe(3);

@@ -9,7 +9,18 @@ export interface ClipboardItem {
     text: string;
     depth: number;
     componentType?: ClipboardComponentType;
+    /**
+     * The source Table id on the copying end. On paste it drives the
+     * destination Table lookup/clone; the receiver binds the newly pasted
+     * outline item to a fresh Grid via `yjsGridId`.
+     */
     yjsTableId?: string;
+    /**
+     * The Grid id on the copying end (present only when the source outline
+     * item was already Grid-bound). On paste it is remapped to the freshly
+     * created Grid id in the destination project.
+     */
+    yjsGridId?: string;
     calendarId?: string;
     /**
      * Width inside a Layout container (#4997). Carried per item so a copied
@@ -100,7 +111,7 @@ const CALENDAR_SETTINGS_KEYS = new Set([
     "workingHoursEndMinutes",
     "ganttScale",
 ]);
-const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "calendarId", "columnSpan"]);
+const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "yjsGridId", "calendarId", "columnSpan"]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
 const UI_KEYS = new Set(["query", "components", "columnOrder"]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
@@ -142,7 +153,12 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
         return value.yjsTableId === undefined && value.calendarId === undefined;
     }
     if (value.componentType === "yjstable") {
+        // yjsTableId is the required identity (used to resolve/clone the
+        // source Table on paste). yjsGridId is optional — new payloads carry
+        // it so the paste can rewire the outline item to a fresh Grid.
         return typeof value.yjsTableId === "string" && value.yjsTableId.length > 0
+            && (value.yjsGridId === undefined
+                || (typeof value.yjsGridId === "string" && value.yjsGridId.length > 0))
             && value.calendarId === undefined;
     }
     if (value.componentType === "calendar") {
@@ -243,6 +259,12 @@ export function serializeClipboardItems(
         const componentType = isBoundComponent || rawType === LAYOUT_COMPONENT_TYPE ? rawType : undefined;
         const bindingField = isBoundComponent ? bindings[rawType] : undefined;
         const binding = bindingField ? value?.get?.(bindingField) : undefined;
+        // A yjstable host also carries its Grid id so a cross-project paste can
+        // rebind the pasted item to the freshly created Grid (Grid owns the
+        // SELECT + presentation). The Table id stays the required identity used
+        // to resolve/clone the source relation.
+        const rawGridId = rawType === "yjstable" ? value?.get?.("yjsGridId") : undefined;
+        const gridId = typeof rawGridId === "string" && rawGridId.length > 0 ? rawGridId : undefined;
         const rawSpan = value?.get?.("columnSpan");
         // Repaired on the way out, by the same rule rendering uses, so a broken
         // stored span cannot travel to another document.
@@ -258,6 +280,7 @@ export function serializeClipboardItems(
             ...(carriesComponent
                 ? (bindingField ? { componentType, [bindingField]: binding } : { componentType })
                 : {}),
+            ...(carriesComponent && gridId !== undefined ? { yjsGridId: gridId } : {}),
             ...(carriesComponent && columnSpan !== undefined ? { columnSpan } : {}),
         } as ClipboardItem;
     });

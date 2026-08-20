@@ -10,6 +10,9 @@
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
     import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
+    // The mounted YjsTableView retains/releases the Grid's shared undo manager
+    // for its own lifetime, so this page only has to resolve the handles.
+    import { ensureGridForTable, type GridHandles, getGridHandles } from "../../../../services/yjstable/gridDocs";
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
         import { isPublicProject } from "../../../../lib/publicProject";
@@ -30,6 +33,7 @@
     let isLoading = $state(true);
     let tableName: string | undefined = $state(undefined);
     let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
+    let gridHandles: GridHandles | undefined = $state(undefined);
     let tableSqlName: string | undefined = $state(undefined);
     let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
@@ -133,6 +137,23 @@
                 notFound = true;
                 return;
             }
+
+            // The standalone page addresses a Table, but a Grid owns the SELECT
+            // and column UI a grid renders through. Reuse the Table's first
+            // Grid (so this page shows the same presentation as an outline
+            // block bound to it) and create a default one only when the Table
+            // has none yet.
+            const resolvedGridId = ensureGridForTable(store.project.ydoc, entry.tableId, {
+                name: entry.name,
+                sqlName: entry.sqlName,
+            });
+            const resolvedGrid = getGridHandles(store.project.ydoc, resolvedGridId);
+            if (!resolvedGrid) {
+                logger.warn(`Could not resolve a Grid for table "${routeTableId}" (${entry.tableId})`);
+                notFound = true;
+                return;
+            }
+            gridHandles = resolvedGrid;
 
             tableHandles = handles;
             tableSqlName = entry.sqlName || undefined;
@@ -274,12 +295,13 @@
                 </div>
             </div>
         </div>
-    {:else if tableHandles}
+    {:else if tableHandles && gridHandles}
         <div class="flex-grow min-h-0 relative border border-gray-200 rounded-md overflow-hidden bg-white">
             {#key tableHandles.doc.guid}
                 <div class="h-full w-full">
                     {#if tableProjectDoc}
                         <YjsTableView
+                            grid={gridHandles}
                             handles={tableHandles}
                             projectDoc={tableProjectDoc}
                             projectId={yjsStore.currentProjectId ?? undefined}

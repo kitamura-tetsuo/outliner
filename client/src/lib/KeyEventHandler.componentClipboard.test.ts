@@ -660,8 +660,16 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
 
         expect(tables).toHaveLength(1);
         expect(tables[0].sqlName).toBe("sales");
+        // The paste also creates a Grid for the freshly cloned Table so the
+        // outline item binds to a Grid identity, not a Table.
         expect(detail?.structuredItems).toEqual([
-            { text: "Grid", depth: 0, componentType: "yjstable", yjsTableId: tables[0].tableId },
+            {
+                text: "Grid",
+                depth: 0,
+                componentType: "yjstable",
+                yjsTableId: tables[0].tableId,
+                yjsGridId: expect.any(String),
+            },
             { text: "Missing", depth: 1 },
             { text: "Calendar", depth: 0 },
         ]);

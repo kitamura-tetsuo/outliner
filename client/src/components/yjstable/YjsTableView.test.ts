@@ -1,19 +1,10 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { createGrid, getGridHandles } from "../../services/yjstable/gridDocs";
+import { createTable, getTableHandles } from "../../services/yjstable/tableDocs";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
-
-// Mock TableUndoManager handles
-const mockDoc = new Y.Doc();
-const mockHandles = {
-    doc: mockDoc,
-    tableId: "test-table",
-    schemaText: mockDoc.getText("schemaText"),
-    uiDef: mockDoc.getMap("uiDef"),
-    data: mockDoc.getMap("data"),
-    undo: { undo: vi.fn(), redo: vi.fn() },
-};
 
 vi.mock("../../lib/KeyEventHandler", () => ({
     isForeignInput: (target: EventTarget | null) => {
@@ -33,6 +24,15 @@ vi.mock("../../lib/monaco/monacoLoader", () => ({
     loadMonaco: () => import("../../tests/mocks/fakeMonaco").then((m) => m.fakeMonaco),
 }));
 
+function makeProps() {
+    const projectDoc = new Y.Doc();
+    const tableId = createTable(projectDoc, "T", "t");
+    const handles = getTableHandles(projectDoc, tableId)!;
+    const gridId = createGrid(projectDoc, tableId, { name: "G", query: "SELECT 1" });
+    const grid = getGridHandles(projectDoc, gridId)!;
+    return { projectDoc, handles, grid };
+}
+
 describe("YjsTableView focus handling", () => {
     beforeEach(() => {
         editorOverlayStore.reset();
@@ -40,17 +40,16 @@ describe("YjsTableView focus handling", () => {
     });
 
     it("clears cursor and selection when a foreign input inside the table gets focusin", async () => {
-        // Render the Table View
-        const projectDoc = new Y.Doc();
+        const { projectDoc, handles, grid } = makeProps();
         const { getByTestId } = render(YjsTableView, {
             props: {
-                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
+                grid,
+                handles,
                 projectDoc,
                 tableName: "Test Table",
             },
         });
 
-        // Add a local cursor and selection
         editorOverlayStore.addCursor({ itemId: "item-1", offset: 0, isActive: true, userId: "local" });
         editorOverlayStore.setSelection({
             startItemId: "item-1",
@@ -79,10 +78,11 @@ describe("YjsTableView focus handling", () => {
     });
 
     it("does not render table-local undo/redo buttons", () => {
-        const projectDoc = new Y.Doc();
+        const { projectDoc, handles, grid } = makeProps();
         const { queryByTestId } = render(YjsTableView, {
             props: {
-                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
+                grid,
+                handles,
                 projectDoc,
                 tableName: "Test Table",
             },
@@ -93,10 +93,11 @@ describe("YjsTableView focus handling", () => {
     });
 
     it("does not clear cursor and selection when a non-input element inside the table gets focusin", async () => {
-        const projectDoc = new Y.Doc();
+        const { projectDoc, handles, grid } = makeProps();
         const { getByTestId } = render(YjsTableView, {
             props: {
-                handles: mockHandles as unknown as import("../../services/yjstable/tableDocs").TableHandles,
+                grid,
+                handles,
                 projectDoc,
                 tableName: "Test Table",
             },

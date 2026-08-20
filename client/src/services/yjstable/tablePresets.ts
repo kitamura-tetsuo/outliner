@@ -1,9 +1,13 @@
-// Presets: predefined CREATE TABLE + UI Definition templates built on the
-// consolidated Yjs table feature. The former dedicated Task Manager and Habit
-// Tracker services are reconstructed as presets here.
+// Presets: predefined CREATE TABLE + Grid definition templates.
+//
+// Every preset seeds a Table (schema+data) and one Grid over it (SELECT +
+// component settings). The Grid registry entry is created immediately so the
+// preset workflow directly produces the modern Table + Grid pair — no
+// separate step to attach a Grid, and no legacy Table-with-uiDef state.
 
 import * as Y from "yjs";
-import { createTable, getTableHandles, setSchemaText, type TableHandles } from "./tableDocs";
+import { createGrid } from "./gridDocs";
+import { createTable, getTableHandles, setSchemaText } from "./tableDocs";
 
 export interface TablePreset {
     key: "blank" | "tasks" | "habits";
@@ -18,7 +22,7 @@ export interface TablePreset {
      */
     schemaSql: (table: string) => string;
     query: (table: string) => string;
-    /** Cell component type per column (nested Y.Map in the UI Definition). */
+    /** Cell component type per column (nested Y.Map in the Grid definition). */
     components: Record<string, { type: string; }>;
 }
 
@@ -95,35 +99,32 @@ export const HABITS_PRESET: TablePreset = {
 
 export const TABLE_PRESETS: TablePreset[] = [BLANK_PRESET, TASKS_PRESET, HABITS_PRESET];
 
-/** Seed a table's UI Definition from a preset (nested Y.Map per column). */
-export function applyPresetUi(handles: TableHandles, preset: TablePreset, sqlName: string): void {
-    handles.doc.transact(() => {
-        handles.uiDef.set("query", preset.query(sqlName));
-        const components = new Y.Map<Y.Map<unknown>>();
-        for (const [column, config] of Object.entries(preset.components)) {
-            const cfg = new Y.Map<unknown>();
-            cfg.set("type", config.type);
-            components.set(column, cfg);
-        }
-        handles.uiDef.set("components", components);
-    });
+export interface PresetCreationResult {
+    tableId: string;
+    gridId: string;
 }
 
 /**
- * Create a new table in the project doc from a preset: registry entry,
- * schema text and UI definition. Returns the new table id.
+ * Create a Table AND a matching Grid from the preset. The Table owns
+ * schema/data only; the Grid owns the SELECT and per-column settings.
  */
 export function createTableFromPreset(
     projectDoc: Y.Doc,
     preset: TablePreset,
     name: string = preset.name,
     sqlName: string = preset.defaultSqlName,
-): string {
+): PresetCreationResult {
     const tableId = createTable(projectDoc, name, sqlName);
     const handles = getTableHandles(projectDoc, tableId);
-    if (handles) {
-        setSchemaText(handles, preset.schemaSql(sqlName));
-        applyPresetUi(handles, preset, sqlName);
-    }
-    return tableId;
+    if (handles) setSchemaText(handles, preset.schemaSql(sqlName));
+
+    const gridId = createGrid(projectDoc, tableId, {
+        name,
+        query: preset.query(sqlName),
+        components: Object.fromEntries(
+            Object.entries(preset.components).map(([column, cfg]) => [column, { type: cfg.type }]),
+        ),
+    });
+
+    return { tableId, gridId };
 }

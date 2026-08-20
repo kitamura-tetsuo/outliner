@@ -1,11 +1,12 @@
 <script lang="ts">
-// Orchestrates one table subdoc: owns the sync adapter lifecycle, keeps
+// Orchestrates one Grid: owns the sync-adapter/query-runner lifecycle, keeps
 // plain $state mirrors of the Yjs structures (AGENTS.md §11 mirror pattern),
-// and lets the user switch/parallel-display the schema editor, UI Definition
+// and lets the user switch/parallel-display the schema editor, Grid Definition
 // editor, grid and chart.
 //
-// This component is always mounted under {#key doc.guid} (see YjsTableBlock),
-// so a Y.Doc switch remounts everything — no rebinding logic in here.
+// This component is always mounted under {#key} on both the Grid entry and
+// the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
+// remounts everything — no rebinding logic in here.
 
 import { onDestroy, onMount } from "svelte";
 import * as Y from "yjs";
@@ -15,6 +16,14 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import { createTableEngineSession } from "../../services/yjstable/tableEngine";
 import { destroyTableUndoManager, type TableHandles } from "../../services/yjstable/tableDocs";
+import {
+    destroyGridUndoManager,
+    getGridQuery,
+    type GridHandles,
+    readGridComponents,
+    retainGridUndoManager,
+} from "../../services/yjstable/gridDocs";
+import { GridQueryRunner } from "../../services/yjstable/gridQueryRunner";
 import { orderColumns } from "../../services/yjstable/columnOrder";
 import {
     registerTableClipboardSource,
@@ -37,8 +46,11 @@ import { summarizeTableSchedules, type TableScheduleSummary } from "../../servic
 const logger = getLogger("YjsTableView");
 
 interface Props {
+    /** The Grid this view renders (query + column UI settings). */
+    grid: GridHandles;
+    /** Handles for the Grid's source Table (schema + data). */
     handles: TableHandles;
-    /** Project doc holding the table registry (name lookups, conflict checks). */
+    /** Project doc holding both registries. */
     projectDoc: Y.Doc;
     /** Project id used to connect the subdoc to its room; undefined = local only. */
     projectId?: string;
@@ -49,7 +61,7 @@ interface Props {
     sourceProjectId?: string;
 }
 
-let { handles, projectDoc, projectId, tableName, sqlName, sourceProjectId }: Props = $props();
+let { grid, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -57,7 +69,7 @@ let schemaError = $state<string | undefined>(undefined);
 let result = $state<TableQueryResult>({ columns: [], rows: [] });
 let queryError = $state<string | undefined>(undefined);
 let recordErrors = $state<RecordSyncError[]>([]);
-let uiQuery = $state("");
+let gridQuery = $state("");
 let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
@@ -80,47 +92,23 @@ let chartPanel = $state<TableChartPanel | undefined>(undefined);
 // the same table share one materialization, and sibling tables pulled in by a
 // cross-table query stay alive for as long as this session holds them.
 let adapter = $state<TableSyncAdapter | undefined>(undefined);
+let runner = $state<GridQueryRunner | undefined>(undefined);
 
-const engineCallbacks = {
-    onSchemaChanged: (parsed: ParsedTableSchema | undefined, error?: string) => {
-        schema = parsed;
-        schemaError = error;
-    },
-    onQueryResult: (r: TableQueryResult) => {
-        result = r;
-        chartPanel?.update(r);
-    },
-    onQueryError: (message: string | undefined) => {
-        queryError = message;
-    },
-    onRecordErrors: (errors: RecordSyncError[]) => {
-        recordErrors = errors;
-    },
-};
-
-function refreshUiMirror() {
-    uiQuery = String(handles.uiDef.get("query") ?? "");
-    const order = handles.uiDef.get("columnOrder");
-    columnOrder = Array.isArray(order) ? (order as string[]) : (order instanceof Y.Array ? (order.toArray() as string[]) : []);
-    const components = handles.uiDef.get("components");
-    const nextType: Record<string, string | undefined> = {};
-    const nextLabel: Record<string, string | undefined> = {};
-    const nextHidden: Record<string, boolean> = {};
-    if (components instanceof Y.Map) {
-        components.forEach((cfg, column) => {
-            if (cfg instanceof Y.Map) {
-                nextType[column] = cfg.get("type") as string | undefined;
-                nextLabel[column] = cfg.get("label") as string | undefined;
-                if (cfg.get("hidden") === true) nextHidden[column] = true;
-            }
-        });
-    }
-    componentTypes = nextType;
-    columnLabels = nextLabel;
-    hiddenColumns = nextHidden;
+function refreshGridMirror() {
+    gridQuery = getGridQuery(grid);
+    const order = grid.entry.get("columnOrder");
+    columnOrder = Array.isArray(order)
+        ? (order as string[])
+        : order instanceof Y.Array
+        ? (order.toArray() as string[])
+        : [];
+    const settings = readGridComponents(grid);
+    componentTypes = settings.types;
+    columnLabels = settings.labels;
+    hiddenColumns = settings.hidden;
 }
 
-const uiMirrorObserver = () => refreshUiMirror();
+const gridMirrorObserver = () => refreshGridMirror();
 
 // What this view hands to the system clipboard when a copy crosses its host
 // item. The getters run at copy time, so they read whatever is on screen then.
@@ -144,11 +132,15 @@ const scheduleObserver = () => {
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
-let unsubscribe: (() => void) | undefined;
+let unsubscribeAdapter: (() => void) | undefined;
+let unsubscribeRunner: (() => void) | undefined;
 
 onMount(() => {
-    refreshUiMirror();
-    handles.uiDef.observeDeep(uiMirrorObserver);
+    refreshGridMirror();
+    // Claim a reference on the Grid's shared undo manager so a sibling view
+    // bound to the same Grid keeps its manager when this one unmounts.
+    retainGridUndoManager(grid.entry);
+    grid.entry.observeDeep(gridMirrorObserver);
     projectDoc.getMap("schedules").observeDeep(scheduleObserver);
     scheduleObserver();
     registerTableClipboardSource(handles.tableId, clipboardSource);
@@ -161,24 +153,48 @@ onMount(() => {
         }
         adapter = acquired.adapter;
         isInitialSyncDone = acquired.remoteSynced;
-        unsubscribe = acquired.adapter.subscribe(engineCallbacks);
+        unsubscribeAdapter = acquired.adapter.subscribe({
+            onSchemaChanged: (parsed, error) => {
+                schema = parsed;
+                schemaError = error;
+            },
+            onRecordErrors: (errors) => {
+                recordErrors = errors;
+            },
+        });
+        runner = new GridQueryRunner({ grid, sourceAdapter: acquired.adapter });
+        unsubscribeRunner = runner.subscribe({
+            onResult: (r) => {
+                result = r;
+                chartPanel?.update(r);
+            },
+            onError: (message) => {
+                queryError = message;
+            },
+        });
+        runner.start();
         adapterReady = true;
     })();
 });
 
 onDestroy(() => {
-    handles.uiDef.unobserveDeep(uiMirrorObserver);
+    grid.entry.unobserveDeep(gridMirrorObserver);
     projectDoc.getMap("schedules").unobserveDeep(scheduleObserver);
-    unsubscribe?.();
+    unsubscribeAdapter?.();
+    unsubscribeRunner?.();
+    runner?.dispose();
     unregisterTableClipboardSource(handles.tableId, clipboardSource);
     session.dispose();
     destroyTableUndoManager(handles.doc);
+    destroyGridUndoManager(grid.entry);
 });
 </script>
 
 <div
     class="yjs-table-view"
     data-testid="yjs-table-view"
+    data-grid-id={grid.gridId}
+    data-source-table-id={handles.tableId}
     onfocusin={(e) => {
         if (isForeignInput(e.target)) {
             editorOverlayStore.clearCursorAndSelection("local", true);
@@ -283,9 +299,9 @@ onDestroy(() => {
     {#if showUiDef}
         <section class="panel">
             <TableUiDefEditor
-                {handles}
+                {grid}
                 {schema}
-                query={uiQuery}
+                query={gridQuery}
                 {componentTypes}
                 {columnLabels}
                 {hiddenColumns}
@@ -323,9 +339,10 @@ onDestroy(() => {
         <section class="panel">
             {#if adapterReady}
                 <TableGrid
+                    {grid}
                     {handles}
                     {schema}
-                    query={uiQuery}
+                    query={gridQuery}
                     {result}
                     {componentTypes}
                     {columnOrder}

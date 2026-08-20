@@ -16,9 +16,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { isBlockOwnedDragEvent } from "../../services/dnd/blockDndOwnership";
 import { COLUMN_DRAG_TYPE } from "../../services/yjstable/columnOrder";
+import { createGrid, getGridHandles, type GridHandles } from "../../services/yjstable/gridDocs";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import type { TableHandles } from "../../services/yjstable/tableDocs";
+import { createTable, getTableHandles, type TableHandles } from "../../services/yjstable/tableDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
@@ -54,9 +55,10 @@ const session: RelationResolver = { resolveRelation: vi.fn() };
 
 let doc: Y.Doc;
 let handles: TableHandles;
+let grid: GridHandles;
 
 function storedColumnOrder(): string[] {
-    const order = handles.uiDef.get("columnOrder");
+    const order = grid.entry.get("columnOrder");
     return Array.isArray(order)
         ? (order as string[])
         : (order instanceof Y.Array ? (order as Y.Array<string>).toArray() : []);
@@ -155,19 +157,16 @@ function renderInsideOutlinerItem(component: unknown, props: Record<string, unkn
 beforeEach(() => {
     document.body.innerHTML = "";
     doc = new Y.Doc();
-    handles = {
-        doc,
-        tableId: "test-table",
-        schemaText: doc.getText("schemaText"),
-        uiDef: doc.getMap("uiDef"),
-        data: doc.getMap("data"),
-        undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-    };
+    const tableId = createTable(doc, "test_table", "test_table");
+    handles = getTableHandles(doc, tableId)!;
+    const gridId = createGrid(doc, tableId, { name: "G", query: QUERY });
+    grid = getGridHandles(doc, gridId)!;
 });
 
 describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
     function renderGrid() {
         return renderInsideOutlinerItem(TableGrid, {
+            grid,
             handles,
             schema,
             query: QUERY,
@@ -242,7 +241,7 @@ describe("TableGrid drag & drop ownership inside an OutlinerItem", () => {
 describe("TableUiDefEditor drag & drop ownership inside an OutlinerItem", () => {
     function renderEditor() {
         return renderInsideOutlinerItem(TableUiDefEditor, {
-            handles,
+            grid,
             schema,
             query: QUERY,
             componentTypes: {},
