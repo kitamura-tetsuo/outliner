@@ -23,6 +23,8 @@ export function keepsEditorFocus(element: Element | null | undefined): boolean {
  * the browser from focusing the button, so the textarea never blurs at all.
  */
 export function preventEditorBlur(event: Event): void {
+    if (event instanceof PointerEvent && event.button === 2) return;
+    if (event instanceof MouseEvent && event.button === 2) return;
     event.preventDefault();
 }
 
