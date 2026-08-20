@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import {
     createGrid,
     duplicateGrid,
+    ensureGridForTable,
     findGridsBySourceTable,
     getGridColumnOrder,
     getGridHandles,
@@ -142,5 +143,46 @@ describe("Grid registry", () => {
         expect(listGrids(projectDoc)).toEqual([]);
         // Table stays intact for other Grids or later reuse.
         expect(listTables(projectDoc)).toHaveLength(1);
+    });
+});
+
+// Surfaces addressed by Table id (the standalone /tables/<project>/<tableId>
+// route) still render through a Grid, so they resolve one this way.
+describe("ensureGridForTable", () => {
+    it("creates a default Grid when the Table has none, seeded from the SQL name", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+
+        const gridId = ensureGridForTable(projectDoc, tableId, { name: "Tasks", sqlName: "tasks" });
+
+        const handles = getGridHandles(projectDoc, gridId)!;
+        expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableId);
+        expect(getGridQuery(handles)).toBe("SELECT * FROM tasks");
+        expect(findGridsBySourceTable(projectDoc, tableId)).toHaveLength(1);
+    });
+
+    it("reuses the Table's existing Grid instead of accumulating duplicates", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        const seeded = createGrid(projectDoc, tableId, {
+            name: "Open tasks",
+            query: "SELECT * FROM tasks WHERE status = 'open'",
+        });
+
+        // Repeated visits to the standalone page must not add Grids, and must
+        // show the presentation the existing Grid already defines.
+        expect(ensureGridForTable(projectDoc, tableId, { name: "Tasks", sqlName: "tasks" })).toBe(seeded);
+        expect(ensureGridForTable(projectDoc, tableId, { name: "Tasks", sqlName: "tasks" })).toBe(seeded);
+        expect(findGridsBySourceTable(projectDoc, tableId)).toHaveLength(1);
+        expect(getGridQuery(getGridHandles(projectDoc, seeded)!)).toBe(
+            "SELECT * FROM tasks WHERE status = 'open'",
+        );
+    });
+
+    it("leaves the query empty when no SQL name is known", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        const gridId = ensureGridForTable(projectDoc, tableId);
+        expect(getGridQuery(getGridHandles(projectDoc, gridId)!)).toBe("");
     });
 });

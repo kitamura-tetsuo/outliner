@@ -126,6 +126,34 @@ export function createGrid(
     return gridId;
 }
 
+/**
+ * Resolve a Grid to present a Table with, creating a default one when the
+ * Table has none yet.
+ *
+ * Surfaces that address a Table directly rather than a Grid — the standalone
+ * `/tables/<project>/<tableId>` page, for instance — still need a Grid to
+ * render through, because the SELECT and column UI live there. The first
+ * existing Grid over the Table is reused, so opening such a page never
+ * accumulates duplicate Grids and shows the same presentation as an outline
+ * block bound to that Grid.
+ *
+ * The caller is responsible for having established that `tableId` is a real
+ * Table; this does not re-validate the Table registry, which keeps Grid
+ * storage independent of Table lookup.
+ */
+export function ensureGridForTable(
+    projectDoc: Y.Doc,
+    tableId: string,
+    defaults: { name?: string; sqlName?: string; query?: string; } = {},
+): string {
+    const existing = findGridsBySourceTable(projectDoc, tableId);
+    if (existing.length > 0) return existing[0].gridId;
+    return createGrid(projectDoc, tableId, {
+        name: defaults.name ?? "Grid",
+        query: defaults.query ?? (defaults.sqlName ? `SELECT * FROM ${defaults.sqlName}` : ""),
+    });
+}
+
 /** Remove a Grid from the registry and dispose its undo manager. */
 export function removeGrid(projectDoc: Y.Doc, gridId: string): boolean {
     const registry = getGridRegistry(projectDoc);
