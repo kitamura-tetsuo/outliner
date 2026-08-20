@@ -1,8 +1,9 @@
 import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
+import { createGrid, getGridHandles, type GridHandles } from "../../services/yjstable/gridDocs";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import type { TableHandles } from "../../services/yjstable/tableDocs";
+import { createTable } from "../../services/yjstable/tableDocs";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 
@@ -22,15 +23,12 @@ const ROUTINE_OCCURRENCES_QUERY = "SELECT id, task_key, title, cadence, occurren
     + "  )\n"
     + "ORDER BY cadence, task_key";
 
-const mockDoc = new Y.Doc();
-const mockHandles: TableHandles = {
-    doc: mockDoc,
-    tableId: "test-table",
-    schemaText: mockDoc.getText("schemaText"),
-    uiDef: mockDoc.getMap("uiDef"),
-    data: mockDoc.getMap("data"),
-    undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-};
+function makeGrid(query: string): GridHandles {
+    const doc = new Y.Doc();
+    const tableId = createTable(doc, "T", "t");
+    const gridId = createGrid(doc, tableId, { name: "G", query });
+    return getGridHandles(doc, gridId)!;
+}
 
 describe("TableUiDefEditor", () => {
     beforeEach(() => {
@@ -39,19 +37,10 @@ describe("TableUiDefEditor", () => {
 
     describe("Query (SELECT)", () => {
         function renderQueryEditor(query: string) {
-            const doc = new Y.Doc();
-            const handles: TableHandles = {
-                doc,
-                tableId: "query-table",
-                schemaText: doc.getText("schemaText"),
-                uiDef: doc.getMap("uiDef"),
-                data: doc.getMap("data"),
-                undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-            };
-            handles.uiDef.set("query", query);
+            const grid = makeGrid(query);
             const rendered = render(TableUiDefEditor, {
                 props: {
-                    handles,
+                    grid,
                     schema: undefined,
                     query,
                     componentTypes: {},
@@ -61,7 +50,7 @@ describe("TableUiDefEditor", () => {
                     columnOrder: [],
                 },
             });
-            return { ...rendered, handles };
+            return { ...rendered, grid };
         }
 
         it("loads a multiline query into the editor unchanged", async () => {
@@ -71,7 +60,7 @@ describe("TableUiDefEditor", () => {
         });
 
         it("persists the exact SQL text on commit, keeping the r/WHERE line break", async () => {
-            const { handles } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
+            const { grid } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
             await waitFor(() => expect(fakeMonacoRegistry.editors.length).toBe(1));
 
             // The regression gesture: add one harmless space and leave the editor.
@@ -79,34 +68,34 @@ describe("TableUiDefEditor", () => {
             fakeMonacoRegistry.lastModel().type(edited);
             fakeMonacoRegistry.lastEditor().blur();
 
-            const stored = handles.uiDef.get("query") as string;
+            const stored = grid.entry.get("query") as string;
             expect(stored).toBe(edited);
             expect(stored).toContain("FROM routine_occurrences r\nWHERE NOT EXISTS");
             expect(stored).not.toContain("rWHERE");
         });
 
         it("does not write to Yjs while the query is being typed", async () => {
-            const { handles } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
+            const { grid } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
             await waitFor(() => expect(fakeMonacoRegistry.editors.length).toBe(1));
 
             fakeMonacoRegistry.lastModel().type("SELECT 1");
 
-            expect(handles.uiDef.get("query")).toBe(ROUTINE_OCCURRENCES_QUERY);
+            expect(grid.entry.get("query")).toBe(ROUTINE_OCCURRENCES_QUERY);
         });
 
         it("commits pending text when the panel is closed while the editor still has focus", async () => {
-            const { handles, unmount } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
+            const { grid, unmount } = renderQueryEditor(ROUTINE_OCCURRENCES_QUERY);
             await waitFor(() => expect(fakeMonacoRegistry.editors.length).toBe(1));
 
             const edited = `${ROUTINE_OCCURRENCES_QUERY}\nLIMIT 20`;
             fakeMonacoRegistry.lastModel().type(edited);
             unmount();
 
-            expect(handles.uiDef.get("query")).toBe(edited);
+            expect(grid.entry.get("query")).toBe(edited);
         });
     });
 
-    it("sets and clears column labels in Yjs doc", async () => {
+    it("sets and clears column labels in the Grid definition", async () => {
         const schema: ParsedTableSchema = {
             tableName: "test",
             createSql: "CREATE TABLE test (col_a text);",
@@ -122,9 +111,10 @@ describe("TableUiDefEditor", () => {
             ],
         };
 
+        const grid = makeGrid("SELECT col_a FROM test");
         const { getByTestId } = render(TableUiDefEditor, {
             props: {
-                handles: mockHandles,
+                grid,
                 schema,
                 query: "SELECT col_a FROM test",
                 componentTypes: {},
@@ -140,8 +130,7 @@ describe("TableUiDefEditor", () => {
         // Set label
         await fireEvent.change(labelInput, { target: { value: "Label A" } });
 
-        const components = mockHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        const colACfg = components.get("col_a") as Y.Map<unknown>;
+        const colACfg = grid.components.get("col_a") as Y.Map<unknown>;
         expect(colACfg.get("label")).toBe("Label A");
 
         // Clear label
@@ -162,18 +151,10 @@ describe("TableUiDefEditor", () => {
                 isPrimaryKey: false,
             }],
         };
-        const doc = new Y.Doc();
-        const handles: TableHandles = {
-            doc,
-            tableId: "hidden-test-table",
-            schemaText: doc.getText("schemaText"),
-            uiDef: doc.getMap("uiDef"),
-            data: doc.getMap("data"),
-            undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-        };
+        const grid = makeGrid("SELECT col_a FROM test");
         const { getByTestId } = render(TableUiDefEditor, {
             props: {
-                handles,
+                grid,
                 schema,
                 query: "SELECT col_a FROM test",
                 componentTypes: {},
@@ -186,26 +167,17 @@ describe("TableUiDefEditor", () => {
         const checkbox = getByTestId("yjs-table-hidden-col_a");
 
         await fireEvent.click(checkbox);
-        const components = handles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        expect(components.get("col_a")?.get("hidden")).toBe(true);
+        expect(grid.components.get("col_a")?.get("hidden")).toBe(true);
 
         await fireEvent.click(checkbox);
-        expect(components.has("col_a")).toBe(false);
+        expect(grid.components.has("col_a")).toBe(false);
     });
 
     it("offers visibility controls for computed query columns outside the schema", async () => {
-        const doc = new Y.Doc();
-        const handles: TableHandles = {
-            doc,
-            tableId: "computed-column-table",
-            schemaText: doc.getText("schemaText"),
-            uiDef: doc.getMap("uiDef"),
-            data: doc.getMap("data"),
-            undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-        };
+        const grid = makeGrid("SELECT revenue * 2 AS doubled FROM sales");
         const { getByTestId, getByText } = render(TableUiDefEditor, {
             props: {
-                handles,
+                grid,
                 schema: undefined,
                 query: "SELECT revenue * 2 AS doubled FROM sales",
                 componentTypes: {},
@@ -218,7 +190,6 @@ describe("TableUiDefEditor", () => {
 
         expect(getByText("query result")).toBeTruthy();
         await fireEvent.click(getByTestId("yjs-table-hidden-doubled"));
-        const components = handles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        expect(components.get("doubled")?.get("hidden")).toBe(true);
+        expect(grid.components.get("doubled")?.get("hidden")).toBe(true);
     });
 });

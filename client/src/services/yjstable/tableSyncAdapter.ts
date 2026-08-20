@@ -154,6 +154,12 @@ export class TableSyncAdapter {
         return this.registry;
     }
 
+    // Kept only so the legacy `runQueryNow` shim can replay the last result to
+    // a late subscriber the way the pre-split adapter did. Grid runners hold
+    // their own cached result and don't depend on this.
+    private lastLegacyQueryResult: TableQueryResult | undefined;
+    private lastLegacyQueryError: string | undefined;
+
     /**
      * Register a view. The current state is replayed immediately so several
      * views of the same table share one materialization instead of racing.
@@ -162,6 +168,14 @@ export class TableSyncAdapter {
         this.listeners.add(callbacks);
         callbacks.onSchemaChanged?.(this.schema, this.lastSchemaError);
         callbacks.onRecordErrors?.(this.lastRecordErrors);
+        // Replay the last ad-hoc query result to keep pre-split subscribers
+        // rendering the same rows they used to see after mounting.
+        if (this.lastLegacyQueryResult !== undefined) {
+            callbacks.onQueryResult?.(this.lastLegacyQueryResult);
+        }
+        if (this.lastLegacyQueryError !== undefined) {
+            callbacks.onQueryError?.(this.lastLegacyQueryError);
+        }
         return () => {
             this.listeners.delete(callbacks);
         };
@@ -221,6 +235,8 @@ export class TableSyncAdapter {
         if (!query.trim() || !this.schema) {
             const empty: TableQueryResult = { columns: [], rows: [] };
             if (!isStale()) {
+                this.lastLegacyQueryError = undefined;
+                this.lastLegacyQueryResult = empty;
                 for (const l of this.listeners) l.onQueryError?.(undefined);
                 for (const l of this.listeners) l.onQueryResult?.(empty);
             }
@@ -233,12 +249,15 @@ export class TableSyncAdapter {
                 isStale,
             });
             if (isStale()) return undefined;
+            this.lastLegacyQueryError = undefined;
+            this.lastLegacyQueryResult = result;
             for (const l of this.listeners) l.onQueryError?.(undefined);
             for (const l of this.listeners) l.onQueryResult?.(result);
             return result;
         } catch (err) {
             if (isStale()) return undefined;
             const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
+            this.lastLegacyQueryError = e.message;
             for (const l of this.listeners) l.onQueryError?.(e.message);
             return undefined;
         }

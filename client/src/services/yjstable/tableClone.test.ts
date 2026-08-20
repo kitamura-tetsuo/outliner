@@ -10,6 +10,7 @@ import {
     exportTableStructures,
     importTableStructures,
 } from "./tableClone";
+import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText, tableDocGuid } from "./tableDocs";
 
 function configureUi(
@@ -17,19 +18,15 @@ function configureUi(
     tableId: string,
     query: string,
     label = "金額 €",
-): void {
-    const handles = getTableHandles(doc, tableId)!;
-    handles.doc.transact(() => {
-        handles.uiDef.set("query", query);
-        const components = new Y.Map<Y.Map<unknown>>();
-        const amount = new Y.Map<unknown>();
-        amount.set("type", "number");
-        amount.set("label", label);
-        amount.set("hidden", false);
-        components.set("amount", amount);
-        handles.uiDef.set("components", components);
-        const order = ["amount", "id"];
-        handles.uiDef.set("columnOrder", order);
+): string {
+    // Grid state now lives in a project-level Grid entry, not on the Table
+    // subdoc. Creating one here mirrors what the runtime does the moment a
+    // Table + Grid pair is set up together.
+    return createGrid(doc, tableId, {
+        name: `Grid for ${tableId}`,
+        query,
+        columnOrder: ["amount", "id"],
+        components: { amount: { type: "number", label, hidden: false } },
     });
 }
 
@@ -70,7 +67,10 @@ function sourceProject(): {
     const customersId = createTable(doc, "顧客", "customers");
     const customers = getTableHandles(doc, customersId)!;
     setSchemaText(customers, "CREATE TABLE customers (id TEXT PRIMARY KEY, name TEXT)");
-    customers.uiDef.set("query", "SELECT id, name FROM customers");
+    createGrid(doc, customersId, {
+        name: "Customers",
+        query: "SELECT id, name FROM customers",
+    });
     addRecord(customers, { name: "Acme" }, "c1");
     return { doc, ordersId, customersId };
 }
@@ -110,27 +110,12 @@ describe("table structure export", () => {
 describe("computeTableClosure", () => {
     it("finds the closure of a chain of dependencies", () => {
         const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM table_b");
-        });
-        const entryA = new Y.Map();
-        entryA.set("sqlName", "table_a");
-        entryA.set("tableId", tableA);
-        doc.getMap("tableRegistry").set(tableA, entryA);
-        const tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM table_c");
-        });
-        const entryB = new Y.Map();
-        entryB.set("sqlName", "table_b");
-        entryB.set("tableId", tableB);
-        doc.getMap("tableRegistry").set(tableB, entryB);
-        const tableC = createTable(doc, "Table C", "table_c", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM something_else");
-        });
-        const entryC = new Y.Map();
-        entryC.set("sqlName", "table_c");
-        entryC.set("tableId", tableC);
-        doc.getMap("tableRegistry").set(tableC, entryC);
+        const tableA = createTable(doc, "Table A", "table_a");
+        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_b" });
+        const tableB = createTable(doc, "Table B", "table_b");
+        createGrid(doc, tableB, { name: "B", query: "SELECT * FROM table_c" });
+        const tableC = createTable(doc, "Table C", "table_c");
+        createGrid(doc, tableC, { name: "C", query: "SELECT * FROM something_else" });
 
         const closure = computeTableClosure(doc, [tableA]);
         expect(closure.has(tableA)).toBe(true);
@@ -141,20 +126,10 @@ describe("computeTableClosure", () => {
 
     it("handles cycles gracefully", () => {
         const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM table_b");
-        });
-        const entryA2 = new Y.Map();
-        entryA2.set("sqlName", "table_a");
-        entryA2.set("tableId", tableA);
-        doc.getMap("tableRegistry").set(tableA, entryA2);
-        const tableB = createTable(doc, "Table B", "table_b", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM table_a");
-        });
-        const entryB2 = new Y.Map();
-        entryB2.set("sqlName", "table_b");
-        entryB2.set("tableId", tableB);
-        doc.getMap("tableRegistry").set(tableB, entryB2);
+        const tableA = createTable(doc, "Table A", "table_a");
+        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_b" });
+        const tableB = createTable(doc, "Table B", "table_b");
+        createGrid(doc, tableB, { name: "B", query: "SELECT * FROM table_a" });
 
         const closure = computeTableClosure(doc, [tableA]);
         expect(closure.has(tableA)).toBe(true);
@@ -164,13 +139,8 @@ describe("computeTableClosure", () => {
 
     it("ignores unresolvable dependencies", () => {
         const doc = new Y.Doc();
-        const tableA = createTable(doc, "Table A", "table_a", undefined, handles => {
-            handles.uiDef.set("query", "SELECT * FROM table_non_existent");
-        });
-        const entryA3 = new Y.Map();
-        entryA3.set("sqlName", "table_a");
-        entryA3.set("tableId", tableA);
-        doc.getMap("tableRegistry").set(tableA, entryA3);
+        const tableA = createTable(doc, "Table A", "table_a");
+        createGrid(doc, tableA, { name: "A", query: "SELECT * FROM table_non_existent" });
 
         const closure = computeTableClosure(doc, [tableA]);
         expect(closure.has(tableA)).toBe(true);
@@ -218,7 +188,12 @@ describe("table structure import", { timeout: 30000 }, () => {
         expect(destinationOrders.doc.guid).toBe(tableDocGuid("destination-project", destinationOrdersId));
         expect(destinationOrders.schemaText.toString()).toContain("CREATE TABLE orders_2");
         expect(destinationCustomers.schemaText.toString()).toContain("CREATE TABLE customers");
-        expect(destinationOrders.uiDef.get("query")).toBe(
+        // Grid query lives on the Grid the import created alongside the Table.
+        const destinationOrdersGrid = getGridHandles(
+            destination,
+            findGridsBySourceTable(destination, destinationOrdersId)[0].gridId,
+        )!;
+        expect(destinationOrdersGrid.entry.get("query")).toBe(
             "SELECT 'orders_2' AS source_kind, o.id AS source_id, o.amount, c.name "
                 + "FROM orders_2 o JOIN customers c ON c.id = o.customer_id",
         );
@@ -239,25 +214,29 @@ describe("table structure import", { timeout: 30000 }, () => {
         snapshot.ui.query = "SELECT id, amount FROM orders";
         const destination = new Y.Doc({ guid: "destination-independent" });
         const result = await importTableStructures(destination, { [source.ordersId]: snapshot }, "source-project");
-        const sourceHandles = getTableHandles(source.doc, source.ordersId)!;
-        const destinationHandles = getTableHandles(destination, result.tableIdMap[source.ordersId])!;
-        const sourceComponents = sourceHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        const destinationComponents = destinationHandles.uiDef.get("components") as Y.Map<Y.Map<unknown>>;
-        const sourceOrder = sourceHandles.uiDef.get("columnOrder") as string[];
-        const destinationOrder = destinationHandles.uiDef.get("columnOrder") as string[];
+
+        const sourceGrid = getGridHandles(source.doc, findGridsBySourceTable(source.doc, source.ordersId)[0].gridId)!;
+        const destinationGrid = getGridHandles(
+            destination,
+            findGridsBySourceTable(destination, result.tableIdMap[source.ordersId])[0].gridId,
+        )!;
+        const sourceComponents = sourceGrid.components;
+        const destinationComponents = destinationGrid.components;
+        const sourceOrder = sourceGrid.entry.get("columnOrder") as string[];
+        const destinationOrder = destinationGrid.entry.get("columnOrder") as string[];
 
         expect(destinationComponents).not.toBe(sourceComponents);
         expect(destinationComponents.get("amount")).not.toBe(sourceComponents.get("amount"));
         expect(destinationOrder).not.toBe(sourceOrder);
 
         sourceComponents.get("amount")!.set("label", "source changed");
-        sourceHandles.uiDef.set("columnOrder", [...sourceOrder, "customer_id"]);
+        sourceGrid.entry.set("columnOrder", [...sourceOrder, "customer_id"]);
         expect(destinationComponents.get("amount")!.get("label")).toBe("金額 €");
         expect(destinationOrder).toEqual(["amount", "id"]);
 
-        destinationHandles.uiDef.set("query", "SELECT amount FROM orders");
+        destinationGrid.entry.set("query", "SELECT amount FROM orders");
         destinationComponents.get("amount")!.set("label", "destination changed");
-        expect(sourceHandles.uiDef.get("query")).toContain("JOIN customers");
+        expect(sourceGrid.entry.get("query")).toContain("JOIN customers");
         expect(sourceComponents.get("amount")!.get("label")).toBe("source changed");
     });
 

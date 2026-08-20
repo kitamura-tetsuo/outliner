@@ -1,21 +1,11 @@
 import { fireEvent, render } from "@testing-library/svelte";
 import { describe, expect, it, vi } from "vitest";
-import * as Y from "yjs";
+import { createGrid, getGridHandles } from "../../services/yjstable/gridDocs";
 import type { RelationResolver } from "../../services/yjstable/relationRowWrite";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import type { TableHandles } from "../../services/yjstable/tableDocs";
+import { createTable, getTableHandles } from "../../services/yjstable/tableDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import TableGrid from "./TableGrid.svelte";
-
-const mockDoc = new Y.Doc();
-const mockHandles: TableHandles = {
-    doc: mockDoc,
-    tableId: "test-table",
-    schemaText: mockDoc.getText("schemaText"),
-    uiDef: mockDoc.getMap("uiDef"),
-    data: mockDoc.getMap("data"),
-    undo: { undo: vi.fn(), redo: vi.fn() } as unknown as Y.UndoManager,
-};
 
 const mockSession: RelationResolver = {
     resolveRelation: vi.fn(),
@@ -23,6 +13,18 @@ const mockSession: RelationResolver = {
 
 describe("TableGrid", () => {
     it("renders headers and body cells following columnOrder", async () => {
+        // Build a real project doc so the Table and Grid are wired together
+        // the way the runtime uses them.
+        const doc = new (await import("yjs")).Doc();
+        const tableId = createTable(doc, "test_table", "test_table");
+        const gridId = createGrid(doc, tableId, {
+            name: "G",
+            query: "SELECT id, col_a, col_b, col_c FROM test",
+            columnOrder: ["col_c", "col_a", "col_b"],
+        });
+        const handles = getTableHandles(doc, tableId)!;
+        const grid = getGridHandles(doc, gridId)!;
+
         const schema: ParsedTableSchema = {
             tableName: "test_table",
             createSql: "CREATE TABLE test_table (id uuid, col_a text, col_b text, col_c text);",
@@ -62,19 +64,17 @@ describe("TableGrid", () => {
             ],
         };
 
-        // Use a reordered array: c, a, b (and id at the end or omitted, orderColumns will append it)
-        const columnOrder = ["col_c", "col_a", "col_b"];
-
         const { container } = render(TableGrid, {
             props: {
-                handles: mockHandles,
+                grid,
+                handles,
                 schema,
                 query: "SELECT id, col_a, col_b, col_c FROM test",
                 result,
                 componentTypes: {},
                 columnLabels: { col_a: "Column A Label" },
                 hiddenColumns: { col_b: true },
-                columnOrder,
+                columnOrder: ["col_c", "col_a", "col_b"],
                 session: mockSession,
             },
         });
@@ -88,8 +88,6 @@ describe("TableGrid", () => {
             th.textContent?.trim().replace(/\s+RO$/, "")
         );
 
-        // Remove the action column if it exists in the query result or editable layout
-        // In our case, the action column doesn't have .th-label, it has .sr-only
         const expectedHeaders = ["col_c", "Column A Label", "id"];
         expect(headers.filter(Boolean)).toEqual(expectedHeaders);
 
@@ -110,7 +108,7 @@ describe("TableGrid", () => {
             key: "ArrowRight",
             altKey: true,
         });
-        const storedOrder = mockHandles.uiDef.get("columnOrder") as string[];
+        const storedOrder = grid.entry.get("columnOrder") as string[];
         expect(storedOrder).toEqual(["col_c", "id", "col_b", "col_a"]);
         expect(storedOrder.indexOf("col_b")).toBe(2);
     });
