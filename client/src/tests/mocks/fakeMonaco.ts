@@ -147,9 +147,12 @@ export class FakeCodeEditor {
 export const fakeMonacoRegistry = {
     models: [] as FakeTextModel[],
     editors: [] as FakeCodeEditor[],
+    /** When set, `editor.create` throws it -- the partial-initialisation path. */
+    createError: undefined as Error | undefined,
     reset(): void {
         fakeMonacoRegistry.models = [];
         fakeMonacoRegistry.editors = [];
+        fakeMonacoRegistry.createError = undefined;
     },
     /** The editor created most recently; tests usually render exactly one. */
     lastEditor(): FakeCodeEditor {
@@ -172,6 +175,7 @@ export const fakeMonaco = {
             return model;
         },
         create(container: HTMLElement, options: Record<string, unknown>): FakeCodeEditor {
+            if (fakeMonacoRegistry.createError) throw fakeMonacoRegistry.createError;
             const editor = new FakeCodeEditor(container, options, options.model as FakeTextModel);
             fakeMonacoRegistry.editors.push(editor);
             return editor;

@@ -1,11 +1,17 @@
-import { render, waitFor } from "@testing-library/svelte";
+import { fireEvent, render, waitFor } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FOREIGN_EDITOR_ATTRIBUTE } from "../../lib/foreignEditor";
 import { fakeMonacoRegistry } from "../../tests/mocks/fakeMonaco";
 import SqlEditor from "./SqlEditor.svelte";
 
-// The real editor needs layout, workers and a font stack that jsdom does not
-// provide; the fake exposes the same surface plus type()/blur() hooks.
+// Scope of this mock: the lazy loader only, so these tests exercise the
+// wrapper's own logic -- value round-trip, the external-update guard, commit
+// timing and disposal -- none of which is about rendering. The real editor
+// cannot run under jsdom: it measures layout, loads fonts and spawns workers.
+// The real Monaco integration (typing, Enter, Tab, paste, find, focus) is
+// covered in the browser by client/e2e/tables/*.spec.ts, and the issue asks for
+// exactly this split. The fake exposes the same surface plus type()/blur()
+// hooks so a test can play the part of the user.
 vi.mock("../../lib/monaco/monacoLoader", () => ({
     loadMonaco: () => import("../../tests/mocks/fakeMonaco").then((m) => m.fakeMonaco),
 }));
@@ -132,6 +138,24 @@ describe("SqlEditor", () => {
         const edited = `${MULTILINE_SQL}\nLIMIT 5`;
         fakeMonacoRegistry.lastModel().type(edited);
         unmount();
+
+        expect(onBlur).toHaveBeenCalledWith(edited);
+    });
+
+    it("falls back to a textarea that commits its own text when Monaco fails to initialise", async () => {
+        fakeMonacoRegistry.createError = new Error("editor.create exploded");
+        const onBlur = vi.fn();
+        const { getByTestId } = render(SqlEditor, { value: MULTILINE_SQL, testId: "sql", onBlur });
+
+        const fallback = await waitFor(() => getByTestId("sql-fallback") as HTMLTextAreaElement);
+        expect(fallback.value).toBe(MULTILINE_SQL);
+        // The model created before the failure must not survive to answer for
+        // the fallback's text.
+        expect(fakeMonacoRegistry.lastModel().disposed).toBe(true);
+
+        const edited = `${MULTILINE_SQL}\nLIMIT 1`;
+        await fireEvent.input(fallback, { target: { value: edited } });
+        await fireEvent.blur(fallback);
 
         expect(onBlur).toHaveBeenCalledWith(edited);
     });

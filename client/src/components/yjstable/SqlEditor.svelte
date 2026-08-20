@@ -204,16 +204,17 @@ onMount(() => {
             status = "ready";
         } catch (error) {
             logger.error({ error }, "Monaco Editor failed to initialise; falling back to a plain textarea");
-            status = "unavailable";
+            // `createEditor` may have got as far as creating the model. Left in
+            // place it would keep answering `currentValue()`, so a commit from
+            // the fallback textarea would write the stale text back.
+            releaseEditor();
+            if (!destroyed) status = "unavailable";
         }
     })();
 });
 
-onDestroy(() => {
-    destroyed = true;
-    // Closing the panel while the editor still has focus never fires a blur, so
-    // the pending text would otherwise be lost.
-    commit();
+/** Tears down everything `createEditor` may have created, in reverse order. */
+function releaseEditor() {
     resizeObserver?.disconnect();
     resizeObserver = undefined;
     if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame);
@@ -227,6 +228,14 @@ onDestroy(() => {
     // lifetime of the page.
     model?.dispose();
     model = undefined;
+}
+
+onDestroy(() => {
+    destroyed = true;
+    // Closing the panel while the editor still has focus never fires a blur, so
+    // the pending text would otherwise be lost.
+    commit();
+    releaseEditor();
 });
 </script>
 
