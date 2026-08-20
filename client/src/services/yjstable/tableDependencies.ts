@@ -1,12 +1,6 @@
 import * as Y from "yjs";
 import { type Item, Project } from "../../../../shared/src/app-schema";
-import {
-    destroyGridUndoManager,
-    findGridsBySourceTable,
-    getGridHandles,
-    getGridRegistry,
-    listGrids,
-} from "./gridDocs";
+import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { parseIdentifiers } from "./queryAnalysis";
 import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
 

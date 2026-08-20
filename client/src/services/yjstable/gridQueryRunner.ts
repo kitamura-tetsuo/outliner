@@ -17,8 +17,8 @@ import { getGridQuery, type GridHandles } from "./gridDocs";
 import { TableSqlError, toTableSqlError } from "./pgliteService";
 import {
     executeGridQuery,
-    REQUERY_DEBOUNCE_MS,
     type RelationRegistryPort,
+    REQUERY_DEBOUNCE_MS,
     type TableQueryResult,
     TableSyncAdapter,
 } from "./tableSyncAdapter";

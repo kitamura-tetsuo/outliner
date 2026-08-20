@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import type { GridTableSnapshot } from "../clipboard/itemClipboard";
+import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
 import { resetPgliteForTests } from "./pgliteService";
 import {
     computeSnapshotClosure,
@@ -10,7 +11,6 @@ import {
     exportTableStructures,
     importTableStructures,
 } from "./tableClone";
-import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
 import { addRecord, createTable, getTableHandles, listTables, setSchemaText, tableDocGuid } from "./tableDocs";
 
 function configureUi(

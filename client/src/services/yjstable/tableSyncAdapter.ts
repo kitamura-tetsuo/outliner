@@ -503,7 +503,6 @@ export class TableSyncAdapter {
         this.lastRecordErrors = flat;
         for (const l of this.listeners) l.onRecordErrors?.(flat);
     }
-
 }
 
 /**
