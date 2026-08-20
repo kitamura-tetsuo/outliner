@@ -94,7 +94,9 @@ interface PlannedTable {
     error?: string;
 }
 
-const UI_KEYS = new Set(["query", "components", "columnOrder"]);
+// Grid-level keys are no longer validated here: a Grid entry is built by
+// `createGrid`, which is the only writer of its shape. Per-column component
+// settings still travel as free-form maps, so those keys stay checked.
 const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
 let scratchCounter = 0;
 
