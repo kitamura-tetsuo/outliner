@@ -111,8 +111,8 @@
 {#if mode === "desktop"}
     <div class="toolbar">
         <div class="actions">
-            <button type="button" onclick={onAddItem} data-testid="add-item-button">Add Item</button>
-            <button type="button" onclick={triggerFileSelect} title="Add Image">Add Image</button>
+            <button type="button" onclick={onAddItem} data-testid="add-item-button" data-keep-editor-focus onpointerdown={preventEditorBlur}>Add Item</button>
+            <button type="button" onclick={triggerFileSelect} title="Add Image" data-keep-editor-focus onpointerdown={preventEditorBlur}>Add Image</button>
             <input
                 type="file"
                 accept="image/*"
