@@ -13,9 +13,10 @@ Welcome to the Outliner user manual. This guide provides human-readable instruct
 7. [Selection and Clipboard](#selection-and-clipboard)
 8. [Attachments](#attachments)
 9. [Advanced Features](#advanced-features)
-10. [Database Tables](#database-tables)
-11. [Calendars](#calendars)
-12. [Keyboard Shortcuts](#keyboard-shortcuts)
+10. [Layouts](#layouts)
+11. [Database Tables](#database-tables)
+12. [Calendars](#calendars)
+13. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -217,6 +218,18 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
 
 ---
+
+## Layouts
+
+A Layout arranges visual blocks side by side. It is a normal outline item that owns its children through the tree — deleting, copying, or moving it behaves exactly like any other item.
+
+- **Grid System:** The Layout is a fixed 12-column grid. Each block inside it stores only how many columns it spans (1 to 12); rows and columns follow from that span plus the block's position in the outline.
+- **Tree Ordering:** Nothing else about placement is saved — no coordinates, row numbers or pixel widths — so reordering the blocks is an ordinary tree reorder and the arrangement follows.
+- **Allowed Content:** Only visual blocks (Database and Calendar) may sit directly inside a Layout. Ordinary text and a Layout inside a Layout are refused, so text editing stays one-dimensional.
+- **Resizing:** Drag the handle at a block's right edge to change its span a whole column at a time, or use the − / + buttons; the same control takes the arrow keys from the keyboard.
+- **Stacking:** When the Layout gets too narrow for side-by-side reading, the blocks stack one per row in outline order — the stored spans stay as they are and come back with the width.
+- **Removing Layout:** Right-click the Layout for "Remove layout (keep blocks)": the blocks move up to the Layout's position and the container alone is removed, unlike "Delete item", which takes the whole subtree.
+- **Creation:** Type `/Layout` on an empty item to create one, then drag a Database or Calendar block onto it. An empty Layout stays where it is, ready for the next block.
 
 ## Database Tables
 
