@@ -44,6 +44,24 @@ export function setItemGridId(item: ItemLike, gridId: string | undefined): void 
 }
 
 /**
+ * Bind an item to a Grid and record its source Table id at the same time.
+ *
+ * `yjsGridId` is the authoritative binding the mounted view reads; `yjsTableId`
+ * is kept in lockstep as provenance so the Table-keyed clipboard/export/cut
+ * pipeline keeps recognizing the block as a component. Passing `undefined`
+ * clears both fields (detach).
+ */
+export function bindItemToGrid(
+    item: ItemLike,
+    gridId: string | undefined,
+    sourceTableId: string | undefined,
+): void {
+    const value = nodeValue(item);
+    value?.set?.(GRID_ID_FIELD, gridId);
+    value?.set?.(LEGACY_TABLE_ID_FIELD, gridId ? sourceTableId : undefined);
+}
+
+/**
  * Legacy accessor: prior versions bound items directly to a table. Callers that
  * still need to know whether an item carries the old field can inspect it here,
  * but new code should read/write `gridId` instead.

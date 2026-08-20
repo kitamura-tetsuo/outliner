@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 48;
+export const DEMO_TEMPLATE_VERSION = 49;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -163,6 +163,16 @@ export const DEMO_HABITS_TABLE_ID = "demo-table-habits";
 export const DEMO_ROUTINE_TEMPLATES_TABLE_ID = "demo-table-routine-templates";
 export const DEMO_ROUTINE_OCCURRENCES_TABLE_ID = "demo-table-routine-occurrences";
 export const DEMO_SALES_TARGETS_TABLE_ID = "demo-table-sales-targets";
+
+/**
+ * Deterministic Grid id derived from a Table id. Each demo Table has one Grid
+ * seeded alongside it; outline items reference the Grid, and the Grid points
+ * at the source Table. Keeping the derivation stable across reseeds means an
+ * already-seeded project matches without a migration step.
+ */
+export function demoGridIdFor(tableId: string): string {
+    return `${tableId}-grid`;
+}
 
 // The recurring tasks demonstrated on the "Recurring Tasks" page. Each entry
 // becomes a row of the routine templates table; the seeded schedule rules read
@@ -710,19 +720,43 @@ export function registerDemoTables(
     locale: DemoLocale = "en",
 ): void {
     const registry = projectDoc.getMap<Y.Map<unknown>>("yjsTables");
+    const gridRegistry = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
     for (const template of demoTablesFor(locale)) {
         const entry = new Y.Map<unknown>();
         registry.set(template.tableId, entry);
         entry.set("name", template.name);
         entry.set("sqlName", template.sqlName);
         entry.set("doc", new Y.Doc({ guid: `demo--${slug}--table--${template.tableId}`, autoLoad: true }));
+
+        // One Grid per demo Table, seeded alongside it. Outline items bind to
+        // this Grid; the Grid points at the Table for schema+data.
+        const gridId = demoGridIdFor(template.tableId);
+        const gridEntry = new Y.Map<unknown>();
+        gridEntry.set("sourceTableId", template.tableId);
+        gridEntry.set("name", template.name);
+        gridEntry.set("query", template.query);
+        const components = new Y.Map<Y.Map<unknown>>();
+        for (const [column, def] of Object.entries(template.components)) {
+            const cfg = new Y.Map<unknown>();
+            components.set(column, cfg);
+            if (typeof def === "string") cfg.set("type", def);
+            else {
+                cfg.set("type", def.type);
+                if (def.label) cfg.set("label", def.label);
+                if (def.hidden) cfg.set("hidden", true);
+            }
+        }
+        gridEntry.set("components", components);
+        gridRegistry.set(gridId, gridEntry);
     }
 }
 
 /**
- * Seed one table doc (the live document of `projects/demo/tables/<tableId>`)
- * with the template's three structures: schema text, UI definition and data
- * records (nested Y.Map per record).
+ * Seed one Table subdoc (the live document of `projects/demo/tables/<tableId>`)
+ * with schema text and data records (nested Y.Map per record). Grid state
+ * (SELECT + column UI) is seeded separately into the project doc's
+ * `yjsGrids` registry by `registerDemoTables`; the Table subdoc no longer
+ * carries an authoritative `ui` map.
  */
 export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void {
     const meta = doc.getMap<unknown>("metadata");
@@ -731,22 +765,6 @@ export function seedDemoTableDoc(doc: Y.Doc, template: DemoTableTemplate): void 
     const schema = doc.getText("schema");
     schema.delete(0, schema.length);
     schema.insert(0, template.schemaSql);
-
-    const ui = doc.getMap<unknown>("ui");
-    ui.set("query", template.query);
-    const components = new Y.Map<Y.Map<unknown>>();
-    ui.set("components", components);
-    for (const [column, def] of Object.entries(template.components)) {
-        const cfg = new Y.Map<unknown>();
-        components.set(column, cfg);
-        if (typeof def === "string") {
-            cfg.set("type", def);
-        } else {
-            cfg.set("type", def.type);
-            if (def.label) cfg.set("label", def.label);
-            if (def.hidden) cfg.set("hidden", true);
-        }
-    }
 
     const data = doc.getMap<Y.Map<string | number | boolean | null>>("data");
     for (const key of Array.from(data.keys())) {
@@ -840,7 +858,13 @@ function addDemoItems(
         const node = parent.addNode(author);
         if (def.text !== undefined) node.text = def.text;
         if (def.componentType) node.componentType = def.componentType;
-        if (def.yjsTableId !== undefined) node.yjsTableId = def.yjsTableId;
+        if (def.yjsTableId !== undefined) {
+            // Grid owns the SELECT/UI now; the Table id stays as provenance so
+            // the Table-keyed clipboard/export pipeline still recognises the
+            // block as a component. See gridDocs.ts / itemBinding.ts.
+            node.yjsTableId = def.yjsTableId;
+            node.yjsGridId = demoGridIdFor(def.yjsTableId);
+        }
         if (def.calendarId !== undefined) node.calendarId = def.calendarId;
         if (def.columnSpan !== undefined) node.columnSpan = def.columnSpan;
         if (def.start !== undefined) node.start = def.start;

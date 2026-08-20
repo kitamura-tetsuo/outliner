@@ -259,6 +259,12 @@ export function serializeClipboardItems(
         const componentType = isBoundComponent || rawType === LAYOUT_COMPONENT_TYPE ? rawType : undefined;
         const bindingField = isBoundComponent ? bindings[rawType] : undefined;
         const binding = bindingField ? value?.get?.(bindingField) : undefined;
+        // A yjstable host also carries its Grid id so a cross-project paste can
+        // rebind the pasted item to the freshly created Grid (Grid owns the
+        // SELECT + presentation). The Table id stays the required identity used
+        // to resolve/clone the source relation.
+        const rawGridId = rawType === "yjstable" ? value?.get?.("yjsGridId") : undefined;
+        const gridId = typeof rawGridId === "string" && rawGridId.length > 0 ? rawGridId : undefined;
         const rawSpan = value?.get?.("columnSpan");
         // Repaired on the way out, by the same rule rendering uses, so a broken
         // stored span cannot travel to another document.
@@ -274,6 +280,7 @@ export function serializeClipboardItems(
             ...(carriesComponent
                 ? (bindingField ? { componentType, [bindingField]: binding } : { componentType })
                 : {}),
+            ...(carriesComponent && gridId !== undefined ? { yjsGridId: gridId } : {}),
             ...(carriesComponent && columnSpan !== undefined ? { columnSpan } : {}),
         } as ClipboardItem;
     });

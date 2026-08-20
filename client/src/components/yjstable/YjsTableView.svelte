@@ -21,6 +21,7 @@ import {
     getGridQuery,
     type GridHandles,
     readGridComponents,
+    retainGridUndoManager,
 } from "../../services/yjstable/gridDocs";
 import { GridQueryRunner } from "../../services/yjstable/gridQueryRunner";
 import { orderColumns } from "../../services/yjstable/columnOrder";
@@ -136,6 +137,9 @@ let unsubscribeRunner: (() => void) | undefined;
 
 onMount(() => {
     refreshGridMirror();
+    // Claim a reference on the Grid's shared undo manager so a sibling view
+    // bound to the same Grid keeps its manager when this one unmounts.
+    retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
     projectDoc.getMap("schedules").observeDeep(scheduleObserver);
     scheduleObserver();

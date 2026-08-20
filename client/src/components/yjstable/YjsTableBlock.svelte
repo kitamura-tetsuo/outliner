@@ -9,9 +9,9 @@
 
 import { onDestroy, onMount } from "svelte";
 import {
+    bindItemToGrid,
     getItemGridId,
     observeItemGridId,
-    setItemGridId,
 } from "../../services/yjstable/itemBinding";
 import {
     getTableHandles,
@@ -150,13 +150,13 @@ function selectExistingTable() {
         name: table?.name ?? "Grid",
         query: `SELECT * FROM ${table?.sqlName ?? "table"}`,
     });
-    setItemGridId(item, newGridId);
+    bindItemToGrid(item, newGridId, selectedExistingTableId);
     gridId = newGridId;
 }
 
 function selectExistingGrid() {
     if (!selectedExistingGridId) return;
-    setItemGridId(item, selectedExistingGridId);
+    bindItemToGrid(item, selectedExistingGridId, getGridSourceTableId(item.ydoc, selectedExistingGridId));
     gridId = selectedExistingGridId;
 }
 
@@ -170,8 +170,8 @@ function createFromPreset() {
         createError = `SQL name "${sqlName}" is already used in this project`;
         return;
     }
-    const { gridId: newGridId } = createTableFromPreset(item.ydoc, preset, name, sqlName);
-    setItemGridId(item, newGridId);
+    const { tableId, gridId: newGridId } = createTableFromPreset(item.ydoc, preset, name, sqlName);
+    bindItemToGrid(item, newGridId, tableId);
     gridId = newGridId;
 }
 </script>

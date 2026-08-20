@@ -46,7 +46,16 @@ export interface GridHandles {
     projectDoc: Y.Doc;
 }
 
-const gridUndoManagers = new WeakMap<Y.Map<unknown>, Y.UndoManager>();
+// A single UndoManager is shared by every view of a Grid, so it is
+// reference-counted: two outline blocks can bind to the same Grid (the
+// "Existing Grid" option), and unmounting one must not destroy the manager the
+// other still edits through. The manager is torn down only when the last
+// consumer releases it or the Grid itself is removed.
+interface GridUndoEntry {
+    undo: Y.UndoManager;
+    refs: number;
+}
+const gridUndoManagers = new WeakMap<Y.Map<unknown>, GridUndoEntry>();
 
 export function getGridRegistry(projectDoc: Y.Doc): Y.Map<Y.Map<unknown>> {
     return projectDoc.getMap<Y.Map<unknown>>(GRID_REGISTRY_KEY);
@@ -132,25 +141,42 @@ export function getGridHandles(projectDoc: Y.Doc, gridId: string): GridHandles |
     if (!entry) return undefined;
     const components = ensureComponents(entry);
 
-    let undo = gridUndoManagers.get(entry);
-    if (!undo) {
-        undo = new Y.UndoManager([entry, components], {
+    let managed = gridUndoManagers.get(entry);
+    if (!managed) {
+        const undo = new Y.UndoManager([entry, components], {
             trackedOrigins: new Set([null]),
         });
-        gridUndoManagers.set(entry, undo);
+        managed = { undo, refs: 0 };
+        gridUndoManagers.set(entry, managed);
         globalUndoRouter.register(undo);
     }
 
-    return { gridId, entry, components, undo, projectDoc };
+    return { gridId, entry, components, undo: managed.undo, projectDoc };
 }
 
+/**
+ * Claim a reference to a Grid's shared UndoManager for a view's lifetime.
+ * Call once per mounted consumer (paired with `destroyGridUndoManager`).
+ */
+export function retainGridUndoManager(entry: Y.Map<unknown>): void {
+    const managed = gridUndoManagers.get(entry);
+    if (managed) managed.refs++;
+}
+
+/**
+ * Release a view's reference to the Grid's UndoManager. The manager is
+ * destroyed only when the last referencing view releases it; a call with no
+ * outstanding references (e.g. from `removeGrid`) tears it down immediately so
+ * a deleted Grid never leaves a manager registered on the global router.
+ */
 export function destroyGridUndoManager(entry: Y.Map<unknown>): void {
-    const undo = gridUndoManagers.get(entry);
-    if (undo) {
-        globalUndoRouter.unregister(undo);
-        undo.destroy();
-        gridUndoManagers.delete(entry);
-    }
+    const managed = gridUndoManagers.get(entry);
+    if (!managed) return;
+    if (managed.refs > 0) managed.refs--;
+    if (managed.refs > 0) return;
+    globalUndoRouter.unregister(managed.undo);
+    managed.undo.destroy();
+    gridUndoManagers.delete(entry);
 }
 
 export function renameGrid(projectDoc: Y.Doc, gridId: string, name: string): void {

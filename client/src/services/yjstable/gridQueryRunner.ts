@@ -125,7 +125,13 @@ export class GridQueryRunner {
 
         if (isStale()) return undefined;
         const query = getGridQuery(this.grid).trim();
-        if (!query) {
+        // The source Table must have a valid applied schema before a Grid may
+        // present rows. When the schema text is cleared or becomes invalid the
+        // adapter reports `appliedSchema === undefined` but does NOT drop the
+        // previously materialized relation, so running the query anyway would
+        // succeed against stale rows and show data whose schema no longer
+        // exists. The pre-split adapter gated on exactly this.
+        if (!query || !this.sourceAdapter.appliedSchema) {
             const empty: TableQueryResult = { columns: [], rows: [] };
             this.emitResult(empty);
             this.emitError(undefined);

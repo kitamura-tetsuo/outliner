@@ -110,14 +110,16 @@ function assertOnlyKeys(actual: Iterable<string>, expected: ReadonlySet<string>,
     }
 }
 
-function exportGridSlice(projectDoc: Y.Doc, tableId: string): GridTableSnapshot["ui"] {
-    // Only the first Grid over this Table is exported: clipboard payloads are
-    // Table-oriented, and picking any single Grid gives paste something
-    // sensible to reconstruct. An outline item that binds to a specific Grid
-    // is what carries per-Grid identity across a copy.
+function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: string): GridTableSnapshot["ui"] {
+    // Clipboard payloads are Table-keyed, so one Grid slice per Table travels.
+    // When the copied host names a specific Grid (`preferGridId`), that Grid's
+    // query/labels/visibility/order are the ones exported — not an arbitrary
+    // sibling — so a paste reconstructs what the user was actually looking at.
+    // Otherwise the first Grid over the Table is used as a sensible default.
     const grids = findGridsBySourceTable(projectDoc, tableId);
     if (grids.length === 0) return { query: "", components: {}, columnOrder: [] };
-    const handles = getGridHandles(projectDoc, grids[0].gridId);
+    const chosen = (preferGridId && grids.find(g => g.gridId === preferGridId)?.gridId) ?? grids[0].gridId;
+    const handles = getGridHandles(projectDoc, chosen);
     if (!handles) return { query: "", components: {}, columnOrder: [] };
 
     const query = String(handles.entry.get("query") ?? "");
@@ -152,8 +154,16 @@ function exportGridSlice(projectDoc: Y.Doc, tableId: string): GridTableSnapshot[
     return ui;
 }
 
-/** Export only display metadata, Schema Definition, and one associated Grid's UI DTO. */
-export function exportTableStructure(projectDoc: Y.Doc, tableId: string): GridTableSnapshot {
+/**
+ * Export only display metadata, Schema Definition, and one associated Grid's
+ * UI DTO. Pass `preferGridId` to export the slice of the Grid the copied host
+ * actually references rather than the first Grid over the Table.
+ */
+export function exportTableStructure(
+    projectDoc: Y.Doc,
+    tableId: string,
+    preferGridId?: string,
+): GridTableSnapshot {
     const handles = getTableHandles(projectDoc, tableId);
     const name = getTableName(projectDoc, tableId);
     const sqlName = getTableSqlName(projectDoc, tableId);
@@ -165,7 +175,7 @@ export function exportTableStructure(projectDoc: Y.Doc, tableId: string): GridTa
         name,
         sqlName,
         schemaSql: handles.schemaText.toString(),
-        ui: exportGridSlice(projectDoc, tableId),
+        ui: exportGridSlice(projectDoc, tableId, preferGridId),
     };
     if (!isGridTableSnapshot(snapshot, tableId)) {
         throw new TableCloneError(`Table "${tableId}" does not have a portable structure`);
@@ -173,14 +183,22 @@ export function exportTableStructure(projectDoc: Y.Doc, tableId: string): GridTa
     return snapshot;
 }
 
-/** Export several table structures once each, preserving first-seen order. */
+/**
+ * Export several table structures once each, preserving first-seen order.
+ * `preferGridByTableId` lets the caller pin which Grid slice each Table should
+ * carry, so a copied host that names a specific Grid keeps that Grid's query
+ * and UI in the payload instead of an arbitrary sibling's.
+ */
 export function exportTableStructures(
     projectDoc: Y.Doc,
     tableIds: Iterable<string>,
+    preferGridByTableId?: ReadonlyMap<string, string>,
 ): Record<string, GridTableSnapshot> {
     const snapshots: Record<string, GridTableSnapshot> = {};
     for (const tableId of tableIds) {
-        if (snapshots[tableId] === undefined) snapshots[tableId] = exportTableStructure(projectDoc, tableId);
+        if (snapshots[tableId] === undefined) {
+            snapshots[tableId] = exportTableStructure(projectDoc, tableId, preferGridByTableId?.get(tableId));
+        }
     }
     return snapshots;
 }

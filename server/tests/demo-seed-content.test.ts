@@ -25,6 +25,7 @@ import {
     demoPages,
     demoRoutineTemplates,
     demoTables,
+    registerDemoTables,
     routineOccurrenceSql,
     seedDemoTableDoc,
 } from "../src/demo-content.js";
@@ -138,7 +139,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(48);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(49);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -252,17 +253,15 @@ describe("Demo seed content", () => {
         ).to.equal(true);
     });
 
-    it("seedDemoTableDoc writes the three table structures into a table doc", () => {
+    it("seedDemoTableDoc writes schema and data into a table doc (Grid state lives on the project)", () => {
         const template = demoTables.find((t) => t.tableId === DEMO_SALES_TABLE_ID)!;
         const doc = new Y.Doc();
         seedDemoTableDoc(doc, template);
 
         expect(doc.getText("schema").toString()).to.equal(template.schemaSql);
-        const ui = doc.getMap("ui");
-        expect(ui.get("query")).to.equal(template.query);
-        const components = ui.get("components") as Y.Map<Y.Map<unknown>>;
-        expect(components.get("id")!.get("hidden")).to.equal(true);
-        expect(components.get("revenue")!.get("type")).to.equal("number");
+        // The Table subdoc no longer owns SELECT/component state. Grid state is
+        // seeded by registerDemoTables into the project doc's yjsGrids map.
+        expect(doc.getMap("ui").size).to.equal(0);
 
         const data = doc.getMap("data");
         expect(data.size).to.equal(template.records.length);
@@ -274,6 +273,24 @@ describe("Demo seed content", () => {
         // Re-seeding replaces the records instead of duplicating them.
         seedDemoTableDoc(doc, template);
         expect(doc.getMap("data").size).to.equal(template.records.length);
+    });
+
+    it("registerDemoTables seeds one Grid per demo Table into the project doc", () => {
+        const projectDoc = new Y.Doc();
+        registerDemoTables(projectDoc, "demo", "en");
+        const grids = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+        for (const template of demoTables) {
+            const grid = grids.get(`${template.tableId}-grid`);
+            expect(grid, `Grid seeded for ${template.tableId}`).to.not.equal(undefined);
+            expect(grid!.get("sourceTableId")).to.equal(template.tableId);
+            expect(grid!.get("query")).to.equal(template.query);
+            const components = grid!.get("components") as Y.Map<Y.Map<unknown>>;
+            expect(components).to.be.instanceOf(Y.Map);
+            for (const [column, def] of Object.entries(template.components)) {
+                const type = typeof def === "string" ? def : def.type;
+                expect(components.get(column)!.get("type")).to.equal(type);
+            }
+        }
     });
 
     it("seeds votes and a comment thread on the Comments and Votes page", () => {

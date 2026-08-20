@@ -212,10 +212,22 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     const initialTableIds = new Set(
         entries.map(entry => getItemTableId(entry.item)).filter((id): id is string => id !== undefined),
     );
+    // Which Grid slice each host wants exported: preserve the copied item's
+    // own Grid so a paste reconstructs its query and column UI, not those of
+    // an arbitrary sibling Grid over the same Table.
+    const preferGridByTableId = new Map<string, string>();
+    for (const entry of entries) {
+        const tableId = getItemTableId(entry.item);
+        if (!tableId || preferGridByTableId.has(tableId)) continue;
+        const nodeValue = (entry.item as { tree?: { getNodeValueFromKey?: (key: string) => unknown; }; })
+            .tree?.getNodeValueFromKey?.(entry.item.key ?? "") as { get?: (k: string) => unknown; } | undefined;
+        const gridId = nodeValue?.get?.("yjsGridId");
+        if (typeof gridId === "string" && gridId.length > 0) preferGridByTableId.set(tableId, gridId);
+    }
     const tableIds = computeTableClosure(project.ydoc, initialTableIds);
     for (const tableId of tableIds) {
         try {
-            tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId);
+            tableSnapshots[tableId] = exportTableStructure(project.ydoc, tableId, preferGridByTableId.get(tableId));
         } catch {
             // Each Grid is portable independently; failed exports retain their
             // source binding for same-project paste and degrade to text abroad.
