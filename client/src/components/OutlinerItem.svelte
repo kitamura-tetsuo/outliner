@@ -2292,7 +2292,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
-                    onpointerdown={(e) => { e.stopPropagation(); }}
+                    onpointerdown={(e) => { if (e.button === 2) return; e.stopPropagation(); }}
                     onmouseup={(e) => { e.stopPropagation(); }}
                 >
                     <svg
@@ -2322,7 +2322,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
-                    onpointerdown={(e) => { e.stopPropagation(); }}
+                    onpointerdown={(e) => { if (e.button === 2) return; e.stopPropagation(); }}
                     onmouseup={(e) => { e.stopPropagation(); }}
                     onclick={(e) => { e.stopPropagation(); }}
                 >•</span>
@@ -2399,7 +2399,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                             class="referring-aliases-button"
                             title="View referring aliases"
                             onclick={(e) => { e.stopPropagation(); toggleAliasDropdown(e); }}
-                            onpointerdown={(e) => { e.stopPropagation(); }}
+                            onpointerdown={(e) => { if (e.button === 2) return; e.stopPropagation(); }}
                             onmousedown={(e) => { e.stopPropagation(); }}
                             onmouseup={(e) => { e.stopPropagation(); }}
                         >
@@ -2419,7 +2419,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                                             <button type="button"
                                                 tabindex="-1"
                                                 onclick={(e) => { e.stopPropagation(); handleAliasNavigation(ref.pageTitle, ref.item.id, e); }}
-                                                onpointerdown={(e) => { e.stopPropagation(); }}
+                                                onpointerdown={(e) => { if (e.button === 2) return; e.stopPropagation(); }}
                                                 onmousedown={(e) => { e.stopPropagation(); }}
                                                 onmouseup={(e) => { e.stopPropagation(); }}>
                                                 <div class="ref-page">{ref.pageTitle}</div>
