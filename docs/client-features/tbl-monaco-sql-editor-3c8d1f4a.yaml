@@ -1,0 +1,37 @@
+id: TBL-3c8d1f4a
+title: Shared Monaco SQL editor for Grid schema and query
+title-ja: Grid のスキーマとクエリを編集する共通 Monaco SQL エディタ
+description: 'Both Grid SQL surfaces -- Schema (CREATE TABLE) and Query (SELECT) -- are edited through one shared Monaco Editor component (SqlEditor.svelte) instead of a native textarea and a single-line text input. The component is intentionally thin: it takes a string and reports strings, and knows nothing about Yjs tables, schema application or query execution.
+
+  Monaco is imported lazily from a module-level shared promise the first time a SQL editor mounts, so it never sits on the critical path of an ordinary page render and several Grids on one page reuse a single runtime. Its editor, model and listeners are disposed when the component unmounts, and a pending edit is flushed first so closing a panel while typing does not lose the text.
+
+  While the editor has focus it owns its keyboard and clipboard: its root carries the `data-foreign-editor` ownership marker that the outliner''s key and clipboard routing (`isForeignInput`) checks, so Enter, Tab, Backspace, navigation keys, Ctrl/Cmd+C/X/V/A/Z and Monaco''s find shortcuts stay inside the editor instead of splitting or deleting the containing outline item. A bare `data-block-dnd-owner` gives it drag & drop inside its own surface. Outline keyboard behaviour outside the marked subtree is unchanged.
+
+  Schema editing keeps its existing contract exactly -- typing only moves a local draft, "Apply schema" is the only commit, and destructive diffs still go through the confirmation dialog. Query editing commits on blur (and on unmount), matching the "commit when leaving the control" behaviour of the input it replaced, and stores the SQL verbatim so multiline statements round-trip unchanged.
+
+  The editor deliberately does not auto-close brackets or quotes, re-indent, or offer word-based suggestions: silently invented characters turn a valid statement into a query error. Schema-aware completion and diagnostics are follow-up work built on this wrapper.
+
+  '
+category: table
+status: implemented
+components:
+- client/src/components/yjstable/SqlEditor.svelte
+- client/src/components/yjstable/TableSchemaEditor.svelte
+- client/src/components/yjstable/TableUiDefEditor.svelte
+- client/src/lib/foreignEditor.ts
+- client/src/lib/monaco/monacoLoader.ts
+acceptance:
+- A multiline query is shown multiline, and editing then committing it preserves every line break; the demo "Routine Occurrences" query keeps its `FROM routine_occurrences r` / `WHERE NOT EXISTS` boundary instead of collapsing into `rWHERE`.
+- Editing the schema changes only the local draft; the schema is validated and applied only by "Apply schema", and a destructive diff still requires confirmation.
+- Enter, Tab, Backspace and paste inside the editor stay inside it - no outline item is split, deleted or created, and focus does not leave the editor.
+- Monaco is fetched only when a SQL editor is opened, and the production build emits its worker asset; server-side rendering never touches Monaco globals.
+- Opening and closing the Grid configuration repeatedly disposes each editor and its model, and a pending edit is committed when the panel closes.
+tests:
+- client/e2e/tables/tables-schema-editor-keyboard-299f2.spec.ts
+- client/e2e/tables/tables-schema-editor-paste-1126.spec.ts
+- client/e2e/tables/tbl-sql-editor-multiline-query-3c8d1f4a.spec.ts
+- client/src/components/yjstable/SqlEditor.test.ts
+- client/src/components/yjstable/TableDndOwnership.test.ts
+- client/src/components/yjstable/TableSchemaEditor.test.ts
+- client/src/components/yjstable/TableUiDefEditor.test.ts
+- client/src/tests/keyEventHandlerClipboardScope.test.ts

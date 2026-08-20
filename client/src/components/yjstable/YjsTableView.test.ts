@@ -18,9 +18,19 @@ const mockHandles = {
 vi.mock("../../lib/KeyEventHandler", () => ({
     isForeignInput: (target: EventTarget | null) => {
         if (!target) return false;
-        const tag = (target as HTMLElement).tagName?.toUpperCase();
+        const el = target as HTMLElement;
+        // Mirrors the real predicate: an embedded editor surface owns its
+        // subtree, everything else is matched by tag name.
+        if (el.closest?.("[data-foreign-editor]")) return true;
+        const tag = el.tagName?.toUpperCase();
         return ["INPUT", "TEXTAREA", "SELECT", "OPTION", "BUTTON"].includes(tag);
     },
+}));
+
+// The UI Definition panel embeds the shared Monaco SQL editor; see
+// SqlEditor.test.ts for why the runtime is faked under jsdom.
+vi.mock("../../lib/monaco/monacoLoader", () => ({
+    loadMonaco: () => import("../../tests/mocks/fakeMonaco").then((m) => m.fakeMonaco),
 }));
 
 describe("YjsTableView focus handling", () => {

@@ -1,8 +1,13 @@
+import "../utils/registerAfterEachSnapshot";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+registerCoverageHooks();
 import { expect, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Table schema editor keyboard handling", () => {
     test.beforeEach(async ({ page }, testInfo) => {
+        test.setTimeout(120000);
         // Seed a project with a single table container item
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Table container"]);
 
@@ -42,33 +47,29 @@ test.describe("Table schema editor keyboard handling", () => {
 
     test("Enter key inserts newline in schema editor and retains focus", async ({ page }) => {
         const schemaApplyButton = page.locator('[data-testid="yjs-table-schema-apply"]');
-        const schemaTextarea = page.locator('[data-testid="yjs-table-schema-input"]');
+        const schemaEditor = SqlEditorHelper.byTestId(page, "yjs-table-schema-input");
+        await schemaEditor.waitForReady();
+        const itemCountBefore = await page.locator(".outliner-item[data-item-id]").count();
 
-        // Select all text in the textarea and delete it
-        await schemaTextarea.focus();
-        await expect(schemaTextarea).toBeFocused();
-        await page.keyboard.press("Meta+A"); // or Ctrl+A, but Playwright handles modifier cross-platform best by explicit clear
-        await schemaTextarea.fill(""); // simpler than Meta+A
-
-        // Type a multiline CREATE TABLE statement
+        // Type a multiline CREATE TABLE statement. Enter belongs to the SQL
+        // editor: it must add a line, not split the containing outliner item.
         const createStatement1 = "CREATE TABLE test_table (";
-        await page.keyboard.type(createStatement1);
-        await page.keyboard.press("Enter");
         const createStatement2 = "  id INTEGER PRIMARY KEY,";
-        await page.keyboard.type(createStatement2);
-        await page.keyboard.press("Enter");
         const createStatement3 = "  name TEXT";
-        await page.keyboard.type(createStatement3);
-        await page.keyboard.press("Enter");
         const createStatement4 = ");";
-        await page.keyboard.type(createStatement4);
+        await schemaEditor.setValue(
+            page,
+            [createStatement1, createStatement2, createStatement3, createStatement4].join("\n"),
+        );
 
-        // Verify focus is still in the textarea, not the outliner item
-        await expect(schemaTextarea).toBeFocused();
+        // Verify focus is still in the SQL editor, not the outliner item
+        expect(await schemaEditor.hasFocus()).toBe(true);
+        expect(await page.locator(".outliner-item[data-item-id]").count()).toBe(itemCountBefore);
 
         // Verify the content has the expected newlines
-        const value = await schemaTextarea.inputValue();
-        expect(value).toBe(`${createStatement1}\n${createStatement2}\n${createStatement3}\n${createStatement4}`);
+        expect(await schemaEditor.value()).toBe(
+            `${createStatement1}\n${createStatement2}\n${createStatement3}\n${createStatement4}`,
+        );
 
         // Click apply schema
         await schemaApplyButton.click();
@@ -94,9 +95,10 @@ test.describe("Table schema editor keyboard handling", () => {
         await page.getByTestId("yjs-table-toggle-ui").first().click();
         await expect(page.locator('[data-testid="yjs-table-ui-editor"]')).toBeVisible({ timeout: 15000 });
 
-        const queryInput = page.locator('[data-testid="yjs-table-query-input"]');
-        await queryInput.fill("SELECT * FROM test_table");
-        await queryInput.press("Enter");
+        const queryEditor = SqlEditorHelper.byTestId(page, "yjs-table-query-input");
+        await queryEditor.waitForReady();
+        await queryEditor.setValue(page, "SELECT * FROM test_table");
+        await queryEditor.commit(page);
 
         // Check that the grid columns updated
         const grid = page.getByTestId("yjs-table-grid").first();

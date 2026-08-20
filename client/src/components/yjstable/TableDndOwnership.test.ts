@@ -23,6 +23,12 @@ import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter"
 import TableGrid from "./TableGrid.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 
+// The UI Definition editor embeds the shared Monaco SQL editor; see
+// SqlEditor.test.ts for why the runtime is faked under jsdom.
+vi.mock("../../lib/monaco/monacoLoader", () => ({
+    loadMonaco: () => import("../../tests/mocks/fakeMonaco").then((m) => m.fakeMonaco),
+}));
+
 const COLUMNS = ["id", "col_a", "col_b", "col_c"];
 const QUERY = "SELECT id, col_a, col_b, col_c FROM test_table";
 
@@ -254,13 +260,27 @@ describe("TableUiDefEditor drag & drop ownership inside an OutlinerItem", () => 
         expect(editor?.getAttribute("data-block-dnd-type")).toBe(COLUMN_DRAG_TYPE);
     });
 
-    it("still lets the item consume an unrelated drop landing on the query input", () => {
+    it("still lets the item consume an unrelated drop landing outside the SQL editor", () => {
         const { container, itemDropHandled } = renderEditor();
 
-        const queryInput = container.querySelector("#yjs-table-query-input")!;
-        dispatchDragEvent(queryInput, "drop", fakeDataTransfer({ "text/plain": "pasted text" }));
+        const label = container.querySelector(".column-label")!;
+        dispatchDragEvent(label, "drop", fakeDataTransfer({ "text/plain": "pasted text" }));
 
         expect(itemDropHandled).toHaveBeenCalledTimes(1);
+        expect(storedColumnOrder()).toEqual([]);
+    });
+
+    it("gives text dropped on the SQL query editor to the editor, not to the item", () => {
+        const { container, itemDropHandled } = renderEditor();
+
+        // The SQL editor carries a bare `data-block-dnd-owner`: everything
+        // dropped inside it is the editor's, including plain text.
+        const queryEditor = container.querySelector('[data-testid="yjs-table-query-input"]')!;
+        expect(queryEditor.getAttribute("data-block-dnd-owner")).toBe("sql-editor");
+
+        dispatchDragEvent(queryEditor, "drop", fakeDataTransfer({ "text/plain": "pasted text" }));
+
+        expect(itemDropHandled).not.toHaveBeenCalled();
         expect(storedColumnOrder()).toEqual([]);
     });
 

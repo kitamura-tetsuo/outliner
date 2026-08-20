@@ -1,7 +1,7 @@
 <script lang="ts">
 import { untrack } from "svelte";
-// Schema Definition editor: a plain textarea with an explicit Apply button.
-// Nothing is parsed while typing; on Apply the draft is validated in a
+// Schema Definition editor: the shared Monaco SQL editor with an explicit Apply
+// button. Nothing is parsed while typing; on Apply the draft is validated in a
 // throwaway PGlite schema and, when the diff would drop columns or change
 // types, a warning dialog asks for confirmation before existing data is
 // touched.
@@ -9,6 +9,7 @@ import { untrack } from "svelte";
 import type { ParsedTableSchema, SchemaDiff } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
 import type { TableSyncAdapter } from "../../services/yjstable/tableSyncAdapter";
+import SqlEditor from "./SqlEditor.svelte";
 
 interface Props {
     handles: TableHandles;
@@ -66,17 +67,21 @@ function cancelPending() {
 </script>
 
 <div class="schema-editor" data-testid="yjs-table-schema-editor">
-    <label class="editor-label" for="yjs-table-schema-input">Schema (CREATE TABLE)</label>
-    <textarea
-        id="yjs-table-schema-input"
-        data-testid="yjs-table-schema-input"
-        rows="6"
-        spellcheck="false"
+    <span class="editor-label">Schema (CREATE TABLE)</span>
+    <!--
+        Editing only moves the local draft: `prepareSchemaChange` / `applySchema`
+        stay behind the explicit Apply button below.
+    -->
+    <SqlEditor
+        testId="yjs-table-schema-input"
+        ariaLabel="Schema (CREATE TABLE)"
         value={draft}
-        oninput={(e) => {
-            draft = (e.target as HTMLTextAreaElement).value;
+        minHeight={140}
+        maxHeight={320}
+        onChange={(next) => {
+            draft = next;
         }}
-    ></textarea>
+    />
     <div class="editor-actions">
         <button
             type="button"
@@ -133,16 +138,6 @@ function cancelPending() {
     font-size: 0.75rem;
     font-weight: 600;
     color: #374151;
-}
-
-textarea {
-    width: 100%;
-    font-family: ui-monospace, monospace;
-    font-size: 0.8rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    padding: 6px;
-    background: white;
 }
 
 .editor-actions button,

@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
  */
 import { expect, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editability", () => {
@@ -40,7 +41,10 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
 
         await view.getByTestId("yjs-table-toggle-schema").click();
         const editor = view.getByTestId("yjs-table-schema-editor");
-        await editor.getByTestId("yjs-table-schema-input").fill(
+        const schemaEditor = new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input"));
+        await schemaEditor.waitForReady();
+        await schemaEditor.setValue(
+            page,
             "CREATE TABLE routine_occurrences (\n  id TEXT PRIMARY KEY,\n  text TEXT,\n  due TIMESTAMPTZ\n)",
         );
         await editor.getByTestId("yjs-table-schema-apply").click();
@@ -52,9 +56,8 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
         // INSERT into a unioned result needs an explicit destination the grid
         // does not offer yet).
         await view.getByTestId("yjs-table-toggle-ui").click();
-        const queryInput = view.getByTestId("yjs-table-query-input");
-        await queryInput.fill("SELECT id, text, due FROM routine_occurrences");
-        await queryInput.blur();
+        const queryEditor = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
+        await queryEditor.fillAndCommit(page, "SELECT id, text, due FROM routine_occurrences");
         const grid = view.getByTestId("yjs-table-grid");
         await expect(grid.locator("th", { hasText: "text" })).toBeVisible({ timeout: 30000 });
         await grid.getByTestId("yjs-table-add-row").click();
@@ -62,12 +65,12 @@ test.describe("FTR-53f59906: unioned row identity (source_kind/source_id) editab
 
         // Switch to the calendar-style UNION: rows carry source_kind/source_id
         // instead of a single relation's id.
-        await queryInput.fill(
+        await queryEditor.fillAndCommit(
+            page,
             "SELECT 'routine_occurrences' AS source_kind, id AS source_id, text, due FROM routine_occurrences "
                 + "UNION ALL "
                 + "SELECT 'outline_items' AS source_kind, id AS source_id, text, due FROM outline_items",
         );
-        await queryInput.blur();
 
         await expect(grid.locator("tbody tr")).toHaveCount(2, { timeout: 30000 });
         // Both branches stay editable: no "read-only" reason, and the data

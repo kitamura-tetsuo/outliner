@@ -1,5 +1,6 @@
 import { expect, type Page, type TestInfo } from "@playwright/test";
 import { SeedClient } from "./seedClient";
+import { SqlEditorHelper } from "./sqlEditorHelpers";
 import { TestHelpers } from "./testHelpers";
 
 export interface ProjectFixture {
@@ -213,18 +214,22 @@ export async function configureGrid(
 ): Promise<void> {
     const view = page.getByTestId("yjs-table-view").nth(viewIndex);
 
-    const schemaInput = view.getByTestId("yjs-table-schema-input");
-    if (!await schemaInput.isVisible().catch(() => false)) await view.getByTestId("yjs-table-toggle-schema").click();
-    await schemaInput.fill(schema);
+    if (!await view.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
+        await view.getByTestId("yjs-table-toggle-schema").click();
+    }
+    const schemaEditor = new SqlEditorHelper(view.getByTestId("yjs-table-schema-input"));
+    await schemaEditor.waitForReady();
+    await schemaEditor.setValue(page, schema);
     await view.getByTestId("yjs-table-schema-apply").click();
     const warning = view.getByTestId("yjs-table-schema-warning");
     if (await warning.isVisible().catch(() => false)) await view.getByTestId("yjs-table-schema-confirm").click();
-    await expect(schemaInput).toHaveValue(schema, { timeout: 30000 });
+    await expect.poll(async () => await schemaEditor.value(), { timeout: 30000 }).toBe(schema);
 
-    const queryInput = view.getByTestId("yjs-table-query-input");
-    if (!await queryInput.isVisible().catch(() => false)) await view.getByTestId("yjs-table-toggle-ui").click();
-    await queryInput.fill(query);
-    await queryInput.press("Tab");
+    if (!await view.getByTestId("yjs-table-query-input").isVisible().catch(() => false)) {
+        await view.getByTestId("yjs-table-toggle-ui").click();
+    }
+    const queryEditor = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
+    await queryEditor.fillAndCommit(page, query);
     const titleInput = view.getByTestId("yjs-table-label-title");
     await expect(titleInput).toBeVisible({ timeout: 30000 });
     await titleInput.fill(titleLabel);

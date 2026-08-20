@@ -1,51 +1,15 @@
 id: FTR-9d3f57c1
 title: Visual-block Layout container with 12-column span-based placement
 title-ja: ビジュアルブロックを配置する12カラムレイアウトコンテナ
-description: 'A Layout is an ordinary outline item (componentType "layout") that arranges
-  its direct children side by side on a fixed 12-column CSS Grid. It owns those children
-  through the existing tree, so deletion, moves, copy/paste and collaboration follow
-  the semantics every other item already has. The only per-child state is an integer
-  `columnSpan` (1..12); rows and columns come from CSS Grid auto-placement over tree
-  order plus span, so no x/y coordinate, row number, column start, per-track fraction,
-  row span or pixel width is ever persisted and there is no second ordering model beside
-  the outline. A child inserted without a span defaults to full width (12), and an
-  invalid or missing persisted value is clamped into 1..12 at render time rather than
-  breaking the grid. Only visual blocks may be direct children — the eligible set is a
-  single registry (`isVisualComponentType`), currently Grid (yjstable) and Calendar, so
-  a future Chart or Image joins by adding one entry. Ordinary text items and nested
-  Layouts are refused at the one place item drag & drop moves a node, leaving the tree
-  unchanged rather than converting or rehoming anything. Children render through the
-  normal component path, so Grid and Calendar behave exactly as they do outside a
-  Layout, and a Layout''s children are excluded from the flat outline so the block is
-  their sole renderer. When the Layout''s own width (a container query, not the
-  viewport) is too narrow for side-by-side reading, blocks stack one per row in tree
-  order and the stored spans are untouched, so the arrangement returns by itself with
-  the width. While the Layout is being edited it shows a subtle 12-column guide overlay;
-  each block carries a whole-column resize handle that previews interactively and
-  persists only the final span, exposed as a slider so arrow keys, Home and End do the
-  same job without a pointer, alongside −/+ buttons. Blocks reorder within the Layout by
-  drag & drop as a plain tree reorder, and a per-block action moves one back into normal
-  outline flow (clearing its span, which means nothing outside a Layout). An empty
-  Layout is valid: it does not auto-delete when its last block leaves, and renders an
-  empty-state drop target instead. Deleting the Layout follows normal subtree deletion,
-  while an explicit "Remove layout (keep blocks)" action unwraps it — children move to
-  the Layout''s parent at its position, in order, with their component bindings intact,
-  and only the container is removed. Copy/duplicate carries the container and its
-  children as ordinary subtree clipboard items, each with its own span, reusing the
-  existing Grid/Calendar copy semantics rather than inventing a Layout clipboard format.
-  All structural moves and span writes go through the existing Yjs-backed item mutation
-  paths, so concurrent edits converge on tree order for placement and per-child span for
-  width. The Layout is a pure composition primitive: it introduces no title/header UI of
-  its own and changes nothing about ordinary text editing, Enter handling, indent/outdent
-  or selection.
+description: 'A Layout is an ordinary outline item (componentType "layout") that arranges its direct children side by side on a fixed 12-column CSS Grid. It owns those children through the existing tree, so deletion, moves, copy/paste and collaboration follow the semantics every other item already has. The only per-child state is an integer `columnSpan` (1..12); rows and columns come from CSS Grid auto-placement over tree order plus span, so no x/y coordinate, row number, column start, per-track fraction, row span or pixel width is ever persisted and there is no second ordering model beside the outline. A child inserted without a span defaults to full width (12), and an invalid or missing persisted value is clamped into 1..12 at render time rather than breaking the grid. Only visual blocks may be direct children — the eligible set is a single registry (`isVisualComponentType`), currently Grid (yjstable) and Calendar, so a future Chart or Image joins by adding one entry. Ordinary text items and nested Layouts are refused at the one place item drag & drop moves a node, leaving the tree unchanged rather than converting or rehoming anything. Children render through the normal component path, so Grid and Calendar behave exactly as they do outside a Layout, and a Layout''s children are excluded from the flat outline so the block is their sole renderer. When the Layout''s own width (a container query, not the viewport) is too narrow for side-by-side reading, blocks stack one per row in tree order and the stored spans are untouched, so the arrangement returns by itself with the width. While the Layout is being edited it shows a subtle 12-column guide overlay; each block carries a whole-column resize handle that previews interactively and persists only the final span, exposed as a slider so arrow keys, Home and End do the same job without a pointer, alongside −/+ buttons. Blocks reorder within the Layout by drag & drop as a plain tree reorder, and a per-block action moves one back into normal outline flow (clearing its span, which means nothing outside a Layout). An empty Layout is valid: it does not auto-delete when its last block leaves, and renders an empty-state drop target instead. Deleting the Layout follows normal subtree deletion, while an explicit "Remove layout (keep blocks)" action unwraps it — children move to the Layout''s parent at its position, in order, with their component bindings intact, and only the container is removed. Copy/duplicate carries the container and its children as ordinary subtree clipboard items, each with its own span, reusing the existing Grid/Calendar copy semantics rather than inventing a Layout clipboard format. All structural moves and span writes go through the existing Yjs-backed item mutation paths, so concurrent edits converge on tree order for placement and per-child span for width. The Layout is a pure composition primitive: it introduces no title/header UI of its own and changes nothing about ordinary text editing, Enter handling, indent/outdent or selection.
 
   '
 category: client
 status: implemented
 components:
-- client/src/components/layout/LayoutBlock.svelte
 - client/src/components/OutlinerItemComponentRenderer.svelte
 - client/src/components/OutlinerItemContextMenu.svelte
+- client/src/components/layout/LayoutBlock.svelte
 services:
 - client/src/services/layout/layoutModel.ts
 - client/src/services/layout/layoutTree.ts
@@ -64,29 +28,22 @@ tests:
 - client/src/stores/OutlinerViewModel.test.ts
 - server/tests/demo-seed-content.test.ts
 acceptance:
-- A Layout visual container can be created in an outliner page (/Layout command, or the
-  item context menu)
-- The Layout renders a fixed 12-column equal-track CSS Grid
-- Child width is controlled solely by an integer columnSpan of 1..12, clamped when read
+- A Layout visual container can be created in an outliner page (/Layout command, or the item context menu)
+- A narrow Layout stacks one block per row in tree order without mutating stored spans, and returns to them when the width comes back
 - A span-4 child followed by a span-8 child shares one row, as does 6 + 6
 - Auto-placement wraps to the next row once the cumulative span exceeds 12
-- Tree order is the only persisted ordering, and is the rendered and accessible order
 - Changing a span does not reorder the children
-- No x/y, row, column-start, per-track fraction, row-span or pixel-width state is persisted
-- Grid and Calendar are accepted as Layout children; ordinary text items and nested
-  Layouts are rejected, leaving the tree unchanged
-- A narrow Layout stacks one block per row in tree order without mutating stored spans,
-  and returns to them when the width comes back
-- Spans can be resized by dragging a whole-column handle and by keyboard (arrow keys,
-  Home/End, and −/+ buttons)
-- Visual children can be moved into, within, and out of a Layout through tree operations
-- Removing the last child leaves an empty Layout that stays as an insertion/drop target
-- Deleting the Layout follows normal subtree deletion, while Unwrap keeps the blocks, in
-  order, with their component bindings intact
+- Child width is controlled solely by an integer columnSpan of 1..12, clamped when read
+- Converting an item to or from a Layout rebuilds the outline's visible order immediately, without waiting for the next structural edit
 - Copy/duplicate preserves the children's order, spans and component-copy semantics
-- Span changes made by a collaborator update the rendered layout reactively
+- Deleting the Layout follows normal subtree deletion, while Unwrap keeps the blocks, in order, with their component bindings intact
+- Grid and Calendar are accepted as Layout children; ordinary text items and nested Layouts are rejected, leaving the tree unchanged
 - Grid and Calendar rendering outside a Layout is unaffected
-- The Change to Layout action is withheld for an item whose children are not all
-  eligible visual blocks, so converting can never hide an existing branch
-- Converting an item to or from a Layout rebuilds the outline's visible order
-  immediately, without waiting for the next structural edit
+- No x/y, row, column-start, per-track fraction, row-span or pixel-width state is persisted
+- Removing the last child leaves an empty Layout that stays as an insertion/drop target
+- Span changes made by a collaborator update the rendered layout reactively
+- Spans can be resized by dragging a whole-column handle and by keyboard (arrow keys, Home/End, and −/+ buttons)
+- The Change to Layout action is withheld for an item whose children are not all eligible visual blocks, so converting can never hide an existing branch
+- The Layout renders a fixed 12-column equal-track CSS Grid
+- Tree order is the only persisted ordering, and is the rendered and accessible order
+- Visual children can be moved into, within, and out of a Layout through tree operations

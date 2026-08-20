@@ -9,6 +9,7 @@
         "firebase": "^12.17.1",
         "jsonwebtoken": "^9.0.2",
         "lib0": "^0.2.117",
+        "monaco-editor": "^0.56.0",
         "pino": "^10.3.1",
         "rrule": "^2.8.1",
         "svelte-seo": "^2.0.0",

@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/tbl-cross-table-aggregation-7b3e9c42.yaml
  */
 import { expect, type Page, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 /** Insert a Database block on the item at `itemIndex` and create a table. */
@@ -56,10 +57,8 @@ test.describe("FTR-7b3e9c42: cross-table aggregation", () => {
         await expect(reportView.getByTestId("yjs-table-sql-name")).toHaveText("report");
 
         await reportView.getByTestId("yjs-table-toggle-ui").click();
-        const queryInput = reportView.getByTestId("yjs-table-query-input");
-        await expect(queryInput).toBeVisible({ timeout: 10000 });
-        await queryInput.fill("SELECT COUNT(*) AS order_count FROM orders");
-        await queryInput.blur();
+        const queryEditor = new SqlEditorHelper(reportView.getByTestId("yjs-table-query-input"));
+        await queryEditor.fillAndCommit(page, "SELECT COUNT(*) AS order_count FROM orders");
 
         // The referenced table is materialized on demand: the aggregate counts
         // every row of `orders`, not a partial result.
@@ -79,10 +78,8 @@ test.describe("FTR-7b3e9c42: cross-table aggregation", () => {
             .toBeVisible({ timeout: 30000 });
 
         await view.getByTestId("yjs-table-toggle-ui").click();
-        const queryInput = view.getByTestId("yjs-table-query-input");
-        await expect(queryInput).toBeVisible({ timeout: 10000 });
-        await queryInput.fill("SELECT COUNT(*) FROM no_such_table");
-        await queryInput.blur();
+        const queryEditor = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
+        await queryEditor.fillAndCommit(page, "SELECT COUNT(*) FROM no_such_table");
 
         await expect(view.getByTestId("yjs-table-query-error")).toContainText("no_such_table", {
             timeout: 30000,
