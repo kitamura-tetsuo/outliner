@@ -9,6 +9,7 @@ import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeCo
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
 import type { TableHandles } from "../../services/yjstable/tableDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
+import SqlEditor from "./SqlEditor.svelte";
 
 interface Props {
     handles: TableHandles;
@@ -39,8 +40,16 @@ const displayColumns = $derived.by(() => {
 let dropTargetColumn = $state<{ column: string; position: "above" | "below" } | undefined>(undefined);
 let draggedColumnName = $state<string | undefined>(undefined);
 
-function commitQuery(e: Event) {
-    const value = (e.target as HTMLInputElement).value;
+// Committed when the SQL editor loses focus, matching the "commit when leaving
+// the control" behaviour of the native input this replaced. Writing on every
+// keystroke would re-run the query and churn the shared document for every
+// half-typed statement.
+//
+// The text is stored verbatim -- no trimming or newline normalisation. The demo
+// "Routine Occurrences" query relies on it: collapsing the break in
+// `FROM routine_occurrences r\nWHERE NOT EXISTS` yields `rWHERE`.
+function commitQuery(value: string) {
+    if (value === String(handles.uiDef.get("query") ?? "")) return;
     handles.uiDef.set("query", value);
 }
 
@@ -129,14 +138,14 @@ function setColumnHidden(column: string, hidden: boolean) {
     data-block-dnd-owner="yjstable"
     data-block-dnd-type={COLUMN_DRAG_TYPE}
 >
-    <label class="editor-label" for="yjs-table-query-input">Query (SELECT)</label>
-    <input
-        id="yjs-table-query-input"
-        data-testid="yjs-table-query-input"
-        type="text"
-        spellcheck="false"
+    <span class="editor-label">Query (SELECT)</span>
+    <SqlEditor
+        testId="yjs-table-query-input"
+        ariaLabel="Query (SELECT)"
         value={query}
-        onchange={commitQuery}
+        minHeight={120}
+        maxHeight={280}
+        onBlur={commitQuery}
     />
 
     {#if displayColumns.length > 0}

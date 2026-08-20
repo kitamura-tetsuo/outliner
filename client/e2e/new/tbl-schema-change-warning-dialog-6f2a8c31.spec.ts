@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
  */
 import { expect, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
@@ -45,8 +46,10 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
         const editor = await createBlankTable(page);
         const grid = page.getByTestId("yjs-table-grid").first();
 
-        const textarea = editor.getByTestId("yjs-table-schema-input");
-        await textarea.fill(
+        const schemaEditor = new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input"));
+        await schemaEditor.waitForReady();
+        await schemaEditor.setValue(
+            page,
             "CREATE TABLE items (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL\n)",
         );
         await editor.getByTestId("yjs-table-schema-apply").click();
@@ -65,8 +68,10 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
     test("confirming the destructive change applies the schema and drops the column", async ({ page }) => {
         const editor = await createBlankTable(page);
 
-        const textarea = editor.getByTestId("yjs-table-schema-input");
-        await textarea.fill(
+        const schemaEditor = new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input"));
+        await schemaEditor.waitForReady();
+        await schemaEditor.setValue(
+            page,
             "CREATE TABLE items (\n  id TEXT PRIMARY KEY,\n  title TEXT NOT NULL\n)",
         );
         await editor.getByTestId("yjs-table-schema-apply").click();
@@ -84,7 +89,7 @@ test.describe("FTR-53f59906: schema-change destructive warning dialog", () => {
         await expect(page.getByTestId("yjs-table-query-error")).toContainText("done");
 
         // The schema text itself reflects the applied (destructive) change.
-        const schemaValue = await editor.getByTestId("yjs-table-schema-input").inputValue();
+        const schemaValue = await new SqlEditorHelper(editor.getByTestId("yjs-table-schema-input")).value();
         expect(schemaValue).not.toContain("done");
     });
 });

@@ -11,6 +11,7 @@ import {
     seedCrossProjectFixture,
 } from "../utils/crossProjectGridHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 registerCoverageHooks();
 
 const SOURCE_SCHEMA =
@@ -58,9 +59,8 @@ test.describe("cross-project Grid clone independence", () => {
             has: page.locator("th", { hasText: "Contact title" }),
         });
         await destinationView.getByTestId("yjs-table-toggle-ui").click();
-        const destinationQueryInput = destinationView.getByTestId("yjs-table-query-input");
-        await destinationQueryInput.fill(EDITED_DESTINATION_QUERY);
-        await destinationQueryInput.press("Tab");
+        const destinationQueryEditor = new SqlEditorHelper(destinationView.getByTestId("yjs-table-query-input"));
+        await destinationQueryEditor.fillAndCommit(page, EDITED_DESTINATION_QUERY);
         await expect(destinationView.getByTestId("yjs-table-grid").locator("th", { hasText: "quantity" })).toHaveCount(
             0,
             { timeout: 15000 },
@@ -70,17 +70,18 @@ test.describe("cross-project Grid clone independence", () => {
         // column the copy-time snapshot never had).
         await openProjectPage(page, fixture, "source");
         const sourceViewBeforeEdit = page.getByTestId("yjs-table-view").first();
-        const sourceSchemaInput = sourceViewBeforeEdit.getByTestId("yjs-table-schema-input");
-        if (!await sourceSchemaInput.isVisible().catch(() => false)) {
+        if (!await sourceViewBeforeEdit.getByTestId("yjs-table-schema-input").isVisible().catch(() => false)) {
             await sourceViewBeforeEdit.getByTestId("yjs-table-toggle-schema").click();
         }
-        await sourceSchemaInput.fill(EDITED_SOURCE_SCHEMA);
+        const sourceSchemaEditor = new SqlEditorHelper(sourceViewBeforeEdit.getByTestId("yjs-table-schema-input"));
+        await sourceSchemaEditor.waitForReady();
+        await sourceSchemaEditor.setValue(page, EDITED_SOURCE_SCHEMA);
         await sourceViewBeforeEdit.getByTestId("yjs-table-schema-apply").click();
         const sourceWarning = sourceViewBeforeEdit.getByTestId("yjs-table-schema-warning");
         if (await sourceWarning.isVisible().catch(() => false)) {
             await sourceViewBeforeEdit.getByTestId("yjs-table-schema-confirm").click();
         }
-        await expect(sourceSchemaInput).toHaveValue(EDITED_SOURCE_SCHEMA, { timeout: 30000 });
+        await expect.poll(async () => await sourceSchemaEditor.value(), { timeout: 30000 }).toBe(EDITED_SOURCE_SCHEMA);
         const sourceStateAfterEdit = await readGridProjectState(page);
         expect(sourceStateAfterEdit.tables).toHaveLength(1);
         // The source's own schema now includes "notes"; the clone's copy from

@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/tbl-yjs-pglite-database-tables-53f59906.yaml
  */
 import { expect, test } from "@playwright/test";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus clearing", () => {
@@ -45,9 +46,10 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus cl
         // Click on the UI view toggle to ensure query input is visible
         await page.getByTestId("yjs-table-toggle-ui").first().click();
 
-        // Click into the SQL query input inside the table block
-        const queryInput = page.getByTestId("yjs-table-query-input").first();
-        await queryInput.click();
+        // Click into the SQL query editor inside the table block
+        const queryEditor = SqlEditorHelper.byTestId(page, "yjs-table-query-input");
+        await queryEditor.waitForReady();
+        await queryEditor.focus();
 
         // Verify the item cursor is now cleared (0 active cursors)
         await expect(page.locator(".editor-overlay .cursor.active")).toHaveCount(0);
@@ -56,8 +58,8 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus cl
         const globalTextarea = page.locator("textarea.global-textarea");
         await expect(globalTextarea).not.toBeFocused();
 
-        // Type something in the input
-        await queryInput.fill("SELECT * FROM tasks");
+        // Type something in the editor
+        await queryEditor.setValue(page, "SELECT * FROM tasks");
 
         // Verify typing didn't leak into the item text
         expect(await itemText.textContent()).toContain("Database table demo item");
@@ -76,15 +78,14 @@ test.describe("FTR-53f59906: Yjs + PGlite database table block - Cursor focus cl
         // UI View toggle
         await page.getByTestId("yjs-table-toggle-ui").first().click();
 
-        // Ensure the input is visible
-        const queryInput = page.getByTestId("yjs-table-query-input").first();
-        await expect(queryInput).toBeVisible({ timeout: 5000 });
+        // Ensure the editor is visible
+        const queryEditor = SqlEditorHelper.byTestId(page, "yjs-table-query-input");
+        await expect(queryEditor.root).toBeVisible({ timeout: 5000 });
+        await queryEditor.waitForReady();
 
-        // Simulate Tab behavior focusing the input directly
-        await queryInput.focus();
-
-        // Verify focus
-        await expect(queryInput).toBeFocused();
+        // Simulate Tab behavior focusing the editor directly
+        await queryEditor.focus();
+        expect(await queryEditor.hasFocus()).toBe(true);
 
         // Verify cursor is cleared
         await expect(page.locator(".editor-overlay .cursor.active")).toHaveCount(0);

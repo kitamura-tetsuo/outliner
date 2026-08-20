@@ -1,6 +1,7 @@
 /** @feature TBL-b4e82a91 */
 import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
+import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { createTasksTableBlock } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -50,9 +51,8 @@ test.describe("Table column visibility", () => {
     test("offers and persists visibility for a computed query column", async ({ page }, testInfo) => {
         let view = await createTasksTable(page, testInfo);
         await view.getByTestId("yjs-table-toggle-ui").click();
-        const query = view.getByTestId("yjs-table-query-input");
-        await query.fill("SELECT id, title, priority || ' task' AS summary FROM tasks ORDER BY id");
-        await query.evaluate(element => (element as HTMLInputElement).blur());
+        const query = new SqlEditorHelper(view.getByTestId("yjs-table-query-input"));
+        await query.fillAndCommit(page, "SELECT id, title, priority || ' task' AS summary FROM tasks ORDER BY id");
 
         const summaryHeader = view.locator("th[data-col='summary']");
         await expect(summaryHeader).toBeVisible({ timeout: 15000 });

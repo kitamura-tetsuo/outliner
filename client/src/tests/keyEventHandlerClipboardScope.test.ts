@@ -23,7 +23,8 @@ const { mockStore } = vi.hoisted(() => {
 });
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({ editorOverlayStore: mockStore }));
 
-import { isEditorClipboardEvent, KeyEventHandler } from "../lib/KeyEventHandler";
+import { FOREIGN_EDITOR_ATTRIBUTE } from "../lib/foreignEditor";
+import { isEditorClipboardEvent, isForeignInput, KeyEventHandler } from "../lib/KeyEventHandler";
 
 function createCopyEvent(target: EventTarget): ClipboardEvent {
     const event = new Event("copy", { bubbles: true, cancelable: true }) as ClipboardEvent;
@@ -84,5 +85,43 @@ describe("clipboard scope", () => {
 
         expect(event.defaultPrevented).toBe(true);
         expect(event.clipboardData!.setData).toHaveBeenCalledWith("text/plain", "item text");
+    });
+});
+
+// Monaco renders its own DOM: the node under the caret is a `.view-line` div and
+// the focus holder may be a hidden textarea or an EditContext host. Tag-name
+// checks alone therefore cannot tell "inside the SQL editor" from "in the
+// outline", which is what the `data-foreign-editor` marker is for.
+describe("embedded editor ownership", () => {
+    let sqlEditorRoot: HTMLElement;
+    let viewLine: HTMLElement;
+
+    beforeEach(() => {
+        document.body.innerHTML = "";
+        sqlEditorRoot = document.createElement("div");
+        sqlEditorRoot.setAttribute(FOREIGN_EDITOR_ATTRIBUTE, "sql");
+        viewLine = document.createElement("div");
+        viewLine.className = "view-line";
+        sqlEditorRoot.appendChild(viewLine);
+        document.body.appendChild(sqlEditorRoot);
+    });
+
+    it("treats any node inside a marked editor as foreign", () => {
+        expect(isForeignInput(viewLine)).toBe(true);
+        expect(isForeignInput(sqlEditorRoot)).toBe(true);
+    });
+
+    it("leaves the outline outside the marked subtree alone", () => {
+        const outlineNode = document.createElement("div");
+        document.body.appendChild(outlineNode);
+        expect(isForeignInput(outlineNode)).toBe(false);
+    });
+
+    it("does not claim the clipboard while the embedded editor has focus", () => {
+        const inputArea = document.createElement("textarea");
+        sqlEditorRoot.appendChild(inputArea);
+        inputArea.focus();
+
+        expect(isEditorClipboardEvent(createCopyEvent(viewLine))).toBe(false);
     });
 });

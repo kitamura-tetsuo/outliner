@@ -30,6 +30,7 @@ import { getTableClipboardSource } from "../stores/tableClipboardRegistry";
 import { escapeId } from "../utils/domUtils";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
+import { isInsideForeignEditor } from "./foreignEditor";
 import { getLogger } from "./logger";
 const logger = getLogger("KeyEventHandler");
 
@@ -347,6 +348,10 @@ function clearRetainedComponentHost(): void {
 export function isForeignInput(target: EventTarget | null): boolean {
     if (!target) return false;
     const el = target as HTMLElement;
+    // An embedded editor surface (the Grid's Monaco SQL editor) owns every key
+    // and clipboard gesture inside it, including the ones whose event target is
+    // not a form control -- a view line, a widget button, the editor chrome.
+    if (isInsideForeignEditor(el)) return true;
     const tagName = el.tagName?.toUpperCase();
     if (
         tagName === "INPUT" || tagName === "TEXTAREA" || tagName === "SELECT" || tagName === "OPTION"
