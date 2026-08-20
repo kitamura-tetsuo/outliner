@@ -1,6 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { type GridTableSnapshot, type GridUiComponentDto, isGridTableSnapshot } from "../clipboard/itemClipboard";
+import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
 import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
 import { enqueueWrite } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
@@ -13,7 +14,6 @@ import {
     listTables,
     removeTable,
     type TableHandles,
-    type TableInitializationHandles,
 } from "./tableDocs";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
@@ -44,12 +44,23 @@ export interface TableCloneResult {
     /** Source table id to fresh destination table id for successful clones. */
     tableIdMap: Record<string, string>;
     /**
+     * Source table id to the Grid this paste created alongside its destination
+     * Table. Pasted outline items should bind to these Grid ids, not the table
+     * ids, so multiple grids per Table stays a native pattern.
+     */
+    gridIdMap: Record<string, string>;
+    /**
      * Source table id to the destination table an earlier paste already made
      * from it. These tables are not created again; the pasted host binds to the
      * existing one so the page renders the same Grid instead of an empty
      * create panel.
      */
     reusedTableIdMap: Record<string, string>;
+    /**
+     * Source table id to a Grid id that already exists in the destination for a
+     * reused Table. Empty when no Grid is present yet.
+     */
+    reusedGridIdMap: Record<string, string>;
     /** Source table id to a safe, user-presentable failure reason. */
     failures: Record<string, string>;
     failedSourceTableIds: string[];
@@ -97,44 +108,37 @@ function assertOnlyKeys(actual: Iterable<string>, expected: ReadonlySet<string>,
     }
 }
 
-function exportUiDefinition(uiDef: Y.Map<unknown>): GridTableSnapshot["ui"] {
-    assertOnlyKeys(uiDef.keys(), UI_KEYS, "Grid UI Definition");
-    const query = uiDef.get("query");
-    if (query !== undefined && typeof query !== "string") {
-        throw new TableCloneError("Grid UI query must be a string");
-    }
+function exportGridSlice(projectDoc: Y.Doc, tableId: string): GridTableSnapshot["ui"] {
+    // Only the first Grid over this Table is exported: clipboard payloads are
+    // Table-oriented, and picking any single Grid gives paste something
+    // sensible to reconstruct. An outline item that binds to a specific Grid
+    // is what carries per-Grid identity across a copy.
+    const grids = findGridsBySourceTable(projectDoc, tableId);
+    if (grids.length === 0) return { query: "", components: {}, columnOrder: [] };
+    const handles = getGridHandles(projectDoc, grids[0].gridId);
+    if (!handles) return { query: "", components: {}, columnOrder: [] };
 
-    const componentsValue = uiDef.get("components");
-    if (componentsValue !== undefined && !(componentsValue instanceof Y.Map)) {
-        throw new TableCloneError("Grid UI components must be a Y.Map");
-    }
+    const query = String(handles.entry.get("query") ?? "");
     const components: Record<string, GridUiComponentDto> = {};
-    (componentsValue as Y.Map<unknown> | undefined)?.forEach((config, column) => {
-        if (!(config instanceof Y.Map)) {
-            throw new TableCloneError(`Grid UI component "${column}" must be a Y.Map`);
-        }
-        assertOnlyKeys(config.keys(), COMPONENT_KEYS, `Grid UI component "${column}"`);
-        const type = config.get("type");
-        const label = config.get("label");
-        const hidden = config.get("hidden");
+    handles.components.forEach((cfg, column) => {
+        if (!(cfg instanceof Y.Map)) return;
+        assertOnlyKeys(cfg.keys(), COMPONENT_KEYS, `Grid UI component "${column}"`);
+        const type = cfg.get("type");
+        const label = cfg.get("label");
+        const hidden = cfg.get("hidden");
         const dto: GridUiComponentDto = {};
         if (type !== undefined) dto.type = type as GridUiComponentDto["type"];
         if (label !== undefined) dto.label = label as string;
         if (hidden !== undefined) dto.hidden = hidden as boolean;
         components[column] = dto;
     });
-
-    const columnOrderValue = uiDef.get("columnOrder");
-    if (columnOrderValue !== undefined && !Array.isArray(columnOrderValue) && !(columnOrderValue instanceof Y.Array)) {
-        throw new TableCloneError("Grid UI columnOrder must be an Array or Y.Array");
-    }
-    const ui = {
-        query: query ?? "",
-        components,
-        columnOrder: Array.isArray(columnOrderValue)
-            ? columnOrderValue
-            : (columnOrderValue instanceof Y.Array ? columnOrderValue.toArray() : []),
-    };
+    const columnOrderValue = handles.entry.get("columnOrder");
+    const columnOrder = Array.isArray(columnOrderValue)
+        ? (columnOrderValue as string[])
+        : columnOrderValue instanceof Y.Array
+        ? (columnOrderValue.toArray() as string[])
+        : [];
+    const ui = { query, components, columnOrder };
     const candidate = {
         sourceTableId: "validation",
         name: "",
@@ -146,7 +150,7 @@ function exportUiDefinition(uiDef: Y.Map<unknown>): GridTableSnapshot["ui"] {
     return ui;
 }
 
-/** Export only display metadata, Schema Definition, and the explicit Grid UI DTO. */
+/** Export only display metadata, Schema Definition, and one associated Grid's UI DTO. */
 export function exportTableStructure(projectDoc: Y.Doc, tableId: string): GridTableSnapshot {
     const handles = getTableHandles(projectDoc, tableId);
     const name = getTableName(projectDoc, tableId);
@@ -159,7 +163,7 @@ export function exportTableStructure(projectDoc: Y.Doc, tableId: string): GridTa
         name,
         sqlName,
         schemaSql: handles.schemaText.toString(),
-        ui: exportUiDefinition(handles.uiDef),
+        ui: exportGridSlice(projectDoc, tableId),
     };
     if (!isGridTableSnapshot(snapshot, tableId)) {
         throw new TableCloneError(`Table "${tableId}" does not have a portable structure`);
@@ -179,7 +183,12 @@ export function exportTableStructures(
     return snapshots;
 }
 
-/** Resolves the full dependency closure of the given table IDs by parsing their queries. */
+/**
+ * Resolves the full dependency closure of the given Table IDs by scanning
+ * every Grid over each Table for the relations its query references. The
+ * closure is expressed in Table ids so downstream export can pin the Table
+ * subdocs; Grids themselves travel implicitly as one slice per Table.
+ */
 export function computeTableClosure(projectDoc: Y.Doc, initialTableIds: Iterable<string>): Set<string> {
     const visited = new Set<string>(initialTableIds);
     const queue = Array.from(visited);
@@ -188,24 +197,26 @@ export function computeTableClosure(projectDoc: Y.Doc, initialTableIds: Iterable
 
     while (queue.length > 0) {
         const tableId = queue.shift()!;
-        const handles = getTableHandles(projectDoc, tableId);
-        if (!handles) continue;
+        const grids = findGridsBySourceTable(projectDoc, tableId);
+        for (const g of grids) {
+            const handles = getGridHandles(projectDoc, g.gridId);
+            if (!handles) continue;
+            const query = String(handles.entry.get("query") ?? "");
+            if (!query) continue;
 
-        const query = String(handles.uiDef.get("query") ?? "");
-        if (!query) continue;
+            let queryRewrite;
+            try {
+                queryRewrite = rewriteTableQuerySql(query, new Map());
+            } catch {
+                continue; // Ignore Grids with invalid queries
+            }
 
-        let queryRewrite;
-        try {
-            queryRewrite = rewriteTableQuerySql(query, new Map());
-        } catch {
-            continue; // Ignore tables with invalid queries
-        }
-
-        for (const dependency of queryRewrite.relationDependencies) {
-            const depTableId = sqlNameToTableId.get(dependency);
-            if (depTableId && !visited.has(depTableId)) {
-                visited.add(depTableId);
-                queue.push(depTableId);
+            for (const dependency of queryRewrite.relationDependencies) {
+                const depTableId = sqlNameToTableId.get(dependency);
+                if (depTableId && !visited.has(depTableId)) {
+                    visited.add(depTableId);
+                    queue.push(depTableId);
+                }
             }
         }
     }
@@ -244,21 +255,8 @@ export function computeSnapshotClosure(
     return visited;
 }
 
-function materializeUi(handles: TableInitializationHandles, snapshot: GridTableSnapshot, querySql: string): void {
+function materializeSchema(handles: { schemaText: Y.Text; }, snapshot: GridTableSnapshot): void {
     handles.schemaText.insert(0, snapshot.schemaSql);
-    handles.uiDef.set("query", querySql);
-
-    const components = new Y.Map<Y.Map<unknown>>();
-    for (const [column, config] of Object.entries(snapshot.ui.components)) {
-        const component = new Y.Map<unknown>();
-        if (config.type !== undefined) component.set("type", config.type);
-        if (config.label !== undefined) component.set("label", config.label);
-        if (config.hidden !== undefined) component.set("hidden", config.hidden);
-        components.set(column, component);
-    }
-    handles.uiDef.set("components", components);
-
-    handles.uiDef.set("columnOrder", snapshot.ui.columnOrder.length > 0 ? [...snapshot.ui.columnOrder] : []);
 }
 
 async function validatePlansInPglite(plans: PlannedTable[]): Promise<void> {
@@ -441,6 +439,7 @@ export async function importTableStructures(
     }
 
     const tableIdMap: Record<string, string> = {};
+    const gridIdMap: Record<string, string> = {};
     for (const group of connectedGroups(plans)) {
         const groupPlans = group.map(sourceTableId => plans.get(sourceTableId)!);
         const planningFailure = groupPlans.find(plan => plan.error)?.error;
@@ -477,8 +476,17 @@ export async function importTableStructures(
                     plan.snapshot.name,
                     plan.destinationSqlName,
                     sourceProjectId ? { sourceProjectId, sourceTableId } : undefined,
-                    handles => materializeUi(handles, plan.snapshot, plan.querySql),
+                    handles => materializeSchema(handles, plan.snapshot),
                 );
+                const newGridId = createGrid(destinationProjectDoc, destinationTableId, {
+                    name: plan.snapshot.name,
+                    query: plan.querySql,
+                    columnOrder: [...plan.snapshot.ui.columnOrder],
+                    components: Object.fromEntries(
+                        Object.entries(plan.snapshot.ui.components).map(([column, cfg]) => [column, { ...cfg }]),
+                    ),
+                });
+                gridIdMap[sourceTableId] = newGridId;
                 created.push(destinationTableId);
                 tableIdMap[sourceTableId] = destinationTableId;
             }
@@ -521,10 +529,13 @@ export async function importTableStructures(
             outcomes.push({ type: "rebound", sourceTableId, tableName: snapshot.name, relation });
         }
     }
+    const reusedGridIdMap: Record<string, string> = {};
     for (const sourceTableId of skippedSourceTableIds) {
         const snapshot = snapshots[sourceTableId];
         const destinationTableId = reusedTableIdMap[sourceTableId];
         if (snapshot && destinationTableId !== undefined) {
+            const existingGrid = findGridsBySourceTable(destinationProjectDoc, destinationTableId)[0];
+            if (existingGrid) reusedGridIdMap[sourceTableId] = existingGrid.gridId;
             outcomes.push({ type: "reused", sourceTableId, destinationTableId, tableName: snapshot.name });
         }
     }
@@ -537,5 +548,14 @@ export async function importTableStructures(
             reason,
         });
     }
-    return { tableIdMap, reusedTableIdMap, failures, failedSourceTableIds, skippedSourceTableIds, outcomes };
+    return {
+        tableIdMap,
+        gridIdMap,
+        reusedTableIdMap,
+        reusedGridIdMap,
+        failures,
+        failedSourceTableIds,
+        skippedSourceTableIds,
+        outcomes,
+    };
 }

@@ -2901,7 +2901,9 @@ export class KeyEventHandler {
             // created here that this one binds to instead. Only the former may
             // be rolled back or undone.
             let pastedTableIdMap: Record<string, string> | undefined = undefined;
+            let pastedGridIdMap: Record<string, string> = {};
             let reusedTableIdMap: Record<string, string> = {};
+            let reusedGridIdMap: Record<string, string> = {};
             let pastedRuleIds: string[] = [];
             const destinationDoc = generalStore.project?.ydoc;
             if (
@@ -2950,7 +2952,9 @@ export class KeyEventHandler {
                         });
                         if (cloneResult === undefined) return;
                         pastedTableIdMap = cloneResult.tableIdMap;
+                        pastedGridIdMap = cloneResult.gridIdMap;
                         reusedTableIdMap = cloneResult.reusedTableIdMap;
+                        reusedGridIdMap = cloneResult.reusedGridIdMap;
                         pastedRuleIds = cloneResult.createdRuleIds;
                     } else {
                         pastedTableIdMap = {};
@@ -2997,6 +3001,9 @@ export class KeyEventHandler {
                         // A reused table is as good a binding target as a fresh
                         // clone; only the undo entry distinguishes them.
                         const tableIdMap = { ...reusedTableIdMap, ...pastedTableIdMap };
+                        // Grid ids are what pasted items bind to on the outline
+                        // (Grid owns the SELECT + presentation).
+                        const gridIdMap = { ...reusedGridIdMap, ...pastedGridIdMap };
                         const calendarIdMap = pastedCalendarIdMap;
                         let anyKept = false;
                         const mappedItems = structured.items.map(item => {
@@ -3004,11 +3011,14 @@ export class KeyEventHandler {
                                 const destinationTableId = item.yjsTableId === undefined
                                     ? undefined
                                     : tableIdMap[item.yjsTableId];
+                                const destinationGridId = item.yjsTableId === undefined
+                                    ? undefined
+                                    : gridIdMap[item.yjsTableId];
                                 if (destinationTableId === undefined) {
                                     return { text: item.text, depth: item.depth };
                                 }
                                 anyKept = true;
-                                return { ...item, yjsTableId: destinationTableId };
+                                return { ...item, yjsTableId: destinationTableId, yjsGridId: destinationGridId };
                             }
                             if (item.componentType === "calendar") {
                                 const destinationCalendarId = item.calendarId === undefined

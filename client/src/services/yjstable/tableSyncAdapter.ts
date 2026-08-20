@@ -1,18 +1,23 @@
-// One-way Yjs -> PGlite synchronization for a single table subdoc.
+// One-way Yjs -> PGlite synchronization for a single Table subdoc.
 //
 // Data Storage (Y.Map of records) is the source of truth. The adapter
 // observes it (observeDeep), casts changed record values strictly according
 // to the applied schema, and applies them to PGlite with parameterized
 // statements. Failures (cast errors, constraint violations) are collected per
 // record and surfaced to the UI; the failing record is not reflected in
-// PGlite while other records keep syncing. Query re-runs are debounced.
+// PGlite while other records keep syncing.
 //
-// Every table of a project lives in one shared Postgres schema, so a query may
-// reference sibling tables by their plain SQL name and Postgres resolves the
+// The adapter is Table-centric: it does NOT own a SELECT/query. Grids that
+// present the Table hold their own query text (see gridDocs) and drive their
+// own re-run through the shared query helper (`executeGridQuery`) whenever
+// this adapter emits an `onDataApplied` or `onSchemaChanged` event.
+//
+// Every Table of a project lives in one shared Postgres schema, so a query may
+// reference sibling Tables by their plain SQL name and Postgres resolves the
 // join itself. Relations that are not materialized yet are reported by the
-// engine as `relation "x" does not exist`; the adapter asks the registry port
-// to resolve them into relation providers and retries, so a cross-relation
-// result is either complete or an error — never a silently partial one.
+// engine as `relation "x" does not exist`; the shared query helper asks the
+// registry port to resolve them into relation providers and retries, so a
+// cross-relation result is either complete or an error — never silently partial.
 
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
@@ -42,9 +47,21 @@ export interface TableQueryResult {
 export interface TableSyncCallbacks {
     /** Fired whenever the applied schema changes (undefined = none/invalid). */
     onSchemaChanged?: (schema: ParsedTableSchema | undefined, error?: string) => void;
+    onRecordErrors?: (errors: RecordSyncError[]) => void;
+    /**
+     * Fired whenever a batch of pending record writes finished (or when the
+     * schema was just rebuilt and all records reloaded). Grid query runners
+     * subscribe to this to know when to re-run their SELECT.
+     */
+    onDataApplied?: () => void;
+    /**
+     * Legacy: query results used to be emitted by the adapter itself. Grids
+     * now own their SELECT via `GridQueryRunner`; these fields are accepted
+     * only so pre-split tests keep compiling and receive `runQueryNow` output
+     * on demand.
+     */
     onQueryResult?: (result: TableQueryResult) => void;
     onQueryError?: (message: string | undefined) => void;
-    onRecordErrors?: (errors: RecordSyncError[]) => void;
 }
 
 export const REQUERY_DEBOUNCE_MS = 200;
@@ -89,17 +106,13 @@ export class TableSyncAdapter {
     // Last emitted state, replayed to late subscribers so a view mounted after
     // the adapter started still renders the current result.
     private lastSchemaError: string | undefined;
-    private lastResult: TableQueryResult = { columns: [], rows: [] };
-    private lastQueryError: string | undefined;
     private lastRecordErrors: RecordSyncError[] = [];
     private schema: ParsedTableSchema | undefined;
     private recordErrors = new Map<string, RecordSyncError[]>();
     private pendingRecordIds = new Set<string>();
     private flushScheduled = false;
-    private requeryTimer: ReturnType<typeof setTimeout> | undefined;
     private disposed = false;
     private started = false;
-    private queryGeneration = 0;
 
     private readonly dataObserver = (
         events: Y.YEvent<Y.AbstractType<unknown>>[],
@@ -123,17 +136,6 @@ export class TableSyncAdapter {
         void this.rebuildFromSchemaText();
     };
 
-    private readonly uiObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
-        // Re-run the query when the UI Definition's query text changes
-        // (local form edits and remote collaborators alike).
-        for (const event of events) {
-            if (event.target === this.handles.uiDef && event.changes.keys.has("query")) {
-                this.scheduleRequery();
-                return;
-            }
-        }
-    };
-
     constructor(handles: TableHandles, options: TableSyncOptions) {
         this.handles = handles;
         this.pgSchema = options.pgSchema;
@@ -144,16 +146,21 @@ export class TableSyncAdapter {
         return this.schema;
     }
 
+    get sharedPgSchema(): string {
+        return this.pgSchema;
+    }
+
+    get relationRegistry(): RelationRegistryPort | undefined {
+        return this.registry;
+    }
+
     /**
      * Register a view. The current state is replayed immediately so several
-     * views of the same table (an embedded block and the standalone page, for
-     * example) share one materialization instead of racing over it.
+     * views of the same table share one materialization instead of racing.
      */
     subscribe(callbacks: TableSyncCallbacks): () => void {
         this.listeners.add(callbacks);
         callbacks.onSchemaChanged?.(this.schema, this.lastSchemaError);
-        callbacks.onQueryResult?.(this.lastResult);
-        callbacks.onQueryError?.(this.lastQueryError);
         callbacks.onRecordErrors?.(this.lastRecordErrors);
         return () => {
             this.listeners.delete(callbacks);
@@ -165,14 +172,8 @@ export class TableSyncAdapter {
         for (const l of this.listeners) l.onSchemaChanged?.(schema, error);
     }
 
-    private emitResult(result: TableQueryResult): void {
-        this.lastResult = result;
-        for (const l of this.listeners) l.onQueryResult?.(result);
-    }
-
-    private emitQueryError(message: string | undefined): void {
-        this.lastQueryError = message;
-        for (const l of this.listeners) l.onQueryError?.(message);
+    private emitDataApplied(): void {
+        for (const l of this.listeners) l.onDataApplied?.();
     }
 
     /** Parse the current schema text, build the PGlite table, load every record. */
@@ -184,7 +185,6 @@ export class TableSyncAdapter {
         this.started = true;
         this.handles.data.observeDeep(this.dataObserver);
         this.handles.schemaText.observe(this.schemaObserver);
-        this.handles.uiDef.observeDeep(this.uiObserver);
         await this.rebuildFromSchemaText();
     }
 
@@ -193,9 +193,55 @@ export class TableSyncAdapter {
         if (this.started) {
             this.handles.data.unobserveDeep(this.dataObserver);
             this.handles.schemaText.unobserve(this.schemaObserver);
-            this.handles.uiDef.unobserveDeep(this.uiObserver);
         }
-        if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
+    }
+
+    private queryGeneration = 0;
+
+    /**
+     * Test-only convenience: run an ad-hoc SELECT against the shared project
+     * schema, resolving referenced relations exactly like a Grid runner would.
+     * Production code goes through `GridQueryRunner` (which owns the Grid state
+     * and debouncing); this shim keeps small adapter tests from having to spin
+     * up a Grid entry just to execute one query, and it emits `onQueryResult`
+     * / `onQueryError` to subscribed listeners so their tests can observe the
+     * outcome as if the adapter still owned the query lifecycle.
+     */
+    async runQueryNow(explicitQuery?: string): Promise<TableQueryResult | undefined> {
+        // Legacy tests seed a query through the Table subdoc's "ui" map that
+        // predates the Grid registry. Fall back to that when nothing explicit
+        // was passed so those tests keep exercising the same paths.
+        let query = explicitQuery;
+        if (query === undefined) {
+            const legacy = this.handles.doc.getMap<unknown>("ui").get("query");
+            query = typeof legacy === "string" ? legacy : "";
+        }
+        const generation = ++this.queryGeneration;
+        const isStale = () => this.disposed || generation !== this.queryGeneration;
+        if (!query.trim() || !this.schema) {
+            const empty: TableQueryResult = { columns: [], rows: [] };
+            if (!isStale()) {
+                for (const l of this.listeners) l.onQueryError?.(undefined);
+                for (const l of this.listeners) l.onQueryResult?.(empty);
+            }
+            return empty;
+        }
+        try {
+            const result = await executeGridQuery(query, {
+                pgSchema: this.pgSchema,
+                registry: this.registry,
+                isStale,
+            });
+            if (isStale()) return undefined;
+            for (const l of this.listeners) l.onQueryError?.(undefined);
+            for (const l of this.listeners) l.onQueryResult?.(result);
+            return result;
+        } catch (err) {
+            if (isStale()) return undefined;
+            const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
+            for (const l of this.listeners) l.onQueryError?.(e.message);
+            return undefined;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -310,7 +356,7 @@ export class TableSyncAdapter {
         this.registry?.recordSqlName?.(this.handles.tableId, parsed.tableName);
         this.emitSchema(parsed);
         this.emitRecordErrors();
-        this.scheduleRequery();
+        this.emitDataApplied();
     }
 
     // ------------------------------------------------------------------
@@ -343,7 +389,7 @@ export class TableSyncAdapter {
             }).then(() => {
                 if (this.disposed) return;
                 this.emitRecordErrors();
-                this.scheduleRequery();
+                this.emitDataApplied();
             });
         });
     }
@@ -439,95 +485,57 @@ export class TableSyncAdapter {
         for (const l of this.listeners) l.onRecordErrors?.(flat);
     }
 
-    // ------------------------------------------------------------------
-    // Query execution (debounced)
-    // ------------------------------------------------------------------
+}
 
-    /** Debounced re-run of the UI Definition query. */
-    scheduleRequery(): void {
-        if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
-        this.requeryTimer = setTimeout(() => {
-            this.requeryTimer = undefined;
-            void this.runQueryNow();
-        }, REQUERY_DEBOUNCE_MS);
-    }
-
-    /**
-     * Run the UI Definition query immediately against the project schema.
-     *
-     * Relations the query references but that are not materialized yet make
-     * Postgres raise `relation "x" does not exist`; rather than parsing the
-     * SQL ourselves we let the engine name the missing relation, materialize
-     * it through the registry port and retry. Postgres stays the single
-     * authority on what the query actually references (CTEs and aliases
-     * included).
-     */
-    async runQueryNow(): Promise<TableQueryResult | undefined> {
-        const generation = ++this.queryGeneration;
-        const isStale = () => this.disposed || generation !== this.queryGeneration;
-
-        if (isStale()) return undefined;
-        const query = String(this.handles.uiDef.get("query") ?? "").trim();
-        if (!query || !this.schema) {
-            const empty = { columns: [], rows: [] };
-            this.emitQueryError(undefined);
-            this.emitResult(empty);
-            return empty;
-        }
+/**
+ * Run a SELECT against the shared project Postgres schema, with the same
+ * materialize-and-retry behavior the old adapter used for cross-relation
+ * queries. Grid runners call this to execute their own SELECT text; the
+ * adapter itself no longer owns a query.
+ */
+export async function executeGridQuery(
+    selectQuery: string,
+    context: {
+        pgSchema: string;
+        registry?: RelationRegistryPort;
+        isStale?: () => boolean;
+    },
+): Promise<TableQueryResult> {
+    const trimmed = selectQuery.trim();
+    if (!trimmed) return { columns: [], rows: [] };
+    const selectSql = assertSelectQuery(trimmed);
+    for (let round = 0;; round++) {
         try {
-            const selectSql = assertSelectQuery(query);
-            let result: TableQueryResult | undefined;
-            for (let round = 0;; round++) {
+            return await enqueueWrite(async (db) => {
                 try {
-                    result = await this.executeQuery(selectSql);
-                    break;
+                    await db.exec(`BEGIN; SET LOCAL search_path TO ${quoteIdent(context.pgSchema)};`);
+                    const res = await db.query<Record<string, unknown>>(selectSql);
+                    await db.exec("COMMIT");
+                    return {
+                        columns: res.fields.map((f) => f.name),
+                        rows: formatQueryDateFields(res.fields, res.rows),
+                    };
                 } catch (err) {
-                    const relation = missingRelationName(err);
-                    if (
-                        !relation
-                        || !this.registry?.resolveRelation
-                        || round >= MAX_RELATION_RESOLUTION_ROUNDS
-                    ) throw err;
-                    // Resolving runs its own writes, so it must happen outside
-                    // the execution lock the query itself holds.
-                    const provider = await this.registry.resolveRelation(relation);
-                    if (!provider) throw err;
-                    if (isStale()) return undefined;
+                    try {
+                        await db.exec("ROLLBACK");
+                    } catch {
+                        // no transaction to roll back
+                    }
+                    throw toTableSqlError("query", err);
                 }
-            }
-            if (isStale()) return undefined;
-            this.emitQueryError(undefined);
-            this.emitResult(result);
-            return result;
+            });
         } catch (err) {
-            if (isStale()) return undefined;
-            const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
-            this.emitQueryError(e.message);
-            return undefined;
+            const relation = missingRelationName(err);
+            if (
+                !relation
+                || !context.registry?.resolveRelation
+                || round >= MAX_RELATION_RESOLUTION_ROUNDS
+            ) throw err;
+            // Resolving runs its own writes, so it must happen outside
+            // the execution lock the query itself holds.
+            const provider = await context.registry.resolveRelation(relation);
+            if (!provider) throw err;
+            if (context.isStale?.()) throw err;
         }
-    }
-
-    private async executeQuery(selectSql: string): Promise<TableQueryResult> {
-        // The write queue doubles as an execution lock so the SET LOCAL
-        // search_path transaction never interleaves with other statements.
-        return await enqueueWrite(async (db) => {
-            try {
-                await db.exec(`BEGIN; SET LOCAL search_path TO ${quoteIdent(this.pgSchema)};`);
-                const res = await db.query<Record<string, unknown>>(selectSql);
-                await db.exec("COMMIT");
-
-                return {
-                    columns: res.fields.map((f) => f.name),
-                    rows: formatQueryDateFields(res.fields, res.rows),
-                };
-            } catch (err) {
-                try {
-                    await db.exec("ROLLBACK");
-                } catch {
-                    // no transaction to roll back
-                }
-                throw toTableSqlError("query", err);
-            }
-        });
     }
 }

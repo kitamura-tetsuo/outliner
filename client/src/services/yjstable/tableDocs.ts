@@ -1,15 +1,20 @@
 // Yjs data model for the consolidated table feature.
 //
-// One table = one Y.Doc subdoc inside the project doc. The project doc keeps
+// One Table = one Y.Doc subdoc inside the project doc. The project doc keeps
 // a registry map (tableId -> Y.Map with the display name and the subdoc
-// reference) so tables can be listed without loading their contents.
+// reference) so Tables can be listed without loading their contents.
 //
-// Each table subdoc holds exactly three structures:
+// Each Table subdoc holds exactly TWO structures — Table is the relational
+// data entity, not a presentation one:
 //   1. Schema Definition: Y.Text "schema" with a single CREATE TABLE statement.
-//   2. UI Definition:     Y.Map  "ui" with the query string and nested
-//                         Y.Map component settings per column.
-//   3. Data Storage:      Y.Map  "data": recordId (UUID) -> nested Y.Map
+//   2. Data Storage:      Y.Map  "data": recordId (UUID) -> nested Y.Map
 //                         (column name -> value) for field-level CRDT merges.
+//
+// SELECT/query text and per-column UI settings (labels, hidden, cell components,
+// column order) are Grid state and live in a project-level Grid registry (see
+// `gridDocs.ts`). One Table can be referenced by many Grids. This separation
+// is what lets several independent Grids share the same schema/data without
+// cloning the Table.
 
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
@@ -18,7 +23,6 @@ import { globalUndoRouter } from "../undo/undoRouter.svelte";
 export const ADAPTER_ORIGIN = Symbol("adapter-origin");
 export const TABLE_REGISTRY_KEY = "yjsTables";
 export const TABLE_SCHEMA_KEY = "schema";
-export const TABLE_UI_KEY = "ui";
 export const TABLE_DATA_KEY = "data";
 
 export type TableRecordValue = string | number | boolean | null;
@@ -44,10 +48,18 @@ export interface TableHandles {
     tableId: string;
     doc: Y.Doc;
     schemaText: Y.Text;
-    uiDef: Y.Map<unknown>;
     data: TableData;
-    /** Undo scope spans all three structures of the table. */
+    /** Undo scope spans this Table's schema and data (Grid state is undone separately). */
     undo: Y.UndoManager;
+    /**
+     * @deprecated Legacy handle exposing the Table subdoc's old "ui" map. New
+     * code MUST NOT store presentation state here — SELECT text, column order,
+     * labels, and cell component settings all live on Grid entries (see
+     * `gridDocs.ts`). Retained only so pre-split tests and clipboard fixtures
+     * keep compiling while call sites migrate; the field is scheduled to be
+     * removed once every reference is on the Grid API.
+     */
+    uiDef: Y.Map<unknown>;
 }
 
 /** Structure handles available while a table is still invisible to the project registry. */
@@ -95,8 +107,8 @@ export function createTable(
         tableId,
         doc: subdoc,
         schemaText: subdoc.getText(TABLE_SCHEMA_KEY),
-        uiDef: subdoc.getMap<unknown>(TABLE_UI_KEY),
         data: subdoc.getMap<TableRecord>(TABLE_DATA_KEY),
+        uiDef: subdoc.getMap<unknown>("ui"),
     };
     try {
         subdoc.transact(() => {
@@ -199,19 +211,19 @@ export function getTableHandles(projectDoc: Y.Doc, tableId: string): TableHandle
     const ydoc = doc as Y.Doc;
     ydoc.load();
     const schemaText = ydoc.getText(TABLE_SCHEMA_KEY);
-    const uiDef = ydoc.getMap<unknown>(TABLE_UI_KEY);
     const data = ydoc.getMap<TableRecord>(TABLE_DATA_KEY);
+    const uiDef = ydoc.getMap<unknown>("ui");
 
     let undo = tableUndoManagers.get(ydoc);
     if (!undo) {
-        undo = new Y.UndoManager([schemaText, uiDef, data], {
+        undo = new Y.UndoManager([schemaText, data], {
             trackedOrigins: new Set([null, ADAPTER_ORIGIN]),
         });
         tableUndoManagers.set(ydoc, undo);
         globalUndoRouter.register(undo);
     }
 
-    return { tableId, doc: ydoc, schemaText, uiDef, data, undo };
+    return { tableId, doc: ydoc, schemaText, data, undo, uiDef };
 }
 
 export function destroyTableUndoManager(doc: Y.Doc): void {

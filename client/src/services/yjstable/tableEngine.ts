@@ -39,6 +39,8 @@ import {
 import { TableRelationProvider } from "./tableRelationProvider";
 import { type RelationRegistryPort, TableSyncAdapter } from "./tableSyncAdapter";
 
+export type { RelationRegistryPort } from "./tableSyncAdapter";
+
 const logger = getLogger("tableEngine");
 
 const INITIAL_SYNC_TIMEOUT_MS = 10000;

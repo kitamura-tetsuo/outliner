@@ -1,33 +1,36 @@
 <script lang="ts">
-// Structured (form) editor for the UI Definition Y.Map. There is no YAML or
-// other text representation: every form input writes only its own key into
-// the Y.Map (nested Y.Map per column for component settings), so concurrent
+// Structured (form) editor for the Grid Definition. There is no YAML or other
+// text representation: every form input writes only its own key into the
+// Grid's Y.Map (nested Y.Map per column for component settings), so concurrent
 // edits to different fields merge cleanly.
 
-import * as Y from "yjs";
 import { calculateDropIndex, COLUMN_DRAG_TYPE, moveColumn, orderColumns, writeColumnOrder } from "../../services/yjstable/columnOrder";
 import type { ParsedTableSchema } from "../../services/yjstable/schemaIntrospection";
-import type { TableHandles } from "../../services/yjstable/tableDocs";
+import {
+    type GridHandles,
+    setGridComponentField,
+    setGridQuery,
+} from "../../services/yjstable/gridDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
 import SqlEditor from "./SqlEditor.svelte";
 
 interface Props {
-    handles: TableHandles;
+    grid: GridHandles;
     schema: ParsedTableSchema | undefined;
-    /** Mirror of the UI Definition (kept in sync by the parent view). */
+    /** Mirror of the Grid Definition query (kept in sync by the parent view). */
     query: string;
     componentTypes: Record<string, string | undefined>;
     /** Display labels for columns. */
     columnLabels: Record<string, string | undefined>;
-    /** Shared visibility settings from the UI Definition. */
+    /** Shared visibility settings from the Grid Definition. */
     hiddenColumns: Record<string, boolean>;
     /** Columns returned by the query, including computed and joined columns. */
     resultColumns: string[];
-    /** The column order stored in UI Definition. */
+    /** The column order stored in the Grid Definition. */
     columnOrder: string[];
 }
 
-let { handles, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder }: Props = $props();
+let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -44,83 +47,25 @@ let draggedColumnName = $state<string | undefined>(undefined);
 // the control" behaviour of the native input this replaced. Writing on every
 // keystroke would re-run the query and churn the shared document for every
 // half-typed statement.
-//
-// The text is stored verbatim -- no trimming or newline normalisation. The demo
-// "Routine Occurrences" query relies on it: collapsing the break in
-// `FROM routine_occurrences r\nWHERE NOT EXISTS` yields `rWHERE`.
 function commitQuery(value: string) {
-    if (value === String(handles.uiDef.get("query") ?? "")) return;
-    handles.uiDef.set("query", value);
-}
-
-function componentsMap(): Y.Map<unknown> {
-    let components = handles.uiDef.get("components");
-    if (!(components instanceof Y.Map)) {
-        components = new Y.Map<unknown>();
-        handles.uiDef.set("components", components);
-    }
-    return components as Y.Map<unknown>;
+    setGridQuery(grid, value);
 }
 
 function setColumnLabel(column: string, label: string) {
-    handles.doc.transact(() => {
-        const components = componentsMap();
-        const trimmed = label.trim();
-        const existing = components.get(column);
-        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
-        if (!(existing instanceof Y.Map)) components.set(column, cfg);
-
-        if (trimmed === "") {
-            cfg.delete("label");
-            if (Array.from(cfg.keys()).length === 0) {
-                components.delete(column);
-            }
-        }
-        else cfg.set("label", trimmed);
-    });
+    setGridComponentField(grid, column, "label", label.trim() === "" ? undefined : label.trim());
 }
 
 function setComponentType(column: string, type: string) {
-    handles.doc.transact(() => {
-        const components = componentsMap();
-        const existing = components.get(column);
-
-        if (type === "auto") {
-            // Delete type. If label is also empty, delete entire entry.
-            if (existing instanceof Y.Map) {
-                existing.delete("type");
-                if (Array.from(existing.keys()).length === 0) {
-                    components.delete(column);
-                }
-            }
-            return;
-        }
-
-        if (!isCellComponentType(type)) return;
-
-        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
-        if (!(existing instanceof Y.Map)) components.set(column, cfg);
-        cfg.set("type", type);
-    });
+    if (type === "auto") {
+        setGridComponentField(grid, column, "type", undefined);
+        return;
+    }
+    if (!isCellComponentType(type)) return;
+    setGridComponentField(grid, column, "type", type);
 }
 
 function setColumnHidden(column: string, hidden: boolean) {
-    handles.doc.transact(() => {
-        const components = componentsMap();
-        const existing = components.get(column);
-
-        if (!hidden) {
-            if (existing instanceof Y.Map) {
-                existing.delete("hidden");
-                if (Array.from(existing.keys()).length === 0) components.delete(column);
-            }
-            return;
-        }
-
-        const cfg = (existing instanceof Y.Map ? existing : new Y.Map<unknown>()) as Y.Map<unknown>;
-        if (!(existing instanceof Y.Map)) components.set(column, cfg);
-        cfg.set("hidden", true);
-    });
+    setGridComponentField(grid, column, "hidden", hidden ? true : undefined);
 }
 </script>
 
@@ -198,7 +143,7 @@ function setColumnHidden(column: string, hidden: boolean) {
                             const draggedIndex = currentNames.indexOf(draggedCol);
                             if (draggedIndex !== -1) {
                                 const targetIndex = calculateDropIndex(draggedIndex, index, dropTargetColumn?.position ?? "above");
-                                writeColumnOrder(handles, moveColumn(currentNames, draggedCol, targetIndex));
+                                writeColumnOrder(grid, moveColumn(currentNames, draggedCol, targetIndex));
                             }
                         }
                         dropTargetColumn = undefined;

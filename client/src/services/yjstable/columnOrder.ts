@@ -1,10 +1,10 @@
-import type { TableHandles } from "./tableDocs";
+import { type GridHandles, setGridColumnOrder } from "./gridDocs";
 
 /**
  * `DataTransfer` type carried by a column-reorder drag, in the grid and in the
- * UI Definition editor alike. It identifies the drag as the table block's own
+ * UI Definition editor alike. It identifies the drag as the Grid block's own
  * (see `services/dnd/blockDndOwnership`) while the payload is still unreadable,
- * so unrelated drops inside the table keep reaching the host outliner item.
+ * so unrelated drops inside the Grid keep reaching the host outliner item.
  */
 export const COLUMN_DRAG_TYPE = "application/x-yjstable-column";
 
@@ -70,9 +70,7 @@ export function calculateDropIndex(
     return targetIndex;
 }
 
-/** Replace the stored column order as a single scalar in the map. */
-export function writeColumnOrder(handles: TableHandles, order: string[]): void {
-    handles.doc.transact(() => {
-        handles.uiDef.set("columnOrder", order);
-    });
+/** Replace the stored column order on the Grid definition. */
+export function writeColumnOrder(handles: GridHandles, order: string[]): void {
+    setGridColumnOrder(handles, order);
 }

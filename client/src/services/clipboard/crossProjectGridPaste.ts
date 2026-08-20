@@ -160,8 +160,12 @@ export async function cloneGridTablesAcrossProjects(
     {
         /** Tables this paste created. Only these may be rolled back or undone. */
         tableIdMap: Record<string, string>;
+        /** Grids this paste created alongside the tables. Pasted outline items bind here. */
+        gridIdMap: Record<string, string>;
         /** Tables an earlier paste already created here, reused by this one. */
         reusedTableIdMap: Record<string, string>;
+        /** Grids already present for reused Tables, so pasted items still bind to a live Grid. */
+        reusedGridIdMap: Record<string, string>;
         /** Schedule rules this paste copied, disabled. Part of its undo unit. */
         createdRuleIds: string[];
         skippedSourceTableIds: string[];
@@ -212,7 +216,9 @@ export async function cloneGridTablesAcrossProjects(
             allowProvenanceReuse,
         );
         tableIdMap = cloneResult.tableIdMap;
+        const gridIdMap = cloneResult.gridIdMap;
         const reusedTableIdMap = cloneResult.reusedTableIdMap;
+        const reusedGridIdMap = cloneResult.reusedGridIdMap;
         const skippedSourceTableIds = cloneResult.skippedSourceTableIds;
         if (cancelled()) {
             rollback();
@@ -298,7 +304,9 @@ export async function cloneGridTablesAcrossProjects(
         );
         return {
             tableIdMap,
+            gridIdMap,
             reusedTableIdMap,
+            reusedGridIdMap,
             createdRuleIds,
             skippedSourceTableIds: skippedSourceTableIds ?? [],
             outcomes,

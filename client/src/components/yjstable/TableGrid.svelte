@@ -19,22 +19,26 @@ import {
     type TableHandles,
     type TableRecordValue,
 } from "../../services/yjstable/tableDocs";
+import type { GridHandles } from "../../services/yjstable/gridDocs";
 import type { TableQueryResult } from "../../services/yjstable/tableSyncAdapter";
 import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 
 interface Props {
+    /** The Grid definition being rendered (owns column order + labels + hidden). */
+    grid: GridHandles;
+    /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
     schema: ParsedTableSchema | undefined;
     query: string;
     result: TableQueryResult;
-    /** Component type per column from the UI Definition mirror. */
+    /** Component type per column from the Grid Definition mirror. */
     componentTypes: Record<string, string | undefined>;
-    /** The column order stored in UI Definition. */
+    /** The column order stored in the Grid Definition. */
     columnOrder: string[];
     /** Display labels for columns. */
     columnLabels: Record<string, string | undefined>;
-    /** Columns hidden by the shared UI Definition. */
+    /** Columns hidden by the Grid Definition. */
     hiddenColumns: Record<string, boolean>;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
@@ -42,7 +46,7 @@ interface Props {
     session: RelationResolver;
 }
 
-let { handles, schema, query, result, componentTypes, columnOrder, columnLabels, hiddenColumns, loading = false, session }: Props = $props();
+let { grid, handles, schema, query, result, componentTypes, columnOrder, columnLabels, hiddenColumns, loading = false, session }: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -61,7 +65,7 @@ function writeVisibleColumnOrder(visibleOrder: string[]) {
     const fullOrder = effectiveColumns.map(column =>
         hiddenColumns[column] === true ? column : visibleOrder[visibleIndex++]
     );
-    writeColumnOrder(handles, fullOrder);
+    writeColumnOrder(grid, fullOrder);
 }
 
 /** Presentation label for a column; falls back to the SQL name. */

@@ -43,11 +43,10 @@ describe("table registry (project doc)", () => {
 
         const tableId = createTable(projectDoc, "Tasks", "tasks", undefined, handles => {
             handles.schemaText.insert(0, "CREATE TABLE tasks (id TEXT)");
-            handles.uiDef.set("query", "SELECT id FROM tasks");
         });
 
         expect(visibleSchema).toBe("CREATE TABLE tasks (id TEXT)");
-        expect(getTableHandles(projectDoc, tableId)?.uiDef.get("query")).toBe("SELECT id FROM tasks");
+        expect(getTableHandles(projectDoc, tableId)?.schemaText.toString()).toBe("CREATE TABLE tasks (id TEXT)");
     });
 
     it("leaves no registry or subdocument debris when initialization fails", () => {
@@ -105,7 +104,7 @@ describe("SQL names in the registry", () => {
 });
 
 describe("table handles", () => {
-    it("exposes the three structures and an undo manager spanning them", () => {
+    it("exposes schema and data with an undo manager spanning them", () => {
         const projectDoc = new Y.Doc();
         const tableId = createTable(projectDoc, "T", "t");
         const handles = getTableHandles(projectDoc, tableId)!;
@@ -113,16 +112,14 @@ describe("table handles", () => {
         setSchemaText(handles, "CREATE TABLE t (id TEXT PRIMARY KEY, title TEXT)");
         expect(handles.schemaText.toString()).toContain("CREATE TABLE");
 
-        handles.uiDef.set("query", "SELECT id, title FROM t");
         const recordId = addRecord(handles, { title: "hello" });
         expect(handles.data.get(recordId)?.get("title")).toBe("hello");
         expect(handles.data.get(recordId)?.get("id")).toBe(recordId);
 
-        // Undo the record insert, then the ui change, then the schema change.
+        // Undo the record insert, then the schema change. Grid state is undone
+        // through its own undo manager (see gridDocs).
         handles.undo.undo();
         expect(handles.data.size).toBe(0);
-        handles.undo.undo();
-        expect(handles.uiDef.get("query")).toBeUndefined();
         handles.undo.undo();
         expect(handles.schemaText.toString()).toBe("");
     });

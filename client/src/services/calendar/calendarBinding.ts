@@ -1,7 +1,7 @@
 // Binding between an outliner item and the calendar it embeds.
 //
 // The item's node value (Y.Map) stores the calendar id under "calendarId".
-// Mirrors itemBinding.ts (the equivalent for "yjsTableId") exactly: both the
+// Mirrors itemBinding.ts (the equivalent for "yjsGridId") exactly: both the
 // app-schema and the leaner yjs-schema Item classes expose the same
 // (ydoc, tree, key) triple, so the binding is read/written through the tree
 // directly instead of depending on either class. Unlike a table, a calendar
