@@ -18,7 +18,7 @@ test.describe("Admin Check (API-0003)", () => {
     test("Returns authentication error with invalid token", async ({ page }) => {
         // Health check for Firebase Hosting emulator
         try {
-            const healthResponse = await page.request.get("http://127.0.0.1:57000/api/health");
+            const healthResponse = await page.request.get("http://0.0.0.0:57000/api/health");
             console.log(`Health check status: ${healthResponse.status()}`);
             if (healthResponse.status() !== 200) {
                 console.log("Health check failed, Firebase Hosting emulator may not be running properly");
@@ -28,9 +28,12 @@ test.describe("Admin Check (API-0003)", () => {
         }
 
         // First try accessing via Firebase Hosting emulator
-        let response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
-            data: { idToken: "invalid-token", projectId: "test-project" },
-        });
+        let response = await page.request.post(
+            "http://0.0.0.0:57000/api/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "invalid-token", projectId: "test-project" },
+            },
+        );
 
         // Output debug information
         console.log(`Hosting response status: ${response.status()}`);
@@ -43,7 +46,7 @@ test.describe("Admin Check (API-0003)", () => {
             // First, health check for Functions emulator
             try {
                 const functionsHealthResponse = await page.request.get(
-                    "http://127.0.0.1:57070/outliner-d57b0/us-central1/health",
+                    "http://0.0.0.0:57000/api/health",
                 );
                 console.log(`Functions health check status: ${functionsHealthResponse.status()}`);
             } catch (error) {
@@ -51,7 +54,7 @@ test.describe("Admin Check (API-0003)", () => {
             }
 
             response = await page.request.post(
-                "http://127.0.0.1:57070/outliner-d57b0/us-central1/adminCheckForProjectUserListing",
+                "http://0.0.0.0:57000/api/adminCheckForProjectUserListing",
                 {
                     data: { idToken: "invalid-token", projectId: "test-project" },
                 },
@@ -78,9 +81,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 when projectId is not specified", async ({ page }) => {
         // Call Firebase Functions API without specifying projectId and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
-            data: { idToken: "any-token" },
-        });
+        const response = await page.request.post(
+            "http://0.0.0.0:57000/api/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "any-token" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
@@ -90,9 +96,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 when ID token is not specified", async ({ page }) => {
         // Call Firebase Functions API without specifying ID token and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
-            data: { projectId: "test-project" },
-        });
+        const response = await page.request.post(
+            "http://0.0.0.0:57000/api/adminCheckForProjectUserListing",
+            {
+                data: { projectId: "test-project" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
@@ -102,9 +111,12 @@ test.describe("Admin Check (API-0003)", () => {
 
     test("Returns 400 with empty ID token", async ({ page }) => {
         // Call Firebase Functions API with empty ID token and confirm that 400 error is returned
-        const response = await page.request.post("http://127.0.0.1:57000/api/adminCheckForProjectUserListing", {
-            data: { idToken: "", projectId: "test-project" },
-        });
+        const response = await page.request.post(
+            "http://0.0.0.0:57000/api/adminCheckForProjectUserListing",
+            {
+                data: { idToken: "", projectId: "test-project" },
+            },
+        );
 
         expect(response.status()).toBe(400);
 
