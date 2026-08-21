@@ -1,11 +1,13 @@
 id: FTR-4b1f80e2
 title: Public Demo Standalone Routes
-description: The standalone table, table-schedule, schedule-rule and calendar routes of the public demo project open for anonymous visitors, matching the inline grids rendered on /demo/<page>.
+description: The standalone table, grid, schedule-list, schedule-rule and calendar routes of the public demo project open for anonymous visitors, matching the inline grids rendered on /demo/<page>.
 category: demo
 status: implemented
 components:
 - client/src/lib/publicProject.ts
 - client/src/routes/calendars/[project]/[calendar]/+page.svelte
+- client/src/routes/grids/[project]/[gridId]/+page.svelte
+- client/src/routes/schedules/[project]/+page.svelte
 - client/src/routes/schedules/[project]/[ruleId]/+page.svelte
 - client/src/routes/tables/[project]/[tableId]/+page.svelte
 - client/src/routes/tables/[project]/[tableId]/schedule/+page.svelte
@@ -15,8 +17,10 @@ tests:
 - client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
 acceptance:
 - /calendars/demo/<calendar> opens the calendar for a signed-out visitor
+- /grids/demo/<gridId> opens the grid for a signed-out visitor
+- /schedules/demo opens the project's rule list for a signed-out visitor
 - /schedules/demo/<ruleId> opens its rule editor for a signed-out visitor
-- /tables/demo/<table>/schedule opens its rule list for a signed-out visitor
+- /tables/demo/<table>/schedule forwards to /schedules/demo
 - An anonymous Firebase auth resolution does not revoke access to a public project
 - Sidebar links to /tables/demo/<table> open the table grid for a signed-out visitor
 - Signing out while one of these routes is open keeps its content visible; the sign-in wall never replaces it

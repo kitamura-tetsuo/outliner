@@ -2,6 +2,8 @@ import type { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
+import { parseIdentifiers } from "../yjstable/queryAnalysis";
+import { listTables } from "../yjstable/tableDocs";
 
 /**
  * Interface representing a schedule rule config
@@ -104,29 +106,86 @@ export function deleteScheduleRule(project: Project, ruleId: string): void {
     project.schedules.delete(ruleId);
 }
 
-export interface TableScheduleSummary {
-    /** Number of schedule rules whose targetTableId is this table. */
-    total: number;
-    /** True when at least one of those rules has enabled !== false. */
-    hasEnabled: boolean;
+/**
+ * How one Schedule reaches one Table.
+ *
+ * A Schedule is a project-level entity: no Table owns it, and it may touch
+ * several Tables in a single run (read A, write B). `write-target` is the
+ * Table its result rows are written back into; `sql-reference` is any other
+ * Table its statement names. Both are references — neither implies ownership.
+ */
+export type ScheduleTableReferenceKind = "write-target" | "sql-reference";
+
+export interface ScheduleTableReference {
+    ruleId: string;
+    ruleName: string;
+    kind: ScheduleTableReferenceKind;
+    enabled: boolean;
 }
 
-export function summarizeTableSchedules(project: Project | undefined, tableId: string): TableScheduleSummary {
-    if (!project || !project.schedules) {
-        return { total: 0, hasEnabled: false };
+/** Every Table id one Schedule references, write target and SQL alike. */
+export function scheduleTableReferences(
+    project: Project | undefined,
+    ruleId: string,
+): { tableId: string; kind: ScheduleTableReferenceKind; }[] {
+    const ruleMap = project?.schedules?.get(ruleId);
+    if (!project || !ruleMap) return [];
+
+    const references: { tableId: string; kind: ScheduleTableReferenceKind; }[] = [];
+    const seen = new Set<string>();
+
+    const targetTableId = ruleMap.get("targetTableId");
+    if (typeof targetTableId === "string" && targetTableId) {
+        references.push({ tableId: targetTableId, kind: "write-target" });
+        seen.add(targetTableId);
     }
 
-    let total = 0;
-    let hasEnabled = false;
-
-    project.schedules.forEach((ruleMap) => {
-        if (ruleMap.get("targetTableId") === tableId) {
-            total++;
-            if (ruleMap.get("enabled") !== false) {
-                hasEnabled = true;
+    const sql = ruleMap.get("sql");
+    if (typeof sql === "string" && sql) {
+        const identifiers = parseIdentifiers(sql);
+        for (const table of listTables(project.ydoc)) {
+            if (!table.sqlName || seen.has(table.tableId)) continue;
+            if (identifiers.has(table.sqlName.toLowerCase()) || identifiers.has(table.sqlName)) {
+                references.push({ tableId: table.tableId, kind: "sql-reference" });
+                seen.add(table.tableId);
             }
+        }
+    }
+
+    return references;
+}
+
+/**
+ * Schedules that reference a Table — as their write target or by naming its
+ * SQL relation. Used to render a Table's dependency list, which is explicitly
+ * a "used by" list and never a child list.
+ */
+export function findSchedulesReferencingTable(
+    project: Project | undefined,
+    tableId: string,
+): ScheduleTableReference[] {
+    if (!project?.schedules) return [];
+
+    const targetSqlName = listTables(project.ydoc).find(t => t.tableId === tableId)?.sqlName;
+    const references: ScheduleTableReference[] = [];
+
+    project.schedules.forEach((ruleMap, ruleId) => {
+        const ruleName = (ruleMap.get("name") as string | undefined) || "Untitled Schedule";
+        const enabled = ruleMap.get("enabled") !== false;
+
+        if (ruleMap.get("targetTableId") === tableId) {
+            references.push({ ruleId, ruleName, kind: "write-target", enabled });
+            return;
+        }
+
+        if (!targetSqlName) return;
+        const sql = ruleMap.get("sql") as string | undefined;
+        if (!sql) return;
+        const identifiers = parseIdentifiers(sql);
+        if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
+            references.push({ ruleId, ruleName, kind: "sql-reference", enabled });
         }
     });
 
-    return { total, hasEnabled };
+    return references;
 }

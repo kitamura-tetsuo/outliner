@@ -212,7 +212,7 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Schedule Rules:** Pages can be scheduled to be published at a later time. Tables can run SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). 'Run now', next to Edit and Delete in the Schedule panel and on the Edit Scheduled SQL page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
+- **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Scheduled SQL page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
 - **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** button in the document toolbar.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
@@ -259,8 +259,16 @@ Once the table is created, you will see a grid view where you can add, edit, or 
   - **Chart:** A visual representation of your data.
   - **Schema:** Allows you to define and edit the SQL schema for your table.
   - **UI:** An editor to customize how columns are displayed (e.g., as text, checkboxes, dates, or select dropdowns).
-  - **Schedule:** Create and manage recurring schedule rules (e.g., adding tasks daily or weekly) for the table.
 - The table toolbar also provides **Undo** and **Redo** buttons for convenience; these seamlessly integrate with the project's single global history.
+- The table name in the toolbar links to the source table's own page.
+
+### Tables, Grids and Schedules are separate
+
+A table, a grid and a schedule are three independent things, and each has its own page.
+
+- **Table** (`/tables/<project>/<table>`) owns the schema and the data. Its page shows the schema editor and a raw, editable view of every row — an implicit `SELECT * FROM <sql name>` that is not saved as a grid. A table is fully usable even when no grid exists over it. Below the data, the page lists the grids that select from this table and the schedules that reference it, as links.
+- **Grid** (`/grids/<project>/<grid>`) owns one SELECT and its presentation: column order, labels, hidden columns, cell components and the chart. Several grids may present the same table, and each keeps its own settings; they all read and write the same table data. A grid page links back to its source table rather than owning its schema.
+- **Schedule** (`/schedules/<project>`, one rule at `/schedules/<project>/<rule>`) belongs to the project. A schedule writes into a target table and its SQL may read any other table of the project, so it appears in the reference list of every table it touches and is owned by none of them.
 
 ### Collaboration
 

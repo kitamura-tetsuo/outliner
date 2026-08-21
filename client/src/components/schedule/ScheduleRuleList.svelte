@@ -9,9 +9,15 @@ interface Props {
     runningRuleId?: string;
     onEdit: (id: string, rule: ScheduleRule) => void;
     onDelete: (id: string) => void;
+    /**
+     * Tables each rule references, keyed by rule id. A Schedule belongs to the
+     * project and may touch several Tables (issue #5012), so this is a list of
+     * links, never a single "owning" table.
+     */
+    tableReferences?: Record<string, { tableId: string; name: string; kind: string; href: string; }[]>;
 }
 
-let { rules, onRunNow, runningRuleId, onEdit, onDelete }: Props = $props();
+let { rules, onRunNow, runningRuleId, onEdit, onDelete, tableReferences }: Props = $props();
 
 function getHumanReadable(rruleStr: string) {
     try {
@@ -42,7 +48,7 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
 
 <div class="schedule-rule-list">
     {#if rules.length === 0}
-        <p class="text-gray-500 text-sm">No schedule rules defined for this table.</p>
+        <p class="text-gray-500 text-sm">No schedule rules defined.</p>
     {:else}
         <ul class="space-y-3">
             {#each rules as {id, rule} (id)}
@@ -71,6 +77,18 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                             <button class="text-red-600 hover:text-red-800 text-sm" onclick={() => onDelete(id)}>Delete</button>
                         </div>
                     </div>
+
+                    {#if tableReferences?.[id]?.length}
+                        <div class="text-xs text-gray-500 flex flex-wrap items-baseline gap-x-2 gap-y-1" data-testid="schedule-rule-tables">
+                            <span class="font-medium">Tables:</span>
+                            {#each tableReferences[id] as reference (reference.tableId)}
+                                <span>
+                                    <a class="text-blue-600 hover:underline" href={reference.href} data-reference-kind={reference.kind}>{reference.name}</a>
+                                    <span class="text-gray-400">({reference.kind})</span>
+                                </span>
+                            {/each}
+                        </div>
+                    {/if}
 
                     <div class="text-xs text-gray-500 grid grid-cols-2 gap-2">
                         <div>

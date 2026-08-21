@@ -29,6 +29,7 @@ import {
 } from "../../services/yjstable/gridDocs";
 import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
 import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
+import { page as pageStore } from "$app/stores";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import YjsTableView from "./YjsTableView.svelte";
 import { isForeignInput } from "../../lib/KeyEventHandler";
@@ -119,6 +120,17 @@ const suggestedSqlName = $derived.by(() => {
 });
 const effectiveSqlName = $derived(sqlNameEdited ? newSqlName.trim() : suggestedSqlName);
 const projectId = $derived(yjsStore.currentProjectId ?? undefined);
+// The route name the user navigated with, the same one the sidebar links
+// with. Used to point at the source Table's own page — schema and data are
+// Table-owned, so the block references the Table instead of hosting it.
+const routeProjectName = $derived(
+    $pageStore.params.demoProject || $pageStore.params.project || undefined,
+);
+const sourceTableHref = $derived(
+    routeProjectName && sourceTableId
+        ? `/tables/${encodeURIComponent(routeProjectName)}/${encodeURIComponent(sourceTableId)}`
+        : undefined,
+);
 
 const registryObserver = () => {
     registryVersion++;
@@ -190,7 +202,7 @@ function createFromPreset() {
 >
     {#if grid && handles}
         {#key `${grid.gridId}::${handles.doc.guid}`}
-            <YjsTableView {grid} {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} sourceProjectId={tableSourceProjectId} />
+            <YjsTableView {grid} {handles} projectDoc={item.ydoc} {projectId} {tableName} sqlName={tableSqlName} sourceProjectId={tableSourceProjectId} {sourceTableHref} />
         {/key}
     {:else if grid && !handles}
         <!-- Missing source Table: explicit error, not a silent empty grid. -->

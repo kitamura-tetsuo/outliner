@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 49;
+export const DEMO_TEMPLATE_VERSION = 50;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -129,6 +129,15 @@ export interface DemoTableTemplate {
     components: Record<string, string | { type: string; label?: string; hidden?: boolean; }>;
     // Seed records: id -> column values.
     records: { id: string; values: Record<string, string | number | boolean | null>; }[];
+    // Further Grids over the same Table, seeded so the Table page's "Grids
+    // using this table" list has more than one entry and the two standalone
+    // Grid pages are visibly independent presentations of one Table.
+    extraGrids?: {
+        gridId: string;
+        name: string;
+        query: string;
+        components?: Record<string, string | { type: string; label?: string; hidden?: boolean; }>;
+    }[];
 }
 
 // Local date helpers so the seeded tasks/habits stay relative to the seeding
@@ -482,6 +491,25 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                     },
                 }));
             }),
+            // A second, independent presentation of the same Table: the full
+            // history rather than only the newest occurrence per task. Opening
+            // /tables/demo/demo-table-routine-occurrences shows the raw rows
+            // plus links to *both* Grids; neither one is "the table".
+            extraGrids: [
+                {
+                    gridId: DEMO_ROUTINE_HISTORY_GRID_ID,
+                    name: "Routine Occurrences · full history",
+                    query: "SELECT id, task_key, title, occurrence_date, done\n"
+                        + "FROM routine_occurrences\n"
+                        + "ORDER BY occurrence_date DESC, task_key",
+                    components: {
+                        task_key: "text",
+                        title: "text",
+                        occurrence_date: { type: "date", label: "Date" },
+                        done: "checkbox",
+                    },
+                },
+            ],
         },
     ];
 }
@@ -506,6 +534,9 @@ export interface DemoScheduleRuleTemplate {
     timezone: string;
     catchUp: boolean;
 }
+
+/** Second Grid over the routine occurrences Table (see `extraGrids`). */
+export const DEMO_ROUTINE_HISTORY_GRID_ID = "demo-table-routine-occurrences-history-grid";
 
 export const DEMO_DAILY_RULE_ID = "demo-rule-daily-routines";
 export const DEMO_WEEKLY_RULE_ID = "demo-rule-weekly-routines";
@@ -748,6 +779,26 @@ export function registerDemoTables(
         }
         gridEntry.set("components", components);
         gridRegistry.set(gridId, gridEntry);
+
+        for (const extra of template.extraGrids ?? []) {
+            const extraEntry = new Y.Map<unknown>();
+            extraEntry.set("sourceTableId", template.tableId);
+            extraEntry.set("name", extra.name);
+            extraEntry.set("query", extra.query);
+            const extraComponents = new Y.Map<Y.Map<unknown>>();
+            for (const [column, def] of Object.entries(extra.components ?? {})) {
+                const cfg = new Y.Map<unknown>();
+                extraComponents.set(column, cfg);
+                if (typeof def === "string") cfg.set("type", def);
+                else {
+                    cfg.set("type", def.type);
+                    if (def.label) cfg.set("label", def.label);
+                    if (def.hidden) cfg.set("hidden", true);
+                }
+            }
+            extraEntry.set("components", extraComponents);
+            gridRegistry.set(extra.gridId, extraEntry);
+        }
     }
 }
 

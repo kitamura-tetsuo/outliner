@@ -140,7 +140,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Open the Schedule tab of a table (for example on the [Tasks and Habits] page) to create a rule of your own.",
+                            "Schedules belong to the project, not to a table: open the Schedules section in the sidebar to create a rule of your own.",
                     },
                     {
                         text:
@@ -388,7 +388,7 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Open the Schedule tab of the occurrences table to read both rules, edit their SQL or recurrence, or disable them. See also [Schedule Rules].",
+                            "Open the occurrences table page to see its raw rows, the grids built over it and the schedules that reference it; the schedules themselves live at the project level. See also [Schedule Rules].",
                     },
                 ],
             },

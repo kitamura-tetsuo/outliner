@@ -1,8 +1,13 @@
 <script lang="ts">
 // Orchestrates one Grid: owns the sync-adapter/query-runner lifecycle, keeps
 // plain $state mirrors of the Yjs structures (AGENTS.md §11 mirror pattern),
-// and lets the user switch/parallel-display the schema editor, Grid Definition
-// editor, grid and chart.
+// and lets the user switch/parallel-display the Grid Definition editor, grid
+// and chart.
+//
+// Grid-owned state only. Schedules belong to the project, not to a Grid or a
+// Table (issue #5012), so they are not edited here at all. The source Table's
+// schema is reachable through the "Table schema" panel, which is labelled and
+// linked as the *Table's* schema so it never reads as Grid state.
 //
 // This component is always mounted under {#key} on both the Grid entry and
 // the source Table's Y.Doc guid (see YjsTableBlock), so switching either one
@@ -39,9 +44,6 @@ import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
-import TableSchedulePanel from "./TableSchedulePanel.svelte";
-import { store } from "../../stores/store.svelte";
-import { summarizeTableSchedules, type TableScheduleSummary } from "../../services/schedule/scheduleRuleService";
 
 const logger = getLogger("YjsTableView");
 
@@ -59,9 +61,14 @@ interface Props {
     sqlName?: string;
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
+    /**
+     * Link to the source Table's own page. Rendered by the standalone Grid
+     * route; an embedded block leaves it undefined and shows the name only.
+     */
+    sourceTableHref?: string;
 }
 
-let { grid, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId }: Props = $props();
+let { grid, handles, projectDoc, projectId, tableName, sqlName, sourceProjectId, sourceTableHref }: Props = $props();
 
 // --- $state mirrors (Yjs -> UI via adapter callbacks and observers) ---
 let schema = $state<ParsedTableSchema | undefined>(undefined);
@@ -82,9 +89,6 @@ let showSchema = $state(false);
 let showUiDef = $state(false);
 let showGrid = $state(true);
 let showChart = $state(false);
-let showSchedule = $state(false);
-
-let scheduleSummary = $state<TableScheduleSummary>({ total: 0, hasEnabled: false });
 
 let chartPanel = $state<TableChartPanel | undefined>(undefined);
 
@@ -125,10 +129,6 @@ const clipboardSource: TableClipboardSource = {
     getChartImage: () => (showChart ? chartPanel?.getImage() : undefined),
 };
 
-const scheduleObserver = () => {
-    scheduleSummary = summarizeTableSchedules(store.project, handles.tableId);
-};
-
 // handles/projectDoc are static within the component lifecycle due to `{#key}`
 // svelte-ignore state_referenced_locally
 const session = createTableEngineSession({ projectDoc, projectId });
@@ -141,8 +141,6 @@ onMount(() => {
     // bound to the same Grid keeps its manager when this one unmounts.
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
-    projectDoc.getMap("schedules").observeDeep(scheduleObserver);
-    scheduleObserver();
     registerTableClipboardSource(handles.tableId, clipboardSource);
 
     void (async () => {
@@ -179,7 +177,6 @@ onMount(() => {
 
 onDestroy(() => {
     grid.entry.unobserveDeep(gridMirrorObserver);
-    projectDoc.getMap("schedules").unobserveDeep(scheduleObserver);
     unsubscribeAdapter?.();
     unsubscribeRunner?.();
     runner?.dispose();
@@ -202,8 +199,15 @@ onDestroy(() => {
     }}
 >
     <div class="view-toolbar">
+        <!-- The Table this Grid selects from. It is a reference, not a part of
+             the Grid: on the standalone Grid page it links to the Table page,
+             which owns the schema and the data. -->
         {#if tableName}
-            <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
+            {#if sourceTableHref}
+                <a class="table-name table-name-link" data-testid="yjs-table-name" href={sourceTableHref}>{tableName}</a>
+            {:else}
+                <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
+            {/if}
         {/if}
         {#if sqlName}
             <!-- The identifier queries use. Shown next to the label so the two
@@ -250,44 +254,17 @@ onDestroy(() => {
                     showUiDef = !showUiDef;
                 }}
             >UI</button>
-            <button
-                type="button"
-                class:active={showSchedule}
-                aria-pressed={showSchedule}
-                data-testid="yjs-table-toggle-schedule"
-                title={scheduleSummary.total === 0 ? "Schedule" : (scheduleSummary.hasEnabled ? `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, active)` : `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, all disabled)`)}
-                aria-label={scheduleSummary.total === 0 ? "Schedule" : (scheduleSummary.hasEnabled ? `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, active)` : `Schedule (${scheduleSummary.total} rule${scheduleSummary.total === 1 ? "" : "s"}, all disabled)`)}
-                onclick={() => {
-                    showSchedule = !showSchedule;
-                }}
-            >
-                {#if scheduleSummary.total > 0}
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        width="14"
-                        height="14"
-                        class:schedule-icon-disabled={!scheduleSummary.hasEnabled}
-                        data-testid="yjs-table-schedule-indicator"
-                        data-schedule-state={scheduleSummary.hasEnabled ? "enabled" : "disabled"}
-                        aria-hidden="true"
-                    >
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                {/if}
-                Schedule
-            </button>
         </div>
     </div>
 
     {#if showSchema}
-        <section class="panel">
+        <section class="panel" data-testid="yjs-table-schema-panel">
+            <p class="panel-note">
+                Schema of the source table{tableName ? ` "${tableName}"` : ""} — shared by every grid over it.
+                {#if sourceTableHref}
+                    <a href={sourceTableHref}>Open the table page</a>
+                {/if}
+            </p>
             {#if adapter}
                 <TableSchemaEditor {handles} {adapter} {schemaError} />
             {:else}
@@ -308,12 +285,6 @@ onDestroy(() => {
                 resultColumns={result.columns}
                 {columnOrder}
             />
-        </section>
-    {/if}
-
-    {#if showSchedule}
-        <section class="panel">
-            <TableSchedulePanel tableId={handles.tableId} projectId={projectId || ''} />
         </section>
     {/if}
 
@@ -365,9 +336,6 @@ onDestroy(() => {
 </div>
 
 <style>
-    .schedule-icon-disabled {
-        opacity: 0.35;
-    }
 .yjs-table-view {
     display: flex;
     flex-direction: column;
@@ -385,6 +353,21 @@ onDestroy(() => {
 .table-name {
     font-weight: 600;
     color: #111827;
+}
+
+.table-name-link {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.table-name-link:hover {
+    text-decoration: underline;
+}
+
+.panel-note {
+    margin: 0 0 6px;
+    font-size: 0.75rem;
+    color: #6b7280;
 }
 
 .table-sql-name {

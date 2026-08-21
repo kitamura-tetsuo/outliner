@@ -1,5 +1,14 @@
+// What else in a project would notice if a Table disappeared.
+//
+// Everything here is a *reference*, never a child: Grids name a Table through
+// `sourceTableId`, Schedules name it as a write target or inside their SQL,
+// outline items name a Grid that names the Table. A Table owns its schema and
+// its data and nothing else (issue #5012), so this module answers "used by",
+// not "contains".
+
 import * as Y from "yjs";
 import { type Item, Project } from "../../../../shared/src/app-schema";
+import { findSchedulesReferencingTable } from "../schedule/scheduleRuleService";
 import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { parseIdentifiers } from "./queryAnalysis";
 import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
@@ -14,9 +23,25 @@ export interface TableDependencies {
         /** The Grid id the outline item is bound to (may reference our Table). */
         gridId?: string;
     }[];
+    /**
+     * Schedules whose write target is this Table. A subset of
+     * `scheduleReferences`; deleting the Table with the
+     * "remove-direct-references" policy deletes exactly these, because a
+     * Schedule that can no longer write anywhere has nothing left to do.
+     */
     scheduledTargets: {
         ruleId: string;
         ruleName: string;
+    }[];
+    /**
+     * Every Schedule that references this Table, write target or read alike.
+     * One Schedule may appear in several Tables' lists — it belongs to the
+     * project, not to any one of them.
+     */
+    scheduleReferences: {
+        ruleId: string;
+        ruleName: string;
+        kind: "write-target" | "sql-reference";
     }[];
     indirectSqlReferences: {
         type: "query" | "calendar" | "schedule";
@@ -27,9 +52,13 @@ export interface TableDependencies {
 }
 
 export function getTableDependencies(project: Project, tableId: string): TableDependencies {
+    const scheduleReferences = findSchedulesReferencingTable(project, tableId);
     const dependencies: TableDependencies = {
         directGridReferences: [],
-        scheduledTargets: [],
+        scheduledTargets: scheduleReferences
+            .filter(r => r.kind === "write-target")
+            .map(({ ruleId, ruleName }) => ({ ruleId, ruleName })),
+        scheduleReferences: scheduleReferences.map(({ ruleId, ruleName, kind }) => ({ ruleId, ruleName, kind })),
         indirectSqlReferences: [],
         dependentGridIds: findGridsBySourceTable(project.ydoc, tableId).map(g => g.gridId),
     };
@@ -72,30 +101,13 @@ export function getTableDependencies(project: Project, tableId: string): TableDe
         traverseItem(page, page, pageTitle);
     }
 
-    // 2. Scheduled Targets
-    if (project.schedules) {
-        project.schedules.forEach((ruleMap, ruleId) => {
-            if (ruleMap.get("targetTableId") === tableId) {
-                dependencies.scheduledTargets.push({
-                    ruleId,
-                    ruleName: ruleMap.get("name") as string || "Untitled Schedule",
-                });
-            }
-
-            // Indirect SQL dependencies in schedules
-            if (targetSqlName) {
-                const sql = ruleMap.get("query") as string | undefined;
-                if (sql) {
-                    const identifiers = parseIdentifiers(sql);
-                    if (identifiers.has(targetSqlName.toLowerCase()) || identifiers.has(targetSqlName)) {
-                        dependencies.indirectSqlReferences.push({
-                            type: "schedule",
-                            name: ruleMap.get("name") as string || "Untitled Schedule",
-                        });
-                    }
-                }
-            }
-        });
+    // 2. Schedules that name this Table's relation in their SQL without
+    // writing to it. The write targets are already in `scheduledTargets`;
+    // these are the reads, reported as warnings because deleting the Table
+    // breaks their statement without any reference to rewrite.
+    for (const reference of scheduleReferences) {
+        if (reference.kind !== "sql-reference") continue;
+        dependencies.indirectSqlReferences.push({ type: "schedule", name: reference.ruleName });
     }
 
     // 3. Indirect SQL References — Grids whose SELECT (via any source Table)
