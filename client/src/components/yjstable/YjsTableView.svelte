@@ -62,8 +62,8 @@ interface Props {
     /** Provenance info from whence this table was copied */
     sourceProjectId?: string;
     /**
-     * Link to the source Table's own page. Rendered by the standalone Grid
-     * route; an embedded block leaves it undefined and shows the name only.
+     * Link to the source Table's own page, offered next to the schema it
+     * owns. Undefined when the host cannot resolve a project route.
      */
     sourceTableHref?: string;
 }
@@ -199,24 +199,14 @@ onDestroy(() => {
     }}
 >
     <div class="view-toolbar">
-        <!-- The Table this Grid selects from. It is a reference, not a part of
-             the Grid: on the standalone Grid page it links to the Table page,
-             which owns the schema and the data. -->
+        <!-- The Table this Grid selects from. Deliberately plain text, never a
+             link: the name has to stay drag-selectable (guarded by
+             tbl-grid-text-is-selectable-4669a11e), and an anchor cannot be —
+             a drag across it either starts a native link drag or ends in a
+             click that navigates away. The link to the Table lives in the
+             schema panel below and in the Grid page header instead. -->
         {#if tableName}
-            {#if sourceTableHref}
-                <!-- draggable=false: a native link drag would pre-empt the
-                     text selection, so the name would stop being selectable
-                     the moment it became a link (regression guarded by
-                     tbl-grid-text-is-selectable-4669a11e). -->
-                <a
-                    class="table-name table-name-link"
-                    data-testid="yjs-table-name"
-                    href={sourceTableHref}
-                    draggable="false"
-                >{tableName}</a>
-            {:else}
-                <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
-            {/if}
+            <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
         {/if}
         {#if sqlName}
             <!-- The identifier queries use. Shown next to the label so the two
@@ -362,17 +352,6 @@ onDestroy(() => {
 .table-name {
     font-weight: 600;
     color: #111827;
-}
-
-.table-name-link {
-    color: #2563eb;
-    text-decoration: none;
-    /* The name stays ordinary selectable text even though it is a link. */
-    user-select: text;
-}
-
-.table-name-link:hover {
-    text-decoration: underline;
 }
 
 .panel-note {
