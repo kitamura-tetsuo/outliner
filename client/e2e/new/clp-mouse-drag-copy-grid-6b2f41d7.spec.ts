@@ -38,19 +38,26 @@ test.describe("mouse drag clipboard with component blocks", () => {
         expect(gridHostId).toBeTruthy();
 
         const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
-        const target = page.locator(`.outliner-item[data-item-id="${gridHostId}"] .item-text`);
+        // A Grid host owns no outline text and so renders no `.item-text`
+        // (#5015). Its `.item-content` is the thin strip where that text used
+        // to sit, above the rendered table — which is where a drag reaching
+        // "into the block's row" now ends.
+        const target = page.locator(`.outliner-item[data-item-id="${gridHostId}"] .item-content`);
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
         expect(targetBox).not.toBeNull();
 
-        // Drag from inside the first item's text into the middle of the Grid host's
-        // title: neither end lands on an item boundary, which is what a real mouse
-        // selection looks like.
+        // Drag from inside the first item's text into the middle of the Grid
+        // host's row: neither end lands on an item boundary, which is what a
+        // real mouse selection looks like. The horizontal midpoint keeps the
+        // release clear of the comment button at the strip's left edge.
         await page.mouse.move(sourceBox!.x + 25, sourceBox!.y + sourceBox!.height / 2);
         await page.mouse.down();
         await page.mouse.move(sourceBox!.x + 45, sourceBox!.y + sourceBox!.height / 2, { steps: 5 });
-        await page.mouse.move(targetBox!.x + 30, targetBox!.y + targetBox!.height / 2, { steps: 10 });
+        await page.mouse.move(targetBox!.x + targetBox!.width / 2, targetBox!.y + targetBox!.height / 2, {
+            steps: 10,
+        });
         await page.mouse.up();
         await page.waitForTimeout(500);
 
