@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-calendar-timezone-view-property-840bea57.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-840bea57: the calendar's timezone is an explicit, visible view property", () => {
@@ -16,14 +17,9 @@ test.describe("FTR-840bea57: the calendar's timezone is an explicit, visible vie
 
     test("shows the viewer-local zone by default and switches to a fixed zone", async ({ page }) => {
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });

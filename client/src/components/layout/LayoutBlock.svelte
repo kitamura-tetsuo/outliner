@@ -18,7 +18,12 @@ import type { Item } from "../../schema/app-schema";
 import { getLogger } from "../../lib/logger";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
-import { isVisualComponentType, LAYOUT_CHILD_DND_TYPE, LAYOUT_COLUMN_COUNT } from "../../services/layout/layoutModel";
+import {
+    isVisualComponentType,
+    LAYOUT_CHILD_DND_TYPE,
+    LAYOUT_COLUMN_COUNT,
+    nodeKindOf,
+} from "../../services/layout/layoutModel";
 import {
     adjustColumnSpan,
     canAcceptAsLayoutChild,
@@ -123,9 +128,22 @@ function componentTypeOf(child: Item): string | undefined {
 }
 
 /**
- * Only visual blocks belong here, and both the drop guard and the "Change to
- * Layout" guard enforce that. A child that is not one can still reach this
- * point from an older or third-party document, and it must not become
+ * A visual child owns no outline text (#5015), so its accessible name comes
+ * from its kind. A stray non-visual child - only reachable from older or
+ * third-party documents - is named by the text it does own.
+ */
+function childLabel(child: Item): string {
+    const kind = nodeKindOf({ componentType: componentTypeOf(child) });
+    if (kind === "grid") return "Grid block";
+    if (kind === "calendar") return "Calendar block";
+    if (kind === "layout") return "Layout block";
+    return childText(child) || "Layout block";
+}
+
+/**
+ * Only visual blocks belong here, and the tree's node-kind rule enforces it on
+ * every move, drop, indent and paste. A child that is not one can still reach
+ * this point from an older or third-party document, and it must not become
  * invisible: it gets a plain-text cell instead of a component.
  */
 function isVisualChild(child: Item): boolean {
@@ -207,7 +225,7 @@ function handleResizeKey(child: Item, event: KeyboardEvent) {
 function handleChildDragStart(child: Item, event: DragEvent) {
     draggingChildId = child.id;
     event.dataTransfer?.setData(LAYOUT_CHILD_DND_TYPE, child.id);
-    event.dataTransfer?.setData("text/plain", childText(child));
+    event.dataTransfer?.setData("text/plain", childLabel(child));
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
 }
 
@@ -345,7 +363,7 @@ function handleMoveOut(child: Item) {
                     data-item-id={child.id}
                     data-column-span={renderedSpan(child)}
                     role="group"
-                    aria-label={childText(child) || "Layout block"}
+                    aria-label={childLabel(child)}
                     ondragover={(event) => handleChildDragOver(child, event)}
                     ondrop={(event) => handleChildDrop(child, event)}
                     ondragleave={() => { dropTargetChildId = undefined; }}

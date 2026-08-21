@@ -179,8 +179,11 @@ use one of two forms:
 - `lines: string[]` — the text-only form. Two leading spaces per nesting level.
 - `items: DemoItem[]` — the structured form, used when a page seeds non-text
   content. Each `DemoItem` can specify:
-  - `componentType: "yjstable"` — render a live database table block instead
-    of text. Set `yjsTableId` to the id of an entry in `demoTables` (in
+  - `componentType: "yjstable" | "calendar" | "layout"` — the node's semantic
+    kind (#5015). A node with a `componentType` is a **visual node**: it owns
+    no ordinary outline text, so give it no `text` and put the heading in a
+    separate Text item immediately before it. For `"yjstable"`, set
+    `yjsTableId` to the id of an entry in `demoTables` (in
     `server/src/demo-content.ts`); the table's schema, UI definition and
     records are seeded into its own subdoc room by the demo API.
   - `votes: string[]` — seed votes from these voter ids.

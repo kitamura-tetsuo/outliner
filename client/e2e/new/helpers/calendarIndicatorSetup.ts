@@ -1,11 +1,11 @@
 // Shared setup for the source-item calendar indicator specs (FTR-7b2f19ac).
 //
-// Both specs need the same thing: an outline item converted into a calendar
-// block whose query projects `outline_items` with source identity and the
-// roles assigned. Keeping it here keeps each spec short enough for Playwright
+// Both specs need the same thing: a calendar block whose query projects
+// `outline_items` with source identity and the roles assigned. Keeping it here keeps each spec short enough for Playwright
 // to run reliably (AGENTS.md §2).
 
 import { expect, type Locator, type Page } from "@playwright/test";
+import { createBlockFromItem } from "../../utils/nodeKindHelpers";
 
 /** A query carrying `source_kind`/`source_id`, so its rows are addressable. */
 export const ITEMS_CALENDAR_QUERY = "SELECT id, text AS title, all_day, start_at, start_on, duration, "
@@ -19,30 +19,27 @@ export interface ItemsCalendarOptions {
      * floating `start_on` an all-day item is stored in.
      */
     startColumn?: "start_at" | "start_on";
-    /** Which `.outliner-item` row to convert. Defaults to the first item under the title. */
+    /** Which `.outliner-item` row to create the block from. Defaults to the first item under the title. */
     itemIndex?: number;
 }
 
 /**
- * Convert one outline row into a calendar block, point it at
- * `outline_items` and assign the title/start/all-day/duration roles.
+ * Create a calendar block from one outline row, point it at `outline_items`
+ * and assign the title/start/all-day/duration roles.
  */
 export async function configureItemsCalendar(page: Page, options: ItemsCalendarOptions): Promise<Locator> {
     const item = page.locator(".outliner-item").nth(options.itemIndex ?? 1);
-    await expect(item).toBeVisible({ timeout: 10000 });
-    await item.click();
-    await page.waitForTimeout(300);
-    await item.click({ button: "right" });
-    const contextMenu = page.locator(".context-menu");
-    await expect(contextMenu).toBeVisible({ timeout: 10000 });
-    await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+    // Node kinds are immutable (#5015): the block is a new row created by the
+    // slash command, not this row converted - so everything below is scoped to
+    // the Calendar node it returns.
+    const block = await createBlockFromItem(page, item, "Calendar");
 
-    const createPanel = item.getByTestId("calendar-create-panel");
+    const createPanel = block.getByTestId("calendar-create-panel");
     await expect(createPanel).toBeVisible({ timeout: 10000 });
     await createPanel.getByTestId("calendar-name-input").fill(options.name);
     await createPanel.getByTestId("calendar-create").click();
 
-    const view = item.getByTestId("calendar-view");
+    const view = block.getByTestId("calendar-view");
     await expect(view).toBeVisible({ timeout: 20000 });
 
     if (options.timezone) {

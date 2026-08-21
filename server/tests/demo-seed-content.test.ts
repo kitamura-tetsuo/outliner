@@ -51,6 +51,31 @@ function findChildByText(items: Items | undefined, text: string): Item | undefin
     return undefined;
 }
 
+/**
+ * A visual node owns no outline text (#5015), so a Grid, Calendar or Layout is
+ * found by what it binds to rather than by a caption.
+ */
+function findChildBy(items: Items | undefined, match: (item: Item) => boolean): Item | undefined {
+    if (!items) return undefined;
+    for (let i = 0; i < items.length; i++) {
+        const item = items.at(i);
+        if (item && match(item)) return item;
+    }
+    return undefined;
+}
+
+function findGrid(items: Items | undefined, tableId: string): Item | undefined {
+    return findChildBy(items, item => item.componentType === "yjstable" && item.yjsTableId === tableId);
+}
+
+function findCalendarBlock(items: Items | undefined, calendarId: string): Item | undefined {
+    return findChildBy(items, item => item.componentType === "calendar" && item.calendarId === calendarId);
+}
+
+function findLayout(items: Items | undefined): Item | undefined {
+    return findChildBy(items, item => item.componentType === "layout");
+}
+
 describe("Demo seed content", () => {
     it("the feature tour YAML specification matches the current demoPages list", () => {
         const yamlPath = path.resolve(
@@ -129,18 +154,23 @@ describe("Demo seed content", () => {
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
 
-        const table = findChildByText(
-            advanced!.items,
-            "Database tables: this item embeds a live table (Yjs data, SQL queries via PGlite). "
-                + "Toggle the Chart view to render the query result as a bar chart.",
-        );
+        // The explanation is its own Text node; the Grid that follows it owns
+        // no outline text at all (#5015), so it is found by its binding.
+        expect(
+            findChildByText(
+                advanced!.items,
+                "Database tables: this item embeds a live table (Yjs data, SQL queries via PGlite). "
+                    + "Toggle the Chart view to render the query result as a bar chart.",
+            ),
+            "database table explanation exists",
+        ).to.not.equal(undefined);
+        const table = findGrid(advanced!.items, DEMO_SALES_TABLE_ID);
         expect(table, "database table item exists").to.not.equal(undefined);
-        expect(table!.componentType).to.equal("yjstable");
-        expect(table!.yjsTableId).to.equal(DEMO_SALES_TABLE_ID);
+        expect(table!.text).to.equal("");
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(50);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(51);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -200,23 +230,29 @@ describe("Demo seed content", () => {
         const page = findChildByText(project.items, "Tasks and Habits");
         expect(page, "Tasks and Habits page exists").to.not.equal(undefined);
 
-        const tasks = findChildByText(
-            page!.items,
-            "Task manager: add tasks with due dates, priorities and repeat intervals. "
-                + "Status and priority options come from the schema's CHECK constraints.",
-        );
+        expect(
+            findChildByText(
+                page!.items,
+                "Task manager: add tasks with due dates, priorities and repeat intervals. "
+                    + "Status and priority options come from the schema's CHECK constraints.",
+            ),
+            "task manager explanation exists",
+        ).to.not.equal(undefined);
+        const tasks = findGrid(page!.items, DEMO_TASKS_TABLE_ID);
         expect(tasks, "task manager item exists").to.not.equal(undefined);
-        expect(tasks!.componentType).to.equal("yjstable");
-        expect(tasks!.yjsTableId).to.equal(DEMO_TASKS_TABLE_ID);
+        expect(tasks!.text).to.equal("");
 
-        const habits = findChildByText(
-            page!.items,
-            "Habit tracker: one table holds habit definitions and daily completion logs. "
-                + "Add a log row for today to extend a streak.",
-        );
+        expect(
+            findChildByText(
+                page!.items,
+                "Habit tracker: one table holds habit definitions and daily completion logs. "
+                    + "Add a log row for today to extend a streak.",
+            ),
+            "habit tracker explanation exists",
+        ).to.not.equal(undefined);
+        const habits = findGrid(page!.items, DEMO_HABITS_TABLE_ID);
         expect(habits, "habit tracker item exists").to.not.equal(undefined);
-        expect(habits!.componentType).to.equal("yjstable");
-        expect(habits!.yjsTableId).to.equal(DEMO_HABITS_TABLE_ID);
+        expect(habits!.text).to.equal("");
     });
 
     it("task template seeds recurrence, completion and registration times", () => {
@@ -376,23 +412,29 @@ describe("Demo seed content", () => {
         const page = findChildByText(project.items, "Recurring Tasks");
         expect(page, "Recurring Tasks page exists").to.not.equal(undefined);
 
-        const templatesItem = findChildByText(
-            page!.items,
-            "The recurring task definitions. Add a row here and the next run of the matching rule "
-                + "starts generating its occurrences.",
-        );
+        expect(
+            findChildByText(
+                page!.items,
+                "The recurring task definitions. Add a row here and the next run of the matching rule "
+                    + "starts generating its occurrences.",
+            ),
+            "routine templates explanation exists",
+        ).to.not.equal(undefined);
+        const templatesItem = findGrid(page!.items, DEMO_ROUTINE_TEMPLATES_TABLE_ID);
         expect(templatesItem, "routine templates table item exists").to.not.equal(undefined);
-        expect(templatesItem!.componentType).to.equal("yjstable");
-        expect(templatesItem!.yjsTableId).to.equal(DEMO_ROUTINE_TEMPLATES_TABLE_ID);
+        expect(templatesItem!.text).to.equal("");
 
-        const occurrencesItem = findChildByText(
-            page!.items,
-            "Tick a checkbox to complete today's (or this week's) task. "
-                + "Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
-        );
+        expect(
+            findChildByText(
+                page!.items,
+                "Tick a checkbox to complete today's (or this week's) task. "
+                    + "Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
+            ),
+            "routine occurrences explanation exists",
+        ).to.not.equal(undefined);
+        const occurrencesItem = findGrid(page!.items, DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
         expect(occurrencesItem, "routine occurrences table item exists").to.not.equal(undefined);
-        expect(occurrencesItem!.componentType).to.equal("yjstable");
-        expect(occurrencesItem!.yjsTableId).to.equal(DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
+        expect(occurrencesItem!.text).to.equal("");
     });
 
     it("keeps the task definitions and their occurrences in two separate tables", () => {
@@ -515,14 +557,17 @@ describe("Demo seed content", () => {
         const calendarsPage = findChildByText(project.items, "Calendars");
         expect(calendarsPage).to.not.equal(undefined);
 
-        const calendarItem = findChildByText(
-            calendarsPage!.items,
-            "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles "
-                + "and grouped by tags. Try dragging the entries below, or click **Settings** to change the query or reassign a role.",
-        );
+        expect(
+            findChildByText(
+                calendarsPage!.items,
+                "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles "
+                    + "and grouped by tags. Try dragging the entries below, or click **Settings** to change the query or reassign a role.",
+            ),
+            "calendar explanation exists",
+        ).to.not.equal(undefined);
+        const calendarItem = findCalendarBlock(calendarsPage!.items, DEMO_CALENDAR_ID);
         expect(calendarItem, "calendar item exists").to.not.equal(undefined);
-        expect(calendarItem!.componentType).to.equal("calendar");
-        expect(calendarItem!.calendarId).to.equal(DEMO_CALENDAR_ID);
+        expect(calendarItem!.text).to.equal("");
     });
 
     it("registers the demo calendar in the project doc's calendars map", () => {
@@ -585,10 +630,11 @@ describe("Demo seed content", () => {
         const calendarsPage = findChildByText(project.items, "Calendars");
         expect(calendarsPage).to.not.equal(undefined);
 
-        const ganttItem = findChildByText(calendarsPage!.items, "Project plan");
+        expect(findChildByText(calendarsPage!.items, "Project plan"), "gantt heading exists")
+            .to.not.equal(undefined);
+        const ganttItem = findCalendarBlock(calendarsPage!.items, DEMO_GANTT_CALENDAR_ID);
         expect(ganttItem, "gantt calendar item exists").to.not.equal(undefined);
-        expect(ganttItem!.componentType).to.equal("calendar");
-        expect(ganttItem!.calendarId).to.equal(DEMO_GANTT_CALENDAR_ID);
+        expect(ganttItem!.text).to.equal("");
 
         const template = demoCalendars.find((t) => t.calendarId === DEMO_GANTT_CALENDAR_ID);
         expect(template, "gantt calendar template exists").to.not.equal(undefined);
@@ -603,10 +649,11 @@ describe("Demo seed content", () => {
         const calendarsPage = findChildByText(project.items, "Calendars");
         expect(calendarsPage).to.not.equal(undefined);
 
-        const hourMapItem = findChildByText(calendarsPage!.items, "Today by the hour");
+        expect(findChildByText(calendarsPage!.items, "Today by the hour"), "hour map heading exists")
+            .to.not.equal(undefined);
+        const hourMapItem = findCalendarBlock(calendarsPage!.items, DEMO_HOUR_MAP_CALENDAR_ID);
         expect(hourMapItem, "hour map calendar item exists").to.not.equal(undefined);
-        expect(hourMapItem!.componentType).to.equal("calendar");
-        expect(hourMapItem!.calendarId).to.equal(DEMO_HOUR_MAP_CALENDAR_ID);
+        expect(hourMapItem!.text).to.equal("");
 
         const template = demoCalendars.find((t) => t.calendarId === DEMO_HOUR_MAP_CALENDAR_ID);
         expect(template, "hour map calendar template exists").to.not.equal(undefined);
@@ -662,23 +709,26 @@ describe("Demo seed content", () => {
         const layoutPage = findChildByText(project.items, "Layout");
         expect(layoutPage, "Layout page exists").to.not.equal(undefined);
 
-        const layout = findChildByText(layoutPage!.items, "A dashboard: sales next to the week's schedule.");
+        // The heading is an ordinary Text node placed before the Layout; the
+        // Layout itself and its children own no outline text (#5015).
+        expect(
+            findChildByText(layoutPage!.items, "A dashboard: sales next to the week's schedule."),
+            "layout heading exists",
+        ).to.not.equal(undefined);
+        const layout = findLayout(layoutPage!.items);
         expect(layout, "layout container exists").to.not.equal(undefined);
-        expect(layout!.componentType).to.equal("layout");
+        expect(layout!.text).to.equal("");
         // The container itself carries no placement metadata.
         expect(layout!.columnSpan).to.equal(undefined);
 
-        const children = childTexts(layout!.items);
-        expect(children).to.deep.equal(["Sales", "This week"]);
+        expect(childTexts(layout!.items)).to.deep.equal(["", ""]);
 
-        const grid = findChildByText(layout!.items, "Sales");
-        expect(grid!.componentType).to.equal("yjstable");
-        expect(grid!.yjsTableId).to.equal(DEMO_SALES_TABLE_ID);
+        const grid = findGrid(layout!.items, DEMO_SALES_TABLE_ID);
+        expect(grid, "layout grid child exists").to.not.equal(undefined);
         expect(grid!.columnSpan).to.equal(6);
 
-        const calendar = findChildByText(layout!.items, "This week");
-        expect(calendar!.componentType).to.equal("calendar");
-        expect(calendar!.calendarId).to.equal(DEMO_CALENDAR_ID);
+        const calendar = findCalendarBlock(layout!.items, DEMO_CALENDAR_ID);
+        expect(calendar, "layout calendar child exists").to.not.equal(undefined);
         expect(calendar!.columnSpan).to.equal(6);
     });
 });

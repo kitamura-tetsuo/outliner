@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-day-week-month-grid-views-9ce96e44.yaml
  */
 import { expect, type Page, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 /** One hour of the time grid, in pixels (CalendarTimeGrid's ROW_HEIGHT_PX). */
@@ -13,13 +14,9 @@ const HOUR_PX = 48;
 
 async function openWeekCalendar(page: Page, itemId: string) {
     const item = page.locator(`.outliner-item[data-item-id="${itemId}"]`);
-    await expect(item).toBeVisible({ timeout: 10000 });
-    await item.click();
-    await page.waitForTimeout(300);
-    await item.click({ button: "right" });
-    const contextMenu = page.locator(".context-menu");
-    await expect(contextMenu).toBeVisible({ timeout: 10000 });
-    await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+    // Node kinds are immutable (#5015): the block is created by the
+    // slash command, not by converting this row.
+    await createBlockFromItem(page, item, "Calendar");
 
     await expect(page.getByTestId("calendar-create-panel").first()).toBeVisible({ timeout: 10000 });
     await page.getByTestId("calendar-name-input").first().fill("Tooltip Calendar");

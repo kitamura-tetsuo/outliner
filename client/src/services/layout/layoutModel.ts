@@ -12,13 +12,35 @@
  * else about placement is persisted — no x/y, row numbers, column starts,
  * per-track fractions, row spans or pixel widths.
  *
- * The visual-component registry lives here so future blocks (Chart, Image, ...)
- * become Layout-eligible by joining one set rather than by adding
- * `type === "calendar" || type === "yjstable"` checks across the editor.
+ * The node-kind registry those rules read from lives in
+ * `$shared/services/outlineNodeKind` (#5015) so the schema, the editor and this
+ * module all classify a node the same way; this file keeps only what is
+ * specific to arranging blocks in a Layout.
  */
 
-/** `Item.componentType` of a Layout container. */
-export const LAYOUT_COMPONENT_TYPE = "layout";
+import {
+    CALENDAR_COMPONENT_TYPE,
+    canAcceptChild,
+    GRID_COMPONENT_TYPE,
+    isLayoutNode,
+    isVisualLeafNode,
+    LAYOUT_COMPONENT_TYPE,
+} from "$shared/services/outlineNodeKind";
+
+export {
+    CALENDAR_COMPONENT_TYPE,
+    canAcceptChild,
+    canNodeHaveChildren,
+    GRID_COMPONENT_TYPE,
+    isLayoutNode,
+    isTextNode,
+    isVisualLeafNode,
+    isVisualNode,
+    LAYOUT_COMPONENT_TYPE,
+    type NodeKindLike,
+    nodeKindOf,
+    type OutlineNodeKind,
+} from "$shared/services/outlineNodeKind";
 
 /**
  * `DataTransfer` type carried by a Layout child being reordered inside its own
@@ -34,31 +56,23 @@ export const LAYOUT_COLUMN_COUNT = 12;
 /** Span given to a child that has none: full width, the least surprising default. */
 export const DEFAULT_COLUMN_SPAN = LAYOUT_COLUMN_COUNT;
 
-/**
- * Component types that render as a self-contained visual block and may
- * therefore sit directly inside a Layout. A Layout is itself *not* in this set:
- * nested Layouts are out of scope (#4997), and keeping it out means the child
- * predicate rejects them without a special case.
- */
-const VISUAL_COMPONENT_TYPES: ReadonlySet<string> = new Set(["yjstable", "calendar"]);
-
 /** True for a component type that renders as a visual block (Grid, Calendar, ...). */
 export function isVisualComponentType(componentType: string | undefined): boolean {
-    return componentType !== undefined && VISUAL_COMPONENT_TYPES.has(componentType);
+    return isVisualLeafNode({ componentType });
 }
 
 /** True for the Layout container's own component type. */
 export function isLayoutComponentType(componentType: string | undefined): boolean {
-    return componentType === LAYOUT_COMPONENT_TYPE;
+    return isLayoutNode({ componentType });
 }
 
 /**
  * True when an item with this component type may be a *direct* child of a
- * Layout. Ordinary text items (no component type) and nested Layouts are
- * rejected here, which is the single place the constraint is expressed.
+ * Layout. Ordinary text items and nested Layouts are rejected by the shared
+ * child rule, which is the single place the constraint is expressed.
  */
 export function canBeLayoutChild(componentType: string | undefined): boolean {
-    return isVisualComponentType(componentType);
+    return canAcceptChild({ componentType: LAYOUT_COMPONENT_TYPE }, { componentType });
 }
 
 /**
@@ -77,5 +91,5 @@ export function normalizeColumnSpan(value: unknown): number {
 
 /** The component types a Layout accepts, for UI that has to enumerate them. */
 export function visualComponentTypes(): string[] {
-    return [...VISUAL_COMPONENT_TYPES];
+    return [GRID_COMPONENT_TYPE, CALENDAR_COMPONENT_TYPE];
 }

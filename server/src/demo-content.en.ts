@@ -259,6 +259,8 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text: "Database tables: this item embeds a live table (Yjs data, SQL queries via PGlite). "
                             + "Toggle the Chart view to render the query result as a bar chart.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TABLE_ID,
                     },
@@ -282,6 +284,8 @@ export function demoContentEn(): DemoLocaleContent {
                         text: "Aggregation across tables: this table stores only the monthly targets, "
                             + "but its query joins the Sales table above and compares both series. "
                             + "Every table of a project can be referenced by the name its schema declares.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TARGETS_TABLE_ID,
                     },
@@ -322,12 +326,16 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             "Task manager: add tasks with due dates, priorities and repeat intervals. Status and priority options come from the schema's CHECK constraints.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_TASKS_TABLE_ID,
                     },
                     {
                         text:
                             "Habit tracker: one table holds habit definitions and daily completion logs. Add a log row for today to extend a streak.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_HABITS_TABLE_ID,
                     },
@@ -377,12 +385,16 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             "The recurring task definitions. Add a row here and the next run of the matching rule starts generating its occurrences.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_ROUTINE_TEMPLATES_TABLE_ID,
                     },
                     {
                         text:
                             "Tick a checkbox to complete today's (or this week's) task. Tomorrow's run adds a fresh, unchecked occurrence that replaces it in this view.",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
                     },
@@ -444,6 +456,8 @@ export function demoContentEn(): DemoLocaleContent {
                     {
                         text:
                             "A calendar over this project's outline items, already assigned title/start/all-day/duration/due roles and grouped by tags. Try dragging the entries below, or click **Settings** to change the query or reassign a role.",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_CALENDAR_ID,
                     },
@@ -478,6 +492,8 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text: "Today by the hour",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_HOUR_MAP_CALENDAR_ID,
                     },
@@ -493,6 +509,8 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text: "Project plan",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_GANTT_CALENDAR_ID,
                     },
@@ -575,16 +593,16 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text: "A dashboard: sales next to the week's schedule.",
+                    },
+                    {
                         componentType: "layout",
                         children: [
                             {
-                                text: "Sales",
                                 componentType: "yjstable",
                                 yjsTableId: DEMO_SALES_TABLE_ID,
                                 columnSpan: 6,
                             },
                             {
-                                text: "This week",
                                 componentType: "calendar",
                                 calendarId: DEMO_CALENDAR_ID,
                                 columnSpan: 6,
@@ -593,7 +611,11 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Type /Layout on an empty item to create one, then drag a Database or Calendar block onto it. An empty Layout stays where it is, ready for the next block.",
+                            "Type /Layout on an empty item to create one, then drag a Grid or Calendar block onto it. An empty Layout stays where it is, ready for the next block.",
+                    },
+                    {
+                        text:
+                            'Node kinds are fixed at creation (#5015). A Text node owns text and children; Grid and Calendar are leaf blocks; Layout only arranges blocks. None of them can be turned into another, so there is no "Change to ..." action: press Enter for a new empty item and type /Grid, /Calendar or /Layout, and the block is created in exactly that position. A heading for a block is an ordinary Text node placed above it, as with the two blocks below.',
                     },
                 ],
             },

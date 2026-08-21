@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 
@@ -12,14 +13,9 @@ test.describe("Calendar view type select has accessible name", () => {
 
     test("calendar view-type select has an accessible name", async ({ page }) => {
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
@@ -36,14 +32,9 @@ test.describe("Calendar view type select has accessible name", () => {
 
     test("calendar resize handle is keyboard accessible", async ({ page }) => {
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
@@ -140,14 +131,9 @@ test.describe("Calendar timed entries DOM structure", () => {
             await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar demo item"]);
 
             const item = page.locator(".outliner-item").nth(1);
-            await expect(item).toBeVisible({ timeout: 10000 });
-            await item.click();
-            await page.waitForTimeout(300);
-
-            await item.click({ button: "right" });
-            const contextMenu = page.locator(".context-menu");
-            await expect(contextMenu).toBeVisible({ timeout: 10000 });
-            await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+            // Node kinds are immutable (#5015): the block is created by the
+            // slash command, not by converting this row.
+            await createBlockFromItem(page, item, "Calendar");
 
             const createPanel = page.getByTestId("calendar-create-panel").first();
             await expect(createPanel).toBeVisible({ timeout: 10000 });

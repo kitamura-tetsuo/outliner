@@ -82,9 +82,11 @@ describe("LayoutBlock", () => {
         const { container, unmount } = render(LayoutBlock, { item: layout });
 
         expect(idsOf(container)).toEqual([children[0].id, children[1].id]);
+        // A visual child owns no outline text (#5015), so its accessible name
+        // is its kind - stale text on such a node is never used as a caption.
         const labels = [...container.querySelectorAll("[data-testid='layout-cell']")]
             .map(cell => cell.getAttribute("aria-label"));
-        expect(labels).toEqual(["First", "Second"]);
+        expect(labels).toEqual(["Grid block", "Calendar block"]);
         unmount();
     });
 

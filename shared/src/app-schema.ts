@@ -7,6 +7,7 @@ const logger = getLogger("AppSchema");
 import * as Y from "yjs";
 
 import { YTree } from "yjs-orderedtree";
+import { isAllowedKindWrite, ownsOutlineText } from "./services/outlineNodeKind.js";
 import type {
     CalendarValueType,
     CommentValueType,
@@ -236,6 +237,10 @@ export class Item {
 
     get text(): string {
         if (!this.value.doc) return "";
+        // Only a Text node owns ordinary outline text (#5015). A Grid, Calendar
+        // or Layout reads as text-less whatever its Y.Text happens to hold, so
+        // stale development data can never resurface as a caption or a title.
+        if (!ownsOutlineText(this)) return "";
         const t = this.value.get("text");
         if (t === undefined || t === null) return "";
 
@@ -480,11 +485,30 @@ export class Item {
         else this.value.set("recurrenceOccurrenceId", v);
     }
 
-    // componentType stored in Y.Map ("table" | "chart" | undefined)
+    /**
+     * The node's semantic kind, stored under the historic `componentType` name:
+     * `undefined` (Text) | "yjstable" (Grid) | "calendar" | "layout" (#5015).
+     * See services/outlineNodeKind.ts for what each kind may own and hold.
+     */
     get componentType(): string | undefined {
         return this.value.get("componentType") as string | undefined;
     }
+    /**
+     * Writable once, while the node is still blank: a node is *created* as a
+     * kind, never converted into one. Re-stamping a node that already has a
+     * kind is refused here rather than at each call site, so no code path — UI,
+     * paste or a future one — can reintroduce mutable node typing.
+     */
     set componentType(v: string | undefined) {
+        const current = this.componentType;
+        if (!isAllowedKindWrite(current, v)) {
+            logger.warn(
+                { key: this.key, current, attempted: v },
+                "Item.componentType: refusing to change a node's semantic kind",
+            );
+            return;
+        }
+        if (current === v) return;
         this.value.set("componentType", v);
         this.value.set("lastChanged", Date.now());
     }
@@ -657,6 +681,13 @@ export class Item {
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
         if (t) {
+            // A visual node owns no outline text (#5015). Every write is
+            // funnelled here — typing, paste, programmatic seeding — so
+            // collapsing it to the empty string in one place is what keeps
+            // "typing into a Grid must not create hidden item text" true
+            // without a guard at each call site. Any stale text a node already
+            // carries is cleared the first time something tries to write.
+            if (!ownsOutlineText(this)) text = "";
             const current = String(t);
             if (current === text) return;
 

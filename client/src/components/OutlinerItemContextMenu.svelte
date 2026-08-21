@@ -1,19 +1,24 @@
 <script lang="ts">
     import { onMount } from "svelte";
 
+    import { type OutlineNodeKind } from "$shared/services/outlineNodeKind";
+
     interface Props {
         x: number;
         y: number;
         voted: boolean;
         isCommentsVisible: boolean;
-        componentType: string;
-        /** False when this item's children are not all eligible Layout blocks. */
-        canBecomeLayout?: boolean;
+        /**
+         * The node's semantic kind (#5015). The menu is kind-aware: it never
+         * offers to convert one kind into another, and it never offers an
+         * action that would give a leaf kind children.
+         */
+        kind: OutlineNodeKind;
         onClose: () => void;
         onAction: (action: string) => void;
     }
 
-    let { x, y, voted, isCommentsVisible, componentType, canBecomeLayout = true, onClose, onAction }: Props = $props();
+    let { x, y, voted, isCommentsVisible, kind, onClose, onAction }: Props = $props();
     let menuRef: HTMLDivElement;
     let previousFocus: HTMLElement | null = null;
     let activeIndex = $state(0);
@@ -106,37 +111,15 @@
         {isCommentsVisible ? "Hide comments" : "Show comments"}
     </button>
 
-    <div class="separator"></div>
+    <!-- No "Change to ..." actions live here (#5015): a node's semantic kind is
+         fixed at creation. To get a different kind, create one (a slash command
+         on an empty item) and delete the old node. -->
 
-    <button type="button" role="menuitem" tabindex={activeIndex === 4 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-type'); }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line>
-        </svg>
-        Change to {componentType === 'yjstable' ? 'Text' : 'Database'}
-    </button>
-
-    <button type="button" role="menuitem" tabindex={activeIndex === 5 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-calendar-type'); }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-        Change to {componentType === 'calendar' ? 'Text' : 'Calendar'}
-    </button>
-
-    <!-- Withheld when the item's children are not all visual blocks: a Layout
-         renders only those, so converting would hide the rest (#4997). -->
-    {#if componentType === 'layout' || canBecomeLayout}
-        <button type="button" role="menuitem" tabindex={activeIndex === 6 ? 0 : -1} onclick={() => { handleClose(); onAction('toggle-layout-type'); }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line>
-            </svg>
-            Change to {componentType === 'layout' ? 'Text' : 'Layout'}
-        </button>
-    {/if}
-
-    {#if componentType === 'layout'}
+    {#if kind === 'layout'}
+        <div class="separator"></div>
         <!-- Distinct from "Delete item": unwrapping keeps the arranged blocks
-             and removes only the arrangement. -->
-        <button type="button" role="menuitem" tabindex={activeIndex === 7 ? 0 : -1} onclick={() => { handleClose(); onAction('unwrap-layout'); }}>
+             and removes only the arrangement. Structural, not a kind change. -->
+        <button type="button" role="menuitem" tabindex={activeIndex === 4 ? 0 : -1} onclick={() => { handleClose(); onAction('unwrap-layout'); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>

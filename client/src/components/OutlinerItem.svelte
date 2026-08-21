@@ -94,8 +94,9 @@ import ConfirmDialog from "./ConfirmDialog.svelte";
 import OutlinerItemComponentRenderer from "./OutlinerItemComponentRenderer.svelte";
 import OutlinerItemContextMenu from "./OutlinerItemContextMenu.svelte";
 import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
-import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
-import { canConvertToLayout, unwrapLayout } from "../services/layout/layoutTree";
+import { nodeKindOfComponentType } from "$shared/services/outlineNodeKind";
+import { unwrapLayout } from "../services/layout/layoutTree";
+import { canPlaceBeside } from "../services/outline/nodeTree";
     import { projectPagePath } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
@@ -310,26 +311,8 @@ function handleContextMenuAction(action: string) {
         case 'delete-item': handleDelete(); break;
         case 'toggle-vote': toggleVote(); break;
         case 'toggle-comments': toggleComments(); break;
-        case 'toggle-type': {
-            const newType = (componentType ?? compTypeValue) === 'yjstable' ? 'none' : 'yjstable';
-            handleComponentTypeChange(newType);
-            break;
-        }
-        case 'toggle-calendar-type': {
-            const newType = (componentType ?? compTypeValue) === 'calendar' ? 'none' : 'calendar';
-            handleComponentTypeChange(newType);
-            break;
-        }
-        case 'toggle-layout-type': {
-            const isLayout = (componentType ?? compTypeValue) === LAYOUT_COMPONENT_TYPE;
-            // A Layout's children leave the flat outline, so converting an item
-            // whose children are not visual blocks would hide that branch
-            // (#4997). The menu entry is withheld in that case; this guard
-            // keeps the invariant whatever calls the action.
-            if (!isLayout && !canConvertToLayout(model.original)) break;
-            handleComponentTypeChange(isLayout ? 'none' : LAYOUT_COMPONENT_TYPE);
-            break;
-        }
+        // No kind-conversion actions exist (#5015): a node is created as a Text,
+        // Grid, Calendar or Layout node and stays that kind.
         case 'unwrap-layout': {
             // Keep the arranged blocks, drop only the arrangement (#4997):
             // children move up to this item's position, then the Layout goes.
@@ -664,39 +647,32 @@ function addAttachmentSafely(cand: AttachmentTarget, url: string, mime?: string,
 
 // Duplicate code related to aliases removed (moved to OutlinerItemAlias.svelte)
 
-// Component type state management
-let componentType = $state<string | undefined>(undefined);
-
-// Update item when component type changes
-function handleComponentTypeChange(newType: string) {
-    if (!item) return;
-
-    const setMapField = (it: unknown , key: string, value: unknown) => {
-        try {
-            const m = (it as Item).yMap;
-            if (m && typeof m.set === "function") {
-                m.set(key, value as import("../types/yjs-types").ItemValueType);
-                if (key !== "lastChanged") m.set("lastChanged", Date.now());
-                return true;
-            }
-        } catch (_e) { /* ignore */ }
-        return false;
-    };
-
-    const value = newType === "none" ? undefined : newType;
-    // Use setter preferentially if app-schema
-    if (item && typeof item === "object" && "componentType" in item) {
-        try { if (hasComponentType(item)) { item.componentType = value; } } catch (_e) { /* ignore */ }
-    }
-    // yjs-schema / fallback
-    setMapField(item, "componentType", value);
-    // Optimistically update local state so UI reflects the change without waiting for Yjs propagation
-    componentType = value;
-}
-
 // Synchronization by Yjs fine-grained observe
-let textString = $state<string>("");
+let rawTextString = $state<string>("");
 let compTypeValue = $state<string | undefined>(undefined);
+
+/**
+ * The node's semantic kind (#5015). It is fixed at creation, so this is read
+ * from Yjs and never written back from the UI.
+ */
+let nodeKind = $derived(nodeKindOfComponentType(compTypeValue));
+let isVisualNodeItem = $derived(nodeKind !== "text");
+
+/**
+ * Only a Text node owns outline text. A Grid, Calendar or Layout reads as
+ * text-less here for the same reason the schema does: stale text left on a
+ * visual node by older development data must never resurface as a caption.
+ */
+let textString = $derived(isVisualNodeItem ? "" : rawTextString);
+
+/**
+ * A visual node has no text to name it by, so the accessible name comes from
+ * its kind instead. A heading for such a block is an ordinary Text node placed
+ * before it, exactly as the outline model intends.
+ */
+let visualNodeLabel = $derived(
+    nodeKind === "grid" ? "Grid block" : nodeKind === "calendar" ? "Calendar block" : "Layout block",
+);
 
 $effect(() => {
     let unsubs: Array<() => void> = [];
@@ -709,13 +685,13 @@ $effect(() => {
             const h1 = () => {
                 if (t && typeof t.toString === "function") {
                     try {
-                        textString = t.toString() ?? "";
+                        rawTextString = t.toString() ?? "";
                     } catch (e) {
                         logger.warn({ err: e }, "[OutlinerItem] toString error");
-                        textString = "";
+                        rawTextString = "";
                     }
                 } else {
-                    textString = "";
+                    rawTextString = "";
                 }
             };
             t.observe(h1); unsubs.push(() => { try { t.unobserve?.(h1); } catch (_e) { /* ignore */ } });
@@ -823,6 +799,10 @@ type EditingPoint = CaretPoint & { altKey?: boolean; };
  */
 function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     if (isReadOnly) return;
+    // A Grid, Calendar or Layout node owns no outline text (#5015), so there is
+    // nothing here to edit: clicking or pressing Enter on one must not open the
+    // editing surface, which is what would make it look like a text field.
+    if (isVisualNodeItem) return;
 
     // Get global textarea (from store, fallback to DOM if missing)
     let textareaEl = editorOverlayStore.getTextareaRef();
@@ -957,7 +937,6 @@ function isNonTextGestureTarget(target: EventTarget | null): boolean {
     if (isForeignInput(target)) return true;
     return Boolean(
         el.closest(".component-wrapper")
-            || el.closest(".component-selector")
             || el.closest("a")
             || el.closest("button")
             || el.closest("select")
@@ -1151,6 +1130,10 @@ onMount(() => {
 
 function addNewItem() {
     if (isReadOnly) return;
+    // The new row is a Text node, so it may only go where one is allowed
+    // (#5015) - never beside a block inside a Layout, which arranges blocks
+    // alone.
+    if (!canPlaceBeside(model.original, {})) return;
     const p = model.original.parent;
     if (p) {
         const idx = model.original.indexInParent();
@@ -1242,9 +1225,9 @@ function handleContentClick(e: MouseEvent) {
         return;
     }
 
-    // Prevent component selector clicks from triggering item editing (focusing textarea)
-    // which would immediately close the select dropdown
-    if (el.closest('.component-selector') || el.closest('select')) {
+    // A <select> inside embedded UI owns its own dropdown: focusing the global
+    // textarea here would close it immediately.
+    if (el.closest('select')) {
         e.stopPropagation();
         return;
     }
@@ -1281,8 +1264,8 @@ function handleClick(event: MouseEvent) {
         return;
     }
 
-    // Component selector clicks should not trigger item editing (focusing textarea)
-    if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
+    // A <select> in embedded UI owns its own dropdown; focusing the textarea would close it.
+    if ((event.target as HTMLElement).closest('select')) {
         event.stopPropagation();
         return;
     }
@@ -1358,8 +1341,8 @@ function handleMouseDown(event: MouseEvent) {
         return;
     }
 
-    // Component selector clicks should not trigger item editing (focusing textarea)
-    if ((event.target as HTMLElement).closest('.component-selector') || (event.target as HTMLElement).closest('select')) {
+    // A <select> in embedded UI owns its own dropdown; focusing the textarea would close it.
+    if ((event.target as HTMLElement).closest('select')) {
         event.stopPropagation();
         return;
     }
@@ -2253,8 +2236,8 @@ export function setSelectionPosition(start: number, end: number = start) {
 
     id={isPageTitle ? undefined : model.id}
     role={isPageTitle ? "heading" : "treeitem"}
-    aria-labelledby={!isPageTitle && model.original.text ? `item-text-${model.id}` : undefined}
-    aria-label={!isPageTitle && !model.original.text ? "Blank outline item" : undefined}
+    aria-labelledby={!isPageTitle && !isVisualNodeItem && model.original.text ? `item-text-${model.id}` : undefined}
+    aria-label={isPageTitle ? undefined : (isVisualNodeItem ? visualNodeLabel : (!model.original.text ? "Blank outline item" : undefined))}
     tabindex={isPageTitle ? undefined : (isItemActive || (!editorOverlayStore.getActiveItem() && index === 1) ? 0 : -1)}
     aria-level={isPageTitle ? 1 : depth}
     aria-expanded={(!isPageTitle && hasChildren) ? !isCollapsed : undefined}
@@ -2268,6 +2251,8 @@ export function setSelectionPosition(start: number, end: number = start) {
     bind:this={itemRef}
     data-item-id={model.id}
     data-active={isItemActive}
+    data-node-kind={nodeKind}
+    data-text-editable={!isVisualNodeItem}
     data-alias-target-id={
 
         [ aliasPickerStore?.tick,
@@ -2347,10 +2332,14 @@ export function setSelectionPosition(start: number, end: number = start) {
                 ondrop={handleDrop}
                 onclick={handleContentClick}
             >
-                <!-- Text display (hidden when component is displayed) -->
-                <!-- Temporarily disable component type conditional branching -->
-                <!-- When focused: Display control characters after applying formatting -->
-                <!-- When not focused: Hide control characters, apply formatting -->
+                <!-- Ordinary outline text belongs to Text nodes only (#5015).
+                     A Grid, Calendar or Layout node renders no text field at
+                     all, so there is nothing to type into and nothing that
+                     could act as a caption; a heading for such a block is a
+                     normal Text node placed before it.
+                     When focused: Display control characters after applying formatting.
+                     When not focused: Hide control characters, apply formatting. -->
+                {#if !isVisualNodeItem}
                 <span
                     id={`item-text-${model.id}`}
                     class="item-text"
@@ -2364,6 +2353,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <!-- eslint-disable-next-line svelte/no-at-html-tags -->
                 {@html formattedHtml}
                 </span>
+                {/if}
                 {#if renameError && isPageTitle}
                     <div class="text-xs text-red-500 mt-1 mb-2 px-2 py-1 bg-red-50 inline-block rounded border border-red-200" style="position: absolute; top: 100%; left: 0; z-index: 10; pointer-events: none;">
                         {renameError}
@@ -2442,7 +2432,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             </div>
 
             <!-- Component display -->
-            <OutlinerItemComponentRenderer componentType={componentType ?? compTypeValue} item={model.original} />
+            <OutlinerItemComponentRenderer componentType={compTypeValue} item={model.original} />
         </div>
 
         </div>
@@ -2469,8 +2459,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             y={contextMenuY}
             voted={model.votes.includes(currentUser)}
             isCommentsVisible={isCommentsVisible}
-            componentType={(componentType ?? compTypeValue) || "none"}
-            canBecomeLayout={canConvertToLayout(model.original)}
+            kind={nodeKind}
             onClose={() => { isContextMenuOpen = false; }}
             onAction={handleContextMenuAction}
         />

@@ -1,0 +1,62 @@
+id: FTR-5015a1b2
+title: Immutable outline node kinds with text owned only by Text nodes
+title-ja: アウトラインノード種別の不変化とテキストのテキストノード専有
+description: 'An outline node has exactly one stable semantic kind — Text, Grid, Calendar or Layout — decided when the node is created and never changed afterwards. A visual node is not a Text node with extra rendering state. Text nodes own editable outline text and may have normal outline children. Grid and Calendar nodes bind to their entity, own no ordinary outline text and are leaves. Layout owns no text either and is a container for allowed visual children only, with nested Layout still invalid. The kind stays stored in the pre-existing `componentType` field, now treated as an exclusive discriminator rather than a decoration: a single framework-neutral registry (`shared/src/services/outlineNodeKind.ts`) maps it to a kind and answers `isTextNode`, `isVisualNode`, `canNodeHaveChildren` and `canAcceptChild`, so the rules live in one place instead of scattered `componentType === "yjstable"` comparisons. The Yjs schema enforces two of them itself: `Item.updateText` collapses any write on a visual node to the empty string and `Item.text` reads as empty for one, so typing, pasting or stale development data can never give a block a hidden caption; and the `componentType` setter accepts a write only while the node is still blank, so no code path can retype a node in place. Persistent type-conversion UI is gone — the item context menu no longer offers Change to Database/Calendar/Text/Layout and is kind-aware instead, keeping only actions valid for the selected kind plus the Layout-specific "Remove layout (keep blocks)", which stays a structural unwrap rather than a kind change. Creation happens through dedicated slash commands (/Grid, /Calendar, /Layout, with /database and /table still matching Grid), and slash creation looks like conversion while being implemented as replacement: an eligible empty Text node — a normal, non-page-title node with no children and no content left once the command string is removed — is deleted and a freshly created visual node is inserted at the same parent and sibling index, inside one Yjs transaction so collaboration and undo see a single structural operation. A node that still holds text or children is never discarded; the new block is inserted next to it instead. Tree constraints are enforced centrally on every structural path — item drag & drop (nesting and sibling drops), indent, programmatic moves and paste — so an invalid parenting cannot exist merely because the renderer does not draw it. Clipboard semantics follow: copying a Grid or Calendar carries the binding but no outline text, the entity display name reaches other applications through the outward plain-text/HTML flavors only, a payload that gives a visual node text or children is rejected on paste, and pasting a block into an item creates a new node rather than retyping the caret''s own node. Cutting a selection whose surviving first item is a block removes that block instead of stripping it back to a Text node. No schema rename and no migration framework is introduced; demo content and fixtures are updated to produce valid nodes directly, with a preceding Text node acting as each block''s heading.
+
+  '
+category: client
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemContextMenu.svelte
+- client/src/components/OutlinerTree.svelte
+- client/src/components/SlashCommandPalette.svelte
+- client/src/components/layout/LayoutBlock.svelte
+services:
+- shared/src/services/outlineNodeKind.ts
+- shared/src/app-schema.ts
+- client/src/services/outline/nodeTree.ts
+- client/src/services/outline/visualNodePlacement.ts
+- client/src/services/layout/layoutModel.ts
+- client/src/services/clipboard/itemClipboard.ts
+- client/src/stores/CommandPaletteStore.svelte.ts
+- client/src/lib/TreeDnD.ts
+- client/src/lib/KeyEventHandler.ts
+- client/src/lib/yjs/service.ts
+tests:
+- client/e2e/new/nod-kind-tree-constraints-5015a1b2.spec.ts
+- client/e2e/new/nod-slash-replaces-empty-text-node-5015a1b2.spec.ts
+- client/e2e/new/nod-visual-nodes-own-no-text-5015a1b2.spec.ts
+- client/src/components/layout/LayoutBlock.test.ts
+- client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/lib/TreeDnD.nodeKind.test.ts
+- client/src/lib/yjs/service.nodeKind.test.ts
+- client/src/services/clipboard/itemClipboard.test.ts
+- client/src/services/outline/visualNodePlacement.test.ts
+- client/src/stores/OutlinerViewModel.test.ts
+- shared/tests/app-schema-node-kind.test.ts
+- shared/tests/outlineNodeKind.test.ts
+acceptance:
+- /Calendar follows the same replacement semantics
+- /Grid on an eligible empty Text node deletes that node and inserts a fresh Grid node at the same sibling position
+- /Layout follows the same replacement semantics
+- A Calendar node exposes no ordinary item text field
+- A Grid node exposes no ordinary item text field and typing on it creates no hidden item text
+- A Layout node exposes no ordinary item text field
+- A Text node renders and edits its outline text exactly as before, and may still own normal outline children
+- A drag/drop or indent that would parent content under a Grid or Calendar is rejected and leaves the tree unchanged
+- A page-title node is never replaced by a visual node
+- Calendar nodes cannot accept children
+- Copying a Grid or Calendar carries its binding but no ordinary outline text, while other applications still receive the entity's display name
+- Embedded Grid, Calendar and Layout functionality is unchanged by the removal of item text and type conversion
+- Grid nodes cannot accept children
+- Layout accepts Grid and Calendar children, rejects ordinary Text children, and nested Layout stays invalid
+- Pasting a payload that gives a visual node outline text or children is refused
+- Remove layout / Unwrap still moves the visual children to the Layout's parent, in order, with their bindings intact
+- Slash replacement never discards text the user typed beside the command, nor a node's children
+- Slash replacement never mutates an existing node's kind in place
+- Stale text left on a visual node is never shown as a caption or used as its accessible name
+- The item context menu no longer offers Text <-> Calendar conversion
+- The item context menu no longer offers Text <-> Grid conversion
+- The item context menu no longer offers Text <-> Layout conversion
+- Undo treats a slash replacement as one coherent structural operation

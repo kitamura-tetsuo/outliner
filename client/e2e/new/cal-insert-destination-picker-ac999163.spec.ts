@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-insert-destination-picker-and-delete-prompt-ac999163.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-ac999163: creating a calendar entry always requires an explicit destination", () => {
@@ -16,14 +17,9 @@ test.describe("FTR-ac999163: creating a calendar entry always requires an explic
 
     async function attachWritableCalendar(page: import("@playwright/test").Page) {
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
@@ -44,6 +40,9 @@ test.describe("FTR-ac999163: creating a calendar entry always requires an explic
 
     test("cancelling the new-entry dialog creates nothing", async ({ page }) => {
         await attachWritableCalendar(page);
+        // Row count before opening the dialog: the block is its own row now
+        // (#5015), so what matters is that cancelling adds none.
+        const rowsBefore = await page.locator(".outliner-item").count();
 
         await page.getByTestId("calendar-new-entry").first().click();
         const dialog = page.getByTestId("calendar-create-dialog").first();
@@ -53,8 +52,8 @@ test.describe("FTR-ac999163: creating a calendar entry always requires an explic
         await page.getByTestId("calendar-create-cancel").first().click();
         await expect(dialog).toHaveCount(0);
 
-        // Nothing new appears in the outline: still just the page title + seeded item.
-        await expect(page.locator(".outliner-item")).toHaveCount(2);
+        // Nothing new appears in the outline.
+        await expect(page.locator(".outliner-item")).toHaveCount(rowsBefore);
     });
 
     test("choosing a destination creates the item there, and offers it back as Recent next time", async ({ page }) => {
