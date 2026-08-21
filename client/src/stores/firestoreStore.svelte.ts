@@ -584,7 +584,7 @@ if (typeof window !== "undefined") {
             unsubscribeAuth();
         });
     } else {
-        logger.warn(
+        logger.debug(
             "[firestoreStore] Firestore sync is DISABLED because environment is identified as non-E2E test environment. (isProd=false, isTest=true)",
         );
     }
