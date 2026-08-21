@@ -15,7 +15,8 @@
     import ScheduleRuleList from "../../../components/schedule/ScheduleRuleList.svelte";
     import { getLogger } from "../../../lib/logger";
     import { store } from "../../../stores/store.svelte";
-    import { listTables, type TableRegistryEntry } from "../../../services/yjstable/tableDocs";
+    import type * as Y from "yjs";
+    import { getTableRegistry, listTables, type TableRegistryEntry } from "../../../services/yjstable/tableDocs";
     import {
         createScheduleRule,
         deleteScheduleRule,
@@ -48,7 +49,13 @@
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
     let observedSchedules: NonNullable<typeof store.project>["schedules"] | undefined = undefined;
+    // `loadRules` derives table names and SQL references from the Table
+    // registry as well as from the schedules map, so both are observed
+    // (AGENTS.md §11): a rename or a new table elsewhere must not leave this
+    // list showing a stale name until some schedule happens to change.
+    let observedTables: Y.Map<Y.Map<unknown>> | undefined = undefined;
     const schedulesObserver = () => loadRules();
+    const tableRegistryObserver = () => loadRules();
 
     let isPublicDemo = $derived(isPublicProject(projectName));
     let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
@@ -59,6 +66,14 @@
         observedSchedules?.unobserveDeep(schedulesObserver);
         observedSchedules = schedules;
         observedSchedules?.observeDeep(schedulesObserver);
+    }
+
+    function observeTableRegistry(projectDoc: Y.Doc | undefined) {
+        const registry = projectDoc ? getTableRegistry(projectDoc) : undefined;
+        if (observedTables === registry) return;
+        observedTables?.unobserveDeep(tableRegistryObserver);
+        observedTables = registry;
+        observedTables?.observeDeep(tableRegistryObserver);
     }
 
     function loadRules() {
@@ -136,6 +151,7 @@
             }
 
             observeSchedules(store.project.schedules);
+            observeTableRegistry(store.project.ydoc);
             loadRules();
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
@@ -160,6 +176,7 @@
         return () => {
             isDestroyed = true;
             observeSchedules(undefined);
+            observeTableRegistry(undefined);
             projectHandle?.release();
             projectHandle = undefined;
         };
@@ -198,7 +215,10 @@
     }
 
     async function handleRunNow(id: string) {
-        if (!projectName) return;
+        // Running a rule executes its SQL against project data. A public-demo
+        // visitor may read this page but must never trigger that, matching the
+        // gate the single-rule editor page already applies.
+        if (!projectName || !hasWriteAccess) return;
         runError = undefined;
         runningRuleId = id;
         try {
@@ -288,6 +308,7 @@
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 tableReferences={referencedTables}
+                canWrite={hasWriteAccess}
             />
         </div>
     {/if}

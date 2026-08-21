@@ -15,9 +15,15 @@ interface Props {
      * links, never a single "owning" table.
      */
     tableReferences?: Record<string, { tableId: string; name: string; kind: string; href: string; }[]>;
+    /**
+     * Whether the viewer may mutate. False for a public-demo visitor, who may
+     * read the rules and open one but must not run or delete it. Edit stays
+     * enabled: it only navigates to the rule's own (read-only-gated) page.
+     */
+    canWrite?: boolean;
 }
 
-let { rules, onRunNow, runningRuleId, onEdit, onDelete, tableReferences }: Props = $props();
+let { rules, onRunNow, runningRuleId, onEdit, onDelete, tableReferences, canWrite = true }: Props = $props();
 
 function getHumanReadable(rruleStr: string) {
     try {
@@ -65,16 +71,23 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                         </div>
                         <div class="space-x-2">
                             <button
-                                class="text-gray-700 hover:text-gray-900 text-sm disabled:opacity-50"
+                                class="text-gray-700 hover:text-gray-900 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 onclick={() => onRunNow(id)}
-                                disabled={runningRuleId === id}
+                                disabled={runningRuleId === id || !canWrite}
+                                title={canWrite ? "Runs the saved SQL" : "Run now is disabled for guest access"}
                                 data-testid="schedule-rule-run-now"
                                 data-rule-id={id}
                             >
                                 {runningRuleId === id ? "Running…" : "Run now"}
                             </button>
                             <button class="text-blue-600 hover:text-blue-800 text-sm" onclick={() => onEdit(id, rule)}>Edit</button>
-                            <button class="text-red-600 hover:text-red-800 text-sm" onclick={() => onDelete(id)}>Delete</button>
+                            <button
+                                class="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                onclick={() => onDelete(id)}
+                                disabled={!canWrite}
+                                title={canWrite ? undefined : "Deleting is disabled for guest access"}
+                                data-testid="schedule-rule-delete"
+                            >Delete</button>
                         </div>
                     </div>
 

@@ -299,19 +299,28 @@
                 {/key}
             </div>
 
-            {#if tableProjectDoc}
-                <TableGridReferences
-                    projectDoc={tableProjectDoc}
+            <!-- Both panels bind Yjs observers on mount and never rebind, so
+                 they are keyed on the project doc and the resolved table
+                 (AGENTS.md §11: remount, never rebind). Navigating between two
+                 tables already tears this branch down — `loadTable` raises
+                 `isLoading` before its first await — but that is an incidental
+                 property of the loading flag; the key is what makes a switch
+                 within a mounted instance impossible. -->
+            {#key `${tableProjectDoc?.guid ?? ""}:${resolvedTableId}`}
+                {#if tableProjectDoc}
+                    <TableGridReferences
+                        projectDoc={tableProjectDoc}
+                        projectName={projectName}
+                        tableId={resolvedTableId}
+                    />
+                {/if}
+
+                <TableScheduleReferences
+                    project={store.project}
                     projectName={projectName}
                     tableId={resolvedTableId}
                 />
-            {/if}
-
-            <TableScheduleReferences
-                project={store.project}
-                projectName={projectName}
-                tableId={resolvedTableId}
-            />
+            {/key}
         </div>
     {/if}
 </main>

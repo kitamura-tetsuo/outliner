@@ -25,6 +25,7 @@ acceptance:
 - A Grid page links back to its source Table and shows an explicit missing-source state when the Table is gone
 - A Schedule is addressable at the project level and may reference several Tables without one owning it
 - A Table with zero Grid entities is still viewable and editable
+- A public-demo visitor may read the project schedule list but cannot run or delete a rule
 - Edits made in the raw data browser write directly to the Table through the Table write paths
 - Every Table a Schedule references reports it in its dependency/reference list
 - Opening a Table never creates a Grid and never mutates the Grid registry
@@ -32,6 +33,7 @@ acceptance:
 - The Table data browser runs an implicit `SELECT * FROM <sqlName>` and persists no query or presentation state
 - The Table page lists every Grid whose sourceTableId is the Table, as links, without mounting their results
 - The demo occurrences table page shows raw data plus links to both of its Grids
+- The project schedule list follows a table rename made while it is open
 - The table deletion dialog reports Grids and Schedules as dependencies rather than as contents
 - Two Grids over one Table stay independent on their standalone pages
 tests:
@@ -39,6 +41,7 @@ tests:
 - client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
 - client/e2e/tables/tbl-table-grid-separation-2e6b9f14.spec.ts
 - client/src/routes/grids/[project]/[gridId]/page.svelte.test.ts
+- client/src/routes/schedules/[project]/page.svelte.test.ts
 - client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
 - client/src/services/yjstable/gridDocs.test.ts
 - client/src/services/yjstable/tableDependencies.test.ts

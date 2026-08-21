@@ -3,12 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
 // Mocked Svelte store for `$app/stores`; the route reads `$page.params`.
+// A real (if minimal) store rather than a one-shot callback: SvelteKit reuses
+// this route component across a `[tableId]` change, so pushing new params into
+// a live subscriber is the only way to exercise that navigation.
 const mockPageStore = { params: { project: "demo", tableId: "demo-table-sales" } };
+const pageSubscribers = new Set<(value: typeof mockPageStore) => void>();
+
+/** Navigate within the route, the way SvelteKit does: params change, no remount. */
+function setPageParams(params: typeof mockPageStore.params) {
+    mockPageStore.params = params;
+    for (const run of pageSubscribers) run(mockPageStore);
+}
+
 vi.mock("$app/stores", () => ({
     page: {
         subscribe: (run: (value: typeof mockPageStore) => void) => {
+            pageSubscribers.add(run);
             run(mockPageStore);
-            return () => {};
+            return () => pageSubscribers.delete(run);
         },
     },
 }));
@@ -53,8 +65,11 @@ vi.mock("../../../../services/yjstable/tableDocs", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../../../../services/yjstable/tableDocs")>();
     return {
         ...actual,
-        listTables: () => [{ tableId: "demo-table-sales", name: "Sales", sqlName: "sales" }],
-        getTableHandles: () => ({ doc: salesDoc, tableId: "demo-table-sales" }),
+        listTables: () => [
+            { tableId: "demo-table-sales", name: "Sales", sqlName: "sales" },
+            { tableId: "demo-table-tasks", name: "Tasks", sqlName: "tasks" },
+        ],
+        getTableHandles: (_doc: Y.Doc, tableId: string) => ({ doc: salesDoc, tableId }),
         destroyTableUndoManager: vi.fn(),
     };
 });
@@ -78,6 +93,7 @@ function currentProject(): NonNullable<typeof store.project> {
 
 describe("standalone table route", () => {
     beforeEach(() => {
+        pageSubscribers.clear();
         mockPageStore.params = { project: "demo", tableId: "demo-table-sales" };
         // A fresh doc per test: the Grid registry assertions below are about
         // what this page did, so leftovers from a sibling test would lie.
@@ -175,6 +191,41 @@ describe("standalone table route", () => {
             expect(screen.getByText("Open sales").getAttribute("href")).toBe("/grids/demo/grid-a");
             expect(screen.getByText("Sales by month").getAttribute("href")).toBe("/grids/demo/grid-b");
             expect(screen.queryByText("Unrelated")).toBeNull();
+        });
+
+        // SvelteKit reuses this route component when only `[tableId]` changes,
+        // so the reference panels have to remount rather than keep the
+        // observers and ids they bound on their first mount.
+        it("refreshes the reference lists when navigating to another table", async () => {
+            createGrid(projectDoc, "demo-table-sales", { gridId: "grid-sales", name: "Sales grid" });
+            createGrid(projectDoc, "demo-table-tasks", { gridId: "grid-tasks", name: "Tasks grid" });
+
+            render(TableStandalonePage);
+            await waitFor(() => {
+                expect(screen.getByText("Sales grid")).toBeTruthy();
+            });
+
+            // Created once the mocked opener has published the project, the
+            // same way the sibling schedule test does.
+            createScheduleRule(currentProject(), {
+                name: "Sales nightly",
+                targetTableId: "demo-table-sales",
+                sql: "INSERT INTO sales (id) VALUES (gen_random_uuid())",
+                rrule: "FREQ=DAILY",
+            });
+            await waitFor(() => {
+                expect(screen.getByText("Sales nightly")).toBeTruthy();
+            });
+
+            setPageParams({ project: "demo", tableId: "demo-table-tasks" });
+
+            await waitFor(() => {
+                expect(screen.getByText("Tasks grid")).toBeTruthy();
+            });
+            // The previous table's references must be gone, not merely joined.
+            expect(screen.queryByText("Sales grid")).toBeNull();
+            expect(screen.queryByText("Sales nightly")).toBeNull();
+            expect(screen.getByTestId("table-schedule-references-empty")).toBeTruthy();
         });
 
         it("does not mount any Grid result: the page is an inspector, not a dashboard", async () => {
