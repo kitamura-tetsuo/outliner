@@ -34,8 +34,8 @@ tests:
 - client/src/services/clipboard/itemClipboard.test.ts
 - client/src/services/outline/visualNodePlacement.test.ts
 - client/src/stores/OutlinerViewModel.test.ts
-- shared/tests/app-schema-node-kind.test.ts
-- shared/tests/outlineNodeKind.test.ts
+- shared/tests/models/ItemNodeKind.test.ts
+- shared/tests/services/outlineNodeKind.test.ts
 acceptance:
 - /Calendar follows the same replacement semantics
 - /Grid on an eligible empty Text node deletes that node and inserts a fresh Grid node at the same sibling position
