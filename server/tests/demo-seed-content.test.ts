@@ -15,6 +15,7 @@ import {
     DEMO_HOUR_MAP_CALENDAR_ID,
     DEMO_LANDING_PAGE_TITLE,
     DEMO_PROJECT_TITLE,
+    DEMO_ROUTINE_HISTORY_GRID_ID,
     DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
     DEMO_ROUTINE_TEMPLATES_TABLE_ID,
     DEMO_SALES_TABLE_ID,
@@ -139,7 +140,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(49);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(50);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -291,6 +292,31 @@ describe("Demo seed content", () => {
                 expect(components.get(column)!.get("type")).to.equal(type);
             }
         }
+    });
+
+    // Issue #5012: a Table may carry several Grids, and none of them is "the
+    // table". The occurrences table seeds a second one so the Table page's
+    // reference list is visibly a list rather than a single implied Grid.
+    it("registerDemoTables seeds every extra Grid a Table declares", () => {
+        const projectDoc = new Y.Doc();
+        registerDemoTables(projectDoc, "demo", "en");
+        const grids = projectDoc.getMap<Y.Map<unknown>>("yjsGrids");
+
+        const history = grids.get(DEMO_ROUTINE_HISTORY_GRID_ID);
+        expect(history, "second Grid over the occurrences Table").to.not.equal(undefined);
+        expect(history!.get("sourceTableId")).to.equal(DEMO_ROUTINE_OCCURRENCES_TABLE_ID);
+
+        const overOccurrences: string[] = [];
+        grids.forEach((grid, gridId) => {
+            if (grid.get("sourceTableId") === DEMO_ROUTINE_OCCURRENCES_TABLE_ID) overOccurrences.push(gridId);
+        });
+        expect(overOccurrences.sort()).to.deep.equal(
+            [`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`, DEMO_ROUTINE_HISTORY_GRID_ID].sort(),
+        );
+
+        // The two Grids are independent presentations of one Table.
+        const dflt = grids.get(`${DEMO_ROUTINE_OCCURRENCES_TABLE_ID}-grid`)!;
+        expect(history!.get("query")).to.not.equal(dflt.get("query"));
     });
 
     it("seeds votes and a comment thread on the Comments and Votes page", () => {

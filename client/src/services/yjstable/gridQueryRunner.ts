@@ -6,53 +6,22 @@
 // runners can bind to the same Table adapter (one Table, many Grids) without
 // duplicating materialization.
 //
-// The runner debounces re-execution around three inputs:
-//   - Grid state (query text) changes  -> Yjs observer on the Grid entry.
-//   - Source Table schema changes      -> onSchemaChanged from the adapter.
-//   - Source Table data changes        -> onDataApplied from the adapter.
+// Everything that is not Grid-specific — debounce, staleness, the schema gate,
+// listener fan-out — lives in `TableQueryRunnerBase`, which the Table's own
+// raw-data browser reuses through `RawTableQueryRunner`.
 
 import type * as Y from "yjs";
-import { getLogger } from "../../lib/logger";
 import { getGridQuery, type GridHandles } from "./gridDocs";
-import { TableSqlError, toTableSqlError } from "./pgliteService";
-import {
-    executeGridQuery,
-    type RelationRegistryPort,
-    REQUERY_DEBOUNCE_MS,
-    type TableQueryResult,
-    TableSyncAdapter,
-} from "./tableSyncAdapter";
+import { TableQueryRunnerBase, type TableRunnerCallbacks, type TableRunnerOptions } from "./tableQueryRunner";
 
-const logger = getLogger("gridQueryRunner");
+export type GridRunnerCallbacks = TableRunnerCallbacks;
 
-export interface GridRunnerCallbacks {
-    onResult?: (result: TableQueryResult) => void;
-    onError?: (message: string | undefined) => void;
-}
-
-export interface GridRunnerOptions {
+export interface GridRunnerOptions extends TableRunnerOptions {
     grid: GridHandles;
-    /** The adapter of the Grid's source Table (materialization + registry). */
-    sourceAdapter: TableSyncAdapter;
-    /** Optional registry override (defaults to `sourceAdapter.relationRegistry`). */
-    registry?: RelationRegistryPort;
 }
 
-export class GridQueryRunner {
+export class GridQueryRunner extends TableQueryRunnerBase {
     private readonly grid: GridHandles;
-    private readonly sourceAdapter: TableSyncAdapter;
-    private readonly registry: RelationRegistryPort | undefined;
-
-    private readonly listeners = new Set<GridRunnerCallbacks>();
-    private lastResult: TableQueryResult = { columns: [], rows: [] };
-    private lastError: string | undefined;
-
-    private requeryTimer: ReturnType<typeof setTimeout> | undefined;
-    private queryGeneration = 0;
-    private disposed = false;
-    private started = false;
-
-    private unsubscribeSource: (() => void) | undefined;
 
     private readonly gridObserver = (events: Y.YEvent<Y.AbstractType<unknown>>[]) => {
         // Any change to the Grid entry may impact the query result: the query
@@ -63,106 +32,26 @@ export class GridQueryRunner {
         // from thrashing PGlite.
         for (const event of events) {
             if (event.target === this.grid.entry && event.changes.keys.has("query")) {
-                this.scheduleRequery();
+                this.invalidateQuery();
                 return;
             }
         }
     };
 
     constructor(options: GridRunnerOptions) {
+        super(options);
         this.grid = options.grid;
-        this.sourceAdapter = options.sourceAdapter;
-        this.registry = options.registry ?? options.sourceAdapter.relationRegistry;
     }
 
-    /**
-     * Subscribe a view. The latest known result is replayed immediately so a
-     * view mounted after the runner started still renders the current result.
-     */
-    subscribe(callbacks: GridRunnerCallbacks): () => void {
-        this.listeners.add(callbacks);
-        callbacks.onResult?.(this.lastResult);
-        callbacks.onError?.(this.lastError);
-        return () => {
-            this.listeners.delete(callbacks);
-        };
+    protected currentQuery(): string {
+        return getGridQuery(this.grid);
     }
 
-    start(): void {
-        if (this.started || this.disposed) return;
-        this.started = true;
+    protected observeQuerySource(): void {
         this.grid.entry.observeDeep(this.gridObserver);
-        this.unsubscribeSource = this.sourceAdapter.subscribe({
-            onSchemaChanged: () => this.scheduleRequery(),
-            onDataApplied: () => this.scheduleRequery(),
-        });
-        this.scheduleRequery();
     }
 
-    dispose(): void {
-        this.disposed = true;
-        if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
-        this.requeryTimer = undefined;
-        if (this.started) {
-            this.grid.entry.unobserveDeep(this.gridObserver);
-            this.unsubscribeSource?.();
-        }
-    }
-
-    /** Debounced re-run of the Grid query. */
-    scheduleRequery(): void {
-        if (this.disposed) return;
-        if (this.requeryTimer !== undefined) clearTimeout(this.requeryTimer);
-        this.requeryTimer = setTimeout(() => {
-            this.requeryTimer = undefined;
-            void this.runQueryNow();
-        }, REQUERY_DEBOUNCE_MS);
-    }
-
-    async runQueryNow(): Promise<TableQueryResult | undefined> {
-        const generation = ++this.queryGeneration;
-        const isStale = () => this.disposed || generation !== this.queryGeneration;
-
-        if (isStale()) return undefined;
-        const query = getGridQuery(this.grid).trim();
-        // The source Table must have a valid applied schema before a Grid may
-        // present rows. When the schema text is cleared or becomes invalid the
-        // adapter reports `appliedSchema === undefined` but does NOT drop the
-        // previously materialized relation, so running the query anyway would
-        // succeed against stale rows and show data whose schema no longer
-        // exists. The pre-split adapter gated on exactly this.
-        if (!query || !this.sourceAdapter.appliedSchema) {
-            const empty: TableQueryResult = { columns: [], rows: [] };
-            this.emitResult(empty);
-            this.emitError(undefined);
-            return empty;
-        }
-        try {
-            const result = await executeGridQuery(query, {
-                pgSchema: this.sourceAdapter.sharedPgSchema,
-                registry: this.registry,
-                isStale,
-            });
-            if (isStale()) return undefined;
-            this.emitError(undefined);
-            this.emitResult(result);
-            return result;
-        } catch (err) {
-            if (isStale()) return undefined;
-            const e = err instanceof TableSqlError ? err : toTableSqlError("query", err);
-            this.emitError(e.message);
-            logger.debug({ err: e }, "[gridQueryRunner] query failed");
-            return undefined;
-        }
-    }
-
-    private emitResult(result: TableQueryResult): void {
-        this.lastResult = result;
-        for (const l of this.listeners) l.onResult?.(result);
-    }
-
-    private emitError(message: string | undefined): void {
-        this.lastError = message;
-        for (const l of this.listeners) l.onError?.(message);
+    protected unobserveQuerySource(): void {
+        this.grid.entry.unobserveDeep(this.gridObserver);
     }
 }

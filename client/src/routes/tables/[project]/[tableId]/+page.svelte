@@ -8,11 +8,10 @@
     import { store } from "../../../../stores/store.svelte";
     import { yjsStore } from "../../../../stores/yjsStore.svelte";
     import Breadcrumb from "../../../../components/Breadcrumb.svelte";
-    import YjsTableView from "../../../../components/yjstable/YjsTableView.svelte";
+    import TableEntityView from "../../../../components/yjstable/TableEntityView.svelte";
+    import TableGridReferences from "../../../../components/yjstable/TableGridReferences.svelte";
+    import TableScheduleReferences from "../../../../components/schedule/TableScheduleReferences.svelte";
     import { listTables, getTableHandles, destroyTableUndoManager } from "../../../../services/yjstable/tableDocs";
-    // The mounted YjsTableView retains/releases the Grid's shared undo manager
-    // for its own lifetime, so this page only has to resolve the handles.
-    import { ensureGridForTable, type GridHandles, getGridHandles } from "../../../../services/yjstable/gridDocs";
     import { getTableDependencies, removeTableWithPolicy, type TableDependencies, type DeleteTablePolicy } from "../../../../services/yjstable/tableDependencies";
     import { goto } from "$app/navigation";
         import { isPublicProject } from "../../../../lib/publicProject";
@@ -33,7 +32,7 @@
     let isLoading = $state(true);
     let tableName: string | undefined = $state(undefined);
     let tableHandles: ReturnType<typeof getTableHandles> | undefined = $state(undefined);
-    let gridHandles: GridHandles | undefined = $state(undefined);
+    let resolvedTableId: string | undefined = $state(undefined);
     let tableSqlName: string | undefined = $state(undefined);
     let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
@@ -52,14 +51,17 @@
     let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function startDelete() {
-        if (!hasWriteAccess || !store.project || !routeTableId) return;
-        dependencies = getTableDependencies(store.project, routeTableId);
+        // The resolved id, not the route parameter: a Table URL may carry the
+        // SQL name, and dependencies are keyed by Table id.
+        if (!hasWriteAccess || !store.project || !resolvedTableId) return;
+        dependencies = getTableDependencies(store.project, resolvedTableId);
         showDeleteDialog = true;
         deleteActionError = undefined;
     }
 
     async function executeDelete(policy: DeleteTablePolicy) {
-        if (!hasWriteAccess || !store.project || !routeTableId) return;
+        if (!hasWriteAccess || !store.project || !resolvedTableId) return;
+        const tableId = resolvedTableId;
         isDeleting = true;
         deleteActionError = undefined;
         try {
@@ -70,10 +72,10 @@
                 destroyTableUndoManager(currentHandles.doc);
             }
 
-            const result = removeTableWithPolicy(store.project, routeTableId, policy);
+            const result = removeTableWithPolicy(store.project, tableId, policy);
 
             if (result) {
-                logger.info(`Deleted table ${routeTableId} with policy ${policy}`);
+                logger.info(`Deleted table ${tableId} with policy ${policy}`);
             }
             showDeleteDialog = false;
             goto(`/${encodeURIComponent(projectName)}`);
@@ -83,7 +85,7 @@
             isDeleting = false;
             // Recover handles if deletion failed
             if (store.project) {
-                tableHandles = getTableHandles(store.project.ydoc, routeTableId);
+                tableHandles = getTableHandles(store.project.ydoc, tableId);
             }
         }
     }
@@ -138,24 +140,12 @@
                 return;
             }
 
-            // The standalone page addresses a Table, but a Grid owns the SELECT
-            // and column UI a grid renders through. Reuse the Table's first
-            // Grid (so this page shows the same presentation as an outline
-            // block bound to it) and create a default one only when the Table
-            // has none yet.
-            const resolvedGridId = ensureGridForTable(store.project.ydoc, entry.tableId, {
-                name: entry.name,
-                sqlName: entry.sqlName,
-            });
-            const resolvedGrid = getGridHandles(store.project.ydoc, resolvedGridId);
-            if (!resolvedGrid) {
-                logger.warn(`Could not resolve a Grid for table "${routeTableId}" (${entry.tableId})`);
-                notFound = true;
-                return;
-            }
-            gridHandles = resolvedGrid;
-
+            // This page is about the Table entity: schema and data. It must
+            // never resolve, select or create a Grid — a Table is viewable and
+            // editable with zero Grids in the project (issue #5012). Grids and
+            // Schedules appear below only as references.
             tableHandles = handles;
+            resolvedTableId = entry.tableId;
             tableSqlName = entry.sqlName || undefined;
             tableName = entry.name;
             // Held explicitly: the engine session needs the registry doc for
@@ -295,21 +285,41 @@
                 </div>
             </div>
         </div>
-    {:else if tableHandles && gridHandles}
-        <div class="flex-grow min-h-0 relative border border-gray-200 rounded-md overflow-hidden bg-white">
-            {#key tableHandles.doc.guid}
-                <div class="h-full w-full">
+    {:else if tableHandles && resolvedTableId}
+        <div class="flex-grow min-h-0 overflow-y-auto flex flex-col gap-4">
+            <div class="relative border border-gray-200 rounded-md bg-white p-3">
+                {#key tableHandles.doc.guid}
                     {#if tableProjectDoc}
-                        <YjsTableView
-                            grid={gridHandles}
+                        <TableEntityView
                             handles={tableHandles}
                             projectDoc={tableProjectDoc}
                             projectId={yjsStore.currentProjectId ?? undefined}
-                            tableName={tableName}
-                            sqlName={tableSqlName}
                         />
                     {/if}
-                </div>
+                {/key}
+            </div>
+
+            <!-- Both panels bind Yjs observers on mount and never rebind, so
+                 they are keyed on the project doc and the resolved table
+                 (AGENTS.md §11: remount, never rebind). Navigating between two
+                 tables already tears this branch down — `loadTable` raises
+                 `isLoading` before its first await — but that is an incidental
+                 property of the loading flag; the key is what makes a switch
+                 within a mounted instance impossible. -->
+            {#key `${tableProjectDoc?.guid ?? ""}:${resolvedTableId}`}
+                {#if tableProjectDoc}
+                    <TableGridReferences
+                        projectDoc={tableProjectDoc}
+                        projectName={projectName}
+                        tableId={resolvedTableId}
+                    />
+                {/if}
+
+                <TableScheduleReferences
+                    project={store.project}
+                    projectName={projectName}
+                    tableId={resolvedTableId}
+                />
             {/key}
         </div>
     {/if}
@@ -325,12 +335,20 @@
             <div class="px-6 py-4 overflow-y-auto flex-grow">
                 <p class="text-gray-700 mb-4">
                     Table deletion is destructive and cannot be undone using the global Undo button.
-                    Please review the references to this table below:
+                    Nothing below belongs to the table — these are the project entities that
+                    reference it and would break:
                 </p>
+
+                {#if dependencies.dependentGridIds.length > 0}
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-900 mb-1">Grids sourced from this table ({dependencies.dependentGridIds.length})</h3>
+                        <p class="text-xs text-gray-500 mb-1">Each grid selects from this table and has no other source.</p>
+                    </div>
+                {/if}
 
                 {#if dependencies.directGridReferences.length > 0}
                     <div class="mb-4">
-                        <h3 class="font-semibold text-gray-900 mb-1">Grid references ({dependencies.directGridReferences.length})</h3>
+                        <h3 class="font-semibold text-gray-900 mb-1">Outline blocks showing those grids ({dependencies.directGridReferences.length})</h3>
                         <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
                             {#each dependencies.directGridReferences as ref (ref.itemKey)}
                                 <li>Page "{ref.pageTitle}"
@@ -341,12 +359,18 @@
                     </div>
                 {/if}
 
-                {#if dependencies.scheduledTargets.length > 0}
+                {#if dependencies.scheduleReferences.length > 0}
                     <div class="mb-4">
-                        <h3 class="font-semibold text-gray-900 mb-1">Schedule targets ({dependencies.scheduledTargets.length})</h3>
+                        <h3 class="font-semibold text-gray-900 mb-1">Schedules referencing this table ({dependencies.scheduleReferences.length})</h3>
+                        <p class="text-xs text-gray-500 mb-1">
+                            Schedules belong to the project; a schedule may reference other tables too.
+                        </p>
                         <ul class="list-disc pl-5 text-sm text-gray-600 max-h-32 overflow-y-auto">
-                            {#each dependencies.scheduledTargets as ref (ref.ruleId)}
-                                <li>Schedule "{ref.ruleName}"</li>
+                            {#each dependencies.scheduleReferences as ref (ref.ruleId)}
+                                <li>
+                                    Schedule "{ref.ruleName}"
+                                    &mdash; {ref.kind === "write-target" ? "writes to this table" : "reads this table"}
+                                </li>
                             {/each}
                         </ul>
                     </div>
@@ -364,8 +388,8 @@
                     </div>
                 {/if}
 
-                {#if dependencies.directGridReferences.length === 0 && dependencies.scheduledTargets.length === 0 && dependencies.indirectSqlReferences.length === 0}
-                    <p class="text-sm text-gray-600 italic">No dependencies found in this project.</p>
+                {#if dependencies.dependentGridIds.length === 0 && dependencies.directGridReferences.length === 0 && dependencies.scheduleReferences.length === 0 && dependencies.indirectSqlReferences.length === 0}
+                    <p class="text-sm text-gray-600 italic">Nothing in this project references this table.</p>
                 {/if}
 
                 {#if deleteActionError}
@@ -376,7 +400,7 @@
             </div>
 
             <div class="px-6 py-4 border-t border-gray-200 flex flex-col gap-3">
-                {#if dependencies.directGridReferences.length > 0 || dependencies.scheduledTargets.length > 0}
+                {#if dependencies.directGridReferences.length > 0 || dependencies.dependentGridIds.length > 0 || dependencies.scheduledTargets.length > 0}
                     <button
                         type="button"
                         class="w-full px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded hover:bg-red-100 font-medium disabled:opacity-50"

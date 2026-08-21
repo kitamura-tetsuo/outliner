@@ -535,7 +535,7 @@ Run history is not; it belongs to the source's runs.
 
 Every copy arrives **disabled**, and that is the part that does not bend: a
 paste must never start writing to a project's data on a timer the user did not
-ask for. Enabling is a click in the destination's Schedule tab, and the report
+ask for. Enabling is a click on the destination project's schedules page, and the report
 names the rules that came so the click is discoverable. A rule the rewriter
 cannot follow, or one the destination's own validation would reject, is not
 copied at all and is reported the way it always was — recreate it here.

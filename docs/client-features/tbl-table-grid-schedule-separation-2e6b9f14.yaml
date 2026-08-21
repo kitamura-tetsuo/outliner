@@ -1,0 +1,48 @@
+id: FTR-2e6b9f14
+title: Standalone Table, Grid and Schedule entities
+title-ja: Table・Grid・Schedule の独立エンティティ化
+description: 'Table, Grid and Schedule are three independent entities and each has a URL whose subject matches the page. A Table owns schema and data: /tables/<project>/<tableId> shows the schema editor and a raw, editable data browser driven by an implicit and ephemeral `SELECT * FROM <sqlName>`, never a persisted Grid. Opening a Table never creates or selects a Grid; the resolve-or-create bridge (`ensureGridForTable`) is removed, so a Table with zero Grids is fully viewable and editable. The Table page lists the Grids whose `sourceTableId` points at it, as links to /grids/<project>/<gridId>, and the Schedules that reference it, as links to /schedules/<project>/<ruleId> — reference lists, not child lists, and no Grid result is mounted on the Table page. A Grid owns its SELECT, column order, labels, hidden columns, cell component settings and chart over one source Table; /grids/<project>/<gridId> renders exactly that and links back to the source Table instead of owning its schema, with an explicit missing-source state when the Table is gone. A Schedule is a project-level entity: it may reference several Tables (a write target plus whatever its SQL reads), so it is addressed at /schedules/<project>/<ruleId>, listed at /schedules/<project>, and appears in the dependency list of every Table it references. The old Table-nested schedule URL only forwards to the project-level list.'
+category: client
+status: implemented
+components:
+- client/src/components/schedule/TableScheduleReferences.svelte
+- client/src/components/yjstable/TableEntityView.svelte
+- client/src/components/yjstable/TableGrid.svelte
+- client/src/components/yjstable/TableGridReferences.svelte
+- client/src/components/yjstable/YjsTableView.svelte
+- client/src/routes/grids/[project]/[gridId]/+page.svelte
+- client/src/routes/schedules/[project]/+page.svelte
+- client/src/routes/tables/[project]/[tableId]/+page.svelte
+- client/src/routes/tables/[project]/[tableId]/schedule/+page.svelte
+- client/src/services/schedule/scheduleRuleService.ts
+- client/src/services/yjstable/gridDocs.ts
+- client/src/services/yjstable/gridQueryRunner.ts
+- client/src/services/yjstable/tableDependencies.ts
+- client/src/services/yjstable/tableQueryRunner.ts
+acceptance:
+- /grids/<project>/<gridId> renders that Grid's own query, presentation and result
+- /tables/<project>/<tableId> is a page about the Table entity, showing its schema and its raw rows
+- A Grid page links back to its source Table and shows an explicit missing-source state when the Table is gone
+- A Schedule is addressable at the project level and may reference several Tables without one owning it
+- A Table with zero Grid entities is still viewable and editable
+- A public-demo visitor may read the project schedule list but cannot run or delete a rule
+- Edits made in the raw data browser write directly to the Table through the Table write paths
+- Every Table a Schedule references reports it in its dependency/reference list
+- Opening a Table never creates a Grid and never mutates the Grid registry
+- Table data edits propagate to every Grid result and embedded Grid block
+- The Table data browser runs an implicit `SELECT * FROM <sqlName>` and persists no query or presentation state
+- The Table page lists every Grid whose sourceTableId is the Table, as links, without mounting their results
+- The demo occurrences table page shows raw data plus links to both of its Grids
+- The project schedule list follows a table rename made while it is open
+- The table deletion dialog reports Grids and Schedules as dependencies rather than as contents
+- Two Grids over one Table stay independent on their standalone pages
+tests:
+- client/e2e/schedule/sch-schedule-table-references-5d1c8a37.spec.ts
+- client/e2e/tables/tbl-standalone-grid-page-2e6b9f14.spec.ts
+- client/e2e/tables/tbl-table-grid-separation-2e6b9f14.spec.ts
+- client/src/routes/grids/[project]/[gridId]/page.svelte.test.ts
+- client/src/routes/schedules/[project]/page.svelte.test.ts
+- client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
+- client/src/services/yjstable/gridDocs.test.ts
+- client/src/services/yjstable/tableDependencies.test.ts
+- client/src/services/yjstable/tableQueryRunner.test.ts

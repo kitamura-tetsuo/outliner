@@ -9,9 +9,21 @@ interface Props {
     runningRuleId?: string;
     onEdit: (id: string, rule: ScheduleRule) => void;
     onDelete: (id: string) => void;
+    /**
+     * Tables each rule references, keyed by rule id. A Schedule belongs to the
+     * project and may touch several Tables (issue #5012), so this is a list of
+     * links, never a single "owning" table.
+     */
+    tableReferences?: Record<string, { tableId: string; name: string; kind: string; href: string; }[]>;
+    /**
+     * Whether the viewer may mutate. False for a public-demo visitor, who may
+     * read the rules and open one but must not run or delete it. Edit stays
+     * enabled: it only navigates to the rule's own (read-only-gated) page.
+     */
+    canWrite?: boolean;
 }
 
-let { rules, onRunNow, runningRuleId, onEdit, onDelete }: Props = $props();
+let { rules, onRunNow, runningRuleId, onEdit, onDelete, tableReferences, canWrite = true }: Props = $props();
 
 function getHumanReadable(rruleStr: string) {
     try {
@@ -42,7 +54,7 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
 
 <div class="schedule-rule-list">
     {#if rules.length === 0}
-        <p class="text-gray-500 text-sm">No schedule rules defined for this table.</p>
+        <p class="text-gray-500 text-sm">No schedule rules defined.</p>
     {:else}
         <ul class="space-y-3">
             {#each rules as {id, rule} (id)}
@@ -59,18 +71,37 @@ function getNextRun(rruleStr: string, dtstartStr: string) {
                         </div>
                         <div class="space-x-2">
                             <button
-                                class="text-gray-700 hover:text-gray-900 text-sm disabled:opacity-50"
+                                class="text-gray-700 hover:text-gray-900 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                                 onclick={() => onRunNow(id)}
-                                disabled={runningRuleId === id}
+                                disabled={runningRuleId === id || !canWrite}
+                                title={canWrite ? "Runs the saved SQL" : "Run now is disabled for guest access"}
                                 data-testid="schedule-rule-run-now"
                                 data-rule-id={id}
                             >
                                 {runningRuleId === id ? "Running…" : "Run now"}
                             </button>
                             <button class="text-blue-600 hover:text-blue-800 text-sm" onclick={() => onEdit(id, rule)}>Edit</button>
-                            <button class="text-red-600 hover:text-red-800 text-sm" onclick={() => onDelete(id)}>Delete</button>
+                            <button
+                                class="text-red-600 hover:text-red-800 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                onclick={() => onDelete(id)}
+                                disabled={!canWrite}
+                                title={canWrite ? undefined : "Deleting is disabled for guest access"}
+                                data-testid="schedule-rule-delete"
+                            >Delete</button>
                         </div>
                     </div>
+
+                    {#if tableReferences?.[id]?.length}
+                        <div class="text-xs text-gray-500 flex flex-wrap items-baseline gap-x-2 gap-y-1" data-testid="schedule-rule-tables">
+                            <span class="font-medium">Tables:</span>
+                            {#each tableReferences[id] as reference (reference.tableId)}
+                                <span>
+                                    <a class="text-blue-600 hover:underline" href={reference.href} data-reference-kind={reference.kind}>{reference.name}</a>
+                                    <span class="text-gray-400">({reference.kind})</span>
+                                </span>
+                            {/each}
+                        </div>
+                    {/if}
 
                     <div class="text-xs text-gray-500 grid grid-cols-2 gap-2">
                         <div>

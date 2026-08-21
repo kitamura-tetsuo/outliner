@@ -3,16 +3,16 @@ name: tbl-table-schedule-rule-ui
 title: Table Schedule Rule UI Feature
 status: implemented
 category: client
-description: Implements the client-side UI for viewing, creating, editing, and deleting schedule rules for tables using Yjs.
+description: Implements the client-side UI for viewing, creating, editing, and deleting a project's schedule rules using Yjs. Schedules are project-level entities and reference tables; no table owns them.
 dependencies:
 - '#3950'
-testInstructions: '1. Open a project and navigate to a page containing a Yjs table block.
+testInstructions: '1. Open a project and navigate to /schedules/<project>.
 
-  2. Click the "Schedule" toggle in the table views toolbar.
+  2. Verify the schedule rule list appears (initially empty or showing existing rules).
 
-  3. Verify the schedule panel appears and shows "Schedule Rules" list (initially empty or showing existing rules).
+  3. Verify no table view offers a Schedule panel of its own.
 
-  4. Click "+ New Rule" and verify the rule editor appears.
+  4. Click "+ New Rule" and verify the rule editor page opens at /schedules/<project>/<ruleId>.
 
   5. Fill out the rule form with valid schedule and SQL (e.g. `INSERT INTO...`).
 
@@ -28,5 +28,5 @@ tests:
 - client/e2e/core/sch-schedule-rule-run-now-3a4b5c6d.spec.ts
 - client/e2e/core/tbl-table-schedule-rule-ui.spec.ts
 - client/e2e/schedule/sch-schedule-rule-run-now-on-edit-page-9a8b7c6d.spec.ts
-- client/e2e/schedule/sch-table-schedule-indicator-8f579b32.spec.ts
+- client/e2e/schedule/sch-schedule-table-references-5d1c8a37.spec.ts
 - client/src/components/schedule/ScheduleRuleList.test.ts

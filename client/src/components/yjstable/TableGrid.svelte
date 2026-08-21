@@ -25,8 +25,15 @@ import { cellComponentFor } from "./cellComponents";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 
 interface Props {
-    /** The Grid definition being rendered (owns column order + labels + hidden). */
-    grid: GridHandles;
+    /**
+     * The Grid definition being rendered (owns column order + labels + hidden).
+     * Omitted by the Table's own raw-data browser, which has no Grid entity:
+     * there a column reorder is ephemeral (`onColumnOrderChange`) and nothing
+     * about the presentation is persisted (issue #5012).
+     */
+    grid?: GridHandles;
+    /** Receives a reorder when there is no Grid to persist it into. */
+    onColumnOrderChange?: (order: string[]) => void;
     /** Source Table handles: writes for editable cells go here. */
     handles: TableHandles;
     schema: ParsedTableSchema | undefined;
@@ -46,7 +53,20 @@ interface Props {
     session: RelationResolver;
 }
 
-let { grid, handles, schema, query, result, componentTypes, columnOrder, columnLabels, hiddenColumns, loading = false, session }: Props = $props();
+let {
+    grid,
+    onColumnOrderChange,
+    handles,
+    schema,
+    query,
+    result,
+    componentTypes,
+    columnOrder,
+    columnLabels,
+    hiddenColumns,
+    loading = false,
+    session,
+}: Props = $props();
 
 let rowToDelete: string | null = $state(null);
 let isConfirmDialogOpen: boolean = $state(false);
@@ -65,7 +85,11 @@ function writeVisibleColumnOrder(visibleOrder: string[]) {
     const fullOrder = effectiveColumns.map(column =>
         hiddenColumns[column] === true ? column : visibleOrder[visibleIndex++]
     );
-    writeColumnOrder(grid, fullOrder);
+    if (grid) {
+        writeColumnOrder(grid, fullOrder);
+        return;
+    }
+    onColumnOrderChange?.(fullOrder);
 }
 
 /** Presentation label for a column; falls back to the SQL name. */

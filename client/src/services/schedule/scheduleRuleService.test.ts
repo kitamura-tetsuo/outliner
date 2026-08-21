@@ -1,9 +1,10 @@
 import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
+import { createTable } from "../yjstable/tableDocs";
 import {
     createScheduleRule,
     deleteScheduleRule,
-    summarizeTableSchedules,
+    findSchedulesReferencingTable,
     updateScheduleRule,
 } from "./scheduleRuleService";
 
@@ -44,62 +45,62 @@ describe("scheduleRuleService", () => {
         expect(project.schedules.get(ruleId)).toBeUndefined();
     });
 
-    it("should correctly summarize table schedules", () => {
+    // Issue #5012: a Schedule belongs to the project. Its relationship to a
+    // Table is a reference — the Table it writes to, or any Table its SQL
+    // names — and the same rule shows up for every Table it touches.
+    it("reports the Schedules that reference a Table, by kind", () => {
         const project = Project.createInstance("Test Project");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const auditId = createTable(project.ydoc, "Audit", "audit");
 
-        // No rules
-        let summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 0, hasEnabled: false });
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([]);
 
-        // Rules for another table only
+        // Writes into audit, reads tasks: one rule, two referenced Tables,
+        // neither of them its owner.
+        const ruleId = createScheduleRule(project, {
+            name: "Nightly audit",
+            targetTableId: auditId,
+            sql: "INSERT INTO audit (id) SELECT id FROM tasks",
+            rrule: "FREQ=DAILY",
+        });
+
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([
+            { ruleId, ruleName: "Nightly audit", kind: "write-target", enabled: true },
+        ]);
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([
+            { ruleId, ruleName: "Nightly audit", kind: "sql-reference", enabled: true },
+        ]);
+
+        // A rule against an unrelated Table never appears.
         createScheduleRule(project, {
-            targetTableId: "table2",
-            sql: "INSERT",
+            name: "Unrelated",
+            targetTableId: "some-other-table",
+            sql: "INSERT INTO elsewhere (id) VALUES (1)",
             rrule: "FREQ=DAILY",
-            enabled: true,
         });
-        summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 0, hasEnabled: false });
+        expect(findSchedulesReferencingTable(project, tasksId)).toHaveLength(1);
 
-        // One enabled rule
-        const ruleId1 = createScheduleRule(project, {
-            targetTableId: "table1",
-            sql: "INSERT",
-            rrule: "FREQ=DAILY",
-            enabled: true,
-        });
-        summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 1, hasEnabled: true });
+        // Disabling a rule keeps the reference and reports it as off.
+        updateScheduleRule(project, ruleId, { enabled: false });
+        expect(findSchedulesReferencingTable(project, tasksId)[0].enabled).toBe(false);
 
-        // Several rules all disabled
-        updateScheduleRule(project, ruleId1, { enabled: false });
-        createScheduleRule(project, {
-            targetTableId: "table1",
-            sql: "INSERT",
-            rrule: "FREQ=DAILY",
-            enabled: false,
-        });
-        summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 2, hasEnabled: false });
+        // Deleting the rule removes it from both Tables' reference lists.
+        deleteScheduleRule(project, ruleId);
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([]);
+        expect(findSchedulesReferencingTable(project, auditId)).toEqual([]);
+    });
 
-        // Mixed enabled/disabled
-        createScheduleRule(project, {
-            targetTableId: "table1",
-            sql: "INSERT",
+    it("names an untitled Schedule rather than reporting an empty reference", () => {
+        const project = Project.createInstance("Test Project");
+        const tasksId = createTable(project.ydoc, "Tasks", "tasks");
+        const ruleId = createScheduleRule(project, {
+            targetTableId: tasksId,
+            sql: "INSERT INTO tasks (id) VALUES (1)",
             rrule: "FREQ=DAILY",
-            enabled: true,
         });
-        summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 3, hasEnabled: true });
 
-        // Rule with enabled unset
-        createScheduleRule(project, {
-            targetTableId: "table1",
-            sql: "INSERT",
-            rrule: "FREQ=DAILY",
-            enabled: undefined,
-        });
-        summary = summarizeTableSchedules(project, "table1");
-        expect(summary).toEqual({ total: 4, hasEnabled: true }); // treated as enabled by default in createScheduleRule
+        expect(findSchedulesReferencingTable(project, tasksId)).toEqual([
+            { ruleId, ruleName: "Untitled Schedule", kind: "write-target", enabled: true },
+        ]);
     });
 });

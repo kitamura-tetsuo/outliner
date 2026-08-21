@@ -11,7 +11,9 @@ test.describe("Public demo standalone routes", () => {
     test("the demo Sales table opens without signing in", async ({ page }) => {
         await page.goto("/tables/demo/demo-table-sales");
 
-        const tableView = page.getByTestId("yjs-table-view").first();
+        // The Table page shows the Table entity itself: raw rows through the
+        // implicit SELECT *, never a Grid presentation (issue #5012).
+        const tableView = page.getByTestId("table-entity-view").first();
         await expect(tableView).toBeVisible({ timeout: 30000 });
         await expect(tableView.getByTestId("yjs-table-grid").locator("th", { hasText: "revenue" }))
             .toBeVisible({ timeout: 30000 });
@@ -25,16 +27,37 @@ test.describe("Public demo standalone routes", () => {
     test("the demo Routines table opens without signing in", async ({ page }) => {
         await page.goto("/tables/demo/demo-table-routine-templates");
 
-        await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId("table-entity-view").first()).toBeVisible({ timeout: 30000 });
         await expect(page.getByText("Please log in to view this table.")).not.toBeVisible();
     });
 
-    test("the demo table's schedule list opens without signing in", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-templates/schedule");
+    test("the project's schedule list opens without signing in", async ({ page }) => {
+        await page.goto("/schedules/demo");
 
         await expect(page.getByText("Public demo / Guest access")).toBeVisible({ timeout: 30000 });
         await expect(page.getByText("Please log in.")).not.toBeVisible();
         await expect(page.getByText("Checking authentication info...")).not.toBeVisible();
+    });
+
+    // The Table-nested schedule URL is gone as an identity: Schedules are
+    // project entities, so the old address only forwards (issue #5012).
+    test("the retired table-nested schedule URL forwards to the project schedules", async ({ page }) => {
+        await page.goto("/tables/demo/demo-table-routine-templates/schedule");
+
+        await expect(page).toHaveURL(/\/schedules\/demo$/, { timeout: 30000 });
+        await expect(page.getByText("Public demo / Guest access")).toBeVisible({ timeout: 30000 });
+    });
+
+    test("a demo Grid opens on its own page without signing in", async ({ page }) => {
+        await page.goto("/grids/demo/demo-table-sales-grid");
+
+        const gridView = page.getByTestId("yjs-table-view").first();
+        await expect(gridView).toBeVisible({ timeout: 30000 });
+        await expect(page.getByTestId("grid-source-table-link")).toHaveAttribute(
+            "href",
+            "/tables/demo/demo-table-sales",
+        );
+        await expect(page.getByText("Public demo / Guest access")).toBeVisible();
     });
 });
 
@@ -65,8 +88,8 @@ test.describe("Public demo standalone routes after signing out", () => {
         await expect(grid).toBeVisible();
     });
 
-    test("the demo table's schedule list survives an anonymous auth resolution", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-templates/schedule");
+    test("the project's schedule list survives an anonymous auth resolution", async ({ page }) => {
+        await page.goto("/schedules/demo");
 
         const banner = page.getByText("Public demo / Guest access");
         await expect(banner).toBeVisible({ timeout: 30000 });

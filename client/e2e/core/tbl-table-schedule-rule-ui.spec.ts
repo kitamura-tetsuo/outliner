@@ -5,72 +5,58 @@ registerCoverageHooks();
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
-test.describe("Table Schedule Rule UI", () => {
+// Schedules are project-level entities (issue #5012): they are created, listed
+// and deleted from /schedules/<project>, not from a panel inside a table view.
+test.describe("Project Schedule Rule UI", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
     });
 
-    test("should display schedule toggle and allow creating schedule rules", async ({ page }) => {
-        // Find an item to add a table to
+    test("creates, edits and deletes a schedule rule from the project schedules page", async ({ page }) => {
+        // A schedule needs a table to write into, so make one first.
         const item = page.locator(".outliner-item").last();
         await item.locator(".item-content").click({ force: true });
 
-        // Use TestHelpers to insert a table block
-        // Insert a Database block from the toolbar
         const addDatabaseBtn = page.locator(".add-database-btn").first();
         await expect(addDatabaseBtn).toBeVisible({ timeout: 10000 });
         await addDatabaseBtn.click();
 
-        // Wait for table to appear
         const tableBlock = page.locator("[data-testid='yjs-table-block']").first();
         await expect(tableBlock).toBeVisible();
-
-        // Wait for new table form to appear
         await page.waitForSelector("[data-testid='yjs-table-create-panel']");
         await page.click("[data-testid='yjs-table-create']");
-
-        // Wait for the grid to appear, meaning adapter is ready
         await expect(tableBlock.locator("[data-testid='yjs-table-toggle-grid']")).toBeVisible();
 
-        // Find and click the Schedule toggle
-        const scheduleToggle = tableBlock.locator("[data-testid='yjs-table-toggle-schedule']");
-        await expect(scheduleToggle).toBeVisible();
-        await scheduleToggle.click();
+        // The table view must not offer any Schedule surface of its own.
+        await expect(tableBlock.locator("[data-testid='yjs-table-toggle-schedule']")).toHaveCount(0);
 
-        // Check if Schedule Panel appears
-        const schedulePanel = tableBlock.locator("[data-testid='yjs-table-schedule-panel']");
-        await expect(schedulePanel).toBeVisible();
+        const projectSegment = new URL(page.url()).pathname.split("/")[1];
+        await page.goto(`/schedules/${projectSegment}`);
 
-        // Find "+ New Rule" button and click it
-        const newRuleBtn = schedulePanel.locator("[data-testid='yjs-table-schedule-create']");
-        await expect(newRuleBtn).toBeVisible();
-        await newRuleBtn.click();
+        const list = page.getByTestId("project-schedule-list");
+        await expect(list).toBeVisible({ timeout: 30000 });
+        await expect(list.locator("text=No schedule rules defined")).toBeVisible();
 
-        // Check if editor appears
-        await expect(schedulePanel.locator("text=SQL Statement")).toBeVisible();
+        // Creating goes straight to the rule's own page.
+        await page.getByTestId("project-schedule-create").click();
+        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page.locator("text=SQL Statement")).toBeVisible({ timeout: 15000 });
 
-        // Create rule
-        const saveBtn = schedulePanel.locator("button:has-text('Save')");
-        await expect(saveBtn).toBeVisible();
-        await saveBtn.click();
+        // The target table is a reference the rule picks, not an owner.
+        await expect(page.getByTestId("target-table-select")).toBeVisible();
 
-        // Check if rule is in the list
-        await expect(schedulePanel.locator("text=every day")).toBeVisible();
+        await page.goto(`/schedules/${projectSegment}`);
+        await expect(list.locator("text=every day")).toBeVisible({ timeout: 30000 });
 
-        // Edit rule
-        const editBtn = schedulePanel.locator("button:has-text('Edit')").first();
-        await editBtn.click();
-        await expect(schedulePanel.locator("text=SQL Statement")).toBeVisible();
+        // Edit navigates to the rule page; the list is only a list.
+        await list.locator("button:has-text('Edit')").first().click();
+        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
 
-        const cancelBtn = schedulePanel.locator("button:has-text('Cancel')");
-        await cancelBtn.click();
+        await page.goto(`/schedules/${projectSegment}`);
+        await expect(list.locator("text=every day")).toBeVisible({ timeout: 30000 });
 
-        // Delete rule
         page.on("dialog", dialog => dialog.accept());
-        const deleteBtn = schedulePanel.locator("button:has-text('Delete')").first();
-        await deleteBtn.click();
-
-        // Verify deletion
-        await expect(schedulePanel.locator("text=No schedule rules defined")).toBeVisible();
+        await list.locator("button:has-text('Delete')").first().click();
+        await expect(list.locator("text=No schedule rules defined")).toBeVisible({ timeout: 15000 });
     });
 });

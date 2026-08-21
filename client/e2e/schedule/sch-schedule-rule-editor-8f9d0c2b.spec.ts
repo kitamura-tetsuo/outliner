@@ -24,18 +24,17 @@ test.describe("Schedule Rule Editor UI", () => {
         await page.getByTestId("yjs-table-create").first().click();
 
         await page.waitForSelector("[data-testid=yjs-table-view]");
-        const tableNameText = await page.textContent("[data-testid=yjs-table-name]");
-        const tableName = tableNameText?.trim() || "";
 
         const url = new URL(page.url());
         const pathname = url.pathname;
         const projectSegment = pathname.split("/")[1];
 
-        // Navigate to the table schedule page
-        await page.goto(`/tables/${projectSegment}/${encodeURIComponent(tableName)}/schedule`);
+        // Schedules live at the project level (issue #5012): a table does not
+        // own them, so the list is addressed by project alone.
+        await page.goto(`/schedules/${projectSegment}`);
 
-        await page.waitForTimeout(3000);
-        await expect(page.locator("h1")).toBeVisible({ timeout: 15000 });
+        await expect(page.getByTestId("project-schedule-list")).toBeVisible({ timeout: 30000 });
+        await expect(page.locator("h1")).toHaveText("Schedules");
 
         // Open the editor
         // Note: The UI for the table schedule seems to have issues locating "+ New Rule" in some headless envs
