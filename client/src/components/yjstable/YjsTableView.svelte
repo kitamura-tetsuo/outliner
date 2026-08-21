@@ -204,7 +204,16 @@ onDestroy(() => {
              which owns the schema and the data. -->
         {#if tableName}
             {#if sourceTableHref}
-                <a class="table-name table-name-link" data-testid="yjs-table-name" href={sourceTableHref}>{tableName}</a>
+                <!-- draggable=false: a native link drag would pre-empt the
+                     text selection, so the name would stop being selectable
+                     the moment it became a link (regression guarded by
+                     tbl-grid-text-is-selectable-4669a11e). -->
+                <a
+                    class="table-name table-name-link"
+                    data-testid="yjs-table-name"
+                    href={sourceTableHref}
+                    draggable="false"
+                >{tableName}</a>
             {:else}
                 <span class="table-name" data-testid="yjs-table-name">{tableName}</span>
             {/if}
@@ -358,6 +367,8 @@ onDestroy(() => {
 .table-name-link {
     color: #2563eb;
     text-decoration: none;
+    /* The name stays ordinary selectable text even though it is a link. */
+    user-select: text;
 }
 
 .table-name-link:hover {
