@@ -1277,10 +1277,6 @@
             structuredItems?: ClipboardItem[];
         };
 
-        const applyStructuredItem = (item: Item, index: number) => {
-            applyClipboardMetadata(item, structuredItems?.[index]);
-        };
-
         // Debug info
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
             logger.debug(`handlePasteMultiItem called with lines:`, lines);
@@ -1349,9 +1345,12 @@
         let lastItemId = firstItemId;
         const run = () => {
             baseOriginal.updateText(splice.firstText);
-            applyStructuredItem(baseOriginal, 0);
+            // Same placement rule as the selection paths (#5015): pasting a
+            // block never re-types the row the caret is in, so a row that still
+            // holds text keeps it and the block lands beside it.
+            const runBase = hostForPastedItem(baseOriginal, structuredItems?.[0]);
             lastItemId = insertPastedRun(
-                baseOriginal,
+                runBase,
                 [splice.firstText, ...splice.siblingTexts],
                 layout.depths,
                 structuredItems,

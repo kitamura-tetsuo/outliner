@@ -659,6 +659,11 @@ export class Item {
     }
 
     insertTextAt(offset: number, text: string) {
+        // Typing goes through here, not through `updateText` (CursorEditor
+        // inserts one keystroke at a time), so the text-ownership rule (#5015)
+        // has to be enforced on this path too: a Grid, Calendar or Layout node
+        // owns no outline text, and a keystroke aimed at one writes nothing.
+        if (!ownsOutlineText(this)) return;
         const t = this.value.get("text") as Y.Text;
         if (t && text) {
             this.ydoc.transact(() => {
@@ -681,12 +686,12 @@ export class Item {
     updateText(text: string) {
         const t = this.value.get("text") as Y.Text;
         if (t) {
-            // A visual node owns no outline text (#5015). Every write is
-            // funnelled here — typing, paste, programmatic seeding — so
-            // collapsing it to the empty string in one place is what keeps
-            // "typing into a Grid must not create hidden item text" true
-            // without a guard at each call site. Any stale text a node already
-            // carries is cleared the first time something tries to write.
+            // A visual node owns no outline text (#5015). Whole-value writes —
+            // paste, programmatic seeding, a rename — arrive here and collapse
+            // to the empty string, which also clears any stale text the node
+            // already carries. Incremental keystrokes take `insertTextAt`
+            // instead and are refused there; between the two, no write path
+            // can leave hidden text on a block.
             if (!ownsOutlineText(this)) text = "";
             const current = String(t);
             if (current === text) return;

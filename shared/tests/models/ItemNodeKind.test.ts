@@ -20,13 +20,43 @@ describe("Item node kinds (#5015)", () => {
         expect(item.text).toBe("Upcoming tasks");
     });
 
+    /**
+     * The `text` getter masks a visual node's stored value, so a test that only
+     * reads it cannot tell "nothing was written" from "something was written
+     * and hidden". These assertions go to the Y.Text underneath.
+     */
+    function storedText(item: Item): string {
+        return String(item.yMap.get("text"));
+    }
+
     it("refuses to write outline text onto a Grid, Calendar or Layout node", () => {
         for (const componentType of ["yjstable", "calendar", "layout"]) {
             const item = pageItem();
             item.componentType = componentType;
             item.updateText("a caption that must not stick");
             expect(item.text).toBe("");
+            expect(storedText(item)).toBe("");
         }
+    });
+
+    it("refuses a keystroke on a visual node, the path typing actually takes", () => {
+        for (const componentType of ["yjstable", "calendar", "layout"]) {
+            const item = pageItem();
+            item.componentType = componentType;
+            // CursorEditor inserts one character at a time through insertTextAt,
+            // never through updateText, so this is the path that would leave
+            // hidden text if it were unguarded.
+            for (const character of "caption") item.insertTextAt(0, character);
+            expect(storedText(item)).toBe("");
+            expect(item.text).toBe("");
+        }
+    });
+
+    it("still accepts keystrokes on a Text node", () => {
+        const item = pageItem();
+        item.insertTextAt(0, "ab");
+        item.insertTextAt(2, "c");
+        expect(item.text).toBe("abc");
     });
 
     it("reads a visual node as text-less even when stale text is already stored", () => {
@@ -35,8 +65,11 @@ describe("Item node kinds (#5015)", () => {
         item.componentType = "yjstable";
 
         expect(item.text).toBe("");
-        // And the first write clears the stale value rather than preserving it.
-        item.updateText("");
+        // The stale value is still down there until something writes...
+        expect(storedText(item)).toBe("text written while it was still a Text node");
+        // ...and the first write clears it rather than preserving it.
+        item.updateText("anything");
+        expect(storedText(item)).toBe("");
         expect(item.text).toBe("");
     });
 

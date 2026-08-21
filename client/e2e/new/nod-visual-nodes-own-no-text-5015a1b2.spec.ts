@@ -56,15 +56,27 @@ test.describe("FTR-5015a1b2: visual nodes own no outline text", () => {
 
         const block = page.locator('.outliner-item[data-node-kind="grid"]');
         await expect(block).toHaveCount(1, { timeout: 15000 });
-        await block.click({ position: { x: 4, y: 4 } });
-        await page.keyboard.type("caption");
-        await page.waitForTimeout(300);
+        const blockId = await block.getAttribute("data-item-id");
 
-        const storedText = await page.evaluate(() => {
-            const items = (globalThis as any).generalStore.currentPage.items;
-            return String(items.at(1).text ?? "");
-        });
-        expect(storedText).toBe("");
+        // Read the Y.Text itself throughout, not the `text` getter: the getter
+        // masks a visual node's stored value, so it would report "" whether or
+        // not a keystroke actually landed.
+        const storedText = () =>
+            page.evaluate(() => String((globalThis as any).generalStore.currentPage.items.at(1).yMap.get("text")));
+        // This row was stamped as a block while it still held seeded text, the
+        // stale-data case the model tolerates.
+        const before = await storedText();
+
+        // Put the caret on the block the way the slash-command flow leaves it,
+        // then type: keystrokes take Item.insertTextAt, not updateText.
+        await TestHelpers.setCursor(page, blockId!, 0);
+        await TestHelpers.focusGlobalTextarea(page);
+        await page.keyboard.type("caption");
+        await page.waitForTimeout(500);
+
+        // Not one character of it reached the node.
+        expect(await storedText()).toBe(before);
+        expect(await storedText()).not.toContain("caption");
         await expect(block).not.toContainText("caption");
     });
 });
