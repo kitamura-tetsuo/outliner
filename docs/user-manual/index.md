@@ -245,7 +245,8 @@ Click the **Add Database** button in the top navigation bar.
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
 - **New Table:** enter a table name, select a preset (e.g., Table, Tasks, or Habits), and click **Create**. The SQL name used in queries is generated automatically and displayed below the input fields.
-- **Use an existing table:** switch to the **Existing Table** tab, select a table from the list, and click **Select**.
+- **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
+- **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
 Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
 
