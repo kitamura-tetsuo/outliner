@@ -7,9 +7,18 @@ registerCoverageHooks();
  */
 import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
-import { configureItemsCalendar } from "./helpers/calendarIndicatorSetup";
+import { configureItemsCalendar, outlineItemIds, scheduleOutlineItem } from "./helpers/calendarIndicatorSetup";
 
 test.describe("FTR-7b2f19ac: an item on two calendars, and an all-day item", () => {
+    /**
+     * Every row is addressed by id: each calendar block is a new row created
+     * beside its anchor (#5015), so positions shift as the test builds them.
+     */
+    let anchorOneId = "";
+    let anchorTwoId = "";
+    let timedId = "";
+    let allDayId = "";
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, [
@@ -20,35 +29,36 @@ test.describe("FTR-7b2f19ac: an item on two calendars, and an all-day item", () 
         ]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
-        await page.evaluate(() => {
-            const items = (globalThis as any).generalStore.currentPage.items;
-            const today = new Date().toISOString().slice(0, 10);
-            items.at(2).start = `${today}T09:00:00.000Z`;
-            items.at(2).allDay = false;
-            items.at(2).duration = "PT30M";
-            // An all-day item stores a floating date, projected as `start_on`.
-            items.at(3).start = today;
-            items.at(3).allDay = true;
+        [anchorOneId, anchorTwoId, timedId, allDayId] = await outlineItemIds(page);
+        const today = new Date().toISOString().slice(0, 10);
+        await scheduleOutlineItem(page, timedId, {
+            start: `${today}T09:00:00.000Z`,
+            allDay: false,
+            duration: "PT30M",
         });
+        // An all-day item stores a floating date, projected as `start_on`.
+        await scheduleOutlineItem(page, allDayId, { start: today, allDay: true });
     });
 
     test("shows every calendar membership, and an all-day item as a date", async ({ page }) => {
+        const row = (id: string) => page.locator(`.outliner-item[data-item-id="${id}"]`);
+
         // Two fixed, DST-free zones, so the expected wall-clock times below are
         // stable whatever the runner's own zone and time of year: Africa/Abidjan
         // is UTC+00 all year, Asia/Tokyo UTC+09. ("UTC" itself is not among the
         // zones `Intl.supportedValuesOf` offers, so it is not in the picker.)
-        await configureItemsCalendar(page, { name: "Team", timezone: "Africa/Abidjan", itemIndex: 1 });
-        await configureItemsCalendar(page, {
+        await configureItemsCalendar(page, { name: "Team", timezone: "Africa/Abidjan", item: row(anchorOneId) });
+        const personalView = await configureItemsCalendar(page, {
             name: "Personal",
             timezone: "Asia/Tokyo",
             startColumn: "start_on",
-            itemIndex: 2,
+            item: row(anchorTwoId),
         });
 
         // The timed item is on "Team" (start_at) only; the all-day one is on
         // "Personal" (start_on) only — and both indicators must appear.
-        const timedItem = page.locator(".outliner-item").nth(3);
-        const allDayItem = page.locator(".outliner-item").nth(4);
+        const timedItem = row(timedId);
+        const allDayItem = row(allDayId);
         const timedIndicator = timedItem.locator('[data-testid^="calendar-indicator-"]');
         const allDayIndicator = allDayItem.locator('[data-testid^="calendar-indicator-"]');
         await expect(timedIndicator).toBeVisible({ timeout: 30000 });
@@ -62,7 +72,6 @@ test.describe("FTR-7b2f19ac: an item on two calendars, and an all-day item", () 
 
         // Widen the second calendar so it also matches the timed item: the
         // source item must then advertise *both* memberships, not one.
-        const personalView = page.locator(".outliner-item").nth(2).getByTestId("calendar-view");
         await personalView.getByTestId("calendar-role-roleStart").selectOption("start_at");
 
         await expect(timedIndicator).toHaveAttribute("data-calendar-count", "2", { timeout: 30000 });

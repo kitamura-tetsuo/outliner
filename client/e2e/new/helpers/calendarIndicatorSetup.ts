@@ -19,6 +19,12 @@ export interface ItemsCalendarOptions {
      * floating `start_on` an all-day item is stored in.
      */
     startColumn?: "start_at" | "start_on";
+    /**
+     * The outline row to create the block from. Prefer this over `itemIndex`:
+     * creating a block inserts a row (#5015), so a position taken before the
+     * first block was created no longer addresses the same row afterwards.
+     */
+    item?: Locator;
     /** Which `.outliner-item` row to create the block from. Defaults to the first item under the title. */
     itemIndex?: number;
 }
@@ -28,7 +34,7 @@ export interface ItemsCalendarOptions {
  * and assign the title/start/all-day/duration roles.
  */
 export async function configureItemsCalendar(page: Page, options: ItemsCalendarOptions): Promise<Locator> {
-    const item = page.locator(".outliner-item").nth(options.itemIndex ?? 1);
+    const item = options.item ?? page.locator(".outliner-item").nth(options.itemIndex ?? 1);
     // Node kinds are immutable (#5015): the block is a new row created by the
     // slash command, not this row converted - so everything below is scoped to
     // the Calendar node it returns.
@@ -63,4 +69,43 @@ export async function configureItemsCalendar(page: Page, options: ItemsCalendarO
     await view.getByTestId("calendar-role-roleDuration").selectOption("duration");
 
     return view;
+}
+
+/** The ids of the page's top-level outline rows, in order. */
+export async function outlineItemIds(page: Page): Promise<string[]> {
+    return page.evaluate(() => {
+        const items = (globalThis as any).generalStore.currentPage.items;
+        const ids: string[] = [];
+        for (let index = 0; index < items.length; index++) ids.push(String(items.at(index).id));
+        return ids;
+    });
+}
+
+export interface SchedulePatch {
+    /** An ISO instant, a plain date for an all-day item, or `null` to clear. */
+    start?: string | null;
+    allDay?: boolean;
+    /** An ISO duration, or `null` to clear. */
+    duration?: string | null;
+}
+
+/**
+ * Write schedule fields onto the row with `itemId`.
+ *
+ * Rows are addressed by id rather than position because creating a block
+ * inserts a row (#5015), which shifts every index after it.
+ */
+export async function scheduleOutlineItem(page: Page, itemId: string, patch: SchedulePatch): Promise<void> {
+    await page.evaluate(({ itemId, patch }) => {
+        const items = (globalThis as any).generalStore.currentPage.items;
+        for (let index = 0; index < items.length; index++) {
+            const item = items.at(index);
+            if (String(item.id) !== itemId) continue;
+            if (patch.start !== undefined) item.start = patch.start ?? undefined;
+            if (patch.allDay !== undefined) item.allDay = patch.allDay;
+            if (patch.duration !== undefined) item.duration = patch.duration ?? undefined;
+            return;
+        }
+        throw new Error(`No outline item with id ${itemId}`);
+    }, { itemId, patch });
 }

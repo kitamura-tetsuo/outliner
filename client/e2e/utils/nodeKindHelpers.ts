@@ -33,6 +33,11 @@ const NODE_KIND: Record<BlockCommand, string> = {
  */
 export async function createBlockFromItem(page: Page, item: Locator, command: BlockCommand): Promise<Locator> {
     await expect(item).toBeVisible({ timeout: 10000 });
+    const kindSelector = `.outliner-item[data-node-kind="${NODE_KIND[command]}"]`;
+    // Which blocks of this kind the page already had, so the one created below
+    // can be told apart from them — a spec may build several.
+    const existing = new Set(await blockIds(page, kindSelector));
+
     await item.locator(".item-text").click();
     await page.waitForTimeout(300);
     await page.keyboard.press("End");
@@ -42,9 +47,22 @@ export async function createBlockFromItem(page: Page, item: Locator, command: Bl
     await expect(option).toBeVisible({ timeout: 10000 });
     await page.keyboard.press("Enter");
 
-    const block = page.locator(`.outliner-item[data-node-kind="${NODE_KIND[command]}"]`).first();
+    let createdId: string | undefined;
+    await expect.poll(async () => {
+        createdId = (await blockIds(page, kindSelector)).find(id => !existing.has(id));
+        return createdId ?? "";
+    }, { timeout: 15000 }).not.toBe("");
+
+    const block = page.locator(`.outliner-item[data-item-id="${createdId}"]`);
     await expect(block).toBeVisible({ timeout: 15000 });
     return block;
+}
+
+/** The `data-item-id`s of every rendered row matching `selector`. */
+async function blockIds(page: Page, selector: string): Promise<string[]> {
+    return page.locator(selector).evaluateAll(elements =>
+        elements.map(element => element.getAttribute("data-item-id") ?? "")
+    );
 }
 
 /**

@@ -288,14 +288,21 @@ export async function copyGridHosts(page: Page): Promise<void> {
     const startIndex = Math.max(0, indexes[0] - 1);
     const start = allIds[startIndex];
     const end = allIds[indexes[indexes.length - 1]];
-    const endText = await page.locator(`.outliner-item[data-item-id="${end}"] .item-text`).textContent();
+    // The selection has to reach the end of the last host's own text. A Grid
+    // host owns no outline text (#5015) and so renders no `.item-text` at all:
+    // its only offset is 0, and the copy still takes the whole block because a
+    // text-less node has no interior for a selection to stop short of.
+    const endTextNode = page.locator(`.outliner-item[data-item-id="${end}"] .item-text`);
+    const endOffset = await endTextNode.count() > 0
+        ? (await endTextNode.textContent())?.length ?? 0
+        : 0;
     await page.locator("textarea.global-textarea").focus();
     await page.evaluate(({ startId, endId, endOffset }) => {
         // eslint-disable-next-line no-restricted-globals
         const editor = (window as any).editorOverlayStore;
         editor.clearSelections();
         editor.setSelection({ startItemId: startId, startOffset: 0, endItemId: endId, endOffset, userId: "local" });
-    }, { startId: start, endId: end, endOffset: endText?.length ?? 0 });
+    }, { startId: start, endId: end, endOffset });
     await page.keyboard.press("Control+c");
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 })
         .not.toBe("");

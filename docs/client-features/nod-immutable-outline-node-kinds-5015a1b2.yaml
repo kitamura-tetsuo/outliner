@@ -22,6 +22,7 @@ services:
 - client/src/stores/CommandPaletteStore.svelte.ts
 - client/src/lib/TreeDnD.ts
 - client/src/lib/KeyEventHandler.ts
+- client/src/lib/multiLinePaste.ts
 - client/src/lib/yjs/service.ts
 tests:
 - client/e2e/new/nod-kind-tree-constraints-5015a1b2.spec.ts
@@ -30,6 +31,7 @@ tests:
 - client/src/components/layout/LayoutBlock.test.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
 - client/src/lib/TreeDnD.nodeKind.test.ts
+- client/src/lib/multiLinePaste.test.ts
 - client/src/lib/yjs/service.nodeKind.test.ts
 - client/src/services/clipboard/itemClipboard.test.ts
 - client/src/services/outline/visualNodePlacement.test.ts
@@ -51,6 +53,7 @@ acceptance:
 - Embedded Grid, Calendar and Layout functionality is unchanged by the removal of item text and type conversion
 - Grid nodes cannot accept children
 - Layout accepts Grid and Calendar children, rejects ordinary Text children, and nested Layout stays invalid
+- Pasting a copied block creates it as its own node, and any text after the caret stays on a Text node beside it rather than being written into one that owns none
 - Pasting a payload that gives a visual node outline text or children is refused
 - Remove layout / Unwrap still moves the visual children to the Layout's parent, in order, with their bindings intact
 - Slash replacement never discards text the user typed beside the command, nor a node's children
