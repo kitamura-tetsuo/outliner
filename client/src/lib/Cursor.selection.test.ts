@@ -6,6 +6,27 @@ import { Cursor } from "./Cursor";
 // Helper to manage mock selection state
 let mockSelection: import("../stores/EditorOverlayStore.svelte.ts").SelectionRange | undefined = undefined;
 
+/**
+ * A text selection as the store stores it: the flat offsets a caller states, plus the
+ * endpoints they mean (#5025).
+ */
+function textSelectionFixture(
+    range: {
+        startItemId: string;
+        startOffset: number;
+        endItemId: string;
+        endOffset: number;
+        isReversed?: boolean;
+        userId?: string;
+    },
+): import("../stores/EditorOverlayStore.svelte.ts").SelectionRange {
+    return {
+        ...range,
+        start: { kind: "text", itemId: range.startItemId, offset: range.startOffset },
+        end: { kind: "text", itemId: range.endItemId, offset: range.endOffset },
+    };
+}
+
 // Mocks for stores
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
@@ -30,8 +51,9 @@ vi.mock("../stores/EditorOverlayStore.svelte", () => ({
         clearCursorAndSelection: vi.fn(),
         clearSelectionForUser: vi.fn(),
         setSelection: vi.fn((sel) => {
-            // Update the mock selection when setSelection is called
-            mockSelection = { ...sel };
+            // Update the mock selection when setSelection is called. The real store turns
+            // whatever form the caller used into endpoints (#5025), so the mock does too.
+            mockSelection = textSelectionFixture(sel);
             return "selection-id";
         }),
         selections: {},
@@ -156,14 +178,14 @@ describe("Cursor Selection Reproduction", () => {
             const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             // Initial selection: 0->1
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
@@ -182,14 +204,14 @@ describe("Cursor Selection Reproduction", () => {
             const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             // Initial selection: 2->1 (reversed)
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 2,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 1;
 
             cursor.extendSelectionRight();
@@ -249,14 +271,14 @@ describe("Cursor Selection Reproduction", () => {
             const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             // Initial selection: 5->4 (reversed)
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 5,
                 endItemId: "item1",
                 endOffset: 4,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 4;
 
             cursor.extendSelectionLeft();
@@ -275,14 +297,14 @@ describe("Cursor Selection Reproduction", () => {
             const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             // Initial selection: 0->1 (normal)
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 0,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 1;
 
             cursor.extendSelectionLeft();
@@ -323,14 +345,14 @@ describe("Cursor Selection Reproduction", () => {
             // Or assume we had 0->1 and shrank to 0->0.
 
             // Start with 0->1
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 1, // Anchor at 1
                 endItemId: "item1",
                 endOffset: 1, // Focus at 1 (shrunk)
                 isReversed: false,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 1;
 
             // Move left past anchor (1)
@@ -350,14 +372,14 @@ describe("Cursor Selection Reproduction", () => {
             const { editorOverlayStore } = await import("../stores/EditorOverlayStore.svelte");
 
             // Initial selection: 1->1 (was reversed)
-            mockSelection = ({
+            mockSelection = textSelectionFixture({
                 startItemId: "item1",
                 startOffset: 1,
                 endItemId: "item1",
                 endOffset: 1,
                 isReversed: true,
                 userId: "test-user",
-            } as unknown) as import("../stores/EditorOverlayStore.svelte.ts").SelectionRange;
+            });
             cursor.offset = 1;
 
             // Move right past anchor

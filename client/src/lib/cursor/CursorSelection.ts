@@ -1,12 +1,36 @@
 // import type { Item } from "../../schema/yjs-schema"; // Not used
+import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { getCurrentLineIndex, getLineEndOffset, getLineStartOffset } from "../cursor";
 import { getLogger } from "../logger";
+import { textSelectionEndpoints } from "../selection/selectionEndpoints";
 
 const logger = getLogger("CursorSelection");
 
 // import { store as generalStore } from "../../stores/store.svelte"; // Not used
+
+/**
+ * The selection a caret can extend: the user's current one, expressed in text offsets.
+ *
+ * Keyboard extension moves a character position, so it can only continue a range whose two
+ * ends are character positions. A range that reaches an atomic visual node has none to
+ * continue from (#5025); extension then starts afresh from the caret rather than inventing
+ * an offset inside a block, and the gestures that select blocks own that case instead.
+ */
+function findTextSelectionForCursor(
+    userId: string,
+    itemId: string,
+): (SelectionRange & { startOffset: number; endOffset: number; }) | undefined {
+    const selection = Object.values(store.selections).find(s =>
+        (s.startItemId === itemId || s.endItemId === itemId) && s.userId === userId
+    );
+    if (!selection) return undefined;
+
+    const endpoints = textSelectionEndpoints(selection);
+    if (!endpoints) return undefined;
+    return { ...selection, ...endpoints };
+}
 
 export class CursorSelection {
     private cursor: import("../Cursor").Cursor;
@@ -31,10 +55,7 @@ export class CursorSelection {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -126,10 +147,7 @@ export class CursorSelection {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -220,10 +238,7 @@ export class CursorSelection {
         if (!target) return;
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -322,10 +337,7 @@ export class CursorSelection {
         }
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
 
@@ -574,10 +586,7 @@ export class CursorSelection {
         }
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";
@@ -682,10 +691,7 @@ export class CursorSelection {
         }
 
         // Get current selection
-        const existingSelection = Object.values(store.selections).find(s =>
-            (s.startItemId === this.cursor.itemId || s.endItemId === this.cursor.itemId)
-            && s.userId === this.cursor.userId
-        );
+        const existingSelection = findTextSelectionForCursor(this.cursor.userId, this.cursor.itemId);
 
         let startItemId, startOffset, endItemId, endOffset, isReversed;
         const text = target.text || "";

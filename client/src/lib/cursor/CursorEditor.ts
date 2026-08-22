@@ -12,6 +12,8 @@ import { escapeId } from "../../utils/domUtils";
 import { allocatePageTitle } from "../../utils/pageUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { KeyEventHandler } from "../KeyEventHandler";
+import { endpointOffsetInText } from "../selection/selectionContent";
+import { textSelectionEndpoints } from "../selection/selectionEndpoints";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -1040,8 +1042,19 @@ export class CursorEditor {
         const isReversed = !!selection.isReversed;
         const firstItem = isReversed ? endItem : startItem;
         const lastItem = isReversed ? startItem : endItem;
-        const firstOffset = isReversed ? selection.endOffset : selection.startOffset;
-        const lastOffset = isReversed ? selection.startOffset : selection.endOffset;
+        // Where each endpoint cuts its own item. A node boundary cuts at an edge of the
+        // item it belongs to, which for a textless visual node is its only position -
+        // no offset is invented for a block (#5025).
+        const textLengthOf = (item: unknown) =>
+            String((item as import("../../schema/app-schema").Item).text ?? "").length;
+        const firstOffset = endpointOffsetInText(
+            isReversed ? selection.end : selection.start,
+            textLengthOf(firstItem),
+        );
+        const lastOffset = endpointOffsetInText(
+            isReversed ? selection.start : selection.end,
+            textLengthOf(lastItem),
+        );
 
         const allItemIds: string[] = [];
         const collectIds = (
@@ -1241,7 +1254,11 @@ export class CursorEditor {
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
         const cursor = this.cursor;
-        const { startItemId, endItemId, startOffset, endOffset } = selection;
+        // Formatting wraps characters in markers, so both ends must be character
+        // positions; a range reaching an atomic visual node has none (#5025).
+        const endpoints = textSelectionEndpoints(selection);
+        if (!endpoints) return;
+        const { startItemId, startOffset, endItemId, endOffset } = endpoints;
         const isReversed = !!selection.isReversed;
 
         const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);

@@ -2,6 +2,16 @@ import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
+import { getItemSelectionInterval } from "../lib/selection/selectionContent";
+import {
+    endpointTextOffset,
+    type ItemOrderComparator,
+    type NormalizedSelection,
+    normalizeSelectionEndpoints,
+    type SelectionEndpoint,
+    textEndpoint,
+    textSelectionEndpoints,
+} from "../lib/selection/selectionEndpoints";
 import { yjsService } from "../lib/yjs/service";
 import { escapeId } from "../utils/domUtils";
 import { store } from "./store.svelte";
@@ -32,14 +42,24 @@ declare global {
 }
 
 export interface SelectionRange {
-    // Start item ID of the selection range
+    /**
+     * Authoritative start endpoint - the anchor side of the selection (#5025).
+     *
+     * Either a character boundary inside a Text node or the boundary before/after an
+     * atomic visual node. Everything that decides what a selection contains reads these
+     * two fields; the flat mirrors below exist only for the text-only consumers.
+     */
+    start: SelectionEndpoint;
+    /** Authoritative end endpoint - the focus side of the selection. */
+    end: SelectionEndpoint;
+    // Start item ID of the selection range (mirror of start.itemId; both endpoint kinds have one)
     startItemId: string;
-    // Start offset
-    startOffset: number;
-    // End item ID of the selection range
+    // Start offset. Present only when `start` is a text endpoint - a visual node has no offset to give.
+    startOffset?: number;
+    // End item ID of the selection range (mirror of end.itemId)
     endItemId: string;
-    // End offset
-    endOffset: number;
+    // End offset. Present only when `end` is a text endpoint.
+    endOffset?: number;
     // For user identification
     userId?: string;
     userName?: string;
@@ -56,6 +76,64 @@ export interface SelectionRange {
     }>;
     // Whether the selection range is updating (for visual feedback)
     isUpdating?: boolean;
+}
+
+/**
+ * What `setSelection` accepts.
+ *
+ * A caller states its endpoints either generally (`start`/`end`) or in the flat text form
+ * every text-only call site already speaks. The flat form is a pure adapter: it can only
+ * describe text positions, and `toSelectionRange` turns it into endpoints once, at the
+ * door, so nothing downstream ever sees two representations of the same selection.
+ */
+export interface SelectionRangeInput
+    extends Omit<SelectionRange, "start" | "end" | "startItemId" | "endItemId" | "startOffset" | "endOffset">
+{
+    start?: SelectionEndpoint;
+    end?: SelectionEndpoint;
+    startItemId?: string;
+    startOffset?: number;
+    endItemId?: string;
+    endOffset?: number;
+}
+
+/**
+ * Normalize any accepted selection input into the stored representation.
+ *
+ * Returns undefined when the input describes no position at all - a payload missing its
+ * item ids, or a flat endpoint with no offset to stand on. Such an input is dropped rather
+ * than repaired, because the only repair available would be to invent an offset.
+ */
+export function toSelectionRange(input: SelectionRangeInput): SelectionRange | undefined {
+    const start = input.start
+        ?? (input.startItemId && typeof input.startOffset === "number"
+            ? textEndpoint(input.startItemId, input.startOffset)
+            : undefined);
+    const end = input.end
+        ?? (input.endItemId && typeof input.endOffset === "number"
+            ? textEndpoint(input.endItemId, input.endOffset)
+            : undefined);
+    if (!start || !end) return undefined;
+
+    const {
+        start: _start,
+        end: _end,
+        startItemId: _startItemId,
+        startOffset: _startOffset,
+        endItemId: _endItemId,
+        endOffset: _endOffset,
+        ...rest
+    } = input;
+
+    return {
+        ...rest,
+        start,
+        end,
+        startItemId: start.itemId,
+        endItemId: end.itemId,
+        startOffset: endpointTextOffset(start),
+        endOffset: endpointTextOffset(end),
+    };
 }
 
 // Using Svelte 5 runtime runes macros (import not required)
@@ -475,7 +553,12 @@ export class EditorOverlayStore {
         return this.cursors[lastId] || null;
     }
 
-    setSelection(selection: SelectionRange) {
+    setSelection(input: SelectionRangeInput) {
+        // One door into the store: whatever form the caller used, what gets stored is
+        // endpoints (#5025). An input that describes no position is dropped.
+        const selection = toSelectionRange(input);
+        if (!selection) return undefined;
+
         // Uniquely identify selection range key using UUID
         const key = this.genUUID();
         this.selections = { ...this.selections, [key]: selection };
@@ -483,12 +566,18 @@ export class EditorOverlayStore {
 
         if ((selection.userId ?? "local") === "local") {
             this.schedulePresenceSync();
-            this.syncTextareaToSelection(
-                selection.startItemId,
-                selection.startOffset,
-                selection.endItemId,
-                selection.endOffset,
-            );
+            // The hidden textarea mirrors characters, so it can only follow a selection
+            // whose two ends are text positions. One that reaches a visual node leaves it
+            // untouched rather than being flattened onto an offset it does not have.
+            const text = textSelectionEndpoints(selection);
+            if (text) {
+                this.syncTextareaToSelection(
+                    text.startItemId,
+                    text.startOffset,
+                    text.endItemId,
+                    text.endOffset,
+                );
+            }
         }
         return key;
     }
@@ -559,8 +648,9 @@ export class EditorOverlayStore {
         // Clear existing selections (for the same user)
         this.clearSelectionForUser(userId);
 
-        // Set box selection
-        const selection: SelectionRange = {
+        // Set box selection. A rectangular selection is text through and through - it is
+        // made of per-line character intervals - so its endpoints are text positions.
+        const key = this.setSelection({
             startItemId,
             startOffset,
             endItemId,
@@ -569,10 +659,8 @@ export class EditorOverlayStore {
             isBoxSelection: true,
             boxSelectionRanges,
             isUpdating: true, // Initial state is updating
-        };
-
-        // Set selection range
-        const key = this.setSelection(selection);
+        });
+        if (key === undefined) return;
 
         // Debug info
         if (
@@ -1258,6 +1346,46 @@ export class EditorOverlayStore {
     }
 
     /**
+     * Compare two items by outline order (#5025).
+     *
+     * The order comes from the tree view model - the outline as the document defines it -
+     * so what a selection contains never depends on where a block happens to be painted.
+     * Rows the outline does not list, the page title above all, fall back to rendered
+     * order, which is the only place they exist.
+     */
+    itemOrderComparator(): ItemOrderComparator {
+        const visible = store.activeViewModel?.getVisibleItems() ?? [];
+        /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary local map for calculation, not reactive state */
+        const outlineOrder = new Map<string, number>();
+        /* eslint-enable svelte/prefer-svelte-reactivity */
+        visible.forEach((entry, index) => {
+            const id = entry.model.original?.id ?? entry.model.id;
+            if (id) outlineOrder.set(id, index);
+        });
+
+        return (a: string, b: string) => {
+            if (a === b) return 0;
+            const outlineA = outlineOrder.get(a);
+            const outlineB = outlineOrder.get(b);
+            if (outlineA !== undefined && outlineB !== undefined) return outlineA - outlineB;
+
+            if (typeof document === "undefined") return 0;
+            const { itemIdToIndex } = this.getItemsMapping();
+            const renderedA = itemIdToIndex.get(a);
+            const renderedB = itemIdToIndex.get(b);
+            if (renderedA !== undefined && renderedB !== undefined) return renderedA - renderedB;
+            // An item neither list knows is stale; leaving it where it is keeps the
+            // remaining endpoint's order intact.
+            return 0;
+        };
+    }
+
+    /** Re-express a selection in document order, keeping its anchor/focus direction aside. */
+    normalizeSelection(sel: SelectionRange): NormalizedSelection {
+        return normalizeSelectionEndpoints(sel.start, sel.end, this.itemOrderComparator());
+    }
+
+    /**
      * Get text within selection range
      * @param userId User ID (default is "local")
      * @returns Text within selection range. Returns empty string if no selection.
@@ -1324,13 +1452,20 @@ export class EditorOverlayStore {
      * @returns Text within selection range
      */
     private getTextFromSingleItemSelection(sel: SelectionRange): string {
+        // A range whose ends are node boundaries covers an atomic visual node, which owns
+        // no outline text (#5015): there is nothing to slice, and nothing to invent.
+        const endpoints = textSelectionEndpoints(sel);
+        if (!endpoints) return "";
+        const selectionStart = Math.min(endpoints.startOffset, endpoints.endOffset);
+        const selectionEnd = Math.max(endpoints.startOffset, endpoints.endOffset);
+
         // Primary: Get text from the global textarea if the item is active
         // This is the authoritative source for the text content when editing
         const globalTextarea = this.getTextareaRef();
         if (globalTextarea && this.activeItemId === sel.startItemId) {
             const textValue = globalTextarea.value;
-            const startOffset = Math.min(sel.startOffset, sel.endOffset);
-            const endOffset = Math.max(sel.startOffset, sel.endOffset);
+            const startOffset = selectionStart;
+            const endOffset = selectionEnd;
 
             // Bounds checking
             if (startOffset < 0 || endOffset > textValue.length || startOffset >= endOffset) {
@@ -1353,8 +1488,8 @@ export class EditorOverlayStore {
         try {
             const originalText = this.getOriginalTextFromItem(sel.startItemId);
             if (originalText !== null && originalText.length > 0) {
-                const startOffset = Math.min(sel.startOffset, sel.endOffset);
-                const endOffset = Math.max(sel.startOffset, sel.endOffset);
+                const startOffset = selectionStart;
+                const endOffset = selectionEnd;
 
                 if (startOffset < 0 || endOffset > originalText.length || startOffset >= endOffset) {
                     return "";
@@ -1383,8 +1518,8 @@ export class EditorOverlayStore {
 
         const textContent = textEl.textContent || "";
 
-        const startOffset = Math.min(sel.startOffset, sel.endOffset);
-        const endOffset = Math.max(sel.startOffset, sel.endOffset);
+        const startOffset = selectionStart;
+        const endOffset = selectionEnd;
 
         if (startOffset < 0 || endOffset > textContent.length || startOffset >= endOffset) {
             return "";
@@ -2166,6 +2301,10 @@ export class EditorOverlayStore {
      * @returns Text within selection range
      */
     private getTextFromMultiItemSelection(sel: SelectionRange): string {
+        // What each item contributes follows document order, not the order the endpoints
+        // happen to be stored in, so a reverse drag yields exactly the forward text.
+        const normalized = this.normalizeSelection(sel);
+
         // Create mapping of item IDs to indices (use cache)
         const { itemIdToIndex, allItems } = this.getItemsMapping();
 
@@ -2274,19 +2413,11 @@ export class EditorOverlayStore {
             const text = textEl.textContent || "";
             const len = text.length;
 
-            // Calculate offsets
-            let startOff = 0;
-            let endOff = len;
-
-            // Start item
-            if (itemId === sel.startItemId) {
-                startOff = Math.max(0, Math.min(len, sel.startOffset));
-            }
-
-            // End item
-            if (itemId === sel.endItemId) {
-                endOff = Math.max(0, Math.min(len, sel.endOffset));
-            }
+            // The endpoints decide how much of this item is selected, in document order:
+            // an interior item entirely, an endpoint item up to its own boundary (#5025).
+            const interval = getItemSelectionInterval(itemId, normalized, len);
+            const startOff = interval?.startOffset ?? 0;
+            const endOff = interval?.endOffset ?? 0;
 
             // Add text (only valid range)
             if (startOff < endOff) {
@@ -2422,6 +2553,12 @@ export class EditorOverlayStore {
                 cursor: cursor ? { itemId: cursor.itemId, offset: cursor.offset } : undefined,
                 selection: selection
                     ? {
+                        // Endpoints are what a remote peer needs to draw the same range,
+                        // including one that starts or ends at a visual node (#5025). The
+                        // flat text fields ride along for peers that predate the model;
+                        // a node boundary simply has none to send.
+                        start: selection.start,
+                        end: selection.end,
                         startItemId: selection.startItemId,
                         startOffset: selection.startOffset,
                         endItemId: selection.endItemId,

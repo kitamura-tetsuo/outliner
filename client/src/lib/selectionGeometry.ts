@@ -6,9 +6,10 @@
  * same offset -> DOM position mapping, so that mapping lives here instead of being
  * duplicated (and drifting) inside the component.
  *
- * Everything in this module is free of component state: the DOM-dependent helpers
- * take the nodes/rects they need as arguments, and the ordering helpers take a plain
- * comparator, which keeps the interesting logic unit-testable without a layout engine.
+ * Everything in this module is free of component state: the helpers take the nodes and
+ * rects they need as arguments. What a selection *contains* is decided one level up, in
+ * `lib/selection/`, from the outline model alone - geometry only turns the answer into
+ * pixels, so selection semantics can never start depending on where a block is painted.
  */
 
 /** A concrete text node plus an offset inside that node. */
@@ -183,69 +184,6 @@ export function mergeRectsIntoLines(rects: OverlayRect[]): OverlayRect[] {
     return lines;
 }
 
-/** The endpoints of a logical selection, as stored in EditorOverlayStore. */
-export interface SelectionEndpoints {
-    startItemId: string;
-    startOffset: number;
-    endItemId: string;
-    endOffset: number;
-}
-
-/** A selection re-expressed in visual document order (first endpoint precedes the last one). */
-export interface NormalizedSelectionRange {
-    firstItemId: string;
-    firstOffset: number;
-    lastItemId: string;
-    lastOffset: number;
-    /** True when the stored anchor came after the focus in document order. */
-    isVisuallyReversed: boolean;
-}
-
-/**
- * Re-order a selection's endpoints by visual document order.
- *
- * The stored `isReversed` flag records anchor/focus direction, and different input paths
- * disagree about whether the anchor is also stored first. Rendering must not depend on that:
- * which characters are highlighted follows from document order alone.
- *
- * @param compareItems Returns a negative number when `a` precedes `b` in document order.
- */
-export function normalizeSelectionByVisualOrder(
-    selection: SelectionEndpoints,
-    compareItems: (a: string, b: string) => number,
-): NormalizedSelectionRange {
-    const { startItemId, startOffset, endItemId, endOffset } = selection;
-
-    if (startItemId === endItemId) {
-        const isVisuallyReversed = startOffset > endOffset;
-        return {
-            firstItemId: startItemId,
-            firstOffset: Math.min(startOffset, endOffset),
-            lastItemId: endItemId,
-            lastOffset: Math.max(startOffset, endOffset),
-            isVisuallyReversed,
-        };
-    }
-
-    if (compareItems(startItemId, endItemId) <= 0) {
-        return {
-            firstItemId: startItemId,
-            firstOffset: startOffset,
-            lastItemId: endItemId,
-            lastOffset: endOffset,
-            isVisuallyReversed: false,
-        };
-    }
-
-    return {
-        firstItemId: endItemId,
-        firstOffset: endOffset,
-        lastItemId: startItemId,
-        lastOffset: startOffset,
-        isVisuallyReversed: true,
-    };
-}
-
 /**
  * Attribute marking the element whose box *is* a visual node, for selection purposes.
  *
@@ -256,90 +194,3 @@ export function normalizeSelectionByVisualOrder(
  * carrying the attribute, not by teaching the overlay about its innards.
  */
 export const VISUAL_NODE_ROOT_ATTRIBUTE = "data-visual-node-root";
-
-/**
- * One drawable piece of a selection (#5024).
- *
- * The selection's endpoints stay text positions, but the items between them need not all
- * be Text nodes, so what gets drawn is a mixed list: character intervals for Text nodes,
- * whole-node rectangles for the textless visual nodes in between.
- */
-export type SelectionFragment =
-    | { kind: "text"; itemId: string; startOffset: number; endOffset: number; }
-    | { kind: "node"; itemId: string; };
-
-/** What the renderer knows about one item covered by a selection's range. */
-export interface SelectionRangeItem {
-    itemId: string;
-    /** True for Grid/Calendar/Layout — a node that owns no outline text (#5015). */
-    isVisual: boolean;
-    /** Length of the item's rendered text. Meaningless for a visual node. */
-    textLength: number;
-    /** Enclosing item, when this one renders inside another (a Layout's children). */
-    parentItemId?: string;
-}
-
-/**
- * Turn the items a selection spans into the fragments to draw, in document order.
- *
- * Three rules, and no block-specific knowledge beyond them:
- *
- * - a Text node contributes its selected character interval, exactly as before;
- * - a visual node *strictly between* the endpoints is atomic: it contributes one node
- *   fragment, never text offsets. An endpoint is a text position, so a visual node that
- *   is one is a selection the drag stopped at rather than reached, and it stays out;
- * - a node drawn inside an already selected visual node contributes nothing, because it
- *   is already inside that node's rectangle. That is what makes a selected Layout render
- *   as one container instead of as a stack of its children's boxes.
- */
-export function buildSelectionFragments(
-    items: readonly SelectionRangeItem[],
-    normalized: NormalizedSelectionRange,
-): SelectionFragment[] {
-    const fragments: SelectionFragment[] = [];
-    // Items whose own rectangle already covers everything rendered inside them.
-    const absorbing = new Set<string>();
-
-    for (const item of items) {
-        if (item.parentItemId !== undefined && absorbing.has(item.parentItemId)) {
-            absorbing.add(item.itemId);
-            continue;
-        }
-
-        if (item.isVisual) {
-            // Whether or not it is drawn, its children are part of its picture.
-            absorbing.add(item.itemId);
-            const isEndpoint = item.itemId === normalized.firstItemId || item.itemId === normalized.lastItemId;
-            if (!isEndpoint) fragments.push({ kind: "node", itemId: item.itemId });
-            continue;
-        }
-
-        const interval = getItemSelectionInterval(item.itemId, normalized, item.textLength);
-        if (interval) fragments.push({ kind: "text", itemId: item.itemId, ...interval });
-    }
-
-    return fragments;
-}
-
-/**
- * Selected character interval for one item of a normalized selection.
- *
- * Items strictly between the endpoints are fully selected; the first and last items are
- * clipped by their offsets. Returns undefined when nothing of the item is selected.
- */
-export function getItemSelectionInterval(
-    itemId: string,
-    normalized: NormalizedSelectionRange,
-    textLength: number,
-): { startOffset: number; endOffset: number; } | undefined {
-    const clamp = (offset: number) => Math.max(0, Math.min(textLength, offset));
-
-    const isFirst = itemId === normalized.firstItemId;
-    const isLast = itemId === normalized.lastItemId;
-
-    const startOffset = isFirst ? clamp(normalized.firstOffset) : 0;
-    const endOffset = isLast ? clamp(normalized.lastOffset) : textLength;
-
-    if (startOffset >= endOffset) return undefined;
-    return { startOffset, endOffset };
-}

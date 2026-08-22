@@ -1,0 +1,34 @@
+id: SLR-5025a1b2
+title: Selection endpoints can be visual-node boundaries
+title-ja: 選択範囲の端点としてのビジュアルノード境界
+description: 'An outline selection endpoint is no longer universally a character offset inside a Text node. An endpoint is either a text position - an item plus a character offset, exactly as before - or a node boundary: the position immediately before or after an atomic visual node (Grid, Calendar, Layout). A block therefore takes part in a selection as itself rather than through a fabricated offset or hidden placeholder text, and a range can start at a block, end at a block, or contain no text endpoint at all. Ordering is centralized in one comparator over outline order plus position within an item, where `before(node)` precedes every position the item can hold and `after(node)` follows every one, so the document positions around a Grid order deterministically as: end of the preceding text, before the Grid, after the Grid, start of the following text. Selections normalize to document order while keeping their anchor/focus direction aside, so a reverse selection resolves to exactly the content its forward twin does. One traversal resolves the endpoints into the selected fragments - a partial interval for an endpoint Text node, whole intervals for the Text nodes in between, and whole atomic fragments for the visual nodes the endpoints do not exclude - and the overlay, plain-text extraction and the structured clipboard all read that one answer, which comes from the outline model rather than from any rendered geometry. Plain text carries only what the outline holds, so a textless block contributes no characters and no phantom label or blank line, while the structured clipboard keeps carrying the blocks themselves. Remote presence publishes the endpoints so a collaborator''s mixed selection renders with the same semantics as a local one; a stale or malformed payload, including one from a peer that predates the model, is validated and dropped rather than rendered from a guessed position, and no persistent project data is migrated for this ephemeral state.'
+category: selection-range
+status: implemented
+components:
+- client/src/components/EditorOverlay.svelte
+- client/src/components/OutlinerItem.svelte
+services:
+- client/src/lib/selection/selectionEndpoints.ts
+- client/src/lib/selection/selectionContent.ts
+- client/src/stores/EditorOverlayStore.svelte.ts
+- client/src/lib/KeyEventHandler.ts
+- client/src/lib/yjs/service.ts
+acceptance:
+- A range from before a Grid to after it selects exactly that Grid and nothing else
+- A range of visual nodes only, with no text endpoint at all, resolves to those nodes
+- A selection ending before a Grid stops at it, and one ending after it includes it
+- A selection starting after a Grid leaves it out, and one starting before it takes it
+- Forward and reverse endpoint order resolve to identical selected content
+- Node boundaries around adjacent visual nodes order deterministically
+- Plain-text extraction skips textless visual nodes without inventing a label or a blank line
+- Selection normalization and traversal come from the outline model, not from rendered geometry
+- Selection rendering consumes the generalized endpoints without fabricating text offsets
+- Stale or malformed remote selection payloads are dropped instead of rendered
+- The structured clipboard still carries selected visual nodes whole
+- Text-to-text selections keep their existing behavior, geometry and clipboard output
+tests:
+- client/e2e/new/slr-visual-node-selection-endpoints-5025a1b2.spec.ts
+- client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/lib/selection/selectionContent.test.ts
+- client/src/lib/selection/selectionEndpoints.test.ts
+- client/src/stores/EditorOverlayStore.test.ts

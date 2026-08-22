@@ -3,6 +3,7 @@ import { Cursor } from "../../../lib/Cursor";
 import type { Item } from "../../../schema/app-schema";
 import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import type { EditorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
+import type { SelectionRange } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 import type { GeneralStore } from "../../../stores/store.svelte";
 import { ScrapboxFormatter } from "../../../utils/ScrapboxFormatter";
@@ -49,6 +50,20 @@ vi.mock("../../../utils/ScrapboxFormatter", () => {
         },
     };
 });
+
+/**
+ * A text selection as the store stores it: the flat offsets a caller states, plus the
+ * endpoints they mean (#5025). The store module is mocked here, so the fixture is local.
+ */
+function textSelectionFixture(
+    range: { userId: string; startItemId: string; endItemId: string; startOffset: number; endOffset: number; },
+): SelectionRange {
+    return {
+        ...range,
+        start: { kind: "text", itemId: range.startItemId, offset: range.startOffset },
+        end: { kind: "text", itemId: range.endItemId, offset: range.endOffset },
+    };
+}
 
 describe("Cursor Formatting", () => {
     let mockItem: Item;
@@ -99,13 +114,13 @@ describe("Cursor Formatting", () => {
 
             // Mock a selection
             (editorOverlayStore as EditorOverlayStore).selections = {
-                "selection-1": {
+                "selection-1": textSelectionFixture({
                     userId: "user-1",
                     startItemId: "test-item-1",
                     endItemId: "test-item-1",
                     startOffset: 10,
                     endOffset: 14,
-                },
+                }),
             };
 
             const cursor = new Cursor("cursor-1", {
@@ -130,13 +145,13 @@ describe("Cursor Formatting", () => {
 
             // Mock a selection
             (editorOverlayStore as EditorOverlayStore).selections = {
-                "selection-1": {
+                "selection-1": textSelectionFixture({
                     userId: "user-1",
                     startItemId: "test-item-1",
                     endItemId: "test-item-1",
                     startOffset: 10,
                     endOffset: 14,
-                },
+                }),
             };
 
             const cursor = new Cursor("cursor-1", {
@@ -161,13 +176,13 @@ describe("Cursor Formatting", () => {
 
             // Mock a selection
             (editorOverlayStore as EditorOverlayStore).selections = {
-                "selection-1": {
+                "selection-1": textSelectionFixture({
                     userId: "user-1",
                     startItemId: "test-item-1",
                     endItemId: "test-item-1",
                     startOffset: 10,
                     endOffset: 14,
-                },
+                }),
             };
 
             const cursor = new Cursor("cursor-1", {
@@ -192,13 +207,13 @@ describe("Cursor Formatting", () => {
 
             // Mock a selection
             (editorOverlayStore as EditorOverlayStore).selections = {
-                "selection-1": {
+                "selection-1": textSelectionFixture({
                     userId: "user-1",
                     startItemId: "test-item-1",
                     endItemId: "test-item-1",
                     startOffset: 10,
                     endOffset: 14,
-                },
+                }),
             };
 
             const cursor = new Cursor("cursor-1", {

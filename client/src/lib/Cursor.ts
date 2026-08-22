@@ -22,6 +22,7 @@ import { searchItem } from "./cursor/CursorNavigationUtils";
 
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { getLogger } from "./logger";
+import { textSelectionEndpoints, textSelectionOffsetBounds } from "./selection/selectionEndpoints";
 import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
@@ -77,10 +78,13 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
 
     private getSelectionAnchor(): { startItemId: string; startOffset: number; } {
         const existingSelection = this.getSelectionForCurrentItem();
-        if (existingSelection) {
+        // The caret anchors on a character, so only a text endpoint can serve as one; a
+        // range that reaches a visual node leaves the caret where it already is (#5025).
+        const anchor = existingSelection ? textSelectionEndpoints(existingSelection) : undefined;
+        if (anchor) {
             return {
-                startItemId: existingSelection.startItemId,
-                startOffset: existingSelection.startOffset,
+                startItemId: anchor.startItemId,
+                startOffset: anchor.startOffset,
             };
         }
         return {
@@ -1121,7 +1125,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const text = this.getTargetText(target);
         const selection = this.getSelection();
 
-        const startOffset = selection ? Math.min(selection.startOffset, selection.endOffset) : this.offset;
+        const bounds = selection ? textSelectionOffsetBounds(selection) : undefined;
+        const startOffset = bounds ? bounds.low : this.offset;
 
         store.setSelection({
             startItemId: this.itemId,
@@ -1144,7 +1149,10 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         const selection = this.getSelection();
         if (!selection) return;
 
-        const newOffset = Math.min(selection.startOffset, selection.endOffset);
+        const bounds = textSelectionOffsetBounds(selection);
+        if (!bounds) return;
+
+        const newOffset = bounds.low;
         this.offset = newOffset;
         this.clearSelection();
         this.updateGlobalTextareaSelection(this.itemId, newOffset, this.itemId, newOffset);

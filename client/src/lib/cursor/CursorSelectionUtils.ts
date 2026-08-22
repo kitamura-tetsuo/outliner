@@ -1,5 +1,6 @@
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
+import { selectionCoversContent, textSelectionOffsetBounds } from "../selection/selectionEndpoints";
 
 export interface SingleItemSelection {
     selection: SelectionRange;
@@ -38,8 +39,7 @@ export function getSelectionForUser(userId: string): SelectionRange | undefined 
 export function selectionHasRange(selection: SelectionRange | undefined): boolean {
     if (!selection) return false;
 
-    return selection.startItemId !== selection.endItemId
-        || selection.startOffset !== selection.endOffset;
+    return selectionCoversContent(selection);
 }
 
 /**
@@ -52,14 +52,16 @@ export function selectionSpansMultipleItems(selection: SelectionRange | undefine
 
 /**
  * Normalize offsets so startOffset <= endOffset.
+ *
+ * Both ends must be text positions: an atomic visual node has no offset to order (#5025),
+ * so a range reaching one gives a zero-length result rather than an invented interval.
  */
 export function normalizeSelectionOffsets(selection: SelectionRange): {
     startOffset: number;
     endOffset: number;
 } {
-    const startOffset = Math.min(selection.startOffset, selection.endOffset);
-    const endOffset = Math.max(selection.startOffset, selection.endOffset);
-    return { startOffset, endOffset };
+    const bounds = textSelectionOffsetBounds(selection);
+    return { startOffset: bounds?.low ?? 0, endOffset: bounds?.high ?? 0 };
 }
 
 /**
@@ -73,8 +75,11 @@ export function getSingleItemSelectionForUser(
     if (!selection) return undefined;
     if (selection.startItemId !== selection.endItemId) return undefined;
     if (itemId && selection.startItemId !== itemId) return undefined;
+    // A caret operation needs character offsets, which only a text range has.
+    const bounds = textSelectionOffsetBounds(selection);
+    if (!bounds) return undefined;
 
-    const { startOffset, endOffset } = normalizeSelectionOffsets(selection);
+    const { startOffset, endOffset } = { startOffset: bounds.low, endOffset: bounds.high };
     return { selection, startOffset, endOffset };
 }
 
@@ -91,7 +96,7 @@ export function hasSelection(userId: string): boolean {
 export function getSelectedTextFromItem(itemText: string, selection?: SelectionRange): string {
     if (!selection) return "";
 
-    const startOffset = Math.min(selection.startOffset, selection.endOffset);
-    const endOffset = Math.max(selection.startOffset, selection.endOffset);
-    return itemText.substring(startOffset, endOffset);
+    const bounds = textSelectionOffsetBounds(selection);
+    if (!bounds) return "";
+    return itemText.substring(bounds.low, bounds.high);
 }

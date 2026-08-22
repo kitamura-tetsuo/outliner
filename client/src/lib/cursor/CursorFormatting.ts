@@ -4,6 +4,7 @@ import { store as generalStore } from "../../stores/store.svelte";
 import { escapeId } from "../../utils/domUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { searchItem } from "../cursor";
+import { textSelectionEndpoints, textSelectionOffsetBounds } from "../selection/selectionEndpoints";
 
 export class CursorFormatting {
     private cursor: import("../Cursor").Cursor;
@@ -71,8 +72,12 @@ export class CursorFormatting {
         if (!target) return;
 
         const text = target.text || "";
-        const startOffset = Math.min(selection.startOffset, selection.endOffset);
-        const endOffset = Math.max(selection.startOffset, selection.endOffset);
+        // Formatting wraps characters, so it needs two character positions. A range that
+        // reaches an atomic visual node has none to wrap (#5025) and is left alone.
+        const bounds = textSelectionOffsetBounds(selection);
+        if (!bounds) return;
+        const startOffset = bounds.low;
+        const endOffset = bounds.high;
         const selectedText = String(text).substring(startOffset, endOffset);
 
         // Create formatted text
@@ -117,11 +122,11 @@ export class CursorFormatting {
         selection: import("../../stores/EditorOverlayStore.svelte").SelectionRange,
         formatType: "bold" | "italic" | "strikethrough" | "underline" | "code",
     ) {
-        // Get start and end item IDs
-        const startItemId = selection.startItemId;
-        const endItemId = selection.endItemId;
-        const startOffset = selection.startOffset;
-        const endOffset = selection.endOffset;
+        // Get start and end item IDs. Both ends must be character positions: a visual node
+        // owns no text to wrap in markers (#5025), so a range reaching one is left alone.
+        const endpoints = textSelectionEndpoints(selection);
+        if (!endpoints) return;
+        const { startItemId, startOffset, endItemId, endOffset } = endpoints;
         const isReversed = selection.isReversed;
 
         const startEl = document.querySelector(`[data-item-id="${escapeId(startItemId)}"]`);

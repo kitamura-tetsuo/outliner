@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { mockStore } = vi.hoisted(() => {
     const store = {
         selections: {
+            // As the store stores it (#5025): endpoints, plus the flat text mirrors.
             local: {
+                start: { kind: "text", itemId: "item-1", offset: 0 },
+                end: { kind: "text", itemId: "item-1", offset: 4 },
                 startItemId: "item-1",
                 startOffset: 0,
                 endItemId: "item-1",

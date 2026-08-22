@@ -93,6 +93,27 @@ function addChild(parentItem: FakeItem, child: FakeItem) {
     parentItem.items.push(child);
 }
 
+/**
+ * A text selection as the store stores it: the flat offsets a caller states, plus the
+ * endpoints they mean (#5025).
+ */
+function textSelectionFixture(
+    range: {
+        startItemId: string;
+        startOffset: number;
+        endItemId: string;
+        endOffset: number;
+        userId: string;
+        isReversed?: boolean;
+    },
+): SelectionRange {
+    return {
+        ...range,
+        start: { kind: "text", itemId: range.startItemId, offset: range.startOffset },
+        end: { kind: "text", itemId: range.endItemId, offset: range.endOffset },
+    };
+}
+
 describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     let root: FakeItem, item1: FakeItem, item2: FakeItem, item3: FakeItem, item4: FakeItem;
     let editor: CursorEditor | undefined;
@@ -136,14 +157,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: item4._text.length,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("");
@@ -165,14 +186,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 3, // "Sec"
             endItemId: item4.id,
             endOffset: 6, // after "Fourth"
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("Sec item text");
@@ -196,14 +217,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 6,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1", "item4"]);
         expect(item4._text).toBe(" item text");
@@ -229,14 +250,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 0,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
         expect(item1._text).toBe("First item text");
@@ -269,14 +290,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 0,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
         expect(item1.items.children.map(item => item.id)).toEqual(["hidden-child"]);

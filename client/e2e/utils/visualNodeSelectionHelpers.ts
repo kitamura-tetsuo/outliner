@@ -146,3 +146,60 @@ export async function expectNodeFragmentCoversBlock(page: Page, itemId: string):
     expect(Math.abs(fragments[0].width - block.width)).toBeLessThanOrEqual(3);
     expect(Math.abs(fragments[0].height - block.height)).toBeLessThanOrEqual(3);
 }
+
+/**
+ * A selection endpoint as the store models it (#5025).
+ *
+ * Text endpoints are character boundaries; a visual node is atomic and offers only the
+ * two boundaries around it, so a spec never has to name an offset inside a block.
+ */
+export type SelectionEndpointInput =
+    | { kind: "text"; itemId: string; offset: number; }
+    | { kind: "node-boundary"; itemId: string; side: "before" | "after"; };
+
+/** The position just before an atomic visual node. */
+export function beforeNode(itemId: string): SelectionEndpointInput {
+    return { kind: "node-boundary", itemId, side: "before" };
+}
+
+/** The position just after an atomic visual node. */
+export function afterNode(itemId: string): SelectionEndpointInput {
+    return { kind: "node-boundary", itemId, side: "after" };
+}
+
+/** A character boundary inside a Text item. */
+export function atOffset(itemId: string, offset: number): SelectionEndpointInput {
+    return { kind: "text", itemId, offset };
+}
+
+/**
+ * Set the local selection from two endpoints, the way the model expresses them.
+ *
+ * Direct gestures onto a block are the next sub-issue's work; a spec that needs a mixed
+ * range states its endpoints instead of miming a drag that cannot yet produce one.
+ */
+export async function selectBetweenEndpoints(
+    page: Page,
+    start: SelectionEndpointInput,
+    end: SelectionEndpointInput,
+): Promise<void> {
+    await page.evaluate(([startEndpoint, endEndpoint]) => {
+        const store = (globalThis as unknown as {
+            editorOverlayStore: {
+                clearSelectionForUser: (userId: string) => void;
+                setSelection: (selection: unknown) => string | undefined;
+            };
+        }).editorOverlayStore;
+        store.clearSelectionForUser("local");
+        store.setSelection({ start: startEndpoint, end: endEndpoint, userId: "local" });
+    }, [start, end]);
+    await page.waitForTimeout(300);
+}
+
+/** The plain text the store reports for the local selection. */
+export async function selectedPlainText(page: Page): Promise<string> {
+    return await page.evaluate(() =>
+        (globalThis as unknown as { editorOverlayStore: { getSelectedText: (userId: string) => string; }; })
+            .editorOverlayStore.getSelectedText("local")
+    );
+}
