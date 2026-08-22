@@ -89,11 +89,26 @@ export async function goHome(page: Page): Promise<void> {
     if (await homeLink.count() === 0) {
         const projectLink = page.getByTestId("toolbar-project-name");
         await expect(projectLink).toBeVisible({ timeout: 15000 });
-        await projectLink.click();
+        await projectLink.click({ timeout: 5000 });
         await expect(homeLink.first()).toBeVisible({ timeout: 15000 });
     }
-    await homeLink.first().click();
+    await homeLink.first().click({ timeout: 5000 });
     await expect(page.getByTestId("home-page")).toBeVisible({ timeout: 15000 });
+}
+
+const PROJECT_SELECTION_ATTEMPTS = 3;
+const PROJECT_SELECTION_TIMEOUT = 5000;
+
+async function projectSelectorState(page: Page): Promise<string> {
+    return await page.evaluate(() => {
+        const select = document.querySelector("select.project-select") as HTMLSelectElement | null;
+        if (!select) return "unavailable (selector not found)";
+        return JSON.stringify({
+            disabled: select.disabled,
+            value: select.value,
+            options: Array.from(select.options, option => ({ value: option.value, text: option.text })),
+        });
+    }).catch(error => `unavailable (${error instanceof Error ? error.message : String(error)})`);
 }
 
 /**
@@ -112,42 +127,21 @@ export async function openProjectPage(
     const project = target === "source" ? fixture.sourceProject : fixture.destinationProject;
     const pageName = target === "source" ? fixture.sourcePage : fixture.destinationPage;
 
-    await goHome(page);
-    await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
-    // A repeat visit to a project already opened earlier in this test can hit
-    // yjsService's "Test Project" fallback title (createClient()'s default
-    // when window.__CURRENT_PROJECT_TITLE__ is stale/unset) instead of
-    // resolving the real title. Pre-seed the same global the app's own
-    // createNewProject flow sets for this purpose so the fallback (if hit)
-    // resolves to the correct title regardless of its root cause.
-    await page.evaluate(title => {
-        (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
-    }, project);
-    try {
-        await page.waitForFunction(
-            (val) => {
-                const sel = document.querySelector("select.project-select") as HTMLSelectElement;
-                if (!sel || sel.disabled) return false;
-                for (let i = 0; i < sel.options.length; i++) {
-                    if (sel.options[i].value === val) return true;
-                }
-                return false;
-            },
-            projectId,
-            { timeout: 15000 },
-        );
-    } catch (_e) {}
-    try {
-        await page.locator("select.project-select").selectOption({ value: projectId, timeout: 5000 });
-    } catch (_e) {}
-    await expect(async () => {
-        const url = page.url();
-        if (url.includes("/Test%20Project") || url.endsWith("/Test Project")) {
+    const selectionErrors: string[] = [];
+    for (let attempt = 1; attempt <= PROJECT_SELECTION_ATTEMPTS; attempt++) {
+        try {
             await goHome(page);
             await TestHelpers.setAccessibleProjects(page, [fixture.sourceProjectId, fixture.destinationProjectId]);
+            // A repeat visit to a project already opened earlier in this test can hit
+            // yjsService's "Test Project" fallback title (createClient()'s default
+            // when window.__CURRENT_PROJECT_TITLE__ is stale/unset) instead of
+            // resolving the real title. Pre-seed the same global the app's own
+            // createNewProject flow sets for this purpose so the fallback (if hit)
+            // resolves to the correct title regardless of its root cause.
             await page.evaluate(title => {
                 (globalThis as any).__CURRENT_PROJECT_TITLE__ = title;
             }, project);
+
             await page.waitForFunction(
                 (val) => {
                     const sel = document.querySelector("select.project-select") as HTMLSelectElement;
@@ -158,12 +152,31 @@ export async function openProjectPage(
                     return false;
                 },
                 projectId,
-                { timeout: 15000 },
+                { timeout: PROJECT_SELECTION_TIMEOUT },
             );
-            await page.locator("select.project-select").selectOption({ value: projectId });
+            await page.locator("select.project-select").selectOption(
+                { value: projectId },
+                { timeout: PROJECT_SELECTION_TIMEOUT },
+            );
+            await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), {
+                timeout: PROJECT_SELECTION_TIMEOUT,
+            });
+            break;
+        } catch (error) {
+            const selectorState = await projectSelectorState(page);
+            selectionErrors.push(
+                `attempt ${attempt}: ${error instanceof Error ? error.message : String(error)}; `
+                    + `url=${page.url()}; selector=${selectorState}`,
+            );
+            if (attempt === PROJECT_SELECTION_ATTEMPTS) {
+                throw new Error(
+                    `Failed to select ${target} project "${project}" (${projectId}) after `
+                        + `${PROJECT_SELECTION_ATTEMPTS} bounded attempts:\n${selectionErrors.join("\n")}`,
+                    { cause: error },
+                );
+            }
         }
-        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(project)}$`), { timeout: 5000 });
-    }).toPass({ timeout: 60000 });
+    }
     await page.waitForFunction(
         expectedId =>
             (globalThis as any).__YJS_STORE__?.isConnected === true

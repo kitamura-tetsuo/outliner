@@ -286,7 +286,9 @@ export class TestHelpers {
             const ps = (globalThis as any).__PROJECT_STORE__;
 
             if (ps && typeof ps.syncFromFirestore === "function") {
-                ps.syncFromFirestore();
+                // syncFromFirestore is synchronous today, but await its result so
+                // this helper remains ordered if the store starts doing async work.
+                await ps.syncFromFirestore();
                 console.log("[setAccessibleProjects] Triggered projectStore.syncFromFirestore()");
             } else {
                 console.log("[setAccessibleProjects] Warning: projectStore not found for sync");
@@ -299,8 +301,20 @@ export class TestHelpers {
             }
         }, { projects: projectNames });
 
-        TestHelpers.slog("[setAccessibleProjects] Seeding complete, waiting 500ms for propagation...");
-        await page.waitForTimeout(500);
+        await page.waitForFunction(
+            (expectedProjectIds) => {
+                const fsIds = (globalThis as any).__FIRESTORE_STORE__?.userProject?.accessibleProjectIds;
+                const projectStoreIds = (globalThis as any).__PROJECT_STORE__?.projects?.map(
+                    (project: { id: string; }) => project.id,
+                );
+                return Array.isArray(fsIds)
+                    && Array.isArray(projectStoreIds)
+                    && expectedProjectIds.every(id => fsIds.includes(id) && projectStoreIds.includes(id));
+            },
+            projectNames,
+            { timeout: 5000 },
+        );
+        TestHelpers.slog("[setAccessibleProjects] Seeding complete and reflected in project stores.");
     }
 
     /**
