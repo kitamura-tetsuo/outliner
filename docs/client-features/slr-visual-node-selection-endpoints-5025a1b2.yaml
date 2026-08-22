@@ -31,4 +31,5 @@ tests:
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts
 - client/src/lib/selection/selectionContent.test.ts
 - client/src/lib/selection/selectionEndpoints.test.ts
-- client/src/stores/EditorOverlayStore.test.ts
+- client/src/lib/yjs/remoteSelectionPresence.test.ts
+- client/src/tests/unit/stores/editorOverlaySelectionEndpoints.spec.ts
