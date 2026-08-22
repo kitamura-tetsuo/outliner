@@ -1105,13 +1105,10 @@ export class CursorEditor {
             const keepLastText = firstIsVisual && !lastIsVisual;
             // With two visual endpoints there is no Text node inside the
             // selection that can survive. Remove both atomic blocks and put
-            // the caret on the item immediately before the selection.
+            // the caret on the visible item immediately before the selection.
             const removeBothVisualEndpoints = firstIsVisual && lastIsVisual;
             const previousItem = removeBothVisualEndpoints
-                ? searchItem(
-                    root as unknown as import("../../schema/yjs-schema").Item,
-                    allItemIds[firstIdx - 1],
-                )
+                ? findPreviousItem(actFirstItem.id)
                 : undefined;
             if (removeBothVisualEndpoints && !previousItem) return;
 
