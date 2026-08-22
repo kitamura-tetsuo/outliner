@@ -97,6 +97,24 @@ export interface MultiLinePasteOptions {
 }
 
 /**
+ * Choose the depth for text detached from the end of a structured paste.
+ * Layout accepts visual leaves only, so a tail following its final child must
+ * be placed beside the Layout rather than inside it.
+ */
+export function detachedPasteTailDepth(
+    depths: readonly number[],
+    componentTypes: readonly (string | undefined)[],
+): number {
+    let depth = depths.at(-1) ?? 0;
+    for (let index = depths.length - 2; index >= 0 && depth > 0; index--) {
+        if ((depths[index] ?? 0) >= depth) continue;
+        if (componentTypes[index] !== "layout") break;
+        depth = depths[index] ?? 0;
+    }
+    return depth;
+}
+
+/**
  * Splices clipboard lines into an item's text without losing either side of
  * the caret. A single terminal newline is treated as a clipboard line ending,
  * rather than as a request to create an additional empty item.

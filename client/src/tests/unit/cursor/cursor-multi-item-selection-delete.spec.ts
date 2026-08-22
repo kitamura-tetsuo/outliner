@@ -19,6 +19,7 @@ vi.mock("../../../stores/EditorOverlayStore.svelte", () => {
         startCursorBlink: vi.fn(),
         triggerOnEdit: vi.fn(),
         cursorInstances: new Map(),
+        selections: {},
         isComposing: false,
     };
     return {
@@ -69,15 +70,21 @@ class FakeItem {
     _text: string;
     items = new FakeItems();
     parent: FakeItems | undefined;
-    constructor(id: string, text: string) {
+    componentType: string | undefined;
+    constructor(id: string, text: string, componentType?: string) {
         this.id = id;
         this._text = text;
+        this.componentType = componentType;
     }
     get text() {
         return { toString: () => this._text };
     }
     updateText(t: string) {
         this._text = t;
+    }
+    delete() {
+        const index = this.parent?.indexOf(this) ?? -1;
+        if (index >= 0) this.parent?.removeAt(index);
     }
 }
 
@@ -166,5 +173,60 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         expect(item2._text).toBe("Sec item text");
         expect(root.items.children.some(c => c.id === "item3")).toBe(false);
         expect(root.items.children.some(c => c.id === "item4")).toBe(false);
+    });
+
+    it("keeps the unselected Text suffix when a selection starts on a visual node", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            startItemId: item2.id,
+            startOffset: 0,
+            endItemId: item4.id,
+            endOffset: 6,
+            userId: "local",
+            isReversed: false,
+        } as SelectionRange);
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item4"]);
+        expect(item4._text).toBe(" item text");
+        expect(cursorCtx.itemId).toBe(item4.id);
+        expect(cursorCtx.offset).toBe(0);
+    });
+
+    it("treats the visual node before a Text item atomically on Backspace", () => {
+        item2.componentType = "calendar";
+        item2._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item3.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item3 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteBackward();
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item3", "item4"]);
+        expect(item3._text).toBe("Third item text");
+        expect(cursorCtx.itemId).toBe(item3.id);
+        expect(cursorCtx.offset).toBe(0);
     });
 });

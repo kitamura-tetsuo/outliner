@@ -20,7 +20,12 @@
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
-    import { derivePasteLineLayout, type PasteLineLayout, spliceMultiLinePaste } from "../lib/multiLinePaste";
+    import {
+        derivePasteLineLayout,
+        detachedPasteTailDepth,
+        type PasteLineLayout,
+        spliceMultiLinePaste,
+    } from "../lib/multiLinePaste";
     import type { ClipboardItem } from "../services/clipboard/itemClipboard";
     import {
         GRID_PASTE_CANCEL_EVENT,
@@ -1183,7 +1188,10 @@
             merged[lastIndex] += tail;
             return { texts: merged, depths, structuredItems, appended: false };
         }
-        const depth = depths[lastIndex] ?? 0;
+        const depth = detachedPasteTailDepth(
+            depths,
+            structuredItems!.map(item => item.componentType),
+        );
         return {
             texts: [...texts, tail],
             depths: [...depths, depth],

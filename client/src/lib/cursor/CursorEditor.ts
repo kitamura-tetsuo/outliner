@@ -4,6 +4,7 @@ const logger = getLogger("CursorEditor");
 
 import type { Item } from "../../schema/yjs-schema";
 import { Items } from "../../schema/yjs-schema";
+import { isVisualNode } from "../../services/outline/nodeTree";
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -812,6 +813,25 @@ export class CursorEditor {
 
         const prevText = this.getPlainText(prevItem as unknown as import("../../schema/app-schema").Item);
         const currentText = this.getPlainText(currentItem as unknown as import("../../schema/app-schema").Item);
+
+        // Visual blocks are atomic and own no outline text. Merging the current
+        // Text node into one would make updateText discard that text, so
+        // Backspace removes the preceding block and leaves the Text node (and
+        // caret) exactly where they are.
+        if (isVisualNode(prevItem as unknown as import("../../schema/app-schema").Item)) {
+            this.runInTransaction(
+                [prevItem as unknown as import("../../schema/app-schema").Item],
+                () => this.deleteItemNode(prevItem as unknown as import("../../schema/app-schema").Item),
+            );
+            store.clearCursorForItem(
+                (prevItem as unknown as import("../../schema/app-schema").Item).id,
+            );
+            cursor.applyToStore();
+            store.setActiveItem(cursor.itemId);
+            store.startCursorBlink();
+            return;
+        }
+
         const combinedText = `${prevText}${currentText}`;
 
         const oldItemId = cursor.itemId;
@@ -1071,8 +1091,19 @@ export class CursorEditor {
             const lastText = (actLastItem as unknown as import("../../schema/app-schema").Item).text?.toString() || "";
             const newLastText = lastText.substring(actLastOffset);
 
+            // A visual first item cannot receive the last Text item's suffix:
+            // visual nodes own no text. Keep that last Text node as the
+            // survivor instead and delete the visual host with the selected
+            // nodes. This also completes a cut before clearSelection removes
+            // the information needed to find its host.
+            const keepLastText = isVisualNode(
+                actFirstItem as unknown as import("../../schema/app-schema").Item,
+            ) && !isVisualNode(actLastItem as unknown as import("../../schema/app-schema").Item);
+
             const itemsToRemoveIds: string[] = [];
-            for (let i = firstIdx + 1; i <= lastIdx; i++) {
+            const removeStart = keepLastText ? firstIdx : firstIdx + 1;
+            const removeEnd = keepLastText ? lastIdx - 1 : lastIdx;
+            for (let i = removeStart; i <= removeEnd; i++) {
                 itemsToRemoveIds.push(allItemIds[i]);
             }
 
@@ -1080,7 +1111,9 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            (actFirstItem as unknown as import("../../schema/app-schema").Item).updateText(newFirstText + newLastText);
+            const survivingItem = keepLastText ? actLastItem : actFirstItem;
+            const survivingText = keepLastText ? newLastText : newFirstText + newLastText;
+            (survivingItem as unknown as import("../../schema/app-schema").Item).updateText(survivingText);
 
             for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
                 const id = itemsToRemoveIds[i];
@@ -1100,8 +1133,8 @@ export class CursorEditor {
                 }
             }
 
-            cursor.itemId = actFirstItem.id;
-            cursor.offset = actFirstOffset;
+            cursor.itemId = survivingItem.id;
+            cursor.offset = keepLastText ? 0 : actFirstOffset;
             cursor.applyToStore();
 
             cursor.clearSelection();

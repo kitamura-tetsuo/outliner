@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { derivePasteLineLayout, spliceMultiLinePaste } from "./multiLinePaste";
+import { derivePasteLineLayout, detachedPasteTailDepth, spliceMultiLinePaste } from "./multiLinePaste";
 
 describe("derivePasteLineLayout", () => {
     it("reads two spaces per level and strips the indentation", () => {
@@ -94,5 +94,19 @@ describe("spliceMultiLinePaste", () => {
             cursorOffset: 0,
             detachedTail: "lo",
         });
+    });
+});
+
+describe("detachedPasteTailDepth", () => {
+    it("places a tail beside a Layout when the pasted run ends in its visual child", () => {
+        expect(detachedPasteTailDepth([0, 1], ["layout", "yjstable"])).toBe(0);
+    });
+
+    it("keeps a tail beside a visual child when its parent is ordinary Text", () => {
+        expect(detachedPasteTailDepth([0, 1], [undefined, "calendar"])).toBe(1);
+    });
+
+    it("climbs out of a nested Layout but keeps the surrounding Text depth", () => {
+        expect(detachedPasteTailDepth([0, 1, 2], [undefined, "layout", "yjstable"])).toBe(1);
     });
 });
