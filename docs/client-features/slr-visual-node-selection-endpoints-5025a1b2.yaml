@@ -24,8 +24,8 @@ acceptance:
 - Selection normalization and traversal come from the outline model, not from rendered geometry
 - Selection rendering consumes the generalized endpoints without fabricating text offsets
 - Stale or malformed remote selection payloads are dropped instead of rendered
-- The structured clipboard still carries selected visual nodes whole
 - Text-to-text selections keep their existing behavior, geometry and clipboard output
+- The structured clipboard still carries selected visual nodes whole
 tests:
 - client/e2e/new/slr-visual-node-selection-endpoints-5025a1b2.spec.ts
 - client/src/lib/KeyEventHandler.componentClipboard.test.ts

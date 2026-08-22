@@ -2384,7 +2384,10 @@ export class EditorOverlayStore {
             logger.debug(`Items in range:`, itemsInRange.map(item => item.getAttribute("data-item-id")));
         }
 
-        let result = "";
+        // One line per item that contributes text. Collecting instead of appending
+        // separators is what keeps a range that ends at a textless block - or at the very
+        // start of its last item - from trailing a newline no item ever had (#5025).
+        const lines: string[] = [];
 
         // Process each item within the selection range
         for (let i = 0; i < itemsInRange.length; i++) {
@@ -2421,17 +2424,11 @@ export class EditorOverlayStore {
 
             // Add text (only valid range)
             if (startOff < endOff) {
-                const itemText = text.substring(startOff, endOff);
-                result += itemText;
-
-                // Add newline except for the last item
-                if (i < itemsInRange.length - 1) {
-                    result += "\n";
-                }
+                lines.push(text.substring(startOff, endOff));
             }
         }
 
-        return result;
+        return lines.join("\n");
     }
 
     // Property to cache mapping of item IDs to indices
