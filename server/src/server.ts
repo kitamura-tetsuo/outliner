@@ -16,6 +16,7 @@ import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
 import { getMetrics, recordMessage } from "./metrics.js";
+import { createOAuthRouter } from "./oauth/oauth-api.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
 import { handleStoreDocumentForSchedules } from "./scheduler/schedule-indexer.js";
@@ -401,6 +402,11 @@ export async function startServer(
             verifyIdTokenCached,
         }),
     );
+
+    // OAuth 2.0/OIDC bridge for ChatGPT/MCP clients (issue #5032): authorizes
+    // via the existing Firebase Auth Google sign-in flow and mints
+    // Outliner-scoped access/refresh tokens bound to the Firebase uid.
+    app.use(createOAuthRouter({ verifyIdTokenCached }));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {
