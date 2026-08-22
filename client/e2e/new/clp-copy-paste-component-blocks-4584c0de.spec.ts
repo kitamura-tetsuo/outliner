@@ -1,5 +1,6 @@
 /** @feature CLP-4584c0de */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();
@@ -34,7 +35,9 @@ test.describe("component block clipboard", () => {
         const hostIndex = itemIds.indexOf(hostId);
         expect(hostIndex).toBeGreaterThan(0);
         const neighborId = itemIds[hostIndex - 1];
-        const hostText = await renderedHost.locator(".item-text").textContent();
+        // A Grid node owns no outline text (#5015), so the selection ends at
+        // offset 0 of its row - which is the whole block.
+        const hostTextLength = 0;
         expect(hostId).toBeTruthy();
         expect(neighborId).toBeTruthy();
         await page.locator("textarea.global-textarea").focus();
@@ -49,7 +52,7 @@ test.describe("component block clipboard", () => {
                 endOffset,
                 userId: "local",
             });
-        }, { start: neighborId, end: hostId, endOffset: hostText?.length ?? 0 });
+        }, { start: neighborId, end: hostId, endOffset: hostTextLength });
         await page.keyboard.press("Control+c");
         // Outside Outliner a Grid is its rendered result: the header row of the
         // visible columns, not the table's display name.
@@ -74,21 +77,28 @@ test.describe("component block clipboard", () => {
         });
     });
 
-    test("cut and paste moves a Calendar view without losing its binding", async ({ page }) => {
+    test("copy and paste carries a Calendar's binding onto a fresh, text-less node", async ({ page }) => {
         const host = page.locator(".outliner-item").nth(1);
-        await host.click({ button: "right" });
-        await page.locator(".context-menu button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, host, "Calendar");
         await page.getByTestId("calendar-name-input").fill("Release plan");
         await page.getByTestId("calendar-create").click();
         await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 30000 });
 
+        // The Calendar is its own row now, created after the item the command
+        // was typed in: index 1 is "Block host", index 2 the Calendar, index 3
+        // "Neighbor". The copy spans all three, so the block travels with the
+        // text around it.
         const items = page.locator(".outliner-item[data-item-id]");
         const start = await items.nth(1).getAttribute("data-item-id");
-        const end = await items.nth(2).getAttribute("data-item-id");
+        const end = await items.nth(3).getAttribute("data-item-id");
         await page.locator("textarea.global-textarea").focus();
         await page.evaluate(({ start, end }) => {
             // eslint-disable-next-line no-restricted-globals
-            window.editorOverlayStore!.setSelection({
+            const editor = window.editorOverlayStore!;
+            editor.clearSelections();
+            editor.setSelection({
                 startItemId: start!,
                 startOffset: 0,
                 endItemId: end!,
@@ -96,12 +106,24 @@ test.describe("component block clipboard", () => {
                 userId: "local",
             });
         }, { start, end });
-        await page.keyboard.press("Control+x");
-        await expect(page.getByTestId("calendar-view")).toHaveCount(0, { timeout: 10000 });
-        await page.locator(".outliner-item").last().click();
+        await page.keyboard.press("Control+c");
+        // A block owns no outline text, so what other applications receive for
+        // it is the calendar's display name (#5015).
+        await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
+            .toContain("Release plan");
+
+        await page.locator(".outliner-item").last().locator(".item-content").click();
+        await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("Control+v");
 
-        await expect(page.getByTestId("calendar-view")).toHaveCount(1, { timeout: 30000 });
-        await expect(page.getByTestId("calendar-name")).toHaveText("Release plan");
+        await expect(page.getByTestId("calendar-view")).toHaveCount(2, { timeout: 30000 });
+        await expect(page.getByTestId("calendar-name").nth(1)).toHaveText("Release plan");
+        // The pasted block is a Calendar node with no ordinary outline text.
+        const pastedTexts = await page.evaluate(() =>
+            [...(globalThis as any).generalStore.currentPage.items]
+                .filter((item: any) => item.componentType === "calendar")
+                .map((item: any) => String(item.text ?? ""))
+        );
+        expect(pastedTexts).toEqual(["", ""]);
     });
 });

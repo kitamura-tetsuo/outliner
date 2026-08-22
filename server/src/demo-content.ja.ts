@@ -312,6 +312,8 @@ export function demoContentJa(): DemoLocaleContent {
                         text:
                             "データベーステーブル: この項目にはライブなテーブルが埋め込まれています（データは Yjs、SQL クエリは PGlite）。"
                             + "Chart ビューに切り替えると、クエリ結果を棒グラフとして描画します。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TABLE_ID,
                     },
@@ -332,6 +334,8 @@ export function demoContentJa(): DemoLocaleContent {
                         text: "テーブルをまたぐ集計: このテーブルが保持しているのは月次の目標値だけですが、"
                             + "そのクエリは上の「売上」テーブルを結合して、両方の系列を比較しています。"
                             + "プロジェクト内のどのテーブルも、スキーマが宣言した名前で参照できます。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_SALES_TARGETS_TABLE_ID,
                     },
@@ -372,12 +376,16 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text:
                             "タスク管理: 期限・優先度・繰り返し間隔を付けてタスクを追加できます。ステータスと優先度の選択肢は、スキーマの CHECK 制約から来ています。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_TASKS_TABLE_ID,
                     },
                     {
                         text:
                             "習慣トラッカー: ひとつのテーブルが習慣の定義と日々の実施ログの両方を保持します。今日のログ行を追加すると連続日数が伸びます。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_HABITS_TABLE_ID,
                     },
@@ -427,12 +435,16 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text:
                             "繰り返しタスクの定義です。ここに行を追加すると、対応するルールの次回実行から発生の生成が始まります。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_ROUTINE_TEMPLATES_TABLE_ID,
                     },
                     {
                         text:
                             "チェックボックスをオンにすると、その日（その週）のタスクを完了できます。翌日の実行で、未チェックの新しい発生が追加され、この表示では置き換わります。",
+                    },
+                    {
                         componentType: "yjstable",
                         yjsTableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
                     },
@@ -494,6 +506,8 @@ export function demoContentJa(): DemoLocaleContent {
                     {
                         text:
                             "このプロジェクトのアウトライン項目を対象にしたカレンダーです。タイトル／開始／終日／期間／期限の役割が割り当て済みで、タグでグループ化されています。下のエントリをドラッグしたり、**Settings** をクリックしてクエリの変更や役割の割り当て直しを試してください。",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_CALENDAR_ID,
                     },
@@ -528,6 +542,8 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text: "今日の時間割",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_HOUR_MAP_CALENDAR_ID,
                     },
@@ -543,6 +559,8 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text: "プロジェクト計画",
+                    },
+                    {
                         componentType: "calendar",
                         calendarId: DEMO_GANTT_CALENDAR_ID,
                     },
@@ -625,16 +643,16 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text: "ダッシュボードの例: 売上と今週の予定を並べて表示します。",
+                    },
+                    {
                         componentType: "layout",
                         children: [
                             {
-                                text: "売上",
                                 componentType: "yjstable",
                                 yjsTableId: DEMO_SALES_TABLE_ID,
                                 columnSpan: 6,
                             },
                             {
-                                text: "今週",
                                 componentType: "calendar",
                                 calendarId: DEMO_CALENDAR_ID,
                                 columnSpan: 6,
@@ -643,7 +661,11 @@ export function demoContentJa(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "空の項目で /Layout と入力するとレイアウトを作成できます。作成後、データベースやカレンダーのブロックをドラッグして入れてください。空のレイアウトはそのまま残り、次のブロックを待ちます。",
+                            "空の項目で /Layout と入力するとレイアウトを作成できます。作成後、グリッドやカレンダーのブロックをドラッグして入れてください。空のレイアウトはそのまま残り、次のブロックを待ちます。",
+                    },
+                    {
+                        text:
+                            "ノードの種類は作成時に決まり、後から変わりません（#5015）。テキストノードはテキストと子を持ち、グリッドとカレンダーは葉のブロック、レイアウトはブロックを並べるだけの入れ物です。互いに変換はできないため「◯◯に変更」の操作はありません。Enter で空の項目を作り /Grid・/Calendar・/Layout と入力すれば、その位置にブロックが作られます。ブロックの見出しが必要なときは、上に通常のテキストノードを置いてください。",
                     },
                 ],
             },

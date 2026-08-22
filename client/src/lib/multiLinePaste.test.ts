@@ -64,4 +64,35 @@ describe("spliceMultiLinePaste", () => {
             cursorOffset,
         });
     });
+
+    /**
+     * An in-app payload carries one line per copied item. A Grid, Calendar or
+     * Layout owns no outline text (#5015), so its line is empty — and trimming
+     * a trailing empty line would drop that item and leave the run one shorter
+     * than the metadata describing it.
+     */
+    it("keeps a trailing empty line when every line is a copied item", () => {
+        expect(spliceMultiLinePaste("Hello", 5, ["A", ""], { exactLines: true })).toEqual({
+            firstText: "HelloA",
+            siblingTexts: [""],
+            cursorOffset: 0,
+        });
+    });
+
+    it("still trims a terminal newline from ordinary clipboard text", () => {
+        expect(spliceMultiLinePaste("Hello", 5, ["A", ""])).toEqual({
+            firstText: "HelloA",
+            siblingTexts: [],
+            cursorOffset: 6,
+        });
+    });
+
+    it("returns the text after the caret separately when asked to detach it", () => {
+        expect(spliceMultiLinePaste("Hello", 3, ["A", ""], { exactLines: true, detachTail: true })).toEqual({
+            firstText: "HelA",
+            siblingTexts: [""],
+            cursorOffset: 0,
+            detachedTail: "lo",
+        });
+    });
 });

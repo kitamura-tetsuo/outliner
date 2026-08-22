@@ -34,7 +34,10 @@ only confusing while they are conflated.
 
 **The view** is an outliner item. It carries `componentType: "yjstable"` and a
 binding field `yjsTableId` (`client/src/services/yjstable/itemBinding.ts`). That
-is the whole of it — an item that points at a table. Column order, column
+is the whole of it — an item that points at a table. It is a _Grid node_, a
+leaf kind that owns no ordinary outline text (#5015), so a copy carries the
+binding and no text; the Table's display name reaches other applications
+through the outward plain-text/HTML flavors instead. Column order, column
 labels, hidden columns and the query itself are _not_ on the item; they live in
 the table's UI Definition, so two views of one table are today identical views,
 not independently configured ones (see §10.1).

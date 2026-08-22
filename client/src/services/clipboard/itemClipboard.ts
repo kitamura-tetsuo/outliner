@@ -1,5 +1,5 @@
 import type { CalendarSettings } from "../calendar/calendarService";
-import { LAYOUT_COLUMN_COUNT, LAYOUT_COMPONENT_TYPE, normalizeColumnSpan } from "../layout/layoutModel";
+import { canAcceptChild, LAYOUT_COLUMN_COUNT, LAYOUT_COMPONENT_TYPE, normalizeColumnSpan } from "../layout/layoutModel";
 export const OUTLINER_ITEMS_MIME = "application/x-outliner-items";
 const OUTLINER_ITEMS_HTML_ATTRIBUTE = "data-outliner-items";
 
@@ -136,6 +136,10 @@ function hasOnlyKeys(value: Record<string, unknown>, allowed: ReadonlySet<string
 function isClipboardItem(value: unknown): value is ClipboardItem {
     if (!isRecord(value) || !hasOnlyKeys(value, ITEM_KEYS)) return false;
     if (typeof value.text !== "string" || !Number.isInteger(value.depth) || (value.depth as number) < 0) return false;
+    // Only a Text node owns outline text (#5015): a payload claiming both a
+    // node kind and item text describes a node that cannot exist, so pasting it
+    // is refused rather than sanitized into something the user did not copy.
+    if (value.componentType !== undefined && value.text !== "") return false;
     if (
         value.columnSpan !== undefined
         && (!Number.isInteger(value.columnSpan) || (value.columnSpan as number) < 1
@@ -166,6 +170,25 @@ function isClipboardItem(value: unknown): value is ClipboardItem {
             && value.yjsTableId === undefined;
     }
     return false;
+}
+
+/**
+ * The depth sequence has to describe a tree the node-kind rules allow (#5015):
+ * a Grid or Calendar is a leaf, and a Layout holds only visual leaves. A
+ * payload that violates this — hand-crafted, or written by an older build —
+ * would otherwise paste an invalid parenting the renderer simply never shows.
+ */
+function hasValidKindStructure(items: ClipboardItem[]): boolean {
+    // Ancestor chain by depth: ancestors[d] is the kind of the item at depth d
+    // the current item descends from.
+    const ancestors: Array<ClipboardComponentType | undefined> = [];
+    for (const item of items) {
+        ancestors.length = item.depth;
+        const parent = item.depth > 0 ? ancestors[item.depth - 1] : undefined;
+        if (!canAcceptChild({ componentType: parent }, { componentType: item.componentType })) return false;
+        ancestors[item.depth] = item.componentType;
+    }
+    return true;
 }
 
 function isGridUiComponentDto(value: unknown): value is GridUiComponentDto {
@@ -247,12 +270,12 @@ export function serializeClipboardItems(
     sourceProjectId: string,
     // `text` overrides the item's own text, so a partially selected item can be
     // copied as just the selected slice while keeping its position in the range.
-    items: Array<{ item: ItemLike; depth: number; fallbackText?: string; text?: string; }>,
+    items: Array<{ item: ItemLike; depth: number; text?: string; }>,
     tables?: Readonly<Record<string, GridTableSnapshot>>,
     calendars?: Readonly<Record<string, CalendarSettings>>,
     operation?: "cut",
 ): string {
-    const serialized = items.map(({ item, depth, fallbackText, text: textOverride }) => {
+    const serialized = items.map(({ item, depth, text: textOverride }) => {
         const value = nodeValue(item);
         const rawType = value?.get?.("componentType");
         const isBoundComponent = rawType === "yjstable" || rawType === "calendar";
@@ -271,7 +294,11 @@ export function serializeClipboardItems(
         const columnSpan = typeof rawSpan === "number" && Number.isFinite(rawSpan)
             ? normalizeColumnSpan(rawSpan)
             : undefined;
-        const text = (textOverride ?? String(item.text ?? "")) || fallbackText || "";
+        // A visual node owns no ordinary outline text (#5015), so a copy of one
+        // carries none: neither its own stale text nor an invented caption. The
+        // entity's display name still reaches other applications through the
+        // outward plain-text/HTML flavors, which are built separately.
+        const text = componentType !== undefined ? "" : (textOverride ?? String(item.text ?? ""));
         const carriesComponent = componentType === LAYOUT_COMPONENT_TYPE
             || (componentType !== undefined && typeof binding === "string" && binding.length > 0);
         return {
@@ -344,6 +371,7 @@ export function deserializeClipboardItems(value: string): ItemClipboardPayload |
             return undefined;
         }
         if (!payload.items.every(isClipboardItem)) return undefined;
+        if (!hasValidKindStructure(payload.items)) return undefined;
         if (payload.version === 1) {
             if (!hasOnlyKeys(payload, PAYLOAD_V1_KEYS)) return undefined;
             return payload as unknown as ItemClipboardPayloadV1;

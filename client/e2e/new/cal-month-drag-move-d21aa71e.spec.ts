@@ -6,33 +6,34 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-day-week-month-grid-views-9ce96e44.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-9ce96e44: month grid drag and drop", () => {
+    /** The seeded "Standup" row: the entry that gets dragged between days. */
+    let scheduledId = "";
+
     test.beforeEach(async ({ page }, testInfo) => {
         test.setTimeout(120000);
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Calendar anchor", "Standup"]);
         await expect(page.locator(".outliner-item").first()).toBeVisible({ timeout: 10000 });
 
-        await page.evaluate(() => {
+        scheduledId = await page.evaluate(() => {
             const items = (globalThis as any).generalStore.currentPage.items;
             const today = new Date().toISOString().slice(0, 10);
             items.at(1).start = `${today}T09:00:00.000Z`;
             items.at(1).allDay = false;
             items.at(1).duration = "PT30M";
+            return String(items.at(1).id);
         });
     });
 
     test("moving an entry to another day in month view updates its start date but preserves time-of-day", async ({ page }) => {
         // Setup calendar
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });
@@ -93,15 +94,21 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
 
         await page.waitForTimeout(1000);
 
-        const startData = await page.evaluate(() => {
+        // Addressed by id: creating the Calendar block inserted a row beside
+        // "Calendar anchor" (#5015), so the scheduled row is no longer at 1.
+        const startData = await page.evaluate((id) => {
             const items = (globalThis as any).generalStore.currentPage.items;
-            const newStart = items.at(1).start;
+            let scheduled: any;
+            for (let index = 0; index < items.length; index++) {
+                if (String(items.at(index).id) === id) scheduled = items.at(index);
+            }
+            const newStart = scheduled?.start;
             const oldDate = new Date();
             const newDate = new Date(newStart as string);
             const diffDays = Math.round((newDate.getTime() - oldDate.getTime()) / (1000 * 3600 * 24));
 
             return { newStart: newStart, diffDays: diffDays };
-        });
+        }, scheduledId);
 
         // Playwright's headless execution environment frequently fails to bubble synthetic HTML5 DataTransfer events
         // to Svelte 5's root listener in E2E tests, which leaves diffDays at 0.
@@ -119,13 +126,9 @@ test.describe("FTR-9ce96e44: month grid drag and drop", () => {
 
     test("a drop inside the month grid does not move outline items", async ({ page }) => {
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });

@@ -28,14 +28,15 @@ tests:
 - client/src/stores/OutlinerViewModel.test.ts
 - server/tests/demo-seed-content.test.ts
 acceptance:
-- A Layout visual container can be created in an outliner page (/Layout command, or the item context menu)
+- A Layout owns no ordinary outline text; a heading for it is a normal Text node placed before it
+- A Layout visual container is created with the /Layout command; there is no action that converts an existing node into one (#5015)
 - A narrow Layout stacks one block per row in tree order without mutating stored spans, and returns to them when the width comes back
 - A span-4 child followed by a span-8 child shares one row, as does 6 + 6
 - Auto-placement wraps to the next row once the cumulative span exceeds 12
 - Changing a span does not reorder the children
 - Child width is controlled solely by an integer columnSpan of 1..12, clamped when read
-- Converting an item to or from a Layout rebuilds the outline's visible order immediately, without waiting for the next structural edit
 - Copy/duplicate preserves the children's order, spans and component-copy semantics
+- Creating a Layout rebuilds the outline's visible order immediately, without waiting for the next structural edit
 - Deleting the Layout follows normal subtree deletion, while Unwrap keeps the blocks, in order, with their component bindings intact
 - Grid and Calendar are accepted as Layout children; ordinary text items and nested Layouts are rejected, leaving the tree unchanged
 - Grid and Calendar rendering outside a Layout is unaffected
@@ -43,7 +44,6 @@ acceptance:
 - Removing the last child leaves an empty Layout that stays as an insertion/drop target
 - Span changes made by a collaborator update the rendered layout reactively
 - Spans can be resized by dragging a whole-column handle and by keyboard (arrow keys, Home/End, and −/+ buttons)
-- The Change to Layout action is withheld for an item whose children are not all eligible visual blocks, so converting can never hide an existing branch
 - The Layout renders a fixed 12-column equal-track CSS Grid
 - Tree order is the only persisted ordering, and is the rendered and accessible order
 - Visual children can be moved into, within, and out of a Layout through tree operations

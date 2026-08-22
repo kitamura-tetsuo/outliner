@@ -1,3 +1,4 @@
+import { canAcceptChild } from "$shared/services/outlineNodeKind";
 import type { Awareness } from "y-protocols/awareness";
 import { YTree } from "yjs-orderedtree";
 import { Item, Items, Project } from "../../schema/yjs-schema";
@@ -111,6 +112,18 @@ export const yjsService = {
     },
 
     moveItem(project: Project, itemKey: string, newParentKey: string, index?: number) {
+        // Same node-kind rule as drop and indent (#5015): a move that would
+        // parent content under a Grid/Calendar leaf, or non-visual content
+        // under a Layout, is refused instead of silently reshaping the tree.
+        if (
+            newParentKey && newParentKey !== "root"
+            && !canAcceptChild(
+                new Item(project.ydoc, project.tree, newParentKey),
+                new Item(project.ydoc, project.tree, itemKey),
+            )
+        ) {
+            return;
+        }
         project.ydoc.transact(() => {
             const oldParentKey = safeGetNodeParent(project.tree, itemKey);
             const tree = project.tree as unknown as YTreeWithMove;
@@ -155,6 +168,18 @@ export const yjsService = {
             const idx = siblings.indexOf(itemKey);
             if (idx > 0) {
                 const newParent = siblings[idx - 1];
+                // Indenting reparents under the preceding sibling, so the same
+                // node-kind rule a drop obeys applies here (#5015): a Grid or
+                // Calendar leaf takes no children, and a Layout takes only
+                // visual blocks. A refused indent leaves the tree untouched.
+                if (
+                    !canAcceptChild(
+                        new Item(project.ydoc, project.tree, newParent),
+                        new Item(project.ydoc, project.tree, itemKey),
+                    )
+                ) {
+                    return;
+                }
                 tree.moveChildToParent(itemKey, newParent);
                 recomputeTree(tree);
                 tree.setNodeOrderToEnd(itemKey);

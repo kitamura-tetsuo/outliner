@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-calendar-model-and-role-assignment-5c06604d.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () => {
@@ -19,15 +20,9 @@ test.describe("FTR-5c06604d: calendar registry, query, and role assignment", () 
         // a no-op (handleContextMenu returns early for isPageTitle); use the
         // seeded item below it instead.
         const item = page.locator(".outliner-item").nth(1);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-
-        // Attach a calendar via the item's context menu.
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         const createPanel = page.getByTestId("calendar-create-panel").first();
         await expect(createPanel).toBeVisible({ timeout: 10000 });

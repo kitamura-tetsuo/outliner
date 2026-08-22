@@ -29,30 +29,32 @@ test.describe("mouse drag clipboard with component blocks", () => {
         await page.getByTestId("yjs-table-preset-select").first().selectOption("tasks");
         await page.getByTestId("yjs-table-create").first().click();
         await expect(page.getByTestId("yjs-table-view").first()).toBeVisible({ timeout: 30000 });
-
-        // The toolbar may host the new Grid on its own item, so read the host id
-        // back from the rendered view instead of assuming a position.
-        const gridHostId = await page.getByTestId("yjs-table-view").first().locator(
-            "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' outliner-item ') and @data-item-id][1]",
-        ).getAttribute("data-item-id");
-        expect(gridHostId).toBeTruthy();
+        // The view shell mounts before the async query result is available.
+        // Wait for a rendered header so the outward clipboard flavor is the
+        // Grid result rather than its temporary display-name fallback.
+        await expect(page.getByTestId("yjs-table-grid").first().locator("thead th").first())
+            .toBeVisible({ timeout: 30000 });
 
         const source = page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-text`);
-        const target = page.locator(`.outliner-item[data-item-id="${gridHostId}"] .item-text`);
+        // A Grid is an atomic visual node with no outline text (#5015). End the
+        // gesture in its rendered view, rather than depending on the absent
+        // `.item-text` or the empty text-row strip above the component.
+        const target = page.getByTestId("yjs-table-view").first();
         const sourceBox = await source.boundingBox();
         const targetBox = await target.boundingBox();
         expect(sourceBox).not.toBeNull();
         expect(targetBox).not.toBeNull();
 
-        // Drag from inside the first item's text into the middle of the Grid host's
-        // title: neither end lands on an item boundary, which is what a real mouse
-        // selection looks like.
+        // Drag from inside Alpha's text into the visible body of the Grid. Both
+        // coordinates are interior points, matching a real cross-node mouse
+        // selection rather than relying on item boundaries.
         await page.mouse.move(sourceBox!.x + 25, sourceBox!.y + sourceBox!.height / 2);
         await page.mouse.down();
         await page.mouse.move(sourceBox!.x + 45, sourceBox!.y + sourceBox!.height / 2, { steps: 5 });
-        await page.mouse.move(targetBox!.x + 30, targetBox!.y + targetBox!.height / 2, { steps: 10 });
+        await page.mouse.move(targetBox!.x + targetBox!.width / 3, targetBox!.y + targetBox!.height / 2, {
+            steps: 10,
+        });
         await page.mouse.up();
-        await page.waitForTimeout(500);
 
         await page.keyboard.press("Control+c");
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 15000 })
@@ -74,8 +76,10 @@ test.describe("mouse drag clipboard with component blocks", () => {
         await page.locator(`.outliner-item[data-item-id="${sourceId}"] .item-content`).click();
         await TestHelpers.waitForCursorVisible(page);
         await page.keyboard.press("End");
+        const items = page.locator(".outliner-item[data-item-id]");
+        const itemCountBeforePaste = await items.count();
         await page.keyboard.press("Enter");
-        await page.waitForTimeout(500);
+        await expect(items).toHaveCount(itemCountBeforePaste + 1);
         await page.keyboard.press("Control+v");
 
         await expect(page.getByTestId("yjs-table-view")).toHaveCount(2, { timeout: 30000 });

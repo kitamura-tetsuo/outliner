@@ -47,11 +47,13 @@ describe("item clipboard", () => {
             sourceProjectId: "project-a",
             items: [
                 { text: "note", depth: 0 },
-                { text: "grid", depth: 1, componentType: "yjstable", yjsTableId: "table-1" },
-                { text: "calendar", depth: 0, componentType: "calendar", calendarId: "calendar-1" },
+                // A visual node owns no outline text (#5015), so its own stale
+                // text never travels on the clipboard.
+                { text: "", depth: 1, componentType: "yjstable", yjsTableId: "table-1" },
+                { text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" },
             ],
         });
-        expect(clipboardPlainText(decoded!)).toBe("note\ngrid\ncalendar");
+        expect(clipboardPlainText(decoded!)).toBe("note\n\n");
     });
 
     it("round-trips a deduplicated version 2 Grid structure snapshot", () => {
@@ -60,7 +62,9 @@ describe("item clipboard", () => {
             "project-a",
             [
                 { item: item("first", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
-                { item: item("second", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 1 },
+                // Both at depth 0: a Grid is a leaf, so one can never be the
+                // other's child (#5015).
+                { item: item("second", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
             ],
             { "table-1": snapshot },
         );
@@ -69,8 +73,8 @@ describe("item clipboard", () => {
             version: 2,
             sourceProjectId: "project-a",
             items: [
-                { text: "first", depth: 0, componentType: "yjstable", yjsTableId: "table-1" },
-                { text: "second", depth: 1, componentType: "yjstable", yjsTableId: "table-1" },
+                { text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" },
+                { text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" },
             ],
             tables: { "table-1": snapshot },
         });
@@ -137,11 +141,60 @@ describe("item clipboard", () => {
         expect(deserializeClipboardItems(copied)?.operation).toBeUndefined();
     });
 
-    it("uses a meaningful fallback for an empty block host", () => {
+    it("never invents outline text for a copied block, even from stale item text", () => {
         const decoded = deserializeClipboardItems(serializeClipboardItems("project-a", [
-            { item: item("", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0, fallbackText: "Sales" },
+            { item: item("stale caption", { componentType: "yjstable", yjsTableId: "table-1" }), depth: 0 },
         ]));
-        expect(decoded?.items[0].text).toBe("Sales");
+        expect(decoded?.items[0].text).toBe("");
+    });
+
+    it("rejects a payload that gives a visual node outline text or children", () => {
+        const withText = JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [{ text: "caption", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+        });
+        expect(deserializeClipboardItems(withText)).toBeUndefined();
+
+        const gridWithChild = JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [
+                { text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" },
+                { text: "child", depth: 1 },
+            ],
+        });
+        expect(deserializeClipboardItems(gridWithChild)).toBeUndefined();
+
+        const layoutWithTextChild = JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [
+                { text: "", depth: 0, componentType: "layout" },
+                { text: "heading", depth: 1 },
+            ],
+        });
+        expect(deserializeClipboardItems(layoutWithTextChild)).toBeUndefined();
+
+        const nestedLayout = JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [
+                { text: "", depth: 0, componentType: "layout" },
+                { text: "", depth: 1, componentType: "layout" },
+            ],
+        });
+        expect(deserializeClipboardItems(nestedLayout)).toBeUndefined();
+
+        const layoutWithBlock = JSON.stringify({
+            version: 1,
+            sourceProjectId: "p",
+            items: [
+                { text: "", depth: 0, componentType: "layout" },
+                { text: "", depth: 1, componentType: "calendar", calendarId: "cal-1" },
+            ],
+        });
+        expect(deserializeClipboardItems(layoutWithBlock)).not.toBeUndefined();
     });
 
     it("rejects malformed clipboard data and snapshots strictly", () => {
@@ -156,18 +209,18 @@ describe("item clipboard", () => {
         expect(deserializeClipboardItems(JSON.stringify({
             version: 2,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
             tables: {},
         }))).toEqual({
             version: 2,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
             tables: {},
         });
         expect(deserializeClipboardItems(JSON.stringify({
             version: 2,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
             tables: {
                 "table-1": { ...tableSnapshot("different-id") },
             },
@@ -175,7 +228,7 @@ describe("item clipboard", () => {
         expect(deserializeClipboardItems(JSON.stringify({
             version: 2,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
             tables: {
                 "table-1": {
                     ...tableSnapshot(),
@@ -186,7 +239,7 @@ describe("item clipboard", () => {
         expect(deserializeClipboardItems(JSON.stringify({
             version: 2,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "table-1" }],
             tables: {
                 "table-1": {
                     ...tableSnapshot(),
@@ -210,8 +263,8 @@ describe("item clipboard", () => {
             sourceProjectId: "project-a",
             items: [
                 { text: "", depth: 0, componentType: "layout" },
-                { text: "grid", depth: 1, componentType: "yjstable", yjsTableId: "table-1", columnSpan: 4 },
-                { text: "cal", depth: 1, componentType: "calendar", calendarId: "cal-1", columnSpan: 8 },
+                { text: "", depth: 1, componentType: "yjstable", yjsTableId: "table-1", columnSpan: 4 },
+                { text: "", depth: 1, componentType: "calendar", calendarId: "cal-1", columnSpan: 8 },
             ],
         });
     });
@@ -238,12 +291,12 @@ describe("item clipboard", () => {
         expect(deserializeClipboardItems(JSON.stringify({
             version: 1,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 13 }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 13 }],
         }))).toBeUndefined();
         expect(deserializeClipboardItems(JSON.stringify({
             version: 1,
             sourceProjectId: "p",
-            items: [{ text: "grid", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 2.5 }],
+            items: [{ text: "", depth: 0, componentType: "yjstable", yjsTableId: "t", columnSpan: 2.5 }],
         }))).toBeUndefined();
     });
 

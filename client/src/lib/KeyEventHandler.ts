@@ -1,4 +1,4 @@
-import { getItemCalendarId, setItemCalendarId } from "../services/calendar/calendarBinding";
+import { getItemCalendarId } from "../services/calendar/calendarBinding";
 import { type CalendarSettings, createCalendar, getCalendar } from "../services/calendar/calendarService";
 import { escapeHtml, serializeGridToHtml, serializeGridToTsv } from "../services/clipboard/gridClipboardExport";
 import { GRID_PASTE_PROGRESS_EVENT } from "../services/clipboard/gridPasteEvents";
@@ -17,8 +17,9 @@ import {
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
+import { isVisualNode } from "../services/outline/nodeTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
-import { getItemTableId, setItemTableId } from "../services/yjstable/itemBinding";
+import { getItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
 import { getTableName, listTables } from "../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
@@ -161,9 +162,9 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const sliceStart = index === first ? startOffset : 0;
         const sliceEnd = index === last ? endOffset : text.length;
         // An edge item with an empty slice is one the selection stops at rather
-        // than reaches, so it leaves the range — copying its component block
-        // would paste a Grid the user never selected. A text-less item has no
-        // slice to judge by, so it counts as reached.
+        // than reaches, so it leaves the range. A visual node owns no text at
+        // all (#5015), so it has no slice to judge by and counts as reached:
+        // there is no interior for a drag to stop short of.
         if (isEdge && text.length > 0 && sliceStart >= sliceEnd) return [];
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
@@ -174,7 +175,11 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const collected = [{
             item,
             depth: entry.depth,
-            fallbackText,
+            // Outward-only display name. It never becomes the pasted node's
+            // outline text (#5015) - a visual node owns none - but a
+            // spreadsheet or document receiving the copy still sees what the
+            // block is called.
+            label: fallbackText,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
         // A Layout renders its own children, so neither they nor anything
@@ -189,7 +194,7 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
                 collected.push({
                     item: node,
                     depth,
-                    fallbackText: nodeTableId
+                    label: nodeTableId
                         ? getTableName(project.ydoc, nodeTableId)
                         : nodeCalendarId
                         ? getCalendar(project, nodeCalendarId)?.name
@@ -265,25 +270,31 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
-        entries.map(entry => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
+        entries.map(({ label: _label, ...entry }) => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return undefined;
+    // Positionally aligned with payload.items: the serializer preserves entry order.
+    const labels = entries.map(entry => entry.label);
 
-    // Outward flavors. A selection with no rendered Grid produces neither, and
-    // the ordinary text/HTML path is used exactly as before.
-    if (gridExports.size === 0) return { encoded, plainText: clipboardPlainText(payload) };
+    // Outward flavors. A visual node contributes no outline text, so the line
+    // another application sees is its rendered export when there is one and its
+    // entity display name otherwise.
+    const outwardText = (index: number) => payload.items[index].text || labels[index] || "";
+    if (gridExports.size === 0) {
+        return { encoded, plainText: payload.items.map((_item, index) => outwardText(index)).join("\n") };
+    }
 
     const exportOf = (item: { componentType?: string; yjsTableId?: string; }) =>
         item.componentType === "yjstable" && item.yjsTableId ? gridExports.get(item.yjsTableId) : undefined;
 
-    const plainText = payload.items.map(item => exportOf(item)?.tsv ?? item.text).join("\n");
-    const html = payload.items.map(item => {
+    const plainText = payload.items.map((item, index) => exportOf(item)?.tsv ?? outwardText(index)).join("\n");
+    const html = payload.items.map((item, index) => {
         const exported = exportOf(item);
-        if (!exported) return escapeHtml(item.text).replaceAll("\n", "<br>");
+        if (!exported) return escapeHtml(outwardText(index)).replaceAll("\n", "<br>");
         // The picture and the numbers both belong on the clipboard: a document
         // takes the image, a spreadsheet takes the cells (§8.1).
         return exported.chartImage
@@ -344,17 +355,29 @@ function writeStructuredSystemClipboard(structured: StructuredClipboard): void {
     });
 }
 
-function clearRetainedComponentHost(): void {
+/**
+ * Cutting a multi-item selection merges its ends into the first item, which
+ * survives the cut. When that survivor is a visual node the whole block has
+ * already travelled to the clipboard, so leaving it behind would duplicate the
+ * Grid or Calendar on paste.
+ *
+ * A node's kind is fixed at creation (#5015), so the block is not stripped back
+ * to a Text node — the node itself is removed, which is what "cut" means for a
+ * block that carries no text of its own.
+ */
+function removeRetainedComponentHost(): void {
     const selection = Object.values(store.selections).find(sel => sel.startItemId !== sel.endItemId);
     const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
     if (!selection) return;
     const start = visible.findIndex(entry => entry.model.id === selection.startItemId);
     const end = visible.findIndex(entry => entry.model.id === selection.endItemId);
     const retained = visible[Math.min(start, end)]?.model.original;
-    if (!retained) return;
-    retained.componentType = undefined;
-    setItemTableId(retained, undefined);
-    setItemCalendarId(retained, undefined);
+    if (!retained || !isVisualNode(retained)) return;
+    try {
+        retained.delete();
+    } catch (error) {
+        logger.error({ error }, "removeRetainedComponentHost: failed to remove the cut block");
+    }
 }
 
 export function isForeignInput(target: EventTarget | null): boolean {
@@ -3319,7 +3342,7 @@ export class KeyEventHandler {
                 cursor.cutSelectedText();
             });
 
-            if (structured) clearRetainedComponentHost();
+            if (structured) removeRetainedComponentHost();
 
             // Clear selections
             store.clearSelections();

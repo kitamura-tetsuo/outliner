@@ -6,6 +6,7 @@ registerCoverageHooks();
  *  Source  : docs/client-features/cal-gantt-view-e3a9f2b1.yaml
  */
 import { expect, test } from "@playwright/test";
+import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-e3a9f2b1: Gantt drag destination tooltip", () => {
@@ -32,13 +33,9 @@ test.describe("FTR-e3a9f2b1: Gantt drag destination tooltip", () => {
 
     test("dragging a bar shows the day-snapped destination date and clears it on drop", async ({ page }) => {
         const item = page.locator(`.outliner-item[data-item-id="${leafItemId}"]`);
-        await expect(item).toBeVisible({ timeout: 10000 });
-        await item.click();
-        await page.waitForTimeout(300);
-        await item.click({ button: "right" });
-        const contextMenu = page.locator(".context-menu");
-        await expect(contextMenu).toBeVisible({ timeout: 10000 });
-        await contextMenu.locator("button", { hasText: "Change to Calendar" }).click();
+        // Node kinds are immutable (#5015): the block is created by the
+        // slash command, not by converting this row.
+        await createBlockFromItem(page, item, "Calendar");
 
         await expect(page.getByTestId("calendar-create-panel").first()).toBeVisible({ timeout: 10000 });
         await page.getByTestId("calendar-name-input").first().fill("Gantt Tooltip Calendar");

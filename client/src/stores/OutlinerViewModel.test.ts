@@ -108,7 +108,7 @@ describe("OutlinerViewModel", () => {
         expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grid");
     });
 
-    it("rebuilds the visible order when a Layout is converted back to text", () => {
+    it("keeps a Layout's children hidden: a node's kind cannot be changed back (#5015)", () => {
         const layout = tree.items.addNode("u");
         layout.id = "layout";
         layout.componentType = "layout";
@@ -119,10 +119,13 @@ describe("OutlinerViewModel", () => {
         vm.updateFromModel(tree);
         expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grid");
 
+        // The schema refuses the write, so the Layout stays a Layout and its
+        // children stay arranged inside it rather than reappearing as rows.
         layout.componentType = undefined;
         vm.updateFromModel(tree, new Set(["layout"]), false);
 
-        expect(vm.getVisibleItems().map(i => i.model.id)).toContain("grid");
+        expect(layout.componentType).toBe("layout");
+        expect(vm.getVisibleItems().map(i => i.model.id)).not.toContain("grid");
     });
 
     it("keeps the fast path for a change that does not touch an item's Layout role", () => {

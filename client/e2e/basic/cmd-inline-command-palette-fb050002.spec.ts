@@ -24,30 +24,35 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         await expect(palette).toBeVisible();
         await expect(palette).toHaveCSS("background-color", "rgb(255, 255, 255)");
 
-        // Check if options are visible
-        const dbOption = page.locator('[data-testid="command-item-yjstable"]');
+        // Every visual node kind has its own creation command (#5015); the
+        // Grid entry still carries the "yjstable" discriminator.
+        const gridOption = page.locator('[data-testid="command-item-yjstable"]');
+        const calendarOption = page.locator('[data-testid="command-item-calendar"]');
         const aliasOption = page.locator('[data-testid="command-item-alias"]');
-        await expect(dbOption).toBeVisible();
+        await expect(gridOption).toBeVisible();
+        await expect(calendarOption).toBeVisible();
         await expect(aliasOption).toBeVisible();
 
-        // Type 'al' to narrow down to Alias
-        await page.keyboard.type("al");
-        await expect(palette).toHaveAttribute("data-query", "al");
+        // Type 'ali' to narrow down to Alias
+        await page.keyboard.type("ali");
+        await expect(palette).toHaveAttribute("data-query", "ali");
         await expect(aliasOption).toBeVisible();
-        await expect(dbOption).toBeHidden();
+        await expect(gridOption).toBeHidden();
+        await expect(calendarOption).toBeHidden();
 
         // Test arrow up/down on the list without query
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
+        await page.keyboard.press("Backspace");
         await expect(palette).toHaveAttribute("data-query", "");
 
-        await expect(dbOption).toHaveAttribute("aria-selected", "true");
+        await expect(gridOption).toHaveAttribute("aria-selected", "true");
         await page.keyboard.press("ArrowDown");
-        await expect(aliasOption).toHaveAttribute("aria-selected", "true");
-        await expect(dbOption).toHaveAttribute("aria-selected", "false");
+        await expect(calendarOption).toHaveAttribute("aria-selected", "true");
+        await expect(gridOption).toHaveAttribute("aria-selected", "false");
         await page.keyboard.press("ArrowUp");
-        await expect(dbOption).toHaveAttribute("aria-selected", "true");
-        await expect(aliasOption).toHaveAttribute("aria-selected", "false");
+        await expect(gridOption).toHaveAttribute("aria-selected", "true");
+        await expect(calendarOption).toHaveAttribute("aria-selected", "false");
     });
 
     test("Escape closes palette and leaves text unchanged", async ({ page }) => {
@@ -145,9 +150,9 @@ test.describe("Inline Command Palette Acceptance Criteria", () => {
         await expect(globalTextarea).toHaveAttribute("aria-controls", "slash-command-listbox");
         await expect(globalTextarea).toHaveAttribute("aria-activedescendant", "command-item-yjstable");
 
-        // Move selection
+        // Move selection (Calendar follows Grid in the command list, #5015)
         await page.keyboard.press("ArrowDown");
-        await expect(globalTextarea).toHaveAttribute("aria-activedescendant", "command-item-alias");
+        await expect(globalTextarea).toHaveAttribute("aria-activedescendant", "command-item-calendar");
 
         // Press Escape to close
         await page.keyboard.press("Escape");

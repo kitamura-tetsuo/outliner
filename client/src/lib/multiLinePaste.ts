@@ -6,6 +6,13 @@ export interface PasteLineLayout {
     texts: string[];
     /** Depth of each line, relative to the shallowest one. */
     depths: number[];
+    /**
+     * True when the lines came from an in-app payload, where each line is one
+     * copied item rather than a guess read off indentation. An empty line is
+     * then a real item — a Grid, Calendar or Layout owns no outline text at all
+     * (#5015) — so none of them may be trimmed away as a line ending.
+     */
+    exact?: boolean;
 }
 
 /**
@@ -70,6 +77,23 @@ export interface MultiLinePasteSplice {
     firstText: string;
     siblingTexts: string[];
     cursorOffset: number;
+    /** The text after the caret, when `detachTail` kept it off the last line. */
+    detachedTail?: string;
+}
+
+export interface MultiLinePasteOptions {
+    /**
+     * Every line is one copied item, so a trailing empty line is content rather
+     * than a line ending. Set for an in-app payload (`PasteLineLayout.exact`),
+     * where trimming would drop an item and misalign the run with its metadata.
+     */
+    exactLines?: boolean;
+    /**
+     * Keep the text after the caret off the last pasted line and return it as
+     * `detachedTail`. The caller sets this when that line is a visual node,
+     * which owns no outline text to carry it (#5015).
+     */
+    detachTail?: boolean;
 }
 
 /**
@@ -81,8 +105,9 @@ export function spliceMultiLinePaste(
     text: string,
     offset: number,
     clipboardLines: string[],
+    options: MultiLinePasteOptions = {},
 ): MultiLinePasteSplice {
-    const lines = clipboardLines.length > 1 && clipboardLines.at(-1) === ""
+    const lines = !options.exactLines && clipboardLines.length > 1 && clipboardLines.at(-1) === ""
         ? clipboardLines.slice(0, -1)
         : clipboardLines;
     const normalizedLines = lines.length > 0 ? lines : [""];
@@ -90,11 +115,15 @@ export function spliceMultiLinePaste(
     const head = text.substring(0, safeOffset);
     const tail = text.substring(safeOffset);
 
+    const detachedTail = options.detachTail ? tail : undefined;
+    const carriedTail = options.detachTail ? "" : tail;
+
     if (normalizedLines.length === 1) {
         return {
-            firstText: head + normalizedLines[0] + tail,
+            firstText: head + normalizedLines[0] + carriedTail,
             siblingTexts: [],
             cursorOffset: head.length + normalizedLines[0].length,
+            detachedTail,
         };
     }
 
@@ -103,8 +132,9 @@ export function spliceMultiLinePaste(
         firstText: head + normalizedLines[0],
         siblingTexts: [
             ...normalizedLines.slice(1, -1),
-            lastLine + tail,
+            lastLine + carriedTail,
         ],
         cursorOffset: lastLine.length,
+        detachedTail,
     };
 }

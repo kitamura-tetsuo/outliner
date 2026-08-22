@@ -30,6 +30,7 @@
     } from "../services/clipboard/gridPasteEvents";
     import { setItemCalendarId } from "../services/calendar/calendarBinding";
     import { registerPageOutline } from "../services/navigation/outlinePageRegistry";
+    import { createVisualNodeAtTarget } from "../services/outline/visualNodePlacement";
     import { setItemGridId, setItemTableId } from "../services/yjstable/itemBinding";
     import OutlinerItem from "./OutlinerItem.svelte";
     import OutlinerToolbar from "./OutlinerToolbar.svelte";
@@ -1153,9 +1154,42 @@
      */
     function pasteLayout(lines: string[], structuredItems?: ClipboardItem[]): PasteLineLayout {
         if (structuredItems && structuredItems.length === lines.length) {
-            return { texts: lines, depths: structuredItems.map((item) => item.depth) };
+            return { texts: lines, depths: structuredItems.map((item) => item.depth), exact: true };
         }
         return derivePasteLineLayout(lines);
+    }
+
+    /** True when the run's last line describes a Grid, Calendar or Layout. */
+    function lastPastedIsVisual(layout: PasteLineLayout, structuredItems?: ClipboardItem[]): boolean {
+        if (!layout.exact) return false;
+        return structuredItems?.[layout.texts.length - 1]?.componentType !== undefined;
+    }
+
+    /**
+     * Place the text that followed the caret, which rides on the last pasted
+     * line. A visual node owns no outline text (#5015), so when the run ends on
+     * one the tail becomes a Text sibling of the block instead of being written
+     * into it, where the schema would drop it.
+     */
+    function withPasteTail(
+        texts: string[],
+        depths: number[],
+        structuredItems: ClipboardItem[] | undefined,
+        tail: string,
+    ): { texts: string[]; depths: number[]; structuredItems?: ClipboardItem[]; appended: boolean } {
+        const lastIndex = texts.length - 1;
+        if (tail === "" || structuredItems?.[lastIndex]?.componentType === undefined) {
+            const merged = [...texts];
+            merged[lastIndex] += tail;
+            return { texts: merged, depths, structuredItems, appended: false };
+        }
+        const depth = depths[lastIndex] ?? 0;
+        return {
+            texts: [...texts, tail],
+            depths: [...depths, depth],
+            structuredItems: [...structuredItems!, { text: tail, depth }],
+            appended: true,
+        };
     }
 
     /**
@@ -1224,6 +1258,34 @@
         return lastItemId;
     }
 
+    /**
+     * Where a pasted clipboard item that describes a *visual* node goes.
+     *
+     * A node's kind is fixed at creation (#5015), so pasting a Grid, Calendar
+     * or Layout never re-types the item the caret is in: the block is created
+     * as a fresh node at that position, and the caret's own item keeps its text
+     * and children. An eligible empty Text node is replaced outright, exactly
+     * as a slash command replaces one, so pasting into a blank line does not
+     * leave a stray empty row behind.
+     *
+     * Returns the node the pasted run should continue from.
+     */
+    function hostForPastedItem(base: Item, metadata?: ClipboardItem): Item {
+        if (!metadata?.componentType) {
+            applyClipboardMetadata(base, metadata);
+            return base;
+        }
+        const created = createVisualNodeAtTarget(
+            base,
+            String(base.text ?? ""),
+            metadata.componentType,
+            currentUser,
+        );
+        if (!created) return base;
+        applyClipboardMetadata(created.item, metadata);
+        return created.item;
+    }
+
     function applyClipboardMetadata(item: Item, metadata?: ClipboardItem) {
         if (!metadata) return;
         item.componentType = metadata.componentType;
@@ -1246,10 +1308,6 @@
             activeItemId: string;
             cursor?: { itemId: string; offset: number; };
             structuredItems?: ClipboardItem[];
-        };
-
-        const applyStructuredItem = (item: Item, index: number) => {
-            applyClipboardMetadata(item, structuredItems?.[index]);
         };
 
         // Debug info
@@ -1315,18 +1373,27 @@
         const text = (baseOriginal.text as { toString?: () => string })?.toString?.() ?? "";
         const offset = cursor?.itemId === firstItemId ? cursor.offset : text.length;
         const layout = pasteLayout(lines, structuredItems);
-        const splice = spliceMultiLinePaste(text, offset, layout.texts);
+        const splice = spliceMultiLinePaste(text, offset, layout.texts, {
+            exactLines: layout.exact,
+            detachTail: lastPastedIsVisual(layout, structuredItems),
+        });
 
         let lastItemId = firstItemId;
+        let tailAppended = false;
         const run = () => {
             baseOriginal.updateText(splice.firstText);
-            applyStructuredItem(baseOriginal, 0);
-            lastItemId = insertPastedRun(
-                baseOriginal,
+            // Same placement rule as the selection paths (#5015): pasting a
+            // block never re-types the row the caret is in, so a row that still
+            // holds text keeps it and the block lands beside it.
+            const runBase = hostForPastedItem(baseOriginal, structuredItems?.[0]);
+            const tailed = withPasteTail(
                 [splice.firstText, ...splice.siblingTexts],
                 layout.depths,
                 structuredItems,
+                splice.detachedTail ?? "",
             );
+            tailAppended = tailed.appended;
+            lastItemId = insertPastedRun(runBase, tailed.texts, tailed.depths, tailed.structuredItems);
         };
         const doc = baseOriginal.ydoc;
         if (doc) {
@@ -1337,7 +1404,9 @@
 
         editorOverlayStore.setCursor({
             itemId: lastItemId,
-            offset: splice.cursorOffset,
+            // A detached tail became its own item, so the caret sits at its
+            // start — the same place in the text, one node along.
+            offset: tailAppended ? 0 : splice.cursorOffset,
             isActive: true,
             userId: "local",
         });
@@ -1397,7 +1466,7 @@
                 // Do not delete start item, update text instead
                 startItem = displayItems[i].model.original;
                 startItem.updateText(layout.texts[0] || "");
-                applyClipboardMetadata(startItem, structuredItems?.[0]);
+                startItem = hostForPastedItem(startItem, structuredItems?.[0]);
 
                 if (
                     typeof window !== "undefined" &&
@@ -1498,7 +1567,7 @@
                 layout.texts[0] +
                 text.substring(endOffset);
             item.updateText(newText);
-            applyClipboardMetadata(item, structuredItems?.[0]);
+            hostForPastedItem(item, structuredItems?.[0]);
 
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated text to: "${newText}"`);
@@ -1519,7 +1588,7 @@
             // First line replaces selection in current item
             const newFirstText = text.substring(0, startOffset) + layout.texts[0];
             item.updateText(newFirstText);
-            applyClipboardMetadata(item, structuredItems?.[0]);
+            const runBase = hostForPastedItem(item, structuredItems?.[0]);
 
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(`Updated first item text to: "${newFirstText}"`);
@@ -1530,15 +1599,15 @@
             // line, so the item keeps everything that followed the caret.
             const runTexts = [...layout.texts];
             runTexts[0] = newFirstText;
-            runTexts[runTexts.length - 1] += text.substring(endOffset);
+            const tailed = withPasteTail(runTexts, layout.depths, structuredItems, text.substring(endOffset));
             // The run reports where it ended: a nested paste does not land at a
             // predictable index of the flattened display list.
-            const lastItemId = insertPastedRun(item, runTexts, layout.depths, structuredItems);
+            const lastItemId = insertPastedRun(runBase, tailed.texts, tailed.depths, tailed.structuredItems);
 
             // Update cursor position (end of last pasted line, before the text
             // the selection left behind)
             if (lastItemId) {
-                const newOffset = layout.texts[layout.texts.length - 1].length;
+                const newOffset = tailed.appended ? 0 : layout.texts[layout.texts.length - 1].length;
 
                 if (
                     typeof window !== "undefined" &&

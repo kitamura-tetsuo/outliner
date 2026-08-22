@@ -1,7 +1,8 @@
 import type { YTree } from "yjs-orderedtree";
 import type { Item } from "../schema/app-schema";
 import { DEFAULT_COLUMN_SPAN } from "../services/layout/layoutModel";
-import { canAcceptAsLayoutChild, isLayoutItem } from "../services/layout/layoutTree";
+import { isLayoutItem } from "../services/layout/layoutTree";
+import { canAcceptChild, canPlaceBeside } from "../services/outline/nodeTree";
 import { editorOverlayStore } from "../stores/EditorOverlayStore.svelte";
 import type { DisplayItem } from "../stores/OutlinerViewModel";
 import { safeGetNodeParent } from "../utils/treeUtils";
@@ -98,14 +99,25 @@ export class TreeDnD {
         const sourceKey = sourceItem.key!;
         const targetKey = targetItem.key!;
 
-        // A Layout container (#4997) accepts only visual blocks as direct
-        // children. A nested drop of anything else - ordinary text, or another
-        // Layout - is refused here and leaves the tree exactly as it was,
-        // rather than being silently converted or rehomed.
+        // Nesting is governed by the node-kind rule (#5015), not by what the
+        // renderer happens to show: a Grid or Calendar leaf accepts nothing, a
+        // Layout accepts only visual blocks (so nested Layout stays invalid),
+        // and Text accepts anything. A refused drop leaves the tree exactly as
+        // it was rather than silently rehoming or converting the item.
         const droppingIntoLayout = position === "middle" && isLayoutItem(targetItem);
-        if (droppingIntoLayout && !canAcceptAsLayoutChild(sourceItem)) {
+        if (position === "middle" && !canAcceptChild(targetItem, sourceItem)) {
             logger.debug(
-                `Rejected drop into layout: item ${sourceItemId} is not a visual block`,
+                `Rejected drop: ${targetItemId} cannot accept ${sourceItemId} as a child`,
+            );
+            return;
+        }
+
+        // A top/bottom drop makes the source a sibling of the target, so the
+        // target's own parent has to accept it - dropping ordinary text beside
+        // a block inside a Layout is the same violation as dropping it in.
+        if (position !== "middle" && !canPlaceBeside(targetItem, sourceItem)) {
+            logger.debug(
+                `Rejected drop: ${sourceItemId} cannot become a sibling of ${targetItemId}`,
             );
             return;
         }

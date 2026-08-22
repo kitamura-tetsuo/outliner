@@ -1,11 +1,16 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("Store");
-import { LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
+import { CALENDAR_COMPONENT_TYPE, GRID_COMPONENT_TYPE, LAYOUT_COMPONENT_TYPE } from "../services/layout/layoutModel";
+import { createVisualNodeAtTarget } from "../services/outline/visualNodePlacement";
 import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { aliasPickerStore } from "./AliasPickerStore.svelte";
 import { editorOverlayStore } from "./EditorOverlayStore.svelte";
 
-export type CommandType = "yjstable" | "alias" | typeof LAYOUT_COMPONENT_TYPE;
+export type CommandType =
+    | typeof GRID_COMPONENT_TYPE
+    | typeof CALENDAR_COMPONENT_TYPE
+    | typeof LAYOUT_COMPONENT_TYPE
+    | "alias";
 
 interface Position {
     top: number;
@@ -23,16 +28,27 @@ class CommandPaletteStore {
     private commandCursorOffset: number = 0;
     private commandStartOffset: number = 0; // Position of slash
 
-    readonly commands: ReadonlyArray<{ label: string; type: CommandType; }> = [
-        { label: "Database", type: "yjstable" },
-        { label: "Alias", type: "alias" },
+    /**
+     * Each visual node kind has its own creation command (#5015): kinds cannot
+     * be converted into one another, so creating the one you want is the whole
+     * interaction. `keywords` only widens matching — "/grid" and "/database"
+     * both reach the Grid block, whose stored discriminator is still
+     * `yjstable`.
+     */
+    readonly commands: ReadonlyArray<{ label: string; type: CommandType; keywords?: string[]; }> = [
+        { label: "Grid", type: GRID_COMPONENT_TYPE, keywords: ["database", "table"] },
+        { label: "Calendar", type: CALENDAR_COMPONENT_TYPE, keywords: ["schedule"] },
         { label: "Layout", type: LAYOUT_COMPONENT_TYPE },
+        { label: "Alias", type: "alias" },
     ];
 
     // Visible list is calculated by getter
     visible = $derived.by(() => {
         const q = (this.query || "").toLowerCase();
-        return this.commands.filter(c => c.label.toLowerCase().includes(q));
+        if (!q) return this.commands;
+        return this.commands.filter(c =>
+            c.label.toLowerCase().includes(q) || (c.keywords ?? []).some(keyword => keyword.includes(q))
+        );
     });
 
     show(pos: Position, isPostInsert: boolean = false) {
@@ -276,109 +292,96 @@ class CommandPaletteStore {
     insert(type: CommandType) {
         const cursors = editorOverlayStore.getCursorInstances();
         const cursor = cursors.length > 0 ? cursors[0] : null;
+        const target = cursor && this.commandCursorItemId ? cursor.findTarget() : undefined;
 
-        // Delete entire command string (including slash)
-        if (cursor && this.commandCursorItemId) {
-            const node = cursor.findTarget();
-            if (node) {
-                const raw = (node as unknown as { text?: unknown; }).text ?? "";
-                const text = typeof raw === "string"
-                    ? raw
-                    : ((raw as { toString?: () => string; })?.toString?.() ?? "");
-                const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
-                const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
-                const beforeSlash = text.slice(0, safeStartOffset);
-                const afterCursor = text.slice(safeCursorOffset);
+        // Delete entire command string (including slash). What is left is also
+        // what decides whether the node may be replaced: a node holding nothing
+        // but the command is safe to discard, one holding user text is not.
+        let remainingText = "";
+        if (cursor && target) {
+            const raw = (target as unknown as { text?: unknown; }).text ?? "";
+            const text = typeof raw === "string"
+                ? raw
+                : ((raw as { toString?: () => string; })?.toString?.() ?? "");
+            const safeStartOffset = Math.max(0, Math.min(this.commandStartOffset, text.length));
+            const safeCursorOffset = Math.max(0, Math.min(cursor.offset, text.length));
+            const beforeSlash = text.slice(0, safeStartOffset);
+            const afterCursor = text.slice(safeCursorOffset);
 
-                // Delete slash and command string
-                const newText = beforeSlash + afterCursor;
-                node.updateText(newText);
+            // Delete slash and command string
+            remainingText = beforeSlash + afterCursor;
+            target.updateText(remainingText);
 
-                // Return cursor position to slash position
-                cursor.offset = safeStartOffset;
-                cursor.applyToStore();
-            }
+            // Return cursor position to slash position
+            cursor.offset = safeStartOffset;
+            cursor.applyToStore();
         }
 
-        // Insert next to the item the command was typed in, not at the end of the page
         const userId = cursor ? cursor.userId : "local";
-        const target = cursor && this.commandCursorItemId ? cursor.findTarget() : undefined;
-        const newItem = insertItemAfterTargetOrAppend(target, userId);
-        if (!newItem) {
+
+        // An alias is an ordinary Text node that mirrors another one, not a
+        // visual node kind, so it keeps the plain insert-after behavior.
+        if (type === "alias") {
+            const aliasItem = insertItemAfterTargetOrAppend(target, userId);
+            if (!aliasItem) return;
+            aliasItem.updateText("");
+            aliasItem.aliasTargetId = undefined;
+            try {
+                if (typeof window !== "undefined" && window.DEBUG_MODE) {
+                    logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", aliasItem.id);
+                }
+            } catch (_e) {
+                logger.error(_e);
+            }
+            if (aliasItem.id) aliasPickerStore.show(aliasItem.id);
+            this.focusCreatedItem(aliasItem.id, cursor, userId);
             return;
         }
 
-        // Empty text and set component type
-        // Use updateText to work with both yjs-schema / app-schema
-        const n = newItem as unknown as {
-            updateText?: (t: string) => void;
-            text?: string;
-            id?: string;
-            aliasTargetId?: unknown;
-            componentType?: string;
-        };
-        if (typeof n.updateText === "function") n.updateText("");
-        else n.text = "";
+        // Creating a visual node is a structural change, never a kind mutation
+        // (#5015): an eligible empty Text node is replaced in place, anything
+        // else keeps its content and gets the new node as its next sibling.
+        const created = createVisualNodeAtTarget(target, remainingText, type, userId);
+        if (!created) return;
+        const newItem = created.item;
 
-        const setMapField = (it: unknown, key: string, value: unknown) => {
-            try {
-                const tree = (it as {
-                    tree?: { getNodeValueFromKey?: (k: string) => { set?: (k: string, v: unknown) => void; }; };
-                })?.tree;
-                const nodeKey = (it as { key?: string; })?.key;
-                const m = nodeKey ? tree?.getNodeValueFromKey?.(nodeKey) : null;
-                if (m && typeof m.set === "function") {
-                    m.set(key, value);
-                    if (key !== "lastChanged") m.set("lastChanged", Date.now());
-                    return true;
-                }
-            } catch (_e) {
-                logger.error(_e);
-            }
-            return false;
-        };
-
-        if (type === "alias") {
-            if (!setMapField(newItem, "aliasTargetId", undefined)) {
-                n.aliasTargetId = undefined;
-            }
-            try {
-                if (typeof window !== "undefined" && window.DEBUG_MODE) {
-                    logger.debug("[CommandPaletteStore.insert] showing AliasPicker for new item:", n.id);
-                }
-            } catch (_e) {
-                logger.error(_e);
-            }
-            if (n.id) aliasPickerStore.show(n.id);
-        } else {
-            // Set componentType safely
-            if (!setMapField(newItem, "componentType", type)) {
-                n.componentType = type;
-            }
+        if (typeof window !== "undefined" && window.DEBUG_MODE) {
+            logger.debug(
+                "CommandPaletteStore.insert: created",
+                type,
+                "node",
+                newItem.id,
+                "by",
+                created.placement,
+            );
         }
+
+        this.focusCreatedItem(newItem.id, cursor, userId);
+    }
+
+    /** Move the caret onto a freshly created node and make it the active item. */
+    private focusCreatedItem(
+        itemId: string | undefined,
+        cursor: { itemId: string; offset: number; applyToStore: () => void; } | null,
+        userId: string,
+    ) {
         editorOverlayStore.clearCursorAndSelection(userId);
+        if (!itemId) return;
         if (cursor) {
-            cursor.itemId = newItem.id;
+            cursor.itemId = itemId;
             cursor.offset = 0;
             cursor.applyToStore();
-        } else if (newItem.id) {
+        } else {
             editorOverlayStore.setCursor({
-                itemId: newItem.id,
+                itemId,
                 offset: 0,
                 userId: userId,
                 isActive: true,
             });
         }
 
-        if (newItem.id) {
-            editorOverlayStore.setActiveItem(newItem.id);
-        }
+        editorOverlayStore.setActiveItem(itemId);
         editorOverlayStore.startCursorBlink();
-
-        // Output component type to log for debugging
-        if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug("CommandPaletteStore.insert: Set componentType to", type, "for item", newItem.id);
-        }
     }
 }
 
