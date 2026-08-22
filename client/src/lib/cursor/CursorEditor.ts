@@ -1096,12 +1096,27 @@ export class CursorEditor {
             // survivor instead and delete the visual host with the selected
             // nodes. This also completes a cut before clearSelection removes
             // the information needed to find its host.
-            const keepLastText = isVisualNode(
+            const firstIsVisual = isVisualNode(
                 actFirstItem as unknown as import("../../schema/app-schema").Item,
-            ) && !isVisualNode(actLastItem as unknown as import("../../schema/app-schema").Item);
+            );
+            const lastIsVisual = isVisualNode(
+                actLastItem as unknown as import("../../schema/app-schema").Item,
+            );
+            const keepLastText = firstIsVisual && !lastIsVisual;
+            // With two visual endpoints there is no Text node inside the
+            // selection that can survive. Remove both atomic blocks and put
+            // the caret on the item immediately before the selection.
+            const removeBothVisualEndpoints = firstIsVisual && lastIsVisual;
+            const previousItem = removeBothVisualEndpoints
+                ? searchItem(
+                    root as unknown as import("../../schema/yjs-schema").Item,
+                    allItemIds[firstIdx - 1],
+                )
+                : undefined;
+            if (removeBothVisualEndpoints && !previousItem) return;
 
             const itemsToRemoveIds: string[] = [];
-            const removeStart = keepLastText ? firstIdx : firstIdx + 1;
+            const removeStart = removeBothVisualEndpoints || keepLastText ? firstIdx : firstIdx + 1;
             const removeEnd = keepLastText ? lastIdx - 1 : lastIdx;
             for (let i = removeStart; i <= removeEnd; i++) {
                 itemsToRemoveIds.push(allItemIds[i]);
@@ -1111,9 +1126,15 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            const survivingItem = keepLastText ? actLastItem : actFirstItem;
-            const survivingText = keepLastText ? newLastText : newFirstText + newLastText;
-            (survivingItem as unknown as import("../../schema/app-schema").Item).updateText(survivingText);
+            const survivingItem = removeBothVisualEndpoints
+                ? previousItem!
+                : keepLastText
+                ? actLastItem
+                : actFirstItem;
+            if (!removeBothVisualEndpoints) {
+                const survivingText = keepLastText ? newLastText : newFirstText + newLastText;
+                (survivingItem as unknown as import("../../schema/app-schema").Item).updateText(survivingText);
+            }
 
             for (let i = itemsToRemoveIds.length - 1; i >= 0; i--) {
                 const id = itemsToRemoveIds[i];
@@ -1134,7 +1155,11 @@ export class CursorEditor {
             }
 
             cursor.itemId = survivingItem.id;
-            cursor.offset = keepLastText ? 0 : actFirstOffset;
+            cursor.offset = removeBothVisualEndpoints
+                ? this.getPlainText(survivingItem as unknown as import("../../schema/app-schema").Item).length
+                : keepLastText
+                ? 0
+                : actFirstOffset;
             cursor.applyToStore();
 
             cursor.clearSelection();

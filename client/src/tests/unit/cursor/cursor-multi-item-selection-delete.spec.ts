@@ -206,6 +206,39 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         expect(cursorCtx.offset).toBe(0);
     });
 
+    it("removes both visual endpoints and moves the caret before the selection", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        item4.componentType = "calendar";
+        item4._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            startItemId: item2.id,
+            startOffset: 0,
+            endItemId: item4.id,
+            endOffset: 0,
+            userId: "local",
+            isReversed: false,
+        } as SelectionRange);
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
+        expect(item1._text).toBe("First item text");
+        expect(cursorCtx.itemId).toBe(item1.id);
+        expect(cursorCtx.offset).toBe(item1._text.length);
+    });
+
     it("treats the visual node before a Text item atomically on Backspace", () => {
         item2.componentType = "calendar";
         item2._text = "";
