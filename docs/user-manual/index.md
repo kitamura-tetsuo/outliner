@@ -30,10 +30,7 @@ You can create and browse pages using the left sidebar or the top search bar.
 
 To browse your pages, click the sidebar toggle button in the top-left corner (hamburger menu) and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
-To create a new page, you can:
-
-- Click the add (**+**) button in the **Pages** section header of the sidebar.
-- Alternatively, use the "New page name" input field on the project homepage and click the **Create** button.
+To create a new page, click the add (**+**) button in the **Pages** section header of the sidebar.
 
 ### Switching to Edit Mode
 
