@@ -17,7 +17,6 @@ import {
     requestPasteSpecialChoice,
 } from "../services/clipboard/pasteSpecial";
 import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
-import { isVisualNode } from "../services/outline/nodeTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
@@ -353,31 +352,6 @@ function writeStructuredSystemClipboard(structured: StructuredClipboard): void {
             logger.error({ error }, "navigator.clipboard.write failed for structured clipboard:");
         }
     });
-}
-
-/**
- * Cutting a multi-item selection merges its ends into the first item, which
- * survives the cut. When that survivor is a visual node the whole block has
- * already travelled to the clipboard, so leaving it behind would duplicate the
- * Grid or Calendar on paste.
- *
- * A node's kind is fixed at creation (#5015), so the block is not stripped back
- * to a Text node — the node itself is removed, which is what "cut" means for a
- * block that carries no text of its own.
- */
-function removeRetainedComponentHost(): void {
-    const selection = Object.values(store.selections).find(sel => sel.startItemId !== sel.endItemId);
-    const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
-    if (!selection) return;
-    const start = visible.findIndex(entry => entry.model.id === selection.startItemId);
-    const end = visible.findIndex(entry => entry.model.id === selection.endItemId);
-    const retained = visible[Math.min(start, end)]?.model.original;
-    if (!retained || !isVisualNode(retained)) return;
-    try {
-        retained.delete();
-    } catch (error) {
-        logger.error({ error }, "removeRetainedComponentHost: failed to remove the cut block");
-    }
 }
 
 export function isForeignInput(target: EventTarget | null): boolean {
@@ -3341,8 +3315,6 @@ export class KeyEventHandler {
                 // Delete selection (cut action)
                 cursor.cutSelectedText();
             });
-
-            if (structured) removeRetainedComponentHost();
 
             // Clear selections
             store.clearSelections();
