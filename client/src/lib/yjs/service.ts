@@ -9,6 +9,7 @@ import { store } from "../../stores/store.svelte";
 import { updateParentCheckboxStatus } from "../../utils/checkboxHelpers";
 import { safeGetNodeParent } from "../../utils/treeUtils";
 import { getLogger } from "../logger";
+import { parseSelectionEndpoint, type SelectionEndpoint } from "../selection/selectionEndpoints";
 
 const logger = getLogger("yjs-service");
 
@@ -34,6 +35,40 @@ function childrenKeys(tree: YTree, parentKey: string): string[] {
     }
 }
 
+/**
+ * A remote peer's selection as it arrives over awareness - every field optional, because
+ * every field is somebody else's data.
+ */
+interface RemoteSelectionPayload {
+    start?: unknown;
+    end?: unknown;
+    startItemId?: unknown;
+    startOffset?: unknown;
+    endItemId?: unknown;
+    endOffset?: unknown;
+    isReversed?: boolean;
+    isBoxSelection?: boolean;
+    boxSelectionRanges?: Array<{ itemId: string; startOffset: number; endOffset: number; }>;
+}
+
+/**
+ * Validate a remote selection into local endpoints, or return undefined (#5025).
+ *
+ * Presence is ephemeral state, so there is nothing to migrate: a payload this build cannot
+ * read is dropped and the peer renders without a selection. Endpoints are preferred; the
+ * flat text fields are read as a fallback so a peer that predates the model still shows up.
+ */
+function parseRemoteSelection(
+    payload: RemoteSelectionPayload,
+): { start: SelectionEndpoint; end: SelectionEndpoint; } | undefined {
+    const start = parseSelectionEndpoint(payload.start)
+        ?? parseSelectionEndpoint({ itemId: payload.startItemId, offset: payload.startOffset });
+    const end = parseSelectionEndpoint(payload.end)
+        ?? parseSelectionEndpoint({ itemId: payload.endItemId, offset: payload.endOffset });
+    if (!start || !end) return undefined;
+    return { start, end };
+}
+
 function applyPresenceToOverlay(
     overlay: typeof editorOverlayStore | undefined,
     user: { userId: string; name?: string; color?: string; },
@@ -41,7 +76,9 @@ function applyPresenceToOverlay(
         | {
             pageId?: string;
             cursor?: { itemId: string; offset: number; };
-            selection?: import("../../stores/EditorOverlayStore.svelte").SelectionRange;
+            // Whatever a peer put on the wire: this build's endpoints, an older build's
+            // flat text fields, or something neither. It is validated, never trusted.
+            selection?: RemoteSelectionPayload;
         }
         | null
         | undefined,
@@ -74,15 +111,14 @@ function applyPresenceToOverlay(
         overlay.clearCursorAndSelection(user.userId, false);
     }
 
-    if (presence?.selection) {
+    const remoteSelection = presence?.selection ? parseRemoteSelection(presence.selection) : undefined;
+    if (remoteSelection) {
         overlay.setSelection({
-            startItemId: presence.selection.startItemId,
-            startOffset: presence.selection.startOffset,
-            endItemId: presence.selection.endItemId,
-            endOffset: presence.selection.endOffset,
-            isReversed: presence.selection.isReversed,
-            isBoxSelection: presence.selection.isBoxSelection,
-            boxSelectionRanges: presence.selection.boxSelectionRanges,
+            start: remoteSelection.start,
+            end: remoteSelection.end,
+            isReversed: presence?.selection?.isReversed,
+            isBoxSelection: presence?.selection?.isBoxSelection,
+            boxSelectionRanges: presence?.selection?.boxSelectionRanges,
             userId: user.userId,
             userName: user.name,
             color,

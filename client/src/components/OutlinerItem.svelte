@@ -36,6 +36,7 @@ import {
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
+import { endpointTextOffset, textEndpoint } from "../lib/selection/selectionEndpoints";
 import { isForeignInput } from "../lib/KeyEventHandler";
 const logger = getLogger("OutlinerItem");
 
@@ -1373,19 +1374,20 @@ function handleMouseDown(event: MouseEvent) {
         // Get click position
         const clickPosition = getClickPosition(event, textString);
 
-        const startItemId = existingSelection ? existingSelection.startItemId : lastCursor!.itemId;
-        const startOffset = existingSelection ? existingSelection.startOffset : lastCursor!.offset;
+        // The anchor keeps whatever kind of position it already had: a character in a
+        // Text node, or the boundary of a visual node the selection started at (#5025).
+        const anchor = existingSelection ? existingSelection.start : textEndpoint(lastCursor!.itemId, lastCursor!.offset);
+        const anchorOffset = endpointTextOffset(anchor);
 
-        // Extend selection
-        const isReversed = existingSelection
-            ? (activeItemId === model.id ? clickPosition < existingSelection.startOffset : false)
-            : (activeItemId === model.id ? clickPosition < lastCursor!.offset : false);
+        // Extend selection. Direction is only readable when the anchor is a character:
+        // a node boundary has no offset the click position can be compared against.
+        const isReversed = activeItemId === model.id && anchorOffset !== undefined
+            ? clickPosition < anchorOffset
+            : false;
 
         editorOverlayStore.setSelection({
-            startItemId: startItemId,
-            startOffset: startOffset,
-            endItemId: model.id,
-            endOffset: clickPosition,
+            start: anchor,
+            end: textEndpoint(model.id, clickPosition),
             userId: "local",
             isReversed: isReversed,
         });

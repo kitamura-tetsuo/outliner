@@ -41,12 +41,19 @@ vi.mock("./yjsService.svelte", () => ({
     acquireClientByProjectId: () => Promise.resolve(undefined),
 }));
 
+type TestEndpoint =
+    | { kind: "text"; itemId: string; offset: number; }
+    | { kind: "node-boundary"; itemId: string; side: "before" | "after"; };
+
 interface TestSelection {
     startItemId: string;
     startOffset: number;
     endItemId: string;
     endOffset: number;
     userId: string;
+    /** Set only by the cases that select a block by its own boundaries (#5025). */
+    start?: TestEndpoint;
+    end?: TestEndpoint;
 }
 
 const state: {
@@ -63,7 +70,17 @@ const state: {
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
     editorOverlayStore: {
         get selections() {
-            return state.selection ? { local: state.selection } : {};
+            // The store stores endpoints (#5025); the fixtures below state a text range
+            // the way a caller does, and this mirrors what the store's own door makes of it.
+            if (!state.selection) return {};
+            const { startItemId, startOffset, endItemId, endOffset } = state.selection;
+            return {
+                local: {
+                    ...state.selection,
+                    start: state.selection.start ?? { kind: "text", itemId: startItemId, offset: startOffset },
+                    end: state.selection.end ?? { kind: "text", itemId: endItemId, offset: endOffset },
+                },
+            };
         },
         getSelectedText: () => "selected",
         getTextareaRef: () => undefined,
@@ -205,6 +222,47 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         // Outward, an unrendered block contributes no line at all: its Table
         // name is not a caption the outline owns (#5024).
         expect(data.get("text/plain")).toBe("text\nTrailing");
+    });
+
+    it("copies a lone Grid selected between its own boundaries (#5025)", () => {
+        // No text endpoint anywhere in the range: the block is the whole selection.
+        state.selection = {
+            startItemId: "b",
+            startOffset: 0,
+            endItemId: "b",
+            endOffset: 0,
+            userId: "local",
+            start: { kind: "node-boundary", itemId: "b", side: "before" },
+            end: { kind: "node-boundary", itemId: "b", side: "after" },
+        };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(copiedItems(data)).toEqual([
+            { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
+        ]);
+        // The block owns no outline text, so the plain flavor stays empty (#5015).
+        expect(data.get("text/plain") ?? "").toBe("");
+    });
+
+    it("leaves a Grid out of the payload when the range starts after it (#5025)", () => {
+        // The range reaches from the far side of the block into the next item, so the
+        // block itself is outside it - no binding travels.
+        state.selection = {
+            startItemId: "b",
+            startOffset: 0,
+            endItemId: "c",
+            endOffset: "Trailing text".length,
+            userId: "local",
+            start: { kind: "node-boundary", itemId: "b", side: "after" },
+            end: { kind: "text", itemId: "c", offset: "Trailing text".length },
+        };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(copiedItems(data)).toEqual([{ text: "Trailing text", depth: 0 }]);
     });
 
     it("copies from a nested item through a shallower Grid without producing a negative depth", () => {

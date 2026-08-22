@@ -32,6 +32,12 @@ import { insertItemAfterTargetOrAppend } from "../utils/itemUtils";
 import { CustomKeyMap } from "./CustomKeyMap";
 import { isInsideForeignEditor } from "./foreignEditor";
 import { getLogger } from "./logger";
+import { getItemSelectionInterval, isVisualNodeSelected } from "./selection/selectionContent";
+import {
+    normalizeSelectionEndpoints,
+    selectionCoversContent,
+    textSelectionEndpoints,
+} from "./selection/selectionEndpoints";
 const logger = getLogger("KeyEventHandler");
 
 /** A chart PNG data URI past this is dropped rather than pushed into the clipboard. */
@@ -120,8 +126,12 @@ function renderedGridExport(
  * Outliner behaves exactly as it did.
  */
 function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | undefined {
+    // A structured payload is for a range the plain text flavor cannot carry: one that
+    // spans items, or one that selects a single atomic visual node between its own
+    // boundaries - a block, which has no text range at all (#5025).
     const selection = Object.values(store.selections).find(sel =>
-        !sel.isBoxSelection && sel.startItemId !== sel.endItemId
+        !sel.isBoxSelection && selectionCoversContent(sel)
+        && (sel.startItemId !== sel.endItemId || !textSelectionEndpoints(sel))
     );
     const visible = generalStore.activeViewModel?.getVisibleItems() ?? [];
     const project = generalStore.project;
@@ -131,35 +141,46 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     if (start < 0 || end < 0) return undefined;
     const first = Math.min(start, end);
     const last = Math.max(start, end);
+    // Outline order, straight from the view model: the clipboard reads the same document
+    // order the overlay draws, without either of them consulting geometry (#5025).
+    const normalized = normalizeSelectionEndpoints(
+        selection.start,
+        selection.end,
+        (a, b) => visible.findIndex(entry => entry.model.id === a) - visible.findIndex(entry => entry.model.id === b),
+    );
     const firstLength = String(visible[first].model.original.text ?? "").length;
     const lastLength = String(visible[last].model.original.text ?? "").length;
-    const rawStartOffset = start <= end ? selection.startOffset : selection.endOffset;
-    const rawEndOffset = start <= end ? selection.endOffset : selection.startOffset;
-    const startOffset = Math.max(0, Math.min(firstLength, rawStartOffset));
-    const endOffset = Math.max(0, Math.min(lastLength, rawEndOffset));
-    const coversWholeRange = startOffset === 0 && endOffset === lastLength;
+    const firstInterval = getItemSelectionInterval(visible[first].model.id, normalized, firstLength);
+    const lastInterval = getItemSelectionInterval(visible[last].model.id, normalized, lastLength);
+    // An edge item is covered whole when the range reaches its far edge - and trivially so
+    // when it owns no text at all, the way every visual node does (#5015).
+    const coversFirst = firstInterval ? firstInterval.startOffset === 0 : firstLength === 0;
+    const coversLast = lastInterval ? lastInterval.endOffset === lastLength : lastLength === 0;
+    const coversWholeRange = coversFirst && coversLast;
 
     let hasComponent = false;
     // Rendered exports keyed by table id. They feed the outward flavors only —
     // the encoded payload keeps carrying the display name, so in-app paste
     // fidelity is exactly what it was.
     const gridExports = new Map<string, NonNullable<ReturnType<typeof renderedGridExport>>>();
-    const entries = visible.slice(first, last + 1).flatMap((entry, offset) => {
-        const index = first + offset;
+    const entries = visible.slice(first, last + 1).flatMap((entry) => {
         const item = entry.model.original;
         const tableId = getItemTableId(item);
         const calendarId = getItemCalendarId(item);
         const isLayout = isLayoutItem(item);
         const isComponent = Boolean(tableId || calendarId) || isLayout;
         const text = String(item.text ?? "");
-        const isEdge = index === first || index === last;
-        const sliceStart = index === first ? startOffset : 0;
-        const sliceEnd = index === last ? endOffset : text.length;
-        // An edge item with an empty slice is one the selection stops at rather
-        // than reaches, so it leaves the range. A visual node owns no text at
-        // all (#5015), so it has no slice to judge by and counts as reached:
-        // there is no interior for a drag to stop short of.
-        if (isEdge && text.length > 0 && sliceStart >= sliceEnd) return [];
+        // What the endpoints select of this item: an interval for a Text node, the whole
+        // block for a component - both read from the one traversal (#5025).
+        const interval = getItemSelectionInterval(entry.model.id, normalized, text.length);
+        // A component the selection reaches at all travels whole: it has no interior for a
+        // drag to stop short of, so only an explicit boundary past it leaves it out.
+        if (isComponent && !isVisualNodeSelected(entry.model.id, normalized, false)) return [];
+        // A Text item with nothing selected is one the selection stops at rather than
+        // reaches, so it leaves the range.
+        if (!isComponent && !interval && text.length > 0) return [];
+        const sliceStart = interval?.startOffset ?? 0;
+        const sliceEnd = interval?.endOffset ?? text.length;
         // Component blocks are atomic: a partial overlap copies the whole block.
         if (isComponent) hasComponent = true;
         if (tableId && !gridExports.has(tableId)) {
@@ -2646,9 +2667,7 @@ export class KeyEventHandler {
             );
 
             // If selection exists, delete selection before pasting
-            Object.values(store.selections).filter(sel =>
-                sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
-            );
+            Object.values(store.selections).filter(sel => selectionCoversContent(sel));
 
             // If VS Code multi-cursor text is included
             if (
@@ -3056,8 +3075,7 @@ export class KeyEventHandler {
                                 lines: text.split(/\r?\n/),
                                 structuredItems,
                                 selections: Object.values(store.selections).filter(selection =>
-                                    selection.startOffset !== selection.endOffset
-                                    || selection.startItemId !== selection.endItemId
+                                    selectionCoversContent(selection)
                                 ),
                                 activeItemId: store.getActiveItem(),
                                 cursor,

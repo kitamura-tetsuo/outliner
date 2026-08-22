@@ -161,8 +161,11 @@ describe("Cursor Integration", () => {
 
             // Mock a selection
             (editorOverlayStore as unknown as { selections: Record<string, unknown>; }).selections = {
+                // As the store stores it (#5025): endpoints, plus the flat text mirrors.
                 "selection-1": {
                     userId: "user-1",
+                    start: { kind: "text", itemId: "test-item-1", offset: 5 },
+                    end: { kind: "text", itemId: "test-item-1", offset: 11 },
                     startItemId: "test-item-1",
                     endItemId: "test-item-1",
                     startOffset: 5,

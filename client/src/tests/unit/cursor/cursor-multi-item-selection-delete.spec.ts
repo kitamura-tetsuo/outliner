@@ -41,6 +41,7 @@ import type { CursorEditingContext } from "../../../lib/cursor/CursorEditor";
 import { CursorEditor } from "../../../lib/cursor/CursorEditor";
 import type { Item } from "../../../schema/yjs-schema";
 import type { SelectionRange } from "../../../stores/EditorOverlayStore.svelte";
+import { editorOverlayStore } from "../../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../../stores/store.svelte";
 
 class FakeItems {
@@ -93,6 +94,47 @@ function addChild(parentItem: FakeItem, child: FakeItem) {
     parentItem.items.push(child);
 }
 
+/**
+ * A text selection as the store stores it: the flat offsets a caller states, plus the
+ * endpoints they mean (#5025).
+ */
+function textSelectionFixture(
+    range: {
+        startItemId: string;
+        startOffset: number;
+        endItemId: string;
+        endOffset: number;
+        userId: string;
+        isReversed?: boolean;
+    },
+): SelectionRange {
+    return {
+        ...range,
+        start: { kind: "text", itemId: range.startItemId, offset: range.startOffset },
+        end: { kind: "text", itemId: range.endItemId, offset: range.endOffset },
+    };
+}
+
+function nodeBoundarySelectionFixture(
+    range: {
+        startItemId: string;
+        startSide: "before" | "after";
+        endItemId: string;
+        endSide: "before" | "after";
+        userId: string;
+    },
+): SelectionRange {
+    return {
+        startItemId: range.startItemId,
+        startOffset: 0,
+        endItemId: range.endItemId,
+        endOffset: 0,
+        userId: range.userId,
+        start: { kind: "node-boundary", itemId: range.startItemId, side: range.startSide },
+        end: { kind: "node-boundary", itemId: range.endItemId, side: range.endSide },
+    };
+}
+
 describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
     let root: FakeItem, item1: FakeItem, item2: FakeItem, item3: FakeItem, item4: FakeItem;
     let editor: CursorEditor | undefined;
@@ -120,6 +162,7 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         mutableStore.currentPage = root;
         mutableStore.activeViewModel = undefined;
+        (editorOverlayStore.selections as Record<string, SelectionRange>) = {};
     });
 
     it("removes every item within the selection, not only the first", () => {
@@ -136,14 +179,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: item4._text.length,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("");
@@ -165,14 +208,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 3, // "Sec"
             endItemId: item4.id,
             endOffset: 6, // after "Fourth"
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.length).toBe(2);
         expect(item2._text).toBe("Sec item text");
@@ -196,14 +239,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 6,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1", "item4"]);
         expect(item4._text).toBe(" item text");
@@ -229,19 +272,114 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 0,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
         expect(item1._text).toBe("First item text");
         expect(cursorCtx.itemId).toBe(item1.id);
         expect(cursorCtx.offset).toBe(item1._text.length);
+    });
+
+    it("deletes a single visual node selected from before to after", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        const selection = nodeBoundarySelectionFixture({
+            startItemId: item2.id,
+            startSide: "before",
+            endItemId: item2.id,
+            endSide: "after",
+            userId: "local",
+        });
+        (editorOverlayStore.selections as Record<string, SelectionRange>) = { local: selection };
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteSelection();
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item3", "item4"]);
+        expect(cursorCtx.itemId).toBe(item1.id);
+        expect(cursorCtx.offset).toBe(item1._text.length);
+    });
+
+    it("keeps a visual node when a mixed selection ends before it", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item1.id,
+            offset: 5,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item1 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            ...nodeBoundarySelectionFixture({
+                startItemId: item1.id,
+                startSide: "after",
+                endItemId: item2.id,
+                endSide: "before",
+                userId: "local",
+            }),
+            startOffset: 5,
+            start: { kind: "text", itemId: item1.id, offset: 5 },
+        });
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item2", "item3", "item4"]);
+        expect(item1._text).toBe("First");
+    });
+
+    it("keeps a visual node when a mixed selection starts after it", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item3.id,
+            offset: 5,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item3 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            ...nodeBoundarySelectionFixture({
+                startItemId: item2.id,
+                startSide: "after",
+                endItemId: item3.id,
+                endSide: "before",
+                userId: "local",
+            }),
+            endOffset: 5,
+            end: { kind: "text", itemId: item3.id, offset: 5 },
+        });
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item2", "item3", "item4"]);
+        expect(item3._text).toBe(" item text");
     });
 
     it("moves the caret to the visible predecessor instead of its collapsed descendant", () => {
@@ -269,14 +407,14 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         };
         editor = new CursorEditor(cursorCtx);
 
-        editor.deleteMultiItemSelection({
+        editor.deleteMultiItemSelection(textSelectionFixture({
             startItemId: item2.id,
             startOffset: 0,
             endItemId: item4.id,
             endOffset: 0,
             userId: "local",
             isReversed: false,
-        } as SelectionRange);
+        }));
 
         expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
         expect(item1.items.children.map(item => item.id)).toEqual(["hidden-child"]);

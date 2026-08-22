@@ -17,22 +17,12 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
             "Third line of text for testing",
         ]);
 
-        // Move to start of first item
-        const item = page.locator(".outliner-item").first();
-        await item.waitFor({ state: "visible", timeout: 10000 });
-        await item.locator(".item-content").click({ force: true });
-
-        // Wait for cursor visible
-        await TestHelpers.waitForCursorVisible(page);
-
-        // Focus on global textarea
-        await TestHelpers.focusGlobalTextarea(page);
-
-        // Ensure cursor is at start
-        await page.keyboard.press("Home");
-        // Ensure we are at the very top
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
+        // Index 0 is the page title; start at the first actual outline text item.
+        await TestHelpers.waitForOutlinerItems(page, 4, 10000);
+        const firstTextItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        expect(firstTextItemId).not.toBeNull();
+        await TestHelpers.setCursor(page, firstTextItemId!, 0);
+        await TestHelpers.ensureCursorReady(page);
     });
 
     test("Shift + Right Exhaustive (Abnormal Cursor Check)", async ({ page }) => {
@@ -83,6 +73,10 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
     test("Mixed Direction (Down then Right)", async ({ page }) => {
         await CursorValidator.assertCursorCount(page, 1);
+        const firstTextItemId = await TestHelpers.getItemIdByIndex(page, 1);
+        const secondTextItemId = await TestHelpers.getItemIdByIndex(page, 2);
+        expect(firstTextItemId).not.toBeNull();
+        expect(secondTextItemId).not.toBeNull();
 
         // Shift + Down
         await page.keyboard.press("Shift+ArrowDown");
@@ -90,26 +84,56 @@ test.describe("SLR-0002: Shift + Arrow Exhaustive Coverage", () => {
 
         await CursorValidator.assertCursorCount(page, 1);
 
-        // Verify multiple lines selected
-        const selectionText = await page.evaluate(() => {
+        const selectionAfterDown = await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            return store ? store.getSelectedText() : "";
+            const selection = store ? Object.values<any>(store.selections)[0] : undefined;
+            return {
+                start: selection?.start,
+                end: selection?.end,
+                text: store ? store.getSelectedText() : "",
+            };
         });
-        // Check for presence of newline or multiple items selected
-        // Note: getSelectedText might return text with newlines if multi-item selection
-        expect(selectionText).toContain("\n");
 
-        // Shift + Right (extend)
-        await page.keyboard.press("Shift+ArrowRight");
+        // Reaching offset 0 of the next item spans items, but selects no text from it.
+        expect(selectionAfterDown).toEqual({
+            start: { kind: "text", itemId: firstTextItemId, offset: 0 },
+            end: { kind: "text", itemId: secondTextItemId, offset: 0 },
+            text: "First line of text for testing",
+        });
+
+        // Shift + Right extends into the second item, which now contributes text.
         await page.keyboard.press("Shift+ArrowRight");
         await page.waitForTimeout(200);
 
         await CursorValidator.assertCursorCount(page, 1);
 
-        const newSelectionText = await page.evaluate(() => {
+        const selectionAfterFirstRight = await page.evaluate(() => {
             const store = (globalThis as any).editorOverlayStore;
-            return store ? store.getSelectedText() : "";
+            const selection = store ? Object.values<any>(store.selections)[0] : undefined;
+            return {
+                end: selection?.end,
+                text: store ? store.getSelectedText() : "",
+            };
         });
-        expect(newSelectionText.length).toBeGreaterThan(selectionText.length);
+        expect(selectionAfterFirstRight).toEqual({
+            end: { kind: "text", itemId: secondTextItemId, offset: 1 },
+            text: "First line of text for testing\nS",
+        });
+
+        await page.keyboard.press("Shift+ArrowRight");
+        await page.waitForTimeout(200);
+
+        const selectionAfterSecondRight = await page.evaluate(() => {
+            const store = (globalThis as any).editorOverlayStore;
+            const selection = store ? Object.values<any>(store.selections)[0] : undefined;
+            return {
+                end: selection?.end,
+                text: store ? store.getSelectedText() : "",
+            };
+        });
+        expect(selectionAfterSecondRight).toEqual({
+            end: { kind: "text", itemId: secondTextItemId, offset: 2 },
+            text: "First line of text for testing\nSe",
+        });
     });
 });

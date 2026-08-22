@@ -8,18 +8,25 @@ import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStor
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import {
-    buildSelectionFragments,
     convertClientRectsToOverlayRects,
     createRangeForOffsets,
     findTextPositionInElement,
     mergeRectsIntoLines,
-    normalizeSelectionByVisualOrder,
-    type NormalizedSelectionRange,
     type OverlayRect,
-    type SelectionFragment,
-    type SelectionRangeItem,
     VISUAL_NODE_ROOT_ATTRIBUTE,
 } from '../lib/selectionGeometry';
+import {
+    getItemSelectionInterval,
+    resolveSelectionFragments,
+    type SelectionFragment,
+    type SelectionRangeItem,
+} from '../lib/selection/selectionContent';
+import {
+    type NormalizedSelection,
+    selectionCoversContent,
+    textSelectionEndpoints,
+    textSelectionOffsetBounds,
+} from '../lib/selection/selectionEndpoints';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
 import { hasStructuredClipboardSelection, isEditorClipboardEvent } from '../lib/KeyEventHandler';
@@ -615,24 +622,27 @@ function calculateSelectionPixelFragments(
 }
 
 /**
- * Compare two items by document order. Negative when `a` comes first.
- * Unknown items sort last so a stale id cannot flip the order of the remaining one.
+ * Normalize a selection to document order, independently of anchor/focus direction.
+ *
+ * The order comes from the outline model the store owns, which falls back to rendered
+ * order only for rows the outline does not list, such as the page title (#5025).
  */
-function compareItemsInDom(a: string, b: string): number {
-    if (a === b) return 0;
-    const aEl = document.querySelector(`[data-item-id="${escapeId(a)}"]`);
-    const bEl = document.querySelector(`[data-item-id="${escapeId(b)}"]`);
-    if (!aEl || !bEl) return aEl ? -1 : bEl ? 1 : 0;
-
-    const comparison = aEl.compareDocumentPosition(bEl);
-    if (comparison & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-    if (comparison & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-    return 0;
+function normalizeSelection(sel: SelectionRange): NormalizedSelection {
+    return store.normalizeSelection(sel);
 }
 
-/** Normalize a selection to visual document order, independently of anchor/focus direction. */
-function normalizeSelection(sel: SelectionRange): NormalizedSelectionRange {
-    return normalizeSelectionByVisualOrder(sel, compareItemsInDom);
+/**
+ * The character interval of a selection that lives inside one Text item, or undefined.
+ *
+ * Only such a range is drawn from character rectangles alone; anything else - several
+ * items, or a single atomic visual node between its own boundaries - goes through the
+ * fragment model, which knows how to draw a node as a node (#5025).
+ */
+function singleItemTextRange(sel: SelectionRange): { startOffset: number; endOffset: number } | undefined {
+    if (sel.startItemId !== sel.endItemId) return undefined;
+    const endpoints = textSelectionEndpoints(sel);
+    if (!endpoints) return undefined;
+    return { startOffset: endpoints.startOffset, endOffset: endpoints.endOffset };
 }
 
 /**
@@ -1026,7 +1036,7 @@ function handleCopy(event: ClipboardEvent) {
 
   // Do nothing if no selection (reference store directly to avoid reactive lag)
   const selections = Object.values(store.selections).filter(sel =>
-    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+    selectionCoversContent(sel)
   );
 
   if (selections.length === 0) return;
@@ -1192,9 +1202,10 @@ function handleCopy(event: ClipboardEvent) {
     if (!textEl) return;
 
     const text = textEl.textContent || '';
-    const startOffset = Math.min(sel.startOffset, sel.endOffset);
-    const endOffset = Math.max(sel.startOffset, sel.endOffset);
-    const selectedText = text.substring(startOffset, endOffset);
+    // A visual node has no character interval to copy as plain text (#5025).
+    const bounds = textSelectionOffsetBounds(sel);
+    if (!bounds) return;
+    const selectedText = text.substring(bounds.low, bounds.high);
 
     // Debug info
     if (typeof window !== 'undefined' && window.DEBUG_MODE) {
@@ -1248,10 +1259,10 @@ function handleCopy(event: ClipboardEvent) {
       if (!textEl) continue;
 
       const text = textEl.textContent || '';
-      const startOffset = Math.min(sel.startOffset, sel.endOffset);
-      const endOffset = Math.max(sel.startOffset, sel.endOffset);
+      const bounds = textSelectionOffsetBounds(sel);
+      if (!bounds) continue;
 
-      combinedText += text.substring(startOffset, endOffset);
+      combinedText += text.substring(bounds.low, bounds.high);
       if (combinedText && !combinedText.endsWith('\n')) {
         combinedText += '\n';
       }
@@ -1292,19 +1303,10 @@ function handleCopy(event: ClipboardEvent) {
       const text = textEl.textContent || '';
       const len = text.length;
 
-      // Offset calculation
-      let startOff = 0;
-      let endOff = len;
-
-      // Start item
-      if (itemId === sel.startItemId) {
-        startOff = sel.startOffset;
-      }
-
-      // End item
-      if (itemId === sel.endItemId) {
-        endOff = sel.endOffset;
-      }
+      // How much of this item the endpoints select, in document order (#5025).
+      const interval = getItemSelectionInterval(itemId, normalizeSelection(sel), len);
+      const startOff = interval?.startOffset ?? 0;
+      const endOff = interval?.endOffset ?? 0;
 
       // Debug info
       if (typeof window !== 'undefined' && window.DEBUG_MODE) {
@@ -1372,7 +1374,7 @@ function handleCut(event: ClipboardEvent) {
 
   // Do nothing if no selection
   const selections = allSelections.filter(sel =>
-    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+    selectionCoversContent(sel)
   );
 
   if (selections.length === 0) return;
@@ -1438,7 +1440,7 @@ function handlePaste(event: ClipboardEvent) {
 
   // If there is a selection, delete selection before pasting
   const selections = allSelections.filter(sel =>
-    sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId
+    selectionCoversContent(sel)
   );
 
   // Debug info
@@ -1590,7 +1592,7 @@ function handlePaste(event: ClipboardEvent) {
     {#each Object.entries(store.selections) as [selKey, sel] (selKey)}
 
         {@const selectionStyle = getSelectionStyle(sel)}
-        {#if sel.startOffset !== sel.endOffset || sel.startItemId !== sel.endItemId}
+        {#if selectionCoversContent(sel)}
             {#if sel.isBoxSelection && sel.boxSelectionRanges}
                 <!-- In case of rectangular selection (box selection) -->
                 {#each sel.boxSelectionRanges as range, index (`${selKey}-${range.itemId}-${index}`)}
@@ -1646,9 +1648,10 @@ function handlePaste(event: ClipboardEvent) {
                         {/if}
                     {/each}
                 {/each}
-            {:else if sel.startItemId === sel.endItemId}
+            {:else if singleItemTextRange(sel)}
                 <!-- Single item selection: one fragment per visual line -->
-                {@const fragments = calculateSelectionPixelFragments(sel.startItemId, sel.startOffset, sel.endOffset)}
+                {@const range = singleItemTextRange(sel)!}
+                {@const fragments = calculateSelectionPixelFragments(sel.startItemId, range.startOffset, range.endOffset)}
                 {@const isPageTitle = sel.startItemId === "page-title"}
                 {#each fragments as rect, fragmentIndex (`${selKey}-${fragmentIndex}`)}
                         <!-- The direction marker belongs on the focus end only, not on every wrapped line -->
@@ -1672,7 +1675,7 @@ function handlePaste(event: ClipboardEvent) {
 
                     <!-- Text nodes highlight their selected characters; a visual node
                          between the endpoints is drawn as one atomic block (#5024). -->
-                    {@const selectionFragments = buildSelectionFragments(selectionRangeItems(itemsInRange), normalized)}
+                    {@const selectionFragments = resolveSelectionFragments(selectionRangeItems(itemsInRange), normalized)}
 
                     {#each selectionFragments as selectionFragment (selectionFragment.itemId)}
                         {@const itemId = selectionFragment.itemId}
@@ -1684,8 +1687,8 @@ function handlePaste(event: ClipboardEvent) {
                                 class="selection selection-multi-item"
                                 class:selection-node={isNode}
                                 class:page-title-selection={isPageTitle}
-                                class:selection-reversed={!isNode && sel.isReversed && itemId === normalized.firstItemId && fragmentIndex === 0}
-                                class:selection-forward={!isNode && !sel.isReversed && itemId === normalized.lastItemId && fragmentIndex === fragments.length - 1}
+                                class:selection-reversed={!isNode && sel.isReversed && itemId === normalized.first.itemId && fragmentIndex === 0}
+                                class:selection-forward={!isNode && !sel.isReversed && itemId === normalized.last.itemId && fragmentIndex === fragments.length - 1}
                                 data-selection-item-id={itemId}
                                 data-selection-fragment={fragmentIndex}
                                 data-selection-kind={selectionFragment.kind}
