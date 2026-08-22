@@ -30,6 +30,37 @@ export function getOAuthFirebaseWebConfig() {
 }
 
 /**
+ * Content-Security-Policy for the /oauth/authorize response. The server's
+ * global helmet() middleware (server.ts) sets a default `script-src 'self'`,
+ * which would block both this page's inline sign-in script and its Firebase
+ * Auth SDK imports from gstatic.com — the route handler overrides the
+ * header with this value instead of relying on the global default.
+ */
+export function getAuthorizePageContentSecurityPolicy(nonce: string): string {
+    const config = getOAuthFirebaseWebConfig();
+    const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
+    const connectSrc = [
+        "'self'",
+        "https://www.googleapis.com",
+        "https://identitytoolkit.googleapis.com",
+        "https://securetoken.googleapis.com",
+        "https://apis.google.com",
+    ];
+    if (emulatorHost) connectSrc.push(`http://${emulatorHost}`);
+
+    return [
+        "default-src 'self'",
+        `script-src 'self' 'nonce-${nonce}' https://www.gstatic.com`,
+        "style-src 'self' 'unsafe-inline'",
+        `connect-src ${connectSrc.join(" ")}`,
+        `frame-src https://${config.authDomain} https://accounts.google.com`,
+        "img-src 'self' data: https:",
+        "base-uri 'none'",
+        "form-action 'self'",
+    ].join("; ");
+}
+
+/**
  * Renders the standalone HTML/JS authorization page served at
  * GET /oauth/authorize. It only offers Google sign-in (via Firebase Auth's
  * GoogleAuthProvider) — email/password is intentionally never rendered here
@@ -37,7 +68,9 @@ export function getOAuthFirebaseWebConfig() {
  * Firebase ID token to /oauth/authorize/callback and follows the
  * server-computed redirect back to the client (e.g. ChatGPT).
  */
-export function renderAuthorizePage(params: { requestId: string; clientName?: string; scope: string; }): string {
+export function renderAuthorizePage(
+    params: { requestId: string; clientName?: string; scope: string; nonce: string; },
+): string {
     const config = getOAuthFirebaseWebConfig();
     const emulatorHost = process.env.FIREBASE_AUTH_EMULATOR_HOST;
     const clientLabel = params.clientName ? escapeHtml(params.clientName) : "This application";
@@ -71,7 +104,7 @@ export function renderAuthorizePage(params: { requestId: string; clientName?: st
     <div id="status" class="status"></div>
     <div id="error" class="error"></div>
   </div>
-  <script type="module">
+  <script type="module" nonce="${params.nonce}">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/${FIREBASE_JS_SDK_VERSION}/firebase-app.js";
     import {
       getAuth,

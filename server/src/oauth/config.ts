@@ -60,6 +60,12 @@ export function warnIfOAuthMisconfiguredInProduction(): void {
                 + "reject every token request until this is set.",
         );
     }
+    if (!process.env.OAUTH_ISSUER) {
+        logger.error(
+            "[OAuth] OAUTH_ISSUER is not configured. The /oauth/* endpoints are mounted but will reject every "
+                + "request until this is set to the externally reachable HTTPS origin.",
+        );
+    }
 }
 
 function positiveIntFromEnv(name: string, fallback: number): number {
@@ -85,12 +91,23 @@ export function getOAuthPendingRequestTtlSeconds(): number {
 
 /**
  * The issuer identity used for `iss`/`aud` claims and discovery metadata.
- * Deployments behind the Cloudflare Tunnel / Traefik path should set
- * OAUTH_ISSUER explicitly to the externally reachable HTTPS origin.
+ * Deployments behind the Cloudflare Tunnel / Traefik path must set
+ * OAUTH_ISSUER explicitly to the externally reachable HTTPS origin: an
+ * external ChatGPT/MCP client cannot reach a "http://localhost:PORT"
+ * fallback, so in production we fail closed instead of silently publishing
+ * an unusable issuer.
  */
 export function getOAuthIssuer(): string {
     const configured = process.env.OAUTH_ISSUER;
     if (configured) return configured.replace(/\/+$/, "");
+
+    if (process.env.NODE_ENV === "production") {
+        throw new Error(
+            "SECURITY CRITICAL: OAUTH_ISSUER is not configured in PRODUCTION. The OAuth/OIDC bridge cannot "
+                + "publish a usable issuer/discovery metadata without an explicit externally reachable origin.",
+        );
+    }
+
     const port = process.env.PORT || "7093";
     return `http://localhost:${port}`;
 }

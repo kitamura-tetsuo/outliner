@@ -72,15 +72,22 @@ export function clearOAuthInMemoryStoresForTests(): void {
 
 export interface RefreshTokenStore {
     issue(input: { uid: string; clientId: string; scope: string; }): Promise<string>;
-    consume(token: string): Promise<(RefreshTokenRecord & { id: string; }) | undefined>;
-    revoke(id: string): Promise<void>;
+    /**
+     * Atomically validates and revokes a refresh token in one transaction,
+     * returning the pre-revocation record iff it was valid (not already
+     * revoked/expired). Doing the check-and-revoke as a single transaction
+     * (rather than a separate read then write) prevents two concurrent
+     * refresh/revoke requests from both reading "not yet revoked" and both
+     * successfully rotating the same token.
+     */
+    consumeAndRevoke(token: string): Promise<(RefreshTokenRecord & { id: string; }) | undefined>;
 }
 
 /**
  * Refresh tokens are opaque random strings; only their SHA-256 hash is
  * persisted (mirrors the API key pattern in api-keys-api.ts). Each use
- * rotates the token: the caller is expected to revoke() the consumed record
- * and issue() a fresh one, so a stolen-and-replayed refresh token is
+ * rotates the token: the caller consumes it via consumeAndRevoke() and
+ * issue()s a fresh one, so a stolen-and-replayed refresh token is
  * detectable (the legitimate client's next refresh will fail).
  */
 export function createFirestoreRefreshTokenStore(firestoreInstance?: Firestore): RefreshTokenStore {
@@ -104,20 +111,19 @@ export function createFirestoreRefreshTokenStore(firestoreInstance?: Firestore):
             return token;
         },
 
-        async consume(token) {
+        async consumeAndRevoke(token) {
             const tokenHash = hashToken(token);
-            const snapshot = await collection().where("tokenHash", "==", tokenHash).limit(1).get();
-            if (snapshot.empty) return undefined;
+            return db().runTransaction(async (tx) => {
+                const snapshot = await tx.get(collection().where("tokenHash", "==", tokenHash).limit(1));
+                if (snapshot.empty) return undefined;
 
-            const doc = snapshot.docs[0];
-            const data = doc.data() as RefreshTokenRecord;
-            if (data.revoked || data.expiresAt < Date.now()) return undefined;
+                const doc = snapshot.docs[0];
+                const data = doc.data() as RefreshTokenRecord;
+                if (data.revoked || data.expiresAt < Date.now()) return undefined;
 
-            return { ...data, id: doc.id };
-        },
-
-        async revoke(id) {
-            await collection().doc(id).update({ revoked: true });
+                tx.update(collection().doc(doc.id), { revoked: true });
+                return { ...data, id: doc.id };
+            });
         },
     };
 }

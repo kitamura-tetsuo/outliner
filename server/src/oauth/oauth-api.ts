@@ -3,7 +3,7 @@ import express, { type Request, type Response } from "express";
 import { z } from "zod";
 import { logger } from "../logger.js";
 import { verifyIdTokenCached as defaultVerifyIdTokenCached } from "../websocket-auth.js";
-import { renderAuthorizePage } from "./authorize-page.js";
+import { getAuthorizePageContentSecurityPolicy, renderAuthorizePage } from "./authorize-page.js";
 import { type ClientStore, createFirestoreClientStore, isValidRedirectUri } from "./clients.js";
 import {
     getOAuthIssuer,
@@ -94,7 +94,12 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
     router.get(
         ["/.well-known/oauth-authorization-server", "/.well-known/openid-configuration"],
         (_req: Request, res: Response) => {
-            res.json(buildAuthorizationServerMetadata(getOAuthIssuer()));
+            try {
+                res.json(buildAuthorizationServerMetadata(getOAuthIssuer()));
+            } catch (e) {
+                logger.error({ event: "oauth_discovery_error", error: e instanceof Error ? e.message : String(e) });
+                res.status(500).json({ error: "server_error" });
+            }
         },
     );
 
@@ -168,8 +173,13 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
             codeChallengeMethod: code_challenge_method,
         });
 
+        // Overrides helmet()'s default `script-src 'self'` (applied globally
+        // in server.ts) for this page only: it needs to load the Firebase
+        // Auth SDK from gstatic and run its own inline sign-in script.
+        const nonce = crypto.randomBytes(16).toString("base64");
+        res.setHeader("Content-Security-Policy", getAuthorizePageContentSecurityPolicy(nonce));
         res.status(200).set("Content-Type", "text/html; charset=utf-8").send(
-            renderAuthorizePage({ requestId: pending.id, clientName: client.clientName, scope: pending.scope }),
+            renderAuthorizePage({ requestId: pending.id, clientName: client.clientName, scope: pending.scope, nonce }),
         );
     });
 
@@ -293,9 +303,11 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
                     return;
                 }
 
-                // grant_type === "refresh_token"
+                // grant_type === "refresh_token". consumeAndRevoke() atomically
+                // validates and revokes in one transaction, so two concurrent
+                // requests replaying the same refresh token cannot both succeed.
                 const { refresh_token, client_id } = parsed.data;
-                const record = await refreshTokenStore.consume(refresh_token);
+                const record = await refreshTokenStore.consumeAndRevoke(refresh_token);
                 if (!record) {
                     res.status(400).json({
                         error: "invalid_grant",
@@ -304,13 +316,14 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
                     return;
                 }
                 if (client_id && record.clientId !== client_id) {
+                    // The token is already revoked at this point (see
+                    // consumeAndRevoke above) even though we reject the
+                    // request: a client_id mismatch on an otherwise-valid
+                    // refresh token is suspicious enough that burning it
+                    // (forcing full reauth) is the safer outcome.
                     res.status(400).json({ error: "invalid_grant", error_description: "client_id mismatch" });
                     return;
                 }
-
-                // Rotate on use: revoke the consumed refresh token and mint a
-                // fresh one, so a stolen-and-replayed token is detectable.
-                await refreshTokenStore.revoke(record.id);
 
                 const { token: accessToken, expiresIn } = signAccessToken({
                     uid: record.uid,
@@ -349,23 +362,28 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
         },
     );
 
-    // RFC 7009 token revocation. Always answers 200 regardless of whether the
-    // token was found/valid, so this endpoint cannot be used to probe for
-    // live refresh tokens.
-    router.post("/oauth/revoke", async (req: Request, res: Response) => {
-        const parsed = RevokeBodySchema.safeParse(req.body);
-        if (!parsed.success) {
-            res.status(400).json({ error: "invalid_request" });
-            return;
-        }
-        try {
-            const record = await refreshTokenStore.consume(parsed.data.token);
-            if (record) await refreshTokenStore.revoke(record.id);
-        } catch (e) {
-            logger.error({ event: "oauth_revoke_error", error: e instanceof Error ? e.message : String(e) });
-        }
-        res.status(200).json({});
-    });
+    // RFC 7009 token revocation. Standards-compliant clients send this as
+    // application/x-www-form-urlencoded (like /oauth/token), which the
+    // server's global JSON-only body parser does not handle. Always answers
+    // 200 regardless of whether the token was found/valid, so this endpoint
+    // cannot be used to probe for live refresh tokens.
+    router.post(
+        "/oauth/revoke",
+        express.urlencoded({ extended: false }),
+        async (req: Request, res: Response) => {
+            const parsed = RevokeBodySchema.safeParse(req.body);
+            if (!parsed.success) {
+                res.status(400).json({ error: "invalid_request" });
+                return;
+            }
+            try {
+                await refreshTokenStore.consumeAndRevoke(parsed.data.token);
+            } catch (e) {
+                logger.error({ event: "oauth_revoke_error", error: e instanceof Error ? e.message : String(e) });
+            }
+            res.status(200).json({});
+        },
+    );
 
     return router;
 }

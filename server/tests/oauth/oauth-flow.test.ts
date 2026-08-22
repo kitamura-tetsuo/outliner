@@ -46,15 +46,11 @@ class InMemoryRefreshTokenStore {
         return token;
     }
 
-    async consume(token: string) {
+    async consumeAndRevoke(token: string) {
         const record = this.records.get(token);
         if (!record || record.revoked) return undefined;
+        record.revoked = true;
         return { ...record, tokenHash: token, createdAt: 0, expiresAt: Number.MAX_SAFE_INTEGER, id: token };
-    }
-
-    async revoke(id: string) {
-        const record = this.records.get(id);
-        if (record) record.revoked = true;
     }
 }
 
@@ -170,6 +166,30 @@ describe("oauth: end-to-end authorization-code + PKCE flow", () => {
         expect(res.text).to.include("GoogleAuthProvider");
         expect(res.text.toLowerCase()).to.not.include("password");
         expect(res.text).to.not.include('type="password"');
+    });
+
+    it("sets a Content-Security-Policy that permits the Google sign-in script to actually run", async () => {
+        // helmet() (applied globally when the router is mounted via
+        // startServer) defaults to script-src 'self', which would silently
+        // block both the inline sign-in script and its gstatic.com imports.
+        // The route must override the header with one that allows them.
+        const { challenge } = makePkcePair();
+        const res = await request(app).get("/oauth/authorize").query({
+            response_type: "code",
+            client_id: CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            code_challenge: challenge,
+            code_challenge_method: "S256",
+        });
+        expect(res.status).to.equal(200);
+        const csp = res.headers["content-security-policy"];
+        expect(csp, "expected the authorize response to set a Content-Security-Policy header").to.be.a("string");
+        expect(csp).to.include("https://www.gstatic.com");
+        expect(csp).to.match(/script-src[^;]*'nonce-[A-Za-z0-9+/=]+'/);
+
+        const nonceMatch = csp.match(/'nonce-([A-Za-z0-9+/=]+)'/);
+        expect(nonceMatch, "expected a nonce in the CSP header").to.not.be.null;
+        expect(res.text).to.include(`nonce="${nonceMatch![1]}"`);
     });
 
     async function startAuthorization(state = "csrf-state-abc") {
@@ -387,6 +407,36 @@ describe("oauth: end-to-end authorization-code + PKCE flow", () => {
         const refreshToken = tokenRes.body.refresh_token as string;
 
         const revokeRes = await request(app).post("/oauth/revoke").send({ token: refreshToken });
+        expect(revokeRes.status).to.equal(200);
+
+        const reuseRes = await request(app).post("/oauth/token").send({
+            grant_type: "refresh_token",
+            refresh_token: refreshToken,
+            client_id: CLIENT_ID,
+        });
+        expect(reuseRes.status).to.equal(400);
+        expect(reuseRes.body.error).to.equal("invalid_grant");
+    });
+
+    it("accepts an RFC 7009 application/x-www-form-urlencoded revocation request", async () => {
+        const { requestId, verifier } = await startAuthorization();
+        const callbackRes = await request(app)
+            .post("/oauth/authorize/callback")
+            .send({ requestId, idToken: "good-google-token" });
+        const code = new URL(callbackRes.body.redirectTo).searchParams.get("code")!;
+        const tokenRes = await request(app).post("/oauth/token").send({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: REDIRECT_URI,
+            client_id: CLIENT_ID,
+            code_verifier: verifier,
+        });
+        const refreshToken = tokenRes.body.refresh_token as string;
+
+        const revokeRes = await request(app)
+            .post("/oauth/revoke")
+            .type("form")
+            .send(`token=${encodeURIComponent(refreshToken)}`);
         expect(revokeRes.status).to.equal(200);
 
         const reuseRes = await request(app).post("/oauth/token").send({

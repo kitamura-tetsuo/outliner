@@ -36,7 +36,20 @@ function createMockFirestore() {
             }),
         })),
     };
-    return { firestore: { collection: sinon.stub().returns(collection) } as any, docs };
+    // Minimal fake transaction: tx.get() delegates to the query/doc's own
+    // get(), tx.update() delegates to the doc ref's own update(). Good
+    // enough to exercise createFirestoreRefreshTokenStore's transactional
+    // consumeAndRevoke() without a real Firestore emulator.
+    const runTransaction = sinon.stub().callsFake(async (fn: (tx: any) => Promise<unknown>) => {
+        return fn({
+            get: async (queryOrRef: { get: () => Promise<unknown>; }) => queryOrRef.get(),
+            update: async (
+                ref: { update: (patch: Record<string, unknown>) => Promise<void>; },
+                patch: Record<string, unknown>,
+            ) => ref.update(patch),
+        });
+    });
+    return { firestore: { collection: sinon.stub().returns(collection), runTransaction } as any, docs };
 }
 
 describe("oauth/store: pending authorization requests and codes", () => {
@@ -102,16 +115,20 @@ describe("oauth/store: pending authorization requests and codes", () => {
 });
 
 describe("oauth/store: Firestore-backed refresh tokens", () => {
-    it("issues a refresh token and can consume it exactly once (then it is gone)", async () => {
+    it("issues a refresh token and can consume-and-revoke it exactly once (then it is gone)", async () => {
         const { firestore } = createMockFirestore();
         const store = createFirestoreRefreshTokenStore(firestore);
 
         const token = await store.issue({ uid: "uid-1", clientId: "chatgpt", scope: "outliner.read" });
         expect(token).to.be.a("string").with.length.greaterThan(0);
 
-        const record = await store.consume(token);
+        const record = await store.consumeAndRevoke(token);
         expect(record?.uid).to.equal("uid-1");
         expect(record?.clientId).to.equal("chatgpt");
+
+        // A second consumeAndRevoke of the same (now-revoked) token must fail
+        // — this is the atomic rotation guarantee.
+        expect(await store.consumeAndRevoke(token)).to.be.undefined;
     });
 
     it("never persists the raw refresh token, only its hash", async () => {
@@ -124,21 +141,31 @@ describe("oauth/store: Firestore-backed refresh tokens", () => {
         expect(stored).to.have.property("tokenHash");
     });
 
-    it("rejects a revoked refresh token", async () => {
+    it("validates and revokes within a single Firestore transaction (not a separate read-then-write)", async () => {
+        // A fake in-memory Firestore can't reproduce real optimistic-concurrency
+        // semantics, so we can't meaningfully simulate the concurrent-replay
+        // race here. Instead we assert the implementation actually delegates
+        // to db.runTransaction() for the check-and-revoke, which is what makes
+        // two concurrent uses of the same token unable to both succeed against
+        // the real Firestore backend (a stolen-and-replayed refresh token
+        // cannot be used twice, even if the requests race).
         const { firestore } = createMockFirestore();
         const store = createFirestoreRefreshTokenStore(firestore);
-
         const token = await store.issue({ uid: "uid-1", clientId: "chatgpt", scope: "outliner.read" });
-        const record = await store.consume(token);
-        await store.revoke(record!.id);
 
-        expect(await store.consume(token)).to.be.undefined;
+        await store.consumeAndRevoke(token);
+
+        expect((firestore.runTransaction as sinon.SinonStub).calledOnce).to.be.true;
+        expect(
+            (firestore.collection().doc as sinon.SinonStub).called,
+            "the read and the revoke must use the same transaction, not separate calls",
+        ).to.be.true;
     });
 
     it("rejects an unknown refresh token", async () => {
         const { firestore } = createMockFirestore();
         const store = createFirestoreRefreshTokenStore(firestore);
-        expect(await store.consume("never-issued-token")).to.be.undefined;
+        expect(await store.consumeAndRevoke("never-issued-token")).to.be.undefined;
     });
 
     it("rejects an expired refresh token", async () => {
@@ -149,7 +176,7 @@ describe("oauth/store: Firestore-backed refresh tokens", () => {
             const store = createFirestoreRefreshTokenStore(firestore);
             const token = await store.issue({ uid: "uid-1", clientId: "chatgpt", scope: "outliner.read" });
             await new Promise(resolve => setTimeout(resolve, 1100));
-            expect(await store.consume(token)).to.be.undefined;
+            expect(await store.consumeAndRevoke(token)).to.be.undefined;
         } finally {
             process.env.OAUTH_REFRESH_TOKEN_TTL_SECONDS = originalTtl;
         }
