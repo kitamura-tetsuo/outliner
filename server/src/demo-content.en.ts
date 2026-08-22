@@ -182,6 +182,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "  Delete the whole selection in one step.",
                     "  Drag and drop the selected text to move it.",
                     "  Apply formatting such as bold or italic to the selected range.",
+                    "Visual blocks are selected atomically: on [Advanced Features], extend a selection to either edge of a live Grid, then copy, cut, or delete it as one block.",
                     "Try selecting across the items above and copying them.",
                 ],
             },

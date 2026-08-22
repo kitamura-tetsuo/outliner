@@ -13,7 +13,11 @@ import { allocatePageTitle } from "../../utils/pageUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { KeyEventHandler } from "../KeyEventHandler";
 import { endpointOffsetInText } from "../selection/selectionContent";
-import { textSelectionEndpoints } from "../selection/selectionEndpoints";
+import {
+    isNodeBoundaryEndpoint,
+    normalizeSelectionEndpoints,
+    textSelectionEndpoints,
+} from "../selection/selectionEndpoints";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
@@ -59,6 +63,13 @@ export class CursorEditor {
 
     private getSingleItemSelection(itemId?: string): SingleItemSelection | undefined {
         return getSingleItemSelectionForUser(this.cursor.userId, itemId);
+    }
+
+    private selectsOneAtomicNode(selection: SelectionRange): boolean {
+        return !selectionSpansMultipleItems(selection)
+            && isNodeBoundaryEndpoint(selection.start)
+            && isNodeBoundaryEndpoint(selection.end)
+            && selection.start.side !== selection.end.side;
     }
 
     private validateRename(
@@ -736,7 +747,7 @@ export class CursorEditor {
         const selection = this.getSelection();
         if (!selection) return;
 
-        if (selectionSpansMultipleItems(selection)) {
+        if (selectionSpansMultipleItems(selection) || this.selectsOneAtomicNode(selection)) {
             this.deleteMultiItemSelection(selection);
             return;
         }
@@ -763,7 +774,7 @@ export class CursorEditor {
         const selection = this.getSelection();
         if (!selection) return;
 
-        if (selectionSpansMultipleItems(selection)) {
+        if (selectionSpansMultipleItems(selection) || this.selectsOneAtomicNode(selection)) {
             this.deleteMultiItemSelection(selection);
             return;
         }
@@ -1027,34 +1038,13 @@ export class CursorEditor {
         const cursor = this.cursor;
         if (!selection) return;
 
-        if (!selectionSpansMultipleItems(selection)) {
+        if (!selectionSpansMultipleItems(selection) && !this.selectsOneAtomicNode(selection)) {
             this.deleteSelection();
             return;
         }
 
         const root = generalStore.currentPage;
         if (!root) return;
-
-        const startItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.startItemId);
-        const endItem = searchItem(root as unknown as import("../../schema/yjs-schema").Item, selection.endItemId);
-        if (!startItem || !endItem) return;
-
-        const isReversed = !!selection.isReversed;
-        const firstItem = isReversed ? endItem : startItem;
-        const lastItem = isReversed ? startItem : endItem;
-        // Where each endpoint cuts its own item. A node boundary cuts at an edge of the
-        // item it belongs to, which for a textless visual node is its only position -
-        // no offset is invented for a block (#5025).
-        const textLengthOf = (item: unknown) =>
-            String((item as import("../../schema/app-schema").Item).text ?? "").length;
-        const firstOffset = endpointOffsetInText(
-            isReversed ? selection.end : selection.start,
-            textLengthOf(firstItem),
-        );
-        const lastOffset = endpointOffsetInText(
-            isReversed ? selection.start : selection.end,
-            textLengthOf(lastItem),
-        );
 
         const allItemIds: string[] = [];
         const collectIds = (
@@ -1077,57 +1067,69 @@ export class CursorEditor {
         };
         collectIds(root, allItemIds);
 
-        let firstIdx = allItemIds.indexOf(firstItem.id);
-        let lastIdx = allItemIds.indexOf(lastItem.id);
+        const itemOrder = (a: string, b: string) => allItemIds.indexOf(a) - allItemIds.indexOf(b);
+        const normalized = normalizeSelectionEndpoints(selection.start, selection.end, itemOrder);
+        const firstItem = searchItem(
+            root as unknown as import("../../schema/yjs-schema").Item,
+            normalized.first.itemId,
+        );
+        const lastItem = searchItem(
+            root as unknown as import("../../schema/yjs-schema").Item,
+            normalized.last.itemId,
+        );
+        if (!firstItem || !lastItem) return;
+
+        const firstIdx = allItemIds.indexOf(firstItem.id);
+        const lastIdx = allItemIds.indexOf(lastItem.id);
 
         if (firstIdx === -1 || lastIdx === -1) return;
 
-        let actFirstItem = firstItem;
-        let actLastItem = lastItem;
-        let actFirstOffset = firstOffset;
-        let actLastOffset = lastOffset;
+        // Text nodes leave one endpoint node in place so its unselected prefix/suffix
+        // can survive. A visual endpoint includes its atomic node only from before ->
+        // after: starting after it or ending before it leaves that node outside the
+        // removal set (#5025). A stale text endpoint naming a visual node keeps the
+        // pre-#5025 behavior and includes that node whole.
+        const firstIsVisual = isVisualNode(firstItem as unknown as import("../../schema/app-schema").Item);
+        const lastIsVisual = isVisualNode(lastItem as unknown as import("../../schema/app-schema").Item);
+        const firstIsIncludedVisual = firstIsVisual
+            && (normalized.first.kind === "text" || normalized.first.side === "before");
+        const lastIsIncludedVisual = lastIsVisual
+            && (normalized.last.kind === "text" || normalized.last.side === "after");
+        const keepLastText = firstIsVisual && !lastIsVisual;
+        const removeStart = firstIdx + (!firstIsVisual || !firstIsIncludedVisual ? 1 : 0);
+        const removeEnd = lastIsVisual
+            ? lastIdx - (lastIsIncludedVisual ? 0 : 1)
+            : lastIdx - (keepLastText ? 1 : 0);
 
-        if (firstIdx > lastIdx) {
-            actFirstItem = lastItem;
-            actLastItem = firstItem;
-            actFirstOffset = lastOffset;
-            actLastOffset = firstOffset;
-            const tempIdx = firstIdx;
-            firstIdx = lastIdx;
-            lastIdx = tempIdx;
+        // A range between two excluded adjacent boundaries contains no document node.
+        if (removeStart > removeEnd && firstIsVisual && lastIsVisual) {
+            cursor.clearSelection();
+            store.startCursorBlink();
+            return;
         }
 
-        try {
-            const firstText = (actFirstItem as unknown as import("../../schema/app-schema").Item).text?.toString()
-                || "";
-            const newFirstText = firstText.substring(0, actFirstOffset);
-            const lastText = (actLastItem as unknown as import("../../schema/app-schema").Item).text?.toString() || "";
-            const newLastText = lastText.substring(actLastOffset);
+        const textLengthOf = (item: unknown) =>
+            String((item as import("../../schema/app-schema").Item).text ?? "").length;
+        const firstOffset = endpointOffsetInText(normalized.first, textLengthOf(firstItem));
+        const lastOffset = endpointOffsetInText(normalized.last, textLengthOf(lastItem));
 
-            // A visual first item cannot receive the last Text item's suffix:
-            // visual nodes own no text. Keep that last Text node as the
-            // survivor instead and delete the visual host with the selected
-            // nodes. This also completes a cut before clearSelection removes
-            // the information needed to find its host.
-            const firstIsVisual = isVisualNode(
-                actFirstItem as unknown as import("../../schema/app-schema").Item,
-            );
-            const lastIsVisual = isVisualNode(
-                actLastItem as unknown as import("../../schema/app-schema").Item,
-            );
-            const keepLastText = firstIsVisual && !lastIsVisual;
-            // With two visual endpoints there is no Text node inside the
-            // selection that can survive. Remove both atomic blocks and put
-            // the caret on the visible item immediately before the selection.
-            const removeBothVisualEndpoints = firstIsVisual && lastIsVisual;
-            const previousItem = removeBothVisualEndpoints
-                ? findPreviousItem(actFirstItem.id)
+        try {
+            const firstText = (firstItem as unknown as import("../../schema/app-schema").Item).text?.toString()
+                || "";
+            const newFirstText = firstText.substring(0, firstOffset);
+            const lastText = (lastItem as unknown as import("../../schema/app-schema").Item).text?.toString() || "";
+            const newLastText = lastText.substring(lastOffset);
+
+            // When neither endpoint is text, every selected node is atomic. The
+            // caret returns to the visible node immediately before the first node
+            // actually removed; an excluded leading visual node naturally becomes
+            // that predecessor.
+            const previousItem = firstIsVisual && lastIsVisual
+                ? findPreviousItem(allItemIds[removeStart])
                 : undefined;
-            if (removeBothVisualEndpoints && !previousItem) return;
+            if (firstIsVisual && lastIsVisual && !previousItem) return;
 
             const itemsToRemoveIds: string[] = [];
-            const removeStart = removeBothVisualEndpoints || keepLastText ? firstIdx : firstIdx + 1;
-            const removeEnd = keepLastText ? lastIdx - 1 : lastIdx;
             for (let i = removeStart; i <= removeEnd; i++) {
                 itemsToRemoveIds.push(allItemIds[i]);
             }
@@ -1136,13 +1138,15 @@ export class CursorEditor {
                 store.clearCursorForItem(itemId);
             }
 
-            const survivingItem = removeBothVisualEndpoints
+            const survivingItem = firstIsVisual && lastIsVisual
                 ? previousItem!
                 : keepLastText
-                ? actLastItem
-                : actFirstItem;
-            if (!removeBothVisualEndpoints) {
-                const survivingText = keepLastText ? newLastText : newFirstText + newLastText;
+                ? lastItem
+                : firstItem;
+            if (!firstIsVisual || !lastIsVisual) {
+                const survivingText = keepLastText
+                    ? newLastText
+                    : newFirstText + (!lastIsVisual ? newLastText : "");
                 (survivingItem as unknown as import("../../schema/app-schema").Item).updateText(survivingText);
             }
 
@@ -1165,11 +1169,11 @@ export class CursorEditor {
             }
 
             cursor.itemId = survivingItem.id;
-            cursor.offset = removeBothVisualEndpoints
+            cursor.offset = firstIsVisual && lastIsVisual
                 ? this.getPlainText(survivingItem as unknown as import("../../schema/app-schema").Item).length
                 : keepLastText
                 ? 0
-                : actFirstOffset;
+                : firstOffset;
             cursor.applyToStore();
 
             cursor.clearSelection();

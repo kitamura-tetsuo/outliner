@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(52);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(53);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -202,6 +202,18 @@ describe("Demo seed content", () => {
         const guidance = childTexts(advanced!.items).find(text => text.startsWith("Selecting across blocks:"));
         expect(guidance, "cross-block selection guidance exists").to.not.equal(undefined);
         expect(guidance).to.contain("one selected block");
+    });
+
+    it("seeds the visual-node endpoint selection tour (#5025)", () => {
+        const selection = findChildByText(project.items, "Selection and Clipboard");
+        expect(selection).to.not.equal(undefined);
+
+        const guidance = childTexts(selection!.items).find(text =>
+            text.startsWith("Visual blocks are selected atomically:")
+        );
+        expect(guidance, "visual endpoint guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("[Advanced Features]");
+        expect(guidance).to.contain("either edge of a live Grid");
     });
 
     it("registers every demo table in the project doc registry", () => {

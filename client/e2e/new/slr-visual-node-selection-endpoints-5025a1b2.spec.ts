@@ -5,7 +5,7 @@ registerCoverageHooks();
  *  Title   : Selections can start or end at a visual node
  *  Source  : docs/client-features/slr-visual-node-selection-endpoints-5025a1b2.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
     afterNode,
     atOffset,
@@ -17,6 +17,26 @@ import {
     selectedPlainText,
 } from "../utils/visualNodeSelectionHelpers";
 import { itemIdByText, seedSelectionPage } from "../utils/visualNodeSelectionSeed";
+
+async function deleteWithActiveCursor(page: Page, fallbackItemId: string): Promise<void> {
+    await page.evaluate((itemId) => {
+        const store = (globalThis as unknown as {
+            editorOverlayStore: {
+                setCursor: (cursor: { itemId: string; offset: number; isActive: boolean; userId: string; }) => string;
+                getLocalCursorInstances: () => Array<{
+                    isActive: boolean;
+                    onKeyDown: (event: KeyboardEvent) => void;
+                }>;
+            };
+        }).editorOverlayStore;
+        if (!store.getLocalCursorInstances().some(instance => instance.isActive)) {
+            store.setCursor({ itemId, offset: 0, isActive: true, userId: "local" });
+        }
+        const cursor = store.getLocalCursorInstances().find(instance => instance.isActive);
+        if (!cursor) throw new Error("Active local cursor not found");
+        cursor.onKeyDown(new KeyboardEvent("keydown", { key: "Delete" }));
+    }, fallbackItemId);
+}
 
 test.describe("SLR-5025a1b2: node boundaries are selection endpoints", () => {
     test.beforeEach(async ({ page }, testInfo) => {
@@ -80,5 +100,30 @@ test.describe("SLR-5025a1b2: node boundaries are selection endpoints", () => {
         expect(await selectedPlainText(page)).toBe(forwardText);
         expect((await fragmentsForItem(page, alphaId)).map(fragment => fragment.kind))
             .toEqual(forward.map(fragment => fragment.kind));
+    });
+
+    test("Delete removes a lone Grid selected between its own boundaries", async ({ page }) => {
+        const alphaId = await itemIdByText(page, "Alpha text");
+        const [gridId] = await seedVisualNodesAfterFirstItem(page, [{ type: "yjstable" }]);
+
+        await selectBetweenEndpoints(page, beforeNode(gridId), afterNode(gridId));
+        await deleteWithActiveCursor(page, alphaId);
+
+        await expect(page.locator(`[data-visual-node-root="${gridId}"]`)).toHaveCount(0);
+    });
+
+    test("Delete preserves a Grid excluded by either mixed-selection boundary", async ({ page }) => {
+        const alphaId = await itemIdByText(page, "Alpha text");
+        const omegaId = await itemIdByText(page, "Omega text");
+        const [gridId] = await seedVisualNodesAfterFirstItem(page, [{ type: "yjstable" }]);
+        const grid = page.locator(`[data-visual-node-root="${gridId}"]`);
+
+        await selectBetweenEndpoints(page, atOffset(alphaId, 6), beforeNode(gridId));
+        await deleteWithActiveCursor(page, alphaId);
+        await expect(grid).toBeVisible();
+
+        await selectBetweenEndpoints(page, afterNode(gridId), atOffset(omegaId, 5));
+        await deleteWithActiveCursor(page, omegaId);
+        await expect(grid).toBeVisible();
     });
 });
