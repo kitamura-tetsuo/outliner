@@ -114,7 +114,12 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         addChild(root, item2);
         addChild(root, item3);
         addChild(root, item4);
-        (generalStore as unknown as { currentPage: FakeItem; }).currentPage = root;
+        const mutableStore = generalStore as unknown as {
+            currentPage: FakeItem;
+            activeViewModel?: { isCollapsed: (itemId: string) => boolean; };
+        };
+        mutableStore.currentPage = root;
+        mutableStore.activeViewModel = undefined;
     });
 
     it("removes every item within the selection, not only the first", () => {
@@ -204,6 +209,79 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         expect(item4._text).toBe(" item text");
         expect(cursorCtx.itemId).toBe(item4.id);
         expect(cursorCtx.offset).toBe(0);
+    });
+
+    it("removes both visual endpoints and moves the caret before the selection", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        item4.componentType = "calendar";
+        item4._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            startItemId: item2.id,
+            startOffset: 0,
+            endItemId: item4.id,
+            endOffset: 0,
+            userId: "local",
+            isReversed: false,
+        } as SelectionRange);
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
+        expect(item1._text).toBe("First item text");
+        expect(cursorCtx.itemId).toBe(item1.id);
+        expect(cursorCtx.offset).toBe(item1._text.length);
+    });
+
+    it("moves the caret to the visible predecessor instead of its collapsed descendant", () => {
+        const hiddenChild = new FakeItem("hidden-child", "Hidden child text");
+        addChild(item1, hiddenChild);
+        item2.componentType = "yjstable";
+        item2._text = "";
+        item4.componentType = "calendar";
+        item4._text = "";
+        (generalStore as unknown as {
+            activeViewModel: { isCollapsed: (itemId: string) => boolean; };
+        }).activeViewModel = {
+            isCollapsed: itemId => itemId === item1.id,
+        };
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection({
+            startItemId: item2.id,
+            startOffset: 0,
+            endItemId: item4.id,
+            endOffset: 0,
+            userId: "local",
+            isReversed: false,
+        } as SelectionRange);
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1"]);
+        expect(item1.items.children.map(item => item.id)).toEqual(["hidden-child"]);
+        expect(cursorCtx.itemId).toBe(item1.id);
+        expect(cursorCtx.offset).toBe(item1._text.length);
     });
 
     it("treats the visual node before a Text item atomically on Backspace", () => {
