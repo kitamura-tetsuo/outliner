@@ -361,6 +361,7 @@ function handleMoveOut(child: Item) {
                     style="--column-span: {renderedSpan(child)}"
                     data-testid="layout-cell"
                     data-item-id={child.id}
+                    data-node-kind={nodeKindOf(child)}
                     data-column-span={renderedSpan(child)}
                     role="group"
                     aria-label={childLabel(child)}

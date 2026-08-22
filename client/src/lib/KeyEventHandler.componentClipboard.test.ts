@@ -53,7 +53,11 @@ const state: {
     selection: TestSelection | undefined;
     visible: Array<{ model: { id: string; original: unknown; }; depth: number; }>;
     doc: Y.Doc;
-    cursors: Array<{ isActive: boolean; insertText: ReturnType<typeof vi.fn>; }>;
+    cursors: Array<{
+        isActive: boolean;
+        insertText: ReturnType<typeof vi.fn>;
+        cutSelectedText?: ReturnType<typeof vi.fn>;
+    }>;
 } = { selection: undefined, visible: [], doc: new Y.Doc(), cursors: [] };
 
 vi.mock("../stores/EditorOverlayStore.svelte", () => ({
@@ -198,8 +202,9 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
             { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
             { text: "Trailing", depth: 0 },
         ]);
-        // Outward, the block is still named - by its Table, not by outline text.
-        expect(data.get("text/plain")).toBe("text\nSales\nTrailing");
+        // Outward, an unrendered block contributes no line at all: its Table
+        // name is not a caption the outline owns (#5024).
+        expect(data.get("text/plain")).toBe("text\nTrailing");
     });
 
     it("copies from a nested item through a shallower Grid without producing a negative depth", () => {
@@ -223,7 +228,7 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         ]);
     });
 
-    it("names a Grid host outward from the table registry, never as outline text", () => {
+    it("carries an unrendered Grid host as a binding, and as no plain text at all", () => {
         state.selection = { startItemId: "a", startOffset: 6, endItemId: "c", endOffset: 8, userId: "local" };
         const { event, data } = copyEvent();
 
@@ -236,8 +241,30 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
             componentType: "yjstable",
             yjsTableId: tableId,
         });
-        // ...while the flavor other applications read still names it.
-        expect(data.get("text/plain")).toContain("Sales");
+        // ...and the outward flavor invents no caption for it (#5024).
+        expect(data.get("text/plain")).not.toContain("Sales");
+    });
+
+    it("copies a mixed Text/Calendar/Text selection as bindings plus the text alone", () => {
+        // The rendering counterpart of this selection draws the Calendar as a
+        // selected node (#5024); the clipboard carries the binding, and the
+        // plain-text flavor stays exactly the selected text.
+        state.visible = [
+            { model: { id: "a", original: makeItem("a", "Before text") }, depth: 0 },
+            { model: { id: "cal", original: makeItem("cal", "", undefined, "calendar-1") }, depth: 0 },
+            { model: { id: "c", original: makeItem("c", "After text") }, depth: 0 },
+        ];
+        state.selection = { startItemId: "a", startOffset: 7, endItemId: "c", endOffset: 5, userId: "local" };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCopy(event);
+
+        expect(copiedItems(data)).toEqual([
+            { text: "text", depth: 0 },
+            { text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" },
+            { text: "After", depth: 0 },
+        ]);
+        expect(data.get("text/plain")).toBe("text\nAfter");
     });
 
     it("never writes Grid row data to any clipboard MIME type", () => {
@@ -270,6 +297,30 @@ describe("KeyEventHandler.handleCopy component bindings", () => {
         expect(copiedItems(data)).toEqual([
             { text: "", depth: 0, componentType: "yjstable", yjsTableId: tableId },
         ]);
+        // Nothing textual is left to copy, and the block gets no caption to
+        // stand in for it (#5024) - the binding alone is the copy.
+        expect(data.get("text/plain")).toBe("");
+    });
+
+    it("cuts a selection of a lone block even though it writes no plain text", () => {
+        const cutSelectedText = vi.fn();
+        state.cursors = [{ isActive: true, insertText: vi.fn(), cutSelectedText }];
+        state.selection = {
+            startItemId: "a",
+            startOffset: "Intro text".length,
+            endItemId: "c",
+            endOffset: 0,
+            userId: "local",
+        };
+        const { event, data } = copyEvent();
+
+        KeyEventHandler.handleCut(event);
+
+        // What was cut is on the clipboard as a binding, so the block has to
+        // leave the outline: an empty plain-text flavor is not an empty cut.
+        expect(copiedItems(data)?.[0].componentType).toBe("yjstable");
+        expect(data.get("text/plain")).toBe("");
+        expect(cutSelectedText).toHaveBeenCalled();
     });
 
     it("copies a Grid the drag ends on: a text-less block has no interior to stop short of", () => {
@@ -486,13 +537,17 @@ describe("KeyEventHandler.handleCopy outward Grid flavors", () => {
         ]);
     });
 
-    it("falls back to the display name when no view has rendered the Grid", () => {
+    it("contributes no plain text when no view has rendered the Grid", () => {
         selectWholeGridHost();
         const { event, data } = copyEvent();
 
         KeyEventHandler.handleCopy(event);
 
-        expect(data.get("text/plain")).toBe("Intro text\nSales");
+        // Only what the outline itself owns travels outward: with nothing
+        // rendered to export, the block leaves no line rather than an invented
+        // caption (#5024). The private payload still carries its binding.
+        expect(data.get("text/plain")).toBe("Intro text");
+        expect(copiedItems(data)?.[1].componentType).toBe("yjstable");
     });
 
     it("adds the chart image to the HTML flavor when the chart view is open", () => {
@@ -606,6 +661,35 @@ describe("KeyEventHandler.handlePaste portable component bindings", () => {
             { text: "", depth: 0, componentType: "yjstable", yjsTableId: "source-table" },
         ]);
         expect(listTables(state.doc)).toEqual([]);
+    });
+
+    it("pastes a payload of textless blocks, which carries no plain text of its own", async () => {
+        // The copy side writes no caption for a block (#5024), so a copy made
+        // only of blocks has an empty plain-text flavor. The payload is still
+        // the whole paste and must not be discarded as "nothing on the board".
+        const encoded = JSON.stringify({
+            version: 2,
+            sourceProjectId: state.doc.guid,
+            items: [{ text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" }],
+            tables: {},
+        });
+
+        // Neither of the two plain-text fallbacks may hand this paste text the
+        // clipboard does not have, or the empty flavor would go untested.
+        const clipboardDescriptor = Object.getOwnPropertyDescriptor(navigator, "clipboard");
+        Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+        (window as Window & typeof globalThis & { lastCopiedText?: string; }).lastCopiedText = undefined;
+        let detail: Record<string, unknown> | undefined;
+        try {
+            detail = await pasteAndCapture(encoded, "");
+        } finally {
+            if (clipboardDescriptor) Object.defineProperty(navigator, "clipboard", clipboardDescriptor);
+            else delete (navigator as unknown as { clipboard?: Clipboard; }).clipboard;
+        }
+
+        expect(detail?.structuredItems).toEqual([
+            { text: "", depth: 0, componentType: "calendar", calendarId: "calendar-1" },
+        ]);
     });
 
     it("does not leak Paste Special to the next paste after an empty clipboard", async () => {

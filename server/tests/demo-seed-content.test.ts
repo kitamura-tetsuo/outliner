@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(51);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(52);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -191,6 +191,17 @@ describe("Demo seed content", () => {
                 + "spreadsheet receives the Grid's rows as cells, a document receives them as a table, and "
                 + "with the Chart view open the picture travels with the numbers.",
         );
+    });
+
+    it("seeds the guidance for selecting across a block (#5024)", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        expect(advanced).to.not.equal(undefined);
+
+        // The demo already places a Grid between two Text nodes, which is
+        // exactly the selection this guidance asks the visitor to draw.
+        const guidance = childTexts(advanced!.items).find(text => text.startsWith("Selecting across blocks:"));
+        expect(guidance, "cross-block selection guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("one selected block");
     });
 
     it("registers every demo table in the project doc registry", () => {

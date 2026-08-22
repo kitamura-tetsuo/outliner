@@ -8,14 +8,17 @@ import type { CursorPosition, SelectionRange } from '../stores/EditorOverlayStor
 import { editorOverlayStore as store } from '../stores/EditorOverlayStore.svelte';
 import { escapeId, getMeasurementSpan } from '../utils/domUtils';
 import {
+    buildSelectionFragments,
     convertClientRectsToOverlayRects,
     createRangeForOffsets,
     findTextPositionInElement,
-    getItemSelectionInterval,
     mergeRectsIntoLines,
     normalizeSelectionByVisualOrder,
     type NormalizedSelectionRange,
     type OverlayRect,
+    type SelectionFragment,
+    type SelectionRangeItem,
+    VISUAL_NODE_ROOT_ATTRIBUTE,
 } from '../lib/selectionGeometry';
 import { presenceStore } from '../stores/PresenceStore.svelte';
 import { aliasPickerStore } from '../stores/AliasPickerStore.svelte';
@@ -185,6 +188,9 @@ function getSelectionStyle(sel: SelectionRange) {
     const baseColor = sel.color || presenceStore.users[sel.userId || ""]?.color;
     return {
         fill: colorWithAlpha(baseColor, 0.25, "rgba(0, 120, 215, 0.25)"),
+        // A whole Grid or Calendar is highlighted by tint and edge, not by a wash:
+        // the character fill over a block that dense would hide what is selected.
+        nodeFill: colorWithAlpha(baseColor, 0.12, "rgba(0, 120, 215, 0.12)"),
         outline: colorWithAlpha(baseColor, 0.18, "rgba(0, 120, 215, 0.1)"),
         edge: colorWithAlpha(baseColor, 0.7, "rgba(0, 120, 215, 0.7)"),
         markerStart: colorWithAlpha(baseColor, 0.85, "#0078d7"),
@@ -629,11 +635,55 @@ function normalizeSelection(sel: SelectionRange): NormalizedSelectionRange {
     return normalizeSelectionByVisualOrder(sel, compareItemsInDom);
 }
 
-/** Selected interval of one item within a normalized multi-item selection. */
-function selectionIntervalForItem(itemId: string, normalized: NormalizedSelectionRange) {
-    const textEl = document.querySelector(`[data-item-id="${escapeId(itemId)}"] .item-text`);
-    const textLength = textEl?.textContent?.length || 0;
-    return getItemSelectionInterval(itemId, normalized, textLength);
+/**
+ * Read back what the selection model needs to know about the items it spans.
+ *
+ * Everything comes from the rendered document: the kind each row publishes, the text it
+ * actually shows, and - for a Layout's children, the only items rendered inside another
+ * item - which item encloses it.
+ */
+function selectionRangeItems(itemIds: string[]): SelectionRangeItem[] {
+    return itemIds.map(itemId => {
+        const element = document.querySelector(`[data-item-id="${escapeId(itemId)}"]`);
+        const nodeKind = element?.getAttribute('data-node-kind');
+        const textElement = element?.querySelector('.item-text');
+        const parent = element?.parentElement?.closest('[data-item-id]');
+        return {
+            itemId,
+            isVisual: nodeKind !== null && nodeKind !== undefined && nodeKind !== 'text',
+            textLength: textElement?.textContent?.length || 0,
+            parentItemId: parent?.getAttribute('data-item-id') ?? undefined,
+        };
+    });
+}
+
+/**
+ * The rectangle covering a whole visual node, taken from its root element (#5024).
+ *
+ * A Grid, Calendar or Layout owns no outline text, so its selection geometry is the box
+ * the block occupies rather than any character range inside it. Returned as a list so the
+ * caller renders node and text fragments through the same loop.
+ */
+function calculateNodeSelectionFragments(itemId: string): OverlayRect[] {
+    const treeContainer = resolveTreeContainer();
+    if (!treeContainer) return [];
+
+    const root = document.querySelector(`[${VISUAL_NODE_ROOT_ATTRIBUTE}="${escapeId(itemId)}"]`);
+    if (!root) return [];
+
+    // No SELECTION_TOP_ADJUST here: that nudge lifts a character highlight from the glyph
+    // box onto the line box it sits in. A block's measured box is already the whole block,
+    // so the highlight lands on its edges exactly.
+    return convertClientRectsToOverlayRects([root.getBoundingClientRect()], treeContainer.getBoundingClientRect(), {
+        scrollTop: treeContainer.scrollTop,
+    });
+}
+
+/** Rectangles to draw for one selection fragment, whichever kind it is. */
+function selectionFragmentRects(fragment: SelectionFragment): OverlayRect[] {
+    return fragment.kind === 'node'
+        ? calculateNodeSelectionFragments(fragment.itemId)
+        : calculateSelectionPixelFragments(fragment.itemId, fragment.startOffset, fragment.endOffset);
 }
 
 // Function to update position mapping when DOM changes
@@ -1620,26 +1670,28 @@ function handlePaste(event: ClipboardEvent) {
                     <!-- Which characters are highlighted follows document order, not anchor/focus direction -->
                     {@const normalized = normalizeSelection(sel)}
 
-                    <!-- Draw selection range for each item within range -->
-                    {#each itemsInRange as itemId (itemId)}
-                        {@const interval = selectionIntervalForItem(itemId, normalized)}
+                    <!-- Text nodes highlight their selected characters; a visual node
+                         between the endpoints is drawn as one atomic block (#5024). -->
+                    {@const selectionFragments = buildSelectionFragments(selectionRangeItems(itemsInRange), normalized)}
 
-                        <!-- Draw only if selection range actually exists -->
-                        {#if interval}
-                            {@const fragments = calculateSelectionPixelFragments(itemId, interval.startOffset, interval.endOffset)}
-                            {@const isPageTitle = itemId === 'page-title'}
-                            {#each fragments as rect, fragmentIndex (`${selKey}-${itemId}-${fragmentIndex}`)}
-                                <div
-                                    class="selection selection-multi-item"
-                                    class:page-title-selection={isPageTitle}
-                                    class:selection-reversed={sel.isReversed && itemId === normalized.firstItemId && fragmentIndex === 0}
-                                    class:selection-forward={!sel.isReversed && itemId === normalized.lastItemId && fragmentIndex === fragments.length - 1}
-                                    data-selection-item-id={itemId}
-                                    data-selection-fragment={fragmentIndex}
-                                    style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
-                                ></div>
-                            {/each}
-                        {/if}
+                    {#each selectionFragments as selectionFragment (selectionFragment.itemId)}
+                        {@const itemId = selectionFragment.itemId}
+                        {@const isNode = selectionFragment.kind === 'node'}
+                        {@const fragments = selectionFragmentRects(selectionFragment)}
+                        {@const isPageTitle = itemId === 'page-title'}
+                        {#each fragments as rect, fragmentIndex (`${selKey}-${itemId}-${fragmentIndex}`)}
+                            <div
+                                class="selection selection-multi-item"
+                                class:selection-node={isNode}
+                                class:page-title-selection={isPageTitle}
+                                class:selection-reversed={!isNode && sel.isReversed && itemId === normalized.firstItemId && fragmentIndex === 0}
+                                class:selection-forward={!isNode && !sel.isReversed && itemId === normalized.lastItemId && fragmentIndex === fragments.length - 1}
+                                data-selection-item-id={itemId}
+                                data-selection-fragment={fragmentIndex}
+                                data-selection-kind={selectionFragment.kind}
+                                style="position:absolute; left:{rect.left}px; top:{rect.top}px; width:{rect.width}px; height:{isPageTitle?'1.5em':rect.height}px; pointer-events:none; --selection-fill:{isNode ? selectionStyle.nodeFill : selectionStyle.fill}; --selection-outline:{selectionStyle.outline}; --selection-edge:{selectionStyle.edge};"
+                            ></div>
+                        {/each}
                     {/each}
                 {/if}
             {/if}
@@ -1787,6 +1839,20 @@ function handlePaste(event: ClipboardEvent) {
 .selection-multi-item {
     border-left: none;
     border-right: none;
+}
+
+/*
+ * A visual node selected inside a text-to-text range (#5024). It reads as selected
+ * through its edge and a light tint, in the same selection color as the text around
+ * it, so the Grid or Calendar underneath stays readable.
+ */
+.selection-node {
+    /* The measured node box is the whole highlight, edge included */
+    box-sizing: border-box;
+    background-color: var(--selection-fill, rgba(0, 120, 215, 0.12));
+    border: 2px solid var(--selection-edge, rgba(0, 120, 215, 0.7));
+    border-radius: 6px;
+    box-shadow: none;
 }
 
 /* Box selection styles */

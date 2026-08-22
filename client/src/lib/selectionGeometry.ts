@@ -247,6 +247,81 @@ export function normalizeSelectionByVisualOrder(
 }
 
 /**
+ * Attribute marking the element whose box *is* a visual node, for selection purposes.
+ *
+ * A Grid or Calendar renders a whole interactive view, and a Layout renders a grid of
+ * further blocks; none of them owns outline text (#5015), so a selection cannot be drawn
+ * from character rectangles. It is drawn from this one element instead, which keeps the
+ * overlay independent of every block's internal markup: a block joins the model by
+ * carrying the attribute, not by teaching the overlay about its innards.
+ */
+export const VISUAL_NODE_ROOT_ATTRIBUTE = "data-visual-node-root";
+
+/**
+ * One drawable piece of a selection (#5024).
+ *
+ * The selection's endpoints stay text positions, but the items between them need not all
+ * be Text nodes, so what gets drawn is a mixed list: character intervals for Text nodes,
+ * whole-node rectangles for the textless visual nodes in between.
+ */
+export type SelectionFragment =
+    | { kind: "text"; itemId: string; startOffset: number; endOffset: number; }
+    | { kind: "node"; itemId: string; };
+
+/** What the renderer knows about one item covered by a selection's range. */
+export interface SelectionRangeItem {
+    itemId: string;
+    /** True for Grid/Calendar/Layout — a node that owns no outline text (#5015). */
+    isVisual: boolean;
+    /** Length of the item's rendered text. Meaningless for a visual node. */
+    textLength: number;
+    /** Enclosing item, when this one renders inside another (a Layout's children). */
+    parentItemId?: string;
+}
+
+/**
+ * Turn the items a selection spans into the fragments to draw, in document order.
+ *
+ * Three rules, and no block-specific knowledge beyond them:
+ *
+ * - a Text node contributes its selected character interval, exactly as before;
+ * - a visual node *strictly between* the endpoints is atomic: it contributes one node
+ *   fragment, never text offsets. An endpoint is a text position, so a visual node that
+ *   is one is a selection the drag stopped at rather than reached, and it stays out;
+ * - a node drawn inside an already selected visual node contributes nothing, because it
+ *   is already inside that node's rectangle. That is what makes a selected Layout render
+ *   as one container instead of as a stack of its children's boxes.
+ */
+export function buildSelectionFragments(
+    items: readonly SelectionRangeItem[],
+    normalized: NormalizedSelectionRange,
+): SelectionFragment[] {
+    const fragments: SelectionFragment[] = [];
+    // Items whose own rectangle already covers everything rendered inside them.
+    const absorbing = new Set<string>();
+
+    for (const item of items) {
+        if (item.parentItemId !== undefined && absorbing.has(item.parentItemId)) {
+            absorbing.add(item.itemId);
+            continue;
+        }
+
+        if (item.isVisual) {
+            // Whether or not it is drawn, its children are part of its picture.
+            absorbing.add(item.itemId);
+            const isEndpoint = item.itemId === normalized.firstItemId || item.itemId === normalized.lastItemId;
+            if (!isEndpoint) fragments.push({ kind: "node", itemId: item.itemId });
+            continue;
+        }
+
+        const interval = getItemSelectionInterval(item.itemId, normalized, item.textLength);
+        if (interval) fragments.push({ kind: "text", itemId: item.itemId, ...interval });
+    }
+
+    return fragments;
+}
+
+/**
  * Selected character interval for one item of a normalized selection.
  *
  * Items strictly between the endpoints are fully selected; the first and last items are

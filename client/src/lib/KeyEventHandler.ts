@@ -20,7 +20,7 @@ import { isLayoutItem, layoutChildren } from "../services/layout/layoutTree";
 import { globalUndoRouter } from "../services/undo/undoRouter.svelte";
 import { getItemTableId } from "../services/yjstable/itemBinding";
 import { computeSnapshotClosure, computeTableClosure, exportTableStructure } from "../services/yjstable/tableClone";
-import { getTableName, listTables } from "../services/yjstable/tableDocs";
+import { listTables } from "../services/yjstable/tableDocs";
 import { rewriteTableQuerySql } from "../services/yjstable/tableSqlRewrite";
 import { aliasPickerStore } from "../stores/AliasPickerStore.svelte";
 import { commandPaletteStore } from "../stores/CommandPaletteStore.svelte";
@@ -151,11 +151,6 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const calendarId = getItemCalendarId(item);
         const isLayout = isLayoutItem(item);
         const isComponent = Boolean(tableId || calendarId) || isLayout;
-        const fallbackText = tableId
-            ? getTableName(project.ydoc, tableId)
-            : calendarId
-            ? getCalendar(project, calendarId)?.name
-            : undefined;
         const text = String(item.text ?? "");
         const isEdge = index === first || index === last;
         const sliceStart = index === first ? startOffset : 0;
@@ -174,11 +169,6 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         const collected = [{
             item,
             depth: entry.depth,
-            // Outward-only display name. It never becomes the pasted node's
-            // outline text (#5015) - a visual node owns none - but a
-            // spreadsheet or document receiving the copy still sees what the
-            // block is called.
-            label: fallbackText,
             text: isComponent ? undefined : text.substring(sliceStart, sliceEnd),
         }];
         // A Layout renders its own children, so neither they nor anything
@@ -188,16 +178,9 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
         // depth - no Layout-specific clipboard format (#4997).
         if (isLayout) {
             const collectSubtree = (node: typeof item, depth: number) => {
-                const nodeTableId = getItemTableId(node);
-                const nodeCalendarId = getItemCalendarId(node);
                 collected.push({
                     item: node,
                     depth,
-                    label: nodeTableId
-                        ? getTableName(project.ydoc, nodeTableId)
-                        : nodeCalendarId
-                        ? getCalendar(project, nodeCalendarId)?.name
-                        : undefined,
                     // The serializer reads the item's own text; only a
                     // partially selected edge item overrides it, and none of
                     // these are edges of the selection.
@@ -269,31 +252,32 @@ function selectedItemsClipboardData(operation?: "cut"): StructuredClipboard | un
     );
     const encoded = serializeClipboardItems(
         project.ydoc.guid,
-        entries.map(({ label: _label, ...entry }) => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
+        entries.map(entry => ({ ...entry, depth: Math.max(0, entry.depth - baseDepth) })),
         Object.keys(tableSnapshots).length > 0 ? tableSnapshots : undefined,
         Object.keys(calendarSnapshots).length > 0 ? calendarSnapshots : undefined,
         operation,
     );
     const payload = deserializeClipboardItems(encoded);
     if (!payload) return undefined;
-    // Positionally aligned with payload.items: the serializer preserves entry order.
-    const labels = entries.map(entry => entry.label);
-
-    // Outward flavors. A visual node contributes no outline text, so the line
-    // another application sees is its rendered export when there is one and its
-    // entity display name otherwise.
-    const outwardText = (index: number) => payload.items[index].text || labels[index] || "";
-    if (gridExports.size === 0) {
-        return { encoded, plainText: payload.items.map((_item, index) => outwardText(index)).join("\n") };
-    }
 
     const exportOf = (item: { componentType?: string; yjsTableId?: string; }) =>
         item.componentType === "yjstable" && item.yjsTableId ? gridExports.get(item.yjsTableId) : undefined;
 
-    const plainText = payload.items.map((item, index) => exportOf(item)?.tsv ?? outwardText(index)).join("\n");
-    const html = payload.items.map((item, index) => {
-        const exported = exportOf(item);
-        if (!exported) return escapeHtml(outwardText(index)).replaceAll("\n", "<br>");
+    // Outward flavors, one line per contributing item. A textless visual node
+    // (#5015) writes what a view has actually rendered of it and nothing else:
+    // the entity's name is not a caption the outline owns, so a block no view
+    // has rendered leaves no line behind rather than an invented title (#5024).
+    // The structured payload still carries the block itself, so an in-app paste
+    // is unaffected.
+    const outward = payload.items
+        .map(item => ({ item, exported: exportOf(item) }))
+        .filter(entry => entry.exported !== undefined || entry.item.componentType === undefined);
+
+    const plainText = outward.map(({ item, exported }) => exported?.tsv ?? item.text).join("\n");
+    if (gridExports.size === 0) return { encoded, plainText };
+
+    const html = outward.map(({ item, exported }) => {
+        if (!exported) return escapeHtml(item.text).replaceAll("\n", "<br>");
         // The picture and the numbers both belong on the clipboard: a document
         // takes the image, a spreadsheet takes the cells (§8.1).
         return exported.chartImage
@@ -1708,8 +1692,10 @@ export class KeyEventHandler {
         }
         if (structured) writeStructuredSystemClipboard(structured);
 
-        // If selection text could be obtained
-        if (selectedText) {
+        // If there is anything to write. A selection can be entirely textless -
+        // a lone Grid or Calendar owns no outline text and is given no caption
+        // (#5024) - and then the structured payload is the whole copy.
+        if (selectedText || structured) {
             try {
                 // Write to clipboard
                 if (event.clipboardData) {
@@ -2577,12 +2563,16 @@ export class KeyEventHandler {
                 }
             }
 
-            if (!text) return;
-
             const cached = KeyEventHandler.lastStructuredClipboard;
-            const structured = deserializeClipboardItems(
-                encodedItems || encodedHtmlItems || (cached?.plainText === text ? cached.encoded : ""),
-            );
+            // The same-tab fallback is keyed on the copied plain text, so it
+            // only ever answers a paste that carries that same text.
+            const encoded = encodedItems || encodedHtmlItems
+                || (text && cached?.plainText === text ? cached.encoded : "");
+            // A copy made only of textless blocks carries no plain text at all
+            // (#5024): its structured payload is then the whole paste.
+            if (!text && !encoded) return;
+
+            const structured = deserializeClipboardItems(encoded);
             const destinationProjectId = generalStore.project?.ydoc?.guid;
             let specialVariant: PasteSpecialVariant | undefined;
             if (
@@ -3188,8 +3178,10 @@ export class KeyEventHandler {
         }
         if (structured) writeStructuredSystemClipboard(structured);
 
-        // If selection text could be obtained
-        if (selectedText) {
+        // If there is anything to write. A selection can be entirely textless -
+        // a lone Grid or Calendar owns no outline text and is given no caption
+        // (#5024) - and then the structured payload is the whole copy.
+        if (selectedText || structured) {
             try {
                 // Write to clipboard
                 if (event.clipboardData) {
@@ -3308,8 +3300,10 @@ export class KeyEventHandler {
             }
         }
 
-        // Delete text of selection range (essence of cut action)
-        if (selectedText) {
+        // Delete the selection range (essence of cut action). A selection made
+        // only of textless blocks writes no plain text (#5024) and must still
+        // be removed: what was cut is on the clipboard either way.
+        if (selectedText || structured) {
             const cursorInstances = store.getLocalCursorInstances();
             cursorInstances.forEach(cursor => {
                 // Delete selection (cut action)
