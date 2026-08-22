@@ -107,10 +107,11 @@ test.describe("component block clipboard", () => {
             });
         }, { start, end });
         await page.keyboard.press("Control+c");
-        // A block owns no outline text, so what other applications receive for
-        // it is the calendar's display name (#5015).
+        // A block owns no outline text (#5015) and is given no caption to stand
+        // in for it (#5024): other applications receive the selected text
+        // around it, while the private payload below carries the binding.
         await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()))
-            .toContain("Release plan");
+            .toBe("Block host\nNeighbor");
 
         await page.locator(".outliner-item").last().locator(".item-content").click();
         await TestHelpers.waitForCursorVisible(page);

@@ -15,6 +15,8 @@ export interface Point {
 
 export interface SelectionFragmentBox {
     itemId: string | null;
+    /** "text" for a character range, "node" for a whole visual node (#5024). */
+    kind: string | null;
     left: number;
     top: number;
     width: number;
@@ -65,6 +67,7 @@ export async function selectionFragmentBoxes(page: Page): Promise<SelectionFragm
                 const rect = el.getBoundingClientRect();
                 return {
                     itemId: el.getAttribute("data-selection-item-id"),
+                    kind: el.getAttribute("data-selection-kind"),
                     left: Math.round(rect.left),
                     top: Math.round(rect.top),
                     width: Math.round(rect.width),
@@ -73,6 +76,26 @@ export async function selectionFragmentBoxes(page: Page): Promise<SelectionFragm
             })
             .sort((a, b) => (a.top - b.top) || (a.left - b.left))
     );
+}
+
+/**
+ * Viewport box of a visual node's rendered block.
+ *
+ * A Grid, Calendar or Layout owns no `.item-text` (#5015), so a spec addresses it through
+ * the root element the selection overlay itself measures rather than through its innards.
+ */
+export async function visualNodeBox(page: Page, itemId: string) {
+    const root = page.locator(`[data-visual-node-root="${itemId}"]`);
+    await expect(root).toBeVisible();
+    const box = await root.boundingBox();
+    expect(box, `no rendered block for visual node ${itemId}`).toBeTruthy();
+    return box!;
+}
+
+/** Center of a visual node's rendered block: where a drag crossing it passes through. */
+export async function pointInVisualNode(page: Page, itemId: string): Promise<Point> {
+    const box = await visualNodeBox(page, itemId);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
 /** Logical endpoints of the local selection, plus the text length of both endpoint items. */

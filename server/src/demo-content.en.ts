@@ -281,6 +281,14 @@ export function demoContentEn(): DemoLocaleContent {
                             + "with the Chart view open the picture travels with the numbers.",
                     },
                     {
+                        text:
+                            "Selecting across blocks: drag a selection from the text above, across the table, into this "
+                            + "paragraph. The text keeps its character-level highlight at both ends, and the table between "
+                            + "them is outlined as one selected block — a Layout is outlined as a single container rather "
+                            + "than as its separate blocks. Copying such a selection keeps the block's live binding, while "
+                            + "the plain text another application receives stays the selected text.",
+                    },
+                    {
                         text: "Aggregation across tables: this table stores only the monthly targets, "
                             + "but its query joins the Sales table above and compares both series. "
                             + "Every table of a project can be referenced by the name its schema declares.",

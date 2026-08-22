@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+    buildSelectionFragments,
     convertClientRectsToOverlayRects,
     createRangeForOffsets,
     findTextPositionInElement,
@@ -7,6 +8,7 @@ import {
     mergeRectsIntoLines,
     normalizeSelectionByVisualOrder,
     type OverlayRect,
+    type SelectionRangeItem,
     type ViewportRect,
 } from "./selectionGeometry";
 
@@ -116,6 +118,104 @@ describe("getItemSelectionInterval", () => {
         );
 
         expect(getItemSelectionInterval("a", single, 30)).toEqual({ startOffset: 2, endOffset: 8 });
+    });
+});
+
+describe("buildSelectionFragments", () => {
+    /** A Text node of `textLength` characters. */
+    const text = (itemId: string, textLength: number, parentItemId?: string): SelectionRangeItem => ({
+        itemId,
+        isVisual: false,
+        textLength,
+        parentItemId,
+    });
+
+    /** A Grid, Calendar or Layout node: no text of its own. */
+    const visual = (itemId: string, parentItemId?: string): SelectionRangeItem => ({
+        itemId,
+        isVisual: true,
+        textLength: 0,
+        parentItemId,
+    });
+
+    const textToText = (order: string[]) =>
+        normalizeSelectionByVisualOrder(
+            { startItemId: order[0], startOffset: 4, endItemId: order[order.length - 1], endOffset: 6 },
+            orderedBy(order),
+        );
+
+    it("renders a visual node between the endpoints as an atomic node fragment", () => {
+        const order = ["a", "grid", "b"];
+
+        expect(buildSelectionFragments([text("a", 10), visual("grid"), text("b", 20)], textToText(order))).toEqual([
+            { kind: "text", itemId: "a", startOffset: 4, endOffset: 10 },
+            { kind: "node", itemId: "grid" },
+            { kind: "text", itemId: "b", startOffset: 0, endOffset: 6 },
+        ]);
+    });
+
+    it("keeps partial text geometry at both endpoints of a mixed selection", () => {
+        const order = ["a", "grid", "calendar", "b"];
+        const items = [text("a", 10), visual("grid"), visual("calendar"), text("b", 20)];
+
+        expect(buildSelectionFragments(items, textToText(order))).toEqual([
+            { kind: "text", itemId: "a", startOffset: 4, endOffset: 10 },
+            { kind: "node", itemId: "grid" },
+            { kind: "node", itemId: "calendar" },
+            { kind: "text", itemId: "b", startOffset: 0, endOffset: 6 },
+        ]);
+    });
+
+    it("produces the same fragments for a reversed drag", () => {
+        const order = ["a", "grid", "b"];
+        const items = [text("a", 10), visual("grid"), text("b", 20)];
+        const reversed = normalizeSelectionByVisualOrder(
+            { startItemId: "b", startOffset: 6, endItemId: "a", endOffset: 4 },
+            orderedBy(order),
+        );
+
+        expect(buildSelectionFragments(items, reversed)).toEqual(
+            buildSelectionFragments(items, textToText(order)),
+        );
+    });
+
+    it("renders a selected Layout as one container, not as its children", () => {
+        const order = ["a", "layout", "b"];
+        const items = [
+            text("a", 10),
+            visual("layout"),
+            visual("grid", "layout"),
+            visual("calendar", "layout"),
+            text("b", 20),
+        ];
+
+        expect(buildSelectionFragments(items, textToText(order))).toEqual([
+            { kind: "text", itemId: "a", startOffset: 4, endOffset: 10 },
+            { kind: "node", itemId: "layout" },
+            { kind: "text", itemId: "b", startOffset: 0, endOffset: 6 },
+        ]);
+    });
+
+    it("leaves a visual node out when the selection merely stops at it", () => {
+        // Endpoints are text positions (#5024): a visual endpoint is a node the
+        // drag stopped at rather than reached, and neither it nor - since a
+        // Layout draws its children - anything inside it is selected.
+        const order = ["layout", "a"];
+        const items = [visual("layout"), visual("grid", "layout"), text("a", 10)];
+
+        expect(buildSelectionFragments(items, textToText(order))).toEqual([
+            { kind: "text", itemId: "a", startOffset: 0, endOffset: 6 },
+        ]);
+    });
+
+    it("skips text items whose selected interval is empty", () => {
+        const order = ["a", "empty", "b"];
+
+        expect(buildSelectionFragments([text("a", 10), text("empty", 0), text("b", 20)], textToText(order)))
+            .toEqual([
+                { kind: "text", itemId: "a", startOffset: 4, endOffset: 10 },
+                { kind: "text", itemId: "b", startOffset: 0, endOffset: 6 },
+            ]);
     });
 });
 

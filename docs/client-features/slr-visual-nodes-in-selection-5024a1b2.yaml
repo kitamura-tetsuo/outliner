@@ -1,0 +1,36 @@
+id: SLR-5024a1b2
+title: Visual nodes render inside an outline selection range
+title-ja: アウトライン選択範囲内でのビジュアルノードの描画
+description: 'A selection that starts in one Text node and ends in another is rendered as a mixed list of fragments rather than as text intervals alone. Text nodes keep their character-level highlight, and every visual node (Grid, Calendar, Layout) that lies strictly between the two endpoints in outline order is drawn as one atomic node-level fragment, so a block no longer disappears from a selection that plainly spans it. Node geometry comes from a stable root element carrying `data-visual-node-root`, published by the component renderer, so the overlay needs no knowledge of any block''s internal markup and a block owns no hidden text to make it participate. A selected Layout is drawn as its own container rectangle and its children add none of their own, so nested blocks are never outlined twice. The node highlight reuses the existing local/remote selection color, at a lighter fill than character highlighting and with a rounded visible edge, so a dense block stays readable while reading as selected. Endpoints stay text positions: a visual node the drag merely stops at is not selected, which keeps the existing `SelectionRange` model intact. Clipboard semantics follow the same separation: the structured payload carries the selected blocks and their bindings, while the outward plain-text and HTML flavors carry what a view has actually rendered of a block (a Grid''s exported rows) and nothing at all otherwise - an entity''s display name is not a caption the outline owns. A selection of textless blocks alone therefore still copies its bindings even though it contributes no plain text.'
+category: selection-range
+status: implemented
+components:
+- client/src/components/EditorOverlay.svelte
+- client/src/components/OutlinerItemComponentRenderer.svelte
+- client/src/components/layout/LayoutBlock.svelte
+services:
+- client/src/lib/selectionGeometry.ts
+- client/src/lib/KeyEventHandler.ts
+acceptance:
+- A Calendar strictly between the endpoints is rendered as a selected node
+- A Grid strictly between the endpoints is rendered as a selected node
+- A Layout is rendered as one selected container, never as its children's separate rectangles
+- A selected visual node exposes a stable data-selection-item-id fragment for geometry assertions
+- A visual node the selection merely stops at stays unselected, keeping the text endpoint model
+- Forward and reverse drags over the same range produce the same node and text geometry
+- Grid, Calendar and Layout need no hidden or placeholder text to participate in selection rendering
+- Selection inside a block's own inputs stays the block's, and draws no outline selection
+- Text nodes keep character-level selection geometry at both endpoints of a mixed selection
+- The node highlight tints and outlines the block instead of covering it with the character fill
+- The plain-text clipboard flavor invents no caption for a textless visual node
+- The structured clipboard payload includes selected visual nodes and their bindings
+- Wrapped and formatted text selection behavior is unchanged
+tests:
+- client/e2e/new/slr-visual-node-selection-calendar-5024a1b2.spec.ts
+- client/e2e/new/slr-visual-node-selection-clipboard-5024a1b2.spec.ts
+- client/e2e/new/slr-visual-node-selection-grid-5024a1b2.spec.ts
+- client/e2e/new/slr-visual-node-selection-layout-5024a1b2.spec.ts
+- client/e2e/new/slr-visual-node-selection-mixed-5024a1b2.spec.ts
+- client/e2e/new/slr-visual-node-selection-ownership-5024a1b2.spec.ts
+- client/src/lib/KeyEventHandler.componentClipboard.test.ts
+- client/src/lib/selectionGeometry.test.ts
