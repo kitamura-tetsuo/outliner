@@ -1,0 +1,44 @@
+id: SLR-5026a1b2
+title: Visual nodes are direct targets of outline selection
+title-ja: ビジュアルノードを直接選択する操作
+description: 'A Grid, Calendar or Layout can now be selected directly, with the mouse or the keyboard, as one atomic outline item - no fabricated text offset and no hidden placeholder text. Every gesture resolves to a selection *target*: a Text row resolves to the character offset under the pointer, exactly as before, and a visual node resolves to the node itself, because an atomic block has no interior a pointer could address. One rule turns two targets into endpoints - the end first in document order takes the node''s `before` boundary and the end last takes its `after` boundary - so a node a gesture names is always inside the resulting range, a single press selects exactly one block as `before(node) -> after(node)`, and a forward drag and its reverse resolve to identical content while still recording which end moved. Text and visual nodes therefore coexist in one range, and a drag may start at a block, end at a block, or run from one block to another. Ownership of the block''s own interactions is preserved rather than taken: a Grid keeps every pointer gesture on its content - selecting text in a cell, pressing a button, resizing a column, typing in an editor - and the outline renders a selection surface of its own instead, a gutter down the block''s outer edge, which is the one place a direct node selection starts. A surface nested inside a Layout resolves to the Layout, the row the outline actually holds, so a container is selected as one rectangle and never as a stack of its visual descendants. Shift+Up/Down extends a range across a block one edge per press, in keeping with the existing arrow/Shift convention, and Shift-click extends onto a block through the same surface. The caret stays text-only throughout: it is never placed inside a block, but keeps a home on the nearest Text row so Delete, Cut and Copy keep reaching the outline through the ordinary editor paths. A directly selected block therefore copies and cuts through the existing structured payload, bindings intact, contributes no plain text and no invented caption, and is deleted through ordinary outline-node deletion. Presence publishes the same endpoints, so a collaborator''s direct block selection renders with local semantics.'
+category: selection-range
+status: implemented
+components:
+- client/src/components/OutlinerItem.svelte
+- client/src/components/OutlinerItemComponentRenderer.svelte
+- client/src/components/OutlinerTree.svelte
+services:
+- client/src/lib/selection/selectionDrag.ts
+- client/src/lib/selection/selectionKeyboard.ts
+- client/src/lib/selection/outlineSelectionDom.ts
+- client/src/lib/cursor/CursorSelection.ts
+- client/src/stores/EditorOverlayStore.svelte.ts
+- client/src/lib/KeyEventHandler.ts
+acceptance:
+- A block keeps every pointer gesture on its own content, including cell text drags and buttons
+- A collaborator's direct block selection renders with the same endpoint semantics
+- A directly selected Layout renders one container rectangle with no child overlays
+- A drag from Text onto a block, and from a block onto Text, takes the block whole
+- A drag from one block to another takes both blocks
+- A forward drag and its reverse resolve to identical selected content
+- A nested block's outline surface selects its Layout, the row the outline holds
+- A visual node can be the direct start or end target of an outline selection
+- Delete and Cut remove a directly selected block through ordinary node deletion
+- No caret is ever placed inside a visual node, by pointer or by keyboard
+- Plain-text copy of a textless visual-only selection carries no invented caption
+- Pressing a block's outline surface selects it atomically as before(node) -> after(node)
+- Shift+Up/Down crosses a block one edge per press, including and excluding it whole
+- Shift-click extends an existing selection onto a block through its outline surface
+- Structured copy and cut of a directly selected block preserve its binding
+tests:
+- client/e2e/new/slr-visual-node-direct-selection-5026a1b2.spec.ts
+- client/e2e/new/slr-visual-node-direct-selection-clipboard-5026a1b2.spec.ts
+- client/e2e/new/slr-visual-node-direct-selection-drag-5026a1b2.spec.ts
+- client/e2e/new/slr-visual-node-direct-selection-keyboard-5026a1b2.spec.ts
+- client/e2e/new/slr-visual-node-direct-selection-layout-5026a1b2.spec.ts
+- client/e2e/new/slr-visual-node-direct-selection-ownership-5026a1b2.spec.ts
+- client/src/lib/selection/outlineSelectionDom.test.ts
+- client/src/lib/selection/selectionDrag.test.ts
+- client/src/lib/selection/selectionKeyboard.test.ts
+- client/src/lib/yjs/remoteSelectionPresence.test.ts

@@ -36,7 +36,17 @@ import {
 } from "svelte";
 
 import { getLogger } from "../lib/logger";
-import { endpointTextOffset, textEndpoint } from "../lib/selection/selectionEndpoints";
+import {
+    isBlockOwnedInteraction,
+    outlineSelectionSurfaceItemId,
+} from "../lib/selection/outlineSelectionDom";
+import {
+    nodeTarget,
+    resolveDragSelection,
+    type SelectionTarget,
+    targetOfEndpoint,
+    textTarget,
+} from "../lib/selection/selectionDrag";
 import { isForeignInput } from "../lib/KeyEventHandler";
 const logger = getLogger("OutlinerItem");
 
@@ -1317,6 +1327,66 @@ function handleClick(event: MouseEvent) {
 }
 
 /**
+ * Where a pointer gesture on this row lands, in the selection model's terms (#5026).
+ *
+ * A Grid, Calendar or Layout has no interior a pointer could address (#5015): wherever
+ * inside one the gesture happens, what the selection reaches is the node itself.
+ */
+function selectionTargetAt(point: CaretPoint): SelectionTarget {
+    return isVisualNodeItem
+        ? nodeTarget(model.id)
+        : textTarget(model.id, getClickPosition(point, textString));
+}
+
+/**
+ * The end a Shift-gesture keeps fixed: the anchor of the current selection, or the caret.
+ *
+ * The anchor keeps whatever kind of position it had - a character in a Text node, or an
+ * atomic visual node (#5025) - but not the *side* it was on: which boundary of a node the
+ * range needs follows from where the other end now is, and is re-derived below.
+ */
+function selectionAnchorTarget(): SelectionTarget | undefined {
+    const existing = Object.values(editorOverlayStore.selections).find(s => s.userId === "local");
+    if (existing) return targetOfEndpoint(existing.isReversed ? existing.end : existing.start);
+
+    const lastCursor = editorOverlayStore.getLastActiveCursor();
+    return lastCursor ? textTarget(lastCursor.itemId, lastCursor.offset) : undefined;
+}
+
+/** Replace the local selection with the range a gesture from `anchor` to `focus` covers. */
+function applyGestureSelection(anchor: SelectionTarget, focus: SelectionTarget) {
+    const { start, end, isReversed } = resolveDragSelection(
+        anchor,
+        focus,
+        editorOverlayStore.itemOrderComparator(),
+    );
+    editorOverlayStore.clearSelectionForUser("local");
+    editorOverlayStore.setSelection({ start, end, userId: "local", isReversed });
+}
+
+/**
+ * Select this visual node as one atomic outline item, or extend the selection onto it.
+ *
+ * The caret never enters the block: it keeps a home on the nearest Text row so Delete,
+ * Cut and Copy keep reaching the outline through the ordinary editor paths, and the
+ * global textarea keeps the keyboard.
+ */
+function beginVisualNodeSelection(itemId: string, extend: boolean) {
+    const focus = nodeTarget(itemId);
+    applyGestureSelection((extend ? selectionAnchorTarget() : undefined) ?? focus, focus);
+
+    // The caret settles first: placing one makes its own row active, and the row this
+    // gesture selected is the block. A caret already on a Text row stays there - a press
+    // on a block must not move it out from under the user.
+    editorOverlayStore.placeCaretAtNodeBoundary(itemId, "before", { keepSettled: true });
+    editorOverlayStore.setActiveItem(itemId);
+    editorOverlayStore.getTextareaRef()?.focus();
+
+    // A plain press also opens a drag: the tree extends the range as the pointer travels.
+    if (!extend) dispatch("drag-start", { itemId, target: focus, selection: null });
+}
+
+/**
  * Mousedown handling: Start drag
  * @param event Mouse event
  */
@@ -1324,12 +1394,21 @@ function handleMouseDown(event: MouseEvent) {
     // Synthesized from a touch gesture the pointer handlers already served.
     if (isSyntheticMouseSuppressed()) return;
 
-    // Ignore clicks inside embedded components (treated as foreign UI)
-    if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
-        return;
-    }
+    // A gesture inside an embedded block belongs to the block: its own text selection,
+    // buttons, editors and handles are left untouched (#5026). The single exception is
+    // the outline layer's own selection surface, which selects the block as a node.
+    const surfaceItemId = outlineSelectionSurfaceItemId(event.target);
+    if (surfaceItemId === undefined && isBlockOwnedInteraction(event.target)) return;
+
     // Ignore right click
     if (event.button !== 0) return;
+
+    if (surfaceItemId !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        beginVisualNodeSelection(surfaceItemId, event.shiftKey);
+        return;
+    }
 
     // Clicks on foreign inputs (e.g. the comment thread's own input/textarea) must not
     // start a text-selection drag or steal focus back to the global textarea.
@@ -1361,11 +1440,9 @@ function handleMouseDown(event: MouseEvent) {
             return;
         }
 
-        // Get current selection range
-        const existingSelection = Object.values(editorOverlayStore.selections).find(s => s.userId === "local");
-        const lastCursor = editorOverlayStore.getLastActiveCursor();
-
-        if (!existingSelection && !lastCursor) {
+        // The end that stays put: the anchor of the current selection, or the caret.
+        const anchor = selectionAnchorTarget();
+        if (!anchor) {
             // Normal click processing if no selection range and no cursor
             startEditing(event);
             return;
@@ -1374,23 +1451,9 @@ function handleMouseDown(event: MouseEvent) {
         // Get click position
         const clickPosition = getClickPosition(event, textString);
 
-        // The anchor keeps whatever kind of position it already had: a character in a
-        // Text node, or the boundary of a visual node the selection started at (#5025).
-        const anchor = existingSelection ? existingSelection.start : textEndpoint(lastCursor!.itemId, lastCursor!.offset);
-        const anchorOffset = endpointTextOffset(anchor);
-
-        // Extend selection. Direction is only readable when the anchor is a character:
-        // a node boundary has no offset the click position can be compared against.
-        const isReversed = activeItemId === model.id && anchorOffset !== undefined
-            ? clickPosition < anchorOffset
-            : false;
-
-        editorOverlayStore.setSelection({
-            start: anchor,
-            end: textEndpoint(model.id, clickPosition),
-            userId: "local",
-            isReversed: isReversed,
-        });
+        // Extend the selection onto this click. A node anchor takes whichever of its
+        // boundaries keeps its block inside the range (#5026).
+        applyGestureSelection(anchor, textTarget(model.id, clickPosition));
 
         // Set cursor position
         editorOverlayStore.setCursor({
@@ -1451,13 +1514,14 @@ function handleMouseMove(event: MouseEvent) {
     }
 
     // Text-selection drag that started on another item (or left this item once):
-    // report the position to the tree so it can extend the selection across items
-    // (text-editor-like behavior). The tree ignores this unless a drag is active.
+    // report where the pointer landed to the tree so it can extend the selection across
+    // items (text-editor-like behavior). The tree ignores this unless a drag is active.
+    // A visual node reports itself rather than an offset it does not own (#5026), so a
+    // drag that runs onto a block takes the block whole.
     if (!selectionDragStartedHere || !hasCursorBasedOnState()) {
-        const crossPosition = getClickPosition(event, textString);
         dispatch("drag", {
             itemId: model.id,
-            offset: crossPosition,
+            target: selectionTargetAt(event),
         });
         return;
     }

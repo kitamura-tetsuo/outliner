@@ -175,8 +175,9 @@ export function atOffset(itemId: string, offset: number): SelectionEndpointInput
 /**
  * Set the local selection from two endpoints, the way the model expresses them.
  *
- * Direct gestures onto a block are the next sub-issue's work; a spec that needs a mixed
- * range states its endpoints instead of miming a drag that cannot yet produce one.
+ * The shortcut for specs about what a range *contains*: they state the endpoints instead
+ * of miming a gesture. Specs about the gestures themselves drive the mouse and the
+ * keyboard (#5026) and read the endpoints back with `localSelectionEndpoints`.
  */
 export async function selectBetweenEndpoints(
     page: Page,
@@ -201,5 +202,90 @@ export async function selectedPlainText(page: Page): Promise<string> {
     return await page.evaluate(() =>
         (globalThis as unknown as { editorOverlayStore: { getSelectedText: (userId: string) => string; }; })
             .editorOverlayStore.getSelectedText("local")
+    );
+}
+
+/**
+ * The outline layer's own selection surface for a visual node (#5026).
+ *
+ * A block owns every gesture on its content, so the outline gets a gutter of its own down
+ * the block's outer edge; direct node selection starts there and nowhere else.
+ */
+export function visualNodeSelectionSurface(page: Page, itemId: string) {
+    return page.locator(`[data-visual-node-selection-surface="${itemId}"]`);
+}
+
+/** Viewport point on a visual node's outline-level selection surface. */
+export async function pointOnSelectionSurface(page: Page, itemId: string): Promise<{ x: number; y: number; }> {
+    const surface = visualNodeSelectionSurface(page, itemId);
+    await expect(surface).toBeVisible({ timeout: 20000 });
+    const box = (await surface.boundingBox())!;
+    expect(box.width, `no selection surface for visual node ${itemId}`).toBeGreaterThan(0);
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** Press the outline surface of a visual node, selecting it as one atomic outline item. */
+export async function selectVisualNode(page: Page, itemId: string, modifiers: string[] = []): Promise<void> {
+    const point = await pointOnSelectionSurface(page, itemId);
+    for (const modifier of modifiers) await page.keyboard.down(modifier);
+    await page.mouse.click(point.x, point.y);
+    for (const modifier of modifiers.slice().reverse()) await page.keyboard.up(modifier);
+    await page.waitForTimeout(400);
+}
+
+/** Press, drag and release between two viewport points, then let the overlay settle. */
+export async function dragBetweenPoints(
+    page: Page,
+    from: { x: number; y: number; },
+    to: { x: number; y: number; },
+): Promise<void> {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 12 });
+    await page.mouse.move(to.x, to.y, { steps: 2 });
+    await page.mouse.up();
+    await page.waitForTimeout(500);
+}
+
+/** A selection as the store holds it: two logical endpoints plus its direction (#5025). */
+export interface StoredSelectionEndpoints {
+    start: SelectionEndpointInput;
+    end: SelectionEndpointInput;
+    isReversed: boolean;
+}
+
+/** The local selection's logical endpoints, exactly as the store holds them (#5025). */
+export async function localSelectionEndpoints(page: Page): Promise<StoredSelectionEndpoints | undefined> {
+    return await page.evaluate(() => {
+        const store = (globalThis as unknown as {
+            editorOverlayStore: {
+                selections: Record<string, {
+                    start: SelectionEndpointInput;
+                    end: SelectionEndpointInput;
+                    userId?: string;
+                    isReversed?: boolean;
+                }>;
+            };
+        }).editorOverlayStore;
+        const selection = Object.values(store.selections).find(s => (s.userId ?? "local") === "local");
+        if (!selection) return undefined;
+        return {
+            start: selection.start,
+            end: selection.end,
+            isReversed: Boolean(selection.isReversed),
+        };
+    });
+}
+
+/** The items the local carets sit on. A block must never be among them (#5026). */
+export async function localCursorItemIds(page: Page): Promise<string[]> {
+    return await page.evaluate(() =>
+        Object.values(
+            (globalThis as unknown as {
+                editorOverlayStore: { cursors: Record<string, { itemId: string; userId?: string; }>; };
+            }).editorOverlayStore.cursors,
+        )
+            .filter(cursor => (cursor.userId ?? "local") === "local")
+            .map(cursor => cursor.itemId)
     );
 }

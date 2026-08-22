@@ -47,6 +47,26 @@ describe("remote selection presence", () => {
         expect(selection.color).toBe("#123456");
     });
 
+    it("renders a collaborator's directly selected block the way a local one is", () => {
+        // What a peer publishes after selecting one Grid through its outline surface
+        // (#5026): a range no text position could express, and one that must arrive with
+        // its own semantics rather than as a guessed offset.
+        yjsService.reapplyAllPresences(awarenessWith({
+            selection: {
+                start: { kind: "node-boundary", itemId: "grid", side: "before" },
+                end: { kind: "node-boundary", itemId: "grid", side: "after" },
+                isReversed: false,
+            },
+        }));
+
+        const [selection] = remoteSelections();
+        expect(selection.start).toEqual(nodeBoundaryEndpoint("grid", "before"));
+        expect(selection.end).toEqual(nodeBoundaryEndpoint("grid", "after"));
+        // A block owns no character position, so neither end offers one.
+        expect(selection.startOffset).toBeUndefined();
+        expect(selection.endOffset).toBeUndefined();
+    });
+
     it("reads a peer that publishes only the flat text fields", () => {
         yjsService.reapplyAllPresences(awarenessWith({
             selection: { startItemId: "text-a", startOffset: 2, endItemId: "text-b", endOffset: 7 },

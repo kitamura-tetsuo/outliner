@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(53);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(54);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -214,6 +214,20 @@ describe("Demo seed content", () => {
         expect(guidance, "visual endpoint guidance exists").to.not.equal(undefined);
         expect(guidance).to.contain("[Advanced Features]");
         expect(guidance).to.contain("either edge of a live Grid");
+    });
+
+    it("seeds the direct visual-node selection tour (#5026)", () => {
+        const selection = findChildByText(project.items, "Selection and Clipboard");
+        expect(selection).to.not.equal(undefined);
+
+        const guidance = childTexts(selection!.items).find(text => text.startsWith("Selecting a block directly:"));
+        expect(guidance, "direct block selection guidance exists").to.not.equal(undefined);
+        expect(guidance).to.contain("[Advanced Features]");
+        // The gutter is the outline's own selection surface: the block keeps
+        // every gesture on its own content.
+        expect(guidance).to.contain("gutter");
+        expect(guidance).to.contain("keeps its own clicks");
+        expect(guidance).to.contain("Shift+Down");
     });
 
     it("registers every demo table in the project doc registry", () => {

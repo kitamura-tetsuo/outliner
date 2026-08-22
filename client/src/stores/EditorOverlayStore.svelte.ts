@@ -2,6 +2,7 @@ import { tick } from "svelte";
 import { Cursor } from "../lib/Cursor"; // Import Cursor class
 import { isForeignInput } from "../lib/KeyEventHandler";
 import { getLogger } from "../lib/logger";
+import { isVisualRow, readOutlineRows } from "../lib/selection/outlineSelectionDom";
 import { getItemSelectionInterval } from "../lib/selection/selectionContent";
 import {
     endpointTextOffset,
@@ -1380,6 +1381,56 @@ export class EditorOverlayStore {
         };
     }
 
+    /**
+     * Put the caret at the Text position a visual node's boundary corresponds to (#5026).
+     *
+     * A Grid, Calendar or Layout holds no character position, so a selection that reaches
+     * one can place no caret in it - and yet Delete, Cut and Copy all reach the outline
+     * through a cursor, and the caret is what the editor keeps scrolled into view. The
+     * boundary therefore reads as the nearest Text position outside the block: `after` as
+     * the start of the row following it, `before` as the end of the row preceding it. When
+     * the outline has no row on that side, the caret takes the other one.
+     *
+     * @param keepSettled leave a caret that already sits on a Text row exactly where it is.
+     * A click on a block should not move the caret out from under the user; a drag follows
+     * its own focus instead, which is what lets it scroll past a block taller than the
+     * window.
+     */
+    placeCaretAtNodeBoundary(
+        nodeItemId: string,
+        side: "before" | "after",
+        { keepSettled = false }: { keepSettled?: boolean; } = {},
+    ): void {
+        const rows = readOutlineRows();
+        const isTextRow = (itemId: string) => rows.some(row => row.itemId === itemId && !row.isVisual);
+
+        if (
+            keepSettled
+            && Object.values(this.cursors).some(cursor =>
+                (cursor.userId ?? "local") === "local" && isTextRow(cursor.itemId)
+            )
+        ) return;
+
+        const index = rows.findIndex(row => row.itemId === nodeItemId);
+        if (index === -1) return;
+
+        const ahead = () => rows.slice(index + 1).find(row => !row.isVisual);
+        const behind = () => rows.slice(0, index).reverse().find(row => !row.isVisual);
+
+        const preferred = side === "after" ? ahead() : behind();
+        const home = preferred ?? (side === "after" ? behind() : ahead());
+        if (!home) return;
+
+        this.setCursor({
+            itemId: home.itemId,
+            // On the edge of `home` that faces the block: its start when it follows the
+            // block, its end when it precedes it.
+            offset: rows.indexOf(home) > index ? 0 : home.textLength,
+            isActive: true,
+            userId: "local",
+        });
+    }
+
     /** Re-express a selection in document order, keeping its anchor/focus direction aside. */
     normalizeSelection(sel: SelectionRange): NormalizedSelection {
         return normalizeSelectionEndpoints(sel.start, sel.end, this.itemOrderComparator());
@@ -1964,6 +2015,12 @@ export class EditorOverlayStore {
 
         const activeId = this.getActiveItem();
         if (!activeId) return;
+
+        // The mirror holds characters, and an atomic visual node owns none (#5015). While
+        // one is the active row the mirror describes no position in it: reading a collapsed
+        // mirror back would put a caret inside the block and drop the very selection that
+        // made it active (#5026). The gestures that select blocks own that state instead.
+        if (isVisualRow(activeId)) return;
 
         const currentStart = textarea.selectionStart;
         const currentEnd = textarea.selectionEnd;
