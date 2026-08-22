@@ -1,6 +1,10 @@
 import type { SelectionRange } from "../../stores/EditorOverlayStore.svelte";
 import { editorOverlayStore as store } from "../../stores/EditorOverlayStore.svelte";
-import { selectionCoversContent, textSelectionOffsetBounds } from "../selection/selectionEndpoints";
+import {
+    selectionCoversContent,
+    textSelectionEndpoints,
+    textSelectionOffsetBounds,
+} from "../selection/selectionEndpoints";
 
 export interface SingleItemSelection {
     selection: SelectionRange;
@@ -48,6 +52,19 @@ export function selectionHasRange(selection: SelectionRange | undefined): boolea
 export function selectionSpansMultipleItems(selection: SelectionRange | undefined): boolean {
     if (!selection) return false;
     return selection.startItemId !== selection.endItemId;
+}
+
+/**
+ * True when a selection is a character range inside one item - the only shape the
+ * text-editing path can handle (#5025).
+ *
+ * Editing splices strings, so it needs both a single item and two text positions. A range
+ * that spans items, or one whose endpoints are the boundaries of an atomic visual node,
+ * has to be handled at item level instead: there is no string to splice.
+ */
+export function isSingleItemTextSelection(selection: SelectionRange | undefined): boolean {
+    if (!selection) return false;
+    return !selectionSpansMultipleItems(selection) && textSelectionEndpoints(selection) !== undefined;
 }
 
 /**

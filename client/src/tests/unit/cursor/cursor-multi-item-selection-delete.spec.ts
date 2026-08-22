@@ -382,6 +382,69 @@ describe("CursorEditor.deleteMultiItemSelection with 3+ items", () => {
         expect(item3._text).toBe(" item text");
     });
 
+    it("deletes nothing between the far side of one block and the near side of the next", () => {
+        item2.componentType = "yjstable";
+        item2._text = "";
+        item3.componentType = "calendar";
+        item3._text = "";
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => item2 as unknown as Item,
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.deleteMultiItemSelection(nodeBoundarySelectionFixture({
+            startItemId: item2.id,
+            startSide: "after",
+            endItemId: item3.id,
+            endSide: "before",
+            userId: "local",
+        }));
+
+        // Both boundaries face away from each other, so the range holds no node at all.
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item2", "item3", "item4"]);
+    });
+
+    it("replaces a lone selected block with typed text", () => {
+        // Typing over a selection deletes it first, and a block is no exception - the
+        // insert path chooses the same way the delete paths do (#5025).
+        item2.componentType = "yjstable";
+        item2._text = "";
+        (editorOverlayStore.selections as Record<string, SelectionRange>) = {
+            local: nodeBoundarySelectionFixture({
+                startItemId: item2.id,
+                startSide: "before",
+                endItemId: item2.id,
+                endSide: "after",
+                userId: "local",
+            }),
+        };
+        const cursorCtx: CursorEditingContext = {
+            itemId: item2.id,
+            offset: 0,
+            userId: "local",
+            isActive: true,
+            clearSelection: vi.fn(),
+            applyToStore: vi.fn(),
+            findTarget: () => (root.items.children.find(child => child.id === cursorCtx.itemId) as unknown as Item),
+            moveToLineStart: vi.fn(),
+            moveToLineEnd: vi.fn(),
+        };
+        editor = new CursorEditor(cursorCtx);
+
+        editor.insertText("x");
+
+        expect(root.items.children.map(item => item.id)).toEqual(["item1", "item3", "item4"]);
+        expect(item1._text).toBe("First item textx");
+    });
+
     it("moves the caret to the visible predecessor instead of its collapsed descendant", () => {
         const hiddenChild = new FakeItem("hidden-child", "Hidden child text");
         addChild(item1, hiddenChild);

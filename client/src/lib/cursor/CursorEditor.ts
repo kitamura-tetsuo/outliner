@@ -13,15 +13,12 @@ import { allocatePageTitle } from "../../utils/pageUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { KeyEventHandler } from "../KeyEventHandler";
 import { endpointOffsetInText } from "../selection/selectionContent";
-import {
-    isNodeBoundaryEndpoint,
-    normalizeSelectionEndpoints,
-    textSelectionEndpoints,
-} from "../selection/selectionEndpoints";
+import { normalizeSelectionEndpoints, textSelectionEndpoints } from "../selection/selectionEndpoints";
 import { findNextItem, findPreviousItem, isPageItem, searchItem } from "./CursorNavigationUtils";
 import {
     getSelectionForUser,
     getSingleItemSelectionForUser,
+    isSingleItemTextSelection,
     normalizeSelectionOffsets,
     selectionHasRange,
     selectionSpansMultipleItems,
@@ -63,13 +60,6 @@ export class CursorEditor {
 
     private getSingleItemSelection(itemId?: string): SingleItemSelection | undefined {
         return getSingleItemSelectionForUser(this.cursor.userId, itemId);
-    }
-
-    private selectsOneAtomicNode(selection: SelectionRange): boolean {
-        return !selectionSpansMultipleItems(selection)
-            && isNodeBoundaryEndpoint(selection.start)
-            && isNodeBoundaryEndpoint(selection.end)
-            && selection.start.side !== selection.end.side;
     }
 
     private validateRename(
@@ -172,7 +162,7 @@ export class CursorEditor {
 
         const currentText = node.text?.toString?.() ?? "";
         const fullSelection = this.getSelection();
-        if (fullSelection && selectionSpansMultipleItems(fullSelection)) {
+        if (fullSelection && selectionHasRange(fullSelection) && !isSingleItemTextSelection(fullSelection)) {
             this.deleteMultiItemSelection(fullSelection);
 
             const updatedNode = cursor.findTarget();
@@ -251,7 +241,7 @@ export class CursorEditor {
         const selection = this.getSelection();
 
         if (selection && selectionHasRange(selection)) {
-            if (selectionSpansMultipleItems(selection)) {
+            if (!isSingleItemTextSelection(selection)) {
                 this.deleteMultiItemSelection(selection);
                 return;
             }
@@ -324,7 +314,7 @@ export class CursorEditor {
         const selection = this.getSelection();
 
         if (selection && selectionHasRange(selection)) {
-            if (selectionSpansMultipleItems(selection)) {
+            if (!isSingleItemTextSelection(selection)) {
                 this.deleteMultiItemSelection(selection);
                 return;
             }
@@ -670,7 +660,7 @@ export class CursorEditor {
             if (this.targetRangesForNextInput && this.targetRangesForNextInput.length > 0) {
                 const selection = this.getSelection();
                 if (selection && selectionHasRange(selection)) {
-                    if (selectionSpansMultipleItems(selection)) {
+                    if (!isSingleItemTextSelection(selection)) {
                         this.deleteMultiItemSelection(selection);
                     } else {
                         this.deleteSelection();
@@ -714,7 +704,7 @@ export class CursorEditor {
                 if (!handledReplace) {
                     const selection = this.getSelection();
                     if (selection && selectionHasRange(selection)) {
-                        if (selectionSpansMultipleItems(selection)) {
+                        if (!isSingleItemTextSelection(selection)) {
                             this.deleteMultiItemSelection(selection);
                         } else {
                             this.deleteSelection();
@@ -747,7 +737,7 @@ export class CursorEditor {
         const selection = this.getSelection();
         if (!selection) return;
 
-        if (selectionSpansMultipleItems(selection) || this.selectsOneAtomicNode(selection)) {
+        if (!isSingleItemTextSelection(selection)) {
             this.deleteMultiItemSelection(selection);
             return;
         }
@@ -774,7 +764,7 @@ export class CursorEditor {
         const selection = this.getSelection();
         if (!selection) return;
 
-        if (selectionSpansMultipleItems(selection) || this.selectsOneAtomicNode(selection)) {
+        if (!isSingleItemTextSelection(selection)) {
             this.deleteMultiItemSelection(selection);
             return;
         }
@@ -1038,7 +1028,7 @@ export class CursorEditor {
         const cursor = this.cursor;
         if (!selection) return;
 
-        if (!selectionSpansMultipleItems(selection) && !this.selectsOneAtomicNode(selection)) {
+        if (isSingleItemTextSelection(selection)) {
             this.deleteSelection();
             return;
         }
@@ -1212,6 +1202,10 @@ export class CursorEditor {
             this.applyScrapboxFormattingToMultipleItems(selection, formatType);
             return;
         }
+
+        // Formatting wraps characters in markers, and an atomic visual node has none to
+        // wrap: a block selected between its own boundaries is left alone (#5025).
+        if (!isSingleItemTextSelection(selection)) return;
 
         const target = cursor.findTarget();
         if (!target) return;
