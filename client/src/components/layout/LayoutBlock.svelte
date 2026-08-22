@@ -421,7 +421,14 @@ function handleMoveOut(child: Item) {
                     <div class="layout-cell-body">
                         {#if isVisualChild(child)}
                             {#await import("../OutlinerItemComponentRenderer.svelte") then { default: ComponentRenderer }}
-                                <ComponentRenderer componentType={componentTypeOf(child)} item={child} />
+                                <!-- A cell is part of this Layout's picture, not an
+                                     outline row: the container carries the outline's
+                                     selection surface for all of them (#5026). -->
+                                <ComponentRenderer
+                                    componentType={componentTypeOf(child)}
+                                    item={child}
+                                    outlineRow={false}
+                                />
                             {/await}
                         {:else}
                             <div class="layout-cell-fallback" data-testid="layout-cell-fallback">

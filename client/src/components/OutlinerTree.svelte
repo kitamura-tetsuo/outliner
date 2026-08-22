@@ -18,6 +18,11 @@
     import { extractFiles, resolveUploadContainerId, uploadFileToNewItemAtEnd } from "../services/attachmentUpload";
     import { getDefaultContainerId } from "../stores/firestoreStore.svelte";
     import { TreeDnD, type TreeDnDContext } from "../lib/TreeDnD";
+    import {
+        resolveDragSelection,
+        type SelectionTarget,
+        textTarget,
+    } from "../lib/selection/selectionDrag";
     import EditorOverlay from "./EditorOverlay.svelte";
     import { safeGetNodeParent } from "../utils/treeUtils";
     import {
@@ -284,12 +289,14 @@
         // For now, keeping focus management simple as scrolling doesn't change context significantly
     }
 
-    // Drag selection related state
+    // Drag selection related state.
+    //
+    // The two ends are selection *targets* rather than offsets (#5026): the anchor is
+    // where the button went down and the focus follows the pointer, and either of them
+    // may be an atomic visual node, which owns no offset to record.
     let isDragging = $state(false);
-    let dragStartItemId = $state<string | null>(null);
-    let dragStartOffset = $state(0);
-    let dragCurrentItemId = $state<string | null>(null);
-    let dragCurrentOffset = $state(0);
+    let dragAnchor = $state<SelectionTarget | undefined>(undefined);
+    let dragFocus = $state<SelectionTarget | undefined>(undefined);
 
     // To prevent infinite loops, we'll cache the last known structure and only update when it changes
 
@@ -1673,8 +1680,8 @@
         isDragging = false;
 
         // Reset drag info
-        dragStartItemId = null;
-        dragCurrentItemId = null;
+        dragAnchor = undefined;
+        dragFocus = undefined;
     }
 
     // The mouse button may be released outside the tree (or the window);
@@ -1684,89 +1691,84 @@
         return () => window.removeEventListener("mouseup", handleTreeMouseUp);
     });
 
+    /**
+     * The target a drag event reports.
+     *
+     * A row that owns text sends the offset the pointer resolved to; a visual node sends
+     * itself (#5026). Native item drags (the bullet handle) send neither, and the row's
+     * own start is as good a position as any for them.
+     */
+    function dragTargetOf(detail: { itemId: string; target?: SelectionTarget; offset?: number; }) {
+        return detail.target ?? textTarget(detail.itemId, detail.offset ?? 0);
+    }
+
     // Item drag start event handler
     function handleItemDragStart(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
+        const target = dragTargetOf(event.detail);
 
-        // Save drag start info (native item drags dispatch drag-start without an offset)
         isDragging = true;
-        dragStartItemId = itemId;
-        dragStartOffset = offset ?? 0;
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset ?? 0;
+        dragAnchor = target;
+        dragFocus = target;
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Drag start: itemId=${itemId}, offset=${offset}`);
+            logger.debug(`Drag start: itemId=${target.itemId}, kind=${target.kind}`);
         }
     }
 
     // Item drag event handler
     function handleItemDrag(event: CustomEvent) {
-        const { itemId, offset } = event.detail;
-
         // Ignore if not dragging
-        if (!isDragging || !dragStartItemId) return;
+        if (!isDragging || !dragAnchor) return;
 
         // Update current drag position
-        dragCurrentItemId = itemId;
-        dragCurrentOffset = offset;
+        dragFocus = dragTargetOf(event.detail);
 
         // Update selection range
         updateDragSelection();
 
         if (typeof window !== "undefined" && window.DEBUG_MODE) {
-            logger.debug(`Dragging: itemId=${itemId}, offset=${offset}`);
+            logger.debug(`Dragging: itemId=${dragFocus.itemId}, kind=${dragFocus.kind}`);
         }
     }
 
-    // Update drag selection range
+    /**
+     * Update the drag selection from its two ends.
+     *
+     * Which endpoints those two ends amount to - including which boundary of a visual
+     * node each takes - is decided by the selection model, so a forward drag and its
+     * reverse resolve to the same content and a block is never split.
+     */
     function updateDragSelection() {
-        if (!dragStartItemId || !dragCurrentItemId) return;
+        if (!dragAnchor || !dragFocus) return;
 
-        // Get start and current item indices
-        const startIndex = displayItems.findIndex(
-            (item) => item.model.id === dragStartItemId,
+        const { start, end, isReversed } = resolveDragSelection(
+            dragAnchor,
+            dragFocus,
+            editorOverlayStore.itemOrderComparator(),
         );
-        const currentIndex = displayItems.findIndex(
-            (item) => item.model.id === dragCurrentItemId,
-        );
-
-        if (startIndex === -1 || currentIndex === -1) return;
-
-        // Determine selection direction
-        const isReversed =
-            startIndex > currentIndex ||
-            (startIndex === currentIndex &&
-                dragStartOffset > dragCurrentOffset);
-
-        // Determine selection start and end
-        const startItemId = isReversed ? dragCurrentItemId : dragStartItemId;
-        const startOffset = isReversed ? dragCurrentOffset : dragStartOffset;
-        const endItemId = isReversed ? dragStartItemId : dragCurrentItemId;
-        const endOffset = isReversed ? dragStartOffset : dragCurrentOffset;
 
         // Set selection range (replace the previous drag selection instead of
         // accumulating one selection per mousemove)
         editorOverlayStore.clearSelectionForUser("local");
-        editorOverlayStore.setSelection({
-            startItemId,
-            startOffset,
-            endItemId,
-            endOffset,
-            userId: "local",
-            isReversed,
-        });
+        editorOverlayStore.setSelection({ start, end, userId: "local", isReversed });
 
-        // Update cursor position
-        editorOverlayStore.setCursor({
-            itemId: dragCurrentItemId,
-            offset: dragCurrentOffset,
-            isActive: true,
-            userId: "local",
-        });
+        // The caret follows the pointer. A block holds no character position, so over one
+        // the caret takes the Text position its focused boundary reads as - just past the
+        // block in the direction of travel - which keeps it outside the block and keeps
+        // the drag able to scroll on past a block taller than the window.
+        if (dragFocus.kind === "text") {
+            editorOverlayStore.setCursor({
+                itemId: dragFocus.itemId,
+                offset: dragFocus.offset,
+                isActive: true,
+                userId: "local",
+            });
+        } else {
+            editorOverlayStore.placeCaretAtNodeBoundary(dragFocus.itemId, isReversed ? "before" : "after");
+        }
 
         // Set active item
-        editorOverlayStore.setActiveItem(dragCurrentItemId);
+        editorOverlayStore.setActiveItem(dragFocus.itemId);
     }
 
     // Item drop event handler
@@ -1821,8 +1823,8 @@
 
         // Reset drag state
         isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
+        dragAnchor = undefined;
+        dragFocus = undefined;
     }
 
     // Item drag end event handler
@@ -1835,8 +1837,8 @@
 
         // Reset drag state
         isDragging = false;
-        dragStartItemId = null;
-        dragCurrentItemId = null;
+        dragAnchor = undefined;
+        dragFocus = undefined;
     }
 
     // Drop selection within single item

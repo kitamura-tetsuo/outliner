@@ -547,8 +547,12 @@ export class KeyEventHandler {
                 cancelable: true,
             });
 
-            // Dispatch the cut event
-            document.dispatchEvent(clipboardEvent);
+            // Dispatched on the global textarea, exactly as the Ctrl+C fallback below is
+            // and exactly where a native cut would land: KeyEventHandler.handleCut - the
+            // only handler that carries the structured component payload - is bound to
+            // that element, and document listeners still see the event while it bubbles.
+            // A selection of blocks alone (#5026) reaches no other cut path at all.
+            (store.getTextareaRef() ?? document).dispatchEvent(clipboardEvent);
         });
 
         // Ctrl+C copy fallback
@@ -567,7 +571,9 @@ export class KeyEventHandler {
                 // payload only, so the structured plain text is authoritative
                 // whenever the selection carries one.
                 const selectedText = structured?.plainText || store.getSelectedText("local");
-                if (selectedText) {
+                // A selection made only of textless blocks writes no plain text (#5024)
+                // and must still be copied: the payload is what carries it (#5026).
+                if (selectedText || structured) {
                     if (typeof window !== "undefined") {
                         (window as typeof window & { lastCopiedText?: string; }).lastCopiedText = selectedText;
                         if (structured) {

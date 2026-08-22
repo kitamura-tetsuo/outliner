@@ -13,6 +13,7 @@ import {
     getLineEndOffset,
     getLineStartOffset,
     getSelectionForUser,
+    getVisualLineInfo,
     hasSelection as storeHasSelection,
     resolveItemText,
     selectionSpansMultipleItems,
@@ -22,7 +23,15 @@ import { searchItem } from "./cursor/CursorNavigationUtils";
 
 import { type CursorEditingContext, CursorEditor } from "./cursor/CursorEditor";
 import { getLogger } from "./logger";
-import { textSelectionEndpoints, textSelectionOffsetBounds } from "./selection/selectionEndpoints";
+import { readOutlineRows } from "./selection/outlineSelectionDom";
+import {
+    normalizeSelectionEndpoints,
+    type SelectionEndpoint,
+    textEndpoint,
+    textSelectionEndpoints,
+    textSelectionOffsetBounds,
+} from "./selection/selectionEndpoints";
+import { extendFocusAcrossVisualNode } from "./selection/selectionKeyboard";
 import { yjsService } from "./yjs/service";
 const logger = getLogger("Cursor");
 
@@ -743,10 +752,72 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
         this.updateSelectionAfterMove(startItemId, startOffset);
     }
 
+    /**
+     * True when a vertical arrow leaves this item rather than wrapping inside it.
+     *
+     * Only a move that leaves the item can reach the row below or above, and only then
+     * does the kind of that row matter.
+     */
+    private arrowLeavesItem(direction: "up" | "down"): boolean {
+        const info = getVisualLineInfo(this.itemId, this.offset);
+        // Without line information there is nothing to wrap through: an outline item holds
+        // no newline, so the move goes to the neighbouring row.
+        if (!info) return true;
+        return direction === "up" ? info.lineIndex === 0 : info.lineIndex === info.totalLines - 1;
+    }
+
+    /**
+     * Extend the range across an atomic visual node, when that is where this arrow leads.
+     *
+     * A Grid, Calendar or Layout owns no character position (#5015), so the focus lands on
+     * one of the node's boundaries (#5025) instead: the node joins or leaves the range
+     * whole, one edge per press, and the caret stays out of the block entirely. Returns
+     * false for an ordinary text-to-text move, which the caret model below still owns -
+     * it knows about wrapped lines and remembered columns, which rows do not.
+     */
+    private extendSelectionAcrossVisualNode(direction: "up" | "down"): boolean {
+        const selection = this.getSelection();
+        const focus: SelectionEndpoint = selection
+            ? (selection.isReversed ? selection.start : selection.end)
+            : textEndpoint(this.itemId, this.offset);
+        const anchor: SelectionEndpoint = selection
+            ? (selection.isReversed ? selection.end : selection.start)
+            : focus;
+
+        if (focus.kind === "text" && !this.arrowLeavesItem(direction)) return false;
+
+        const next = extendFocusAcrossVisualNode(readOutlineRows(), focus, direction);
+        if (!next) return false;
+
+        const { first, last, isVisuallyReversed } = normalizeSelectionEndpoints(
+            anchor,
+            next,
+            store.itemOrderComparator(),
+        );
+        store.clearSelectionForUser(this.userId);
+        store.setSelection({
+            start: first,
+            end: last,
+            userId: this.userId,
+            isReversed: isVisuallyReversed,
+        });
+
+        // The caret follows the focus only while the focus is a character position.
+        if (next.kind === "text") {
+            this.itemId = next.itemId;
+            this.offset = next.offset;
+            this.applyToStore();
+            store.startCursorBlink();
+        }
+        return true;
+    }
+
     // Extend selection up
     extendSelectionUp(): void {
         const target = this.findTarget();
         if (!target) return;
+
+        if (this.extendSelectionAcrossVisualNode("up")) return;
 
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
@@ -760,6 +831,8 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     extendSelectionDown() {
         const target = this.findTarget();
         if (!target) return;
+
+        if (this.extendSelectionAcrossVisualNode("down")) return;
 
         const { startItemId, startOffset } = this.getSelectionAnchor();
 
