@@ -128,10 +128,12 @@ function handleCompositionStart(event: CompositionEvent) {
 
 // Delegate keydown event to KeyEventHandler
 function handleKeyDown(event: KeyboardEvent) {
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown called with key:", event.key);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: event.target:", (event.target as Element | null)?.tagName);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef?.tagName);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+        logger.debug("GlobalTextArea.handleKeyDown called with key:", event.key);
+        logger.debug("GlobalTextArea.handleKeyDown: event.target:", (event.target as Element | null)?.tagName);
+        logger.debug("GlobalTextArea.handleKeyDown: textareaRef:", textareaRef?.tagName);
+        logger.debug("GlobalTextArea.handleKeyDown: activeElement:", document.activeElement?.tagName);
+    }
 
 
     KeyEventHandler.handleKeyDown(event);
@@ -140,10 +142,12 @@ function handleKeyDown(event: KeyboardEvent) {
 
 // Delegate input event to KeyEventHandler
 function handleInput(event: Event) {
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput called with event.type:", event.type);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: event.target:", (event.target as Element | null)?.tagName);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef?.tagName);
-    if (typeof window !== "undefined" && window.DEBUG_MODE) logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
+    if (typeof window !== "undefined" && window.DEBUG_MODE) {
+        logger.debug("GlobalTextArea.handleInput called with event.type:", event.type);
+        logger.debug("GlobalTextArea.handleInput: event.target:", (event.target as Element | null)?.tagName);
+        logger.debug("GlobalTextArea.handleInput: textareaRef:", textareaRef?.tagName);
+        logger.debug("GlobalTextArea.handleInput: activeElement:", document.activeElement?.tagName);
+    }
 
 
     KeyEventHandler.handleInput(event);
