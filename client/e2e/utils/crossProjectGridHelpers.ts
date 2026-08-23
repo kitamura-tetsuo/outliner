@@ -206,6 +206,7 @@ export async function openProjectPage(
  * itself is never converted — the fresh item after it becomes the Grid host.
  */
 export async function createBlankGrid(page: Page, name: string, sqlName: string): Promise<void> {
+    const initialTableIds = new Set((await readGridProjectState(page)).tables.map(table => table.id));
     await page.locator(".outliner-item[data-item-id]").last().click();
     await page.getByTestId("main-toolbar").locator(".add-database-btn").last().click();
     const panel = page.getByTestId("yjs-table-create-panel").last();
@@ -215,6 +216,13 @@ export async function createBlankGrid(page: Page, name: string, sqlName: string)
     await panel.getByTestId("yjs-table-sql-name-input").fill(sqlName);
     await panel.getByTestId("yjs-table-create").click();
     await expect(page.getByTestId("yjs-table-view").last()).toBeVisible({ timeout: 30000 });
+    // The view can mount from the host binding one render before the project-level
+    // table registry is observable. Callers immediately address the new table, so
+    // wait for the durable Yjs state rather than treating DOM visibility as commit.
+    await expect.poll(async () => {
+        const tables = (await readGridProjectState(page)).tables;
+        return tables.some(table => !initialTableIds.has(table.id) && table.name === name && table.sqlName === sqlName);
+    }, { timeout: 30000 }).toBe(true);
 }
 
 /** Give a Grid a non-default schema/UI so structure copying is verifiable. */

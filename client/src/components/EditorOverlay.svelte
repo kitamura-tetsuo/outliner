@@ -798,6 +798,20 @@ function getItemsInRange(startId: string, endId: string): string[] {
 
 // MutationObserver to monitor DOM changes
 let mutationObserver: MutationObserver;
+let visualNodeResizeObserver: ResizeObserver | undefined;
+
+/**
+ * Observe the actual blocks used for atomic selection geometry. Layout children
+ * finish measuring asynchronously without necessarily mutating the DOM, so a
+ * MutationObserver alone can leave an already-rendered selection at the block's
+ * old height.
+ */
+function observeVisualNodeSizes() {
+    if (!visualNodeResizeObserver) return;
+    document.querySelectorAll(`[${VISUAL_NODE_ROOT_ATTRIBUTE}]`).forEach(element => {
+        visualNodeResizeObserver.observe(element);
+    });
+}
 
 // Variable to debounce (rate limit) position map updates
 let updatePositionMapTimer: ReturnType<typeof setTimeout>;
@@ -861,8 +875,18 @@ onMount(() => {
     // Simplify MutationObserver - instead of recalculating immediately after change detection,
     // Limit frequency using debounce
     mutationObserver = new MutationObserver(() => {
-        if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
+        if (!aliasPickerStore.isVisible) {
+            observeVisualNodeSizes();
+            debouncedUpdatePositionMap();
+        }
     });
+
+    if (typeof ResizeObserver !== 'undefined') {
+        visualNodeResizeObserver = new ResizeObserver(() => {
+            if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
+        });
+        observeVisualNodeSizes();
+    }
 
     // Observe only structural changes under the tree container to avoid
     // feedback from our own overlay class/style updates.
@@ -948,6 +972,7 @@ onDestroy(() => {
     if (mutationObserver) {
         mutationObserver.disconnect();
     }
+    visualNodeResizeObserver?.disconnect();
 
     // Remove copy event listener
     document.removeEventListener('copy', handleCopy as EventListener, true);
