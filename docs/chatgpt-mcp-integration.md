@@ -14,12 +14,16 @@ Publish one HTTPS origin, referred to below as `https://outliner.example.com`:
 - OAuth token and refresh: `https://outliner.example.com/oauth/token`
 - OAuth metadata: `https://outliner.example.com/.well-known/oauth-authorization-server`
 - OIDC-compatible metadata: `https://outliner.example.com/.well-known/openid-configuration`
+- MCP protected-resource metadata: `https://outliner.example.com/.well-known/oauth-protected-resource`
 - Dynamic client registration: `https://outliner.example.com/oauth/register`
 
 Cloudflare Tunnel must forward that hostname to the Outliner server, either
 directly or through Traefik. The proxy must preserve HTTPS host/protocol
 forwarding headers and must route `/mcp`, `/oauth/*`, and `/.well-known/*` to
 the same server process. Do not expose a separate authorization implementation.
+Unauthenticated `/mcp` responses advertise protected-resource metadata through
+the standard `WWW-Authenticate` challenge, which lets ChatGPT discover the
+authorization server from the MCP URL alone.
 
 ## Configuration
 

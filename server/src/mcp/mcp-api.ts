@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import * as z from "zod/v4";
+import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
 import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 
@@ -13,9 +14,22 @@ export function createMcpRouter(
     verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
 ) {
     const router = express.Router();
-    router.all("/mcp", async (req, res) => {
+    const issuer = getOAuthIssuer();
+    const resourceMetadata = `${issuer}/.well-known/oauth-protected-resource`;
+    const challenge = `Bearer resource_metadata="${resourceMetadata}"`;
+
+    router.get("/.well-known/oauth-protected-resource", (_req, res) => {
+        res.json({
+            resource: `${issuer}/mcp`,
+            authorization_servers: [issuer],
+            bearer_methods_supported: ["header"],
+            scopes_supported: ["outliner.read"],
+        });
+    });
+
+    router.post("/mcp", async (req, res) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-        if (!token) return void res.status(401).json({ error: "unauthenticated" });
+        if (!token) return void res.set("WWW-Authenticate", challenge).status(401).json({ error: "unauthenticated" });
         let uid: string;
         try {
             const verified = verifyToken(token);
@@ -24,7 +38,9 @@ export function createMcpRouter(
             }
             uid = verified.uid;
         } catch {
-            return void res.status(401).json({ error: "invalid_token" });
+            return void res.set("WWW-Authenticate", `${challenge}, error="invalid_token"`).status(401).json({
+                error: "invalid_token",
+            });
         }
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
@@ -91,6 +107,9 @@ export function createMcpRouter(
             await transport.close();
             await mcp.close();
         }
+    });
+    router.all("/mcp", (_req, res) => {
+        res.set("Allow", "POST").status(405).json({ error: "method_not_allowed" });
     });
     return router;
 }

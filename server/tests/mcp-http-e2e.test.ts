@@ -48,10 +48,25 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         const missing = await request(app).post("/mcp").send(rpc("initialize"));
         expect(missing.status).to.equal(401);
         expect(missing.body).to.deep.equal({ error: "unauthenticated" });
+        expect(missing.headers["www-authenticate"]).to.equal(
+            'Bearer resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource"',
+        );
 
         const invalid = await request(app).post("/mcp").set("Authorization", "Bearer wrong").send(rpc("initialize"));
         expect(invalid.status).to.equal(401);
         expect(invalid.body).to.deep.equal({ error: "invalid_token" });
+        expect(invalid.headers["www-authenticate"]).to.include('error="invalid_token"');
+    });
+
+    it("publishes OAuth protected-resource metadata for MCP client discovery", async () => {
+        const metadata = await request(app).get("/.well-known/oauth-protected-resource");
+        expect(metadata.status).to.equal(200);
+        expect(metadata.body).to.deep.equal({
+            resource: "http://localhost:7093/mcp",
+            authorization_servers: ["http://localhost:7093"],
+            bearer_methods_supported: ["header"],
+            scopes_supported: ["outliner.read"],
+        });
     });
 
     it("rejects a valid token that was not granted the read scope", async () => {
@@ -111,6 +126,9 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         const put = await request(app).put("/mcp")
             .set("Authorization", "Bearer valid-access-token")
             .send({ projectId: "project-1" });
-        expect(put.status).to.not.equal(200);
+        expect(put.status).to.equal(405);
+        expect(put.headers.allow).to.equal("POST");
+        expect(put.body).to.deep.equal({ error: "method_not_allowed" });
+        expect(calls).to.deep.equal({ uid: "firebase-user-1", projectId: "project-1", itemId: "item-1" });
     });
 });
