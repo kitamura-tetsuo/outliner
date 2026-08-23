@@ -26,7 +26,7 @@ describe("remote MCP Streamable HTTP endpoint", () => {
     app.use(createMcpRouter(service, token => {
         if (token !== "valid-access-token") throw new Error("invalid token");
         return { uid: "firebase-user-1", scope: "outliner.read offline_access" };
-    }));
+    }, "http://localhost:7093"));
 
     const rpc = (method: string, params?: Record<string, unknown>, id = 1) => ({
         jsonrpc: "2.0",
@@ -72,7 +72,13 @@ describe("remote MCP Streamable HTTP endpoint", () => {
     it("rejects a valid token that was not granted the read scope", async () => {
         const scopedApp = express();
         scopedApp.use(express.json());
-        scopedApp.use(createMcpRouter(service, () => ({ uid: "firebase-user-1", scope: "offline_access" })));
+        scopedApp.use(
+            createMcpRouter(
+                service,
+                () => ({ uid: "firebase-user-1", scope: "offline_access" }),
+                "http://localhost:7093",
+            ),
+        );
         const response = await request(scopedApp).post("/mcp")
             .set("Authorization", "Bearer valid-offline-token")
             .send(rpc("tools/list"));

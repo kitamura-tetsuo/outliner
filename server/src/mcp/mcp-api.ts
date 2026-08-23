@@ -12,16 +12,17 @@ const response = (value: unknown) => ({ content: [{ type: "text" as const, text:
 export function createMcpRouter(
     service: OutlinerReadService,
     verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
+    configuredIssuer?: string,
 ) {
     const router = express.Router();
-    const issuer = getOAuthIssuer();
-    const resourceMetadata = `${issuer}/.well-known/oauth-protected-resource`;
-    const challenge = `Bearer resource_metadata="${resourceMetadata}"`;
+    const issuer = () => configuredIssuer ?? getOAuthIssuer();
+    const resourceMetadata = () => `${issuer()}/.well-known/oauth-protected-resource`;
+    const challenge = () => `Bearer resource_metadata="${resourceMetadata()}"`;
 
     router.get("/.well-known/oauth-protected-resource", (_req, res) => {
         res.json({
-            resource: `${issuer}/mcp`,
-            authorization_servers: [issuer],
+            resource: `${issuer()}/mcp`,
+            authorization_servers: [issuer()],
             bearer_methods_supported: ["header"],
             scopes_supported: ["outliner.read"],
         });
@@ -29,7 +30,7 @@ export function createMcpRouter(
 
     router.post("/mcp", async (req, res) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-        if (!token) return void res.set("WWW-Authenticate", challenge).status(401).json({ error: "unauthenticated" });
+        if (!token) return void res.set("WWW-Authenticate", challenge()).status(401).json({ error: "unauthenticated" });
         let uid: string;
         try {
             const verified = verifyToken(token);
@@ -38,7 +39,7 @@ export function createMcpRouter(
             }
             uid = verified.uid;
         } catch {
-            return void res.set("WWW-Authenticate", `${challenge}, error="invalid_token"`).status(401).json({
+            return void res.set("WWW-Authenticate", `${challenge()}, error="invalid_token"`).status(401).json({
                 error: "invalid_token",
             });
         }
