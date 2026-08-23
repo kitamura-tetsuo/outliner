@@ -124,6 +124,12 @@ export class OutlinerReadService {
                 if (entityKind) {
                     const entityId = parts[1]!;
                     assertId(entityId, "entity ID");
+                    const exists = entityKind === "grids"
+                        ? project.ydoc.getMap("yjsGrids").has(entityId)
+                        : entityKind === "calendars"
+                        ? project.calendars.has(entityId)
+                        : project.ydoc.getMap("yjsTables").has(entityId);
+                    if (!exists) throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`);
                     return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
                 }
                 if (!parts[1]) return { projectId, kind: "project" as const };
@@ -208,7 +214,14 @@ export class OutlinerReadService {
         return this.withProject(uid, projectId, project => {
             const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
             if (!grid) throw new McpReadError("not_found", "Grid not found");
-            return { id: gridId, sourceTableId: grid.get("sourceTableId"), query: grid.get("query") };
+            return {
+                id: gridId,
+                name: grid.get("name"),
+                sourceTableId: grid.get("sourceTableId"),
+                query: grid.get("query"),
+                columnOrder: grid.get("columnOrder"),
+                components: yValueToPlain(grid.get("components")),
+            };
         });
     }
 
@@ -217,7 +230,20 @@ export class OutlinerReadService {
         return this.withProject(uid, projectId, project => {
             const calendar = project.calendars.get(calendarId);
             if (!calendar) throw new McpReadError("not_found", "Calendar not found");
-            return { id: calendarId, sourceTableId: calendar.get("sourceTableId"), query: calendar.get("query") };
+            return { id: calendarId, ...yValueToPlain(calendar) as Record<string, unknown> };
         });
     }
+}
+
+function yValueToPlain(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(yValueToPlain);
+    if (value && typeof value === "object" && "entries" in value && typeof value.entries === "function") {
+        return Object.fromEntries(
+            Array.from(value.entries() as Iterable<[string, unknown]>, ([key, child]) => [key, yValueToPlain(child)]),
+        );
+    }
+    if (value && typeof value === "object" && "toArray" in value && typeof value.toArray === "function") {
+        return (value.toArray() as unknown[]).map(yValueToPlain);
+    }
+    return value;
 }
