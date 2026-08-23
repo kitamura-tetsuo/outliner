@@ -8,13 +8,15 @@ import helmet from "helmet";
 import http from "http";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
-import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { checkContainerAccess as defaultCheckAccess, findAccessibleProjectIds } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
 import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
+import { createMcpRouter } from "./mcp/mcp-api.js";
+import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { getMetrics, recordMessage } from "./metrics.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
 import { createPersistence } from "./persistence.js";
@@ -407,6 +409,11 @@ export async function startServer(
     // via the existing Firebase Auth Google sign-in flow and mints
     // Outliner-scoped access/refresh tokens bound to the Firebase uid.
     app.use(createOAuthRouter({ verifyIdTokenCached }));
+
+    // Standards-compatible, stateless Streamable HTTP MCP endpoint. Every
+    // project operation reuses the established projectUsers ACL and direct
+    // Hocuspocus document lifecycle.
+    app.use(createMcpRouter(new OutlinerReadService(hocuspocus, checkContainerAccess, findAccessibleProjectIds)));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {

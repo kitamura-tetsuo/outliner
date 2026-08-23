@@ -6,7 +6,7 @@ import { getApp, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import sinon from "sinon";
-import { checkContainerAccess } from "../src/access-control.js";
+import { checkContainerAccess, findAccessibleProjectIds } from "../src/access-control.js";
 
 describe("access-control", () => {
     let mockFirestore: any;
@@ -70,6 +70,20 @@ describe("access-control", () => {
 
         const result = await checkContainerAccess("u1", "c1", mockFirestore);
         expect(result).to.be.true;
+    });
+
+    it("discovers project IDs only through projectUsers memberships", async () => {
+        const get = sinon.stub().resolves({ docs: [{ id: "project-1" }, { id: "project-2" }] });
+        const where = sinon.stub().withArgs("accessibleUserIds", "array-contains", "u1").returns({ get });
+        collectionStub.withArgs("projectUsers").returns({ where });
+
+        expect(await findAccessibleProjectIds("u1", mockFirestore)).to.deep.equal(["project-1", "project-2"]);
+        expect(where.calledOnce).to.equal(true);
+    });
+
+    it("fails closed when accessible-project discovery cannot be established", async () => {
+        collectionStub.withArgs("projectUsers").throws(new Error("Firestore unavailable"));
+        expect(await findAccessibleProjectIds("u1", mockFirestore)).to.deep.equal([]);
     });
 
     it("denies access via userProjects (SECURITY)", async () => {
