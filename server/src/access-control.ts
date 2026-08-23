@@ -76,3 +76,28 @@ export async function checkContainerAccess(
         return false;
     }
 }
+
+/**
+ * Resolve a human-facing project title using the same resource-side ACL data
+ * that authorizes reads. Unlike userProjects, projectUsers is not writable by
+ * the user, so it is safe as the discovery boundary as well as the ACL source.
+ */
+export async function findAccessibleProjectIds(
+    userId: string,
+    firestoreInstance?: Firestore,
+): Promise<string[]> {
+    try {
+        const db = firestoreInstance || getFirestore();
+        const snapshot = await db.collection("projectUsers")
+            .where("accessibleUserIds", "array-contains", userId)
+            .get();
+        return snapshot.docs.map(document => document.id);
+    } catch (error) {
+        logger.error({
+            event: "accessible_project_discovery_error",
+            message: error instanceof Error ? error.message : String(error),
+            userId,
+        });
+        return [];
+    }
+}

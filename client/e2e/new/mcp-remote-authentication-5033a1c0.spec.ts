@@ -43,4 +43,20 @@ test.describe("read-only remote MCP authentication", () => {
         expect(response.status()).toBe(401);
         expect(await response.json()).toEqual({ error: "unauthenticated" });
     });
+
+    test("does not treat a Firebase ID token as an Outliner MCP access token", async ({ request }) => {
+        const signIn = await request.post(
+            "http://localhost:59099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key",
+            { data: { email: "test@example.com", password: "password", returnSecureToken: true } },
+        );
+        expect(signIn.ok()).toBe(true);
+        const { idToken } = await signIn.json();
+
+        const response = await request.post(MCP_URL, {
+            headers: { Authorization: `Bearer ${idToken}` },
+            data: initialize,
+        });
+        expect(response.status()).toBe(401);
+        expect(await response.json()).toEqual({ error: "invalid_token" });
+    });
 });

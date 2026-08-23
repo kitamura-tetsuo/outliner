@@ -10,7 +10,7 @@ const response = (value: unknown) => ({ content: [{ type: "text" as const, text:
 
 export function createMcpRouter(
     service: OutlinerReadService,
-    verifyToken: (token: string) => { uid: string; } = verifyAccessToken,
+    verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
 ) {
     const router = express.Router();
     router.all("/mcp", async (req, res) => {
@@ -18,7 +18,11 @@ export function createMcpRouter(
         if (!token) return void res.status(401).json({ error: "unauthenticated" });
         let uid: string;
         try {
-            uid = verifyToken(token).uid;
+            const verified = verifyToken(token);
+            if (!verified.scope.split(/\s+/).includes("outliner.read")) {
+                return void res.status(403).json({ error: "insufficient_scope" });
+            }
+            uid = verified.uid;
         } catch {
             return void res.status(401).json({ error: "invalid_token" });
         }
@@ -38,7 +42,7 @@ export function createMcpRouter(
             "resolve_url",
             "Resolve a supported Outliner URL into stable IDs.",
             { url: z.string() },
-            args => service.resolveUrl(args.url),
+            args => service.resolveUrl(uid, args.url),
         );
         tool(
             "get_item",

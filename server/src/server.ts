@@ -8,7 +8,7 @@ import helmet from "helmet";
 import http from "http";
 import { WebSocketServer } from "ws";
 import * as Y from "yjs";
-import { checkContainerAccess as defaultCheckAccess } from "./access-control.js";
+import { checkContainerAccess as defaultCheckAccess, findAccessibleProjectIds } from "./access-control.js";
 import { requireAuth } from "./auth-middleware.js";
 import { type Config } from "./config.js";
 import { createDemoRouter } from "./demo-api.js";
@@ -413,7 +413,7 @@ export async function startServer(
     // Standards-compatible, stateless Streamable HTTP MCP endpoint. Every
     // project operation reuses the established projectUsers ACL and direct
     // Hocuspocus document lifecycle.
-    app.use(createMcpRouter(new OutlinerReadService(hocuspocus, checkContainerAccess)));
+    app.use(createMcpRouter(new OutlinerReadService(hocuspocus, checkContainerAccess, findAccessibleProjectIds)));
 
     // Log rotation endpoint
     app.post("/api/rotate-logs", requireAuth, async (req: Request, res: Response) => {

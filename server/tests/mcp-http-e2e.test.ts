@@ -7,7 +7,10 @@ import type { OutlinerReadService } from "../src/mcp/outliner-read-service.js";
 describe("remote MCP Streamable HTTP endpoint", () => {
     const calls: { uid?: string; projectId?: string; itemId?: string; } = {};
     const service = {
-        resolveUrl: (url: string) => ({ projectId: url.endsWith("/alpha") ? "alpha" : "unknown", kind: "project" }),
+        resolveUrl: (_uid: string, url: string) => ({
+            projectId: url.endsWith("/alpha") ? "alpha" : "unknown",
+            kind: "project",
+        }),
         getItem: (uid: string, projectId: string, itemId: string) => {
             Object.assign(calls, { uid, projectId, itemId });
             return { id: itemId, kind: "text", text: "MCP item", childCount: 0 };
@@ -22,7 +25,7 @@ describe("remote MCP Streamable HTTP endpoint", () => {
     app.use(express.json());
     app.use(createMcpRouter(service, token => {
         if (token !== "valid-access-token") throw new Error("invalid token");
-        return { uid: "firebase-user-1" };
+        return { uid: "firebase-user-1", scope: "outliner.read offline_access" };
     }));
 
     const rpc = (method: string, params?: Record<string, unknown>, id = 1) => ({
@@ -49,6 +52,17 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         const invalid = await request(app).post("/mcp").set("Authorization", "Bearer wrong").send(rpc("initialize"));
         expect(invalid.status).to.equal(401);
         expect(invalid.body).to.deep.equal({ error: "invalid_token" });
+    });
+
+    it("rejects a valid token that was not granted the read scope", async () => {
+        const scopedApp = express();
+        scopedApp.use(express.json());
+        scopedApp.use(createMcpRouter(service, () => ({ uid: "firebase-user-1", scope: "offline_access" })));
+        const response = await request(scopedApp).post("/mcp")
+            .set("Authorization", "Bearer valid-offline-token")
+            .send(rpc("tools/list"));
+        expect(response.status).to.equal(403);
+        expect(response.body).to.deep.equal({ error: "insufficient_scope" });
     });
 
     it("advertises only the seven read-only tools", async () => {

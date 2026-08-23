@@ -17,14 +17,18 @@ describe("Outliner MCP read service", () => {
         calendar.componentType = "calendar";
         calendar.calendarId = "calendar-1";
         let disconnects = 0;
-        const service = new OutlinerReadService({
-            openDirectConnection: async () => ({
-                document: project.ydoc,
-                disconnect: async () => {
-                    disconnects++;
-                },
-            }),
-        } as never, async () => allowed);
+        const service = new OutlinerReadService(
+            {
+                openDirectConnection: async () => ({
+                    document: project.ydoc,
+                    disconnect: async () => {
+                        disconnects++;
+                    },
+                }),
+            } as never,
+            async () => allowed,
+            async () => ["project-1"],
+        );
         return { service, page, text, layout, grid, calendar, disconnects: () => disconnects };
     }
 
@@ -51,15 +55,15 @@ describe("Outliner MCP read service", () => {
         expect(bounded.root.children).to.have.length(1);
     });
 
-    it("resolves supported URLs and rejects malformed identifiers", () => {
-        const { service } = fixture();
-        expect(service.resolveUrl("https://outliner.example/project-1/item_2")).to.deep.equal({
+    it("resolves title-based project and page URLs to stable identifiers", async () => {
+        const { service, page } = fixture();
+        expect(await service.resolveUrl("uid", "https://outliner.example/MCP%20test/Roadmap")).to.deep.equal({
             projectId: "project-1",
-            itemId: "item_2",
-            kind: "item",
+            pageId: page.id,
+            kind: "page",
         });
-        expect(() => service.resolveUrl("javascript:alert(1)")).to.throw(McpReadError, "Unsupported");
-        expect(() => service.resolveUrl("https://outliner.example/project/%2Fsecret")).to.throw(McpReadError);
+        await expectRejected(service.resolveUrl("uid", "javascript:alert(1)"), "Unsupported");
+        await expectRejected(service.resolveUrl("uid", "https://outliner.example/project/%2Fsecret"), "not found");
     });
 
     it("fails closed before opening a document when project access is denied", async () => {
@@ -83,3 +87,13 @@ describe("Outliner MCP read service", () => {
         expect(disconnects()).to.equal(2);
     });
 });
+
+async function expectRejected(promise: Promise<unknown>, message: string): Promise<void> {
+    try {
+        await promise;
+        expect.fail("expected rejection");
+    } catch (error) {
+        expect(error).to.be.instanceOf(McpReadError);
+        expect((error as Error).message.toLowerCase()).to.include(message.toLowerCase());
+    }
+}

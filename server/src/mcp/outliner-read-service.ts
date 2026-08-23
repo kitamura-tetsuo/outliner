@@ -62,6 +62,7 @@ export class OutlinerReadService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
+        private readonly accessibleProjectIds: (uid: string) => Promise<string[]>,
     ) {}
 
     private async withProject<T>(
@@ -79,7 +80,17 @@ export class OutlinerReadService {
         }
     }
 
-    resolveUrl(rawUrl: string): { projectId: string; itemId?: string; kind: "project" | "item"; } {
+    async resolveUrl(
+        uid: string,
+        rawUrl: string,
+    ): Promise<
+        {
+            projectId: string;
+            pageId?: string;
+            entityId?: string;
+            kind: "project" | "page" | "grid" | "calendar" | "table";
+        }
+    > {
         let url: URL;
         try {
             url = new URL(rawUrl);
@@ -92,12 +103,37 @@ export class OutlinerReadService {
         ) {
             throw new McpReadError("invalid_argument", "Unsupported Outliner URL");
         }
-        const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
-        if (parts.length < 1 || parts.length > 2) {
+        let parts: string[];
+        try {
+            parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
+        } catch {
+            throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding");
+        }
+        const entityKind = ["grids", "calendars", "tables"].includes(parts[0] ?? "")
+            ? parts.shift() as "grids" | "calendars" | "tables"
+            : undefined;
+        if (parts.length < 1 || parts.length > 2 || (entityKind && parts.length !== 2)) {
             throw new McpReadError("invalid_argument", "Unsupported Outliner URL path");
         }
-        parts.forEach((part, index) => assertId(part, index === 0 ? "project ID" : "item ID"));
-        return { projectId: parts[0]!, itemId: parts[1], kind: parts[1] ? "item" : "project" };
+        const projectTitle = parts[0]!;
+        const candidates = await this.accessibleProjectIds(uid);
+        for (const projectId of candidates) {
+            if (!ID.test(projectId) || !await this.canAccess(uid, projectId)) continue;
+            const resolved = await this.withProject(uid, projectId, project => {
+                if (project.title !== projectTitle) return undefined;
+                if (entityKind) {
+                    const entityId = parts[1]!;
+                    assertId(entityId, "entity ID");
+                    return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
+                }
+                if (!parts[1]) return { projectId, kind: "project" as const };
+                const page = Array.from(project.items).find(item => item.text === parts[1]);
+                if (!page) throw new McpReadError("not_found", "Page not found");
+                return { projectId, pageId: page.id, kind: "page" as const };
+            });
+            if (resolved) return resolved;
+        }
+        throw new McpReadError("not_found", "Accessible project not found");
     }
 
     getItem(uid: string, projectId: string, itemId: string): Promise<OutlineNodeRead> {
