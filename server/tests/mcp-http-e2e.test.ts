@@ -26,7 +26,7 @@ describe("remote MCP Streamable HTTP endpoint", () => {
     app.use(createMcpRouter(service, token => {
         if (token !== "valid-access-token") throw new Error("invalid token");
         return { uid: "firebase-user-1", scope: "outliner.read offline_access" };
-    }));
+    }, "http://localhost:7093"));
 
     const rpc = (method: string, params?: Record<string, unknown>, id = 1) => ({
         jsonrpc: "2.0",
@@ -48,16 +48,37 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         const missing = await request(app).post("/mcp").send(rpc("initialize"));
         expect(missing.status).to.equal(401);
         expect(missing.body).to.deep.equal({ error: "unauthenticated" });
+        expect(missing.headers["www-authenticate"]).to.equal(
+            'Bearer resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource"',
+        );
 
         const invalid = await request(app).post("/mcp").set("Authorization", "Bearer wrong").send(rpc("initialize"));
         expect(invalid.status).to.equal(401);
         expect(invalid.body).to.deep.equal({ error: "invalid_token" });
+        expect(invalid.headers["www-authenticate"]).to.include('error="invalid_token"');
+    });
+
+    it("publishes OAuth protected-resource metadata for MCP client discovery", async () => {
+        const metadata = await request(app).get("/.well-known/oauth-protected-resource");
+        expect(metadata.status).to.equal(200);
+        expect(metadata.body).to.deep.equal({
+            resource: "http://localhost:7093/mcp",
+            authorization_servers: ["http://localhost:7093"],
+            bearer_methods_supported: ["header"],
+            scopes_supported: ["outliner.read"],
+        });
     });
 
     it("rejects a valid token that was not granted the read scope", async () => {
         const scopedApp = express();
         scopedApp.use(express.json());
-        scopedApp.use(createMcpRouter(service, () => ({ uid: "firebase-user-1", scope: "offline_access" })));
+        scopedApp.use(
+            createMcpRouter(
+                service,
+                () => ({ uid: "firebase-user-1", scope: "offline_access" }),
+                "http://localhost:7093",
+            ),
+        );
         const response = await request(scopedApp).post("/mcp")
             .set("Authorization", "Bearer valid-offline-token")
             .send(rpc("tools/list"));
@@ -97,5 +118,23 @@ describe("remote MCP Streamable HTTP endpoint", () => {
             text: "MCP item",
             childCount: 0,
         });
+    });
+
+    it("does not expose mutation tools or mutation-shaped HTTP methods", async () => {
+        const called = await authenticatedPost().send(
+            rpc("tools/call", { name: "update_item", arguments: { projectId: "project-1", itemId: "item-1" } }),
+        );
+        expect(called.status).to.equal(200);
+        const body = bodyOf(called);
+        expect(body.result?.isError).to.equal(true);
+        expect(body.result?.content?.[0]?.text).to.match(/not found/i);
+
+        const put = await request(app).put("/mcp")
+            .set("Authorization", "Bearer valid-access-token")
+            .send({ projectId: "project-1" });
+        expect(put.status).to.equal(405);
+        expect(put.headers.allow).to.equal("POST");
+        expect(put.body).to.deep.equal({ error: "method_not_allowed" });
+        expect(calls).to.deep.equal({ uid: "firebase-user-1", projectId: "project-1", itemId: "item-1" });
     });
 });

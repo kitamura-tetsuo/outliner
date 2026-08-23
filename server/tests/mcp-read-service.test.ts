@@ -78,6 +78,48 @@ describe("Outliner MCP read service", () => {
         expect(disconnects()).to.equal(0);
     });
 
+    it("enforces the same ACL before every project-scoped read capability", async () => {
+        const { service, text, disconnects } = fixture(false);
+        const reads = [
+            service.getItem("uid", "project-1", text.id),
+            service.getSubtree("uid", "project-1", text.id),
+            service.getAncestors("uid", "project-1", text.id),
+            service.searchItems("uid", "project-1", "ship"),
+            service.getGrid("uid", "project-1", "grid-1"),
+            service.getCalendar("uid", "project-1", "calendar-1"),
+        ];
+        for (const read of reads) {
+            await expectRejected(read, "Project is inaccessible");
+        }
+        expect(disconnects()).to.equal(0);
+    });
+
+    it("does not reveal whether an inaccessible URL target exists", async () => {
+        const { service } = fixture(false);
+        await expectRejected(service.resolveUrl("uid", "https://outliner.example/MCP%20test/Roadmap"), "not found");
+    });
+
+    it("rejects malformed identifiers and out-of-contract result bounds", async () => {
+        const { service, page } = fixture();
+        await expectRejected(service.getItem("uid", "project/escape", page.id), "Invalid project ID");
+        await expectRejected(
+            Promise.resolve().then(() => service.getItem("uid", "project-1", "bad/item")),
+            "Invalid item ID",
+        );
+        await expectRejected(
+            Promise.resolve().then(() => service.getSubtree("uid", "project-1", page.id, 11, 1)),
+            "depth must be",
+        );
+        await expectRejected(
+            Promise.resolve().then(() => service.getSubtree("uid", "project-1", page.id, 1, 501)),
+            "depth must be",
+        );
+        await expectRejected(
+            Promise.resolve().then(() => service.searchItems("uid", "project-1", "ship", 101)),
+            "limit must be",
+        );
+    });
+
     it("always releases a direct Hocuspocus connection after success or failure", async () => {
         const { service, text, disconnects } = fixture();
         await service.getItem("uid", "project-1", text.id);
