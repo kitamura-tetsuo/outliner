@@ -136,15 +136,25 @@ export async function fragmentsForItem(page: Page, itemId: string) {
  * The tolerance absorbs the highlight's own edge, which is drawn on the block's boundary.
  */
 export async function expectNodeFragmentCoversBlock(page: Page, itemId: string): Promise<void> {
-    const block = (await page.locator(`[data-visual-node-root="${itemId}"]`).boundingBox())!;
-    const fragments = await fragmentsForItem(page, itemId);
+    await expect.poll(async () => {
+        const block = await page.locator(`[data-visual-node-root="${itemId}"]`).boundingBox();
+        const fragments = await fragmentsForItem(page, itemId);
+        return !!block
+            && fragments.length === 1
+            && fragments[0].kind === "node"
+            && Math.abs(fragments[0].left - block.x) <= 3
+            && Math.abs(fragments[0].top - block.y) <= 3
+            && Math.abs(fragments[0].width - block.width) <= 3
+            && Math.abs(fragments[0].height - block.height) <= 3;
+    }, { timeout: 20000 }).toBe(true);
 
-    expect(fragments).toHaveLength(1);
-    expect(fragments[0].kind).toBe("node");
-    expect(Math.abs(fragments[0].left - block.x)).toBeLessThanOrEqual(3);
-    expect(Math.abs(fragments[0].top - block.y)).toBeLessThanOrEqual(3);
-    expect(Math.abs(fragments[0].width - block.width)).toBeLessThanOrEqual(3);
-    expect(Math.abs(fragments[0].height - block.height)).toBeLessThanOrEqual(3);
+    const block = (await page.locator(`[data-visual-node-root="${itemId}"]`).boundingBox())!;
+    const [fragment] = await fragmentsForItem(page, itemId);
+    expect(fragment.kind).toBe("node");
+    expect(Math.abs(fragment.left - block.x)).toBeLessThanOrEqual(3);
+    expect(Math.abs(fragment.top - block.y)).toBeLessThanOrEqual(3);
+    expect(Math.abs(fragment.width - block.width)).toBeLessThanOrEqual(3);
+    expect(Math.abs(fragment.height - block.height)).toBeLessThanOrEqual(3);
 }
 
 /**
