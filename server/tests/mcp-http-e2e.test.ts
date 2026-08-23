@@ -98,4 +98,19 @@ describe("remote MCP Streamable HTTP endpoint", () => {
             childCount: 0,
         });
     });
+
+    it("does not expose mutation tools or mutation-shaped HTTP methods", async () => {
+        const called = await authenticatedPost().send(
+            rpc("tools/call", { name: "update_item", arguments: { projectId: "project-1", itemId: "item-1" } }),
+        );
+        expect(called.status).to.equal(200);
+        const body = bodyOf(called);
+        expect(body.result?.isError).to.equal(true);
+        expect(body.result?.content?.[0]?.text).to.match(/not found/i);
+
+        const put = await request(app).put("/mcp")
+            .set("Authorization", "Bearer valid-access-token")
+            .send({ projectId: "project-1" });
+        expect(put.status).to.not.equal(200);
+    });
 });

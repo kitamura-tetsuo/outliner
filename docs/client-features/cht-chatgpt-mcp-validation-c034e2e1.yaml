@@ -1,0 +1,10 @@
+id: FTR-c034e2e1
+title: ChatGPT MCP production-flow validation
+title-ja: ChatGPT MCP本番フロー検証
+status: implemented
+description: The Google-backed OAuth and read-only remote MCP features are validated together at the protocol boundary, with authorization-isolation, malformed-input, bounded-read, and no-write assertions plus a reproducible ChatGPT production smoke test.
+tests:
+- client/e2e/new/cht-chatgpt-mcp-validation-c034e2e1.spec.ts
+- server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-read-service.test.ts
+- server/tests/oauth/oauth-flow.test.ts
