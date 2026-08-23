@@ -87,17 +87,21 @@ describe("Outliner MCP read service", () => {
 
     it("returns complete lightweight Grid and Calendar configuration", async () => {
         const { service } = fixture();
-        expect(await service.getGrid("uid", "project-1", "grid-1")).to.deep.include({
+        expect(await service.getGrid("uid", "project-1", "grid-1")).to.deep.equal({
             id: "grid-1",
             name: "Roadmap grid",
             sourceTableId: "table-1",
             query: "SELECT * FROM roadmap",
+            columnOrder: [],
+            components: {},
         });
-        expect(await service.getCalendar("uid", "project-1", "calendar-1")).to.deep.include({
+        expect(await service.getCalendar("uid", "project-1", "calendar-1")).to.deep.equal({
             id: "calendar-1",
             name: "Roadmap calendar",
             query: "SELECT * FROM outline_items",
+            viewType: "week",
             groupAxes: ["owner"],
+            laneOrder: [],
         });
     });
 

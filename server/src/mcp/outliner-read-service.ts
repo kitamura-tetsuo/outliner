@@ -216,11 +216,11 @@ export class OutlinerReadService {
             if (!grid) throw new McpReadError("not_found", "Grid not found");
             return {
                 id: gridId,
-                name: grid.get("name"),
+                name: String(grid.get("name") ?? ""),
                 sourceTableId: grid.get("sourceTableId"),
-                query: grid.get("query"),
-                columnOrder: grid.get("columnOrder"),
-                components: yValueToPlain(grid.get("components")),
+                query: String(grid.get("query") ?? ""),
+                columnOrder: yValueToPlain(grid.get("columnOrder")) ?? [],
+                components: yValueToPlain(grid.get("components")) ?? {},
             };
         });
     }
@@ -230,7 +230,16 @@ export class OutlinerReadService {
         return this.withProject(uid, projectId, project => {
             const calendar = project.calendars.get(calendarId);
             if (!calendar) throw new McpReadError("not_found", "Calendar not found");
-            return { id: calendarId, ...yValueToPlain(calendar) as Record<string, unknown> };
+            const settings = yValueToPlain(calendar) as Record<string, unknown>;
+            return {
+                id: calendarId,
+                ...settings,
+                name: String(settings.name ?? ""),
+                query: String(settings.query ?? ""),
+                viewType: String(settings.viewType ?? "week"),
+                groupAxes: settings.groupAxes ?? [],
+                laneOrder: settings.laneOrder ?? [],
+            };
         });
     }
 }
