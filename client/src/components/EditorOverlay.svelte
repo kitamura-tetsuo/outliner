@@ -56,6 +56,9 @@ interface CursorPositionMap {
 
 // Reactively manage state such as cursor position and selection range
 let positionMap = $state<CursorPositionMap>({});
+// Invalidates DOM-measured node fragments when a visual block resizes without
+// changing the document structure (for example, while Layout children mount).
+let visualNodeGeometryVersion = $state(0);
 // Derived values tracking store content
 let cursorList = $state<CursorPosition[]>([]);
 let selectionList = $state<SelectionRange[]>([]);
@@ -675,6 +678,9 @@ function selectionRangeItems(itemIds: string[]): SelectionRangeItem[] {
  * caller renders node and text fragments through the same loop.
  */
 function calculateNodeSelectionFragments(itemId: string): OverlayRect[] {
+    // The rectangle is read directly from the DOM, so explicitly register the
+    // ResizeObserver-driven signal as this render path's reactive dependency.
+    void visualNodeGeometryVersion;
     const treeContainer = resolveTreeContainer();
     if (!treeContainer) return [];
 
@@ -883,7 +889,10 @@ onMount(() => {
 
     if (typeof ResizeObserver !== 'undefined') {
         visualNodeResizeObserver = new ResizeObserver(() => {
-            if (!aliasPickerStore.isVisible) debouncedUpdatePositionMap();
+            if (!aliasPickerStore.isVisible) {
+                visualNodeGeometryVersion++;
+                debouncedUpdatePositionMap();
+            }
         });
         observeVisualNodeSizes();
     }
