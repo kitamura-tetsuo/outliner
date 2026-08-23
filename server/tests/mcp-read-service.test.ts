@@ -13,9 +13,19 @@ describe("Outliner MCP read service", () => {
         const grid = layout.items.addNode("test");
         grid.componentType = "yjstable";
         grid.yjsGridId = "grid-1";
+        const gridMap = new (project.ydoc.getMap("yjsGrids").constructor as new() => MapLike)();
+        gridMap.set("name", "Roadmap grid");
+        gridMap.set("sourceTableId", "table-1");
+        gridMap.set("query", "SELECT * FROM roadmap");
+        project.ydoc.getMap("yjsGrids").set("grid-1", gridMap as never);
         const calendar = layout.items.addNode("test");
         calendar.componentType = "calendar";
         calendar.calendarId = "calendar-1";
+        const calendarMap = new (project.calendars.constructor as new() => MapLike)();
+        calendarMap.set("name", "Roadmap calendar");
+        calendarMap.set("query", "SELECT * FROM outline_items");
+        calendarMap.set("groupAxes", ["owner"]);
+        project.calendars.set("calendar-1", calendarMap as never);
         let disconnects = 0;
         const service = new OutlinerReadService(
             {
@@ -64,6 +74,35 @@ describe("Outliner MCP read service", () => {
         });
         await expectRejected(service.resolveUrl("uid", "javascript:alert(1)"), "Unsupported");
         await expectRejected(service.resolveUrl("uid", "https://outliner.example/project/%2Fsecret"), "not found");
+        expect(await service.resolveUrl("uid", "https://outliner.example/grids/MCP%20test/grid-1")).to.deep.equal({
+            projectId: "project-1",
+            entityId: "grid-1",
+            kind: "grid",
+        });
+        await expectRejected(
+            service.resolveUrl("uid", "https://outliner.example/grids/MCP%20test/missing"),
+            "grid not found",
+        );
+    });
+
+    it("returns complete lightweight Grid and Calendar configuration", async () => {
+        const { service } = fixture();
+        expect(await service.getGrid("uid", "project-1", "grid-1")).to.deep.equal({
+            id: "grid-1",
+            name: "Roadmap grid",
+            sourceTableId: "table-1",
+            query: "SELECT * FROM roadmap",
+            columnOrder: [],
+            components: {},
+        });
+        expect(await service.getCalendar("uid", "project-1", "calendar-1")).to.deep.equal({
+            id: "calendar-1",
+            name: "Roadmap calendar",
+            query: "SELECT * FROM outline_items",
+            viewType: "week",
+            groupAxes: ["owner"],
+            laneOrder: [],
+        });
     });
 
     it("fails closed before opening a document when project access is denied", async () => {
@@ -129,6 +168,10 @@ describe("Outliner MCP read service", () => {
         expect(disconnects()).to.equal(2);
     });
 });
+
+interface MapLike {
+    set(key: string, value: unknown): unknown;
+}
 
 async function expectRejected(promise: Promise<unknown>, message: string): Promise<void> {
     try {
