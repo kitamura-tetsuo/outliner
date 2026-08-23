@@ -8,14 +8,17 @@ import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
 
-export function createMcpRouter(service: OutlinerReadService) {
+export function createMcpRouter(
+    service: OutlinerReadService,
+    verifyToken: (token: string) => { uid: string; } = verifyAccessToken,
+) {
     const router = express.Router();
     router.all("/mcp", async (req, res) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
         if (!token) return void res.status(401).json({ error: "unauthenticated" });
         let uid: string;
         try {
-            uid = verifyAccessToken(token).uid;
+            uid = verifyToken(token).uid;
         } catch {
             return void res.status(401).json({ error: "invalid_token" });
         }
