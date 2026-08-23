@@ -128,7 +128,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the page header to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the header of an individual page to access it.
 
 ### External Links
 
@@ -237,7 +237,7 @@ Create database tables to manage structured data within your project. You can st
 
 ### Creating a Database Table
 
-Click the **Add Database** button in the top navigation bar.
+Click the **Add Database** button on the left side of the top navigation bar.
 
 A new database block will be inserted at the bottom of the current page. Within this block, you can:
 
@@ -245,7 +245,7 @@ A new database block will be inserted at the bottom of the current page. Within 
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
 - **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button in the top navigation bar, which opens the databases sidebar.
+Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens the databases sidebar.
 
 ### Managing Data
 
