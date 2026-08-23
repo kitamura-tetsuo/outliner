@@ -54,7 +54,19 @@ export function demoContentEn(): DemoLocaleContent {
                     "  [Calendars]: a query plus a role assignment over its result columns, no data of its own.",
                     "  [Schedule Rules]: automate database operations",
                     "  [Layout]: arrange visual blocks side by side on a 12-column grid.",
+                    "  [Remote MCP Access]: securely inspect semantic outline data from compatible AI clients.",
                     "Give it a try! Everything in this project is editable.",
+                ],
+            },
+            {
+                key: "remote mcp access",
+                title: "Remote MCP Access",
+                lines: [
+                    "Outliner's on-premises server exposes a read-only MCP endpoint for compatible AI clients.",
+                    "Paste a normal Outliner project or page URL into the client; resolve_url converts its human-readable titles to stable IDs.",
+                    "Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text.",
+                    "Every project read uses the signed-in user's existing project access, and large structural reads are bounded.",
+                    "The initial MCP tools never create, update, move, or delete Outliner data.",
                 ],
             },
             {

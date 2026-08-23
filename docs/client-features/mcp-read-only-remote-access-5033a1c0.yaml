@@ -1,0 +1,9 @@
+id: FTR-5033a1c0
+title: Read-only remote MCP access
+title-ja: 読み取り専用リモートMCPアクセス
+status: implemented
+description: Authenticated AI clients can resolve Outliner URLs and incrementally read semantic outline structure through the on-premises server.
+tests:
+- client/e2e/new/mcp-remote-authentication-5033a1c0.spec.ts
+- server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-read-service.test.ts
