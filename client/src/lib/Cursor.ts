@@ -426,16 +426,16 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
                     break;
                 case "Home":
                     if (event.shiftKey) {
-                        this.extendSelectionToLineStart();
+                        this.extendSelectionToDocumentStart();
                     } else {
-                        this.moveToLineStart();
+                        this.moveToDocumentStart();
                     }
                     break;
                 case "End":
                     if (event.shiftKey) {
-                        this.extendSelectionToLineEnd();
+                        this.extendSelectionToDocumentEnd();
                     } else {
-                        this.moveToLineEnd();
+                        this.moveToDocumentEnd();
                     }
                     break;
                 case "PageUp":
