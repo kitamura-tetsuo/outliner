@@ -15,6 +15,7 @@ import { createDemoRouter } from "./demo-api.js";
 import { isDemoProjectSlug } from "./demo-projects.js";
 import { firebaseReadyPromise, firebaseState } from "./firebase-init.js";
 import { logger as defaultLogger } from "./logger.js";
+import { localMcpDiagnosticsConfig } from "./mcp/local-diagnostics.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { getMetrics, recordMessage } from "./metrics.js";
@@ -54,6 +55,18 @@ export async function startServer(
     logger = defaultLogger,
     overrides: ServerOverrides = {},
 ) {
+    const mcpDiagnostics = localMcpDiagnosticsConfig();
+    if (mcpDiagnostics.firebaseMode === "production") {
+        logger.warn(
+            { event: "mcp_production_firebase_diagnostics" },
+            "WARNING: LOCAL READ-ONLY MCP DIAGNOSTICS ARE CONNECTED TO PRODUCTION FIREBASE",
+        );
+    } else if (mcpDiagnostics.enabled) {
+        logger.info(
+            { event: "mcp_local_diagnostics", firebaseMode: "emulator" },
+            "Local read-only MCP diagnostics enabled with Firebase emulators",
+        );
+    }
     // Fail at startup rather than during a user's OAuth redirect when the
     // production Firebase Web App configuration is incomplete.
     if (process.env.NODE_ENV === "production") getOAuthFirebaseWebConfig();

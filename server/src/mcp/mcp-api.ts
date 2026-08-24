@@ -1,14 +1,28 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
+import crypto from "crypto";
 import express from "express";
 import * as z from "zod/v4";
 import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
+import { serverLogger as logger } from "../utils/log-manager.js";
 import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
+const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
+    debug
+        ? {
+            stage: debug.stage,
+            accessibleProjectCount: debug.accessibleProjectCount,
+            authorizedCandidateCount: debug.authorizedCandidateCount,
+            foundProjectWithoutEntity: debug.foundProjectWithoutEntity,
+            entityKind: debug.entityKind,
+            inputLength: debug.inputLength,
+            pathnameLength: debug.pathnameLength,
+        }
+        : {};
 
 export function createMcpRouter(
     service: OutlinerReadService,
@@ -30,15 +44,26 @@ export function createMcpRouter(
     });
 
     router.all("/mcp", (req, res, next) => {
+        const suppliedRequestId = req.header("x-request-id");
+        const requestId = suppliedRequestId && /^[A-Za-z0-9_-]{1,100}$/.test(suppliedRequestId)
+            ? suppliedRequestId
+            : crypto.randomUUID();
+        res.locals.mcpRequestId = requestId;
+        res.set("X-Request-Id", requestId);
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-        if (!token) return void res.set("WWW-Authenticate", challenge()).status(401).json({ error: "unauthenticated" });
+        if (!token) {
+            logger.info({ event: "mcp_authentication_failed", requestId, reason: "missing_bearer" });
+            return void res.set("WWW-Authenticate", challenge()).status(401).json({ error: "unauthenticated" });
+        }
         try {
             const verified = verifyToken(token);
             if (!verified.scope.split(/\s+/).includes("outliner.read")) {
+                logger.info({ event: "mcp_authentication_failed", requestId, reason: "insufficient_scope" });
                 return void res.status(403).json({ error: "insufficient_scope" });
             }
             res.locals.mcpUid = verified.uid;
         } catch {
+            logger.info({ event: "mcp_authentication_failed", requestId, reason: "invalid_token" });
             return void res.set("WWW-Authenticate", `${challenge()}, error="invalid_token"`).status(401).json({
                 error: "invalid_token",
             });
@@ -48,6 +73,7 @@ export function createMcpRouter(
 
     router.post("/mcp", async (req, res) => {
         const uid = res.locals.mcpUid as string;
+        const requestId = res.locals.mcpRequestId as string;
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
         const tool = <T extends z.ZodRawShape>(
@@ -63,6 +89,13 @@ export function createMcpRouter(
                     return response(await handler(args as z.infer<z.ZodObject<T>>));
                 } catch (error) {
                     if (error instanceof McpReadError) {
+                        logger.info({
+                            event: "mcp_resolution_failed",
+                            requestId,
+                            uidFingerprint: crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12),
+                            code: error.code,
+                            ...safeLogDiagnostics(error.debug),
+                        }, error.message);
                         const errorCode = error.code === "invalid_argument"
                             ? ErrorCode.InvalidParams
                             : ErrorCode.InternalError;

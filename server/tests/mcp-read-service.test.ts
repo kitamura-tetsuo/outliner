@@ -162,10 +162,42 @@ describe("Outliner MCP read service", () => {
             const mcpError = error as McpReadError;
             expect(mcpError.code).to.equal("not_found");
             expect(mcpError.debug).to.deep.include({
-                stage: "project_discovery",
+                stage: "project_title_matching",
                 requestedProjectTitle: "MissingProject",
                 accessibleProjectCount: 1,
             });
+        }
+    });
+
+    it("distinguishes discovery and authorization re-check failures", async () => {
+        const noProjects = new OutlinerReadService({} as never, async () => true, async () => []);
+        await expectStage(noProjects.resolveUrl("uid", "https://outliner.example/missing"), "project_discovery");
+
+        const { service } = fixture(false);
+        await expectStage(
+            service.resolveUrl("uid", "https://outliner.example/MCP%20test"),
+            "authorization_recheck",
+        );
+    });
+
+    it("does not copy credential-like input into URL diagnostics", async () => {
+        const { service } = fixture();
+        try {
+            await service.resolveUrl("uid", "not a URL Authorization: Bearer secret-token");
+            expect.fail("expected rejection");
+        } catch (error) {
+            const diagnostics = JSON.stringify((error as McpReadError).debug);
+            expect(diagnostics).not.to.include("secret-token");
+            expect((error as McpReadError).debug).to.include({ stage: "url_parsing", inputLength: 44 });
+        }
+
+        try {
+            await service.resolveUrl("uid", "https://outliner.example/Authorization:%20Bearer%20secret-token/%ZZ");
+            expect.fail("expected rejection");
+        } catch (error) {
+            const diagnostics = JSON.stringify((error as McpReadError).debug);
+            expect(diagnostics).not.to.include("secret-token");
+            expect((error as McpReadError).debug?.stage).to.equal("url_decoding");
         }
     });
 
@@ -211,5 +243,15 @@ async function expectRejected(promise: Promise<unknown>, message: string): Promi
     } catch (error) {
         expect(error).to.be.instanceOf(McpReadError);
         expect((error as Error).message.toLowerCase()).to.include(message.toLowerCase());
+    }
+}
+
+async function expectStage(promise: Promise<unknown>, stage: string): Promise<void> {
+    try {
+        await promise;
+        expect.fail("expected rejection");
+    } catch (error) {
+        expect(error).to.be.instanceOf(McpReadError);
+        expect((error as McpReadError).debug?.stage).to.equal(stage);
     }
 }
