@@ -14,6 +14,8 @@ does not add a mock resolver or a write-capable/debug MCP tool.
    npm run build
    MCP_LOCAL_DIAGNOSTICS=true \
      OAUTH_ACCESS_TOKEN_SECRET=local-mcp-only-secret \
+     FIRESTORE_EMULATOR_HOST=127.0.0.1:58080 \
+     FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:59099 \
      npm start
    ```
 
