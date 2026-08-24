@@ -10,9 +10,11 @@ import { initializeFirebase } from "./firebase-init.js";
 import {
     clientLogger,
     refreshClientLogStream,
+    refreshMcpLogStream,
     refreshServerLogStream,
     refreshTelemetryLogStream,
     rotateClientLogs,
+    rotateMcpLogs,
     rotateServerLogs,
     rotateTelemetryLogs,
     serverLogger as logger,
@@ -47,6 +49,7 @@ function startLogService() {
             logger.info("Performing scheduled periodic log rotation");
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
+            const mcpRotated = await rotateMcpLogs(2);
             const serverRotated = await rotateServerLogs(2);
 
             if (clientRotated) {
@@ -55,6 +58,9 @@ function startLogService() {
 
             if (telemetryRotated) {
                 refreshTelemetryLogStream();
+            }
+            if (mcpRotated) {
+                refreshMcpLogStream();
             }
 
             if (serverRotated) {
@@ -65,6 +71,7 @@ function startLogService() {
                 JSON.stringify({
                     clientRotated,
                     telemetryRotated,
+                    mcpRotated,
                     serverRotated,
                     timestamp: new Date().toISOString(),
                 })
@@ -332,6 +339,7 @@ function startLogService() {
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
+            const mcpRotated = await rotateMcpLogs(2);
             const serverRotated = await rotateServerLogs(2);
 
             if (clientRotated) {
@@ -339,6 +347,9 @@ function startLogService() {
             }
             if (telemetryRotated) {
                 refreshTelemetryLogStream();
+            }
+            if (mcpRotated) {
+                refreshMcpLogStream();
             }
             if (serverRotated) {
                 refreshServerLogStream();
@@ -348,6 +359,7 @@ function startLogService() {
                 success: true,
                 clientRotated,
                 telemetryRotated,
+                mcpRotated,
                 serverRotated,
                 timestamp: new Date().toISOString(),
             });
@@ -356,6 +368,7 @@ function startLogService() {
                 JSON.stringify({
                     clientRotated,
                     telemetryRotated,
+                    mcpRotated,
                     serverRotated,
                     timestamp: new Date().toISOString(),
                 })

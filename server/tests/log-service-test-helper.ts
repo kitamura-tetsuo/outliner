@@ -247,16 +247,19 @@ app.post("/api/rotate-logs", async (req, res) => {
     try {
         const clientRotated = await LogManager.rotateClientLogs(2);
         const telemetryRotated = await LogManager.rotateTelemetryLogs(2);
+        const mcpRotated = await LogManager.rotateMcpLogs(2);
         const serverRotated = await LogManager.rotateServerLogs(2);
 
         if (clientRotated) LogManager.refreshClientLogStream();
         if (telemetryRotated) LogManager.refreshTelemetryLogStream();
+        if (mcpRotated) LogManager.refreshMcpLogStream();
         if (serverRotated) LogManager.refreshServerLogStream();
 
         return res.status(200).json({
             success: true,
             clientRotated,
             telemetryRotated,
+            mcpRotated,
             serverRotated,
             timestamp: new Date().toISOString(),
         });
