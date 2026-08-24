@@ -72,13 +72,27 @@ describe("access-control", () => {
         expect(result).to.be.true;
     });
 
-    it("discovers project IDs only through projectUsers memberships", async () => {
-        const get = sinon.stub().resolves({ docs: [{ id: "project-1" }, { id: "project-2" }] });
-        const where = sinon.stub().withArgs("accessibleUserIds", "array-contains", "u1").returns({ get });
-        collectionStub.withArgs("projectUsers").returns({ where });
+    it("discovers project IDs through projectUsers and containerUsers memberships", async () => {
+        const getProjectUsers = sinon.stub().resolves({ docs: [{ id: "project-1" }, { id: "project-2" }] });
+        const whereProjectUsers = sinon.stub().withArgs("accessibleUserIds", "array-contains", "u1").returns({
+            get: getProjectUsers,
+        });
 
-        expect(await findAccessibleProjectIds("u1", mockFirestore)).to.deep.equal(["project-1", "project-2"]);
-        expect(where.calledOnce).to.equal(true);
+        const getContainerUsers = sinon.stub().resolves({ docs: [{ id: "project-2" }, { id: "project-3" }] });
+        const whereContainerUsers = sinon.stub().withArgs("accessibleUserIds", "array-contains", "u1").returns({
+            get: getContainerUsers,
+        });
+
+        collectionStub.withArgs("projectUsers").returns({ where: whereProjectUsers });
+        collectionStub.withArgs("containerUsers").returns({ where: whereContainerUsers });
+
+        expect(await findAccessibleProjectIds("u1", mockFirestore)).to.deep.equal([
+            "project-1",
+            "project-2",
+            "project-3",
+        ]);
+        expect(whereProjectUsers.calledOnce).to.equal(true);
+        expect(whereContainerUsers.calledOnce).to.equal(true);
     });
 
     it("fails closed when accessible-project discovery cannot be established", async () => {

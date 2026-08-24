@@ -88,10 +88,22 @@ export async function findAccessibleProjectIds(
 ): Promise<string[]> {
     try {
         const db = firestoreInstance || getFirestore();
-        const snapshot = await db.collection("projectUsers")
-            .where("accessibleUserIds", "array-contains", userId)
-            .get();
-        return snapshot.docs.map(document => document.id);
+
+        const [projectUsersSnapshot, containerUsersSnapshot] = await Promise.all([
+            db.collection("projectUsers")
+                .where("accessibleUserIds", "array-contains", userId)
+                .get(),
+            db.collection("containerUsers")
+                .where("accessibleUserIds", "array-contains", userId)
+                .get(),
+        ]);
+
+        const ids = new Set([
+            ...projectUsersSnapshot.docs.map(doc => doc.id),
+            ...containerUsersSnapshot.docs.map(doc => doc.id),
+        ]);
+
+        return Array.from(ids);
     } catch (error) {
         logger.error({
             event: "accessible_project_discovery_error",

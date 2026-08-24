@@ -138,6 +138,37 @@ describe("Outliner MCP read service", () => {
         await expectRejected(service.resolveUrl("uid", "https://outliner.example/MCP%20test/Roadmap"), "not found");
     });
 
+    it("includes safe diagnostic info in URL resolution errors", async () => {
+        const { service } = fixture();
+        try {
+            await service.resolveUrl("uid", "https://outliner.example/MCP%20test/missing");
+            expect.fail("expected rejection");
+        } catch (error) {
+            expect(error).to.be.instanceOf(McpReadError);
+            const mcpError = error as McpReadError;
+            expect(mcpError.code).to.equal("not_found");
+            expect(mcpError.debug).to.deep.include({
+                stage: "page_lookup",
+                requestedProjectTitle: "MCP test",
+                requestedPageTitle: "missing",
+            });
+        }
+
+        try {
+            await service.resolveUrl("uid", "https://outliner.example/MissingProject");
+            expect.fail("expected rejection");
+        } catch (error) {
+            expect(error).to.be.instanceOf(McpReadError);
+            const mcpError = error as McpReadError;
+            expect(mcpError.code).to.equal("not_found");
+            expect(mcpError.debug).to.deep.include({
+                stage: "project_discovery",
+                requestedProjectTitle: "MissingProject",
+                accessibleProjectCount: 1,
+            });
+        }
+    });
+
     it("rejects malformed identifiers and out-of-contract result bounds", async () => {
         const { service, page } = fixture();
         await expectRejected(service.getItem("uid", "project/escape", page.id), "Invalid project ID");
