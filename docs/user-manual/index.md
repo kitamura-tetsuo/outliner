@@ -54,7 +54,7 @@ Click the sidebar toggle button (hamburger menu) in the top-left corner to acces
 - **Projects:** Switch between your projects or go home.
 - **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the add (+) button in the section header.
 - **Tables:** View and manage database tables.
-- **Scheduled SQL:** Manage automated, recurring queries. You can quickly create a new schedule rule by clicking the add button in the section header.
+- **Schedules:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the add button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
 - **GitHub:** Quick link to the source code.
@@ -158,6 +158,11 @@ Efficiently select and copy multiple items or text ranges.
 - `Shift+Alt+Right` expands the selection to the end of the line; `Shift+Alt+Left` shrinks it.
 - `Alt+Shift+Arrow keys` (or `Alt+Shift+mouse drag`) create a box selection across items.
 
+### Copy and Paste
+
+- **Cross-project copy:** Copying and pasting items works smoothly even between different projects, transferring all nested content.
+- **Paste Special:** Press `Ctrl/Cmd+Shift+V` for Paste Special: choose another live view, an independent copy with or without data, or plain values. Unavailable choices stay visible and explain why.
+
 ### Touch Selection (Phone or Tablet)
 
 - Tap any character to put the caret there and open the keyboard.
@@ -209,10 +214,11 @@ Outliner includes advanced capabilities like aliases and schedule rules.
 
 - **Aggregation across tables:** Every table of a project can be referenced by the name its schema declares. You can create a table whose query joins another table (e.g., comparing targets with a Sales table).
 - **Aliases:** An item can mirror another item and stay in sync with the original.
-- **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Scheduled SQL** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Scheduled SQL page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
+- **Schedule Rules:** Pages can be scheduled to be published at a later time. A schedule rule runs SQL on a recurrence to append data automatically (e.g., daily or weekly tasks). Rules belong to the project, not to a table: open **Schedules** in the sidebar, or the project's schedules page, to create and manage them. 'Run now', next to Edit and Delete in that list and on the Edit Schedules page, runs a rule's SQL immediately so you can try it out; it leaves the recurrence unchanged and works even while the rule is disabled.
 - **Comments and Votes:** Discuss and vote on items. Items show a badge with the number of comments. Click the vote count button, or right-click and choose 'Vote for item', to show agreement.
 - **Publishing and Sharing:** Pages and projects can be shared beyond the people editing them. Sharing: generate a read-only token to share a project without giving edit access. Tokens are generated in the Project Settings (accessed via 'Settings' in the sidebar). Scheduled publishing: schedule a page to be published automatically at a later time. Snapshots: the snapshot diff viewer shows how a page changed compared to earlier versions; access it via the **History / Diff** button in the document toolbar.
 - **Collaboration:** Real-time editing with other users. While others type, you can see their cursors and selections.
+- **Remote MCP Access:** Outliner's on-premises server exposes a read-only MCP endpoint for compatible AI clients. Paste a normal Outliner project or page URL into the client; `resolve_url` converts its human-readable titles to stable IDs. Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text. Every project read uses the signed-in user's existing project access, and large structural reads are bounded. The initial MCP tools never create, update, move, or delete Outliner data.
 
 ---
 
@@ -245,7 +251,7 @@ A new database block will be inserted at the bottom of the current page. Within 
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
 - **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens the databases sidebar.
+Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES and routines/schedules (e.g., Routine Templates, Routine Occurrences).
 
 ### Managing Data
 
