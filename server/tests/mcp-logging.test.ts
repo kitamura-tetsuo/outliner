@@ -67,7 +67,7 @@ describe("MCP Durable Logging", () => {
 
         // res is standard JSON RPC or just wait for it to be logged.
 
-        mcpLogger.flush();
+        if (mcpLogger && typeof mcpLogger.flush === "function") mcpLogger.flush();
         // wait for Pino stream to flush
         await new Promise(r => setTimeout(r, 2000));
 
