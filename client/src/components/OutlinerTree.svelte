@@ -554,6 +554,7 @@
     // Add empty sibling item while editing the bottom item
 
     function handleWindowPointerDown(e: PointerEvent) {
+        if (e.button === 2) return;
         if (!editorOverlayStore.getActiveItem()) return;
 
         const target = e.target as HTMLElement;
