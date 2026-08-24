@@ -178,6 +178,11 @@ export function createOAuthRouter(overrides: OAuthRouterOverrides = {}) {
         // Auth SDK from gstatic and run its own inline sign-in script.
         const nonce = crypto.randomBytes(16).toString("base64");
         res.setHeader("Content-Security-Policy", getAuthorizePageContentSecurityPolicy(nonce));
+        // helmet() also defaults COOP to `same-origin`, which severs the
+        // Window reference used by Firebase Auth to complete its cross-origin
+        // Google sign-in popup. Relax COOP only for this authorization page;
+        // all other routes keep helmet's stricter default.
+        res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
         res.status(200).set("Content-Type", "text/html; charset=utf-8").send(
             renderAuthorizePage({ requestId: pending.id, clientName: client.clientName, scope: pending.scope, nonce }),
         );

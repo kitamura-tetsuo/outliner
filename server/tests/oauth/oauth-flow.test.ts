@@ -192,6 +192,20 @@ describe("oauth: end-to-end authorization-code + PKCE flow", () => {
         expect(res.text).to.include(`nonce="${nonceMatch![1]}"`);
     });
 
+    it("keeps the Google sign-in popup connected to the authorize page", async () => {
+        const { challenge } = makePkcePair();
+        const res = await request(app).get("/oauth/authorize").query({
+            response_type: "code",
+            client_id: CLIENT_ID,
+            redirect_uri: REDIRECT_URI,
+            code_challenge: challenge,
+            code_challenge_method: "S256",
+        });
+
+        expect(res.status).to.equal(200);
+        expect(res.headers["cross-origin-opener-policy"]).to.equal("same-origin-allow-popups");
+    });
+
     async function startAuthorization(state = "csrf-state-abc") {
         const { verifier, challenge } = makePkcePair();
         const authorizeRes = await request(app).get("/oauth/authorize").query({
