@@ -1,8 +1,18 @@
-import { cleanup, render, waitFor } from "@testing-library/svelte";
-import { afterEach, beforeAll, describe, expect, test } from "vitest";
+import { cleanup, render } from "@testing-library/svelte";
+import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
 import { Project } from "../schema/app-schema";
 import { isProvisionalProject, store } from "../stores/store.svelte";
 import Toolbar from "./Toolbar.svelte";
+
+const mockPage = { params: { project: "" } };
+vi.mock("$app/stores", () => ({
+    page: {
+        subscribe: (run: (value: typeof mockPage) => void) => {
+            run(mockPage);
+            return () => {};
+        },
+    },
+}));
 
 // Captured at import time, before any test clears the store: this is the
 // placeholder `store.svelte.ts` seeds from the URL at startup.
@@ -26,6 +36,7 @@ describe("Toolbar project name", () => {
         // `store` is a module-scoped singleton: a leftover project would leak
         // into the next test's "not loaded yet" assertion.
         store.project = undefined;
+        mockPage.params.project = "";
     });
 
     test("renders no label while no project is loaded", () => {
@@ -45,7 +56,8 @@ describe("Toolbar project name", () => {
     });
 
     test("names the loaded project and links to its page list", async () => {
-        const project = Project.createInstance("Alpha");
+        mockPage.params.project = "Alpha";
+        const project = Project.createInstance("stale Yjs title");
         const { findByTestId } = render(Toolbar, { props: { project } });
 
         const label = await findByTestId("toolbar-project-name");
@@ -55,56 +67,28 @@ describe("Toolbar project name", () => {
     });
 
     test("falls back to the global store when no project prop is given", async () => {
-        store.project = Project.createInstance("From Store");
+        mockPage.params.project = "From Directory";
+        store.project = Project.createInstance("stale Yjs title");
 
         const { findByTestId } = render(Toolbar, { props: {} });
 
         const label = await findByTestId("toolbar-project-name");
-        expect(label.textContent?.trim()).toBe("From Store");
+        expect(label.textContent?.trim()).toBe("From Directory");
     });
 
     test("percent-encodes a title that is not URL-safe", async () => {
-        const project = Project.createInstance("My Project/2");
+        mockPage.params.project = "My Project/2";
+        const project = Project.createInstance("stale Yjs title");
         const { findByTestId } = render(Toolbar, { props: { project } });
 
         const label = await findByTestId("toolbar-project-name");
         expect(label.getAttribute("href")).toBe("/My%20Project%2F2");
     });
 
-    test("picks the title up when it arrives with the document's first sync", async () => {
-        // The server writes the title as part of seeding, so a document can be
-        // open and still untitled for a moment. Falling back to the route's
-        // project segment keeps the header addressed correctly meanwhile.
-        const project = Project.createInstance("");
-        const { findByTestId, queryByTestId } = render(Toolbar, { props: { project } });
+    test("does not expose a stale Yjs title when the route has no canonical title", () => {
+        const project = Project.createInstance("stale Yjs title");
+        const { queryByTestId } = render(Toolbar, { props: { project } });
 
         expect(queryByTestId("toolbar-project-name")).toBeNull();
-
-        project.title = "Arrived Late";
-        const label = await findByTestId("toolbar-project-name");
-        expect(label.textContent?.trim()).toBe("Arrived Late");
-    });
-
-    test("follows a rename of the open project rather than going stale", async () => {
-        const project = Project.createInstance("Before");
-        const { findByTestId } = render(Toolbar, { props: { project } });
-
-        const label = await findByTestId("toolbar-project-name");
-        expect(label.textContent?.trim()).toBe("Before");
-
-        project.title = "After";
-        await waitFor(() => expect(label.textContent?.trim()).toBe("After"));
-    });
-
-    test("switching projects replaces the name instead of leaving a stale one", async () => {
-        store.project = Project.createInstance("First");
-        const { findByTestId } = render(Toolbar, { props: {} });
-        expect((await findByTestId("toolbar-project-name")).textContent?.trim()).toBe("First");
-
-        store.project = Project.createInstance("Second");
-
-        await waitFor(async () => {
-            expect((await findByTestId("toolbar-project-name")).textContent?.trim()).toBe("Second");
-        });
     });
 });

@@ -29,7 +29,7 @@ export async function openRouteProject(
     if (isPublicProject(projectName)) {
         // Sets `yjsStore.yjsClient` and `store.project` itself, and seeds the
         // demo document when the template is missing or stale.
-        await initializeDemoProject(projectName, { isDestroyed });
+        await initializeDemoProject(projectName, { isDestroyed, waitForValidation: true });
         return { release: () => releaseDemoProject(projectName) };
     }
 

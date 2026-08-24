@@ -28,7 +28,7 @@ export function createProjectDirectoryRouter(options: {
     const router = express.Router();
     const verifyToken = options.verifyToken ?? verifyIdTokenCached;
 
-    router.use(async (req, res, next) => {
+    router.use("/projects", async (req, res, next) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
         if (!token) {
             res.status(401).json({ error: "Unauthorized" });
