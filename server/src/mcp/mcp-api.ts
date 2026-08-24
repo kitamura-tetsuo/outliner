@@ -16,10 +16,10 @@ export function createMcpRouter(
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
-    const resourceMetadata = () => `${issuer()}/.well-known/oauth-protected-resource`;
+    const resourceMetadata = () => `${issuer()}/.well-known/oauth-protected-resource/mcp`;
     const challenge = () => `Bearer resource_metadata="${resourceMetadata()}"`;
 
-    router.get("/.well-known/oauth-protected-resource", (_req, res) => {
+    router.get(["/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp"], (_req, res) => {
         res.json({
             resource: `${issuer()}/mcp`,
             authorization_servers: [issuer()],
@@ -28,21 +28,25 @@ export function createMcpRouter(
         });
     });
 
-    router.post("/mcp", async (req, res) => {
+    router.all("/mcp", (req, res, next) => {
         const token = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
         if (!token) return void res.set("WWW-Authenticate", challenge()).status(401).json({ error: "unauthenticated" });
-        let uid: string;
         try {
             const verified = verifyToken(token);
             if (!verified.scope.split(/\s+/).includes("outliner.read")) {
                 return void res.status(403).json({ error: "insufficient_scope" });
             }
-            uid = verified.uid;
+            res.locals.mcpUid = verified.uid;
         } catch {
             return void res.set("WWW-Authenticate", `${challenge()}, error="invalid_token"`).status(401).json({
                 error: "invalid_token",
             });
         }
+        next();
+    });
+
+    router.post("/mcp", async (req, res) => {
+        const uid = res.locals.mcpUid as string;
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
         const tool = <T extends z.ZodRawShape>(

@@ -49,17 +49,33 @@ describe("remote MCP Streamable HTTP endpoint", () => {
         expect(missing.status).to.equal(401);
         expect(missing.body).to.deep.equal({ error: "unauthenticated" });
         expect(missing.headers["www-authenticate"]).to.equal(
-            'Bearer resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource"',
+            'Bearer resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource/mcp"',
         );
 
         const invalid = await request(app).post("/mcp").set("Authorization", "Bearer wrong").send(rpc("initialize"));
         expect(invalid.status).to.equal(401);
         expect(invalid.body).to.deep.equal({ error: "invalid_token" });
+        expect(invalid.headers["www-authenticate"]).to.include(
+            'resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource/mcp"',
+        );
         expect(invalid.headers["www-authenticate"]).to.include('error="invalid_token"');
     });
 
+    it("advertises OAuth discovery to unauthenticated GET probes", async () => {
+        const response = await request(app).get("/mcp");
+        expect(response.status).to.equal(401);
+        expect(response.body).to.deep.equal({ error: "unauthenticated" });
+        expect(response.headers["www-authenticate"]).to.equal(
+            'Bearer resource_metadata="http://localhost:7093/.well-known/oauth-protected-resource/mcp"',
+        );
+
+        const authenticated = await request(app).get("/mcp").set("Authorization", "Bearer valid-access-token");
+        expect(authenticated.status).to.equal(405);
+        expect(authenticated.headers.allow).to.equal("POST");
+    });
+
     it("publishes OAuth protected-resource metadata for MCP client discovery", async () => {
-        const metadata = await request(app).get("/.well-known/oauth-protected-resource");
+        const metadata = await request(app).get("/.well-known/oauth-protected-resource/mcp");
         expect(metadata.status).to.equal(200);
         expect(metadata.body).to.deep.equal({
             resource: "http://localhost:7093/mcp",
@@ -67,6 +83,10 @@ describe("remote MCP Streamable HTTP endpoint", () => {
             bearer_methods_supported: ["header"],
             scopes_supported: ["outliner.read"],
         });
+
+        const compatibilityAlias = await request(app).get("/.well-known/oauth-protected-resource");
+        expect(compatibilityAlias.status).to.equal(200);
+        expect(compatibilityAlias.body).to.deep.equal(metadata.body);
     });
 
     it("rejects a valid token that was not granted the read scope", async () => {
