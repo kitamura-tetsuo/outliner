@@ -18,6 +18,7 @@ import { logger as defaultLogger } from "./logger.js";
 import { createMcpRouter } from "./mcp/mcp-api.js";
 import { OutlinerReadService } from "./mcp/outliner-read-service.js";
 import { getMetrics, recordMessage } from "./metrics.js";
+import { getOAuthFirebaseWebConfig } from "./oauth/authorize-page.js";
 import { createOAuthRouter } from "./oauth/oauth-api.js";
 import { createPersistence } from "./persistence.js";
 import { parseRoom } from "./room-validator.js";
@@ -53,6 +54,10 @@ export async function startServer(
     logger = defaultLogger,
     overrides: ServerOverrides = {},
 ) {
+    // Fail at startup rather than during a user's OAuth redirect when the
+    // production Firebase Web App configuration is incomplete.
+    if (process.env.NODE_ENV === "production") getOAuthFirebaseWebConfig();
+
     // SECURITY CRITICAL: Prevent accidental authentication bypass in production
     if (process.env.ALLOW_TEST_ACCESS === "true") {
         if (process.env.NODE_ENV === "production") {

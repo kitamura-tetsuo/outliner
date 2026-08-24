@@ -28,7 +28,7 @@ function validateFirebaseConfig() {
 }
 
 // Firebase configuration
-function getFirebaseConfig() {
+export function getFirebaseConfig() {
     validateFirebaseConfig();
 
     const metaEnv = ((typeof import.meta !== "undefined" && import.meta.env) || {}) as Record<
@@ -45,12 +45,12 @@ function getFirebaseConfig() {
     };
 
     return {
-        apiKey: metaEnv.VITE_FIREBASE_API_KEY || "demo-api-key",
-        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || "outliner-d57b0.firebaseapp.com",
+        apiKey: metaEnv.VITE_FIREBASE_API_KEY!,
+        authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN!,
         projectId: getProjectId(),
         storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || "outliner-d57b0.appspot.com",
         messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-        appId: metaEnv.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef",
+        appId: metaEnv.VITE_FIREBASE_APP_ID!,
         measurementId: metaEnv.VITE_FIREBASE_MEASUREMENT_ID || "G-XXXXXXXXXX",
     };
 }
