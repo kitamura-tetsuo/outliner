@@ -34,7 +34,7 @@ export function getOAuthFirebaseWebConfig() {
     // The Auth emulator accepts arbitrary public web-app identifiers. Supplying
     // explicit emulator-only values keeps local/test setup lightweight without
     // hiding an incomplete production deployment behind demo placeholders.
-    if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    if (process.env.NODE_ENV !== "production" && process.env.FIREBASE_AUTH_EMULATOR_HOST) {
         return {
             apiKey: values.apiKey || "firebase-auth-emulator-api-key",
             authDomain: values.authDomain || `${projectId || "firebase-auth-emulator"}.firebaseapp.com`,

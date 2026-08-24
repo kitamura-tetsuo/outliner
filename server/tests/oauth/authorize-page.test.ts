@@ -9,6 +9,7 @@ const CONFIG_ENV_KEYS = [
     "FIREBASE_PROJECT_ID",
     "GCLOUD_PROJECT",
     "FIREBASE_AUTH_EMULATOR_HOST",
+    "NODE_ENV",
 ] as const;
 
 describe("OAuth authorize-page Firebase Web configuration", () => {
@@ -50,6 +51,15 @@ describe("OAuth authorize-page Firebase Web configuration", () => {
             "Missing required Firebase Web configuration for OAuth",
         );
         expect(readConfig).to.throw("VITE_FIREBASE_API_KEY");
+    });
+
+    it("does not let an emulator variable bypass required production configuration", () => {
+        process.env.NODE_ENV = "production";
+        process.env.FIREBASE_AUTH_EMULATOR_HOST = "127.0.0.1:59099";
+
+        expect(() => getOAuthFirebaseWebConfig()).to.throw(
+            "Missing required Firebase Web configuration for OAuth",
+        );
     });
 
     it("uses practical defaults and connects Firebase Auth when the emulator is configured", () => {
