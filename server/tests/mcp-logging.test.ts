@@ -6,8 +6,8 @@ import sinon from "sinon";
 import request from "supertest";
 import { fileURLToPath } from "url";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
-import { mcpLogger, mcpLogPath as actualMcpLogPath } from "../src/utils/log-manager.js";
 import { McpReadError, OutlinerReadService } from "../src/mcp/outliner-read-service.js";
+import { mcpLogger, mcpLogPath as actualMcpLogPath } from "../src/utils/log-manager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
