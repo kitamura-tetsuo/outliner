@@ -3,8 +3,8 @@ title: Local MCP project-resolution diagnostics
 title-ja: ローカル MCP プロジェクト解決診断
 description: The real read-only MCP URL-resolution path can be invoked locally with stage-specific, credential-safe diagnostics, including an explicit fail-closed production-Firebase read mode.
 tests:
+- server/tests/mcp-http-e2e.test.ts
 - server/tests/mcp-local-diagnostics.test.ts
 - server/tests/mcp-read-service.test.ts
-- server/tests/mcp-http-e2e.test.ts
 documentation:
 - docs/local-mcp-resolution-debugging.md

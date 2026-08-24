@@ -9,6 +9,9 @@ if (!rawUrl) throw new Error("Usage: npm run mcp:resolve:local -- <outliner-url>
 const diagnostics = localMcpDiagnosticsConfig();
 if (!diagnostics.enabled) throw new Error("Set MCP_LOCAL_DIAGNOSTICS=true to use the local MCP reproducer");
 
+// Firebase initialization normally seeds a development user and clears the
+// Firestore emulator. The reproducer must preserve the ACL fixture it reads.
+process.env.MCP_DIAGNOSTIC_INVOKER = "true";
 await initializeFirebase();
 const user = await getAuth().getUserByEmail(email);
 const { token } = signAccessToken({ uid: user.uid, scope: "outliner.read", clientId: "local-mcp-diagnostics" });

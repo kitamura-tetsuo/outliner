@@ -9,6 +9,17 @@ describe("local MCP diagnostics configuration", () => {
         });
     });
 
+    it("requires both emulator hosts when local diagnostics are enabled", () => {
+        expect(() => localMcpDiagnosticsConfig({ NODE_ENV: "development", MCP_LOCAL_DIAGNOSTICS: "true" }))
+            .to.throw("require FIRESTORE_EMULATOR_HOST");
+        expect(localMcpDiagnosticsConfig({
+            NODE_ENV: "development",
+            MCP_LOCAL_DIAGNOSTICS: "true",
+            FIRESTORE_EMULATOR_HOST: "localhost:58080",
+            FIREBASE_AUTH_EMULATOR_HOST: "localhost:59099",
+        })).to.deep.equal({ enabled: true, firebaseMode: "emulator" });
+    });
+
     it("requires a deliberate double opt-in for production Firebase", () => {
         expect(() => localMcpDiagnosticsConfig({ NODE_ENV: "development", MCP_FIREBASE_MODE: "production" }))
             .to.throw("explicit confirmation");

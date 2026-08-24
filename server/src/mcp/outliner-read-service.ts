@@ -117,7 +117,7 @@ export class OutlinerReadService {
         } catch {
             throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding", {
                 stage: "url_decoding",
-                pathname: url.pathname,
+                pathnameLength: url.pathname.length,
             });
         }
         const entityKind = ["grids", "calendars", "tables"].includes(parts[0] ?? "")

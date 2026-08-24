@@ -21,6 +21,14 @@ export function localMcpDiagnosticsConfig(env: NodeJS.ProcessEnv = process.env):
     if (enabled && env.NODE_ENV === "production") {
         throw new Error("MCP local diagnostics cannot run with NODE_ENV=production");
     }
+    if (
+        enabled && firebaseMode === "emulator"
+        && (!env.FIRESTORE_EMULATOR_HOST || !env.FIREBASE_AUTH_EMULATOR_HOST)
+    ) {
+        throw new Error(
+            "Emulator MCP diagnostics require FIRESTORE_EMULATOR_HOST and FIREBASE_AUTH_EMULATOR_HOST",
+        );
+    }
     if (firebaseMode === "production") {
         if (!enabled || env.MCP_PRODUCTION_FIREBASE_CONFIRM !== PRODUCTION_FIREBASE_CONFIRMATION) {
             throw new Error(

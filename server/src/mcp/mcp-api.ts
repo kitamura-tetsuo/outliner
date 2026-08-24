@@ -11,6 +11,18 @@ import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
+const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
+    debug
+        ? {
+            stage: debug.stage,
+            accessibleProjectCount: debug.accessibleProjectCount,
+            authorizedCandidateCount: debug.authorizedCandidateCount,
+            foundProjectWithoutEntity: debug.foundProjectWithoutEntity,
+            entityKind: debug.entityKind,
+            inputLength: debug.inputLength,
+            pathnameLength: debug.pathnameLength,
+        }
+        : {};
 
 export function createMcpRouter(
     service: OutlinerReadService,
@@ -82,7 +94,7 @@ export function createMcpRouter(
                             requestId,
                             uidFingerprint: crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12),
                             code: error.code,
-                            ...error.debug,
+                            ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         const errorCode = error.code === "invalid_argument"
                             ? ErrorCode.InvalidParams

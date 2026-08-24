@@ -190,6 +190,15 @@ describe("Outliner MCP read service", () => {
             expect(diagnostics).not.to.include("secret-token");
             expect((error as McpReadError).debug).to.include({ stage: "url_parsing", inputLength: 44 });
         }
+
+        try {
+            await service.resolveUrl("uid", "https://outliner.example/Authorization:%20Bearer%20secret-token/%ZZ");
+            expect.fail("expected rejection");
+        } catch (error) {
+            const diagnostics = JSON.stringify((error as McpReadError).debug);
+            expect(diagnostics).not.to.include("secret-token");
+            expect((error as McpReadError).debug?.stage).to.equal("url_decoding");
+        }
     });
 
     it("rejects malformed identifiers and out-of-contract result bounds", async () => {
