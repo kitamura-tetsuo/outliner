@@ -20,7 +20,10 @@ test.describe.serial("Prj: Project Selector", () => {
     test("project selector shows options", async ({ page }) => {
         // Use setAccessibleProjects to simulate having projects without full seeding
         await page.goto("/");
-        await TestHelpers.setAccessibleProjects(page, ["project-A", "project-B"]);
+        const suffix = Date.now();
+        const projectA = `project-A-${suffix}`;
+        const projectB = `project-B-${suffix}`;
+        await TestHelpers.setAccessibleProjects(page, [projectA, projectB]);
 
         // Wait for store update
         await page.waitForFunction(() => {
@@ -34,8 +37,10 @@ test.describe.serial("Prj: Project Selector", () => {
         await expect(selector).toHaveCount(1);
 
         const options = selector.locator("option");
-        // Expect at least 2 options (wait with expect for DOM to reflect store)
-        await expect(options).toHaveCount(2, { timeout: 15000 });
+        // Resource-side ACL entries are additive; other tests using the same
+        // emulator account may already have canonical descriptors.
+        await expect(options.filter({ hasText: projectA })).toHaveCount(1, { timeout: 15000 });
+        await expect(options.filter({ hasText: projectB })).toHaveCount(1, { timeout: 15000 });
     });
 
     /**

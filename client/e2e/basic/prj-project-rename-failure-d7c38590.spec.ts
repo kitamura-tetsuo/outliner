@@ -81,22 +81,17 @@ test.describe("Project Rename Failure Handling", () => {
 
         await titleInput.fill("Failing New Title");
 
-        // Monkey patch to simulate failure
+        // Block the canonical project-directory rename request.
         await page.evaluate(() => {
-            const store = (globalThis as any).__FIRESTORE_STORE__;
-            if (store) {
-                store.setUserProject = function(val: any) {
-                    console.log("Intercepted setUserProject to simulate failure:", val);
-                };
-            }
-            // Block actual fetch from saving in test env immediately
             const originalFetch = globalThis.fetch;
             globalThis.fetch = async (...args) => {
-                if (args[0] && typeof args[0] === "string" && args[0].includes("saveProject")) {
-                    // simulate wait so we hit the timeout
-                    await new Promise(r => setTimeout(r, 6000));
-                    return new Response(JSON.stringify({ success: true }), {
-                        status: 200,
+                if (
+                    args[0] && typeof args[0] === "string" && args[0].includes("/api/projects/")
+                    && args[0].endsWith("/rename")
+                ) {
+                    await new Promise((resolve) => setTimeout(resolve, 250));
+                    return new Response(JSON.stringify({ error: "simulated rename failure" }), {
+                        status: 500,
                         headers: { "Content-Type": "application/json" },
                     });
                 }
@@ -110,11 +105,7 @@ test.describe("Project Rename Failure Handling", () => {
         // The button should change to "Saving..."
         await expect(page.getByRole("button", { name: "Saving..." })).toBeVisible();
 
-        // After 5 seconds, it should show an error, NOT redirect.
-        test.setTimeout(45000);
-
-        // It should eventually change back to "Save Changes" and show the error.
-        await expect(page.locator("text=Could not confirm the rename — please retry")).toBeVisible({ timeout: 15000 });
+        await expect(page.locator("text=An error occurred while saving.")).toBeVisible({ timeout: 15000 });
         await expect(page.getByRole("button", { name: "Save Changes" })).toBeVisible();
 
         // Ensure we didn't redirect.

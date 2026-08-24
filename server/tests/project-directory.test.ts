@@ -2,7 +2,7 @@ process.env.FIRESTORE_EMULATOR_HOST ||= "localhost:58080";
 process.env.FIREBASE_PROJECT_ID ||= "outliner-d57b0";
 
 import { expect } from "chai";
-import { deleteApp, getApps, initializeApp } from "firebase-admin/app";
+import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import {
     ensureProjectDescriptorForWrite,
@@ -15,9 +15,10 @@ import {
 } from "../src/project-directory.js";
 
 describe("canonical project directory", () => {
-    const appName = "project-directory-tests";
-    const app = getApps().find(candidate => candidate.name === appName)
-        ?? initializeApp({ projectId: "outliner-d57b0" }, appName);
+    // Mocha imports every test module before running suites. A named app created
+    // here can therefore be deleted by an earlier suite before these hooks run.
+    // Share the process-wide test app, as the other Firestore integration tests do.
+    const app = getApps()[0] ?? initializeApp({ projectId: "outliner-d57b0" });
     const db = getFirestore(app);
     const projectIds = [
         "directory-create",
@@ -42,7 +43,6 @@ describe("canonical project directory", () => {
             ...projectIds.map(projectId => db.collection("projectUsers").doc(projectId).delete()),
             db.collection("userProjects").doc("owner").delete(),
         ]);
-        await deleteApp(app);
     });
 
     it("normalizes an explicit title and rejects empty or UUID fallback titles", () => {
