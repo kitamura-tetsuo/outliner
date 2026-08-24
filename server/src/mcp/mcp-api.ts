@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import * as z from "zod/v4";
 import { getOAuthIssuer } from "../oauth/config.js";
@@ -57,7 +58,19 @@ export function createMcpRouter(
         ) => mcp.registerTool(
             name,
             { description, inputSchema: shape, annotations: readOnly },
-            (async (args: unknown) => response(await handler(args as z.infer<z.ZodObject<T>>))) as never,
+            (async (args: unknown) => {
+                try {
+                    return response(await handler(args as z.infer<z.ZodObject<T>>));
+                } catch (error) {
+                    if (error instanceof McpReadError) {
+                        const errorCode = error.code === "invalid_argument"
+                            ? ErrorCode.InvalidParams
+                            : ErrorCode.InternalError;
+                        throw new McpError(errorCode, error.message, error.debug);
+                    }
+                    throw error;
+                }
+            }) as never,
         );
         tool(
             "resolve_url",

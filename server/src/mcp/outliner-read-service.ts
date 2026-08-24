@@ -7,6 +7,7 @@ export class McpReadError extends Error {
     constructor(
         public readonly code: "invalid_argument" | "not_found" | "forbidden" | "kind_mismatch",
         message: string,
+        public readonly debug?: Record<string, unknown>,
     ) {
         super(message);
     }
@@ -95,32 +96,47 @@ export class OutlinerReadService {
         try {
             url = new URL(rawUrl);
         } catch {
-            throw new McpReadError("invalid_argument", "Malformed Outliner URL");
+            throw new McpReadError("invalid_argument", "Malformed Outliner URL", { stage: "url_parsing", rawUrl });
         }
         if (
             url.protocol !== "https:"
             && !(url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))
         ) {
-            throw new McpReadError("invalid_argument", "Unsupported Outliner URL");
+            throw new McpReadError("invalid_argument", "Unsupported Outliner URL", {
+                stage: "url_validation",
+                protocol: url.protocol,
+                hostname: url.hostname,
+            });
         }
         let parts: string[];
         try {
             parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
         } catch {
-            throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding");
+            throw new McpReadError("invalid_argument", "Malformed Outliner URL encoding", {
+                stage: "url_decoding",
+                pathname: url.pathname,
+            });
         }
         const entityKind = ["grids", "calendars", "tables"].includes(parts[0] ?? "")
             ? parts.shift() as "grids" | "calendars" | "tables"
             : undefined;
         if (parts.length < 1 || parts.length > 2 || (entityKind && parts.length !== 2)) {
-            throw new McpReadError("invalid_argument", "Unsupported Outliner URL path");
+            throw new McpReadError("invalid_argument", "Unsupported Outliner URL path", {
+                stage: "path_validation",
+                partsLength: parts.length,
+                hasEntityKind: !!entityKind,
+            });
         }
         const projectTitle = parts[0]!;
         const candidates = await this.accessibleProjectIds(uid);
+
+        let foundProjectWithoutEntity = false;
+
         for (const projectId of candidates) {
             if (!ID.test(projectId) || !await this.canAccess(uid, projectId)) continue;
             const resolved = await this.withProject(uid, projectId, project => {
                 if (project.title !== projectTitle) return undefined;
+                foundProjectWithoutEntity = true;
                 if (entityKind) {
                     const entityId = parts[1]!;
                     assertId(entityId, "entity ID");
@@ -129,17 +145,37 @@ export class OutlinerReadService {
                         : entityKind === "calendars"
                         ? project.calendars.has(entityId)
                         : project.ydoc.getMap("yjsTables").has(entityId);
-                    if (!exists) throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`);
+                    if (!exists) {
+                        throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
+                            stage: "entity_lookup",
+                            requestedProjectTitle: projectTitle,
+                            entityKind,
+                            entityId,
+                        });
+                    }
                     return { projectId, entityId, kind: entityKind.slice(0, -1) as "grid" | "calendar" | "table" };
                 }
                 if (!parts[1]) return { projectId, kind: "project" as const };
                 const page = Array.from(project.items).find(item => item.text === parts[1]);
-                if (!page) throw new McpReadError("not_found", "Page not found");
+                if (!page) {
+                    throw new McpReadError("not_found", "Page not found", {
+                        stage: "page_lookup",
+                        requestedProjectTitle: projectTitle,
+                        requestedPageTitle: parts[1],
+                    });
+                }
                 return { projectId, pageId: page.id, kind: "page" as const };
             });
             if (resolved) return resolved;
         }
-        throw new McpReadError("not_found", "Accessible project not found");
+
+        throw new McpReadError("not_found", "Accessible project not found", {
+            stage: "project_discovery",
+            requestedProjectTitle: projectTitle,
+            requestedPageTitle: parts[1],
+            accessibleProjectCount: candidates.length,
+            foundProjectWithoutEntity,
+        });
     }
 
     getItem(uid: string, projectId: string, itemId: string): Promise<OutlineNodeRead> {
