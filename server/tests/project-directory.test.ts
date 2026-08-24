@@ -26,6 +26,8 @@ describe("canonical project directory", () => {
         "directory-conflict",
         "directory-invalid",
         "directory-second",
+        "duplicate-owner",
+        "duplicate-candidate",
     ];
 
     beforeEach(async () => {
@@ -58,6 +60,20 @@ describe("canonical project directory", () => {
         expect(snapshot.data()).to.include({ projectId: "directory-create", title: "Project Alpha" });
         expect(snapshot.data()?.accessibleUserIds).to.deep.equal(["owner"]);
         expect((await db.collection("userProjects").doc("owner").get()).exists).to.equal(false);
+    });
+
+    it("rejects duplicate titles when creating a descriptor", async () => {
+        await db.collection("projectUsers").doc("duplicate-owner").set({
+            projectId: "duplicate-owner",
+            title: "Already used",
+            accessibleUserIds: ["owner"],
+        });
+
+        await expectDirectoryError(
+            ensureProjectDescriptorForWrite("owner", "duplicate-candidate", "Already used", db),
+            "duplicate_title",
+        );
+        expect((await db.collection("projectUsers").doc("duplicate-candidate").get()).exists).to.equal(false);
     });
 
     it("preserves a matching descriptor for an authorized writer", async () => {

@@ -50,6 +50,9 @@ class GeneralStore {
         this.userProject = nextProject;
 
         this.ucVersion = prevVersion + 1;
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("user-project-preferences-updated"));
+        }
         // Additional notification (test environment only)
         try {
             const __isTestEnv = import.meta.env.MODE === "test"

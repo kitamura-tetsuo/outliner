@@ -136,13 +136,10 @@ describe("deleteProject Logic Tests", () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
 
-    // Verify User 1 was updated (removed from project)
-    expect(transactionUpdateSpy).toHaveBeenCalledWith(
+    // userProjects is not a membership authority and is not updated.
+    expect(transactionUpdateSpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: "userProjects/user1" }),
-      expect.objectContaining({
-        accessibleProjectIds: [], // Should be empty
-        defaultProjectId: null,
-      }),
+      expect.anything(),
     );
 
     // Verify Project P was updated (User 1 removed from accessibleUserIds)
@@ -190,13 +187,9 @@ describe("deleteProject Logic Tests", () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
 
-    // Verify User 2 was updated
-    expect(transactionUpdateSpy).toHaveBeenCalledWith(
+    expect(transactionUpdateSpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ path: "userProjects/user2" }),
-      expect.objectContaining({
-        accessibleProjectIds: [],
-        defaultProjectId: null,
-      }),
+      expect.anything(),
     );
 
     // Verify Project P was DELETED

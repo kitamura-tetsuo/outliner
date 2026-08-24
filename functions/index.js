@@ -356,10 +356,28 @@ exports.saveProject = onRequest(
     }
 
     try {
-      const { idToken, projectId, title } = req.body;
+      const { idToken, projectId, title: rawTitle } = req.body;
 
-      if (!projectId) {
-        return res.status(400).json({ error: "Project ID is required" });
+      if (
+        typeof projectId !== "string" ||
+        !/^[A-Za-z0-9_-]{1,200}$/.test(projectId)
+      ) {
+        return res.status(400).json({ error: "Invalid project ID" });
+      }
+
+      let title;
+      if (rawTitle !== undefined) {
+        if (typeof rawTitle !== "string") {
+          return res.status(400).json({
+            error: "Project title must be a string",
+          });
+        }
+        title = rawTitle.trim().normalize("NFC");
+        const uuidTitle =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!title || title.length > 255 || uuidTitle.test(title)) {
+          return res.status(400).json({ error: "Invalid project title" });
+        }
       }
 
       // Verify Firebase token
@@ -373,8 +391,16 @@ exports.saveProject = onRequest(
           const projectDocRef = db.collection("projectUsers").doc(
             projectId,
           );
-
-          const projectDoc = await transaction.get(projectDocRef);
+          const duplicateQuery = title
+            ? db.collection("projectUsers").where("title", "==", title).limit(2)
+            : null;
+          const [projectDoc, duplicates] = await Promise.all([
+            transaction.get(projectDocRef),
+            duplicateQuery ? transaction.get(duplicateQuery) : null,
+          ]);
+          if (duplicates?.docs.some(document => document.id !== projectId)) {
+            throw new Error("Project title is already in use");
+          }
 
           // Update accessible user IDs for the project
           if (projectDoc.exists) {
@@ -387,12 +413,15 @@ exports.saveProject = onRequest(
               throw new Error("Access denied: Cannot join existing project");
             }
 
-            transaction.update(projectDocRef, {
-              accessibleUserIds,
-              title: title || projectData.title || projectId,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
+            if (title && title !== projectData.title) {
+              throw new Error(
+                "Requested title does not match the canonical title",
+              );
+            }
           } else {
+            if (!title) {
+              throw new Error("Project title is required for a new project");
+            }
             transaction.set(projectDocRef, {
               projectId,
               accessibleUserIds: [userId],

@@ -141,10 +141,18 @@ export async function ensureProjectDescriptorForWrite(
 ): Promise<ProjectDescriptor> {
     validateProjectId(projectId);
     const title = normalizeProjectTitle(requestedTitle);
-    const ref = firestore.collection("projectUsers").doc(projectId);
+    const collection = firestore.collection("projectUsers");
+    const ref = collection.doc(projectId);
 
     return await firestore.runTransaction(async transaction => {
-        const snapshot = await transaction.get(ref);
+        const duplicateQuery = collection.where("title", "==", title).limit(2);
+        const [duplicates, snapshot] = await Promise.all([
+            transaction.get(duplicateQuery),
+            transaction.get(ref),
+        ]);
+        if (duplicates.docs.some(document => document.id !== projectId)) {
+            throw new ProjectDirectoryError("duplicate_title", "Project title is already in use");
+        }
         if (!snapshot.exists) {
             transaction.set(ref, {
                 projectId,
