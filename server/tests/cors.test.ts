@@ -9,11 +9,27 @@ import { startServer } from "../src/server.js";
 describe("CORS Middleware", () => {
     let app: any;
     let shutdown: any;
+    const originalFirebaseWebEnv = new Map<string, string | undefined>();
     beforeEach(() => {
         process.env.ALLOW_TEST_ACCESS = "false";
+        const firebaseWebConfig = {
+            VITE_FIREBASE_API_KEY: "cors-test-api-key",
+            VITE_FIREBASE_AUTH_DOMAIN: "cors-test.firebaseapp.com",
+            VITE_FIREBASE_PROJECT_ID: "cors-test",
+            VITE_FIREBASE_APP_ID: "1:0:web:cors-test",
+        };
+        for (const [key, value] of Object.entries(firebaseWebConfig)) {
+            originalFirebaseWebEnv.set(key, process.env[key]);
+            process.env[key] = value;
+        }
     });
     afterEach(() => {
         delete process.env.ALLOW_TEST_ACCESS;
+        for (const [key, value] of originalFirebaseWebEnv) {
+            if (value === undefined) delete process.env[key];
+            else process.env[key] = value;
+        }
+        originalFirebaseWebEnv.clear();
     });
     let dbDir: string;
 
