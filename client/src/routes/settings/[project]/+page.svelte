@@ -6,13 +6,7 @@
     import { resolvePath } from "../../../utils/pathUtils";
     import { page } from "$app/stores";
 
-    import {
-        setContainerTitleInMetaDoc,
-    } from "../../../lib/metaDoc.svelte";
-    import {
-        firestoreStore,
-        saveProjectIdToServer,
-    } from "../../../stores/firestoreStore.svelte";
+    import { renameProjectDescriptor } from "../../../services/projectDirectoryService";
     import { projectStore } from "../../../stores/projectStore.svelte";
     import { getFirebaseFunctionUrl } from "../../../lib/firebaseFunctionsUrl";
     import { userManager } from "../../../auth/UserManager";
@@ -21,7 +15,7 @@
     let project = $derived(
         projectStore.projects.find((p) => p.name === currentTitle),
     );
-    let isLoading = $derived(!firestoreStore.userProject);
+    let isLoading = $derived(!projectStore.isLoaded);
 
     let newTitle = $state("");
     let error = $state("");
@@ -55,75 +49,9 @@
         error = "";
 
         try {
-            const success = await saveProjectIdToServer(projectId, newTitle);
-            if (success) {
-                // Update local metadata immediately
-                setContainerTitleInMetaDoc(projectId, newTitle);
-
-                // For immediate UI feedback, the redirect will reload the page with new title in URL.
-                // But if the store isn't updated, the new page might show "Project not found" if we look for newTitle.
-                // Ah! This is a race condition.
-                // If I redirect to /settings/NewTitle, but projectStore still has OldTitle,
-                // find(p => p.name === "NewTitle") will return undefined.
-
-                // So I must wait for the store to update?
-                // Or I can update firestoreStore locally via saveProjectIdToServer's test logic?
-                // saveProjectIdToServer implementation:
-                // if test env -> updates local store.
-                // if prod -> calls API.
-
-                // If API succeeds, Firestore will update, listener will fire, store will update.
-                // This might take a few seconds.
-
-                // Workaround:
-                // After success, I can try to manually inject the change into firestoreStore.userProject.projectTitles if possible.
-                // firestoreStore.userProject is read-only? No, it has `setUserProject`.
-
-                // However, `saveProjectIdToServer` doesn't return the new state.
-
-                // Wait for the store to reflect the new project name before redirecting.
-                const isUpdated = await new Promise<boolean>((resolve) => {
-                    let isResolved = false;
-
-                    const cleanupEffect = $effect.root(() => {
-                        $effect(() => {
-                            if (projectStore.projects.some((p) => p.name === newTitle) && !isResolved) {
-                                isResolved = true;
-                                clearTimeout(timeout);
-                                cleanupEffect();
-                                resolve(true);
-                            }
-                        });
-                    });
-
-                    const timeout = setTimeout(() => {
-                        if (!isResolved) {
-                            isResolved = true;
-                            cleanupEffect();
-                            resolve(false);
-                        }
-                    }, 5000);
-
-                    // Check immediately in case it's already updated
-                    if (projectStore.projects.some((p) => p.name === newTitle) && !isResolved) {
-                        isResolved = true;
-                        clearTimeout(timeout);
-                        cleanupEffect();
-                        resolve(true);
-                    }
-                });
-
-                if (isUpdated) {
-                    goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
-                } else {
-                    error = "Could not confirm the rename — please retry";
-                    isSaving = false;
-                }
-
-            } else {
-                error = "Failed to save project title to server.";
-                isSaving = false;
-            }
+            await renameProjectDescriptor(projectId, newTitle);
+            await projectStore.refresh();
+            goto(resolvePath(`/settings/${encodeURIComponent(newTitle)}`), { replaceState: true });
         } catch (e) {
             logger.error({ error: e }, "Error");
             error = "An error occurred while saving.";
@@ -301,5 +229,4 @@
         </div>
     {/if}
 </div>
-
 

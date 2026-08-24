@@ -1,6 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
+import type { ProjectDescriptor } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
 
 export class McpReadError extends Error {
@@ -63,7 +64,7 @@ export class OutlinerReadService {
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
-        private readonly accessibleProjectIds: (uid: string) => Promise<string[]>,
+        private readonly accessibleProjects: (uid: string) => Promise<ProjectDescriptor[]>,
     ) {}
 
     private async withProject<T>(
@@ -131,17 +132,18 @@ export class OutlinerReadService {
             });
         }
         const projectTitle = parts[0]!;
-        const candidates = await this.accessibleProjectIds(uid);
+        const candidates = await this.accessibleProjects(uid);
 
         let foundProjectWithoutEntity = false;
         let authorizedCandidateCount = 0;
 
-        for (const projectId of candidates) {
+        for (const candidate of candidates) {
+            const { projectId } = candidate;
             if (!ID.test(projectId) || !await this.canAccess(uid, projectId)) continue;
             authorizedCandidateCount++;
+            if (candidate.title !== projectTitle) continue;
+            foundProjectWithoutEntity = true;
             const resolved = await this.withProject(uid, projectId, project => {
-                if (project.title !== projectTitle) return undefined;
-                foundProjectWithoutEntity = true;
                 if (entityKind) {
                     const entityId = parts[1]!;
                     assertId(entityId, "entity ID");

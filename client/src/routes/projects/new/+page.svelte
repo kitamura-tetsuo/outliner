@@ -58,7 +58,7 @@ async function createNewContainer() {
         createdContainerId = newProjectId; // UI update immediately
 
         // 2. Register to server and connect WebSocket via createNewProject
-        // (saveProjectIdToServer retry logic runs internally)
+        // The canonical project descriptor is created before the WebSocket opens.
         logger.info(`Creating new project ${containerName} (ID: ${newProjectId})...`);
         const newClient = await yjsHighService.createNewProject(containerName, newProjectId);
 

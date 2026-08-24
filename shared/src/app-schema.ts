@@ -1135,18 +1135,18 @@ export class Items implements Iterable<Item> {
 export class Project {
     public readonly ydoc: Y.Doc;
     public readonly tree: YTree;
-    constructor(ydoc: Y.Doc, tree: YTree) {
+    private displayTitle: string;
+    constructor(ydoc: Y.Doc, tree: YTree, displayTitle = "") {
         this.ydoc = ydoc;
         this.tree = tree;
+        this.displayTitle = displayTitle;
     }
 
     static createInstance(title: string): Project {
         const doc = new Y.Doc();
         const ymap = doc.getMap("orderedTree");
         const tree = new YTree(ymap);
-        const meta = doc.getMap("metadata");
-        meta.set("title", title);
-        return new Project(doc, tree);
+        return new Project(doc, tree, title);
     }
 
     static fromDoc(doc: Y.Doc): Project {
@@ -1156,11 +1156,11 @@ export class Project {
     }
 
     get title(): string {
-        return (this.ydoc.getMap("metadata").get("title") as string) ?? "";
+        return this.displayTitle;
     }
 
     set title(v: string) {
-        this.ydoc.getMap("metadata").set("title", v);
+        this.displayTitle = v;
     }
 
     // Schedules directly under project root

@@ -214,7 +214,6 @@ if (process.env.NODE_ENV === "development" || process.env.FUNCTIONS_EMULATOR) {
 
 // Get Firestore reference
 const db = require("firebase-admin/firestore").getFirestore();
-const userProjectsCollection = db.collection("userProjects");
 const projectUsersCollection = db.collection("projectUsers");
 const userContainersCollection = db.collection("userContainers");
 
@@ -369,47 +368,13 @@ exports.saveProject = onRequest(
       const userId = decodedToken.uid;
 
       try {
-        // Update both collections using Firestore transaction
+        // The resource-side descriptor is the only project directory.
         await db.runTransaction(async transaction => {
-          const userDocRef = userProjectsCollection.doc(userId);
           const projectDocRef = db.collection("projectUsers").doc(
             projectId,
           );
 
-          // Execute all read operations first
-          const userDoc = await transaction.get(userDocRef);
           const projectDoc = await transaction.get(projectDocRef);
-
-          // Start write operations after read completion
-          // Update user's default project ID and accessible project IDs
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            const accessibleProjectIds = userData.accessibleProjectIds || [];
-
-            if (!accessibleProjectIds.includes(projectId)) {
-              accessibleProjectIds.push(projectId);
-            }
-
-            // Ensure projectTitles is treated as an object and merged properly
-            const projectTitles = userData.projectTitles &&
-                typeof userData.projectTitles === "object"
-              ? { ...userData.projectTitles }
-              : {};
-            projectTitles[projectId] = title || projectId;
-
-            transaction.update(userDocRef, {
-              accessibleProjectIds,
-              projectTitles,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-          } else {
-            transaction.set(userDocRef, {
-              userId,
-              createdAt: FieldValue.serverTimestamp(),
-              updatedAt: FieldValue.serverTimestamp(),
-              projectTitles: { [projectId]: title || projectId },
-            });
-          }
 
           // Update accessible user IDs for the project
           if (projectDoc.exists) {
@@ -487,18 +452,19 @@ exports.getUserProjects = onRequest(
         .verifyIdToken(idToken);
       const userId = decodedToken.uid;
 
-      const userDoc = await userProjectsCollection.doc(userId).get();
-
-      if (!userDoc.exists) {
-        return res.status(200).json({ projects: [], defaultProjectId: null });
-      }
-
-      const userData = userDoc.data();
+      const snapshots = await projectUsersCollection
+        .where("accessibleUserIds", "array-contains", userId).get();
+      const descriptors = snapshots.docs.map(doc => ({
+        projectId: doc.id,
+        title: doc.data().title,
+      }));
 
       return res.status(200).json({
-        projects: userData.accessibleProjectIds || [],
-        projectTitles: userData.projectTitles || {},
-        defaultProjectId: userData.defaultProjectId || null,
+        projects: descriptors.map(project => project.projectId),
+        projectTitles: Object.fromEntries(
+          descriptors.map(project => [project.projectId, project.title]),
+        ),
+        defaultProjectId: null,
       });
     } catch (error) {
       Sentry.captureException(error);
@@ -924,33 +890,6 @@ exports.deleteProject = onRequest(
             throw new Error("Access to the project is denied");
           }
 
-          // Remove projectId from current user's userProjects
-          const userDocRef = userProjectsCollection.doc(userId);
-          const userDoc = await transaction.get(userDocRef);
-
-          if (userDoc.exists) {
-            const userData = userDoc.data();
-            const accessibleProjectIds = userData.accessibleProjectIds || [];
-
-            // Delete project ID
-            const updatedProjectIds = accessibleProjectIds.filter(id =>
-              id !== projectId
-            );
-
-            // Update default project
-            let defaultProjectId = userData.defaultProjectId || null;
-            if (defaultProjectId === projectId) {
-              defaultProjectId = updatedProjectIds.length > 0 ?
-                updatedProjectIds[0] : null;
-            }
-
-            transaction.update(userDocRef, {
-              accessibleProjectIds: updatedProjectIds,
-              defaultProjectId: defaultProjectId,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-          }
-
           // Remove userId from projectUsers
           const updatedAccessibleUserIds = accessibleUserIds.filter(id =>
             id !== userId
@@ -1091,10 +1030,7 @@ exports.acceptProjectShareLink = onRequest(
       let projectTitle = projectId;
       await db.runTransaction(async transaction => {
         const projectRef = projectUsersCollection.doc(projectId);
-        const userRef = userProjectsCollection.doc(userId);
-
         const projectSnap = await transaction.get(projectRef);
-        const userSnap = await transaction.get(userRef);
 
         if (!projectSnap.exists) { throw new Error("Project not found"); }
 
@@ -1105,39 +1041,6 @@ exports.acceptProjectShareLink = onRequest(
         if (!accessibleUserIds.includes(userId)) {
           transaction.update(projectRef, {
             accessibleUserIds: FieldValue.arrayUnion(userId),
-            updatedAt: FieldValue.serverTimestamp(),
-          });
-        }
-
-        if (userSnap.exists) {
-          const userData = userSnap.data();
-
-          // Construct updated projectTitles
-          const projectTitles =
-            userData.projectTitles && typeof userData.projectTitles === "object"
-              ? { ...userData.projectTitles }
-              : {};
-          projectTitles[projectId] = projectData.title || projectId;
-
-          // Always update projectTitles when joining a project, even if already in accessibleProjectIds
-          if (!userData.accessibleProjectIds?.includes(projectId)) {
-            transaction.update(userRef, {
-              accessibleProjectIds: FieldValue.arrayUnion(projectId),
-              projectTitles,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-          } else {
-            transaction.update(userRef, {
-              projectTitles,
-              updatedAt: FieldValue.serverTimestamp(),
-            });
-          }
-        } else {
-          transaction.set(userRef, {
-            userId,
-            accessibleProjectIds: [projectId],
-            projectTitles: { [projectId]: projectData.title || projectId },
-            createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
           });
         }

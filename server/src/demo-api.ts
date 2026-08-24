@@ -386,7 +386,7 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                 // are rendered from it, so a localized demo
                                 // titled "demo" would send every link into the
                                 // English demo instead of its own pages.
-                                meta.set("title", project);
+                                meta.delete("title");
                             });
 
                             // Rebuild the template directly in the live document.

@@ -37,9 +37,9 @@ describe("Outliner MCP read service", () => {
                 }),
             } as never,
             async () => allowed,
-            async () => ["project-1"],
+            async () => [{ projectId: "project-1", title: "MCP test" }],
         );
-        return { service, page, text, layout, grid, calendar, disconnects: () => disconnects };
+        return { service, project, page, text, layout, grid, calendar, disconnects: () => disconnects };
     }
 
     it("retrieves Text and textless visual nodes without flattening kinds", async () => {
@@ -83,6 +83,16 @@ describe("Outliner MCP read service", () => {
             service.resolveUrl("uid", "https://outliner.example/grids/MCP%20test/missing"),
             "grid not found",
         );
+    });
+
+    it("resolves from the canonical resource descriptor without consulting the Yjs title", async () => {
+        const { service, project, page } = fixture();
+        project.title = "4a934322-05de-4c97-932c-bc87fb43e18c";
+        expect(await service.resolveUrl("uid", "https://outliner.example/MCP%20test/Roadmap")).to.deep.equal({
+            projectId: "project-1",
+            pageId: page.id,
+            kind: "page",
+        });
     });
 
     it("returns complete lightweight Grid and Calendar configuration", async () => {

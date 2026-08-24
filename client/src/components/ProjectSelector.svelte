@@ -5,10 +5,8 @@
 
     import { createYjsClient } from "../services";
     import { getLogger } from "../lib/logger";
-    import { metaDocState } from "../lib/metaDoc.svelte";
-    import { projectsFromUserProject } from "../stores/projectStore.svelte";
+    import { projectStore } from "../stores/projectStore.svelte";
     import { yjsStore } from "../stores/yjsStore.svelte";
-    import { firestoreStore } from "../stores/firestoreStore.svelte";
     import type { UserManager } from "../auth/UserManager";
     import type { IAuthResult } from "../auth/UserManager";
     import type { YjsClient } from "../yjs/YjsClient";
@@ -25,15 +23,10 @@
     let error = $state<string | null>(null);
 
     // Calculate projects stably (Eventless: ucVersion)
-    let projects = $derived.by(() => {
-        void firestoreStore.ucVersion; // Dependency only
-        void metaDocState.version; // Re-calculate when metadata loads/changes
-        return projectsFromUserProject(firestoreStore.userProject);
-    });
+    let projects = $derived(projectStore.projects);
     $effect(() => {
         logger.info({
             len: projects.length,
-            ucv: firestoreStore.ucVersion,
         }, "ProjectSelector - projects len");
     });
 
@@ -111,16 +104,7 @@
                 );
                 logger.info({}, "ProjectSelector - Login successful");
 
-                // After successful login, wait a bit and check Firestore sync
-                setTimeout(() => {
-                    const cnt = projectsFromUserProject(
-                        firestoreStore.userProject,
-                    ).length;
-                    logger.info(
-                        { count: cnt },
-                        "ProjectSelector - Checking projects after login:",
-                    );
-                }, 1000);
+                await projectStore.refresh();
             } catch (err) {
                 logger.error({ error: err }, "ProjectSelector - Login failed:");
             }
@@ -136,9 +120,7 @@
             error = null;
 
             // Get selected project information
-            const selectedProject = projectsFromUserProject(
-                firestoreStore.userProject,
-            ).find((c) => c.id === selectedProjectId);
+            const selectedProject = projectStore.projects.find((c) => c.id === selectedProjectId);
             if (!selectedProject) {
                 throw new Error("Selected project not found");
             }

@@ -19,8 +19,7 @@ description: 'Persist container titles in a local-only Y.Doc for reliable displa
 category: project
 status: removed
 components: null
-services:
-- client/src/lib/projectTitleProvider
+services: null
 tests:
 - client/e2e/core/container-title-persistence.spec.ts
 acceptance:
@@ -30,3 +29,4 @@ acceptance:
 - Multiple containers maintain independent titles in metaDoc
 - When titles cannot be resolved, container IDs are displayed instead of hiding entries
 - metaDoc is persisted in IndexedDB and survives page reloads
+notes: Removed by
