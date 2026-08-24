@@ -35,5 +35,6 @@ acceptance:
 - POST /oauth/revoke revokes a refresh token so it can no longer be exchanged, and always responds 200 regardless of whether the token existed
 - Registering a client (POST /oauth/register) with a non-HTTPS, non-loopback redirect URI is rejected
 - The /oauth/authorize page renders only a Google sign-in button; it never renders an email/password form
+- The /oauth/authorize page uses a nonce-based, strict-dynamic CSP that permits the Firebase SDK and Google API loader without allowing unsafe inline scripts or unrelated origins
 - The OAuth authorize page uses the client's VITE_FIREBASE_* Web App configuration, production startup fails when it is absent, and Firebase Auth Emulator environments use explicit emulator-only identifiers
 - The refresh_token grant issues a new access/refresh token pair and revokes (rotates out) the previously used refresh token, so replaying it fails

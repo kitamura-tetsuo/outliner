@@ -81,7 +81,7 @@ export function getAuthorizePageContentSecurityPolicy(nonce: string): string {
 
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}' https://www.gstatic.com`,
+        `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://www.gstatic.com https://apis.google.com`,
         "style-src 'self' 'unsafe-inline'",
         `connect-src ${connectSrc.join(" ")}`,
         `frame-src https://${config.authDomain} https://accounts.google.com`,
