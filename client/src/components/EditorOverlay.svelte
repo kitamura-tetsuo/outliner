@@ -815,7 +815,7 @@ let visualNodeResizeObserver: ResizeObserver | undefined;
 function observeVisualNodeSizes() {
     if (!visualNodeResizeObserver) return;
     document.querySelectorAll(`[${VISUAL_NODE_ROOT_ATTRIBUTE}]`).forEach(element => {
-        visualNodeResizeObserver.observe(element);
+        visualNodeResizeObserver?.observe(element);
     });
 }
 
