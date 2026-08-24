@@ -6,7 +6,9 @@ export interface ProjectDescriptor {
     title: string;
 }
 
-async function request(path: string, init?: RequestInit): Promise<Response> {
+type FetchOptions = Parameters<typeof fetch>[1];
+
+async function request(path: string, init?: FetchOptions): Promise<Response> {
     const user = userManager.auth.currentUser;
     if (!user) throw new Error("User not logged in");
     const token = await user.getIdToken();
