@@ -96,7 +96,10 @@ export class OutlinerReadService {
         try {
             url = new URL(rawUrl);
         } catch {
-            throw new McpReadError("invalid_argument", "Malformed Outliner URL", { stage: "url_parsing", rawUrl });
+            throw new McpReadError("invalid_argument", "Malformed Outliner URL", {
+                stage: "url_parsing",
+                inputLength: rawUrl.length,
+            });
         }
         if (
             url.protocol !== "https:"
@@ -131,9 +134,11 @@ export class OutlinerReadService {
         const candidates = await this.accessibleProjectIds(uid);
 
         let foundProjectWithoutEntity = false;
+        let authorizedCandidateCount = 0;
 
         for (const projectId of candidates) {
             if (!ID.test(projectId) || !await this.canAccess(uid, projectId)) continue;
+            authorizedCandidateCount++;
             const resolved = await this.withProject(uid, projectId, project => {
                 if (project.title !== projectTitle) return undefined;
                 foundProjectWithoutEntity = true;
@@ -170,10 +175,15 @@ export class OutlinerReadService {
         }
 
         throw new McpReadError("not_found", "Accessible project not found", {
-            stage: "project_discovery",
+            stage: candidates.length === 0
+                ? "project_discovery"
+                : authorizedCandidateCount === 0
+                ? "authorization_recheck"
+                : "project_title_matching",
             requestedProjectTitle: projectTitle,
             requestedPageTitle: parts[1],
             accessibleProjectCount: candidates.length,
+            authorizedCandidateCount,
             foundProjectWithoutEntity,
         });
     }

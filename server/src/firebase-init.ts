@@ -335,7 +335,9 @@ export function initializeFirebase(): Promise<void> {
             if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
                 logger.warn(`Firebase Auth Emulator is configured: ${process.env.FIREBASE_AUTH_EMULATOR_HOST}`);
             }
-            if (isDevelopment && devAuthHelper) {
+            // Production-Firebase MCP diagnostics are intentionally read-only:
+            // never create the usual development identity or clear data there.
+            if (isDevelopment && devAuthHelper && process.env.MCP_FIREBASE_MODE !== "production") {
                 try {
                     const user = await devAuthHelper.setupTestUser();
                     logger.info(`Setup development test user: ${user.email} (${user.uid})`);
