@@ -32,8 +32,11 @@ Set these server-side values without committing their values:
 - `OAUTH_ISSUER=https://outliner.example.com` (the exact public origin)
 - `OAUTH_ACCESS_TOKEN_SECRET` (a long, stable random secret shared by all
   Outliner server replicas)
-- `OAUTH_FIREBASE_API_KEY`, `OAUTH_FIREBASE_AUTH_DOMAIN`, and
-  `OAUTH_FIREBASE_APP_ID` (public Firebase web configuration for Google sign-in)
+- `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+  `VITE_FIREBASE_PROJECT_ID`, and `VITE_FIREBASE_APP_ID`. Give the server the
+  same public Firebase Web App values used to build the Outliner client; do not
+  create an `OAUTH_FIREBASE_*` copy or source these values from the Firebase
+  Admin service-account JSON.
 - Firebase Admin credentials and Firestore configuration already required by
   the on-premises server
 - optionally `OAUTH_STATIC_CLIENTS`; dynamic registration is supported when a
@@ -42,6 +45,11 @@ Set these server-side values without committing their values:
 Keep the default short access-token lifetime and persistent refresh-token
 store. Restarting or scaling the server with an ephemeral signing secret will
 invalidate active connections.
+
+The production server fails startup with a configuration error when these Web
+App values are absent. When `FIREBASE_AUTH_EMULATOR_HOST` is set,
+local development and tests may omit them because the OAuth page uses explicit
+emulator-only identifiers and connects the Web SDK to that emulator.
 
 ## Connect from ChatGPT
 

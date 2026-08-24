@@ -16,16 +16,47 @@ function escapeHtml(value: string): string {
  * sign-in button. These values (apiKey, authDomain, appId, ...) identify a
  * Firebase *web app* and are not secrets — they are the same values already
  * shipped in the client bundle (see client/src/lib/firebase-app.ts) — but
- * this server process does not otherwise have access to VITE_* build-time
- * env vars, so we read a dedicated OAUTH_FIREBASE_* set here.
+ * this server reads the same VITE_FIREBASE_* environment values that are
+ * embedded in the client build. Keeping those values in the server's runtime
+ * environment does not expose a secret; Firebase web configuration is public.
  */
 export function getOAuthFirebaseWebConfig() {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || "outliner-d57b0";
-    return {
-        apiKey: process.env.OAUTH_FIREBASE_API_KEY || "demo-api-key",
-        authDomain: process.env.OAUTH_FIREBASE_AUTH_DOMAIN || `${projectId}.firebaseapp.com`,
+    const projectId = process.env.VITE_FIREBASE_PROJECT_ID
+        || process.env.FIREBASE_PROJECT_ID
+        || process.env.GCLOUD_PROJECT;
+    const values = {
+        apiKey: process.env.VITE_FIREBASE_API_KEY,
+        authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
         projectId,
-        appId: process.env.OAUTH_FIREBASE_APP_ID || "1:123456789:web:abcdef",
+        appId: process.env.VITE_FIREBASE_APP_ID,
+    };
+
+    // The Auth emulator accepts arbitrary public web-app identifiers. Supplying
+    // explicit emulator-only values keeps local/test setup lightweight without
+    // hiding an incomplete production deployment behind demo placeholders.
+    if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+        return {
+            apiKey: values.apiKey || "firebase-auth-emulator-api-key",
+            authDomain: values.authDomain || `${projectId || "firebase-auth-emulator"}.firebaseapp.com`,
+            projectId: values.projectId || "firebase-auth-emulator",
+            appId: values.appId || "1:0:web:firebase-auth-emulator",
+        };
+    }
+
+    const missing = Object.entries(values).filter(([, value]) => !value).map(([key]) => key);
+    if (missing.length > 0) {
+        throw new Error(
+            `Missing required Firebase Web configuration for OAuth: ${missing.join(", ")}. `
+                + "Set VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID, and "
+                + "VITE_FIREBASE_APP_ID to the same public values used by the Outliner client.",
+        );
+    }
+
+    return {
+        apiKey: values.apiKey!,
+        authDomain: values.authDomain!,
+        projectId: values.projectId!,
+        appId: values.appId!,
     };
 }
 

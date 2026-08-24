@@ -35,29 +35,6 @@ export interface IAuthResult {
 type AuthEventListener = (result: IAuthResult | null) => void;
 
 export class UserManager {
-    // Firebase configuration
-    private firebaseConfig = {
-        apiKey: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_API_KEY) || "demo-api-key",
-        authDomain: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN)
-            || "demo-project.firebaseapp.com",
-        projectId: (() => {
-            if (typeof window !== "undefined") {
-                const stored = window.localStorage?.getItem?.("VITE_FIREBASE_PROJECT_ID");
-                if (stored) return stored;
-            }
-            return (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_PROJECT_ID)
-                || "outliner-d57b0";
-        })(),
-        storageBucket: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET)
-            || "demo-project.appspot.com",
-        messagingSenderId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID)
-            || "123456789",
-        appId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_APP_ID)
-            || "1:123456789:web:abcdef",
-        measurementId: (typeof import.meta !== "undefined" && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID)
-            || "G-XXXXXXXXXX",
-    };
-
     private apiBaseUrl = getEnv("VITE_FIREBASE_FUNCTIONS_URL", import.meta.env.DEV ? "http://localhost:57000" : "");
     private _app: FirebaseApp | null = null;
     private _auth: Auth | null = null;
