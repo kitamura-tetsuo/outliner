@@ -11,7 +11,7 @@ import { mcpLogger, mcpLogPath as actualMcpLogPath } from "../src/utils/log-mana
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const testMcpLogPath = resolve(__dirname, "..", "logs", "mcp-diagnostics.log");
+const testMcpLogPath = actualMcpLogPath;
 
 describe("MCP Durable Logging", () => {
     let app: express.Express;
