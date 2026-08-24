@@ -412,7 +412,7 @@ export async function startServer(
     app.use("/api", createSeedRouter(hocuspocus));
 
     // Canonical resource-side project metadata used by both the web client and MCP.
-    app.use("/api", createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached }));
+    app.use("/api/projects", createProjectDirectoryRouter({ verifyToken: verifyIdTokenCached }));
 
     // Demo API - anonymous access for the public demo page
     app.use("/api", createDemoRouter(hocuspocus, config));

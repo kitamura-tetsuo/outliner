@@ -48,6 +48,7 @@ test.describe("Demo manual reset button", () => {
         ]);
 
         const body = await response.json();
+        console.log(body);
         expect(body.success).toBe(true);
         expect(body.reset).toBe(true);
 

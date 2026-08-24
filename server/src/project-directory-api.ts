@@ -42,7 +42,7 @@ export function createProjectDirectoryRouter(options: {
         }
     });
 
-    router.get("/projects", async (_req, res) => {
+    router.get("/", async (_req, res) => {
         try {
             res.json({
                 projects: await listAccessibleProjectDescriptors(
@@ -58,7 +58,7 @@ export function createProjectDirectoryRouter(options: {
         }
     });
 
-    router.get("/projects/resolve", async (req, res) => {
+    router.get("/resolve", async (req, res) => {
         try {
             res.json(
                 await resolveAccessibleProjectTitle(
@@ -75,7 +75,7 @@ export function createProjectDirectoryRouter(options: {
         }
     });
 
-    router.get("/projects/:projectId", async (req, res) => {
+    router.get("/:projectId", async (req, res) => {
         try {
             res.json(
                 await getAuthorizedProjectDescriptorForWrite(
@@ -92,7 +92,7 @@ export function createProjectDirectoryRouter(options: {
         }
     });
 
-    router.post("/projects", async (req, res) => {
+    router.post("/", async (req, res) => {
         try {
             res.status(201).json(
                 await ensureProjectDescriptorForWrite(
@@ -110,7 +110,7 @@ export function createProjectDirectoryRouter(options: {
         }
     });
 
-    router.post("/projects/:projectId/rename", async (req, res) => {
+    router.post("/:projectId/rename", async (req, res) => {
         try {
             res.json(
                 await renameProject(
