@@ -30,9 +30,11 @@ import { createSeedRouter } from "./seed-api.js";
 import { getClientIp } from "./utils/ip.js";
 import {
     refreshClientLogStream,
+    refreshMcpLogStream,
     refreshServerLogStream,
     refreshTelemetryLogStream,
     rotateClientLogs,
+    rotateMcpLogs,
     rotateServerLogs,
     rotateTelemetryLogs,
 } from "./utils/log-manager.js";
@@ -438,6 +440,7 @@ export async function startServer(
         try {
             const clientRotated = await rotateClientLogs(2);
             const telemetryRotated = await rotateTelemetryLogs(2);
+            const mcpRotated = await rotateMcpLogs(2);
             const serverRotated = await rotateServerLogs(2);
 
             if (clientRotated) {
@@ -445,6 +448,9 @@ export async function startServer(
             }
             if (telemetryRotated) {
                 refreshTelemetryLogStream();
+            }
+            if (mcpRotated) {
+                refreshMcpLogStream();
             }
             if (serverRotated) {
                 refreshServerLogStream();
@@ -454,6 +460,7 @@ export async function startServer(
                 success: true,
                 clientRotated,
                 telemetryRotated,
+                mcpRotated,
                 serverRotated,
                 timestamp: new Date().toISOString(),
             });
@@ -462,6 +469,7 @@ export async function startServer(
                 JSON.stringify({
                     clientRotated,
                     telemetryRotated,
+                    mcpRotated,
                     serverRotated,
                     timestamp: new Date().toISOString(),
                 })

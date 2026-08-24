@@ -39,6 +39,9 @@ export const serverLogPath = path.join(serverLogDir, "log-service.log");
 const isTestEnv = process.env.NODE_ENV === "test";
 const clientLogFileName = isTestEnv ? "test-browser.log" : "browser.log";
 export const clientLogPath = path.join(clientLogDir, clientLogFileName);
+// File path for mcp diagnostics logs
+const mcpLogFileName = isTestEnv ? "test-mcp-diagnostics.log" : "mcp-diagnostics.log";
+export const mcpLogPath = path.join(serverLogDir, mcpLogFileName);
 // File path for telemetry logs
 const telemetryLogFileName = isTestEnv ? "test-telemetry.log" : "telemetry.log";
 export const telemetryLogPath = path.join(clientLogDir, telemetryLogFileName);
@@ -75,6 +78,7 @@ ensureLogDirectories();
 // Setup log streams for file transfer and formatted display
 let serverLogStream: fs.WriteStream | null;
 let clientLogStream: fs.WriteStream | null;
+let mcpLogStream: fs.WriteStream | null;
 let telemetryLogStream: fs.WriteStream | null;
 
 try {
@@ -91,6 +95,14 @@ try {
     const errorMessage = error instanceof Error ? error.message : String(error);
     process.stderr.write(`Failed to create client log stream: ${errorMessage}\n`);
     clientLogStream = null;
+}
+
+try {
+    mcpLogStream = fs.createWriteStream(mcpLogPath, { flags: "a" });
+} catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`Failed to create mcp log stream: ${errorMessage}\n`);
+    mcpLogStream = null;
 }
 
 try {
@@ -149,6 +161,24 @@ const serverStreams: pino.StreamEntry[] = [{ stream: prettyStream }]; // Display
 if (serverLogStream) {
     serverStreams.push({ stream: serverLogStream }); // Save server logs to server log directory
 }
+
+// Logger setup for MCP diagnostics logs
+const mcpStreams: pino.StreamEntry[] = [{ stream: prettyStream }]; // Display formatted logs in console
+if (mcpLogStream) {
+    mcpStreams.push({ stream: mcpLogStream }); // Save mcp logs to dedicated file
+}
+
+export const mcpLogger = pino(
+    {
+        level: process.env.NODE_ENV === "production" ? "info" : "debug",
+        redact: {
+            paths: ["token", "authorization", "idToken", "req.headers.authorization"],
+            censor: "[REDACTED]",
+        },
+        timestamp: pino.stdTimeFunctions.isoTime,
+    },
+    pino.multistream(mcpStreams),
+);
 
 export const serverLogger = pino(
     {
@@ -254,6 +284,18 @@ export async function rotateTelemetryLogs(maxBackups = 2): Promise<boolean> {
  * @param {number} maxBackups - Number of backups to keep
  * @returns {Promise<boolean>} - true if successful
  */
+/**
+ * Rotate MCP diagnostics log files
+ * @param {number} maxBackups - Number of backups to keep
+ * @returns {Promise<boolean>} - true if successful
+ */
+export async function rotateMcpLogs(maxBackups = 2): Promise<boolean> {
+    if (process.env.CI) {
+        maxBackups = Number.MAX_SAFE_INTEGER;
+    }
+    return rotateLogFile(mcpLogPath, maxBackups);
+}
+
 export async function rotateServerLogs(maxBackups = 2): Promise<boolean> {
     if (process.env.CI) {
         maxBackups = Number.MAX_SAFE_INTEGER;
@@ -360,6 +402,62 @@ export function refreshTelemetryLogStream(): fs.WriteStream {
  * Update server log stream
  * Used to create new stream after rotation
  */
+/**
+ * Update MCP log stream
+ * Used to create new stream after rotation
+ */
+export function refreshMcpLogStream(): fs.WriteStream {
+    try {
+        // Safely close old stream
+        if (mcpLogStream) {
+            mcpLogStream.end();
+        }
+
+        // Create new stream
+        const newMcpLogStream = fs.createWriteStream(mcpLogPath, { flags: "a" });
+
+        // Update global variable in module
+        mcpLogStream = newMcpLogStream;
+
+        // Recreate pino-pretty stream
+        const newPrettyStream = pretty({
+            colorize: true,
+            translateTime: "SYS:standard",
+            levelFirst: true,
+        });
+        newPrettyStream.pipe(process.stdout);
+
+        // Create new multistream
+        const newMultiStream = pino.multistream([
+            { stream: newMcpLogStream },
+            { stream: newPrettyStream },
+        ]);
+
+        // Create new logger instance
+        const newLogger = pino(
+            {
+                level: process.env.NODE_ENV === "production" ? "info" : "debug",
+                redact: {
+                    paths: ["token", "authorization", "idToken", "req.headers.authorization"],
+                    censor: "[REDACTED]",
+                },
+                timestamp: pino.stdTimeFunctions.isoTime,
+            },
+            newMultiStream,
+        );
+
+        // Replace properties of existing logger object with those of new logger
+        Object.assign(mcpLogger, newLogger);
+
+        serverLogger.info("Updated mcp log stream");
+        return newMcpLogStream;
+    } catch (error) {
+        serverLogger.error({ err: error }, "Mcp log stream update error:");
+        // Even if error occurs, create and return new stream
+        return fs.createWriteStream(mcpLogPath, { flags: "a" });
+    }
+}
+
 export function refreshServerLogStream(): fs.WriteStream {
     try {
         // Safely close old stream
@@ -397,7 +495,7 @@ export function refreshServerLogStream(): fs.WriteStream {
         );
 
         // Replace properties of existing logger object with those of new logger
-        Object.assign(serverLogger, newLogger);
+        Object.assign(mcpLogger, serverLogger, newLogger);
 
         serverLogger.info("Updated server log stream");
         return newServerLogStream;
@@ -414,9 +512,11 @@ export default {
     rotateLogFile,
     rotateClientLogs,
     rotateTelemetryLogs,
+    rotateMcpLogs,
     rotateServerLogs,
     refreshClientLogStream,
     refreshTelemetryLogStream,
+    refreshMcpLogStream,
     refreshServerLogStream,
     clientLogger,
     telemetryLogger,

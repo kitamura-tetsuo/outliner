@@ -6,7 +6,7 @@ import express from "express";
 import * as z from "zod/v4";
 import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
-import { serverLogger as logger } from "../utils/log-manager.js";
+import { mcpLogger as logger } from "../utils/log-manager.js";
 import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
