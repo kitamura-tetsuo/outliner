@@ -47,10 +47,10 @@ test.describe("ChatGPT MCP public protocol surface", () => {
         expect(await response.json()).toEqual({ error: "invalid_token" });
         expect(response.headers()["mcp-session-id"]).toBeUndefined();
         expect(response.headers()["www-authenticate"]).toContain(
-            `resource_metadata="${SERVER}/.well-known/oauth-protected-resource"`,
+            `resource_metadata="${SERVER}/.well-known/oauth-protected-resource/mcp"`,
         );
 
-        const metadataResponse = await request.get(`${SERVER}/.well-known/oauth-protected-resource`);
+        const metadataResponse = await request.get(`${SERVER}/.well-known/oauth-protected-resource/mcp`);
         expect(metadataResponse.ok()).toBe(true);
         expect(await metadataResponse.json()).toEqual({
             resource: `${SERVER}/mcp`,
