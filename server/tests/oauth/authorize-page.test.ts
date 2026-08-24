@@ -1,5 +1,9 @@
 import { expect } from "chai";
-import { getOAuthFirebaseWebConfig, renderAuthorizePage } from "../../src/oauth/authorize-page.js";
+import {
+    getAuthorizePageContentSecurityPolicy,
+    getOAuthFirebaseWebConfig,
+    renderAuthorizePage,
+} from "../../src/oauth/authorize-page.js";
 
 const CONFIG_ENV_KEYS = [
     "VITE_FIREBASE_API_KEY",
@@ -74,5 +78,44 @@ describe("OAuth authorize-page Firebase Web configuration", () => {
         });
         const html = renderAuthorizePage({ requestId: "request", scope: "outliner.read", nonce: "nonce" });
         expect(html).to.include('connectAuthEmulator(auth, "http://127.0.0.1:59099"');
+    });
+
+    it("restrictively permits the scripts and requests required by Google sign-in", () => {
+        process.env.VITE_FIREBASE_API_KEY = "shared-api-key";
+        process.env.VITE_FIREBASE_AUTH_DOMAIN = "shared.firebaseapp.com";
+        process.env.VITE_FIREBASE_PROJECT_ID = "shared-project";
+        process.env.VITE_FIREBASE_APP_ID = "1:42:web:shared";
+
+        const nonce = "authorize-page-nonce";
+        const csp = getAuthorizePageContentSecurityPolicy(nonce);
+        const directives = new Map(
+            csp.split("; ").map((directive) => {
+                const [name, ...sources] = directive.split(" ");
+                return [name, sources];
+            }),
+        );
+
+        expect(directives.get("script-src")).to.deep.equal([
+            "'self'",
+            `'nonce-${nonce}'`,
+            "'strict-dynamic'",
+            "https://www.gstatic.com",
+            "https://apis.google.com",
+        ]);
+        expect(directives.get("script-src")).to.not.include("'unsafe-inline'");
+        expect(directives.get("connect-src")).to.include.members([
+            "https://www.googleapis.com",
+            "https://identitytoolkit.googleapis.com",
+            "https://securetoken.googleapis.com",
+            "https://apis.google.com",
+        ]);
+        expect(directives.get("frame-src")).to.deep.equal([
+            "https://shared.firebaseapp.com",
+            "https://accounts.google.com",
+        ]);
+        expect(csp).to.not.include("https://attacker.example.com");
+
+        const html = renderAuthorizePage({ requestId: "request", scope: "outliner.read", nonce });
+        expect(html).to.include(`<script type="module" nonce="${nonce}">`);
     });
 });

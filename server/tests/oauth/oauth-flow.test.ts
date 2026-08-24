@@ -185,6 +185,9 @@ describe("oauth: end-to-end authorization-code + PKCE flow", () => {
         const csp = res.headers["content-security-policy"];
         expect(csp, "expected the authorize response to set a Content-Security-Policy header").to.be.a("string");
         expect(csp).to.include("https://www.gstatic.com");
+        expect(csp).to.include("https://apis.google.com");
+        expect(csp).to.match(/script-src[^;]*'strict-dynamic'/);
+        expect(csp).to.not.match(/script-src[^;]*'unsafe-inline'/);
         expect(csp).to.match(/script-src[^;]*'nonce-[A-Za-z0-9+/=]+'/);
 
         const nonceMatch = csp.match(/'nonce-([A-Za-z0-9+/=]+)'/);
