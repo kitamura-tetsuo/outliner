@@ -177,6 +177,7 @@ function columnWidth(): number {
 }
 
 function startResize(child: Item, event: PointerEvent) {
+    if (event.button === 2) return;
     event.preventDefault();
     event.stopPropagation();
     resizingChildId = child.id;
