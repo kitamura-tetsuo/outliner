@@ -6,6 +6,7 @@ import sinon from "sinon";
 import request from "supertest";
 import { fileURLToPath } from "url";
 import { createMcpRouter } from "../src/mcp/mcp-api.js";
+import { mcpLogger } from "../src/utils/log-manager.js";
 import { McpReadError, OutlinerReadService } from "../src/mcp/outliner-read-service.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,7 @@ describe("MCP Durable Logging", () => {
 
         // res is standard JSON RPC or just wait for it to be logged.
 
+        mcpLogger.flush();
         // wait for Pino stream to flush
         await new Promise(r => setTimeout(r, 2000));
 
