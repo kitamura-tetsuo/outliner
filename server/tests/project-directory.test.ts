@@ -27,6 +27,8 @@ describe("canonical project directory", () => {
         "directory-second",
         "duplicate-owner",
         "duplicate-candidate",
+        "00000000-0000-0000-0000-000000000000",
+        "valid-project",
     ];
 
     before(() => {
@@ -140,6 +142,32 @@ describe("canonical project directory", () => {
             "invalid_title",
         );
         expect((await db.collection("projectUsers").doc("directory-invalid").get()).exists).to.equal(false);
+    });
+
+    it("quarantines a malformed resource descriptor without hiding valid projects", async () => {
+        await Promise.all([
+            db.collection("projectUsers").doc("00000000-0000-0000-0000-000000000000").set({
+                title: "00000000-0000-0000-0000-000000000000",
+                accessibleUserIds: ["owner"],
+            }),
+            db.collection("projectUsers").doc("valid-project").set({
+                title: "tetsuo",
+                accessibleUserIds: ["owner"],
+            }),
+        ]);
+        const quarantined: ProjectDirectoryError[] = [];
+        expect(await listAccessibleProjectDescriptors("owner", db, error => quarantined.push(error))).to.deep.equal([
+            { projectId: "valid-project", title: "tetsuo" },
+        ]);
+        expect(quarantined).to.have.length(1);
+        expect(quarantined[0]?.code).to.equal("invalid_title");
+        expect(quarantined[0]?.debug).to.deep.include({
+            internalOperation: "descriptorFromData.normalizeProjectTitle",
+            projectId: "00000000-0000-0000-0000-000000000000",
+            descriptorState: "invalid_title",
+            storedTitleType: "string",
+            storedTitleEqualsProjectId: true,
+        });
     });
 
     it("lists and resolves titles only from resource-side memberships", async () => {

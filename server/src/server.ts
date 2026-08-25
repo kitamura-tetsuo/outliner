@@ -439,7 +439,21 @@ export async function startServer(
     // project operation reuses the established projectUsers ACL and direct
     // Hocuspocus document lifecycle.
     app.use(createMcpRouter(
-        new OutlinerReadService(hocuspocus, checkContainerAccess, listAccessibleProjectDescriptors),
+        new OutlinerReadService(
+            hocuspocus,
+            checkContainerAccess,
+            uid =>
+                listAccessibleProjectDescriptors(uid, undefined, error => {
+                    logger.warn(
+                        {
+                            event: "project_directory_descriptor_quarantined",
+                            directoryErrorCode: error.code,
+                            ...error.debug,
+                        },
+                        "Quarantined malformed accessible project descriptor",
+                    );
+                }),
+        ),
     ));
 
     // Log rotation endpoint
