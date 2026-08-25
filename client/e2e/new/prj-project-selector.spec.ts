@@ -90,7 +90,7 @@ test.describe.serial("Prj: Project Selector", () => {
 
         // 3. Select Project Two
         const selector = page.locator("select.project-select");
-        await selector.selectOption({ value: project2 });
+        await selector.selectOption({ label: project2 });
 
         // 4. Verify navigation
         // The app should navigate to /Project Two

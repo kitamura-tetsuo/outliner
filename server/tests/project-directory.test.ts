@@ -32,6 +32,11 @@ describe("canonical project directory", () => {
     before(() => {
         // Create this only when the suite starts. firebase-init tests run earlier
         // and replace the default app while exercising reinitialization.
+        // Reassert the emulator target here because several suites temporarily
+        // replace process.env while testing production Firebase initialization.
+        process.env.FIRESTORE_EMULATOR_HOST = "127.0.0.1:58080";
+        process.env.FIREBASE_PROJECT_ID = "outliner-d57b0";
+        process.env.GCLOUD_PROJECT = "outliner-d57b0";
         app = getApps().find(candidate => candidate.name === appName)
             ?? initializeApp({ projectId: "outliner-d57b0" }, appName);
         db = getFirestore(app);
