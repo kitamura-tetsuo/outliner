@@ -16,8 +16,10 @@
 // routes to the provider named by `source_kind`, addressing the row by
 // `source_id` — see `relationRowWrite.ts`.
 
+import { stripSqlNoise, validateReadOnlySelect } from "$shared/services/readOnlySql";
 import { TableSqlError } from "./pgliteService";
 import type { ParsedTableSchema } from "./schemaIntrospection";
+export { stripSqlNoise } from "$shared/services/readOnlySql";
 
 /** Column carrying the SQL name of the relation a unioned row came from. */
 export const SOURCE_KIND_COLUMN = "source_kind";
@@ -40,30 +42,13 @@ export interface QueryEditability {
     rowIdentity?: "id" | "source";
 }
 
-export function stripSqlNoise(sql: string): string {
-    return sql
-        .replace(/--[^\n]*/g, " ")
-        .replace(/\/\*[\s\S]*?\*\//g, " ")
-        .replace(/'(?:[^']|'')*'/g, "''")
-        .replace(/"(?:[^"]|"")*"/g, '""');
-}
-
 /** Reject anything that is not a single SELECT statement. */
 export function assertSelectQuery(sql: string): string {
-    const trimmed = (sql ?? "").trim();
-    if (!trimmed) throw new TableSqlError("query", "Query is empty");
-    const stripped = stripSqlNoise(trimmed);
-    if (!/^\s*(select|with)\b/i.test(stripped)) {
-        throw new TableSqlError("query", "Only SELECT queries are allowed");
+    try {
+        return validateReadOnlySelect(sql);
+    } catch (error) {
+        throw new TableSqlError("query", error instanceof Error ? error.message : String(error));
     }
-    if (/\b(insert|update|delete|drop|alter|create|truncate|grant|revoke)\b/i.test(stripped)) {
-        throw new TableSqlError("query", "Only read-only SELECT queries are allowed");
-    }
-    const withoutTrailing = stripped.replace(/;\s*$/, "");
-    if (withoutTrailing.includes(";")) {
-        throw new TableSqlError("query", "Query must contain exactly one statement");
-    }
-    return trimmed;
 }
 
 const AGGREGATE_RE = /\b(count|sum|avg|min|max|array_agg|string_agg|json_agg|bool_and|bool_or)\s*\(/i;

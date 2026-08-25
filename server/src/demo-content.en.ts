@@ -62,11 +62,12 @@ export function demoContentEn(): DemoLocaleContent {
                 key: "remote mcp access",
                 title: "Remote MCP Access",
                 lines: [
-                    "Outliner's on-premises server exposes a read-only MCP endpoint for compatible AI clients.",
+                    "Outliner's on-premises server exposes an authorized MCP endpoint for compatible AI clients.",
                     "Paste a normal Outliner project or page URL into the client; resolve_url converts its human-readable titles to stable IDs.",
                     "Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text.",
                     "Every project read uses the signed-in user's existing project access, and large structural reads are bounded.",
-                    "The initial MCP tools never create, update, move, or delete Outliner data.",
+                    "MCP can discover SQL relations, inspect schemas, and run bounded read-only SELECT queries.",
+                    "Structured relation writes mutate Yjs—not disposable PGlite—and Grid or Calendar SELECT state can be updated safely.",
                 ],
             },
             {

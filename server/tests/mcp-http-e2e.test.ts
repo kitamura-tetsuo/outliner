@@ -81,7 +81,7 @@ describe("remote MCP Streamable HTTP endpoint", () => {
             resource: "http://localhost:7093/mcp",
             authorization_servers: ["http://localhost:7093"],
             bearer_methods_supported: ["header"],
-            scopes_supported: ["outliner.read"],
+            scopes_supported: ["outliner.read", "outliner.write"],
         });
 
         const compatibilityAlias = await request(app).get("/.well-known/oauth-protected-resource");
