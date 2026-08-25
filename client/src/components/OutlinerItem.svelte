@@ -1233,6 +1233,8 @@ function handleContentClick(e: MouseEvent) {
     // Clicks on foreign inputs (e.g. the comment thread's own input/textarea) must not
     // trigger item editing or steal focus back to the global textarea.
     if (isForeignInput(e.target)) {
+        editorOverlayStore.clearCursorAndSelection("local", true);
+        editorOverlayStore.getTextareaRef()?.blur();
         return;
     }
 
