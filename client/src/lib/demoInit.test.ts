@@ -104,6 +104,18 @@ describe("demoInit", () => {
         expect((updates[0] as { handle: { client: { id: string; }; }; }).handle.client.id).toBe("fresh");
     });
 
+    it("returns the refreshed client when a standalone route waits for validation", async () => {
+        (seedDemo as Mock).mockResolvedValue({ ok: true, reset: true });
+        (services.acquireDemoClient as Mock)
+            .mockResolvedValueOnce(makeClient("stale"))
+            .mockResolvedValueOnce(makeClient("fresh"));
+
+        const handle = await initializeDemoProject("demo", { waitForValidation: true });
+
+        expect((handle.client as unknown as { id: string; }).id).toBe("fresh");
+        expect(services.removeYjsClientByProjectId).toHaveBeenCalledWith("demo");
+    });
+
     it("keeps the connected client when no reset happened", async () => {
         const updates: { reset: boolean; }[] = [];
         await initializeDemoProject("demo", { onValidated: (update) => updates.push(update) });

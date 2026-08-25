@@ -57,13 +57,8 @@ function bindProjectTitle(target: Project | null, routedProject: string): () => 
         projectTitle = "";
         return () => {};
     }
-    const meta = target.ydoc.getMap("metadata");
-    const syncTitle = () => {
-        projectTitle = String(meta.get("title") ?? "").trim() || routedProject;
-    };
-    syncTitle();
-    meta.observe(syncTitle);
-    return () => meta.unobserve(syncTitle);
+    projectTitle = routedProject;
+    return () => {};
 }
 
 // The project a mounted toolbar shows changes at runtime, and so does the

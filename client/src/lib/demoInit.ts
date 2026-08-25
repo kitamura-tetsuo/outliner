@@ -72,6 +72,13 @@ export interface DemoInitOptions {
      * passed) or the validation request failed (`seedFailure` is set).
      */
     onValidated?: (update: DemoValidationUpdate) => void;
+    /**
+     * Wait for freshness validation before returning. Standalone entity routes
+     * need this because they resolve a table/schedule exactly once from the
+     * returned document; resolving the initially connected stale document and
+     * replacing it later would leave a permanent "not found" state.
+     */
+    waitForValidation?: boolean;
 }
 
 export interface DemoValidationUpdate {
@@ -151,6 +158,31 @@ export async function initializeDemoProject(
     }
 
     const handle = attachDemoProject(client, project);
+
+    if (options.waitForValidation) {
+        const seedResult = await withTimeout(validation, VALIDATION_TIMEOUT_MS);
+        if (isDestroyed()) {
+            releaseDemoProject(project);
+            throw new DemoInitAborted();
+        }
+        if (seedResult?.reset) {
+            logger.info("Demo document was reseeded; reconnecting before resolving the standalone route");
+            const next = await reconnectDemoProject(project);
+            if (isDestroyed()) {
+                if (next) releaseDemoProject(project);
+                throw new DemoInitAborted();
+            }
+            if (!next) throw new Error("Failed to reconnect to the refreshed demo project.");
+            options.onValidated?.({ handle: next, reset: true });
+            return next;
+        }
+        if (seedResult && !seedResult.ok) {
+            options.onValidated?.({ handle, reset: false, seedFailure: seedResult.reason });
+        } else if (seedResult) {
+            options.onValidated?.({ handle, reset: false });
+        }
+        return handle;
+    }
 
     // Content is on screen from here on; handle the validation verdict in the
     // background so a slow or delayed response never hides synced content.

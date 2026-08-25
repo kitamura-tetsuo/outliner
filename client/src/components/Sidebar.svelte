@@ -29,7 +29,7 @@ import type * as Y from "yjs";
 
         // Prefer the project name from the current route (the human-readable name the
     // user navigated with) over store.project.title, which may be stale or, for
-    // projects whose Yjs metadata never had a title set, corrupted with a raw
+    // projects whose legacy Yjs metadata never had a title set, corrupted with a raw
     // container UUID.
     // The demo routes name their project `demoProject`; every other project
     // route names it `project`. Reading the param rather than testing the

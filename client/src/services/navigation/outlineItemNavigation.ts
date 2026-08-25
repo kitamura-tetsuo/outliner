@@ -24,7 +24,7 @@ import { goto } from "$app/navigation";
 import { page as pageStore } from "$app/stores";
 import { get } from "svelte/store";
 import { getLogger } from "../../lib/logger";
-import { demoProjectFromPath, projectPagePath } from "../../lib/publicProject";
+import { projectPagePath } from "../../lib/publicProject";
 import type { Project } from "../../schema/app-schema";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { store as generalStore } from "../../stores/store.svelte";
@@ -58,8 +58,8 @@ export interface NavigateToOutlineItemOptions {
  * follows when it jumps to a match.
  */
 function routeProjectName(project: Project): string {
-    const pathname = get(pageStore)?.url?.pathname ?? "";
-    return demoProjectFromPath(pathname) ?? project.title;
+    const current = get(pageStore);
+    return current?.params?.demoProject ?? current?.params?.project ?? project.title;
 }
 
 /** True when `itemKey` names a live outline item of `project`. */

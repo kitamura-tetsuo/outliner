@@ -101,8 +101,6 @@ onMount(() => {
         let userManager: typeof import("../auth/UserManager").userManager | undefined;
         try {
             ({ userManager } = await import("../auth/UserManager"));
-            // Initialize metadata Y.Doc with IndexedDB persistence
-            await import("../lib/metaDoc.svelte");
             await import("../services");
         } catch (e) {
             logger.error({ error: e as Error }, "Failed to load client-only modules");

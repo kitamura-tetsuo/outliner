@@ -1,9 +1,13 @@
 import express from "express";
-import { getFirestore } from "firebase-admin/firestore";
 import * as Y from "yjs";
 import { z } from "zod";
-import { checkContainerAccess } from "./access-control.js";
 import { logger } from "./logger.js";
+import {
+    ensureProjectDescriptorForWrite,
+    normalizeProjectTitle,
+    type ProjectDescriptor,
+    ProjectDirectoryError,
+} from "./project-directory.js";
 import { Project } from "./schema/app-schema.js";
 import { verifyIdTokenCached } from "./websocket-auth.js";
 
@@ -38,7 +42,9 @@ const SeedRequestSchema = z.object({
  */
 export function createSeedRouter(
     hocuspocus: HocuspocusInstance,
-    // persistence argument removed as it's not used here anymore and type was y-leveldb
+    dependencies: {
+        ensureDescriptor?: (uid: string, projectId: string, title: string) => Promise<ProjectDescriptor>;
+    } = {},
 ) {
     const router = express.Router();
 
@@ -81,7 +87,15 @@ export function createSeedRouter(
                 return;
             }
 
-            const { projectName, pages } = validationResult.data;
+            let projectName: string;
+            try {
+                projectName = normalizeProjectTitle(validationResult.data.projectName);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : "Invalid project title";
+                res.status(400).json({ error: message });
+                return;
+            }
+            const { pages } = validationResult.data;
 
             logger.info({ event: "seed_request", projectName, pageCount: pages.length });
 
@@ -98,28 +112,24 @@ export function createSeedRouter(
 
             const projectId = stableIdFromTitle(projectName);
 
-            // SECURITY: Check if project exists and if user has access
-            // If project exists in Firestore, user MUST be a member to seed (overwrite) it.
-            // If project does not exist, we allow seeding (creation).
             try {
-                const db = getFirestore();
-                const projectRef = db.collection("projectUsers").doc(projectId);
-                const projectDoc = await projectRef.get();
-
-                if (projectDoc.exists) {
-                    const hasAccess = await checkContainerAccess(uid, projectId);
-                    if (!hasAccess) {
-                        logger.warn({
-                            event: "seed_forbidden",
-                            reason: "access_denied",
-                            projectId,
-                            uid,
-                        });
-                        res.status(403).json({ error: "Forbidden: You do not have access to this project" });
-                        return;
-                    }
-                }
+                const ensureDescriptor = dependencies.ensureDescriptor ?? ensureProjectDescriptorForWrite;
+                await ensureDescriptor(uid, projectId, projectName);
             } catch (authError) {
+                if (authError instanceof ProjectDirectoryError) {
+                    const status = authError.code === "forbidden"
+                        ? 403
+                        : authError.code === "title_conflict"
+                        ? 409
+                        : 400;
+                    logger.warn({
+                        event: "seed_descriptor_validation_failed",
+                        reason: authError.code,
+                        projectId,
+                    });
+                    res.status(status).json({ error: authError.message });
+                    return;
+                }
                 logger.error({ error: authError as Error, event: "seed_auth_check_error" }, "seed_auth_check_error");
                 res.status(500).json({ error: "Internal Server Error during authorization check" });
                 return;
@@ -155,11 +165,10 @@ export function createSeedRouter(
                 await directConnection.transact((document: unknown) => {
                     const ydoc = document as unknown as Y.Doc;
 
-                    // Set project title directly in metadata
+                    // Project titles are resource-side metadata. Remove a legacy
+                    // duplicate if this document predates the canonical directory.
                     const metadata = ydoc.getMap("metadata");
-                    if (!metadata.get("title")) {
-                        metadata.set("title", projectName);
-                    }
+                    metadata.delete("title");
                 });
 
                 // Create Project wrapper for YTree access outside the transaction

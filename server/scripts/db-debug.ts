@@ -6,6 +6,7 @@ import * as Y from "yjs";
 import { loadConfig } from "../src/config.js";
 import { getServiceAccount } from "../src/firebase-init.js";
 import { createPersistence } from "../src/persistence.js";
+import { getAuthorizedProjectDescriptorForWrite } from "../src/project-directory.js";
 import { Item, Project } from "../src/schema/app-schema.js";
 
 // We need to define the type for persistence because it returns 'any'
@@ -20,6 +21,32 @@ interface Persistence {
         close: (callback?: (err: Error | null) => void) => void;
     };
     onConfigure: () => Promise<void>;
+}
+
+async function initializeAdmin(): Promise<boolean> {
+    if (admin.apps.length > 0) return true;
+    try {
+        await loadConfig(process.env);
+        const serviceAccount = getServiceAccount();
+        const isEmulator = process.env.USE_FIREBASE_EMULATOR === "true"
+            || process.env.FIREBASE_AUTH_EMULATOR_HOST
+            || process.env.FIRESTORE_EMULATOR_HOST
+            || process.env.FIREBASE_EMULATOR_HOST;
+
+        if (
+            isEmulator && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
+        ) {
+            admin.initializeApp({ projectId: serviceAccount.project_id });
+        } else {
+            admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+        }
+        return true;
+    } catch (error) {
+        console.error(
+            chalk.red("Failed to initialize Firebase:", error instanceof Error ? error.message : String(error)),
+        );
+        return false;
+    }
 }
 
 async function main() {
@@ -469,35 +496,7 @@ async function deleteAllTestProjects(persistence: Persistence) {
 async function deleteOrphanedFirebaseProjects(persistence: Persistence) {
     console.log(chalk.blue("Initializing Firebase Admin..."));
 
-    async function initAdmin() {
-        if (admin.apps.length > 0) return true;
-        try {
-            await loadConfig(process.env); // Ensure ENV is loaded
-            const serviceAccount = getServiceAccount();
-
-            const isEmulator = process.env.USE_FIREBASE_EMULATOR === "true"
-                || process.env.FIREBASE_AUTH_EMULATOR_HOST
-                || process.env.FIRESTORE_EMULATOR_HOST
-                || process.env.FIREBASE_EMULATOR_HOST;
-
-            if (
-                isEmulator
-                && (!serviceAccount.private_key || serviceAccount.private_key.includes("Your Private Key Here"))
-            ) {
-                admin.initializeApp({ projectId: serviceAccount.project_id });
-            } else {
-                admin.initializeApp({
-                    credential: admin.credential.cert(serviceAccount),
-                });
-            }
-            return true;
-        } catch (e: unknown) {
-            console.error(chalk.red("Failed to initialize Firebase:", e instanceof Error ? e.message : String(e)));
-            return false;
-        }
-    }
-
-    if (!(await initAdmin())) return;
+    if (!(await initializeAdmin())) return;
 
     const firestore = admin.firestore();
     console.log(chalk.blue("Fetching Firestore projects..."));
@@ -634,6 +633,32 @@ async function createPageInProject(persistence: Persistence) {
 
     if (!pageTitle) {
         console.log(chalk.yellow("Page creation cancelled (no title)."));
+        return;
+    }
+
+    const maintenanceUid = process.env.MAINTENANCE_UID?.trim();
+    if (!maintenanceUid) {
+        console.log(chalk.red("Set MAINTENANCE_UID to the authorized Firebase UID before writing project data."));
+        return;
+    }
+
+    const roomParts = projectId.split("/");
+    if (roomParts.length !== 2 || roomParts[0] !== "projects" || !roomParts[1]) {
+        console.log(chalk.red("Selected document is not a canonical project room."));
+        return;
+    }
+
+    if (!(await initializeAdmin())) return;
+    try {
+        await getAuthorizedProjectDescriptorForWrite(
+            maintenanceUid,
+            roomParts[1],
+            admin.firestore() as unknown as Parameters<typeof getAuthorizedProjectDescriptorForWrite>[2],
+        );
+    } catch (error) {
+        console.log(
+            chalk.red(`Canonical project validation failed: ${error instanceof Error ? error.message : String(error)}`),
+        );
         return;
     }
 

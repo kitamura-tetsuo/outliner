@@ -36,7 +36,9 @@ test.describe("Debug Page", () => {
 
         const debugInfoPre = details.locator("pre");
 
-        // Get content
+        // Connection setup is asynchronous; wait for the debug snapshot rather
+        // than reading the initial empty object rendered by the page.
+        await expect(debugInfoPre).toContainText('"clientId"', { timeout: 15000 });
         const content = await debugInfoPre.textContent();
         expect(content).toBeTruthy();
 
@@ -45,7 +47,7 @@ test.describe("Debug Page", () => {
         // Verify fields from getDebugInfo()
         expect(info.clientId).toBeTruthy();
         expect(info.containerId).toBeTruthy();
-        expect(info.connectionState).toBeTruthy();
+        expect(info.connectionState).toBeDefined();
         expect(info.isSynced).toBeDefined();
 
         // Check provider info

@@ -1,12 +1,13 @@
 import { render, screen, waitFor, within } from "@testing-library/svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ProjectSelector from "../../components/ProjectSelector.svelte";
-import { firestoreStore } from "../../stores/firestoreStore.svelte";
+import { projectStore } from "../../stores/projectStore.svelte";
 
-// Verify that the number of options in ProjectSelector's <select> directly increases/decreases
-// in conjunction with the increase/decrease of firestoreStore.userProject.accessibleProjectIds (UI level verification)
+// Membership and titles come from the resource-side canonical directory. The
+// selector must react to replacement of that directory snapshot and must not
+// depend on user-writable userProjects membership fields.
 
-describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () => {
+describe("PRJ: ProjectSelector option count reflects the canonical project directory", () => {
     beforeEach(() => {
         // Minimal stub for object referenced by ensureUserLoggedIn in ProjectSelector
         (globalThis as unknown as { window: typeof window; }).window ||= globalThis as unknown as typeof window;
@@ -17,75 +18,47 @@ describe("PRJ: ProjectSelector option count reflects accessibleProjectIds", () =
             loginWithEmailPassword: vi.fn(async () => ({ success: true })),
         };
 
-        // Initial state: 1 project
-        firestoreStore.setUserProject({
-            userId: "u",
-            accessibleProjectIds: ["p-1"],
-            defaultProjectId: "p-1",
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as unknown as NonNullable<typeof firestoreStore.userProject>);
+        projectStore.projects = [{ id: "p-1", name: "Project 1", isDefault: true }];
     });
 
-    it("Option count changes according to accessibleProjectIds increase/decrease", async () => {
+    it("changes the option count when the canonical snapshot grows and shrinks", async () => {
         render(ProjectSelector);
 
         const select = screen.getByRole("combobox");
         // Initial 1 item
         expect(within(select).getAllByRole("option").length).toBe(1);
 
-        // Increase to 2 items (destructive array change -> setUserProject via Proxy + ucVersion increment)
-        firestoreStore.userProject!.accessibleProjectIds!.push("p-2");
-        // store integrity check
-        expect(firestoreStore.userProject?.accessibleProjectIds?.length ?? 0).toBe(2);
+        projectStore.projects = [
+            { id: "p-1", name: "Project 1", isDefault: true },
+            { id: "p-2", name: "Project 2", isDefault: false },
+        ];
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(2);
         });
 
-        // Revert to 1 item (pop -> setUserProject via Proxy + ucVersion increment)
-        firestoreStore.userProject!.accessibleProjectIds!.pop();
+        projectStore.projects = [{ id: "p-1", name: "Project 1", isDefault: true }];
         await waitFor(() => {
             expect(within(select).getAllByRole("option").length).toBe(1);
         });
     });
 });
 
-// Explicit initialization (isolate influence of push/pop from previous test)
-firestoreStore.setUserProject({
-    userId: "u",
-    accessibleProjectIds: ["p-1"],
-    defaultProjectId: "p-1",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-} as unknown as NonNullable<typeof firestoreStore.userProject>);
-
-it("Option count is immediately reflected even when replaced by setUserProject", async () => {
+it("reflects a replaced canonical snapshot immediately", async () => {
+    projectStore.projects = [{ id: "p-1", name: "Project 1", isDefault: true }];
     render(ProjectSelector);
 
     const select = screen.getByRole("combobox");
     expect(within(select).getAllByRole("option").length).toBe(1);
 
-    // 2 items by replacement
-    firestoreStore.setUserProject({
-        userId: "u",
-        accessibleProjectIds: ["p-1", "p-2"],
-        defaultProjectId: "p-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    } as unknown as NonNullable<typeof firestoreStore.userProject>);
-    expect(firestoreStore.userProject?.accessibleProjectIds?.length ?? 0).toBe(2);
+    projectStore.projects = [
+        { id: "p-1", name: "Project 1", isDefault: true },
+        { id: "p-2", name: "Project 2", isDefault: false },
+    ];
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(2);
     });
 
-    // Revert to 1 item by replacement
-    firestoreStore.setUserProject({
-        userId: "u",
-        accessibleProjectIds: ["p-1"],
-        defaultProjectId: "p-1",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    } as unknown as NonNullable<typeof firestoreStore.userProject>);
+    projectStore.projects = [{ id: "p-1", name: "Project 1", isDefault: true }];
     await waitFor(() => {
         expect(within(select).getAllByRole("option").length).toBe(1);
     });

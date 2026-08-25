@@ -4,33 +4,12 @@ import { SvelteMap } from "svelte/reactivity";
 import { v4 as uuid } from "uuid";
 import { userManager } from "../auth/UserManager";
 import { Project } from "../schema/yjs-schema";
-import { firestoreStore, saveProjectIdToServer } from "../stores/firestoreStore.svelte";
+import { createProjectDescriptor, resolveProject } from "../services/projectDirectoryService";
 import { yjsStore } from "../stores/yjsStore.svelte";
 import { YjsClient } from "../yjs/YjsClient";
 import { getFirebaseFunctionUrl } from "./firebaseFunctionsUrl";
 import { getLogger } from "./logger";
 const logger = getLogger("yjsService");
-
-import {
-    getContainerTitleFromMetaDoc,
-    getPendingRegistrations,
-    getProjectIdByTitle,
-    metaDocLoaded,
-    pendingRegistrationsMap,
-    queueProjectRegistration,
-    removePendingRegistration,
-    setContainerTitleInMetaDoc,
-} from "./metaDoc.svelte";
-
-// Local memory cache for immediate title resolution (critical for post-creation redirect)
-/* eslint-disable svelte/prefer-svelte-reactivity -- Local memory cache for immediate title resolution */
-const localTitleMap = new Map<string, string>();
-/* eslint-enable svelte/prefer-svelte-reactivity */
-
-function setProjectTitle(id: string, title: string) {
-    localTitleMap.set(title, id);
-    setContainerTitleInMetaDoc(id, title);
-}
 
 interface ClientKey {
     type: "container" | "user";
@@ -170,7 +149,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
             );
             try {
                 // Call saveProject API
-                const saved = await saveProjectIdToServer(projectId, projectName);
+                const saved = await createProjectDescriptor(projectId, projectName);
                 if (saved) {
                     logger.info(`[yjsService] Project ID saved successfully on attempt ${attempt}.`);
                     registrationSuccess = true;
@@ -178,7 +157,9 @@ export async function createNewProject(projectName: string, existingProjectId?: 
                     await new Promise(resolve => setTimeout(resolve, 500));
                     break;
                 } else {
-                    logger.warn(`[yjsService] saveProjectIdToServer returned false on attempt ${attempt}.`);
+                    logger.warn(
+                        `[yjsService] project directory registration returned no descriptor on attempt ${attempt}.`,
+                    );
                 }
             } catch (saveError) {
                 logger.error({ error: saveError }, `[yjsService] Exception saving project ID (attempt ${attempt})`);
@@ -191,12 +172,7 @@ export async function createNewProject(projectName: string, existingProjectId?: 
         }
 
         if (!registrationSuccess) {
-            logger.warn(
-                `[yjsService] Failed to register project after ${maxRetries} attempts. Queuing for later registration.`,
-            );
-            // Instead of throwing an error, we allow offline creation
-            // and queue the project ID to be registered with Firestore later
-            queueProjectRegistration(projectId, projectName);
+            throw new Error(`Failed to register project ${projectId}`);
         }
     }
 
@@ -205,10 +181,6 @@ export async function createNewProject(projectName: string, existingProjectId?: 
     const client = await YjsClient.connect(projectId, project);
     logger.info(`[yjsService] createNewProject: YjsClient connected for projectId "${projectId}".`);
     registry.set(keyFor(userId, projectId), [client, project]);
-
-    // Save title to metadata Y.Doc for dropdown display
-    // Save project title to metadata Y.Doc for persistence across page reloads
-    setProjectTitle(projectId, projectName);
 
     // update store
     yjsStore.yjsClient = client;
@@ -292,112 +264,12 @@ async function connectAndRegister(projectId: string, title: string, userId: stri
     logger.info(`[connectAndRegister] YjsClient.connect completed`);
     registry.set(keyFor(userId, projectId), [client, project]);
 
-    // Also save title to persistence so next time it might appear. Callers that
-    // open a project by id alone carry no title, and writing an empty one would
-    // erase the name the sidebar already knows.
-    if (title) setContainerTitleInMetaDoc(projectId, title);
     return client;
 }
 
 async function resolveProjectId(projectTitle: string): Promise<string | undefined> {
-    // 1. Check local memory cache first (fastest, handles redirect immediately after creation)
-    let projectId = localTitleMap.get(projectTitle);
-    if (projectId) {
-        logger.info(`[resolveProjectId] Found in localTitleMap: ${projectId}`);
-        return projectId;
-    }
-
-    // 2. Wait for IndexedDB to load (handles reload)
-    // Add timeout to prevent hanging if synced event never fires (e.g. in some test envs)
-    const timeoutPromise = new Promise<void>(r => setTimeout(r, 1000));
-    await Promise.race([metaDocLoaded, timeoutPromise]);
-    // 3. Check persistent storage
-    projectId = getProjectIdByTitle(projectTitle);
-
-    if (projectId) {
-        logger.info(`[resolveProjectId] Found in persistent storage: ${projectId}`);
-        return projectId;
-    }
-
-    // 4. Check Firestore Store for Name -> ID mapping (robust cross-device resolution)
-    if (!firestoreStore.isLoaded && !isTestEnvironment() && userManager.getCurrentUser()) {
-        logger.info(`[resolveProjectId] Waiting for firestoreStore to load...`);
-        await new Promise<void>((resolve) => {
-            let isResolved = false;
-
-            const cleanupEffect = $effect.root(() => {
-                $effect(() => {
-                    if (firestoreStore.isLoaded && !isResolved) {
-                        isResolved = true;
-                        clearTimeout(timeout);
-                        cleanupEffect();
-                        resolve();
-                    }
-                });
-            });
-
-            const timeout = setTimeout(() => {
-                if (!isResolved) {
-                    isResolved = true;
-                    cleanupEffect();
-                    // Resolve with undefined instead of rejecting
-                    logger.warn(`[resolveProjectId] Timeout waiting for project data from the server.`);
-                    resolve();
-                }
-            }, 3000);
-
-            // Check immediately in case it's already loaded
-            if (firestoreStore.isLoaded && !isResolved) {
-                isResolved = true;
-                clearTimeout(timeout);
-                cleanupEffect();
-                resolve();
-            }
-        });
-        logger.info(`[resolveProjectId] firestoreStore wait finished. isLoaded=${firestoreStore.isLoaded}`);
-    }
-
-    if (firestoreStore.userProject?.projectTitles) {
-        const matches: string[] = [];
-        for (const [pid, title] of Object.entries(firestoreStore.userProject.projectTitles)) {
-            if (title === projectTitle) {
-                matches.push(pid);
-            }
-        }
-
-        if (matches.length > 0) {
-            if (matches.length > 1) {
-                logger.warn(
-                    `[resolveProjectId] Multiple IDs found for title "${projectTitle}": ${matches.join(", ")}`,
-                );
-            }
-
-            // If we have multiple, prefer one that is already in registry
-            const user = userManager.getCurrentUser();
-            const userId = user?.id || (isTestEnvironment() ? "test-user-id" : undefined);
-            const registryMatch = matches.find(pid => {
-                const k = userId ? keyFor(userId, pid) : undefined;
-                return k && registry.has(k);
-            });
-
-            projectId = registryMatch || matches[0];
-            logger.info(`[resolveProjectId] Selected ID: ${projectId}`);
-            return projectId;
-        }
-    }
-
-    // 5. Treat UUID as projectId directly
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (uuidRegex.test(projectTitle)) {
-        logger.info(`[resolveProjectId] projectTitle looks like a UUID, using as projectId: ${projectTitle}`);
-        return projectTitle; // Treat title as ID
-    }
-
-    // In test environment, attempt to auto-connect if we can derive the ID
     const isTest = isTestEnvironment();
-    logger.info(`[resolveProjectId] projectId not found, isTest=${isTest}`);
-
-    if (import.meta.env.MODE === "test" || isTest) {
+    if (isTest) {
         // Check if the title is actually a test ID format (e.g. "pa4cc30c")
         // This handles the case where we navigate to /projectId directly in tests
         if (/^p[0-9a-f]+$/i.test(projectTitle)) {
@@ -410,7 +282,7 @@ async function resolveProjectId(projectTitle: string): Promise<string | undefine
         return stableId;
     }
 
-    return undefined;
+    return (await resolveProject(projectTitle))?.projectId;
 }
 
 async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortSignal): Promise<YjsClient | undefined> {
@@ -486,11 +358,7 @@ async function resolveClientByProjectTitle(projectTitle: string, signal?: AbortS
             // is set yet, which would permanently bake the UUID in as the project title.
             resolvedTitle = "";
         } else if (isTest && /^p[0-9a-f]+$/i.test(projectTitle)) {
-            // Try to resolve the real title from Firestore if available
-            if (firestoreStore.userProject?.projectTitles && firestoreStore.userProject.projectTitles[projectId]) {
-                resolvedTitle = firestoreStore.userProject.projectTitles[projectId];
-                logger.info(`[getClientByProjectTitle] Resolved real title from Firestore: "${resolvedTitle}"`);
-            }
+            resolvedTitle = projectTitle;
         } else if (isTest) {
             // Check if already connected by ID (but title mismatch? unlikely for stable ID)
             if (registry.has(keyFor(userId, projectId))) {
@@ -515,12 +383,6 @@ export function getProjectTitle(containerId: string): string {
         ?? registry.get({ type: "user", id: containerId });
     if (entry?.[1]?.title) {
         return entry[1].title;
-    }
-
-    // Fallback: get title from metadata Y.Doc (works for cached containers)
-    const metaTitle = getContainerTitleFromMetaDoc(containerId);
-    if (metaTitle) {
-        return metaTitle;
     }
 
     // Final fallback: return empty string
@@ -555,9 +417,6 @@ async function resolveCreateClient(containerId?: string): Promise<YjsClient> {
     const project = Project.createInstance(title);
     const client = await YjsClient.connect(resolvedId, project);
     registry.set(keyFor(userId, resolvedId), [client, project]);
-
-    // Save title to metadata Y.Doc for dropdown display
-    setProjectTitle(resolvedId, title);
 
     yjsStore.yjsClient = client;
     return client;
@@ -686,130 +545,6 @@ export async function getUserContainers(): Promise<{
 }> {
     // Yjs-only mode does not manage server-side containers.
     return { containers: [], defaultContainerId: null };
-}
-
-/**
- * Process pending project registrations that failed during offline creation.
- */
-export async function processPendingRegistrations(): Promise<void> {
-    const pending = getPendingRegistrations();
-    if (pending.length === 0) return;
-
-    logger.info(`[yjsService] Processing ${pending.length} pending registrations`);
-    for (const { projectId, title } of pending) {
-        try {
-            const saved = await saveProjectIdToServer(projectId, title);
-            if (saved) {
-                logger.info(`[yjsService] Successfully registered pending project ${projectId}`);
-                removePendingRegistration(projectId);
-            } else {
-                logger.warn(`[yjsService] Still failed to register pending project ${projectId}`);
-            }
-        } catch (e) {
-            logger.error({ error: e as Error }, `[yjsService] Error processing pending registration for ${projectId}`);
-        }
-    }
-}
-
-let cleanupRegistrations: (() => void) | undefined;
-export let backoffTimeout: ReturnType<typeof setTimeout> | undefined;
-export let isProcessingPending = false;
-
-export function scheduleProcessPending() {
-    if (backoffTimeout) clearTimeout(backoffTimeout);
-
-    let attempt = 0;
-    const maxAttempt = 5;
-
-    const run = async () => {
-        const pendingCount = getPendingRegistrations().length;
-        if (pendingCount === 0) {
-            backoffTimeout = undefined;
-            return;
-        }
-        if (isProcessingPending) {
-            backoffTimeout = setTimeout(scheduleProcessPending, 1000);
-            return;
-        }
-        isProcessingPending = true;
-
-        try {
-            await processPendingRegistrations();
-        } catch (error) {
-            logger.warn(`[yjsService] Error processing pending registrations: ${error}`);
-        } finally {
-            isProcessingPending = false;
-        }
-
-        const remaining = getPendingRegistrations().length;
-        if (remaining > 0 && attempt < maxAttempt) {
-            attempt++;
-            const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
-            backoffTimeout = setTimeout(run, delay);
-        } else {
-            backoffTimeout = undefined;
-        }
-    };
-
-    void run();
-}
-
-export function initPendingRegistrationsListeners() {
-    if (typeof window === "undefined") return () => {};
-
-    const handleOnline = () => {
-        if (navigator.onLine) scheduleProcessPending();
-    };
-    window.addEventListener("online", handleOnline);
-
-    const unsubAuth = userManager.addEventListener(() => {
-        if (userManager.getCurrentUser()) scheduleProcessPending();
-    });
-
-    const handlePendingChange = () => {
-        const pendingCount = getPendingRegistrations().length;
-        if (pendingCount > 0 && navigator.onLine && userManager.getCurrentUser()) scheduleProcessPending();
-    };
-
-    let cleanupPendingMap = () => {};
-    // Delay binding until next tick to ensure pendingRegistrationsMap is initialized
-    const initTimeout = setTimeout(() => {
-        if (
-            typeof pendingRegistrationsMap !== "undefined" && pendingRegistrationsMap
-            && typeof pendingRegistrationsMap.observe === "function"
-        ) {
-            try {
-                pendingRegistrationsMap.observe(handlePendingChange);
-                cleanupPendingMap = () => {
-                    try {
-                        pendingRegistrationsMap.unobserve(handlePendingChange);
-                    } catch (_e) {}
-                };
-            } catch (_e) {}
-        }
-    }, 0);
-
-    return () => {
-        clearTimeout(initTimeout);
-        window.removeEventListener("online", handleOnline);
-        unsubAuth();
-        cleanupPendingMap();
-        if (backoffTimeout) {
-            clearTimeout(backoffTimeout);
-            backoffTimeout = undefined;
-        }
-    };
-}
-
-if (typeof window !== "undefined") {
-    cleanupRegistrations = initPendingRegistrationsListeners();
-}
-
-export function cleanupPendingRegistrationsListeners() {
-    if (cleanupRegistrations) {
-        cleanupRegistrations();
-        cleanupRegistrations = undefined;
-    }
 }
 
 /**

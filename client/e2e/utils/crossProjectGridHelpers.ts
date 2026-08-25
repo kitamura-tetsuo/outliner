@@ -32,9 +32,8 @@ export interface GridProjectState {
 
 /**
  * Creates two separate projects (source and destination) with their own pages,
- * registers both as accessible to the signed-in test user, and stamps their
- * titles into the local metaDoc so the home project selector can list them by
- * title instead of by opaque id.
+ * registers both as accessible to the signed-in test user. The seed API creates
+ * their canonical resource-side descriptors and titles.
  */
 export async function seedCrossProjectFixture(page: Page, testInfo: TestInfo): Promise<ProjectFixture> {
     const suffix = `${testInfo.workerIndex}-${Date.now()}`;
@@ -53,17 +52,6 @@ export async function seedCrossProjectFixture(page: Page, testInfo: TestInfo): P
 
     const sourceProjectId = SeedClient.stableIdFromTitle(sourceProject);
     const destinationProjectId = SeedClient.stableIdFromTitle(destinationProject);
-    await page.waitForFunction(() => !!(globalThis as any).__META_DOC_MODULE__, { timeout: 30000 });
-    await page.evaluate(({ sourceId, sourceTitle, destinationId, destinationTitle }) => {
-        const meta = (globalThis as any).__META_DOC_MODULE__;
-        meta.setContainerTitleInMetaDoc(sourceId, sourceTitle);
-        meta.setContainerTitleInMetaDoc(destinationId, destinationTitle);
-    }, {
-        sourceId: sourceProjectId,
-        sourceTitle: sourceProject,
-        destinationId: destinationProjectId,
-        destinationTitle: destinationProject,
-    });
     await TestHelpers.setAccessibleProjects(page, [sourceProjectId, destinationProjectId]);
 
     return {

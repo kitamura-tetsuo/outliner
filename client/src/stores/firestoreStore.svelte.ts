@@ -13,6 +13,7 @@ import { userManager } from "../auth/UserManager";
 import { getFirebaseApp } from "../lib/firebase-app";
 import { getFirebaseFunctionUrl } from "../lib/firebaseFunctionsUrl";
 import { getLogger } from "../lib/logger";
+import { createProjectDescriptor } from "../services/projectDirectoryService";
 const logger = getLogger();
 
 // User container type definition
@@ -20,7 +21,6 @@ export interface UserProject {
     userId: string;
     defaultProjectId: string | null;
     accessibleProjectIds: Array<string>;
-    projectTitles?: Record<string, string>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -50,6 +50,9 @@ class GeneralStore {
         this.userProject = nextProject;
 
         this.ucVersion = prevVersion + 1;
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new CustomEvent("user-project-preferences-updated"));
+        }
         // Additional notification (test environment only)
         try {
             const __isTestEnv = import.meta.env.MODE === "test"
@@ -177,7 +180,6 @@ class GeneralStore {
                             userId: data.userId || userId,
                             defaultProjectId: data.defaultProjectId,
                             accessibleProjectIds: data.accessibleProjectIds || [],
-                            projectTitles: data.projectTitles || {},
                             createdAt: data.createdAt?.toDate() || new Date(),
                             updatedAt: data.updatedAt?.toDate() || new Date(),
                         };
@@ -442,91 +444,8 @@ export const saveContainerId = saveProjectId;
  */
 export async function saveProjectIdToServer(projectId: string, title?: string): Promise<boolean> {
     try {
-        // In test environment, add directly to userProject store
-        if (
-            typeof window !== "undefined"
-            && (window.mockFluidClient === false
-                || import.meta.env.VITE_IS_TEST === "true"
-                || window.localStorage.getItem("VITE_USE_TINYLICIOUS") === "true")
-        ) {
-            logger.debug("Test environment detected, saving project ID to mock store");
-
-            // Create or update new container data
-            /* eslint-disable svelte/prefer-svelte-reactivity -- Temporary Sets and Timestamp values, not reactive state */
-            const updatedData = firestoreStore.userProject
-                ? {
-                    ...firestoreStore.userProject,
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: firestoreStore.userProject.accessibleProjectIds
-                        ? [...new Set([...firestoreStore.userProject.accessibleProjectIds, projectId])]
-                        : [projectId],
-                    updatedAt: new Date(),
-                    projectTitles: {
-                        ...(firestoreStore.userProject.projectTitles || {}),
-                        [projectId]: title || projectId,
-                    },
-                }
-                : {
-                    userId: "test-user-id",
-                    defaultProjectId: projectId,
-                    accessibleProjectIds: [projectId],
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    projectTitles: { [projectId]: title || projectId },
-                };
-            /* eslint-enable svelte/prefer-svelte-reactivity */
-
-            // Update store
-            firestoreStore.setUserProject(updatedData);
-            logger.debug({ updatedData }, "Project ID saved to mock store");
-
-            // Save current container ID to local storage as well
-            window.localStorage.setItem("currentProjectId", projectId);
-
-            return true;
-        }
-
-        // Use API in production environment
-        // Check if user is logged in
-        const currentUser = userManager.getCurrentUser();
-        if (!currentUser) {
-            logger.warn("Cannot save project ID to server: User not logged in");
-            return false;
-        }
-
-        // Get Firebase ID token
-        const idToken = await userManager.auth.currentUser?.getIdToken();
-        if (!idToken) {
-            logger.warn("Cannot save project ID to server: Firebase user not available");
-            return false;
-        }
-
-        // Get Firebase Functions endpoint
-        const apiBaseUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_URL
-            || (import.meta.env.DEV ? "http://localhost:57000" : "");
-        logger.debug(`Saving project ID to Firebase Functions at ${apiBaseUrl}`);
-
-        // Call Firebase Functions to save container ID
-        const response = await fetch(getFirebaseFunctionUrl("saveProject"), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                idToken,
-                projectId,
-                title,
-            }),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`API error: ${response.status} ${errorText}`);
-        }
-
-        const result = await response.json();
-        logger.debug(`Successfully saved project ID to server for user ${currentUser.id}`);
-        return result.success === true;
+        await createProjectDescriptor(projectId, title ?? projectId);
+        return true;
     } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
         logger.error({ error: err as Error }, "Error saving project ID to server");

@@ -222,7 +222,10 @@ export class TestHelpers {
         // Wait for Firestore store to be initialized
         try {
             await page.waitForFunction(
-                () => !!(globalThis as any).__FIRESTORE_STORE__ && !!(globalThis as any).__USER_MANAGER__,
+                () =>
+                    !!(globalThis as any).__FIRESTORE_STORE__
+                    && !!(globalThis as any).__USER_MANAGER__
+                    && !!(globalThis as any).__PROJECT_STORE__,
                 { timeout: 15000 },
             );
 
@@ -252,6 +255,38 @@ export class TestHelpers {
         TestHelpers.slog(
             `[setAccessibleProjects] Setting projects for userId=${currentUserId}: ids=${JSON.stringify(projectNames)}`,
         );
+        const authToken = await page.evaluate(async () => {
+            return await (globalThis as any).__USER_MANAGER__?.auth?.currentUser?.getIdToken();
+        });
+        if (!authToken) throw new Error("setAccessibleProjects: Could not get an ID token");
+        const apiUrl = process.env.VITE_YJS_API_URL || `http://127.0.0.1:${process.env.VITE_YJS_PORT || 7093}`;
+        const stableProjectId = (title: string): string => {
+            let hash = 2166136261 >>> 0;
+            for (let index = 0; index < title.length; index++) {
+                hash ^= title.charCodeAt(index);
+                // Keep byte-for-byte parity with yjsService.stableIdFromTitle,
+                // which is also used by SeedClient-backed project setup.
+                hash = (hash * 16777619) >>> 0;
+            }
+            return `p${hash.toString(16)}`;
+        };
+        for (const title of projectNames) {
+            const projectId = stableProjectId(title);
+            const headers = { Authorization: `Bearer ${authToken}`, "Content-Type": "application/json" };
+            const existing = await fetch(`${apiUrl}/api/projects/${encodeURIComponent(projectId)}`, { headers });
+            if (existing.status === 404) {
+                const created = await fetch(`${apiUrl}/api/projects`, {
+                    method: "POST",
+                    headers,
+                    body: JSON.stringify({ projectId, title }),
+                });
+                if (!created.ok) {
+                    throw new Error(`setAccessibleProjects: canonical seed failed (${created.status})`);
+                }
+            } else if (!existing.ok) {
+                throw new Error(`setAccessibleProjects: descriptor lookup failed (${existing.status})`);
+            }
+        }
         await page.evaluate(async ({ projects }) => {
             const fs = (globalThis as any).__FIRESTORE_STORE__;
             const um = (globalThis as any).__USER_MANAGER__;
@@ -304,12 +339,12 @@ export class TestHelpers {
         await page.waitForFunction(
             (expectedProjectIds) => {
                 const fsIds = (globalThis as any).__FIRESTORE_STORE__?.userProject?.accessibleProjectIds;
-                const projectStoreIds = (globalThis as any).__PROJECT_STORE__?.projects?.map(
-                    (project: { id: string; }) => project.id,
+                const projectStoreTitles = (globalThis as any).__PROJECT_STORE__?.projects?.map(
+                    (project: { name: string; }) => project.name,
                 );
                 return Array.isArray(fsIds)
-                    && Array.isArray(projectStoreIds)
-                    && expectedProjectIds.every(id => fsIds.includes(id) && projectStoreIds.includes(id));
+                    && Array.isArray(projectStoreTitles)
+                    && expectedProjectIds.every(title => fsIds.includes(title) && projectStoreTitles.includes(title));
             },
             projectNames,
             { timeout: 5000 },

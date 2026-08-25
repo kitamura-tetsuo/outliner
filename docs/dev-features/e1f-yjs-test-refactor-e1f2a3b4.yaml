@@ -4,16 +4,13 @@ description: 'Removed Fluid Framework dependencies from unit and integration tes
 
   verification to Yjs or neutral abstractions, and deleted Fluid-only tests with
 
-  no Yjs equivalent. Introduced a neutral project title provider used by tests
-
-  to avoid coupling to Fluid-specific services.
+  no Yjs equivalent.
 
   '
 category: testing
 status: implemented
 changes:
-- Added neutral `projectTitleProvider` for title resolution in tests
-- Rewrote ContainerStore tests to mock the neutral provider
+- Rewrote project store tests around the canonical resource-side directory
 - Removed Fluid-only tests (Fluid Token endpoint and presence via Fluid)
 - Ensured unit/integration suites pass using Yjs-backed services
 tests:

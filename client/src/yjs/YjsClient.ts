@@ -57,18 +57,9 @@ export class YjsClient {
         // Build a Project bound to the provider's doc to ensure schema/awareness consistency
         let connectedProject: Project = project;
         try {
-            // Preserve title if present. Never persist a UUID-looking value as a
-            // title: it would come from a container-id fallback, not a real name,
-            // and baking it into the doc's metadata would permanently corrupt it.
             const title = project?.title ?? "";
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
             connectedProject = Project.fromDoc(doc);
-            try {
-                const meta = doc.getMap("metadata") as import("yjs").Map<unknown>;
-                if (title && !uuidRegex.test(title) && !meta.get("title")) meta.set("title", title);
-            } catch (_e) {
-                logger.error(_e);
-            }
+            connectedProject.title = title;
         } catch (_e) {
             logger.error(_e);
         }

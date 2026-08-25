@@ -21,7 +21,7 @@ const logger = getLogger("SearchPanel");
     import { searchHighlightStore } from "../stores/searchHighlightStore.svelte";
     import type { Item, Project } from "../schema/app-schema";
     import ConfirmDialog from "./ConfirmDialog.svelte";
-    import { demoProjectFromPath, projectPagePath } from "../lib/publicProject";
+    import { projectPagePath } from "../lib/publicProject";
 
     interface HasText {
         text?: string | { toString(): string };
@@ -186,17 +186,11 @@ const logger = getLogger("SearchPanel");
         if (!newTitle || newTitle === previousTitle) return;
         const currentPage = get(pageStore);
         if (currentPage.params?.page !== previousTitle) return;
-        // Exact first-segment match, never a prefix: `/demo-ja/…` and
-        // `/demonstration` both start with `/demo`.
-        const demoProject = demoProjectFromPath(currentPage.url.pathname);
+        const routedProject = currentPage.params?.demoProject ?? currentPage.params?.project;
         // A rename rewrites where the open page lives; it is not a visit to a
         // different page, so it replaces the entry instead of stacking history.
         const options = { replaceState: true, keepFocus: true, noScroll: true };
-        if (demoProject) {
-            goto(resolvePath(projectPagePath(demoProject, newTitle)), options);
-        } else if (project) {
-            goto(resolvePath(projectPagePath(project.title, newTitle)), options);
-        }
+        if (routedProject) goto(resolvePath(projectPagePath(routedProject, newTitle)), options);
     }
 
     function handleReplace() {
@@ -257,8 +251,8 @@ const logger = getLogger("SearchPanel");
         if (!project) return;
         const pageName = (match.page.text?.toString?.() ?? String(match.page.text ?? "")) as string;
         const currentPage = get(pageStore);
-        const demoProject = demoProjectFromPath(currentPage.url.pathname);
-        goto(resolvePath(projectPagePath(demoProject ?? project.title, pageName)));
+        const routedProject = currentPage.params?.demoProject ?? currentPage.params?.project ?? project.title;
+        goto(resolvePath(projectPagePath(routedProject, pageName)));
     }
 
     onDestroy(() => {

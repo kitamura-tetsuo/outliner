@@ -1,57 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { firestoreStore, type UserProject } from "./firestoreStore.svelte";
+
+const { listAccessibleProjects } = vi.hoisted(() => ({ listAccessibleProjects: vi.fn() }));
+vi.mock("../services/projectDirectoryService", () => ({ listAccessibleProjects }));
+
+import { firestoreStore } from "./firestoreStore.svelte";
 import { projectStore } from "./projectStore.svelte";
 
-// Mock metaDoc module for project titles
-vi.mock("../lib/metaDoc.svelte", () => ({
-    getProjectTitleFromMetaDoc: vi.fn((id: string) => {
-        const titles: Record<string, string> = {
-            "p1": "Test Project 1",
-            "p2": "Test Project 2",
-        };
-        return titles[id] || "";
-    }),
-}));
-
-// Neutral title provider mock (fallback)
-vi.mock("../lib/projectTitleProvider", () => ({
-    getProjectTitle: vi.fn((id: string) => {
-        const titles: Record<string, string> = {
-            "p1": "Test Project 1",
-            "p2": "Test Project 2",
-        };
-        return titles[id] || "";
-    }),
-}));
-
 describe("ProjectStore", () => {
-    beforeEach(() => {
-        firestoreStore.userProject = {
-            userId: "test",
-            accessibleProjectIds: ["p1", "p2", "p3"],
-            defaultProjectId: "p1",
-            projectTitles: {
-                "p3": "Firestore Title",
-            },
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        } as UserProject;
-        // Trigger sync to update projectStore
-        projectStore.syncFromFirestore();
+    beforeEach(() => projectStore.reset());
+
+    it("uses canonical resource-side descriptors", async () => {
+        listAccessibleProjects.mockResolvedValue([
+            { projectId: "p1", title: "Test Project 1" },
+            { projectId: "p2", title: "Test Project 2" },
+        ]);
+        await projectStore.refresh();
+        expect(projectStore.projects).toEqual([
+            { id: "p1", name: "Test Project 1", isDefault: false },
+            { id: "p2", name: "Test Project 2", isDefault: false },
+        ]);
     });
 
-    it("maps firestore projects to info objects", () => {
-        const list = projectStore.projects;
-        expect(list.length).toBe(3);
-        expect(list[0].id).toBe("p1");
-        expect(list[0].name).toBe("Test Project 1");
-        expect(list[0].isDefault).toBe(true);
-        expect(list[1].id).toBe("p2");
-        expect(list[1].name).toBe("Test Project 2");
-        expect(list[1].isDefault).toBe(false);
-        // Expect fallback to Firestore title
-        expect(list[2].id).toBe("p3");
-        expect(list[2].name).toBe("Firestore Title");
-        expect(list[2].isDefault).toBe(false);
+    it("merges the per-user default preference without using it as a directory", async () => {
+        firestoreStore.setUserProject({
+            userId: "test-user",
+            defaultProjectId: "p2",
+            accessibleProjectIds: ["forged-id"],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        });
+        listAccessibleProjects.mockResolvedValue([
+            { projectId: "p1", title: "One" },
+            { projectId: "p2", title: "Two" },
+        ]);
+        await projectStore.refresh();
+        expect(projectStore.projects.map(project => [project.id, project.isDefault])).toEqual([
+            ["p1", false],
+            ["p2", true],
+        ]);
     });
 });
