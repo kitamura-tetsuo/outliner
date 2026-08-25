@@ -113,7 +113,7 @@ export function createMcpRouter(
                         throw new McpError(errorCode, error.message, {
                             requestId,
                             uidFingerprint,
-                            ...error.debug,
+                            ...safeLogDiagnostics(error.debug),
                         });
                     }
                     throw error;
