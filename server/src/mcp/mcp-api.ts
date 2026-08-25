@@ -21,6 +21,16 @@ const safeLogDiagnostics = (debug: Record<string, unknown> | undefined) =>
             entityKind: debug.entityKind,
             inputLength: debug.inputLength,
             pathnameLength: debug.pathnameLength,
+            pathname: debug.pathname,
+            projectSegment: debug.projectSegment,
+            interpretedAs: debug.interpretedAs,
+            lookupCondition: debug.lookupCondition,
+            internalOperation: debug.internalOperation,
+            directoryErrorCode: debug.directoryErrorCode,
+            projectId: debug.projectId,
+            descriptorState: debug.descriptorState,
+            storedTitleType: debug.storedTitleType,
+            storedTitleEqualsProjectId: debug.storedTitleEqualsProjectId,
         }
         : {};
 
@@ -89,17 +99,22 @@ export function createMcpRouter(
                     return response(await handler(args as z.infer<z.ZodObject<T>>));
                 } catch (error) {
                     if (error instanceof McpReadError) {
+                        const uidFingerprint = crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12);
                         logger.info({
                             event: "mcp_resolution_failed",
                             requestId,
-                            uidFingerprint: crypto.createHash("sha256").update(uid).digest("hex").slice(0, 12),
+                            uidFingerprint,
                             code: error.code,
                             ...safeLogDiagnostics(error.debug),
                         }, error.message);
                         const errorCode = error.code === "invalid_argument"
                             ? ErrorCode.InvalidParams
                             : ErrorCode.InternalError;
-                        throw new McpError(errorCode, error.message, error.debug);
+                        throw new McpError(errorCode, error.message, {
+                            requestId,
+                            uidFingerprint,
+                            ...error.debug,
+                        });
                     }
                     throw error;
                 }

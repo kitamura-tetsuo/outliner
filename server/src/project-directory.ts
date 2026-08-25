@@ -18,6 +18,7 @@ export class ProjectDirectoryError extends Error {
             | "ambiguous_title"
             | "duplicate_title",
         message: string,
+        public readonly debug?: Record<string, unknown>,
     ) {
         super(message);
     }
@@ -50,13 +51,34 @@ function descriptorFromData(
     data: FirebaseFirestore.DocumentData | undefined,
 ): ProjectDescriptor {
     if (!data) {
-        throw new ProjectDirectoryError("not_found", "Canonical project descriptor was not found");
+        throw new ProjectDirectoryError("not_found", "Canonical project descriptor was not found", {
+            internalOperation: "descriptorFromData",
+            projectId,
+            descriptorState: "missing",
+        });
     }
     const accessibleUserIds = data.accessibleUserIds;
     if (!Array.isArray(accessibleUserIds) || !accessibleUserIds.includes(uid)) {
-        throw new ProjectDirectoryError("forbidden", "Project is inaccessible");
+        throw new ProjectDirectoryError("forbidden", "Project is inaccessible", {
+            internalOperation: "descriptorFromData",
+            projectId,
+            descriptorState: "unauthorized",
+        });
     }
-    return { projectId, title: normalizeProjectTitle(data.title) };
+    try {
+        return { projectId, title: normalizeProjectTitle(data.title) };
+    } catch (error) {
+        if (error instanceof ProjectDirectoryError) {
+            throw new ProjectDirectoryError(error.code, error.message, {
+                internalOperation: "descriptorFromData.normalizeProjectTitle",
+                projectId,
+                descriptorState: "invalid_title",
+                storedTitleType: typeof data.title,
+                storedTitleEqualsProjectId: data.title === projectId,
+            });
+        }
+        throw error;
+    }
 }
 
 export async function getAuthorizedProjectDescriptorForWrite(
@@ -76,8 +98,18 @@ export async function listAccessibleProjectDescriptors(
     const snapshot = await firestore.collection("projectUsers")
         .where("accessibleUserIds", "array-contains", uid)
         .get();
+    // A legacy or partially migrated descriptor must not make every otherwise
+    // valid project inaccessible. Individual reads and all writes remain
+    // strict; directory listing only quarantines malformed entries.
     return snapshot.docs
-        .map(document => descriptorFromData(uid, document.id, document.data()))
+        .flatMap(document => {
+            try {
+                return [descriptorFromData(uid, document.id, document.data())];
+            } catch (error) {
+                if (error instanceof ProjectDirectoryError && error.code === "invalid_title") return [];
+                throw error;
+            }
+        })
         .sort((left, right) => left.title.localeCompare(right.title) || left.projectId.localeCompare(right.projectId));
 }
 

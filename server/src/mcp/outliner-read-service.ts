@@ -1,7 +1,7 @@
 import type { Hocuspocus } from "@hocuspocus/server";
 import * as Y from "yjs";
 import { nodeKindOf, type OutlineNodeKind } from "../../../shared/src/services/outlineNodeKind.js";
-import type { ProjectDescriptor } from "../project-directory.js";
+import { type ProjectDescriptor, ProjectDirectoryError } from "../project-directory.js";
 import { type Item, type Items, Project } from "../schema/app-schema.js";
 
 export class McpReadError extends Error {
@@ -132,7 +132,28 @@ export class OutlinerReadService {
             });
         }
         const projectTitle = parts[0]!;
-        const candidates = await this.accessibleProjects(uid);
+        const resolutionDebug = {
+            inputUrl: `${url.origin}${url.pathname}`,
+            pathname: url.pathname,
+            projectSegment: projectTitle,
+            interpretedAs: "projectTitle",
+            lookupCondition: "projectUsers.accessibleUserIds array-contains authenticated uid; exact title match",
+        };
+        let candidates: ProjectDescriptor[];
+        try {
+            candidates = await this.accessibleProjects(uid);
+        } catch (error) {
+            if (error instanceof ProjectDirectoryError) {
+                throw new McpReadError("not_found", error.message, {
+                    ...resolutionDebug,
+                    stage: "project_directory_read",
+                    internalOperation: error.debug?.internalOperation ?? "accessibleProjects",
+                    directoryErrorCode: error.code,
+                    ...error.debug,
+                });
+            }
+            throw error;
+        }
 
         let foundProjectWithoutEntity = false;
         let authorizedCandidateCount = 0;
@@ -154,6 +175,7 @@ export class OutlinerReadService {
                         : project.ydoc.getMap("yjsTables").has(entityId);
                     if (!exists) {
                         throw new McpReadError("not_found", `${entityKind.slice(0, -1)} not found`, {
+                            ...resolutionDebug,
                             stage: "entity_lookup",
                             requestedProjectTitle: projectTitle,
                             entityKind,
@@ -166,6 +188,7 @@ export class OutlinerReadService {
                 const page = Array.from(project.items).find(item => item.text === parts[1]);
                 if (!page) {
                     throw new McpReadError("not_found", "Page not found", {
+                        ...resolutionDebug,
                         stage: "page_lookup",
                         requestedProjectTitle: projectTitle,
                         requestedPageTitle: parts[1],
@@ -177,6 +200,7 @@ export class OutlinerReadService {
         }
 
         throw new McpReadError("not_found", "Accessible project not found", {
+            ...resolutionDebug,
             stage: candidates.length === 0
                 ? "project_discovery"
                 : authorizedCandidateCount === 0

@@ -142,6 +142,22 @@ describe("canonical project directory", () => {
         expect((await db.collection("projectUsers").doc("directory-invalid").get()).exists).to.equal(false);
     });
 
+    it("quarantines a malformed resource descriptor without hiding valid projects", async () => {
+        await Promise.all([
+            db.collection("projectUsers").doc("00000000-0000-0000-0000-000000000000").set({
+                title: "00000000-0000-0000-0000-000000000000",
+                accessibleUserIds: ["owner"],
+            }),
+            db.collection("projectUsers").doc("valid-project").set({
+                title: "tetsuo",
+                accessibleUserIds: ["owner"],
+            }),
+        ]);
+        expect(await listAccessibleProjectDescriptors("owner", db)).to.deep.equal([
+            { projectId: "valid-project", title: "tetsuo" },
+        ]);
+    });
+
     it("lists and resolves titles only from resource-side memberships", async () => {
         await Promise.all([
             db.collection("projectUsers").doc("directory-existing").set({
