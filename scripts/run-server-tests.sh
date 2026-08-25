@@ -16,4 +16,11 @@ cd "$ROOT_DIR/server"
 # the client. See the header comment in that file.
 TS_NODE_TRANSPILE_ONLY=1 \
     NODE_OPTIONS="--loader ts-node/esm --loader ./tests/loaders/pin-server-deps.mjs --no-warnings" \
-    npx mocha "tests/**/*.test.{js,cjs,ts}" --exclude "tests/websocket-auth-security.test.ts" --exclude "tests/websocket-auth.test.ts" --exclude "tests/metrics.test.ts" --exclude "tests/metrics-endpoint.test.ts" --exclude "tests/idle-timeout-reconnect.test.ts" --exclude "tests/hocuspocus-server.test.ts" --exclude "tests/log-service.test.ts" --exclude "tests/hocuspocus-auth-bypass.test.ts" --exclude "tests/connection-limits.test.ts" --exclude "tests/security.test.ts" --exclude "tests/seed-api-validation.test.ts" --timeout 10000
+    npx mocha "tests/**/*.test.{js,cjs,ts}" --exclude "tests/websocket-auth-security.test.ts" --exclude "tests/websocket-auth.test.ts" --exclude "tests/metrics.test.ts" --exclude "tests/metrics-endpoint.test.ts" --exclude "tests/idle-timeout-reconnect.test.ts" --exclude "tests/hocuspocus-server.test.ts" --exclude "tests/log-service.test.ts" --exclude "tests/hocuspocus-auth-bypass.test.ts" --exclude "tests/connection-limits.test.ts" --exclude "tests/security.test.ts" --exclude "tests/seed-api-validation.test.ts" --exclude "tests/project-directory.test.ts" --timeout 10000
+
+# firebase-init tests intentionally replace and delete the process-wide Admin
+# SDK app. Run the Firestore-backed directory suite in a fresh process so its
+# gRPC client cannot inherit that lifecycle state from the main Mocha run.
+TS_NODE_TRANSPILE_ONLY=1 \
+    NODE_OPTIONS="--loader ts-node/esm --loader ./tests/loaders/pin-server-deps.mjs --no-warnings" \
+    npx mocha "tests/project-directory.test.ts" --timeout 10000
