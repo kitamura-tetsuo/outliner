@@ -27,6 +27,8 @@ describe("canonical project directory", () => {
         "directory-second",
         "duplicate-owner",
         "duplicate-candidate",
+        "00000000-0000-0000-0000-000000000000",
+        "valid-project",
     ];
 
     before(() => {
