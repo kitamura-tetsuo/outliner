@@ -202,6 +202,7 @@
                 <PageList
                     currentUser="anonymous"
                     project={store.project}
+                    projectName={demoProject}
                     rootItems={pages}
                 />
             {/key}
@@ -214,5 +215,4 @@
         </div>
     {/if}
 </main>
-
 

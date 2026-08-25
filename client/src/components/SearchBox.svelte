@@ -239,8 +239,8 @@ const logger = getLogger("SearchBox");
             const title = targetPage.text ?? "";
             searchHistoryStore.add(title);
             // Prefer a project whose Y.Doc matches the active page/project before falling back to placeholders
-            const projTitle = $pageStore.params.demoProject
-                || $pageStore.params.project
+            const projTitle = $pageStore?.params?.demoProject
+                || $pageStore?.params?.project
                 || resolveProjectTitle(targetPage);
             // Encode path segments to ensure correct routing for titles with spaces/special characters
             // `projTitle` is already the demo's own slug when we are in a demo,
