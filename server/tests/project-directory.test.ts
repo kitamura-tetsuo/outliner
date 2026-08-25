@@ -153,9 +153,19 @@ describe("canonical project directory", () => {
                 accessibleUserIds: ["owner"],
             }),
         ]);
-        expect(await listAccessibleProjectDescriptors("owner", db)).to.deep.equal([
+        const quarantined: ProjectDirectoryError[] = [];
+        expect(await listAccessibleProjectDescriptors("owner", db, error => quarantined.push(error))).to.deep.equal([
             { projectId: "valid-project", title: "tetsuo" },
         ]);
+        expect(quarantined).to.have.length(1);
+        expect(quarantined[0]?.code).to.equal("invalid_title");
+        expect(quarantined[0]?.debug).to.deep.include({
+            internalOperation: "descriptorFromData.normalizeProjectTitle",
+            projectId: "00000000-0000-0000-0000-000000000000",
+            descriptorState: "invalid_title",
+            storedTitleType: "string",
+            storedTitleEqualsProjectId: true,
+        });
     });
 
     it("lists and resolves titles only from resource-side memberships", async () => {

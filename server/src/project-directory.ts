@@ -94,6 +94,7 @@ export async function getAuthorizedProjectDescriptorForWrite(
 export async function listAccessibleProjectDescriptors(
     uid: string,
     firestore: Firestore = getFirestore(),
+    onQuarantinedDescriptor?: (error: ProjectDirectoryError) => void,
 ): Promise<ProjectDescriptor[]> {
     const snapshot = await firestore.collection("projectUsers")
         .where("accessibleUserIds", "array-contains", uid)
@@ -106,7 +107,10 @@ export async function listAccessibleProjectDescriptors(
             try {
                 return [descriptorFromData(uid, document.id, document.data())];
             } catch (error) {
-                if (error instanceof ProjectDirectoryError && error.code === "invalid_title") return [];
+                if (error instanceof ProjectDirectoryError && error.code === "invalid_title") {
+                    onQuarantinedDescriptor?.(error);
+                    return [];
+                }
                 throw error;
             }
         })

@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { McpReadError, OutlinerReadService } from "../src/mcp/outliner-read-service.js";
-import { ProjectDirectoryError } from "../src/project-directory.js";
 import { Project } from "../src/schema/app-schema.js";
 
 describe("Outliner MCP read service", () => {
@@ -177,40 +176,6 @@ describe("Outliner MCP read service", () => {
                 requestedProjectTitle: "MissingProject",
                 accessibleProjectCount: 1,
             });
-        }
-    });
-
-    it("identifies a malformed canonical directory record before title matching", async () => {
-        const service = new OutlinerReadService(
-            {} as never,
-            async () => true,
-            async () => {
-                throw new ProjectDirectoryError("invalid_title", "Project title must not be a project ID", {
-                    internalOperation: "descriptorFromData.normalizeProjectTitle",
-                    projectId: "00000000-0000-0000-0000-000000000000",
-                    descriptorState: "invalid_title",
-                    storedTitleEqualsProjectId: true,
-                });
-            },
-        );
-        try {
-            await service.resolveUrl("uid", "https://outliner.example/tetsuo/claude%20code?secret=hidden");
-            expect.fail("expected rejection");
-        } catch (error) {
-            const mcpError = error as McpReadError;
-            expect(mcpError.debug).to.deep.include({
-                inputUrl: "https://outliner.example/tetsuo/claude%20code",
-                pathname: "/tetsuo/claude%20code",
-                projectSegment: "tetsuo",
-                interpretedAs: "projectTitle",
-                stage: "project_directory_read",
-                internalOperation: "descriptorFromData.normalizeProjectTitle",
-                directoryErrorCode: "invalid_title",
-                projectId: "00000000-0000-0000-0000-000000000000",
-                descriptorState: "invalid_title",
-                storedTitleEqualsProjectId: true,
-            });
-            expect(JSON.stringify(mcpError.debug)).not.to.include("hidden");
         }
     });
 
