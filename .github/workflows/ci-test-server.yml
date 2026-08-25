@@ -60,3 +60,38 @@ jobs:
           name: server-test-logs
           path: job_logs/
           retention-days: 2
+
+  project-directory-test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          clean: true
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-test-env
+
+      - name: Run canonical project directory tests
+        shell: bash
+        run: |
+          cd server
+          TS_NODE_TRANSPILE_ONLY=1 \
+            NODE_OPTIONS="--loader ts-node/esm --loader ./tests/loaders/pin-server-deps.mjs --no-warnings" \
+            npx mocha tests/project-directory.test.ts --timeout 10000
+        env:
+          CI: true
+          NODE_ENV: test
+          TEST_ENV: localhost
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:58080
+          FIREBASE_PROJECT_ID: outliner-d57b0
+          GCLOUD_PROJECT: outliner-d57b0
