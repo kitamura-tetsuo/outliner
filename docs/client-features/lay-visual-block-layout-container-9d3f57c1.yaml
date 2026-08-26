@@ -16,6 +16,8 @@ services:
 - client/src/lib/TreeDnD.ts
 - shared/src/app-schema.ts
 tests:
+- client/e2e/new/lay-empty-layout-drop-rejects-text-9d3f57c1.spec.ts
+- client/e2e/new/lay-empty-layout-drop-target-9d3f57c1.spec.ts
 - client/e2e/new/lay-layout-span-and-unwrap-9d3f57c1.spec.ts
 - client/e2e/new/lay-visual-block-layout-container-9d3f57c1.spec.ts
 - client/src/components/layout/LayoutBlock.test.ts
@@ -38,6 +40,7 @@ acceptance:
 - Copy/duplicate preserves the children's order, spans and component-copy semantics
 - Creating a Layout rebuilds the outline's visible order immediately, without waiting for the next structural edit
 - Deleting the Layout follows normal subtree deletion, while Unwrap keeps the blocks, in order, with their component bindings intact
+- Dropping an eligible Grid or Calendar anywhere on the visible empty-Layout drop surface inserts it, matching the drop indicator; the blank outline row above the Layout is not required (#5087)
 - Grid and Calendar are accepted as Layout children; ordinary text items and nested Layouts are rejected, leaving the tree unchanged
 - Grid and Calendar rendering outside a Layout is unaffected
 - No x/y, row, column-start, per-track fraction, row-span or pixel-width state is persisted
