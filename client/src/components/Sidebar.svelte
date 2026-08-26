@@ -414,6 +414,17 @@ import type * as Y from "yjs";
 
         <!-- Scheduled SQL section -->
         <div class="sidebar-section">
+            <a class="section-header" href={resolvePath(`/${currentProjectName}/objects`)} style="text-decoration: none;">
+                <div class="section-header-content">
+                    <h3 class="sidebar-section-title" style="margin-bottom: 0;">Object Manager</h3>
+                </div>
+            </a>
+            <ul class="object-list sidebar-placeholder" style="margin-top: 0.5rem; list-style: none; padding: 0; margin-bottom: 0;">
+                <li>Manage Grids, Tables, Schedules</li>
+            </ul>
+        </div>
+
+        <div class="sidebar-section">
             <div class="section-header">
                 <div class="section-header-content">
                     <button type="button"
