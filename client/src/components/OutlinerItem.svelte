@@ -171,6 +171,7 @@ let lastCursorPosition = $state(0);
 
 // Drag related state
 let isDragging = $state(false);
+let suppressCaretClickAfterSelectionDrag = false;
 let dragStartPosition = $state(0);
 // True while this item is the source of a native item-move drag (started from the drag handle)
 let isDragSource = $state(false);
@@ -1260,6 +1261,14 @@ function handleClick(event: MouseEvent) {
     // compatibility click would redo it (and collapse a long-press selection).
     if (isSyntheticMouseSuppressed()) return;
 
+    // Mouseup finalizes a text-selection drag before the browser emits `click`.
+    // That compatibility click is not a caret-placement gesture and must not collapse
+    // the range the drag just created.
+    if (suppressCaretClickAfterSelectionDrag) {
+        suppressCaretClickAfterSelectionDrag = false;
+        return;
+    }
+
     // Ignore clicks inside embedded components (treated as foreign UI)
     if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
         return;
@@ -1792,6 +1801,7 @@ function handleMouseUp() {
 
     // End drag
     isDragging = false;
+    suppressCaretClickAfterSelectionDrag = true;
 
     // Confirm selection range
     updateSelectionAndCursor();
