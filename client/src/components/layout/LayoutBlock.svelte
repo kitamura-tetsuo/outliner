@@ -17,6 +17,7 @@ import { onMount } from "svelte";
 import type { Item } from "../../schema/app-schema";
 import { getLogger } from "../../lib/logger";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
+import { OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE } from "../../lib/selection/outlineSelectionDom";
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
 import {
     isVisualComponentType,
@@ -226,6 +227,9 @@ function handleResizeKey(child: Item, event: KeyboardEvent) {
 function handleChildDragStart(child: Item, event: DragEvent) {
     draggingChildId = child.id;
     event.dataTransfer?.setData(LAYOUT_CHILD_DND_TYPE, child.id);
+    // A Layout child is still an ordinary tree item. Carry the shared item type so
+    // dropping outside this Layout enters the normal TreeDnD controller.
+    event.dataTransfer?.setData(OUTLINER_ITEM_DND_TYPE, child.id);
     event.dataTransfer?.setData("text/plain", childLabel(child));
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
 }
@@ -248,7 +252,7 @@ function draggedItem(event: DragEvent): { item: Item; fromLayout: boolean; } | u
     if (isLayoutChildDrag(event)) {
         const id = event.dataTransfer?.getData?.(LAYOUT_CHILD_DND_TYPE) || draggingChildId;
         const child = id ? children.find(entry => entry.id === id) : undefined;
-        return child ? { item: child, fromLayout: true } : undefined;
+        if (child) return { item: child, fromLayout: true };
     }
 
     const outlineId = event.dataTransfer?.getData?.(OUTLINER_ITEM_DND_TYPE);
@@ -379,6 +383,7 @@ function handleMoveOut(child: Item) {
                             aria-label="Reorder block"
                             title="Drag to reorder"
                             data-testid="layout-cell-handle"
+                            {...{ [OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE]: "" }}
                             ondragstart={(event) => handleChildDragStart(child, event)}
                             ondragend={clearDragState}
                         >⠿</span>

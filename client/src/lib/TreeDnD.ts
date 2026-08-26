@@ -49,6 +49,22 @@ export class TreeDnD {
         this.context = context;
     }
 
+    /** Layout children are deliberately absent from displayItems, but remain ordinary tree items. */
+    private findItem(itemId: string, matchKey = false): Item | undefined {
+        const visit = (items: Iterable<Item>): Item | undefined => {
+            for (const item of items) {
+                if ((matchKey ? item.key : item.id) === itemId) return item;
+                const nested = visit(item.items);
+                if (nested) return nested;
+            }
+            return undefined;
+        };
+        if ((matchKey ? this.context.pageItem.key : this.context.pageItem.id) === itemId) {
+            return this.context.pageItem;
+        }
+        return visit(this.context.pageItem.items);
+    }
+
     /**
      * Move (reorder or reparent) an existing item within the tree.
      * @param sourceItemId The item being dragged.
@@ -66,24 +82,22 @@ export class TreeDnD {
         }
 
         // Get source and target item indices
-        const sourceIndex = displayItems.findIndex(
-            (d) => d.model.id === sourceItemId,
-        );
+        const sourceItem = this.findItem(sourceItemId);
         const targetIndex = displayItems.findIndex(
             (d) => d.model.id === targetItemId,
         );
 
-        if (sourceIndex < 0 || targetIndex < 0) {
+        if (!sourceItem || targetIndex < 0) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
-                    `Source or target item not found: sourceIndex=${sourceIndex}, targetIndex=${targetIndex}`,
+                    `Source or target item not found: source=${Boolean(sourceItem)}, targetIndex=${targetIndex}`,
                 );
             }
             return;
         }
 
         // Do nothing if source and target are the same item
-        if (sourceIndex === targetIndex) {
+        if (sourceItemId === targetItemId) {
             if (typeof window !== "undefined" && window.DEBUG_MODE) {
                 logger.debug(
                     `Source and target are the same item, no action needed`,
@@ -93,7 +107,6 @@ export class TreeDnD {
         }
 
         const items = pageItem.items;
-        const sourceItem = displayItems[sourceIndex].model.original;
         const targetItem = displayItems[targetIndex].model.original;
 
         const sourceKey = sourceItem.key!;
@@ -128,6 +141,7 @@ export class TreeDnD {
 
             const sourceParent = safeGetNodeParent(tree, sourceKey);
             const targetParent = safeGetNodeParent(tree, targetKey);
+            const sourceParentItem = sourceParent ? this.findItem(sourceParent, true) : undefined;
 
             const run = () => {
                 // Middle drop should nest under the target item.
@@ -165,6 +179,11 @@ export class TreeDnD {
                     tree.setNodeBefore(sourceKey, targetKey);
                 } else {
                     tree.setNodeAfter(sourceKey, targetKey);
+                }
+
+                // A span describes membership in a Layout, not the block itself.
+                if (isLayoutItem(sourceParentItem) && sourceParent !== targetParent) {
+                    sourceItem.columnSpan = undefined;
                 }
             };
 
