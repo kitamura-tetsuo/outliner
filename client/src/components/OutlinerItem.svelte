@@ -1493,7 +1493,9 @@ function handleMouseDown(event: MouseEvent) {
     // An unmodified press is the beginning of either ordinary caret placement or a
     // fresh drag selection. In both cases the old range is no longer authoritative;
     // initialize this row's textarea/caret now, before pointer movement can begin.
-    startEditing(event);
+    // Alt+click is handled by handleClick and must retain the existing caret so it can
+    // add a distinct cursor, including another cursor on this same row.
+    if (!event.altKey) startEditing(event);
 
 }
 
