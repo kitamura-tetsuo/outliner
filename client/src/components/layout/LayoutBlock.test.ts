@@ -362,6 +362,7 @@ describe("LayoutBlock", () => {
         // Test if a grid was added
         expect(layout.items.length).toBe(1);
         expect([...layout.items][0].componentType).toBe("yjstable");
+        expect([...layout.items][0].columnSpan).toBe(12);
 
         unmount();
     });
