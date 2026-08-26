@@ -36,6 +36,7 @@ test.describe("FTR-9d3f57c1: the visible empty-Layout surface itself accepts a d
         );
         expect(hit.testId).toBe("layout-empty");
         expect(hit.itemId).toBe(layoutId);
+        expect(hit.dropped).toBe(true);
 
         await expect(page.getByTestId("layout-cell")).toHaveCount(1, { timeout: 10000 });
         expect(await layoutChildIds(page, layoutId)).toEqual([blockId]);
@@ -55,6 +56,7 @@ test.describe("FTR-9d3f57c1: the visible empty-Layout surface itself accepts a d
             point,
         );
         expect(hit.testId).toBe("layout-empty");
+        expect(hit.dropped).toBe(true);
 
         await expect(page.getByTestId("layout-cell")).toHaveCount(1, { timeout: 10000 });
         expect(await layoutChildIds(page, layoutId)).toEqual([blockId]);

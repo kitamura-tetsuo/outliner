@@ -1,19 +1,30 @@
 import type { Page } from "@playwright/test";
 
 /**
- * Dispatches a full drag sequence whose target is resolved by real
+ * Dispatches a drag sequence whose target is resolved by real
  * `elementFromPoint` hit-testing at the given viewport coordinates -- the same
  * resolution a genuine pointer-driven drag relies on -- rather than a
  * hardcoded selector. This exercises the geometry (does the pixel the user
- * would release over actually belong to the intended drop surface?) together
- * with the real event-handling path, which a CDP-simulated native drag cannot
- * reliably deliver a `drop` for in this environment.
+ * would release over actually belong to the intended drop surface?).
+ *
+ * It also models the native negotiation a real drag depends on and a
+ * CDP-simulated one cannot reliably reproduce in this environment: a region
+ * only becomes a valid drop target once its own `dragenter` is accepted
+ * (`preventDefault()`ed). If `dragenter` is not accepted, this stops short of
+ * dispatching `dragover`/`drop` -- exactly the native refusal #5087 reported
+ * (the region rendered a drop indicator but the underlying gesture never
+ * produced a `drop`) -- and reports `dropped: false` instead. Unconditionally
+ * firing `drop` regardless of `dragenter`'s outcome would make this pass
+ * whether or not the region actually wires up `dragenter`, defeating the
+ * point of the regression test.
  */
 export async function dispatchDragAt(
     page: Page,
     sourceSelector: string,
     point: { x: number; y: number; },
-): Promise<{ tag: string; testId: string | null; itemId: string | null | undefined; }> {
+): Promise<
+    { tag: string; testId: string | null; itemId: string | null | undefined; dropped: boolean; }
+> {
     return page.evaluate(({ sourceSelector, point }) => {
         const source = document.querySelector<HTMLElement>(sourceSelector);
         if (!source) throw new Error(`source not found: ${sourceSelector}`);
@@ -33,14 +44,23 @@ export async function dispatchDragAt(
         const target = document.elementFromPoint(point.x, point.y) as HTMLElement | null;
         if (!target) throw new Error(`no element at ${point.x},${point.y}`);
         const at = { bubbles: true, cancelable: true, dataTransfer, clientX: point.x, clientY: point.y };
-        for (const type of ["dragenter", "dragover", "drop"]) {
-            target.dispatchEvent(new DragEvent(type, at));
+
+        const enter = new DragEvent("dragenter", at);
+        target.dispatchEvent(enter);
+
+        let dropped = false;
+        if (enter.defaultPrevented) {
+            target.dispatchEvent(new DragEvent("dragover", at));
+            target.dispatchEvent(new DragEvent("drop", at));
+            dropped = true;
         }
         source.dispatchEvent(new DragEvent("dragend", at));
+
         return {
             tag: target.tagName,
             testId: target.getAttribute("data-testid"),
             itemId: target.closest("[data-item-id]")?.getAttribute("data-item-id"),
+            dropped,
         };
     }, { sourceSelector, point });
 }
