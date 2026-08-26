@@ -20,6 +20,7 @@ import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE } from "../../lib/selection/outlineSelectionDom";
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
 import {
+    visualComponentTypes,
     isVisualComponentType,
     LAYOUT_CHILD_DND_TYPE,
     LAYOUT_COLUMN_COUNT,
@@ -36,11 +37,17 @@ import {
     setColumnSpan,
 } from "../../services/layout/layoutTree";
 import { store as generalStore } from "../../stores/store.svelte";
+import LayoutContextMenu from "./LayoutContextMenu.svelte";
+import { createVisualNodeAsChild } from "../../services/outline/visualNodePlacement";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
 
 const logger = getLogger("LayoutBlock");
+
+let isContextMenuOpen = $state(false);
+let contextMenuX = $state(0);
+let contextMenuY = $state(0);
 
 interface Props {
     item: Item;
@@ -321,6 +328,32 @@ function clearDragState() {
 function handleMoveOut(child: Item) {
     moveOutOfLayout(item, child);
 }
+
+function handleContextMenu(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    const currentTarget = event.currentTarget as HTMLElement;
+
+    // Specifically verify the event was fired on the grid background container or empty message,
+    // not a descendant interactive component
+    const isBackground = target === gridRef || target.classList.contains("layout-empty") || target.classList.contains("layout-grid-container") || target.classList.contains("layout-block") || target === currentTarget;
+
+    if (!isBackground) {
+        return;
+    }
+
+    event.preventDefault();
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+    isContextMenuOpen = true;
+}
+
+function handleContextMenuAction(action: string) {
+    if (!generalStore.currentUser) return;
+
+    if (visualComponentTypes().includes(action)) {
+        createVisualNodeAsChild(item, undefined, action, generalStore.currentUser.id);
+    }
+}
 </script>
 
 <!-- Bound 1:1 to this item's Y.Doc: keying the render body on the doc guid
@@ -346,6 +379,7 @@ function handleMoveOut(child: Item) {
     ondragover={handleBlockDragOver}
     ondrop={handleBlockDrop}
     ondragend={clearDragState}
+    oncontextmenu={handleContextMenu}
 >
     <div class="layout-grid-container">
         <div class="layout-grid" bind:this={gridRef} data-testid="layout-grid">
@@ -477,6 +511,16 @@ function handleMoveOut(child: Item) {
         {/if}
     </div>
 </div>
+
+{#if isContextMenuOpen}
+    <LayoutContextMenu
+        x={contextMenuX}
+        y={contextMenuY}
+        visualTypes={visualComponentTypes()}
+        onClose={() => { isContextMenuOpen = false; }}
+        onAction={handleContextMenuAction}
+    />
+{/if}
 {/key}
 
 <style>
