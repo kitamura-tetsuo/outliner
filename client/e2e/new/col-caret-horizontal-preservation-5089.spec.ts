@@ -5,7 +5,9 @@ test.describe("Caret Horizontal Position Preservation", () => {
     test("ArrowUp and ArrowDown preserves caret horizontal position across items", async ({ page }) => {
         const info = await TestHelpers.seedProjectAndNavigate(page, test.info());
 
-        await page.goto(`http://localhost:7090/${encodeURIComponent(info.projectName)}/${encodeURIComponent(info.pageName)}`);
+        await page.goto(
+            `http://localhost:7090/${encodeURIComponent(info.projectName)}/${encodeURIComponent(info.pageName)}`,
+        );
 
         await TestHelpers.waitForOutlinerItems(page);
 
@@ -65,6 +67,5 @@ test.describe("Caret Horizontal Position Preservation", () => {
         // So we should end up at "abcde|fghi" (col 5)
         await page.keyboard.insertText("Q");
         await expect(items.nth(1).locator(".item-text")).toHaveText("abcdeQfghi");
-
     });
 });
