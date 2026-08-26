@@ -1,9 +1,39 @@
 import { render, waitFor } from "@testing-library/svelte";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type * as Y from "yjs";
 import { Item, Project } from "../../schema/app-schema";
 import { LAYOUT_COMPONENT_TYPE } from "../../services/layout/layoutModel";
+import { store as generalStore } from "../../stores/store.svelte";
 import LayoutBlock from "./LayoutBlock.svelte";
+
+/** `DataTransfer` type an OutlinerItem drag carries (mirrors OutlinerItem.handleDragStart). */
+const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
+
+/**
+ * Minimal stand-in for a native drag event carrying `DataTransfer`, which
+ * jsdom does not implement (see blockDndOwnership.test.ts).
+ */
+function dndEvent(type: string, sourceItemId: string): Event {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+        value: {
+            types: [OUTLINER_ITEM_DND_TYPE],
+            dropEffect: "none",
+            getData: (kind: string) => kind === OUTLINER_ITEM_DND_TYPE ? sourceItemId : "",
+        },
+    });
+    return event;
+}
+
+/** Stands in for `generalStore.activeViewModel`, which `draggedItem` resolves the source through. */
+function fakeViewModel(items: Item[]): { getViewModel: (id: string) => { original: Item; } | undefined; } {
+    return {
+        getViewModel: (id: string) => {
+            const found = items.find(entry => entry.id === id);
+            return found ? { original: found } : undefined;
+        },
+    };
+}
 
 /**
  * A real project doc: the Layout reads its children straight from the tree, so
@@ -28,6 +58,15 @@ function buildLayout(children: Array<{ type: "yjstable" | "calendar"; span?: num
     return { project, page, layout, children: created };
 }
 
+/** A standalone item on the same page as the Layout, eligible or not as its child. */
+function addStandaloneItem(page: Item, componentType?: "yjstable" | "calendar" | typeof LAYOUT_COMPONENT_TYPE): Item {
+    const item = page.items.addNode("tester");
+    if (componentType !== undefined) item.componentType = componentType;
+    if (componentType === "yjstable") item.yjsTableId = `table-${item.id}`;
+    else if (componentType === "calendar") item.calendarId = `calendar-${item.id}`;
+    return item;
+}
+
 const spansOf = (container: HTMLElement) =>
     [...container.querySelectorAll("[data-testid='layout-cell']")]
         .map(cell => cell.getAttribute("data-column-span"));
@@ -40,6 +79,10 @@ const idsOf = (container: HTMLElement) =>
 const nodeMap = (item: Item) => item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
 
 describe("LayoutBlock", () => {
+    afterEach(() => {
+        generalStore.activeViewModel = null;
+    });
+
     it("renders a fixed 12-column grid", () => {
         const { layout } = buildLayout([{ type: "yjstable", span: 12 }]);
         const { getByTestId, unmount } = render(LayoutBlock, { item: layout });
@@ -339,5 +382,99 @@ describe("LayoutBlock", () => {
         });
 
         unmount();
+    });
+
+    describe("dropping an outline item onto the empty-state surface (#5087)", () => {
+        it("inserts an eligible standalone Grid dropped on the visible empty-state frame", async () => {
+            const { page, layout } = buildLayout([]);
+            const grid = addStandaloneItem(page, "yjstable");
+            generalStore.activeViewModel = fakeViewModel([grid]) as never;
+
+            const { getByTestId, unmount } = render(LayoutBlock, { item: layout });
+            const emptyState = getByTestId("layout-empty");
+
+            emptyState.dispatchEvent(dndEvent("dragenter", grid.id));
+            emptyState.dispatchEvent(dndEvent("dragover", grid.id));
+            emptyState.dispatchEvent(dndEvent("drop", grid.id));
+
+            await waitFor(() => expect(idsOf(getByTestId("layout-block"))).toEqual([grid.id]));
+            unmount();
+        });
+
+        it("inserts an eligible standalone Calendar dropped on the visible empty-state frame", async () => {
+            const { page, layout } = buildLayout([]);
+            const calendar = addStandaloneItem(page, "calendar");
+            generalStore.activeViewModel = fakeViewModel([calendar]) as never;
+
+            const { getByTestId, unmount } = render(LayoutBlock, { item: layout });
+            const emptyState = getByTestId("layout-empty");
+
+            emptyState.dispatchEvent(dndEvent("dragenter", calendar.id));
+            emptyState.dispatchEvent(dndEvent("dragover", calendar.id));
+            emptyState.dispatchEvent(dndEvent("drop", calendar.id));
+
+            await waitFor(() => expect(idsOf(getByTestId("layout-block"))).toEqual([calendar.id]));
+            unmount();
+        });
+
+        // Regression test: LayoutBlock only wired `ondragover`/`ondrop` on its root,
+        // not `ondragenter`. Some browsers only honor a later `dragover`'s
+        // `preventDefault` once the region's own `dragenter` was itself accepted,
+        // which made the visible empty-state frame silently refuse every native
+        // drop while the outline row directly above it (wired by OutlinerItem,
+        // which does accept on `dragenter`) worked -- misleading users into
+        // thinking the drop target was offset upward.
+        it("accepts the drag as soon as dragenter fires, without waiting for a dragover", async () => {
+            const { page, layout } = buildLayout([]);
+            const grid = addStandaloneItem(page, "yjstable");
+            generalStore.activeViewModel = fakeViewModel([grid]) as never;
+
+            const { getByTestId, unmount } = render(LayoutBlock, { item: layout });
+            const emptyState = getByTestId("layout-empty");
+
+            const enter = dndEvent("dragenter", grid.id);
+            emptyState.dispatchEvent(enter);
+            expect(enter.defaultPrevented).toBe(true);
+
+            // No dragover in between: a drop right after dragenter must still land.
+            emptyState.dispatchEvent(dndEvent("drop", grid.id));
+
+            await waitFor(() => expect(idsOf(getByTestId("layout-block"))).toEqual([grid.id]));
+            unmount();
+        });
+
+        it("leaves an empty Layout untouched when the dragged item is an ordinary Text node", async () => {
+            const { page, layout } = buildLayout([]);
+            const text = addStandaloneItem(page);
+            generalStore.activeViewModel = fakeViewModel([text]) as never;
+
+            const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+            const emptyState = getByTestId("layout-empty");
+
+            emptyState.dispatchEvent(dndEvent("dragenter", text.id));
+            emptyState.dispatchEvent(dndEvent("dragover", text.id));
+            emptyState.dispatchEvent(dndEvent("drop", text.id));
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(queryByTestId("layout-cell")).toBeNull();
+            unmount();
+        });
+
+        it("leaves an empty Layout untouched when the dragged item is another Layout", async () => {
+            const { page, layout } = buildLayout([]);
+            const nestedLayout = addStandaloneItem(page, LAYOUT_COMPONENT_TYPE);
+            generalStore.activeViewModel = fakeViewModel([nestedLayout]) as never;
+
+            const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+            const emptyState = getByTestId("layout-empty");
+
+            emptyState.dispatchEvent(dndEvent("dragenter", nestedLayout.id));
+            emptyState.dispatchEvent(dndEvent("dragover", nestedLayout.id));
+            emptyState.dispatchEvent(dndEvent("drop", nestedLayout.id));
+
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(queryByTestId("layout-cell")).toBeNull();
+            unmount();
+        });
     });
 });

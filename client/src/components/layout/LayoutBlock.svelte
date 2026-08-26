@@ -302,7 +302,16 @@ function handleChildDrop(child: Item, event: DragEvent) {
     moveIntoLayout(item, dragged.item, side === "before" ? index : index + 1);
 }
 
-/** A drop on the Layout's own surface (including the empty state) appends. */
+/**
+ * A drop on the Layout's own surface (including the empty state) appends.
+ *
+ * Also wired to `dragenter`: some browsers only consider a region a valid drop
+ * target once *its own* `dragenter` has been accepted, and only then honor a
+ * later `dragover`'s `preventDefault`. Without this, the empty-state frame
+ * silently refused every drop while the outline row directly above it (which
+ * OutlinerItem does accept on `dragenter`) worked, misleading users into
+ * thinking the drop target was offset upward (#5087).
+ */
 function handleBlockDragOver(event: DragEvent) {
     if (!isAcceptableDrag(event)) return;
     event.preventDefault();
@@ -366,6 +375,7 @@ function handleContextMenuAction(componentType: string) {
         const next = event.relatedTarget as Node | null;
         if (!next || !(event.currentTarget as HTMLElement).contains(next)) hasFocusWithin = false;
     }}
+    ondragenter={handleBlockDragOver}
     ondragover={handleBlockDragOver}
     ondrop={handleBlockDrop}
     ondragend={clearDragState}
@@ -394,6 +404,7 @@ function handleContextMenuAction(componentType: string) {
                     data-column-span={renderedSpan(child)}
                     role="group"
                     aria-label={childLabel(child)}
+                    ondragenter={(event) => handleChildDragOver(child, event)}
                     ondragover={(event) => handleChildDragOver(child, event)}
                     ondrop={(event) => handleChildDrop(child, event)}
                     ondragleave={() => { dropTargetChildId = undefined; }}
