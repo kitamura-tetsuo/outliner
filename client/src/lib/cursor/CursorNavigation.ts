@@ -894,60 +894,15 @@ export class CursorNavigation {
                 logger.debug(`Item changed: oldItemId=${oldItemId}, newItemId=${newItemId}, newOffset=${newOffset}`);
             }
 
-            // Ensure old item's cursor is removed before moving
-            store.clearCursorForItem(oldItemId);
-
-            // Remove other cursors for the same user (maintain single cursor mode)
-            // Note: Clear only cursors for the same user, not all cursors
-            const cursorEntries = store.cursors ? Object.values(store.cursors) : [];
-            const cursorsToRemove = cursorEntries
-                .filter(c => c.userId === this.cursor.userId && c.cursorId !== this.cursor.cursorId)
-                .map(c => c.cursorId);
-
-            // Debug information
-            if (
-                typeof window !== "undefined"
-                && window.DEBUG_MODE
-            ) {
-                logger.debug(`Removing cursors: ${cursorsToRemove.join(", ")}`);
-            }
-
             // Clear selection
             store.clearSelectionForUser(this.cursor.userId);
-
-            // Remove existing cursors in the target item (prevent duplication)
-            // Note: Remove only cursors for the same user
-            const cursorsInTargetItem = cursorEntries
-                .filter(c => c.itemId === newItemId && c.userId === this.cursor.userId)
-                .map(c => c.cursorId);
-
-            // Debug information
-            if (
-                typeof window !== "undefined"
-                && window.DEBUG_MODE
-            ) {
-                logger.debug(`Removing cursors in target item: ${cursorsInTargetItem.join(", ")}`);
-            }
 
             // Set new item and offset
             this.cursor.itemId = newItemId;
             this.cursor.offset = newOffset;
 
-            // Update active item
-            store.setActiveItem(this.cursor.itemId);
-
-            // Create new cursor
-            const cursorId = store.setCursor({
-                itemId: this.cursor.itemId,
-                offset: this.cursor.offset,
-                isActive: true,
-                userId: this.cursor.userId,
-            });
-
-            // Update cursorId
-            this.cursor.cursorId = cursorId;
-
-            // Start cursor blinking
+            // Apply the updated cursor to the store (preserves initialColumn)
+            this.cursor.applyToStore();
             store.startCursorBlink();
 
             // Dispatch custom event

@@ -861,34 +861,16 @@
 
         // If toItemId is specified, focus directly on that item
         if (toItemId) {
-            // For vertical movement, set cursor position appropriately
-            if (direction === "up") {
-                // Move to the last line of the previous item
-                focusItemWithPosition(
-                    toItemId,
-                    Number.MAX_SAFE_INTEGER,
-                    shiftKey,
-                    direction,
-                );
-                return;
-            } else if (direction === "down") {
-                // Move to the first line of the next item
-                focusItemWithPosition(toItemId, 0, shiftKey, direction);
-                return;
-            } else if (direction === "left" || direction === "right") {
-                // Horizontal movement
-                focusItemWithPosition(
-                    toItemId,
-                    direction === "left" ? Number.MAX_SAFE_INTEGER : 0,
-                    shiftKey,
-                    direction,
-                );
-                return;
-            } else {
+            if (!direction) {
                 // If direction is not specified (e.g. clicking an alias path)
                 focusItemWithPosition(toItemId, 0, shiftKey, undefined);
-                return;
             }
+            // For arrow keys ("up", "down", "left", "right") and "enter",
+            // the cursor position (offset) is already precisely calculated and applied to the
+            // editorOverlayStore by CursorNavigation.ts or CursorEditor.ts before this event
+            // is dispatched. We do not need to (and should not) overwrite it with hardcoded
+            // values like 0 or MAX_SAFE_INTEGER via focusItemWithPosition.
+            return;
         }
 
         // Horizontal processing
