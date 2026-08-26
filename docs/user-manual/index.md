@@ -30,7 +30,7 @@ You can create and browse pages using the left sidebar or the top search bar.
 
 To browse your pages, click the sidebar toggle button in the top-left corner (hamburger menu) and expand the **Pages** section. This section lists all pages in the current project. The project homepage also displays your pages. You can toggle between grid view and list view, and sort pages by Modified, Created, Last visited, Most linked, Most viewed, or Title.
 
-To create a new page, click the add (**+**) button in the **Pages** section header of the sidebar.
+To create a new page, click the **Add new page** button in the **Pages** section header of the sidebar.
 
 ### Switching to Edit Mode
 
@@ -52,9 +52,9 @@ The user profile button located in the top right corner of the navigation bar in
 Click the sidebar toggle button (hamburger menu) in the top-left corner to access the main sidebar navigation. Sections in the sidebar can be expanded or collapsed by clicking their headers. The sidebar provides quick access to:
 
 - **Projects:** Switch between your projects or go home.
-- **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the add (+) button in the section header.
+- **Pages:** Browse all pages in the current project. You can also quickly create a new page by clicking the **Add new page** button in the section header.
 - **Tables:** View and manage database tables.
-- **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the add button in the section header.
+- **Scheduled SQL:** Manage automated, recurring queries. Schedules belong to the project, not to a table. You can quickly create a new schedule rule by clicking the **Add new scheduled SQL** button in the section header.
 - **Settings:** Access project configurations.
 - **Docs:** Quick link to the documentation.
 - **GitHub:** Quick link to the source code.
@@ -251,7 +251,7 @@ A new database block will be inserted at the bottom of the current page. Within 
 - **New Grid over Existing Table:** create a new view/grid linked to an existing table's data by switching to this tab, selecting a table, and clicking **Select**.
 - **Existing Grid:** embed a previously created grid by switching to this tab, selecting the grid, and clicking **Select**.
 
-Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES and routines/schedules (e.g., Routine Templates, Routine Occurrences).
+Additionally, you can view and manage your existing databases by clicking the **Databases** button on the right side of the top navigation bar, which opens a right-side drawer. This sidebar lists all your TABLES (e.g., Sales, Tasks, Routine Templates, Routine Occurrences).
 
 ### Managing Data
 
