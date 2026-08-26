@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createGrid, getGridSourceTableId, listGrids } from "./gridDocs";
+import { createGrid, getGridColumnOrder, getGridHandles, getGridSourceTableId, listGrids } from "./gridDocs";
 import { duplicateObjects, previewObjectDuplication } from "./objectDuplication";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
 
@@ -33,6 +33,50 @@ describe("dependency-aware Grid/Table duplication", () => {
         const gridId = createGrid(doc, tableId);
         expect(previewObjectDuplication(doc, { type: "grid", id: gridId }, "item-only").omittedReferenceCount)
             .toBe(1);
+    });
+
+    it("collects and rewrites every Table relation referenced by a Grid query", () => {
+        const doc = new Y.Doc();
+        const tasks = table(doc, "Tasks", "tasks");
+        const owners = table(doc, "Owners", "owners");
+        const gridId = createGrid(doc, tasks, {
+            query: "SELECT tasks.id FROM tasks JOIN owners ON owners.id = tasks.id",
+        });
+
+        const preview = previewObjectDuplication(doc, { type: "grid", id: gridId }, "referenced");
+        expect(preview.objects).toEqual([
+            { type: "grid", id: gridId },
+            { type: "table", id: tasks },
+            { type: "table", id: owners },
+        ]);
+        const result = duplicateObjects(doc, doc, { type: "grid", id: gridId }, "referenced");
+        const query = String(getGridHandles(doc, result.primaryId)?.entry.get("query"));
+        expect(query).toContain("FROM tasks_2 JOIN owners_2");
+    });
+
+    it("counts and clears omitted query relations in a cross-project copy", () => {
+        const source = new Y.Doc();
+        const tasks = table(source, "Tasks", "tasks");
+        table(source, "Owners", "owners");
+        const gridId = createGrid(source, tasks, { query: "SELECT * FROM tasks JOIN owners USING (id)" });
+        expect(previewObjectDuplication(source, { type: "grid", id: gridId }, "item-only").omittedReferenceCount)
+            .toBe(2);
+
+        const destination = new Y.Doc();
+        const result = duplicateObjects(source, destination, { type: "grid", id: gridId }, "item-only");
+        expect(getGridHandles(destination, result.primaryId)?.entry.get("query")).toBe("");
+        expect(result.removedReferenceCount).toBe(3);
+    });
+
+    it("preserves a Y.Array-backed Grid column order", () => {
+        const source = new Y.Doc();
+        const tableId = table(source, "Tasks", "tasks");
+        const gridId = createGrid(source, tableId, { columnOrder: ["title", "id"] });
+        const handles = getGridHandles(source, gridId)!;
+        handles.entry.set("columnOrder", Y.Array.from(["id", "title"]));
+
+        const result = duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
+        expect(getGridColumnOrder(getGridHandles(source, result.primaryId)!)).toEqual(["id", "title"]);
     });
 
     it("keeps an omitted reference in-project and clears it cross-project", () => {

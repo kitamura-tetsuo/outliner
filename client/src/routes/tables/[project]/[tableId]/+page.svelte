@@ -17,6 +17,7 @@
         import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
+    import ObjectDuplicationDialog from "../../../../components/yjstable/ObjectDuplicationDialog.svelte";
 
 
     const logger = getLogger("TableStandalonePage");
@@ -42,6 +43,7 @@
     let dependencies = $state<TableDependencies | undefined>(undefined);
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
+    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -200,7 +202,11 @@
             {tableName || "Table"}
         </h1>
         {#if hasWriteAccess && !isLoading && tableHandles}
-            <div class="ml-auto">
+            <div class="ml-auto flex gap-2">
+                <button
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                    onclick={() => { showDuplicationDialog = true; }}
+                >Duplicate Table</button>
                 <button
                     class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium"
                     onclick={startDelete}
@@ -440,3 +446,11 @@
     </div>
 {/if}
 
+{#if showDuplicationDialog && tableProjectDoc && resolvedTableId}
+    <ObjectDuplicationDialog
+        sourceDoc={tableProjectDoc}
+        sourceProject={projectName}
+        object={{ type: "table", id: resolvedTableId }}
+        onclose={() => { showDuplicationDialog = false; }}
+    />
+{/if}

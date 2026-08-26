@@ -23,6 +23,7 @@
     import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
+    import ObjectDuplicationDialog from "../../../../components/yjstable/ObjectDuplicationDialog.svelte";
 
     const logger = getLogger("GridStandalonePage");
 
@@ -47,6 +48,7 @@
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
+    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors, matching the
     // standalone Table and Calendar routes.
@@ -175,6 +177,12 @@
                 Source table: {sourceTableName}
             </a>
         {/if}
+        {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
+            <button
+                class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                onclick={() => { showDuplicationDialog = true; }}
+            >Duplicate Grid</button>
+        {/if}
     </div>
 
     <!-- Authentication component -->
@@ -238,3 +246,12 @@
         </div>
     {/if}
 </main>
+
+{#if showDuplicationDialog && projectDoc}
+    <ObjectDuplicationDialog
+        sourceDoc={projectDoc}
+        sourceProject={projectName}
+        object={{ type: "grid", id: routeGridId }}
+        onclose={() => { showDuplicationDialog = false; }}
+    />
+{/if}

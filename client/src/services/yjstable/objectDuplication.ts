@@ -1,9 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
-import { createGrid, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
+import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
-import { rewriteCreateTableSql } from "./tableSqlRewrite";
+import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export type DuplicableObject = { type: "grid" | "table"; id: string; };
 export type DuplicationScope = "item-only" | "referenced" | "referencing" | "connected";
@@ -42,12 +42,31 @@ export function previewObjectDuplication(
     scope: DuplicationScope,
 ): DuplicationPreview {
     const grids = listGrids(source);
-    const tables = new Set(listTables(source).map(table => table.tableId));
+    const tableEntries = listTables(source);
+    const tables = new Set(tableEntries.map(table => table.tableId));
+    const tableBySqlName = new Map(tableEntries.map(table => [table.sqlName, table.tableId]));
+    const referencesByGrid = new Map<string, Set<string>>();
     const byTable = new Map<string, string[]>();
     for (const grid of grids) {
-        const ids = byTable.get(grid.sourceTableId) ?? [];
-        ids.push(grid.gridId);
-        byTable.set(grid.sourceTableId, ids);
+        const references = new Set<string>();
+        if (grid.sourceTableId) references.add(grid.sourceTableId);
+        const handles = getGridHandles(source, grid.gridId);
+        try {
+            const query = String(handles?.entry.get("query") ?? "");
+            for (const sqlName of rewriteTableQuerySql(query, new Map()).relationDependencies) {
+                const tableId = tableBySqlName.get(sqlName);
+                if (tableId) references.add(tableId);
+            }
+        } catch {
+            // An invalid query remains copyable; its explicit source reference
+            // is still included and the editor can report the SQL error.
+        }
+        referencesByGrid.set(grid.gridId, references);
+        for (const tableId of references) {
+            const ids = byTable.get(tableId) ?? [];
+            ids.push(grid.gridId);
+            byTable.set(tableId, ids);
+        }
     }
 
     const visited = new Map<string, DuplicableObject>();
@@ -58,8 +77,9 @@ export function previewObjectDuplication(
         visited.set(key(current), current);
 
         if ((scope === "referenced" || scope === "connected") && current.type === "grid") {
-            const tableId = grids.find(grid => grid.gridId === current.id)?.sourceTableId;
-            if (tableId && tables.has(tableId)) queue.push({ type: "table", id: tableId });
+            for (const tableId of referencesByGrid.get(current.id) ?? []) {
+                if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
+            }
         }
         if ((scope === "referencing" || scope === "connected") && current.type === "table") {
             for (const gridId of byTable.get(current.id) ?? []) queue.push({ type: "grid", id: gridId });
@@ -69,8 +89,9 @@ export function previewObjectDuplication(
     let omittedReferenceCount = 0;
     for (const object of visited.values()) {
         if (object.type !== "grid") continue;
-        const tableId = grids.find(grid => grid.gridId === object.id)?.sourceTableId;
-        if (tableId && !visited.has(key({ type: "table", id: tableId }))) omittedReferenceCount++;
+        for (const tableId of referencesByGrid.get(object.id) ?? []) {
+            if (!visited.has(key({ type: "table", id: tableId }))) omittedReferenceCount++;
+        }
     }
     return { objects: [...visited.values()], omittedReferenceCount };
 }
@@ -98,6 +119,7 @@ export function duplicateObjects(
     const tableNames = new Set(listTables(destination).map(table => table.name));
     const gridNames = new Set(listGrids(destination).map(grid => grid.name));
     const sqlNames = new Set(listTables(destination).map(table => table.sqlName));
+    const sqlNameMap = new Map<string, string>();
     let removedReferenceCount = 0;
 
     try {
@@ -108,6 +130,7 @@ export function duplicateObjects(
             if (!sourceEntry || !sourceHandles) throw new Error(`Table "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
             const destinationSqlName = deriveSqlName(sourceEntry.sqlName, sqlNames);
+            sqlNameMap.set(sourceEntry.sqlName, destinationSqlName);
             sqlNames.add(destinationSqlName);
             const schema = rewriteCreateTableSql(
                 sourceHandles.schemaText.toString(),
@@ -145,13 +168,17 @@ export function duplicateObjects(
                 };
             });
             const destinationId = idMap.get(key(object))!;
+            const sourceQuery = String(handles.entry.get("query") ?? "");
+            const queryRewrite = rewriteTableQuerySql(sourceQuery, sqlNameMap);
+            const omittedQueryReferences = queryRewrite.relationDependencies
+                .filter(sqlName => !sqlNameMap.has(sqlName));
+            const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : queryRewrite.sql;
+            if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
             createGrid(destination, targetTableId, {
                 gridId: destinationId,
                 name: allocateCopyName(sourceGrid.name, gridNames),
-                query: String(handles.entry.get("query") ?? ""),
-                columnOrder: Array.isArray(handles.entry.get("columnOrder"))
-                    ? [...handles.entry.get("columnOrder") as string[]]
-                    : undefined,
+                query: targetQuery,
+                columnOrder: getGridColumnOrder(handles),
                 components,
             });
             createdGrids.push(destinationId);
