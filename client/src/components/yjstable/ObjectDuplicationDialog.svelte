@@ -53,7 +53,7 @@
                 destinationDoc = client.project.ydoc;
             }
             const result = duplicateObjects(sourceDoc, destinationDoc, object, scope, { copyTableData });
-            const route = object.type === "grid" ? "grids" : "tables";
+            const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
             await goto(
                 `/${route}/${encodeURIComponent(destinationTitle)}/${encodeURIComponent(result.primaryId)}`,
             );
@@ -76,7 +76,7 @@
     <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-dialog-title" class="text-lg font-bold text-gray-900">
-                Duplicate {object.type === "grid" ? "Grid" : "Table"}
+                Duplicate {object.type === "grid" ? "Grid" : object.type === "table" ? "Table" : "Schedule"}
             </h2>
         </div>
         <div class="space-y-4 px-6 py-4">
@@ -100,7 +100,7 @@
                     {/each}
                 </select>
             </label>
-            {#if object.type === "table"}
+            {#if preview.objects.some(o => o.type === "table")}
                 <label class="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" bind:checked={copyTableData} disabled={isDuplicating} />
                     Copy table rows/data

@@ -19,6 +19,7 @@
     import { isPublicProject } from "../../../../lib/publicProject";
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
+    import ObjectDuplicationDialog from "../../../../components/yjstable/ObjectDuplicationDialog.svelte";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -40,12 +41,14 @@
     let ruleLoaded = $state(false);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
+    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
+    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
 
     function loadRule() {
         if (!store.project?.ydoc) return;
@@ -229,6 +232,15 @@
                 >
                     Delete
                 </button>
+                {#if hasWriteAccess}
+                    <button
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
+                        onclick={() => { showDuplicationDialog = true; }}
+                        data-testid="duplicate-schedule"
+                    >
+                        Duplicate Schedule
+                    </button>
+                {/if}
             </div>
         {/if}
     </div>
@@ -314,3 +326,12 @@
         </div>
     {/if}
 </main>
+
+{#if showDuplicationDialog && store.project?.ydoc}
+    <ObjectDuplicationDialog
+        sourceDoc={store.project.ydoc}
+        sourceProject={projectName}
+        object={{ type: "schedule", id: ruleId }}
+        onclose={() => { showDuplicationDialog = false; }}
+    />
+{/if}

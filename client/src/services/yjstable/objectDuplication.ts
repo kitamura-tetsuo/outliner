@@ -1,12 +1,19 @@
+import { Project } from "$shared/app-schema";
+import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
-export type DuplicableObject = { type: "grid" | "table"; id: string; };
+export type DuplicableObject = { type: "grid" | "table" | "schedule"; id: string; };
 export type DuplicationScope = "item-only" | "referenced" | "referencing" | "connected";
+
+function schedulesMapOf(doc: Y.Doc): Y.Map<Y.Map<ScheduleRuleValueType>> {
+    return doc.getMap("schedules") as Y.Map<Y.Map<ScheduleRuleValueType>>;
+}
 
 export interface DuplicationPreview {
     objects: DuplicableObject[];
@@ -69,6 +76,39 @@ export function previewObjectDuplication(
         }
     }
 
+    // A Schedule references Tables the same way a Grid does — as an explicit
+    // write target plus whatever its statement reads — so it is discovered
+    // and traversed by the same recursive rules (issue #5102). Relation names
+    // come from `rewriteTableQuerySql`'s FROM/JOIN/DML-target scan, not from
+    // matching every bare identifier in the SQL: a column or alias that
+    // happens to share a Table's SQL name (e.g. a `status` column read from a
+    // Table also named `status`) must never be mistaken for a dependency.
+    const referencesBySchedule = new Map<string, Set<string>>();
+    const scheduleByTable = new Map<string, string[]>();
+    schedulesMapOf(source).forEach((rule, ruleId) => {
+        const references = new Set<string>();
+        const targetTableId = rule.get("targetTableId");
+        if (typeof targetTableId === "string" && targetTableId && tables.has(targetTableId)) {
+            references.add(targetTableId);
+        }
+        const sql = rule.get("sql");
+        try {
+            for (const sqlName of rewriteTableQuerySql(String(sql ?? ""), new Map()).relationDependencies) {
+                const tableId = tableBySqlName.get(sqlName);
+                if (tableId) references.add(tableId);
+            }
+        } catch {
+            // An invalid statement remains copyable; its explicit write-target
+            // reference is still included and the editor can report the error.
+        }
+        referencesBySchedule.set(ruleId, references);
+        for (const tableId of references) {
+            const ids = scheduleByTable.get(tableId) ?? [];
+            ids.push(ruleId);
+            scheduleByTable.set(tableId, ids);
+        }
+    });
+
     const visited = new Map<string, DuplicableObject>();
     const queue = [primary];
     while (queue.length > 0) {
@@ -76,20 +116,32 @@ export function previewObjectDuplication(
         if (visited.has(key(current))) continue;
         visited.set(key(current), current);
 
-        if ((scope === "referenced" || scope === "connected") && current.type === "grid") {
-            for (const tableId of referencesByGrid.get(current.id) ?? []) {
-                if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
+        if (scope === "referenced" || scope === "connected") {
+            if (current.type === "grid") {
+                for (const tableId of referencesByGrid.get(current.id) ?? []) {
+                    if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
+                }
+            }
+            if (current.type === "schedule") {
+                for (const tableId of referencesBySchedule.get(current.id) ?? []) {
+                    if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
+                }
             }
         }
         if ((scope === "referencing" || scope === "connected") && current.type === "table") {
             for (const gridId of byTable.get(current.id) ?? []) queue.push({ type: "grid", id: gridId });
+            for (const ruleId of scheduleByTable.get(current.id) ?? []) queue.push({ type: "schedule", id: ruleId });
         }
     }
 
     let omittedReferenceCount = 0;
     for (const object of visited.values()) {
-        if (object.type !== "grid") continue;
-        for (const tableId of referencesByGrid.get(object.id) ?? []) {
+        const references = object.type === "grid"
+            ? referencesByGrid.get(object.id)
+            : object.type === "schedule"
+            ? referencesBySchedule.get(object.id)
+            : undefined;
+        for (const tableId of references ?? []) {
             if (!visited.has(key({ type: "table", id: tableId }))) omittedReferenceCount++;
         }
     }
@@ -116,10 +168,17 @@ export function duplicateObjects(
     const sameProject = source === destination;
     const createdTables: string[] = [];
     const createdGrids: string[] = [];
+    const createdSchedules: string[] = [];
     const tableNames = new Set(listTables(destination).map(table => table.name));
     const gridNames = new Set(listGrids(destination).map(grid => grid.name));
     const sqlNames = new Set(listTables(destination).map(table => table.sqlName));
+    const scheduleNames = new Set<string>();
+    schedulesMapOf(destination).forEach(rule => {
+        const name = rule.get("name");
+        if (typeof name === "string" && name) scheduleNames.add(name);
+    });
     const sqlNameMap = new Map<string, string>();
+    const destinationProject = Project.fromDoc(destination);
     let removedReferenceCount = 0;
 
     try {
@@ -183,8 +242,54 @@ export function duplicateObjects(
             });
             createdGrids.push(destinationId);
         }
+
+        // Schedules never own a Table, but a copied Schedule's definition
+        // must point at the copied Table graph exactly like a Grid's does:
+        // its write target through `idMap`, and any relation its SQL names
+        // through `sqlNameMap` (issue #5102). Runtime/execution state is
+        // deliberately not read here — the copy is a new, unrun instance.
+        for (const object of preview.objects.filter(object => object.type === "schedule")) {
+            const ruleMap = schedulesMapOf(source).get(object.id);
+            if (!ruleMap) throw new Error(`Schedule "${object.id}" no longer exists`);
+
+            const sourceTargetTableId = String(ruleMap.get("targetTableId") ?? "");
+            const copiedTargetTableId = sourceTargetTableId
+                ? idMap.get(key({ type: "table", id: sourceTargetTableId }))
+                : undefined;
+            const targetTableId = copiedTargetTableId ?? (sameProject ? sourceTargetTableId : "");
+            if (!targetTableId && sourceTargetTableId) removedReferenceCount++;
+
+            const sourceSql = String(ruleMap.get("sql") ?? "");
+            const sqlRewrite = rewriteTableQuerySql(sourceSql, sqlNameMap);
+            const omittedSqlReferences = sqlRewrite.relationDependencies
+                .filter(sqlName => !sqlNameMap.has(sqlName));
+            const targetSql = !sameProject && omittedSqlReferences.length > 0 ? "" : sqlRewrite.sql;
+            if (!sameProject) removedReferenceCount += omittedSqlReferences.length;
+
+            const sourceName = (ruleMap.get("name") as string | undefined) || "Untitled Schedule";
+            const destinationId = idMap.get(key(object))!;
+            const dtstart = ruleMap.get("dtstart");
+            const timezone = ruleMap.get("timezone");
+            createScheduleRule(destinationProject, {
+                ruleId: destinationId,
+                name: allocateCopyName(sourceName, scheduleNames),
+                targetTableId,
+                sql: targetSql,
+                rrule: String(ruleMap.get("rrule") ?? ""),
+                ...(typeof dtstart === "string" ? { dtstart } : {}),
+                ...(typeof timezone === "string" ? { timezone } : {}),
+                catchUp: ruleMap.get("catchUp") !== false,
+                // Same-project copies keep running on the schedule the user
+                // already configured; a copy that lands in another project
+                // (a demo/template, most often) must never start writing on
+                // a timer the user has not reviewed yet (issue #5102).
+                enabled: sameProject ? ruleMap.get("enabled") !== false : false,
+            });
+            createdSchedules.push(destinationId);
+        }
     } catch (error) {
         destination.transact(() => {
+            for (const ruleId of createdSchedules) schedulesMapOf(destination).delete(ruleId);
             for (const gridId of createdGrids) getGridRegistry(destination).delete(gridId);
             for (const tableId of createdTables) removeTable(destination, tableId);
         });
