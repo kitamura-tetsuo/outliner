@@ -100,3 +100,27 @@ export function createVisualNodeAtTarget(
     if (!created) return undefined;
     return { item: created, placement: "replaced" };
 }
+
+/**
+ * Directly create a visual node as a child of a specific parent item,
+ * without replacing any existing node. This is used by the Layout context menu
+ * to append nodes.
+ */
+export function createVisualNodeUnderParent(
+    parent: Item,
+    componentType: string,
+    author: string,
+    index?: number,
+): Item | undefined {
+    let created: Item | undefined;
+    const build = () => {
+        created = parent.items.addNode(author, index);
+        created.componentType = componentType;
+    };
+
+    const doc = parent.ydoc;
+    if (typeof doc?.transact === "function") doc.transact(build, null);
+    else build();
+
+    return created;
+}
