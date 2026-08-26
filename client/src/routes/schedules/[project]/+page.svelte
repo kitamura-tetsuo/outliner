@@ -58,7 +58,7 @@
     const tableRegistryObserver = () => loadRules();
 
     let isPublicDemo = $derived(isPublicProject(projectName));
-    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
+    let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
     let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function observeSchedules(schedules: NonNullable<typeof store.project>["schedules"] | undefined) {

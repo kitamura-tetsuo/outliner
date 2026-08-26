@@ -48,7 +48,7 @@
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
-    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
+    let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
 
     function loadRule() {
         if (!store.project?.ydoc) return;

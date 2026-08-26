@@ -49,7 +49,7 @@
     // instead of folding the demo case into `isAuthenticated` keeps the auth
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
-    let hasWriteAccess = $derived(isAuthenticated && !isPublicDemo);
+    let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
     let canAccess = $derived(isAuthenticated || isPublicDemo);
 
     function startDelete() {
