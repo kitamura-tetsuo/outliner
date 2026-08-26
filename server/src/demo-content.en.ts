@@ -297,6 +297,12 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Dependency-aware duplication: Grid and Table copies can include referenced, referencing, or all "
+                            + "connected objects recursively. The confirmation previews the object count and omitted references; "
+                            + "Table copies can include or omit their rows, and cross-project copies clear excluded links.",
+                    },
+                    {
+                        text:
                             "Selecting across blocks: drag a selection from the text above, across the table, into this "
                             + "paragraph. The text keeps its character-level highlight at both ends, and the table between "
                             + "them is outlined as one selected block — a Layout is outlined as a single container rather "
