@@ -419,7 +419,7 @@ import type * as Y from "yjs";
                     <h3 class="sidebar-section-title" style="margin-bottom: 0;">Object Manager</h3>
                 </div>
             </a>
-            <ul class="page-list sidebar-placeholder">
+            <ul class="object-list sidebar-placeholder" style="margin-top: 0.5rem; list-style: none; padding: 0; margin-bottom: 0;">
                 <li>Manage Grids, Tables, Schedules</li>
             </ul>
         </div>
