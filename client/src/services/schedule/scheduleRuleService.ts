@@ -189,3 +189,21 @@ export function findSchedulesReferencingTable(
 
     return references;
 }
+
+export function listSchedules(project: Project): { id: string; name: string; }[] {
+    if (!project?.schedules) return [];
+
+    const schedules: { id: string; name: string; }[] = [];
+    project.schedules.forEach((ruleMap, id) => {
+        schedules.push({
+            id,
+            name: (ruleMap.get("name") as string) || "",
+        });
+    });
+    return schedules;
+}
+
+export function renameSchedule(project: Project, ruleId: string, name: string): void {
+    const ruleMap = project.schedules.get(ruleId) as Y.Map<ScheduleRuleValueType> | undefined;
+    if (ruleMap) ruleMap.set("name", name);
+}

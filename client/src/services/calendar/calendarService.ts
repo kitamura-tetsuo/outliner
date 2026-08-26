@@ -254,6 +254,12 @@ export function updateCalendar(
     });
 }
 
+export function renameCalendar(project: Project, calendarId: string, name: string): void {
+    ensureCalendarUndoManager(project);
+    const calendarMap = getCalendarMap(project, calendarId);
+    if (calendarMap) calendarMap.set("name", name);
+}
+
 export function deleteCalendar(project: Project, calendarId: string): void {
     ensureCalendarUndoManager(project);
     project.calendars.delete(calendarId);
