@@ -2728,6 +2728,7 @@ export function setSelectionPosition(start: number, end: number = start) {
 :global(.item-text.formatted a) {
     color: #0078d7;
     text-decoration: none;
+    padding: 3.5px 0;
 }
 
 :global(.item-text.formatted a.page-not-exists) {
