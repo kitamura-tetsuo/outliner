@@ -171,6 +171,7 @@ let lastCursorPosition = $state(0);
 
 // Drag related state
 let isDragging = $state(false);
+let suppressCaretClickAfterSelectionDrag = false;
 let dragStartPosition = $state(0);
 // True while this item is the source of a native item-move drag (started from the drag handle)
 let isDragSource = $state(false);
@@ -879,15 +880,11 @@ function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
         editorOverlayStore.clearCursorForItem(model.id);
     }
 
-    // Set active item
-    editorOverlayStore.setActiveItem(model.id);
-
-    // Set new cursor
-    editorOverlayStore.setCursor({
+    // A normal click/tap places a caret and therefore collapses the previous local
+    // selection. Selection-building paths continue to use setCursor directly.
+    editorOverlayStore.placeLocalCaret({
         itemId: model.id,
         offset: cursorPosition !== undefined ? cursorPosition : 0,
-        isActive: true,
-        userId: "local",
     });
 
     // Start cursor blinking
@@ -1264,6 +1261,14 @@ function handleClick(event: MouseEvent) {
     // compatibility click would redo it (and collapse a long-press selection).
     if (isSyntheticMouseSuppressed()) return;
 
+    // Mouseup finalizes a text-selection drag before the browser emits `click`.
+    // That compatibility click is not a caret-placement gesture and must not collapse
+    // the range the drag just created.
+    if (suppressCaretClickAfterSelectionDrag) {
+        suppressCaretClickAfterSelectionDrag = false;
+        return;
+    }
+
     // Ignore clicks inside embedded components (treated as foreign UI)
     if ((event.target as HTMLElement)?.closest?.('.component-wrapper')) {
         return;
@@ -1494,7 +1499,11 @@ function handleMouseDown(event: MouseEvent) {
         selection: null,
     });
 
-    // Start edit mode
+    // Start edit mode only when this row does not already participate in the cursor
+    // state. A drag that starts from an active row builds its selection before the
+    // eventual click event; restarting editing here would make that click collapse the
+    // selection the drag just created. Ordinary click/tap placement is handled by
+    // handleClick -> startEditing -> placeLocalCaret.
     if (!hasCursorBasedOnState()) {
         startEditing(event);
     }
@@ -1792,6 +1801,7 @@ function handleMouseUp() {
 
     // End drag
     isDragging = false;
+    suppressCaretClickAfterSelectionDrag = true;
 
     // Confirm selection range
     updateSelectionAndCursor();
