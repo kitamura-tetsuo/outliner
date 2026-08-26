@@ -355,6 +355,7 @@ export class Cursor implements CursorEditingContext, CursorNavigationContext {
     }
 
     onInput(event: InputEvent) {
+        this.resetInitialColumn();
         this.editor.onInput(event);
     }
 
