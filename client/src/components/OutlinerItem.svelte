@@ -803,7 +803,7 @@ function toggleCollapse() {
 }
 
 /** Point a caret gesture happened at, plus the modifier state the mouse path relies on. */
-type EditingPoint = CaretPoint & { altKey?: boolean; };
+type EditingPoint = CaretPoint & { altKey?: boolean; shiftKey?: boolean; };
 
 /**
  * Set cursor
@@ -883,12 +883,18 @@ function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
     editorOverlayStore.setActiveItem(model.id);
 
     // Set new cursor
-    editorOverlayStore.setCursor({
-        itemId: model.id,
-        offset: cursorPosition !== undefined ? cursorPosition : 0,
-        isActive: true,
-        userId: "local",
-    });
+    const pos = cursorPosition !== undefined ? cursorPosition : 0;
+    // Don't clear selection on shift-click
+    if (event?.shiftKey) {
+        editorOverlayStore.setCursor({
+            itemId: model.id,
+            offset: pos,
+            isActive: true,
+            userId: "local",
+        });
+    } else {
+        editorOverlayStore.placeLocalCaret(model.id, pos);
+    }
 
     // Start cursor blinking
     editorOverlayStore.startCursorBlink();
@@ -1464,12 +1470,16 @@ function handleMouseDown(event: MouseEvent) {
         applyGestureSelection(anchor, textTarget(model.id, clickPosition));
 
         // Set cursor position
-        editorOverlayStore.setCursor({
-            itemId: model.id,
-            offset: clickPosition,
-            isActive: true,
-            userId: "local",
-        });
+        if (event.shiftKey) {
+            editorOverlayStore.setCursor({
+                itemId: model.id,
+                offset: clickPosition,
+                isActive: true,
+                userId: "local",
+            });
+        } else {
+            editorOverlayStore.placeLocalCaret(model.id, clickPosition);
+        }
 
         // Set active item
         editorOverlayStore.setActiveItem(model.id);

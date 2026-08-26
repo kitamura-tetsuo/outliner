@@ -137,3 +137,24 @@ describe("EditorOverlayStore.syncSelectionFromTextarea with a block as the activ
         expect(selection?.end).toEqual(textEndpoint("text-a", 6));
     });
 });
+
+describe("EditorOverlayStore.placeLocalCaret", () => {
+    beforeEach(() => {
+        buildOutliner();
+        editorOverlayStore.selections = {};
+        editorOverlayStore.cursors = {};
+    });
+
+    it("clears local selection and sets cursor", () => {
+        editorOverlayStore.setSelection({
+            startItemId: "text-a",
+            startOffset: 0,
+            endItemId: "text-b",
+            endOffset: 5,
+            userId: "local",
+        });
+        editorOverlayStore.placeLocalCaret("text-b", 2);
+        expect(editorOverlayStore.selections).toEqual({});
+        expect(localCursorPositions()).toEqual([{ itemId: "text-b", offset: 2 }]);
+    });
+});

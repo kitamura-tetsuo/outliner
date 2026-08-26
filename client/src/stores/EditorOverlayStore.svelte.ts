@@ -1431,6 +1431,15 @@ export class EditorOverlayStore {
         });
     }
 
+    /**
+     * Semantic local caret-placement operation that clears only the local selection.
+     * Preserves selection-extension and cursor-rebase paths.
+     */
+    placeLocalCaret(itemId: string, offset: number): void {
+        this.clearSelectionForUser("local");
+        this.setCursor({ itemId, offset, isActive: true, userId: "local" });
+    }
+
     /** Re-express a selection in document order, keeping its anchor/focus direction aside. */
     normalizeSelection(sel: SelectionRange): NormalizedSelection {
         return normalizeSelectionEndpoints(sel.start, sel.end, this.itemOrderComparator());
