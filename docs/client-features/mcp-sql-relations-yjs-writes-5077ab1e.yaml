@@ -4,5 +4,5 @@ title-ja: MCP SQLリレーションとYjsベースの書き込み
 status: implemented
 description: Authorized MCP clients can discover relations, inspect schemas, run bounded read-only SQL, mutate relation data through Yjs, and update Grid or Calendar queries.
 tests:
-- server/tests/mcp-relation-service.test.ts
 - server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-relation-service.test.ts

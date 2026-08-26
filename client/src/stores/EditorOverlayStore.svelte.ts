@@ -1299,6 +1299,22 @@ export class EditorOverlayStore {
         return id;
     }
 
+    /**
+     * Place the ordinary, single local caret created by a click or tap.
+     *
+     * Cursor updates are also used while extending selections and while rebasing a
+     * caret after collaborative edits, so `setCursor` deliberately has no selection
+     * side effect. User gestures that mean "place a caret" come through this semantic
+     * operation instead: they collapse only the local selection before activating the
+     * requested text item. Remote selections and additional local cursors are left to
+     * their existing lifecycle.
+     */
+    placeLocalCaret({ itemId, offset }: Pick<CursorPosition, "itemId" | "offset">): string {
+        this.clearSelectionForUser("local");
+        this.setActiveItem(itemId);
+        return this.setCursor({ itemId, offset, isActive: true, userId: "local" });
+    }
+
     clearCursorForItem(itemId: string) {
         // Collect cursor IDs to remove
         const cursorIdsToRemove: string[] = [];

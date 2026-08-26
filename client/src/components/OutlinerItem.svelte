@@ -879,15 +879,11 @@ function startEditing(event?: EditingPoint, initialCursorPosition?: number) {
         editorOverlayStore.clearCursorForItem(model.id);
     }
 
-    // Set active item
-    editorOverlayStore.setActiveItem(model.id);
-
-    // Set new cursor
-    editorOverlayStore.setCursor({
+    // A normal click/tap places a caret and therefore collapses the previous local
+    // selection. Selection-building paths continue to use setCursor directly.
+    editorOverlayStore.placeLocalCaret({
         itemId: model.id,
         offset: cursorPosition !== undefined ? cursorPosition : 0,
-        isActive: true,
-        userId: "local",
     });
 
     // Start cursor blinking
@@ -1494,10 +1490,10 @@ function handleMouseDown(event: MouseEvent) {
         selection: null,
     });
 
-    // Start edit mode
-    if (!hasCursorBasedOnState()) {
-        startEditing(event);
-    }
+    // An unmodified press is the beginning of either ordinary caret placement or a
+    // fresh drag selection. In both cases the old range is no longer authoritative;
+    // initialize this row's textarea/caret now, before pointer movement can begin.
+    startEditing(event);
 
 }
 

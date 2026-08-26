@@ -92,6 +92,46 @@ describe("EditorOverlayStore.placeCaretAtNodeBoundary", () => {
     });
 });
 
+describe("EditorOverlayStore.placeLocalCaret", () => {
+    beforeEach(() => {
+        buildOutliner();
+        editorOverlayStore.selections = {};
+        editorOverlayStore.cursors = {};
+        editorOverlayStore.setActiveItem(null);
+    });
+
+    it("collapses local text and visual-node selections but preserves remote selections", () => {
+        editorOverlayStore.setSelection({
+            start: textEndpoint("text-a", 1),
+            end: nodeBoundaryEndpoint("grid", "after"),
+            userId: "local",
+        });
+        editorOverlayStore.setSelection({
+            start: nodeBoundaryEndpoint("grid", "before"),
+            end: nodeBoundaryEndpoint("grid", "after"),
+            userId: "remote",
+        });
+
+        editorOverlayStore.placeLocalCaret({ itemId: "text-b", offset: 2 });
+
+        expect(Object.values(editorOverlayStore.selections).map(selection => selection.userId)).toEqual(["remote"]);
+        expect(editorOverlayStore.getActiveItem()).toBe("text-b");
+        expect(localCursorPositions()).toEqual([{ itemId: "text-b", offset: 2 }]);
+    });
+
+    it("keeps selections when setCursor performs an internal or extension update", () => {
+        editorOverlayStore.setSelection({
+            start: textEndpoint("text-a", 1),
+            end: textEndpoint("text-a", 4),
+            userId: "local",
+        });
+
+        editorOverlayStore.setCursor({ itemId: "text-a", offset: 4, isActive: true, userId: "local" });
+
+        expect(Object.values(editorOverlayStore.selections)).toHaveLength(1);
+    });
+});
+
 describe("EditorOverlayStore.syncSelectionFromTextarea with a block as the active row", () => {
     beforeEach(() => {
         buildOutliner();
