@@ -158,6 +158,9 @@ export class TreeDnD {
                     // about its placement follows from tree order.
                     if (droppingIntoLayout && sourceItem.columnSpan === undefined) {
                         sourceItem.columnSpan = DEFAULT_COLUMN_SPAN;
+                    } else if (isLayoutItem(sourceParentItem) && !droppingIntoLayout) {
+                        // A middle drop onto Text also leaves the source Layout.
+                        sourceItem.columnSpan = undefined;
                     }
                     return;
                 }

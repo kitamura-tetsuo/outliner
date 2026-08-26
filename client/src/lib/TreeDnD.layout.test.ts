@@ -153,4 +153,24 @@ describe("TreeDnD and the Layout child constraint", () => {
         expect(childIds(layout)).toEqual([]);
         expect(grid.columnSpan).toBeUndefined();
     });
+
+    it("clears a hidden Layout child's span when nesting it under Text", () => {
+        const { page, add, controller } = buildTree();
+        const layout = add(item => {
+            item.componentType = LAYOUT_COMPONENT_TYPE;
+        });
+        const target = add(item => item.updateText("target"));
+        const grid = add(item => {
+            item.componentType = "yjstable";
+            item.columnSpan = 5;
+        });
+        page.items.tree.moveChildToParent(grid.key, layout.key);
+        page.items.tree.recomputeParentsAndChildren();
+
+        controller([layout, target]).moveItem(grid.id, target.id, "middle");
+
+        expect(childIds(target)).toEqual([grid.id]);
+        expect(childIds(layout)).toEqual([]);
+        expect(grid.columnSpan).toBeUndefined();
+    });
 });
