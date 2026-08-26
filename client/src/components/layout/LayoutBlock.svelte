@@ -21,6 +21,7 @@ import { OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE } from "../../lib/selection/outlineS
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
 import {
     isVisualComponentType,
+    DEFAULT_COLUMN_SPAN,
     LAYOUT_CHILD_DND_TYPE,
     LAYOUT_COLUMN_COUNT,
     nodeKindOf,
@@ -350,7 +351,10 @@ function handleContextMenu(event: MouseEvent) {
 }
 
 function handleContextMenuAction(componentType: string) {
-    createVisualNodeUnderParent(item, componentType, "local");
+    // Creation and the documented full-width default belong to the same Yjs
+    // transaction, so collaborators never observe a newly inserted child in a
+    // partially initialized state.
+    createVisualNodeUnderParent(item, componentType, "local", { columnSpan: DEFAULT_COLUMN_SPAN });
 }
 
 </script>

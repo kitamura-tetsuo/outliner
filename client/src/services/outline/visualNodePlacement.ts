@@ -110,12 +110,13 @@ export function createVisualNodeUnderParent(
     parent: Item,
     componentType: string,
     author: string,
-    index?: number,
+    options: { index?: number; columnSpan?: number; } = {},
 ): Item | undefined {
     let created: Item | undefined;
     const build = () => {
-        created = parent.items.addNode(author, index);
+        created = parent.items.addNode(author, options.index);
         created.componentType = componentType;
+        if (options.columnSpan !== undefined) created.columnSpan = options.columnSpan;
     };
 
     const doc = parent.ydoc;
