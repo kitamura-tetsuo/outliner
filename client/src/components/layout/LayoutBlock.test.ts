@@ -292,4 +292,52 @@ describe("LayoutBlock", () => {
         expect(getByTestId("layout-cell-fallback").textContent?.trim()).toBe("a stray note");
         unmount();
     });
+
+    it("opens a context menu on right click and can add visual nodes", async () => {
+        const { layout } = buildLayout([]);
+        const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        expect(queryByTestId("layout-context-menu")).toBeNull();
+
+        // Right click the empty state container
+        const emptyState = getByTestId("layout-empty");
+        const rightClickEvent = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        emptyState.dispatchEvent(rightClickEvent);
+
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).not.toBeNull();
+        });
+
+        // Let's add a grid
+        const addGridButton = getByTestId("layout-context-menu").querySelector("button");
+        addGridButton?.click();
+
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).toBeNull();
+        });
+
+        // Test if a grid was added
+        expect(layout.items.length).toBe(1);
+        expect([...layout.items][0].componentType).toBe("yjstable");
+
+        unmount();
+    });
+
+    it("does not open a context menu when right clicking an interactive descendant", async () => {
+        const { layout } = buildLayout([{ type: "yjstable" }]);
+        const { getByTestId, queryByTestId, unmount } = render(LayoutBlock, { item: layout });
+
+        expect(queryByTestId("layout-context-menu")).toBeNull();
+
+        // Right click a layout cell
+        const cell = getByTestId("layout-cell");
+        const rightClickEvent = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+        cell.dispatchEvent(rightClickEvent);
+
+        await waitFor(() => {
+            expect(queryByTestId("layout-context-menu")).toBeNull();
+        });
+
+        unmount();
+    });
 });

@@ -5,10 +5,10 @@ description: Duplicate Grid and Table object graphs within or across projects, w
 category: tables
 status: implemented
 acceptance:
-  - Collect referenced, referencing, or all connected Grid and Table objects recursively
-  - Rewrite copied internal references and clear omitted cross-project references
-  - Preserve omitted references for same-project copies
-  - Copy Table definitions with an explicit option to include rows
-  - Allocate collision-safe object and SQL names and roll back failed graphs
+- Allocate collision-safe object and SQL names and roll back failed graphs
+- Collect referenced, referencing, or all connected Grid and Table objects recursively
+- Copy Table definitions with an explicit option to include rows
+- Preserve omitted references for same-project copies
+- Rewrite copied internal references and clear omitted cross-project references
 tests:
-  - client/src/services/yjstable/objectDuplication.test.ts
+- client/src/services/yjstable/objectDuplication.test.ts

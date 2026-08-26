@@ -36,6 +36,8 @@ import {
     setColumnSpan,
 } from "../../services/layout/layoutTree";
 import { store as generalStore } from "../../stores/store.svelte";
+import LayoutContextMenu from "./LayoutContextMenu.svelte";
+import { createVisualNodeUnderParent } from "../../services/outline/visualNodePlacement";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -63,6 +65,10 @@ let resizeStartX = 0;
 let resizeStartSpan = 1;
 
 /** Drag state for reordering children inside this Layout. */
+let isContextMenuOpen = $state(false);
+let contextMenuX = $state(0);
+let contextMenuY = $state(0);
+
 let draggingChildId = $state<string | undefined>(undefined);
 let dropTargetChildId = $state<string | undefined>(undefined);
 let dropTargetSide = $state<"before" | "after">("before");
@@ -321,6 +327,23 @@ function clearDragState() {
 function handleMoveOut(child: Item) {
     moveOutOfLayout(item, child);
 }
+
+function handleContextMenu(event: MouseEvent) {
+    // Do not steal native/component context-menu behavior from interactive descendants
+    if (event.target !== event.currentTarget && (event.target as HTMLElement).closest('[data-testid="layout-cell"]')) {
+        return;
+    }
+
+    event.preventDefault();
+    isContextMenuOpen = true;
+    contextMenuX = event.clientX;
+    contextMenuY = event.clientY;
+}
+
+function handleContextMenuAction(componentType: string) {
+    createVisualNodeUnderParent(item, componentType, "local");
+}
+
 </script>
 
 <!-- Bound 1:1 to this item's Y.Doc: keying the render body on the doc guid
@@ -346,6 +369,7 @@ function handleMoveOut(child: Item) {
     ondragover={handleBlockDragOver}
     ondrop={handleBlockDrop}
     ondragend={clearDragState}
+    oncontextmenu={handleContextMenu}
 >
     <div class="layout-grid-container">
         <div class="layout-grid" bind:this={gridRef} data-testid="layout-grid">
@@ -476,6 +500,15 @@ function handleMoveOut(child: Item) {
             </div>
         {/if}
     </div>
+
+    {#if isContextMenuOpen}
+        <LayoutContextMenu
+            x={contextMenuX}
+            y={contextMenuY}
+            onClose={() => { isContextMenuOpen = false; }}
+            onAction={handleContextMenuAction}
+        />
+    {/if}
 </div>
 {/key}
 
