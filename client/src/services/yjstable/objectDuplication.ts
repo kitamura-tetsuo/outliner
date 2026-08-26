@@ -2,14 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { createGrid, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
-import {
-    createTable,
-    getTableHandles,
-    getTableRegistry,
-    listTables,
-    removeTable,
-    type TableRecordValue,
-} from "./tableDocs";
+import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import { rewriteCreateTableSql } from "./tableSqlRewrite";
 
 export type DuplicableObject = { type: "grid" | "table"; id: string; };
