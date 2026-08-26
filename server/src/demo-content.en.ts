@@ -297,9 +297,11 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Dependency-aware duplication: Grid and Table copies can include referenced, referencing, or all "
-                            + "connected objects recursively. The confirmation previews the object count and omitted references; "
-                            + "Table copies can include or omit their rows, and cross-project copies clear excluded links.",
+                            "Dependency-aware duplication: Grid, Table, and Schedule copies can include referenced, referencing, "
+                            + "or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and "
+                            + "writes. The confirmation previews the object count and omitted references; Table copies can include "
+                            + "or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear "
+                            + "excluded links.",
                     },
                     {
                         text:

@@ -1,0 +1,16 @@
+id: DUP-1f5f6ffd
+title: Include Schedule in recursive dependency-aware duplication
+title-ja: 再帰的な依存関係を考慮した複製に Schedule を含める
+description: Extend Grid/Table dependency-aware duplication (DUP-5090c0de) so Schedule is a first-class duplicable object, discovered and traversed through its write-target and SQL-read Table references in every duplication scope.
+category: tables
+status: implemented
+acceptance:
+- Apply collision-safe copy naming to Schedule the same way as Grid and Table
+- Collect every Table a Schedule references regardless of write-target or read role, deduplicate shared dependencies, and terminate on circular graphs
+- Copy only the Schedule definition (target, SQL, rrule, dtstart, timezone, catchUp), never runtime/execution state (nextRunAt, lastRunAt/Status/Error, completedAt, skippedOccurrences, validationError)
+- Duplicate a Schedule directly, and through the same item-only/referenced/referencing/connected scopes as Grid and Table
+- Preserve enabled/disabled state for same-project copies and force cross-project copies disabled
+- Rewrite a duplicated Schedule's target Table id and SQL relation names using the existing id/SQL-name remapping, preserving same-project references to excluded objects and clearing cross-project ones
+- Traverse a Schedule's write-target and SQL-referenced Tables recursively, and a Table's referencing Schedules in reverse
+tests:
+- client/src/services/yjstable/objectDuplication.test.ts

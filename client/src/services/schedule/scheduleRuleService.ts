@@ -32,9 +32,9 @@ export interface ScheduleRule {
  */
 export function createScheduleRule(
     project: Project,
-    options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; },
+    options: Partial<ScheduleRule> & { targetTableId: string; sql: string; rrule: string; ruleId?: string; },
 ): string {
-    const ruleId = uuid();
+    const ruleId = options.ruleId ?? uuid();
     const schedulesMap = project.schedules;
     const ruleMap = new Y.Map<ScheduleRuleValueType>();
 
