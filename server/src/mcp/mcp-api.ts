@@ -8,6 +8,7 @@ import { getOAuthIssuer } from "../oauth/config.js";
 import { verifyAccessToken } from "../oauth/tokens.js";
 import { mcpLogger as logger } from "../utils/log-manager.js";
 import { McpReadError, OutlinerReadService } from "./outliner-read-service.js";
+import { OutlinerRelationService } from "./relation-service.js";
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, idempotentHint: true } as const;
 const response = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value) }] });
@@ -38,6 +39,7 @@ export function createMcpRouter(
     service: OutlinerReadService,
     verifyToken: (token: string) => { uid: string; scope: string; } = verifyAccessToken,
     configuredIssuer?: string,
+    relationService?: OutlinerRelationService,
 ) {
     const router = express.Router();
     const issuer = () => configuredIssuer ?? getOAuthIssuer();
@@ -49,7 +51,7 @@ export function createMcpRouter(
             resource: `${issuer()}/mcp`,
             authorization_servers: [issuer()],
             bearer_methods_supported: ["header"],
-            scopes_supported: ["outliner.read"],
+            scopes_supported: ["outliner.read", "outliner.write"],
         });
     });
 
@@ -84,6 +86,12 @@ export function createMcpRouter(
     router.post("/mcp", async (req, res) => {
         const uid = res.locals.mcpUid as string;
         const requestId = res.locals.mcpRequestId as string;
+        const grantedScopes = verifyToken(req.headers.authorization!.slice("Bearer ".length)).scope.split(/\s+/);
+        const requireWrite = () => {
+            if (!grantedScopes.includes("outliner.write")) {
+                throw new McpReadError("forbidden", "The outliner.write scope is required");
+            }
+        };
 
         const mcp = new McpServer({ name: "outliner", version: "1.0.0" });
         const tool = <T extends z.ZodRawShape>(
@@ -91,9 +99,10 @@ export function createMcpRouter(
             description: string,
             shape: T,
             handler: (args: z.infer<z.ZodObject<T>>) => Promise<unknown> | unknown,
+            annotations = readOnly as { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; },
         ) => mcp.registerTool(
             name,
-            { description, inputSchema: shape, annotations: readOnly },
+            { description, inputSchema: shape, annotations },
             (async (args: unknown) => {
                 try {
                     return response(await handler(args as z.infer<z.ZodObject<T>>));
@@ -157,6 +166,75 @@ export function createMcpRouter(
             projectId: z.string(),
             calendarId: z.string(),
         }, args => service.getCalendar(uid, args.projectId, args.calendarId));
+        if (relationService) {
+            tool("list_relations", "List SQL-visible relations in an authorized project.", {
+                projectId: z.string(),
+            }, args => relationService.listRelations(uid, args.projectId));
+            tool("get_relation_schema", "Describe a relation's columns and write capabilities.", {
+                projectId: z.string(),
+                relation: z.string(),
+            }, args => relationService.getRelationSchema(uid, args.projectId, args.relation));
+            tool("query_sql", "Run one bounded, read-only SELECT over project relations.", {
+                projectId: z.string(),
+                sql: z.string(),
+                maxRows: z.number().int().optional(),
+            }, args => relationService.querySql(uid, args.projectId, args.sql, args.maxRows));
+            const write = z.discriminatedUnion("op", [
+                z.object({
+                    op: z.literal("UPDATE"),
+                    rowId: z.string(),
+                    column: z.string(),
+                    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+                }),
+                z.object({
+                    op: z.literal("INSERT"),
+                    values: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])),
+                    destination: z.object({ parentKey: z.string() }).optional(),
+                }),
+                z.object({
+                    op: z.literal("DELETE"),
+                    rowId: z.string(),
+                    disposition: z.enum(["delete-source", "clear-projected-field"]).optional(),
+                }),
+            ]);
+            tool(
+                "write_relation",
+                "Apply a structured mutation through the relation's Yjs write path.",
+                {
+                    projectId: z.string(),
+                    relation: z.string(),
+                    write,
+                },
+                args => {
+                    requireWrite();
+                    return relationService.writeRelation(uid, args.projectId, args.relation, args.write);
+                },
+                {
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false,
+                },
+            );
+            tool(
+                "set_view_query",
+                "Set a Grid or Calendar's saved read-only SELECT.",
+                {
+                    projectId: z.string(),
+                    kind: z.enum(["grid", "calendar"]),
+                    viewId: z.string(),
+                    query: z.string(),
+                },
+                args => {
+                    requireWrite();
+                    return relationService.setViewQuery(uid, args.projectId, args.kind, args.viewId, args.query);
+                },
+                {
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true,
+                },
+            );
+        }
 
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         try {

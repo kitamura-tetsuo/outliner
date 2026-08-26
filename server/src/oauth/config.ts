@@ -2,11 +2,11 @@ import crypto from "crypto";
 import { logger } from "../logger.js";
 import { secretManager } from "../secret-manager.js";
 
-// Read-only scope is intentionally the only project-data scope. `offline_access`
+// Project reads and writes are separately consented. `offline_access`
 // is the protocol-level signal a client uses to request a refresh token; we
 // always issue one on the authorization_code grant regardless, but accept the
 // scope value so standards-compliant clients can request it explicitly.
-export const OAUTH_SUPPORTED_SCOPES = ["outliner.read", "offline_access"] as const;
+export const OAUTH_SUPPORTED_SCOPES = ["outliner.read", "outliner.write", "offline_access"] as const;
 export type OAuthScope = (typeof OAUTH_SUPPORTED_SCOPES)[number];
 export const OAUTH_DEFAULT_SCOPE: OAuthScope = "outliner.read";
 

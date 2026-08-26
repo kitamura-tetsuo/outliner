@@ -127,9 +127,9 @@ export function renderAuthorizePage(
 <body>
   <div class="card">
     <h1>Sign in to Outliner</h1>
-    <p>${clientLabel} is requesting read-only access (<code>${
-        escapeHtml(params.scope)
-    }</code>) to your Outliner account.</p>
+    <p>${clientLabel} is requesting ${
+        params.scope.split(/\s+/).includes("outliner.write") ? "read and write" : "read-only"
+    } access (<code>${escapeHtml(params.scope)}</code>) to your Outliner account.</p>
     <p>Only Google-backed Outliner accounts can be used to connect ChatGPT/MCP clients.</p>
     <button id="google-signin" type="button">Sign in with Google</button>
     <div id="status" class="status"></div>

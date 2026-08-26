@@ -56,7 +56,7 @@ test.describe("ChatGPT MCP public protocol surface", () => {
             resource: `${SERVER}/mcp`,
             authorization_servers: [SERVER],
             bearer_methods_supported: ["header"],
-            scopes_supported: ["outliner.read"],
+            scopes_supported: ["outliner.read", "outliner.write"],
         });
     });
 });
