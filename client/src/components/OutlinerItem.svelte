@@ -1958,7 +1958,29 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
     const dt = hasDataTransfer(event) ? event.dataTransfer : null;
 
+    // Snapshot drop payloads synchronously.
+    // Reading these AFTER awaiting `handleFileUploadFromDrop` can fail in real browser
+    // drop events because the native `DataTransfer` store becomes unavailable once the
+    // initial event handler task finishes.
+    let plainText = "";
+    let selectionData = "";
+    let itemId = "";
+
+    try {
+        plainText = dt?.getData?.("text/plain") ?? "";
+        selectionData = dt?.getData?.("application/x-outliner-selection") ?? "";
+        itemId = dt?.getData?.("application/x-outliner-item") ?? "";
+    } catch (_e) { /* ignore */ }
+
     // File drop handling via AttachmentUpload service
+    // Always call this so it can do its own cleanup or process even if hasFiles is false initially
+    // but only await if there are files or it decides it handled it. Actually, wait, handleFileUploadFromDrop
+    // in the original code is awaited for ALL drops, but we only await if we want to. Let's look at what handleFileUploadFromDrop does.
+    // The previous implementation was:
+    // const fileHandled = await handleFileUploadFromDrop(...)
+    // if (fileHandled) return;
+
+    // We can just execute the whole block, but we MUST snapshot the payload BEFORE.
     const fileHandled = await handleFileUploadFromDrop(
         dt,
         model.id,
@@ -1976,11 +1998,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
 
     // Non-file drop (text or in-app data)
     try {
-        const plainText = dt?.getData?.("text/plain") ?? "";
-        const selectionData = dt?.getData?.("application/x-outliner-selection") ?? "";
-        const itemId = dt?.getData?.("application/x-outliner-item") ?? "";
-
-        // Fire drop event
+        // Fire drop event using the data we snapshotted earlier
         dispatch("drop", {
             targetItemId: model.id,
             position: dropTargetPosition,
