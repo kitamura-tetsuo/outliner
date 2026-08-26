@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { VISUAL_NODE_ROOT_ATTRIBUTE } from "../selectionGeometry";
 import {
     isBlockOwnedInteraction,
+    isOutlineItemDragHandle,
     isVisualRow,
     outermostVisualNodeId,
+    OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE,
     outlineSelectionSurfaceItemId,
     readOutlineRows,
     VISUAL_NODE_SELECTION_SURFACE_ATTRIBUTE,
@@ -14,6 +16,7 @@ function renderOutline() {
     document.body.innerHTML = `
         <div class="outliner">
             <div class="outliner-item" data-item-id="text" data-node-kind="text">
+                <span ${OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE} id="drag-handle"><i id="drag-icon"></i></span>
                 <span class="item-text">Alpha text</span>
             </div>
             <div class="outliner-item" data-item-id="grid" data-node-kind="grid">
@@ -84,6 +87,14 @@ describe("outlineSelectionDom", () => {
 
         it("says nothing about gestures outside any block", () => {
             expect(isBlockOwnedInteraction(document.querySelector(".item-text"))).toBe(false);
+        });
+    });
+
+    describe("isOutlineItemDragHandle", () => {
+        it("claims a handle and its descendants, but not editable text", () => {
+            expect(isOutlineItemDragHandle(at("drag-handle"))).toBe(true);
+            expect(isOutlineItemDragHandle(at("drag-icon"))).toBe(true);
+            expect(isOutlineItemDragHandle(document.querySelector(".item-text"))).toBe(false);
         });
     });
 

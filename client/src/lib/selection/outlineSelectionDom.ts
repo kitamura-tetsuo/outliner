@@ -29,6 +29,9 @@ import type { OutlineRow } from "./selectionKeyboard";
  */
 export const VISUAL_NODE_SELECTION_SURFACE_ATTRIBUTE = "data-visual-node-selection-surface";
 
+/** Attribute marking the only surface that may start an outline item move. */
+export const OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE = "data-outline-item-drag-handle";
+
 function elementOf(target: EventTarget | null | undefined): Element | undefined {
     if (!target || typeof (target as Element).closest !== "function") return undefined;
     return target as Element;
@@ -78,6 +81,11 @@ export function outlineSelectionSurfaceItemId(target: EventTarget | null | undef
 export function isBlockOwnedInteraction(target: EventTarget | null | undefined): boolean {
     if (outlineSelectionSurfaceItemId(target) !== undefined) return false;
     return outermostVisualNodeId(target) !== undefined;
+}
+
+/** True when the gesture starts on the explicit tree-move handle. */
+export function isOutlineItemDragHandle(target: EventTarget | null | undefined): boolean {
+    return elementOf(target)?.closest(`[${OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE}]`) !== null;
 }
 
 /**

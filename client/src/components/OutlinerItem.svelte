@@ -38,6 +38,8 @@ import {
 import { getLogger } from "../lib/logger";
 import {
     isBlockOwnedInteraction,
+    isOutlineItemDragHandle,
+    OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE,
     outlineSelectionSurfaceItemId,
 } from "../lib/selection/outlineSelectionDom";
 import {
@@ -1396,6 +1398,10 @@ function handleMouseDown(event: MouseEvent) {
     // Synthesized from a touch gesture the pointer handlers already served.
     if (isSyntheticMouseSuppressed()) return;
 
+    // Tree-move handles own their whole gesture. Selection never claims it, even if
+    // event ordering changes or a future handle forgets to stop propagation.
+    if (isOutlineItemDragHandle(event.target)) return;
+
     // A gesture inside an embedded block belongs to the block: its own text selection,
     // buttons, editors and handles are left untouched (#5026). The single exception is
     // the outline layer's own selection surface, which selects the block as a node.
@@ -2337,6 +2343,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                 <button type="button"
                     tabindex="-1"
                     class="collapse-btn drag-handle"
+                    {...{ [OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE]: "" }}
                     onclick={(e) => { e.stopPropagation(); toggleCollapse(); }}
                     title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
@@ -2370,6 +2377,7 @@ export function setSelectionPosition(start: number, end: number = start) {
             {:else}
                 <span
                     class="bullet drag-handle"
+                    {...{ [OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE]: "" }}
                     role="presentation"
                     draggable={!isReadOnly}
                     ondragstart={handleDragStart}
