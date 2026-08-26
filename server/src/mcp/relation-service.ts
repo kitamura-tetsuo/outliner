@@ -165,7 +165,10 @@ export class OutlinerRelationService {
                     await db.exec(source.schema);
                     await this.loadRecords(db, table.relation, source.data);
                 }
-                const result = await db.query<Record<string, unknown>>(select);
+                const bounded = select.replace(/;\s*$/, "");
+                const result = await db.query<Record<string, unknown>>(
+                    `SELECT * FROM (${bounded}) AS mcp_bounded_result LIMIT ${maxRows + 1}`,
+                );
                 const rows = result.rows.slice(0, maxRows);
                 return {
                     columns: (result.fields ?? []).map(field => ({ name: field.name, type: String(field.dataTypeID) })),
@@ -190,6 +193,7 @@ export class OutlinerRelationService {
             const source = await this.openTable(uid, projectId, table.tableId);
             try {
                 let rowId = "rowId" in write ? write.rowId : String(write.values.id ?? crypto.randomUUID());
+                await this.validateTableWrite(table.relation, source, write, rowId);
                 source.data.doc?.transact(() => {
                     if (write.op === "INSERT") {
                         if (source.data.has(rowId)) throw new Error(`Record "${rowId}" already exists`);
@@ -245,6 +249,33 @@ export class OutlinerRelationService {
         }
     }
 
+    private async validateTableWrite(relation: string, source: TableDoc, write: RelationWrite, rowId: string) {
+        const lease = await acquireDb();
+        try {
+            await lease.db.exec(source.schema);
+            await this.loadRecords(lease.db, relation, source.data);
+            if (write.op === "INSERT") {
+                const values: Record<string, RelationValue> = { ...write.values, id: rowId };
+                const keys = Object.keys(values);
+                await lease.db.query(
+                    `INSERT INTO "${relation}" (${keys.map(key => `"${key.replace(/"/g, '""')}"`).join(",")}) VALUES (${
+                        keys.map((_, index) => `$${index + 1}`).join(",")
+                    })`,
+                    keys.map(key => values[key]),
+                );
+            } else if (write.op === "UPDATE") {
+                await lease.db.query(
+                    `UPDATE "${relation}" SET "${write.column.replace(/"/g, '""')}" = $1 WHERE id = $2`,
+                    [write.value, rowId],
+                );
+            }
+        } catch (error) {
+            throw this.sqlError(error);
+        } finally {
+            lease.release();
+        }
+    }
+
     private allItems(project: Project): Item[] {
         const result: Item[] = [];
         const visit = (items: Iterable<Item>) => {
@@ -264,17 +295,35 @@ export class OutlinerRelationService {
             const start = value.get("start");
             const rrule = value.get("rrule");
             if (!due && !start && !rrule) continue;
+            let parentId: string | null = item.parent?.parentKey ?? null;
+            if (parentId === "root") parentId = null;
+            let pageId = item.key;
+            let cursor = item;
+            while (cursor.parent && cursor.parent.parentKey !== "root") {
+                pageId = cursor.parent.parentKey;
+                const next = this.allItems(project).find(candidate => candidate.key === pageId);
+                if (!next) break;
+                cursor = next;
+            }
             await db.query(
-                `INSERT INTO outline_items (id,text,due,done,all_day,start_on,start_at,rrule) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                `INSERT INTO outline_items VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
                 [
                     item.key,
+                    pageId,
+                    parentId,
                     item.text,
                     due,
                     Boolean(value.get("done")),
+                    JSON.stringify(item.tags),
                     value.get("allDay"),
                     value.get("allDay") ? start : null,
                     value.get("allDay") ? null : start,
+                    value.get("duration"),
                     rrule,
+                    value.get("recurrenceDtstart"),
+                    value.get("recurrenceTimezone"),
+                    value.get("recurrenceParentId"),
+                    value.get("recurrenceOccurrenceId"),
                 ],
             );
         }
@@ -309,13 +358,36 @@ export class OutlinerRelationService {
     }
 
     private setItemValues(item: Item, values: Record<string, RelationValue>) {
-        const fields: Record<string, string> = { due: "due", done: "done", all_day: "allDay", rrule: "rrule" };
+        const fields: Record<string, string> = {
+            due: "due",
+            duration: "duration",
+            recurrence_dtstart: "recurrenceDtstart",
+            recurrence_timezone: "recurrenceTimezone",
+        };
         for (const [column, value] of Object.entries(values)) {
             if (column === "text") item.text = value == null ? "" : String(value);
-            else if (fields[column]) {
+            else if (column === "done" || column === "all_day") {
+                const field = column === "done" ? "done" : "allDay";
+                value == null ? item.yMap.delete(field) : item.yMap.set(field, this.toBoolean(value));
+            } else if (column === "tags") this.writeTags(item, value);
+            else if (column === "start_on" || column === "start_at") {
+                if (value == null || value === "") {
+                    item.yMap.delete("start");
+                    item.yMap.delete("allDay");
+                } else {
+                    item.yMap.set("start", String(value));
+                    item.yMap.set("allDay", column === "start_on");
+                }
+            } else if (column === "rrule") {
+                if (value == null || value === "") item.yMap.delete("rrule");
+                else {
+                    item.yMap.set("rrule", String(value));
+                    if (!item.yMap.get("recurrenceExdate")) item.yMap.set("recurrenceExdate", new Y.Array<string>());
+                }
+            } else if (fields[column]) {
                 value == null
                     ? item.yMap.delete(fields[column])
-                    : item.yMap.set(fields[column], value);
+                    : item.yMap.set(fields[column], String(value));
             } else if (column !== "id") {
                 throw new McpReadError("invalid_argument", `Column "${column}" is not writable`);
             }
@@ -323,9 +395,39 @@ export class OutlinerRelationService {
     }
 
     private assertItemColumns(values: Record<string, RelationValue>) {
-        const writable = new Set(["id", "text", "due", "done", "all_day", "rrule"]);
+        const writable = new Set([
+            "id",
+            "text",
+            "due",
+            "done",
+            "tags",
+            "all_day",
+            "start_on",
+            "start_at",
+            "duration",
+            "rrule",
+            "recurrence_dtstart",
+            "recurrence_timezone",
+        ]);
         const invalid = Object.keys(values).find(column => !writable.has(column));
         if (invalid) throw new McpReadError("invalid_argument", `Column "${invalid}" is not writable`);
+    }
+
+    private toBoolean(value: RelationValue): boolean {
+        if (value === "true") return true;
+        if (value === "false") return false;
+        return Boolean(value);
+    }
+
+    private writeTags(item: Item, value: RelationValue) {
+        let tags: string[] = [];
+        if (typeof value === "string") {
+            try {
+                const parsed: unknown = JSON.parse(value);
+                if (Array.isArray(parsed)) tags = parsed.filter((tag): tag is string => typeof tag === "string");
+            } catch { /* invalid JSON means an empty tag set, matching the canonical provider */ }
+        }
+        item.tags = tags;
     }
 
     private sqlError(error: unknown): McpReadError {

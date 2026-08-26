@@ -87,6 +87,16 @@ describe("Outliner MCP relation service", function() {
             .to.deep.equal([{ id: "r1" }, { id: "r2" }]);
         await service.writeRelation("uid", "project-1", "tasks", { op: "DELETE", rowId: "r2" });
         expect(table.getMap("data").has("r2")).to.equal(false);
+        await expectFailure(
+            service.writeRelation("uid", "project-1", "tasks", {
+                op: "UPDATE",
+                rowId: "r1",
+                column: "bogus",
+                value: "poison",
+            }),
+            "bogus",
+        );
+        expect((table.getMap("data").get("r1") as Y.Map<unknown>).has("bogus")).to.equal(false);
     });
 
     it("enforces system dispositions, authorization, and updates both view kinds", async () => {
