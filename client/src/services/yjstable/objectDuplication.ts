@@ -2,7 +2,7 @@ import { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
-import { createScheduleRule, scheduleTableReferences } from "../schedule/scheduleRuleService";
+import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
@@ -78,14 +78,28 @@ export function previewObjectDuplication(
 
     // A Schedule references Tables the same way a Grid does — as an explicit
     // write target plus whatever its statement reads — so it is discovered
-    // and traversed by the same recursive rules (issue #5102).
-    const sourceProject = Project.fromDoc(source);
+    // and traversed by the same recursive rules (issue #5102). Relation names
+    // come from `rewriteTableQuerySql`'s FROM/JOIN/DML-target scan, not from
+    // matching every bare identifier in the SQL: a column or alias that
+    // happens to share a Table's SQL name (e.g. a `status` column read from a
+    // Table also named `status`) must never be mistaken for a dependency.
     const referencesBySchedule = new Map<string, Set<string>>();
     const scheduleByTable = new Map<string, string[]>();
-    schedulesMapOf(source).forEach((_rule, ruleId) => {
+    schedulesMapOf(source).forEach((rule, ruleId) => {
         const references = new Set<string>();
-        for (const reference of scheduleTableReferences(sourceProject, ruleId)) {
-            if (tables.has(reference.tableId)) references.add(reference.tableId);
+        const targetTableId = rule.get("targetTableId");
+        if (typeof targetTableId === "string" && targetTableId && tables.has(targetTableId)) {
+            references.add(targetTableId);
+        }
+        const sql = rule.get("sql");
+        try {
+            for (const sqlName of rewriteTableQuerySql(String(sql ?? ""), new Map()).relationDependencies) {
+                const tableId = tableBySqlName.get(sqlName);
+                if (tableId) references.add(tableId);
+            }
+        } catch {
+            // An invalid statement remains copyable; its explicit write-target
+            // reference is still included and the editor can report the error.
         }
         referencesBySchedule.set(ruleId, references);
         for (const tableId of references) {

@@ -161,6 +161,21 @@ describe("dependency-aware Schedule duplication", () => {
         ]);
     });
 
+    it("does not treat a column or alias that shadows a Table's SQL name as a dependency", () => {
+        const doc = new Y.Doc();
+        const occurrences = table(doc, "Occurrences", "occurrences");
+        const tasks = table(doc, "Tasks", "tasks");
+        // A Table happens to be named "status" too; the SQL only reads a
+        // `status` *column* from `tasks`, never the `status` relation.
+        const statusTable = table(doc, "Status", "status");
+        const ruleId = schedule(doc, occurrences, "INSERT INTO occurrences (id) SELECT status FROM tasks RETURNING *");
+
+        const preview = previewObjectDuplication(doc, { type: "schedule", id: ruleId }, "referenced");
+        expect(preview.objects.filter(o => o.type === "table").map(o => o.id).sort())
+            .toEqual([occurrences, tasks].sort());
+        expect(preview.objects.some(o => o.type === "table" && o.id === statusTable)).toBe(false);
+    });
+
     it("warns when a Schedule's Table references are omitted", () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");

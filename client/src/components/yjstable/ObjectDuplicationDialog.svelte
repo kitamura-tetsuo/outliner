@@ -100,7 +100,7 @@
                     {/each}
                 </select>
             </label>
-            {#if object.type === "table"}
+            {#if preview.objects.some(o => o.type === "table")}
                 <label class="flex items-center gap-2 text-sm text-gray-700">
                     <input type="checkbox" bind:checked={copyTableData} disabled={isDuplicating} />
                     Copy table rows/data
