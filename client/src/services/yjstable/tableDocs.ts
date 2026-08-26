@@ -98,10 +98,12 @@ export function createTable(
     projectDoc: Y.Doc,
     name: string,
     sqlName: string,
-    options?: { sourceProjectId?: string; sourceTableId?: string; } | ((handles: TableInitializationHandles) => void),
+    options?:
+        | { sourceProjectId?: string; sourceTableId?: string; tableId?: string; }
+        | ((handles: TableInitializationHandles) => void),
     initialize?: (handles: TableInitializationHandles) => void,
 ): string {
-    const tableId = uuidv4();
+    const tableId = typeof options === "object" && options.tableId ? options.tableId : uuidv4();
     const subdoc = new Y.Doc({ guid: tableDocGuid(projectDoc.guid, tableId), autoLoad: true });
     const handles: TableInitializationHandles = {
         tableId,

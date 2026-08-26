@@ -1,0 +1,14 @@
+id: DUP-5090c0de
+title: Dependency-aware Grid and Table duplication
+title-ja: 依存関係を考慮した Grid と Table の複製
+description: Duplicate Grid and Table object graphs within or across projects, with recursive scopes, reference rewriting, previews, and optional Table rows.
+category: tables
+status: implemented
+acceptance:
+  - Collect referenced, referencing, or all connected Grid and Table objects recursively
+  - Rewrite copied internal references and clear omitted cross-project references
+  - Preserve omitted references for same-project copies
+  - Copy Table definitions with an explicit option to include rows
+  - Allocate collision-safe object and SQL names and roll back failed graphs
+tests:
+  - client/src/services/yjstable/objectDuplication.test.ts
