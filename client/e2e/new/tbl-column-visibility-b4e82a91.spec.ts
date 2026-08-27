@@ -1,5 +1,5 @@
 /** @feature TBL-b4e82a91 */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 import { createTasksTableBlock } from "../utils/tableColumnDragHelpers";

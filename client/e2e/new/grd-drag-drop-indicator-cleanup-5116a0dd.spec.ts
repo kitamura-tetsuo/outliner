@@ -10,7 +10,8 @@ registerCoverageHooks();
  *  local or global — the shared drag-session safety net is what guarantees
  *  it clears once the gesture ends.
  */
-import { expect, type Page, test } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**

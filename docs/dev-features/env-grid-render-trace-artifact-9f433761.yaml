@@ -1,0 +1,15 @@
+id: ENV-9f433761
+title: Grid render traces in E2E failure artifacts
+title-ja: E2E失敗アーティファクトへのGridレンダートレース記録
+description: A failing Playwright test that had a Grid mounted attaches the Grid's structured render trace (issue 5128) as correlated JSON, alongside its existing screenshot/video/log artifacts, so CI failures show where frontend rendering diverged from backend/domain state.
+category: environment
+status: implemented
+components:
+- client/e2e/fixtures/grid-render-trace.ts
+- client/src/components/yjstable/YjsTableView.svelte
+- client/src/services/yjstable/gridRenderTraceRegistry.ts
+tests:
+- client/e2e/env/env-grid-render-trace-artifact-9f433761.spec.ts
+- client/src/services/yjstable/gridRenderTraceRegistry.test.ts
+documentation:
+- docs/e2e-grid-render-trace-artifacts.md

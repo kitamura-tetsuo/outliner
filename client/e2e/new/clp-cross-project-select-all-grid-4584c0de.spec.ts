@@ -1,5 +1,5 @@
 /** @feature CLP-4584c0de */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import {
     clickItemAndWaitForCursor,
     createBlankGrid,

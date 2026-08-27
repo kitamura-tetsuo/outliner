@@ -5,7 +5,7 @@ registerCoverageHooks();
  *  Title   : Cross-table aggregation with project-unique SQL names
  *  Source  : docs/client-features/tbl-cross-table-aggregation-7b3e9c42.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("FTR-7b3e9c42: SQL names are unique within a project", () => {
