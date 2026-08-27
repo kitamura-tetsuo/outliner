@@ -1,6 +1,7 @@
 <script lang="ts">
 import { page } from "$app/stores";
 import { onMount, tick } from "svelte";
+import { SvelteSet } from "svelte/reactivity";
 import ConfirmDialog from "../../../components/ConfirmDialog.svelte";
 import { isPublicProject } from "../../../lib/publicProject";
 import { navigateToOutlineItem } from "../../../services/navigation/outlineItemNavigation";
@@ -23,8 +24,8 @@ import {
 } from "./ObjectManagerController";
 
 let searchQuery = $state("");
-let selectedTypes = $state<Set<string>>(new Set(OBJECT_TYPES));
-let selectedObjectIds = $state<Set<string>>(new Set());
+let selectedTypes = new SvelteSet<string>(OBJECT_TYPES);
+let selectedObjectIds = new SvelteSet<string>();
 let bulkFindText = $state("");
 let bulkReplaceText = $state("");
 let editingObjectId = $state<string | null>(null);
@@ -44,6 +45,12 @@ let isPublicDemo = $derived(isPublicProject(projectName));
 let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
 
 onMount(() => {
+    // This route renders no outline page, so `navigateToOutlineItem`'s
+    // "already open" shortcut (`store.currentPage`) must not carry over the
+    // last outline page visited before Object Manager — otherwise a
+    // placement on that same Page would be treated as already open and its
+    // click would never `goto` back to it.
+    store.currentPage = undefined;
     return userManager.addEventListener((result) => {
         isAuthenticated = !!result?.user;
     });

@@ -16,14 +16,6 @@ async function openSidebar(page: import("@playwright/test").Page) {
     return sidebar;
 }
 
-// `createBlankGrid` names the Table and its Grid host identically, so every
-// row lookup here is scoped to the Grid badge — the object being renamed.
-function gridRow(page: import("@playwright/test").Page, name: string) {
-    return page.locator('[data-testid^="object-row-"]').filter({ hasText: name }).filter({
-        has: page.locator(".type-badge.grid"),
-    });
-}
-
 test.describe("FTR-8ac92ce2: clicking an object's name renames it in place", () => {
     test("blur commits, Enter commits, Escape cancels", async ({ page }, testInfo) => {
         test.setTimeout(120000);
@@ -33,8 +25,19 @@ test.describe("FTR-8ac92ce2: clicking an object's name renames it in place", () 
         const sidebar = await openSidebar(page);
         await sidebar.getByRole("link", { name: "Object Manager" }).click();
         await expect(page).toHaveURL(/\/objects$/, { timeout: 15000 });
-        const row = gridRow(page, "Rename Me");
-        await expect(row).toBeVisible({ timeout: 15000 });
+
+        // `createBlankGrid` names the Table and its Grid host identically, so
+        // the Grid row is picked out by its badge, then addressed by its own
+        // stable `data-testid` from here on — once rename mode swaps the name
+        // button for an `<input>`, the row's own text content no longer
+        // contains "Rename Me" (an input's value isn't text content), so a
+        // `hasText` filter would stop matching the very row being edited.
+        const initialRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Rename Me" }).filter({
+            has: page.locator(".type-badge.grid"),
+        });
+        await expect(initialRow).toBeVisible({ timeout: 15000 });
+        const testId = await initialRow.getAttribute("data-testid");
+        const row = page.locator(`[data-testid="${testId}"]`);
 
         // Click the name to enter rename mode; the input is auto-focused.
         await row.locator(".name-button").click();
@@ -45,28 +48,25 @@ test.describe("FTR-8ac92ce2: clicking an object's name renames it in place", () 
         // Blur commits.
         await nameInput.fill("Renamed Via Blur");
         await page.locator("h1", { hasText: "Objects Manager" }).click();
-        const renamedRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Renamed Via Blur" });
-        await expect(renamedRow).toBeVisible({ timeout: 10000 });
-        await expect(renamedRow.locator("input.edit-input")).toBeHidden();
+        await expect(row).toContainText("Renamed Via Blur", { timeout: 10000 });
+        await expect(row.locator("input.edit-input")).toBeHidden();
 
         // Enter commits.
-        await renamedRow.locator(".name-button").click();
-        const nameInput2 = renamedRow.locator("input.edit-input");
+        await row.locator(".name-button").click();
+        const nameInput2 = row.locator("input.edit-input");
         await expect(nameInput2).toBeVisible();
         await nameInput2.fill("Renamed Via Enter");
         await nameInput2.press("Enter");
-        const enterRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Renamed Via Enter" });
-        await expect(enterRow).toBeVisible({ timeout: 10000 });
+        await expect(row).toContainText("Renamed Via Enter", { timeout: 10000 });
 
         // Escape cancels and restores the previous name.
-        await enterRow.locator(".name-button").click();
-        const nameInput3 = enterRow.locator("input.edit-input");
+        await row.locator(".name-button").click();
+        const nameInput3 = row.locator("input.edit-input");
         await expect(nameInput3).toBeVisible();
         await nameInput3.fill("This Should Not Stick");
         await nameInput3.press("Escape");
-        await expect(page.locator('[data-testid^="object-row-"]').filter({ hasText: "This Should Not Stick" }))
-            .toHaveCount(0);
-        await expect(page.locator('[data-testid^="object-row-"]').filter({ hasText: "Renamed Via Enter" }))
-            .toBeVisible();
+        await expect(row.locator("input.edit-input")).toBeHidden();
+        await expect(row).toContainText("Renamed Via Enter");
+        await expect(row).not.toContainText("This Should Not Stick");
     });
 });

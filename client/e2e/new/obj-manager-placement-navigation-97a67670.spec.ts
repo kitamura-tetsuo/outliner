@@ -58,11 +58,6 @@ test.describe("FTR-8ac92ce2: clicking a placement navigates to and reveals the e
         );
         const block = page.locator(`[data-visual-node-root="${gridBlockId}"]`);
         await expect(block).toBeVisible({ timeout: 15000 });
-        await expect.poll(async () => {
-            const box = await block.boundingBox();
-            const viewport = page.viewportSize();
-            if (!box || !viewport) return false;
-            return box.top >= -5 && box.top <= viewport.height;
-        }, { timeout: 15000 }).toBe(true);
+        await expect(block).toBeInViewport({ timeout: 15000 });
     });
 });
