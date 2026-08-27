@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { DRAG_SESSION_CLEAR_EVENT, onDragSessionClear } from "./dragSessionCleanup";
 
 describe("dragSessionCleanup", () => {
@@ -7,32 +7,32 @@ describe("dragSessionCleanup", () => {
     });
 
     it("broadcasts once a native drop is dispatched anywhere in the document", async () => {
-        const callback = vi.fn();
-        const unsubscribe = onDragSessionClear(callback);
+        let calls = 0;
+        const unsubscribe = onDragSessionClear(() => calls++);
 
         window.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
-        expect(callback).not.toHaveBeenCalled();
+        expect(calls).toBe(0);
 
         await Promise.resolve();
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(calls).toBe(1);
 
         unsubscribe();
     });
 
     it("broadcasts once a native dragend is dispatched anywhere in the document", async () => {
-        const callback = vi.fn();
-        const unsubscribe = onDragSessionClear(callback);
+        let calls = 0;
+        const unsubscribe = onDragSessionClear(() => calls++);
 
         window.dispatchEvent(new Event("dragend", { bubbles: true, cancelable: true }));
         await Promise.resolve();
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(calls).toBe(1);
 
         unsubscribe();
     });
 
     it("still fires even when a bubble-phase handler calls stopPropagation on the drop", async () => {
-        const callback = vi.fn();
-        const unsubscribe = onDragSessionClear(callback);
+        let calls = 0;
+        const unsubscribe = onDragSessionClear(() => calls++);
 
         const target = document.createElement("div");
         document.body.appendChild(target);
@@ -40,7 +40,7 @@ describe("dragSessionCleanup", () => {
 
         target.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
         await Promise.resolve();
-        expect(callback).toHaveBeenCalledTimes(1);
+        expect(calls).toBe(1);
 
         unsubscribe();
     });
@@ -61,25 +61,25 @@ describe("dragSessionCleanup", () => {
     });
 
     it("stops calling a callback once unsubscribed", async () => {
-        const callback = vi.fn();
-        const unsubscribe = onDragSessionClear(callback);
+        let calls = 0;
+        const unsubscribe = onDragSessionClear(() => calls++);
         unsubscribe();
 
         window.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
         await Promise.resolve();
-        expect(callback).not.toHaveBeenCalled();
+        expect(calls).toBe(0);
     });
 
     it("notifies every registered callback", async () => {
-        const first = vi.fn();
-        const second = vi.fn();
-        const unsubscribeFirst = onDragSessionClear(first);
-        const unsubscribeSecond = onDragSessionClear(second);
+        let firstCalls = 0;
+        let secondCalls = 0;
+        const unsubscribeFirst = onDragSessionClear(() => firstCalls++);
+        const unsubscribeSecond = onDragSessionClear(() => secondCalls++);
 
         window.dispatchEvent(new Event("dragend", { bubbles: true, cancelable: true }));
         await Promise.resolve();
-        expect(first).toHaveBeenCalledTimes(1);
-        expect(second).toHaveBeenCalledTimes(1);
+        expect(firstCalls).toBe(1);
+        expect(secondCalls).toBe(1);
 
         unsubscribeFirst();
         unsubscribeSecond();
