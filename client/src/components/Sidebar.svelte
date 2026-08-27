@@ -20,6 +20,7 @@ import {
     readGridPlacementDrag,
     type GridPlacementDragData,
 } from "../services/yjstable/gridPlacement";
+import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
@@ -86,6 +87,19 @@ import {
             moveGridPlacement(store.project.ydoc, data.itemId, pageId);
         }
     }
+
+    // Local `ondragleave`/`drop` handling above only fires when the browser can
+    // still deliver the event to this page row's own DOM — a completed move can
+    // reparent or remove that DOM first. The shared drag-session safety net (any
+    // drop or dragend anywhere in the document) guarantees the page highlight is
+    // cleared even then (#5123). `copyDestinationPageId`/`draggedGrid` are left
+    // alone here: when a drop opens the copy-destination dialog they must persist
+    // past the end of the drag gesture.
+    onMount(() =>
+        onDragSessionClear(() => {
+            dragTargetPageId = undefined;
+        })
+    );
 
     function ensureObserver(doc: Y.Doc | undefined) {
         if (doc === observedDoc) return;

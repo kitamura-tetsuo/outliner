@@ -19,6 +19,7 @@ import { getLogger } from "../../lib/logger";
 import { editorOverlayStore } from "../../stores/EditorOverlayStore.svelte";
 import { OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE } from "../../lib/selection/outlineSelectionDom";
 import { BLOCK_DND_OWNER_ATTRIBUTE, BLOCK_DND_TYPE_ATTRIBUTE } from "../../services/dnd/blockDndOwnership";
+import { onDragSessionClear } from "../../services/dnd/dragSessionCleanup";
 import {
     isVisualComponentType,
     DEFAULT_COLUMN_SPAN,
@@ -334,6 +335,13 @@ function clearDragState() {
     draggingChildId = undefined;
     dropTargetChildId = undefined;
 }
+
+// Local `ondragend`/`drop` handling above only fires when the browser can still
+// deliver the event to this block's own DOM — a completed move can reparent or
+// remove that DOM first. The shared drag-session safety net (any drop or dragend
+// anywhere in the document) guarantees this Layout's indicator is cleared even
+// then (#5123).
+onMount(() => onDragSessionClear(clearDragState));
 
 function handleMoveOut(child: Item) {
     moveOutOfLayout(item, child);

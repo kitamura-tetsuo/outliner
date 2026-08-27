@@ -8,7 +8,9 @@ acceptance:
 - Append duplicated Grid blocks to the selected same-project Page
 - Move only the Grid placement while preserving the project-level Grid identity
 - Name the target Page and distinguish Move from Copy during a drag
+- The sidebar Page drop highlight is cleared once the drag ends, even when the terminal event is a drop with no following dragend (#5123)
 - Treat a same-Page Move as a no-op
 - Use Ctrl-drag on Windows and Linux or Option-drag on macOS to open the duplication confirmation for a fixed destination Page
 tests:
+- client/e2e/new/grd-drag-drop-indicator-cleanup-5116a0dd.spec.ts
 - client/src/services/yjstable/gridPlacement.test.ts
