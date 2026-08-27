@@ -584,6 +584,10 @@ function handleContextMenuAction(componentType: string) {
     padding: 2px;
 }
 
+:global(.layout-cell:has([data-ui-editor-open="true"])) {
+    grid-column: 1 / -1 !important;
+}
+
 .layout-block.editing .layout-cell {
     border-color: #e5e7eb;
 }

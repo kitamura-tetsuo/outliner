@@ -192,6 +192,7 @@ onDestroy(() => {
     data-testid="yjs-table-view"
     data-grid-id={grid.gridId}
     data-source-table-id={handles.tableId}
+    data-ui-editor-open={showUiDef}
     onfocusin={(e) => {
         if (isForeignInput(e.target)) {
             editorOverlayStore.clearCursorAndSelection("local", true);
