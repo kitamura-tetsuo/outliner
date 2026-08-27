@@ -41,6 +41,7 @@ export interface GridUiDefinitionDto {
     query: string;
     components: Record<string, GridUiComponentDto>;
     columnOrder: string[];
+    showAddRowButton?: boolean;
 }
 
 /** Structure-only table snapshot. Data Storage and Yjs identities are deliberately absent. */
@@ -113,7 +114,7 @@ const CALENDAR_SETTINGS_KEYS = new Set([
 ]);
 const ITEM_KEYS = new Set(["text", "depth", "componentType", "yjsTableId", "yjsGridId", "calendarId", "columnSpan"]);
 const SNAPSHOT_KEYS = new Set(["sourceTableId", "name", "sqlName", "schemaSql", "ui"]);
-const UI_KEYS = new Set(["query", "components", "columnOrder"]);
+const UI_KEYS = new Set(["query", "components", "columnOrder", "showAddRowButton"]);
 const COMPONENT_KEYS = new Set(["type", "label", "hidden"]);
 const CELL_COMPONENT_TYPES = new Set(["text", "number", "checkbox", "select", "date"]);
 

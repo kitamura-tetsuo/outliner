@@ -47,6 +47,8 @@ interface Props {
     columnLabels: Record<string, string | undefined>;
     /** Columns hidden by the Grid Definition. */
     hiddenColumns: Record<string, boolean>;
+    /** Whether the Grid shows the "+ Add row" button when editable (default true). */
+    showAddRowButton?: boolean;
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
@@ -64,6 +66,7 @@ let {
     columnOrder,
     columnLabels,
     hiddenColumns,
+    showAddRowButton = true,
     loading = false,
     session,
 }: Props = $props();
@@ -333,7 +336,7 @@ function handleCancelDelete() {
         <p class="readonly-reason" data-testid="grid-readonly-reason">{editability.readOnlyReason}</p>
     {/if}
 
-    {#if schema && editability.editable && editability.rowIdentity === "id"}
+    {#if schema && editability.editable && editability.rowIdentity === "id" && showAddRowButton !== false}
         <button type="button" class="add-row" data-testid="yjs-table-add-row" onclick={addRow}>
             + Add row
         </button>

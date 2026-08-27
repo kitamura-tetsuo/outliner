@@ -20,7 +20,7 @@ interface Props {
 }
 
 let { project = null, onToggleDatabaseSidebar }: Props = $props();
-let toolbarEl: HTMLDivElement | null = null;
+let toolbarEl: HTMLElement | null = null;
 
 // Fallback to global store.project when prop is not provided
 let effectiveProject: Project | null = $derived(project ?? store.project ?? null);
