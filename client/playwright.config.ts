@@ -237,10 +237,16 @@ export default defineConfig({
             testMatch: ["**/[defghi]*.spec.ts"],
         },
         {
-            // New feature tests 4: j-z
+            // New feature tests 4: j-s
             name: "new-4",
             testDir: "./e2e/new",
-            testMatch: ["**/[j-z]*.spec.ts"],
+            testMatch: ["**/[j-s]*.spec.ts"],
+        },
+        {
+            // New feature tests 5: t-z
+            name: "new-5",
+            testDir: "./e2e/new",
+            testMatch: ["**/[t-z]*.spec.ts"],
         },
         {
             // Auth tests: Run only in production environment
