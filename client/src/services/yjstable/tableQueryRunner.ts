@@ -29,8 +29,18 @@ import {
 const logger = getLogger("tableQueryRunner");
 
 export interface TableRunnerCallbacks {
-    onResult?: (result: TableQueryResult) => void;
+    onResult?: (result: TableQueryResult, execution?: TableQueryExecution) => void;
     onError?: (message: string | undefined) => void;
+}
+
+export interface TableQueryExecution {
+    queryId: string;
+    generation: number;
+    status: "completed" | "skipped";
+    startedAt: string;
+    durationMs: number;
+    rowCount: number;
+    columnCount: number;
 }
 
 export interface TableRunnerOptions {
@@ -50,6 +60,7 @@ export abstract class TableQueryRunnerBase {
 
     private readonly listeners = new Set<TableRunnerCallbacks>();
     private lastResult: TableQueryResult = { columns: [], rows: [] };
+    private lastExecution: TableQueryExecution | undefined;
     private lastError: string | undefined;
 
     private requeryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -79,7 +90,7 @@ export abstract class TableQueryRunnerBase {
      */
     subscribe(callbacks: TableRunnerCallbacks): () => void {
         this.listeners.add(callbacks);
-        callbacks.onResult?.(this.lastResult);
+        callbacks.onResult?.(this.lastResult, this.lastExecution);
         callbacks.onError?.(this.lastError);
         return () => {
             this.listeners.delete(callbacks);
@@ -124,6 +135,8 @@ export abstract class TableQueryRunnerBase {
 
     async runQueryNow(): Promise<TableQueryResult | undefined> {
         const generation = ++this.queryGeneration;
+        const queryId = `query-${generation}`;
+        const startedAt = new Date();
         const isStale = () => this.disposed || generation !== this.queryGeneration;
 
         if (isStale()) return undefined;
@@ -136,7 +149,7 @@ export abstract class TableQueryRunnerBase {
         // exists. The pre-split adapter gated on exactly this.
         if (!query || !this.sourceAdapter.appliedSchema) {
             const empty: TableQueryResult = { columns: [], rows: [] };
-            this.emitResult(empty);
+            this.emitResult(empty, executionMetadata(queryId, generation, "skipped", startedAt, empty));
             this.emitError(undefined);
             return empty;
         }
@@ -148,7 +161,7 @@ export abstract class TableQueryRunnerBase {
             });
             if (isStale()) return undefined;
             this.emitError(undefined);
-            this.emitResult(result);
+            this.emitResult(result, executionMetadata(queryId, generation, "completed", startedAt, result));
             return result;
         } catch (err) {
             if (isStale()) return undefined;
@@ -159,15 +172,34 @@ export abstract class TableQueryRunnerBase {
         }
     }
 
-    private emitResult(result: TableQueryResult): void {
+    private emitResult(result: TableQueryResult, execution?: TableQueryExecution): void {
         this.lastResult = result;
-        for (const l of this.listeners) l.onResult?.(result);
+        this.lastExecution = execution;
+        for (const l of this.listeners) l.onResult?.(result, execution);
     }
 
     private emitError(message: string | undefined): void {
         this.lastError = message;
         for (const l of this.listeners) l.onError?.(message);
     }
+}
+
+function executionMetadata(
+    queryId: string,
+    generation: number,
+    status: TableQueryExecution["status"],
+    startedAt: Date,
+    result: TableQueryResult,
+): TableQueryExecution {
+    return {
+        queryId,
+        generation,
+        status,
+        startedAt: startedAt.toISOString(),
+        durationMs: Math.max(0, Date.now() - startedAt.getTime()),
+        rowCount: result.rows.length,
+        columnCount: result.columns.length,
+    };
 }
 
 export interface RawTableRunnerOptions extends TableRunnerOptions {

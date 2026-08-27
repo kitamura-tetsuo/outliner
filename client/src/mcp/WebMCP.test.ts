@@ -25,13 +25,15 @@ describe("registerWebMCPGridTools", () => {
             rowCount: 0,
         });
 
-        const cleanup = registerWebMCPGridTools(getContext, getResult);
+        const getTrace = vi.fn().mockReturnValue({ version: 1, gridId: "g1", stages: [{ stage: "render" }] });
+        const cleanup = registerWebMCPGridTools(getContext, getResult, getTrace);
 
-        expect(mockAddTool).toHaveBeenCalledTimes(2);
+        expect(mockAddTool).toHaveBeenCalledTimes(3);
 
         const tools = mockAddTool.mock.calls.map(call => call[0].name);
         expect(tools).toContain("getCurrentGrid");
         expect(tools).toContain("getGridResult");
+        expect(tools).toContain("getCurrentGridTrace");
 
         // Verify getCurrentGrid handler
         const getCurrentGridConfig = mockAddTool.mock.calls.find(call => call[0].name === "getCurrentGrid")![0];
@@ -43,9 +45,18 @@ describe("registerWebMCPGridTools", () => {
         const resResponse = await getGridResultConfig.handler();
         expect(resResponse.content[0].text).toContain("g1");
 
+        const getTraceConfig = mockAddTool.mock.calls.find(call => call[0].name === "getCurrentGridTrace")![0];
+        const traceResponse = await getTraceConfig.handler();
+        expect(JSON.parse(traceResponse.content[0].text)).toEqual({
+            version: 1,
+            gridId: "g1",
+            stages: [{ stage: "render" }],
+        });
+
         // Verify cleanup
         cleanup();
         expect(mockAddTool.mock.results[0].value).toHaveBeenCalledTimes(1);
         expect(mockAddTool.mock.results[1].value).toHaveBeenCalledTimes(1);
+        expect(mockAddTool.mock.results[2].value).toHaveBeenCalledTimes(1);
     });
 });
