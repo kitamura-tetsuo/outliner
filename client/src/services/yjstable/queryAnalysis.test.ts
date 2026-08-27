@@ -76,13 +76,13 @@ describe("analyzeQueryEditability", () => {
     // completion checkbox can be ticked (DISTINCT ON / MAX would not).
     it("keeps a latest-per-key NOT EXISTS query editable", async () => {
         const schema = await parseCreateTable(
-            "CREATE TABLE routine_occurrences (id TEXT PRIMARY KEY, task_key TEXT, occurrence_date DATE, done BOOLEAN)",
+            "CREATE TABLE routine_occurrences (id TEXT PRIMARY KEY, template_id TEXT, occurrence_date DATE, done BOOLEAN)",
         );
-        const query = "SELECT id, task_key, occurrence_date, done FROM routine_occurrences r "
+        const query = "SELECT id, template_id, occurrence_date, done FROM routine_occurrences r "
             + "WHERE NOT EXISTS (SELECT 1 FROM routine_occurrences later "
-            + "WHERE later.task_key = r.task_key AND later.occurrence_date > r.occurrence_date)";
+            + "WHERE later.template_id = r.template_id AND later.occurrence_date > r.occurrence_date)";
 
-        const res = analyzeQueryEditability(query, schema, ["id", "task_key", "occurrence_date", "done"]);
+        const res = analyzeQueryEditability(query, schema, ["id", "template_id", "occurrence_date", "done"]);
         expect(res.editable).toBe(true);
         expect(res.editableColumns.has("done")).toBe(true);
     });
