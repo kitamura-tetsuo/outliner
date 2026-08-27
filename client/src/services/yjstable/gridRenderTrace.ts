@@ -47,6 +47,7 @@ export type GridRenderTraceStage =
         stage: "client-state";
         revision: number;
         queryId?: string;
+        resultStale: boolean;
         rowCount: number;
         columnCount: number;
         columns: readonly string[];
@@ -55,6 +56,7 @@ export type GridRenderTraceStage =
         stage: "render";
         revision: number;
         queryId?: string;
+        resultStale: boolean;
         rowCount: number;
         columnCount: number;
         columns: readonly string[];
@@ -68,11 +70,17 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
     const orderedColumns = orderColumns([...input.result.columns], [...input.columnOrder]);
     const renderedColumns = orderedColumns.filter(column => input.hiddenColumns[column] !== true);
     const sampledColumns = renderedColumns.slice(0, MAX_SAMPLE_COLUMNS);
-    const hiddenColumns = orderedColumns.filter(column => input.hiddenColumns[column] === true);
+    const configuredHiddenColumns = Object.entries(input.hiddenColumns)
+        .filter(([, hidden]) => hidden === true)
+        .map(([column]) => column)
+        .sort();
+    const renderedHiddenColumns = orderedColumns.filter(column => input.hiddenColumns[column] === true);
+    const resultStale = input.execution !== undefined && input.execution.query !== input.query;
     const appliedTransforms: string[] = [];
     if (!arraysEqual(orderedColumns, input.result.columns)) appliedTransforms.push("column-order");
-    if (hiddenColumns.length > 0) appliedTransforms.push(`hidden-columns:${hiddenColumns.join(",")}`);
-    if (renderedColumns.length > MAX_SAMPLE_COLUMNS) appliedTransforms.push("sample-column-limit");
+    if (renderedHiddenColumns.length > 0) {
+        appliedTransforms.push(`hidden-columns:${renderedHiddenColumns.slice(0, MAX_TRACE_COLUMNS).join(",")}`);
+    }
 
     return {
         version: 1,
@@ -88,13 +96,14 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
                 tableDocumentId: input.tableDocumentId,
                 query: truncate(input.query, MAX_QUERY_LENGTH),
                 columnOrder: input.columnOrder.slice(0, MAX_TRACE_COLUMNS),
-                hiddenColumns: hiddenColumns.slice(0, MAX_TRACE_COLUMNS),
+                hiddenColumns: configuredHiddenColumns.slice(0, MAX_TRACE_COLUMNS),
             },
             ...(input.execution ? [{ stage: "query-execution" as const, ...input.execution }] : []),
             {
                 stage: "client-state",
                 revision: input.clientRevision,
                 queryId: input.execution?.queryId,
+                resultStale,
                 rowCount: input.result.rows.length,
                 columnCount: input.result.columns.length,
                 columns: input.result.columns.slice(0, MAX_TRACE_COLUMNS),
@@ -103,6 +112,7 @@ export function buildGridRenderTrace(input: GridRenderTraceInput): GridRenderTra
                 stage: "render",
                 revision: input.clientRevision,
                 queryId: input.execution?.queryId,
+                resultStale,
                 rowCount: input.result.rows.length,
                 columnCount: renderedColumns.length,
                 columns: renderedColumns.slice(0, MAX_TRACE_COLUMNS),

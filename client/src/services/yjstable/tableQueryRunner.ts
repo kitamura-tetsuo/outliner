@@ -36,6 +36,7 @@ export interface TableRunnerCallbacks {
 export interface TableQueryExecution {
     queryId: string;
     generation: number;
+    query: string;
     status: "completed" | "skipped";
     startedAt: string;
     durationMs: number;
@@ -149,7 +150,7 @@ export abstract class TableQueryRunnerBase {
         // exists. The pre-split adapter gated on exactly this.
         if (!query || !this.sourceAdapter.appliedSchema) {
             const empty: TableQueryResult = { columns: [], rows: [] };
-            this.emitResult(empty, executionMetadata(queryId, generation, "skipped", startedAt, empty));
+            this.emitResult(empty, executionMetadata(queryId, generation, query, "skipped", startedAt, empty));
             this.emitError(undefined);
             return empty;
         }
@@ -161,7 +162,7 @@ export abstract class TableQueryRunnerBase {
             });
             if (isStale()) return undefined;
             this.emitError(undefined);
-            this.emitResult(result, executionMetadata(queryId, generation, "completed", startedAt, result));
+            this.emitResult(result, executionMetadata(queryId, generation, query, "completed", startedAt, result));
             return result;
         } catch (err) {
             if (isStale()) return undefined;
@@ -187,6 +188,7 @@ export abstract class TableQueryRunnerBase {
 function executionMetadata(
     queryId: string,
     generation: number,
+    query: string,
     status: TableQueryExecution["status"],
     startedAt: Date,
     result: TableQueryResult,
@@ -194,6 +196,7 @@ function executionMetadata(
     return {
         queryId,
         generation,
+        query,
         status,
         startedAt: startedAt.toISOString(),
         durationMs: Math.max(0, Date.now() - startedAt.getTime()),

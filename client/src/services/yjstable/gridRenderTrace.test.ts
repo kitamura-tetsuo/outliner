@@ -22,6 +22,7 @@ describe("buildGridRenderTrace", () => {
             execution: {
                 queryId: "query-4",
                 generation: 4,
+                query: "SELECT id, title, completed FROM tasks",
                 status: "completed",
                 startedAt: "2026-08-27T00:00:00.000Z",
                 durationMs: 3,
@@ -55,6 +56,38 @@ describe("buildGridRenderTrace", () => {
                     { title: "two", id: "2" },
                 ],
             }),
+        ]);
+    });
+
+    it("marks retained results as stale when the configured query has moved on", () => {
+        const trace = buildGridRenderTrace({
+            gridId: "grid-1",
+            sourceTableId: "table-1",
+            projectDocumentId: "project-doc",
+            tableDocumentId: "table-doc",
+            configRevision: "02",
+            clientRevision: 2,
+            query: "SELECT title FROM tasks WHERE completed = false",
+            result: { columns: ["title"], rows: [{ title: "old result" }] },
+            execution: {
+                queryId: "query-1",
+                generation: 1,
+                query: "SELECT title FROM tasks",
+                status: "completed",
+                startedAt: "2026-08-27T00:00:00.000Z",
+                durationMs: 1,
+                rowCount: 1,
+                columnCount: 1,
+            },
+            columnOrder: [],
+            hiddenColumns: { removed_column: true },
+        });
+
+        expect(trace.stages).toEqual([
+            expect.objectContaining({ stage: "config", hiddenColumns: ["removed_column"] }),
+            expect.objectContaining({ stage: "query-execution", query: "SELECT title FROM tasks" }),
+            expect.objectContaining({ stage: "client-state", resultStale: true }),
+            expect.objectContaining({ stage: "render", resultStale: true, appliedTransforms: [] }),
         ]);
     });
 
