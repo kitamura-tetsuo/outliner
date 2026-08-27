@@ -54,7 +54,7 @@
             }
             const result = await duplicateObjects(sourceDoc, destinationDoc, object, scope, {
                 copyTableData,
-                sourceProjectId: sourceProject,
+                synchronizeTableSubdocs: true,
             });
             const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
             await goto(

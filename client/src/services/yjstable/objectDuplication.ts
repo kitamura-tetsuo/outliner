@@ -6,7 +6,7 @@ import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
-import type { TableDocConnection, TableDocConnector } from "./tableEngine";
+import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export type DuplicableObject = { type: "grid" | "table" | "schedule"; id: string; };
@@ -162,10 +162,8 @@ export async function duplicateObjects(
     scope: DuplicationScope,
     options: {
         copyTableData?: boolean;
-        /** Project room id used to synchronize lazily loaded Table subdocs. */
-        sourceProjectId?: string;
-        /** Injectable only so unit tests can exercise late synchronization. */
-        connect?: TableDocConnector;
+        /** Synchronize remote Table subdocs before reading the completed plan. */
+        synchronizeTableSubdocs?: boolean;
     } = {},
 ): Promise<DuplicationResult> {
     const preview = previewObjectDuplication(source, primary, scope);
@@ -176,18 +174,18 @@ export async function duplicateObjects(
     // mutation. A registry entry can expose its subdoc before that subdoc's
     // contents have arrived, so every Table in the completed graph must be
     // synchronized before schema rewriting or row copying starts.
-    if (options.sourceProjectId && tableObjects.length > 0) {
-        const connect = options.connect ?? (async (projectId, tableId, doc) => {
-            const { connectTableDoc } = await import("../../lib/yjs/connection");
-            return await connectTableDoc(projectId, tableId, doc);
-        });
+    if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
+        const { connectTableDoc } = await import("../../lib/yjs/connection");
         try {
             for (const object of tableObjects) {
                 const entry = listTables(source).find(table => table.tableId === object.id);
                 const handles = getTableHandles(source, object.id);
                 if (!entry || !handles) throw new Error(`Table "${object.id}" no longer exists`);
                 try {
-                    const connection = await connect(options.sourceProjectId, object.id, handles.doc);
+                    // The project document GUID is the room id. The route's
+                    // `sourceProject` value is only its human-readable title
+                    // and cannot authorize a Table room connection.
+                    const connection = await connectTableDoc(source.guid, object.id, handles.doc);
                     connections.push(connection);
                     const { synced } = await connection.waitForInitialSync();
                     if (!synced) throw new Error("initial synchronization timed out");

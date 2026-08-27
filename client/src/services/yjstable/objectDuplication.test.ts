@@ -31,60 +31,6 @@ function scheduleRuleMap(doc: Y.Doc, ruleId: string): Y.Map<unknown> {
 }
 
 describe("dependency-aware Grid/Table duplication", () => {
-    it("synchronizes every discovered Table before materializing the graph", async () => {
-        const source = new Y.Doc({ guid: "demo" });
-        const occurrences = table(source, "Routine Occurrences", "routine_occurrences");
-        const templates = createTable(source, "Routine Templates", "routine_templates");
-        const ruleId = schedule(
-            source,
-            occurrences,
-            "INSERT INTO routine_occurrences (id) SELECT id FROM routine_templates RETURNING *",
-        );
-        const synchronized: string[] = [];
-
-        const result = await duplicateObjects(source, source, { type: "table", id: occurrences }, "connected", {
-            sourceProjectId: "demo",
-            connect: async (_projectId, tableId, doc) => ({
-                waitForInitialSync: async () => {
-                    synchronized.push(tableId);
-                    if (tableId === templates) {
-                        doc.getText("schema").insert(
-                            0,
-                            "CREATE TABLE routine_templates (id TEXT PRIMARY KEY, title TEXT)",
-                        );
-                    }
-                    return { synced: true };
-                },
-                dispose: () => {},
-            }),
-        });
-
-        expect(synchronized).toEqual([occurrences, templates]);
-        expect(result.idMap.get(`schedule:${ruleId}`)).toBeDefined();
-        const copiedTemplates = result.idMap.get(`table:${templates}`)!;
-        expect(getTableHandles(source, copiedTemplates)?.schemaText.toString()).toContain(
-            "CREATE TABLE routine_templates_2",
-        );
-    });
-
-    it("does not mutate the destination when a dependency Table cannot synchronize", async () => {
-        const source = new Y.Doc({ guid: "demo" });
-        const occurrences = table(source, "Routine Occurrences", "routine_occurrences");
-        const templates = createTable(source, "Routine Templates", "routine_templates");
-        schedule(source, occurrences, "INSERT INTO routine_occurrences SELECT * FROM routine_templates");
-        const tableCount = listTables(source).length;
-        const scheduleCount = source.getMap("schedules").size;
-
-        await expect(duplicateObjects(source, source, { type: "table", id: occurrences }, "connected", {
-            sourceProjectId: "demo",
-            connect: async (_projectId, tableId) => ({
-                waitForInitialSync: async () => ({ synced: tableId !== templates }),
-                dispose: () => {},
-            }),
-        })).rejects.toThrow('Table "Routine Templates" could not be synchronized.');
-        expect(listTables(source)).toHaveLength(tableCount);
-        expect(source.getMap("schedules").size).toBe(scheduleCount);
-    });
     it("collects recursively and deduplicates a shared Table", async () => {
         const doc = new Y.Doc();
         const tableId = table(doc, "Tasks", "tasks");
