@@ -52,7 +52,10 @@
                 if (!client) throw new Error(`Project "${destinationTitle}" could not be opened.`);
                 destinationDoc = client.project.ydoc;
             }
-            const result = duplicateObjects(sourceDoc, destinationDoc, object, scope, { copyTableData });
+            const result = await duplicateObjects(sourceDoc, destinationDoc, object, scope, {
+                copyTableData,
+                synchronizeTableSubdocs: true,
+            });
             const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
             await goto(
                 `/${route}/${encodeURIComponent(destinationTitle)}/${encodeURIComponent(result.primaryId)}`,

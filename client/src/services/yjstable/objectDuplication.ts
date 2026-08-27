@@ -6,6 +6,7 @@ import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
+import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export type DuplicableObject = { type: "grid" | "table" | "schedule"; id: string; };
@@ -154,14 +155,52 @@ export function previewObjectDuplication(
  * entries made by this invocation are removed, so observers never retain a
  * partially copied graph.
  */
-export function duplicateObjects(
+export async function duplicateObjects(
     source: Y.Doc,
     destination: Y.Doc,
     primary: DuplicableObject,
     scope: DuplicationScope,
-    options: { copyTableData?: boolean; } = {},
-): DuplicationResult {
+    options: {
+        copyTableData?: boolean;
+        /** Synchronize remote Table subdocs before reading the completed plan. */
+        synchronizeTableSubdocs?: boolean;
+    } = {},
+): Promise<DuplicationResult> {
     const preview = previewObjectDuplication(source, primary, scope);
+    const tableObjects = preview.objects.filter(object => object.type === "table");
+    const connections: TableDocConnection[] = [];
+
+    // Discovery is deliberately complete before any connection or destination
+    // mutation. A registry entry can expose its subdoc before that subdoc's
+    // contents have arrived, so every Table in the completed graph must be
+    // synchronized before schema rewriting or row copying starts.
+    if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
+        const { connectTableDoc } = await import("../../lib/yjs/connection");
+        try {
+            for (const object of tableObjects) {
+                const entry = listTables(source).find(table => table.tableId === object.id);
+                const handles = getTableHandles(source, object.id);
+                if (!entry || !handles) throw new Error(`Table "${object.id}" no longer exists`);
+                try {
+                    // The project document GUID is the room id. The route's
+                    // `sourceProject` value is only its human-readable title
+                    // and cannot authorize a Table room connection.
+                    const connection = await connectTableDoc(source.guid, object.id, handles.doc);
+                    connections.push(connection);
+                    const { synced } = await connection.waitForInitialSync();
+                    if (!synced) throw new Error("initial synchronization timed out");
+                } catch (error) {
+                    throw new Error(
+                        `Table "${entry.name || entry.sqlName || object.id}" could not be synchronized.`,
+                        { cause: error },
+                    );
+                }
+            }
+        } catch (error) {
+            await Promise.allSettled(connections.map(connection => connection.dispose()));
+            throw error;
+        }
+    }
     const idMap = new Map<string, string>();
     for (const object of preview.objects) idMap.set(key(object), uuidv4());
 
@@ -294,6 +333,8 @@ export function duplicateObjects(
             for (const tableId of createdTables) removeTable(destination, tableId);
         });
         throw error;
+    } finally {
+        await Promise.allSettled(connections.map(connection => connection.dispose()));
     }
 
     return { idMap, primaryId: idMap.get(key(primary))!, removedReferenceCount };

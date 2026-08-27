@@ -10,5 +10,7 @@ acceptance:
 - Copy Table definitions with an explicit option to include rows
 - Preserve omitted references for same-project copies
 - Rewrite copied internal references and clear omitted cross-project references
+- Synchronize every Table subdoc in the completed dependency graph before reading schemas or rows, and leave no partial graph on synchronization failure
 tests:
+- client/e2e/tables/dup-lazy-table-dependency-sync-5090c0de.spec.ts
 - client/src/services/yjstable/objectDuplication.test.ts
