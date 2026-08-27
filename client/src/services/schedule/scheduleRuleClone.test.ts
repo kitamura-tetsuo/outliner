@@ -7,14 +7,14 @@ import { createScheduleRule } from "./scheduleRuleService";
 // The demo's daily routine rule, verbatim in shape: a data-modifying CTE that
 // writes into one table and reads another (docs/schedule-sql-conventions.md).
 const ROUTINE_RULE_SQL = `WITH inserted AS (
-    INSERT INTO routine_occurrences (id, task_key, title, cadence, done)
-    SELECT t.task_key, t.task_key, t.title, t.cadence, false
+    INSERT INTO routine_occurrences (id, template_id, title, cadence, done)
+    SELECT t.id, t.id, t.title, t.cadence, false
     FROM routine_templates t
     WHERE t.cadence = 'daily'
     ON CONFLICT (id) DO NOTHING
     RETURNING *
 )
-SELECT id, task_key, title, cadence, done FROM inserted`;
+SELECT id, template_id, title, cadence, done FROM inserted`;
 
 function project(guid: string): Project {
     return Project.fromDoc(new Y.Doc({ guid }));
@@ -52,7 +52,7 @@ describe("cloneScheduleRules", () => {
         const copied = destination.schedules.get(result.createdRuleIds[0])!;
         expect(copied.get("enabled")).toBe(false);
         expect(copied.get("targetTableId")).toBe("destination-occurrences");
-        expect(copied.get("sql")).toContain("INSERT INTO routine_occurrences_2 (id, task_key");
+        expect(copied.get("sql")).toContain("INSERT INTO routine_occurrences_2 (id, template_id");
         expect(copied.get("sql")).toContain("FROM routine_templates_2 t");
         // The recurrence is preserved so enabling the copy replays the same
         // history the source has.
