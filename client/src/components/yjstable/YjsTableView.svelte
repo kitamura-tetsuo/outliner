@@ -47,6 +47,7 @@ import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
+import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
 import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
 
 const logger = getLogger("YjsTableView");
@@ -143,6 +144,27 @@ const session = createTableEngineSession({ projectDoc, projectId });
 let unsubscribeAdapter: (() => void) | undefined;
 let unsubscribeRunner: (() => void) | undefined;
 let cleanupWebMCP: (() => void) | undefined;
+let unregisterGridRenderTraceSource: (() => void) | undefined;
+
+// Shared by the WebMCP tool and the always-on E2E diagnostics registry
+// (gridRenderTraceRegistry) so there is exactly one place that assembles a
+// trace snapshot from this view's current mirrors.
+function getGridRenderTrace() {
+    return buildGridRenderTrace({
+        gridId: grid.gridId,
+        sourceTableId: handles.tableId,
+        projectId,
+        projectDocumentId: projectDoc.guid,
+        tableDocumentId: handles.doc.guid,
+        configRevision: stateVectorRevision(projectDoc),
+        clientRevision,
+        query: gridQuery,
+        result,
+        execution: queryExecution,
+        columnOrder,
+        hiddenColumns,
+    });
+}
 
 onMount(() => {
     refreshGridMirror();
@@ -165,21 +187,9 @@ onMount(() => {
             columns: result.columns,
             rowCount: result.rows.length
         }),
-        () => buildGridRenderTrace({
-            gridId: grid.gridId,
-            sourceTableId: handles.tableId,
-            projectId,
-            projectDocumentId: projectDoc.guid,
-            tableDocumentId: handles.doc.guid,
-            configRevision: stateVectorRevision(projectDoc),
-            clientRevision,
-            query: gridQuery,
-            result,
-            execution: queryExecution,
-            columnOrder,
-            hiddenColumns,
-        })
+        getGridRenderTrace
     );
+    unregisterGridRenderTraceSource = registerGridRenderTraceSource(grid.gridId, getGridRenderTrace);
 
     void (async () => {
         const acquired = await session.acquire(handles.tableId);
@@ -225,6 +235,7 @@ onDestroy(() => {
     destroyTableUndoManager(handles.doc);
     destroyGridUndoManager(grid.entry);
     if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
+    unregisterGridRenderTraceSource?.();
 });
 
 function stateVectorRevision(doc: Y.Doc): string {
