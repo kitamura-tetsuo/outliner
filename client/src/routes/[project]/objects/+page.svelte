@@ -83,13 +83,15 @@ function attachObservers(p: typeof project) {
     for (const target of observedTargets) target.observeDeep(bump);
 }
 
-$effect(() => {
-    attachObservers(project);
-});
-
 onMount(() => () => attachObservers(undefined));
 
+// Re-subscribing is folded into this derived (rather than a separate
+// `$effect`, which AGENTS.md reserves for when there is no other way) since
+// `objects` already depends on `project` and must recompute whenever it
+// changes anyway; `attachObservers` itself is a no-op once already attached
+// to the current project.
 let objects: NamedObject[] = $derived.by(() => {
+    attachObservers(project);
     void store.projectVersion;
     void objectsVersion;
     return getObjects(project);
@@ -215,7 +217,11 @@ function deleteMessage(): string {
         const pages = [...new Set(impact.placements.map(p => p.pageTitle))];
         parts.push(`${impact.placements.length} Page placement(s) will be removed: ${pages.join(", ")}.`);
     }
-    parts.push("This can be undone.");
+    // Grid, Calendar and Schedule delete are undoable as one step (a manual
+    // undo-router entry). Table delete reuses `removeTableWithPolicy`, which
+    // destroys the Table's subdoc outright with no undo tracking at all, so
+    // promising an undo for it would be false.
+    if (deleteTarget.type !== "Table") parts.push("This can be undone.");
     return parts.join(" ");
 }
 

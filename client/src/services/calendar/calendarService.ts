@@ -284,8 +284,13 @@ export function removeCalendarWithPlacements(project: Project, calendarId: strin
     const placements = findCalendarPlacements(project, calendarId);
     const doc = project.ydoc;
 
+    // Registered up front, not inside `applyDelete`: `captureManual` snapshots
+    // which managers are registered *before* running the transact so it can
+    // purge whatever they auto-capture, and a manager created only partway
+    // through that run would miss the snapshot entirely.
+    ensureCalendarUndoManager(project);
+
     const applyDelete = () => {
-        ensureCalendarUndoManager(project);
         doc.transact(() => {
             for (const placement of placements) {
                 try {
@@ -323,9 +328,7 @@ export function removeCalendarWithPlacements(project: Project, calendarId: strin
         });
     };
 
-    const preUndoDepth = globalUndoRouter.undoDepth;
-    applyDelete();
-    globalUndoRouter.captureManual(preUndoDepth, {
+    globalUndoRouter.captureManual(applyDelete, {
         type: "manual",
         label: `Delete Calendar "${settings.name}"`,
         undo: applyRestore,

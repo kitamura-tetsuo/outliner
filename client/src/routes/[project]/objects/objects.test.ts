@@ -2,7 +2,7 @@ import { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { beforeEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
-import { createCalendar, listCalendars } from "../../../services/calendar/calendarService";
+import { createCalendar, ensureCalendarUndoManager, listCalendars } from "../../../services/calendar/calendarService";
 import { findCalendarPlacements, findGridPlacements } from "../../../services/objectManager/objectPlacements";
 import {
     createScheduleRule,
@@ -320,6 +320,87 @@ describe("Objects Manager Requirements", () => {
             const nodeValue = item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
             expect(nodeValue.get("componentType")).toBe("calendar");
             expect(nodeValue.get("calendarId")).toBe(calendarId);
+        });
+
+        it("does not misalign a later, unrelated outline undo after a Grid delete+undo", () => {
+            // Regression: the manual undo entry must purge the orphaned item
+            // it caused the orderedTree Y.UndoManager to auto-capture, or
+            // that manager's own stack keeps it as its real top item, and a
+            // later unrelated outline undo pops the orphaned item instead of
+            // the unrelated edit.
+            const tableId = createTable(project.ydoc, "T", "t");
+            const gridId = createGrid(project.ydoc, tableId, { name: "G" });
+            const page = project.addPage("Dashboard", "test");
+            const gridItem = page.items.addNode("test");
+            project.ydoc.transact(() => bindItemToGrid(gridItem, gridId));
+            const textItem = page.items.addNode("test");
+            // Close the capture window so the setup above is sealed into its
+            // own stack item(s) rather than merging with what follows — the
+            // same boundary real, time-separated user gestures get for free.
+            store.undoManager!.stopCapturing();
+
+            const outlineManagerDepthBefore = store.undoManager!.undoStack.length;
+            removeGridWithPlacements(project, gridId);
+            // The orderedTree manager's own stack must not have grown: its
+            // auto-captured placement-clear item was purged, not left behind.
+            expect(store.undoManager!.undoStack.length).toBe(outlineManagerDepthBefore);
+
+            globalUndoRouter.undo();
+            expect(listGrids(project.ydoc).map(g => g.gridId)).toContain(gridId);
+            store.undoManager!.stopCapturing();
+
+            // An unrelated outline edit, captured by the same manager.
+            project.ydoc.transact(() => {
+                const nodeValue = textItem.tree.getNodeValueFromKey(textItem.key) as Y.Map<unknown>;
+                nodeValue.set("regressionFlag", true);
+            });
+            const depthBeforeUnrelatedUndo = globalUndoRouter.undoDepth;
+
+            globalUndoRouter.undo();
+
+            expect(globalUndoRouter.undoDepth).toBe(depthBeforeUnrelatedUndo - 1);
+            const textNodeValue = textItem.tree.getNodeValueFromKey(textItem.key) as Y.Map<unknown>;
+            expect(textNodeValue.get("regressionFlag")).toBeUndefined();
+            // The Grid restore from the earlier undo must still hold — this
+            // undo reversed the unrelated edit, not the orphaned delete item.
+            expect(listGrids(project.ydoc).map(g => g.gridId)).toContain(gridId);
+            const gridNodeValue = gridItem.tree.getNodeValueFromKey(gridItem.key) as Y.Map<unknown>;
+            expect(gridNodeValue.get("componentType")).toBe("yjstable");
+        });
+
+        it("does not misalign a later, unrelated Calendar undo after a Calendar delete+undo", () => {
+            // Calendar delete touches two managers in one transact — the
+            // outline's and the calendars registry's own — so this covers the
+            // purge for both, not just the single-manager Grid case above.
+            const calendarId = createCalendar(project, { name: "Cal", query: "" });
+            const page = project.addPage("Calendar Page", "test");
+            const item = page.items.addNode("test");
+            project.ydoc.transact(() => bindItemToCalendar(item, calendarId));
+            // Close the capture window so setup is sealed into its own stack
+            // item(s) rather than merging with what follows — the same
+            // boundary real, time-separated user gestures get for free.
+            store.undoManager!.stopCapturing();
+            ensureCalendarUndoManager(project).stopCapturing();
+
+            const object = getObjects(project).find(o => o.id === calendarId) as NamedObject;
+            deleteObject(project, object);
+            globalUndoRouter.undo();
+            expect(listCalendars(project).map(c => c.id)).toContain(calendarId);
+            ensureCalendarUndoManager(project).stopCapturing();
+
+            // An unrelated Calendar registry edit, captured by that manager.
+            const otherCalendarId = createCalendar(project, { name: "Other", query: "" });
+            const depthBeforeUnrelatedUndo = globalUndoRouter.undoDepth;
+
+            globalUndoRouter.undo();
+
+            expect(globalUndoRouter.undoDepth).toBe(depthBeforeUnrelatedUndo - 1);
+            expect(listCalendars(project).map(c => c.id)).not.toContain(otherCalendarId);
+            // The earlier restore must still hold — this undo reversed the
+            // unrelated creation, not the orphaned delete item.
+            expect(listCalendars(project).map(c => c.id)).toContain(calendarId);
+            const nodeValue = item.tree.getNodeValueFromKey(item.key) as Y.Map<unknown>;
+            expect(nodeValue.get("componentType")).toBe("calendar");
         });
 
         it("restores a deleted Schedule with a single undo", () => {

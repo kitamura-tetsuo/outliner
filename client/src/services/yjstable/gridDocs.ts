@@ -395,9 +395,7 @@ export function removeGridWithPlacements(project: Project, gridId: string): bool
         });
     };
 
-    const preUndoDepth = globalUndoRouter.undoDepth;
-    applyDelete();
-    globalUndoRouter.captureManual(preUndoDepth, {
+    globalUndoRouter.captureManual(applyDelete, {
         type: "manual",
         label: `Delete Grid "${snapshot.name}"`,
         undo: applyRestore,

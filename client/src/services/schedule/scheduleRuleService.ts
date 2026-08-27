@@ -147,9 +147,7 @@ export function deleteScheduleRuleWithUndo(project: Project, ruleId: string): bo
         createScheduleRule(project, { ...options, ruleId: id });
     };
 
-    const preUndoDepth = globalUndoRouter.undoDepth;
-    applyDelete();
-    globalUndoRouter.captureManual(preUndoDepth, {
+    globalUndoRouter.captureManual(applyDelete, {
         type: "manual",
         label: `Delete Schedule "${snapshot.name ?? snapshot.id}"`,
         undo: applyRestore,
