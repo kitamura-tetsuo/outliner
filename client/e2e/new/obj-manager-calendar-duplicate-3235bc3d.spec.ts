@@ -52,12 +52,10 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
             await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 20000 });
             await page.getByTestId("calendar-toggle-settings").click();
             const copiedQueryInput = page.getByTestId("calendar-query-input");
-            await expect(copiedQueryInput).toHaveValue(
-                /^SELECT dup_board_2\.id, dup_board_2\.title FROM dup_board_2$/,
-                {
-                    timeout: 20000,
-                },
-            );
+            // The source query's columns were unqualified, so only the FROM
+            // relation name is rewritten (the SQL-name remapping rewrites
+            // relation identifiers, not unqualified column references).
+            await expect(copiedQueryInput).toHaveValue("SELECT id, title FROM dup_board_2", { timeout: 20000 });
 
             const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
             if (!await sidebar.isVisible().catch(() => false)) {
