@@ -10,7 +10,7 @@ import {
     readGridPlacementDrag,
     writeGridPlacementDrag,
 } from "./gridPlacement";
-import { bindItemToGrid } from "./itemBinding";
+import { bindItemToGrid, getItemGridId } from "./itemBinding";
 
 describe("Grid Page placement", () => {
     it("moves a placement to the end of another Page without changing the Grid", () => {
@@ -35,6 +35,8 @@ describe("Grid Page placement", () => {
         const gridId = createGrid(project.ydoc, "table", { name: "Grid" });
         const placement = appendGridPlacement(project.ydoc, page.id, gridId, "user");
         expect(page.items.at(0)?.id).toBe(placement.id);
+        expect(placement.componentType).toBe("yjstable");
+        expect(getItemGridId(placement)).toBe(gridId);
     });
 
     it("clears Layout-only width when moving a Layout child onto a Page", () => {
