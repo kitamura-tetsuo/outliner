@@ -1,6 +1,3 @@
-import type { GridHandles } from "../services/yjstable/gridDocs";
-import type { TableQueryResult } from "../services/yjstable/tableSyncAdapter";
-
 export interface WebMCPGridContext {
     gridId: string;
     sourceTableId: string;
@@ -26,7 +23,7 @@ export function registerWebMCPGridTools(
         return () => {}; // SSR or non-browser environment
     }
 
-    const mcp = (window as any).WebMCP;
+    const mcp = (window as { WebMCP?: { addTool?: (config: unknown) => () => void; }; }).WebMCP;
     if (!mcp || typeof mcp.addTool !== "function") {
         return () => {}; // Browser without WebMCP capability
     }

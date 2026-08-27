@@ -3,7 +3,7 @@ import { registerWebMCPGridTools } from "./WebMCP";
 
 describe("registerWebMCPGridTools", () => {
     afterEach(() => {
-        delete (window as any).WebMCP;
+        delete (window as { WebMCP?: unknown; }).WebMCP;
     });
 
     it("returns a no-op cleanup if WebMCP is not present on window", () => {
@@ -14,7 +14,7 @@ describe("registerWebMCPGridTools", () => {
 
     it("registers tools and returns cleanup if WebMCP is present", async () => {
         const mockAddTool = vi.fn().mockImplementation(() => vi.fn());
-        (window as any).WebMCP = { addTool: mockAddTool };
+        (window as { WebMCP?: { addTool: unknown; }; }).WebMCP = { addTool: mockAddTool };
 
         const getContext = vi.fn().mockReturnValue({ gridId: "g1", sourceTableId: "t1" });
         const getResult = vi.fn().mockReturnValue({
