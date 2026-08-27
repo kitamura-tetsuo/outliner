@@ -255,6 +255,10 @@ export class UndoRouter {
      */
     private runWithoutAutoCapture(fn: () => void): void {
         for (const um of this.registered) um.stopCapturing();
+        // Local bookkeeping for this one synchronous call, not component
+        // state — nothing renders from it, so a reactive SvelteMap would buy
+        // nothing (mirrors `registered` above).
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
         const before = new Map<Y.UndoManager, { undo: number; redo: number; }>();
         for (const um of this.registered) before.set(um, { undo: um.undoStack.length, redo: um.redoStack.length });
 
