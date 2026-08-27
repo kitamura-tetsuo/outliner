@@ -14,7 +14,12 @@ import { onDestroy, onMount } from "svelte";
 import { rrulestr } from "rrule";
 import type * as Y from "yjs";
 import ObjectDuplicationDialog from "./yjstable/ObjectDuplicationDialog.svelte";
-import { GRID_PLACEMENT_MIME, moveGridPlacement, type GridPlacementDragData } from "../services/yjstable/gridPlacement";
+import {
+    isGridPlacementDrag,
+    moveGridPlacement,
+    readGridPlacementDrag,
+    type GridPlacementDragData,
+} from "../services/yjstable/gridPlacement";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
@@ -58,24 +63,18 @@ import { GRID_PLACEMENT_MIME, moveGridPlacement, type GridPlacementDragData } fr
         return navigator.platform.toLowerCase().includes("mac") ? event.altKey : event.ctrlKey;
     }
 
-    function readGridDrag(event: DragEvent): GridPlacementDragData | undefined {
-        const raw = event.dataTransfer?.getData(GRID_PLACEMENT_MIME);
-        if (!raw) return draggedGrid;
-        try { return JSON.parse(raw) as GridPlacementDragData; } catch { return undefined; }
-    }
-
     function handlePageDragOver(event: DragEvent, pageId: string) {
-        const data = readGridDrag(event);
-        if (!data) return;
+        if (!isGridPlacementDrag(event)) return;
         event.preventDefault();
-        draggedGrid = data;
-        copyMode = isCopyDrag(event) || !data.sourceWritable;
+        const data = readGridPlacementDrag(event);
+        if (data) draggedGrid = data;
+        copyMode = isCopyDrag(event) || data?.sourceWritable === false;
         dragTargetPageId = pageId;
         if (event.dataTransfer) event.dataTransfer.dropEffect = copyMode ? "copy" : "move";
     }
 
     function handlePageDrop(event: DragEvent, pageId: string) {
-        const data = readGridDrag(event);
+        const data = readGridPlacementDrag(event);
         event.preventDefault();
         dragTargetPageId = undefined;
         if (!data || !store.project?.ydoc) return;

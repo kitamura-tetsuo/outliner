@@ -12,6 +12,40 @@ export interface GridPlacementDragData {
     sourceWritable: boolean;
 }
 
+let activeGridPlacementDrag: GridPlacementDragData | undefined;
+
+/** Populate the native payload and retain metadata that protected dragover events cannot read. */
+export function writeGridPlacementDrag(
+    event: DragEvent,
+    item: Item,
+    sourceWritable: boolean,
+): GridPlacementDragData | undefined {
+    const gridId = getItemGridId(item);
+    const sourcePage = gridId ? pageContaining(Project.fromDoc(item.ydoc), item) : undefined;
+    if (!gridId || !sourcePage || !event.dataTransfer) return undefined;
+    const data = { itemId: item.id, gridId, sourcePageId: sourcePage.id, sourceWritable };
+    activeGridPlacementDrag = data;
+    event.dataTransfer.setData(GRID_PLACEMENT_MIME, JSON.stringify(data));
+    event.dataTransfer.effectAllowed = "copyMove";
+    return data;
+}
+
+export function isGridPlacementDrag(event: DragEvent): boolean {
+    return Array.from(event.dataTransfer?.types ?? []).includes(GRID_PLACEMENT_MIME);
+}
+
+export function readGridPlacementDrag(event: DragEvent): GridPlacementDragData | undefined {
+    const raw = event.dataTransfer?.getData(GRID_PLACEMENT_MIME);
+    if (raw) {
+        try {
+            return JSON.parse(raw) as GridPlacementDragData;
+        } catch {
+            return undefined;
+        }
+    }
+    return isGridPlacementDrag(event) ? activeGridPlacementDrag : undefined;
+}
+
 export function findItem(project: Project, itemId: string): Item | undefined {
     const visit = (items: Iterable<Item>): Item | undefined => {
         for (const item of items) {
@@ -53,6 +87,11 @@ export function moveGridPlacement(doc: Y.Doc, itemId: string, destinationPageId:
     const sourcePage = pageContaining(project, item);
     if (sourcePage?.id === destinationPageId) return false;
     doc.transact(() => {
+        const sourceParentKey = item.parent?.parentKey;
+        if (sourceParentKey && sourceParentKey !== "root") {
+            const sourceParent = new Item(project.ydoc, project.tree, sourceParentKey);
+            if (sourceParent.componentType === "layout") item.columnSpan = undefined;
+        }
         project.tree.moveChildToParent(item.key, destination.key);
         project.tree.recomputeParentsAndChildren();
         project.tree.setNodeOrderToEnd(item.key);
