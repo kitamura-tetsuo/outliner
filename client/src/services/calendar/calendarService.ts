@@ -9,6 +9,7 @@ import type { Project } from "$shared/app-schema";
 import type { CalendarValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
+import { findCalendarPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { isValidIanaTimeZone } from "./calendarTimezone";
 
@@ -143,10 +144,10 @@ export function listCalendars(project: Project): CalendarListEntry[] {
  */
 export function createCalendar(
     project: Project,
-    options: Partial<CalendarSettings> & { name: string; },
+    options: Partial<CalendarSettings> & { name: string; calendarId?: string; },
 ): string {
     ensureCalendarUndoManager(project);
-    const calendarId = uuid();
+    const calendarId = options.calendarId ?? uuid();
     const calendarMap = new Y.Map<CalendarValueType>();
 
     calendarMap.set("name", options.name);
@@ -263,6 +264,75 @@ export function renameCalendar(project: Project, calendarId: string, name: strin
 export function deleteCalendar(project: Project, calendarId: string): void {
     ensureCalendarUndoManager(project);
     project.calendars.delete(calendarId);
+}
+
+/**
+ * Delete a Calendar and clear every outline item that directly renders it, as
+ * one undoable user operation (issue #5119's Object Manager Delete).
+ *
+ * `project.calendars` already has its own always-registered `Y.UndoManager`
+ * (see `ensureCalendarUndoManager`), so a plain `deleteCalendar` inside the
+ * same transaction as clearing outline placements would push two separate
+ * router entries for one user action — one from that manager, one from the
+ * outline tree's. A manual entry replaces both with exactly one.
+ */
+export function removeCalendarWithPlacements(project: Project, calendarId: string): boolean {
+    const calendarMap = getCalendarMap(project, calendarId);
+    if (!calendarMap) return false;
+
+    const settings = readCalendarSettings(calendarMap);
+    const placements = findCalendarPlacements(project, calendarId);
+    const doc = project.ydoc;
+
+    const applyDelete = () => {
+        ensureCalendarUndoManager(project);
+        doc.transact(() => {
+            for (const placement of placements) {
+                try {
+                    const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
+                        | Y.Map<unknown>
+                        | undefined;
+                    if (nodeValue) {
+                        nodeValue.set("componentType", undefined);
+                        nodeValue.set("calendarId", undefined);
+                    }
+                } catch (_e) {
+                    // Item deleted concurrently; nothing to clear.
+                }
+            }
+            project.calendars.delete(calendarId);
+        });
+    };
+
+    const applyRestore = () => {
+        doc.transact(() => {
+            createCalendar(project, { ...settings, calendarId });
+            for (const placement of placements) {
+                try {
+                    const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
+                        | Y.Map<unknown>
+                        | undefined;
+                    if (nodeValue) {
+                        nodeValue.set("componentType", "calendar");
+                        nodeValue.set("calendarId", calendarId);
+                    }
+                } catch (_e) {
+                    // Item deleted since the Calendar was removed; nothing to restore onto.
+                }
+            }
+        });
+    };
+
+    const preUndoDepth = globalUndoRouter.undoDepth;
+    applyDelete();
+    globalUndoRouter.captureManual(preUndoDepth, {
+        type: "manual",
+        label: `Delete Calendar "${settings.name}"`,
+        undo: applyRestore,
+        redo: applyDelete,
+    });
+
+    return true;
 }
 
 /**

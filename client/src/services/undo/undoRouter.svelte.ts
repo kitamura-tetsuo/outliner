@@ -55,7 +55,31 @@ export interface CompositeUndoEntry {
     savedRules: Record<string, Record<string, ScheduleRuleValueType>>;
 }
 
-export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry;
+/**
+ * A fully self-described undo step: `undo`/`redo` replay whatever the
+ * operation needs, with no dependency on which (if any) `Y.UndoManager`
+ * happened to auto-capture pieces of it.
+ *
+ * Some operations touch project-level registries (the Grid/Calendar/Schedule
+ * maps) that have no `Y.UndoManager` scoped over their own deletions, or that
+ * live in a different scope than the outline items they also touch in the
+ * same transaction — either way, relying on scope-tracking would split one
+ * user action across two or more router stack entries, so it would take more
+ * than one Ctrl+Z to fully reverse it. A manual entry sidesteps that: the
+ * caller performs its transact() as normal, then calls
+ * `UndoRouter.captureManual()` to replace whatever that transaction's own
+ * managers auto-pushed (harmless orphaned entries; see `captureCrossProjectPaste`
+ * for the same trick) with exactly one entry it fully controls.
+ */
+export interface ManualUndoEntry {
+    type: "manual";
+    /** Human-readable label, for logging/debugging only. */
+    label?: string;
+    undo: () => void;
+    redo: () => void;
+}
+
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry;
 
 export class UndoRouter {
     private undoStack: UndoRouterEntry[] = $state([]);
@@ -212,6 +236,24 @@ export class UndoRouter {
         }
     }
 
+    /**
+     * Record a `ManualUndoEntry` for an operation whose transact() just ran.
+     *
+     * `preTransactUndoDepth` is `this.undoDepth` read *before* that transact()
+     * — any entries any registered manager auto-pushed since then belong to
+     * the operation this manual entry now fully describes, so they are
+     * discarded (not applied, just dropped from the router's view; the same
+     * "orphan the manager's own copy" trick `captureCrossProjectPaste` uses)
+     * rather than left behind as extra, redundant undo steps.
+     */
+    public captureManual(preTransactUndoDepth: number, entry: ManualUndoEntry): void {
+        if (this.undoStack.length > preTransactUndoDepth) {
+            this.undoStack.length = preTransactUndoDepth;
+        }
+        this.undoStack.push(entry);
+        this.redoStack = [];
+    }
+
     public canUndo(): boolean {
         return this.undoStack.length > 0;
     }
@@ -252,6 +294,13 @@ export class UndoRouter {
             while (from.length > 0) {
                 const entry = from.pop();
                 if (!entry) continue;
+
+                if ("type" in entry && entry.type === "manual") {
+                    if (isUndo) entry.undo();
+                    else entry.redo();
+                    to.push(entry);
+                    return;
+                }
 
                 if ("type" in entry && entry.type === "composite") {
                     if (apply(entry.mainManager)) {

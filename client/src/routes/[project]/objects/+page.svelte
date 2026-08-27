@@ -1,22 +1,90 @@
 <script lang="ts">
+import { page } from "$app/stores";
+import { onMount, tick } from "svelte";
+import ConfirmDialog from "../../../components/ConfirmDialog.svelte";
+import { isPublicProject } from "../../../lib/publicProject";
+import { navigateToOutlineItem } from "../../../services/navigation/outlineItemNavigation";
+import type { ObjectPlacement } from "../../../services/objectManager/objectPlacements";
+import { GRID_REGISTRY_KEY } from "../../../services/yjstable/gridDocs";
+import { TABLE_REGISTRY_KEY } from "../../../services/yjstable/tableDocs";
+import { userManager } from "../../../auth/UserManager";
 import { store } from "../../../stores/store.svelte";
 import {
-    getObjects, filterObjects, generateBulkPreview, applyRename, type NamedObject
+    applyRename,
+    deleteObject,
+    generateBulkPreview,
+    getDeleteImpact,
+    getObjects,
+    filterObjects,
+    OBJECT_TYPES,
+    validateRename,
+    type DeleteImpact,
+    type NamedObject,
 } from "./ObjectManagerController";
 
 let searchQuery = $state("");
-let selectedTypes = $state<Set<string>>(new Set(["Table", "Grid", "Schedule"]));
+let selectedTypes = $state<Set<string>>(new Set(OBJECT_TYPES));
 let selectedObjectIds = $state<Set<string>>(new Set());
 let bulkFindText = $state("");
 let bulkReplaceText = $state("");
 let editingObjectId = $state<string | null>(null);
 let editNameInput = $state("");
+let editError = $state<string | null>(null);
+let editInputEl = $state<HTMLInputElement | undefined>(undefined);
+let deleteTarget = $state<NamedObject | null>(null);
+let confirmOpen = $state(false);
+
+// Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
+// delete) require write access; browsing and following placement links do
+// not. Demo projects stay writable for everyone, mirroring the schedules
+// list's `hasWriteAccess` derivation.
+let projectName = $derived($page.params.project ?? "");
+let isAuthenticated = $state(!!userManager.getCurrentUser());
+let isPublicDemo = $derived(isPublicProject(projectName));
+let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
+
+onMount(() => {
+    return userManager.addEventListener((result) => {
+        isAuthenticated = !!result?.user;
+    });
+});
 
 // Derived array of objects whenever the project changes.
 const project = $derived(store.project);
+
+// Yjs -> UI mirror (AGENTS.md §11): the object list and each Grid/Calendar's
+// Page placements depend on several registries plus the outline tree, so a
+// rename, create, delete or drag-drop anywhere in those must refresh it.
+let objectsVersion = $state(0);
+let observedProject: typeof project | undefined = undefined;
+let observedTargets: { observeDeep: (f: () => void) => void; unobserveDeep: (f: () => void) => void; }[] = [];
+const bump = () => { objectsVersion++; };
+
+function attachObservers(p: typeof project) {
+    if (observedProject === p) return;
+    for (const target of observedTargets) target.unobserveDeep(bump);
+    observedTargets = [];
+    observedProject = p;
+    if (!p?.ydoc) return;
+    observedTargets = [
+        p.ydoc.getMap(GRID_REGISTRY_KEY),
+        p.ydoc.getMap(TABLE_REGISTRY_KEY),
+        p.schedules,
+        p.calendars,
+        p.ydoc.getMap("orderedTree"),
+    ];
+    for (const target of observedTargets) target.observeDeep(bump);
+}
+
+$effect(() => {
+    attachObservers(project);
+});
+
+onMount(() => () => attachObservers(undefined));
+
 let objects: NamedObject[] = $derived.by(() => {
-    // We establish dependencies so when store project version updates, this re-runs.
     void store.projectVersion;
+    void objectsVersion;
     return getObjects(project);
 });
 
@@ -26,6 +94,10 @@ let filteredObjects = $derived.by(() => {
 
 let bulkPreview = $derived.by(() => {
     return generateBulkPreview(objects, selectedObjectIds, bulkFindText, bulkReplaceText);
+});
+
+let deleteImpact = $derived.by((): DeleteImpact | null => {
+    return deleteTarget && project ? getDeleteImpact(project, deleteTarget) : null;
 });
 
 function toggleType(type: string) {
@@ -53,22 +125,39 @@ function selectAll() {
 }
 
 function startEditing(object: NamedObject) {
+    if (!hasWriteAccess) return;
     editingObjectId = object.id;
     editNameInput = object.name;
+    editError = null;
 }
 
-function saveEdit() {
-    if (!editingObjectId || !project || !project.ydoc) return;
+function cancelEdit() {
+    editingObjectId = null;
+    editError = null;
+}
 
+function commitEdit() {
+    if (!editingObjectId || !project) return;
     const obj = objects.find(o => o.id === editingObjectId);
-    if (!obj) return;
+    if (!obj) {
+        editingObjectId = null;
+        return;
+    }
+
+    const error = validateRename(project, obj.type, obj.id, editNameInput);
+    if (error) {
+        editError = error;
+        void tick().then(() => editInputEl?.focus());
+        return;
+    }
 
     applyRename(project, obj.type, obj.id, editNameInput);
     editingObjectId = null;
+    editError = null;
 }
 
 function applyBulkRename() {
-    if (!project || !project.ydoc || bulkPreview.length === 0) return;
+    if (!project || !project.ydoc || !hasWriteAccess || bulkPreview.length === 0) return;
 
     // Atomically apply changes using Y.Doc transact
     project.ydoc.transact(() => {
@@ -81,6 +170,54 @@ function applyBulkRename() {
     bulkReplaceText = "";
     selectedObjectIds.clear();
 }
+
+function placementLabel(placements: ObjectPlacement[], index: number): string {
+    const placement = placements[index];
+    const sameCount = placements.filter(p => p.pageTitle === placement.pageTitle).length;
+    if (sameCount <= 1) return placement.pageTitle;
+    const ordinal = placements.slice(0, index + 1).filter(p => p.pageTitle === placement.pageTitle).length;
+    return `${placement.pageTitle} #${ordinal}`;
+}
+
+async function goToPlacement(placement: ObjectPlacement) {
+    await navigateToOutlineItem(project, placement.itemKey);
+}
+
+function requestDelete(object: NamedObject) {
+    if (!hasWriteAccess) return;
+    deleteTarget = object;
+    confirmOpen = true;
+}
+
+function deleteMessage(): string {
+    if (!deleteTarget) return "";
+    const parts: string[] = [];
+    const impact = deleteImpact;
+    if (deleteTarget.type === "Table" && impact?.tableDependencies) {
+        const deps = impact.tableDependencies;
+        if (deps.directGridReferences.length > 0 || deps.dependentGridIds.length > 0) {
+            parts.push(`${deps.dependentGridIds.length} dependent Grid(s) and their outline placements will be removed.`);
+        }
+        if (deps.scheduledTargets.length > 0) {
+            parts.push(`${deps.scheduledTargets.length} Schedule(s) targeting this Table will be deleted.`);
+        }
+        if (deps.indirectSqlReferences.length > 0) {
+            parts.push(`${deps.indirectSqlReferences.length} other object(s) reference this Table by name and may break.`);
+        }
+    } else if (impact && impact.placements.length > 0) {
+        const pages = [...new Set(impact.placements.map(p => p.pageTitle))];
+        parts.push(`${impact.placements.length} Page placement(s) will be removed: ${pages.join(", ")}.`);
+    }
+    parts.push("This can be undone.");
+    return parts.join(" ");
+}
+
+function executeDelete() {
+    if (!deleteTarget || !project) return;
+    deleteObject(project, deleteTarget);
+    selectedObjectIds.delete(deleteTarget.id);
+    deleteTarget = null;
+}
 </script>
 
 <svelte:head>
@@ -90,7 +227,13 @@ function applyBulkRename() {
 <div class="manager-container">
     <header class="manager-header">
         <h1>Objects Manager</h1>
-        <p>Manage and rename objects in your project.</p>
+        <p>Manage, rename and delete objects in your project.</p>
+        {#if !hasWriteAccess}
+            <p class="readonly-banner" data-testid="object-manager-readonly">
+                You have read-only access. You can browse objects and follow Page links, but renaming, bulk replace
+                and delete are disabled.
+            </p>
+        {/if}
     </header>
 
     <div class="controls-bar">
@@ -102,7 +245,7 @@ function applyBulkRename() {
                 class="search-input"
             />
             <div class="type-filters">
-                {#each ["Table", "Grid", "Schedule"] as type (type)}
+                {#each OBJECT_TYPES as type (type)}
                     <label class="filter-label">
                         <input
                             type="checkbox"
@@ -115,23 +258,38 @@ function applyBulkRename() {
             </div>
         </div>
 
+        <p class="bulk-hint">Select one or more objects below to bulk find &amp; replace their names.</p>
+
         <div class="bulk-rename-panel" class:active={selectedObjectIds.size > 0}>
             <h3>Bulk Rename ({selectedObjectIds.size} selected)</h3>
             <div class="bulk-inputs">
-                <input type="text" bind:value={bulkFindText} placeholder="Find literal text" />
+                <input
+                    type="text"
+                    bind:value={bulkFindText}
+                    placeholder="Find literal text"
+                    disabled={!hasWriteAccess}
+                    data-testid="object-manager-bulk-find"
+                />
                 <span>→</span>
-                <input type="text" bind:value={bulkReplaceText} placeholder="Replace with" />
+                <input
+                    type="text"
+                    bind:value={bulkReplaceText}
+                    placeholder="Replace with"
+                    disabled={!hasWriteAccess}
+                    data-testid="object-manager-bulk-replace"
+                />
                 <button
                     onclick={applyBulkRename}
-                    disabled={bulkPreview.length === 0}
+                    disabled={!hasWriteAccess || bulkPreview.length === 0}
                     class="btn-primary"
+                    data-testid="object-manager-bulk-apply"
                 >
                     Apply Rename
                 </button>
             </div>
 
             {#if bulkPreview.length > 0}
-                <div class="bulk-preview">
+                <div class="bulk-preview" data-testid="object-manager-bulk-preview">
                     <h4>Preview Changes:</h4>
                     <ul>
                         {#each bulkPreview as preview (preview.id)}
@@ -160,12 +318,13 @@ function applyBulkRename() {
                 </th>
                 <th>Type</th>
                 <th>Name</th>
+                <th>Pages</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {#each filteredObjects as object (object.id)}
-                <tr class:selected={selectedObjectIds.has(object.id)}>
+                <tr class:selected={selectedObjectIds.has(object.id)} data-testid={`object-row-${object.id}`}>
                     <td class="checkbox-col">
                         <input
                             type="checkbox"
@@ -179,32 +338,86 @@ function applyBulkRename() {
                             <!-- svelte-ignore a11y_autofocus -->
                             <input
                                 type="text"
+                                bind:this={editInputEl}
                                 bind:value={editNameInput}
-                                onkeydown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') editingObjectId = null; }}
+                                onblur={commitEdit}
+                                onkeydown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+                                    if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+                                }}
                                 autofocus
                                 class="edit-input"
+                                class:has-error={!!editError}
+                                data-testid={`object-name-input-${object.id}`}
                             />
+                            {#if editError}
+                                <span class="edit-error" role="alert" data-testid={`object-name-error-${object.id}`}>
+                                    {editError}
+                                </span>
+                            {/if}
+                        {:else if hasWriteAccess}
+                            <button
+                                type="button"
+                                class="name-button"
+                                onclick={() => startEditing(object)}
+                                data-testid={`object-name-${object.id}`}
+                            >
+                                {object.name}
+                            </button>
                         {:else}
-                            {object.name}
+                            <span data-testid={`object-name-${object.id}`}>{object.name}</span>
+                        {/if}
+                    </td>
+                    <td class="placements-col">
+                        {#if object.placements.length === 0}
+                            <span class="placements-empty">—</span>
+                        {:else}
+                            <div class="placement-chips">
+                                {#each object.placements as placement, i (placement.itemKey)}
+                                    <button
+                                        type="button"
+                                        class="placement-chip"
+                                        data-testid={`object-placement-${placement.itemKey}`}
+                                        onclick={() => goToPlacement(placement)}
+                                    >
+                                        {placementLabel(object.placements, i)}
+                                    </button>
+                                {/each}
+                            </div>
                         {/if}
                     </td>
                     <td>
-                        {#if editingObjectId === object.id}
-                            <button onclick={saveEdit} class="btn-small">Save</button>
-                            <button onclick={() => editingObjectId = null} class="btn-small btn-cancel">Cancel</button>
-                        {:else}
-                            <button onclick={() => startEditing(object)} class="btn-small">Rename</button>
-                        {/if}
+                        <button
+                            type="button"
+                            class="btn-small btn-delete"
+                            disabled={!hasWriteAccess}
+                            title={hasWriteAccess ? undefined : "Read-only access"}
+                            onclick={() => requestDelete(object)}
+                            data-testid={`object-delete-${object.id}`}
+                        >
+                            Delete
+                        </button>
                     </td>
                 </tr>
             {:else}
                 <tr>
-                    <td colspan="4" class="empty-state">No objects found matching your criteria.</td>
+                    <td colspan="5" class="empty-state">No objects found matching your criteria.</td>
                 </tr>
             {/each}
         </tbody>
     </table>
 </div>
+
+<ConfirmDialog
+    bind:isOpen={confirmOpen}
+    title={deleteTarget ? `Delete ${deleteTarget.type} "${deleteTarget.name}"?` : "Delete object?"}
+    message={deleteMessage()}
+    confirmText="Delete"
+    cancelText="Cancel"
+    isDestructive
+    onConfirm={executeDelete}
+    onCancel={() => (deleteTarget = null)}
+/>
 
 <style>
     .manager-container {
@@ -227,10 +440,19 @@ function applyBulkRename() {
         color: #6b7280;
     }
 
+    .readonly-banner {
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 4px;
+        background: #fef3c7;
+        color: #92400e;
+        font-size: 0.875rem;
+    }
+
     .controls-bar {
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
+        gap: 1rem;
         margin-bottom: 2rem;
     }
 
@@ -258,6 +480,12 @@ function applyBulkRename() {
         align-items: center;
         gap: 0.5rem;
         cursor: pointer;
+    }
+
+    .bulk-hint {
+        margin: 0;
+        font-size: 0.8125rem;
+        color: #6b7280;
     }
 
     .bulk-rename-panel {
@@ -367,7 +595,23 @@ function applyBulkRename() {
 
     .type-badge.table { background: #fee2e2; color: #991b1b; }
     .type-badge.grid { background: #e0e7ff; color: #3730a3; }
+    .type-badge.calendar { background: #dcfce7; color: #166534; }
     .type-badge.schedule { background: #fef3c7; color: #92400e; }
+
+    .name-button {
+        background: none;
+        border: none;
+        padding: 0.125rem 0.25rem;
+        margin: -0.125rem -0.25rem;
+        font: inherit;
+        text-align: left;
+        cursor: text;
+        border-radius: 4px;
+    }
+
+    .name-button:hover {
+        background: #f3f4f6;
+    }
 
     .edit-input {
         width: 100%;
@@ -375,6 +619,46 @@ function applyBulkRename() {
         border: 1px solid #3b82f6;
         border-radius: 4px;
         outline: none;
+    }
+
+    .edit-input.has-error {
+        border-color: #ef4444;
+    }
+
+    .edit-error {
+        display: block;
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.25rem;
+    }
+
+    .placements-col {
+        max-width: 260px;
+    }
+
+    .placements-empty {
+        color: #9ca3af;
+    }
+
+    .placement-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .placement-chip {
+        padding: 0.125rem 0.5rem;
+        border: 1px solid #d1d5db;
+        border-radius: 9999px;
+        background: white;
+        font-size: 0.75rem;
+        cursor: pointer;
+        color: #1d4ed8;
+    }
+
+    .placement-chip:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
     }
 
     .btn-small {
@@ -386,8 +670,18 @@ function applyBulkRename() {
         cursor: pointer;
     }
 
-    .btn-small:hover {
+    .btn-small:hover:not(:disabled) {
         background: #f9fafb;
+    }
+
+    .btn-small:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .btn-delete {
+        color: #b91c1c;
+        border-color: #fca5a5;
     }
 
     .btn-primary {
@@ -407,11 +701,6 @@ function applyBulkRename() {
     .btn-primary:disabled {
         background: #9ca3af;
         cursor: not-allowed;
-    }
-
-    .btn-cancel {
-        color: #ef4444;
-        border-color: #fca5a5;
     }
 
     .empty-state {
@@ -475,7 +764,17 @@ function applyBulkRename() {
         color: #e5e7eb;
     }
 
-    :global(html.dark) .btn-small:hover {
+    :global(html.dark) .btn-small:hover:not(:disabled) {
         background: #4b5563;
+    }
+
+    :global(html.dark) .name-button:hover {
+        background: #374151;
+    }
+
+    :global(html.dark) .placement-chip {
+        background: #1f2937;
+        border-color: #4b5563;
+        color: #93c5fd;
     }
 </style>

@@ -17,8 +17,10 @@
 //   columnOrder    string[]  - display column order (subset/superset of query result).
 //   components     Y.Map     - nested Y.Map per column with {type,label,hidden}.
 
+import type { Project } from "$shared/app-schema";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { findGridPlacements } from "../objectManager/objectPlacements";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 
 export const GRID_REGISTRY_KEY = "yjsGrids";
@@ -263,23 +265,19 @@ export function setGridComponentField(
     });
 }
 
-/**
- * Duplicate a Grid definition into a new registry entry. `sourceTableId` and
- * every field (query, columnOrder, components) are copied; Table schema/data
- * are NOT touched. The new Grid gets a fresh id.
- */
-export function duplicateGrid(
-    projectDoc: Y.Doc,
-    gridId: string,
-    overrides: { name?: string; } = {},
-): string | undefined {
-    const source = getGridRegistry(projectDoc).get(gridId);
-    if (!source) return undefined;
-    const sourceTableId = String(source.get("sourceTableId") ?? "");
-    if (!sourceTableId) return undefined;
+/** Plain-JS copy of a Grid registry entry's fields, detached from the Y.Doc. */
+interface GridEntrySnapshot {
+    name: string;
+    sourceTableId: string;
+    query: string;
+    columnOrder: string[];
+    components: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+}
 
-    const components: Record<string, { type?: string; label?: string; hidden?: boolean; }> = {};
-    const sourceComponents = source.get("components");
+/** Read a Grid registry entry into a plain snapshot — shared by `duplicateGrid` and delete/undo. */
+function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
+    const components: GridEntrySnapshot["components"] = {};
+    const sourceComponents = entry.get("components");
     if (sourceComponents instanceof Y.Map) {
         sourceComponents.forEach((cfg, column) => {
             if (!(cfg instanceof Y.Map)) return;
@@ -293,19 +291,120 @@ export function duplicateGrid(
         });
     }
 
-    const columnOrderValue = source.get("columnOrder");
+    const columnOrderValue = entry.get("columnOrder");
     const columnOrder = Array.isArray(columnOrderValue)
         ? [...(columnOrderValue as string[])]
         : columnOrderValue instanceof Y.Array
         ? (columnOrderValue.toArray() as string[])
         : [];
 
-    return createGrid(projectDoc, sourceTableId, {
-        name: overrides.name ?? `${String(source.get("name") ?? "Grid")} (copy)`,
-        query: String(source.get("query") ?? ""),
+    return {
+        name: String(entry.get("name") ?? "Grid"),
+        sourceTableId: String(entry.get("sourceTableId") ?? ""),
+        query: String(entry.get("query") ?? ""),
         columnOrder,
         components,
+    };
+}
+
+/**
+ * Duplicate a Grid definition into a new registry entry. `sourceTableId` and
+ * every field (query, columnOrder, components) are copied; Table schema/data
+ * are NOT touched. The new Grid gets a fresh id.
+ */
+export function duplicateGrid(
+    projectDoc: Y.Doc,
+    gridId: string,
+    overrides: { name?: string; } = {},
+): string | undefined {
+    const source = getGridRegistry(projectDoc).get(gridId);
+    if (!source) return undefined;
+    const snapshot = readGridEntrySnapshot(source);
+    if (!snapshot.sourceTableId) return undefined;
+
+    return createGrid(projectDoc, snapshot.sourceTableId, {
+        name: overrides.name ?? `${snapshot.name} (copy)`,
+        query: snapshot.query,
+        columnOrder: snapshot.columnOrder,
+        components: snapshot.components,
     });
+}
+
+/**
+ * Delete a Grid and clear every outline item that directly renders it, as one
+ * undoable user operation (issue #5119's Object Manager Delete).
+ *
+ * Placement fields are cleared and restored through the raw node value Y.Map
+ * rather than the `Item` class's `componentType` setter, the same bypass
+ * `removeTableWithPolicy`'s "remove-direct-references" policy uses: detaching
+ * a placement on deletion (or restoring it on undo) is not the "kind
+ * mutation" that setter's immutability guard exists to forbid.
+ */
+export function removeGridWithPlacements(project: Project, gridId: string): boolean {
+    const projectDoc = project.ydoc;
+    const registry = getGridRegistry(projectDoc);
+    const entry = registry.get(gridId);
+    if (!entry) return false;
+
+    const snapshot = readGridEntrySnapshot(entry);
+    const placements = findGridPlacements(project, gridId);
+
+    const applyDelete = () => {
+        projectDoc.transact(() => {
+            for (const placement of placements) {
+                try {
+                    const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
+                        | Y.Map<unknown>
+                        | undefined;
+                    if (nodeValue) {
+                        nodeValue.set("componentType", undefined);
+                        nodeValue.set("yjsGridId", undefined);
+                    }
+                } catch (_e) {
+                    // Item deleted concurrently; nothing to clear.
+                }
+            }
+            const currentEntry = registry.get(gridId);
+            if (currentEntry) destroyGridUndoManager(currentEntry);
+            registry.delete(gridId);
+        });
+    };
+
+    const applyRestore = () => {
+        projectDoc.transact(() => {
+            createGrid(projectDoc, snapshot.sourceTableId, {
+                gridId,
+                name: snapshot.name,
+                query: snapshot.query,
+                columnOrder: snapshot.columnOrder,
+                components: snapshot.components,
+            });
+            for (const placement of placements) {
+                try {
+                    const nodeValue = project.tree.getNodeValueFromKey(placement.itemKey) as
+                        | Y.Map<unknown>
+                        | undefined;
+                    if (nodeValue) {
+                        nodeValue.set("componentType", "yjstable");
+                        nodeValue.set("yjsGridId", gridId);
+                    }
+                } catch (_e) {
+                    // Item deleted since the Grid was removed; nothing to restore onto.
+                }
+            }
+        });
+    };
+
+    const preUndoDepth = globalUndoRouter.undoDepth;
+    applyDelete();
+    globalUndoRouter.captureManual(preUndoDepth, {
+        type: "manual",
+        label: `Delete Grid "${snapshot.name}"`,
+        undo: applyRestore,
+        redo: applyDelete,
+    });
+
+    return true;
 }
 
 /** Grids referencing a given source Table id. */
