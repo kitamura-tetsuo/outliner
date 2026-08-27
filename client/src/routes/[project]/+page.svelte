@@ -10,6 +10,7 @@
     import { store } from "../../stores/store.svelte";
     import { yjsStore } from "../../stores/yjsStore.svelte";
     import Breadcrumb from "../../components/Breadcrumb.svelte";
+    import { isPublicProject } from "../../lib/publicProject";
 
     const logger = getLogger("ProjectIndex");
 
@@ -30,6 +31,10 @@
     let projectNotFound = $state(false);
     let isLoading = $state(true);
 
+    let isPublicDemo = $derived(isPublicProject(projectName));
+    let canAccess = $derived(isAuthenticated || isPublicDemo);
+    let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
+
     // Process on authentication success
     async function handleAuthSuccess() {
         if (import.meta.env.DEV) {
@@ -48,7 +53,7 @@
 
     // Load project
     async function loadProject() {
-        if (!projectName || !isAuthenticated) return;
+        if (!projectName || !canAccess) return;
 
         logger.info(`loadProject: Starting for project="${projectName}"`);
         isLoading = true;
@@ -85,7 +90,7 @@
 
 
     $effect(() => {
-        if (isAuthenticated && projectName) {
+        if (canAccess && projectName) {
             loadProject();
         }
     });
@@ -123,10 +128,16 @@
 
     <!-- Authentication component -->
     <div class="auth-section mb-6">
-        <AuthComponent
-            onAuthSuccess={handleAuthSuccess}
-            onAuthLogout={handleAuthLogout}
-        />
+        {#if isPublicDemo}
+            <div class="user-info bg-gray-50 p-3 rounded text-sm text-gray-700 border border-gray-200">
+                Public demo / Guest access
+            </div>
+        {:else}
+            <AuthComponent
+                onAuthSuccess={handleAuthSuccess}
+                onAuthLogout={handleAuthLogout}
+            />
+        {/if}
     </div>
 
     {#if isLoading}
@@ -170,6 +181,7 @@
                     projectName={projectName}
                     rootItems={pages!}
                     onPageSelected={handlePageSelected}
+                    canWrite={hasWriteAccess}
                 />
             </div>
         </div>
@@ -184,6 +196,7 @@
                     projectName={projectName}
                     rootItems={pages!}
                     onPageSelected={handlePageSelected}
+                    canWrite={hasWriteAccess}
                 />
             </div>
         </div>
@@ -205,7 +218,7 @@
                 </div>
             </div>
         </div>
-    {:else if !isLoading && !isAuthenticated}
+    {:else if !isLoading && !canAccess}
         <div class="rounded-md bg-blue-50 p-4">
             <div class="flex">
                 <div class="flex-shrink-0">

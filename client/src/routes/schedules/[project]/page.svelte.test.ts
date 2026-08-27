@@ -125,7 +125,7 @@ describe("project schedules route", () => {
         expect(screen.queryByText("Tasks")).toBeNull();
     });
 
-    it("does not let a public-demo visitor run or delete a rule", async () => {
+    it("lets a public-demo visitor write to rules", async () => {
         const tasksId = createTable(projectDoc, "Tasks", "tasks");
 
         render(ProjectSchedulesPage);
@@ -134,8 +134,8 @@ describe("project schedules route", () => {
         });
         // Read access is the point of the demo: the guest banner, not a wall.
         expect(screen.getByText("Public demo / Guest access")).toBeTruthy();
-        // Creating is not offered either.
-        expect(screen.queryByTestId("project-schedule-create")).toBeNull();
+        // Creating is offered because demo is a writable sandbox.
+        expect(screen.getByTestId("project-schedule-create")).toBeTruthy();
 
         createScheduleRule(currentProject(), {
             name: "Nightly tasks",
@@ -145,12 +145,12 @@ describe("project schedules route", () => {
         });
 
         const runNow = await waitFor(() => screen.getByTestId("schedule-rule-run-now"));
-        expect(runNow.hasAttribute("disabled")).toBe(true);
-        expect(screen.getByTestId("schedule-rule-delete").hasAttribute("disabled")).toBe(true);
+        expect(runNow.hasAttribute("disabled")).toBe(false);
+        expect(screen.getByTestId("schedule-rule-delete").hasAttribute("disabled")).toBe(false);
 
-        // Even if the click lands, the handler must not reach the endpoint.
+        // Verify the handler works when clicked.
         runNow.click();
         await Promise.resolve();
-        expect(runScheduleRuleNow).not.toHaveBeenCalled();
+        expect(runScheduleRuleNow).toHaveBeenCalled();
     });
 });
