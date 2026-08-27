@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(60);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(61);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);

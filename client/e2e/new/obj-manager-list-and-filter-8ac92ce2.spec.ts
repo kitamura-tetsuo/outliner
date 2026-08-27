@@ -27,7 +27,15 @@ test.describe("FTR-8ac92ce2: Object Manager lists Grid, Calendar, Table and Sche
         await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1", "Item 2"]);
 
         // Calendar, via the slash command (visual node kinds are immutable, #5015).
-        const secondItem = page.locator(".outliner-item").nth(1);
+        // Addressed by its own `data-item-id` (AGENTS.md: "Use data-item-id
+        // selectors instead of nth()"), not render order.
+        const secondItemId = await page.evaluate(() => {
+            const items = (globalThis as unknown as {
+                generalStore: { currentPage: { items: { at: (i: number) => { id: string; }; }; }; };
+            }).generalStore.currentPage.items;
+            return items.at(1).id;
+        });
+        const secondItem = page.locator(`[data-item-id="${secondItemId}"]`);
         await createBlockFromItem(page, secondItem, "Calendar");
         const calendarPanel = page.getByTestId("calendar-create-panel").first();
         await expect(calendarPanel).toBeVisible({ timeout: 10000 });

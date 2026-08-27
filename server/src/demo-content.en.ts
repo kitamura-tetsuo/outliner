@@ -341,6 +341,13 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     { text: "Schedule: the Schedule view shows date-tagged items as a timeline." },
                     { text: "[[2026-07-12]] Date tagged item for the schedule view" },
+                    {
+                        text: "Object Manager: open it from the sidebar to browse every Grid, Calendar, Table and "
+                            + "Schedule in this project. Each Grid/Calendar row lists the Pages it is directly placed "
+                            + "on — click one to jump straight to that block. Click a name to rename it in place; "
+                            + "select several objects for a literal find/replace with a before/after preview; delete "
+                            + "is undoable with Ctrl/Cmd+Z.",
+                    },
                 ],
             },
             {
