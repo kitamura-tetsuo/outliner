@@ -55,7 +55,31 @@ export interface CompositeUndoEntry {
     savedRules: Record<string, Record<string, ScheduleRuleValueType>>;
 }
 
-export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry;
+/**
+ * A fully self-described undo step: `undo`/`redo` replay whatever the
+ * operation needs, with no dependency on which (if any) `Y.UndoManager`
+ * happened to auto-capture pieces of it.
+ *
+ * Some operations touch project-level registries (the Grid/Calendar/Schedule
+ * maps) that have no `Y.UndoManager` scoped over their own deletions, or that
+ * live in a different scope than the outline items they also touch in the
+ * same transaction — either way, relying on scope-tracking would split one
+ * user action across two or more router stack entries, so it would take more
+ * than one Ctrl+Z to fully reverse it. A manual entry sidesteps that: the
+ * caller performs its transact() as normal, then calls
+ * `UndoRouter.captureManual()` to replace whatever that transaction's own
+ * managers auto-pushed (harmless orphaned entries; see `captureCrossProjectPaste`
+ * for the same trick) with exactly one entry it fully controls.
+ */
+export interface ManualUndoEntry {
+    type: "manual";
+    /** Human-readable label, for logging/debugging only. */
+    label?: string;
+    undo: () => void;
+    redo: () => void;
+}
+
+export type UndoRouterEntry = Y.UndoManager | CompositeUndoEntry | ManualUndoEntry;
 
 export class UndoRouter {
     private undoStack: UndoRouterEntry[] = $state([]);
@@ -212,6 +236,56 @@ export class UndoRouter {
         }
     }
 
+    /**
+     * Run `fn` (a Yjs mutation), then purge whatever *new* item any
+     * registered `Y.UndoManager` auto-captured as a side effect of it.
+     *
+     * Dropping only the router's own reference to that push (as an earlier
+     * version of this router did) is not enough: the manager's own
+     * `undoStack` array is public and keeps the item regardless, so it stays
+     * the real top of that manager's stack. The next time the router calls
+     * `um.undo()` for a *different*, legitimately-tracked entry lower in its
+     * array, Yjs still pops whatever is actually on top of `um`'s stack —
+     * this orphaned item — silently undoing the wrong operation instead.
+     * Truncating each manager's own `undoStack`/`redoStack` back to its
+     * pre-`fn` length keeps every manager's real stack aligned with exactly
+     * the entries the router still references. `stopCapturing()` first
+     * closes any open capture window so `fn`'s changes land in their own
+     * fresh item rather than merging into a prior, still-referenced one.
+     */
+    private runWithoutAutoCapture(fn: () => void): void {
+        for (const um of this.registered) um.stopCapturing();
+        // Local bookkeeping for this one synchronous call, not component
+        // state — nothing renders from it, so a reactive SvelteMap would buy
+        // nothing (mirrors `registered` above).
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const before = new Map<Y.UndoManager, { undo: number; redo: number; }>();
+        for (const um of this.registered) before.set(um, { undo: um.undoStack.length, redo: um.redoStack.length });
+
+        fn();
+
+        for (const [um, lengths] of before) {
+            if (um.undoStack.length > lengths.undo) um.undoStack.length = lengths.undo;
+            if (um.redoStack.length > lengths.redo) um.redoStack.length = lengths.redo;
+        }
+    }
+
+    /**
+     * Run `transact` (a Yjs mutation) and record `entry` as the single router
+     * stack item for it, purging whatever any registered `Y.UndoManager`
+     * auto-captured as a side effect (see `runWithoutAutoCapture`) so no
+     * manager is left with an orphaned item the router no longer references.
+     */
+    public captureManual(transact: () => void, entry: ManualUndoEntry): void {
+        const preTransactUndoDepth = this.undoStack.length;
+        this.runWithoutAutoCapture(transact);
+        if (this.undoStack.length > preTransactUndoDepth) {
+            this.undoStack.length = preTransactUndoDepth;
+        }
+        this.undoStack.push(entry);
+        this.redoStack = [];
+    }
+
     public canUndo(): boolean {
         return this.undoStack.length > 0;
     }
@@ -252,6 +326,15 @@ export class UndoRouter {
             while (from.length > 0) {
                 const entry = from.pop();
                 if (!entry) continue;
+
+                if ("type" in entry && entry.type === "manual") {
+                    this.runWithoutAutoCapture(() => {
+                        if (isUndo) entry.undo();
+                        else entry.redo();
+                    });
+                    to.push(entry);
+                    return;
+                }
 
                 if ("type" in entry && entry.type === "composite") {
                     if (apply(entry.mainManager)) {

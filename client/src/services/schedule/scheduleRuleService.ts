@@ -2,6 +2,7 @@ import type { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuid } from "uuid";
 import * as Y from "yjs";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { parseIdentifiers } from "../yjstable/queryAnalysis";
 import { listTables } from "../yjstable/tableDocs";
 
@@ -104,6 +105,56 @@ export function updateScheduleRule(
  */
 export function deleteScheduleRule(project: Project, ruleId: string): void {
     project.schedules.delete(ruleId);
+}
+
+/** Read every stored field of one schedule rule into a plain snapshot, or undefined if it does not exist. */
+export function getScheduleRule(project: Project, ruleId: string): (ScheduleRule & { id: string; }) | undefined {
+    const ruleMap = project.schedules.get(ruleId) as Y.Map<ScheduleRuleValueType> | undefined;
+    if (!ruleMap) return undefined;
+    return {
+        id: ruleId,
+        name: ruleMap.get("name") as string | undefined,
+        targetTableId: ruleMap.get("targetTableId") as string,
+        sql: ruleMap.get("sql") as string,
+        rrule: ruleMap.get("rrule") as string,
+        dtstart: ruleMap.get("dtstart") as string,
+        timezone: ruleMap.get("timezone") as string,
+        enabled: ruleMap.get("enabled") as boolean,
+        catchUp: ruleMap.get("catchUp") as boolean,
+        lastRunAt: ruleMap.get("lastRunAt") as string | undefined,
+        lastRunStatus: ruleMap.get("lastRunStatus") as "ok" | "error" | undefined,
+        lastRunError: ruleMap.get("lastRunError") as string | undefined,
+        completedAt: ruleMap.get("completedAt") as string | undefined,
+        validationError: ruleMap.get("validationError") as string | undefined,
+        skippedOccurrences: ruleMap.get("skippedOccurrences") as number | undefined,
+    };
+}
+
+/**
+ * Delete a schedule rule as one undoable user operation (issue #5119's Object
+ * Manager Delete). `deleteScheduleRule` itself is untouched — its other
+ * callers keep their existing (untracked) behavior — this wraps it with a
+ * manual undo/redo entry the same way `removeGridWithPlacements` and
+ * `removeCalendarWithPlacements` do for their registries.
+ */
+export function deleteScheduleRuleWithUndo(project: Project, ruleId: string): boolean {
+    const snapshot = getScheduleRule(project, ruleId);
+    if (!snapshot) return false;
+
+    const applyDelete = () => deleteScheduleRule(project, ruleId);
+    const applyRestore = () => {
+        const { id, ...options } = snapshot;
+        createScheduleRule(project, { ...options, ruleId: id });
+    };
+
+    globalUndoRouter.captureManual(applyDelete, {
+        type: "manual",
+        label: `Delete Schedule "${snapshot.name ?? snapshot.id}"`,
+        undo: applyRestore,
+        redo: applyDelete,
+    });
+
+    return true;
 }
 
 /**
