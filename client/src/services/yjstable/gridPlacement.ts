@@ -72,6 +72,7 @@ export function appendGridPlacement(doc: Y.Doc, pageId: string, gridId: string, 
     const page = project.findPage(pageId);
     if (!page) throw new Error("The destination Page no longer exists.");
     const placement = page.items.addNode(author);
+    placement.componentType = "yjstable";
     bindItemToGrid(placement, gridId, getGridSourceTableId(doc, gridId));
     return placement;
 }
