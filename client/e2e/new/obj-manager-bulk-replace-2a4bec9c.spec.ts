@@ -67,4 +67,36 @@ test.describe("FTR-8ac92ce2: bulk literal Find/Replace is visible and previews b
         await expect(gridRow(page, "Demo Alpha")).toHaveCount(0);
         await expect(gridRow(page, "Demo Beta")).toHaveCount(0);
     });
+
+    test("select-all reflects only the currently visible rows, not a hidden selection", async ({ page }, testInfo) => {
+        test.setTimeout(120000);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Item 1"]);
+        await createBlankGrid(page, "Filter Sel Grid", "filter_sel_grid");
+
+        const sidebar = await openSidebar(page);
+        await sidebar.getByRole("link", { name: "Object Manager" }).click();
+        await expect(page).toHaveURL(/\/objects$/, { timeout: 15000 });
+
+        // Select the Grid row, then filter it out of view — the Table row
+        // (same name, unselected) is now the only visible row.
+        await gridRow(page, "Filter Sel Grid").locator('td.checkbox-col input[type="checkbox"]').check();
+        await page.getByLabel("Grid", { exact: true }).uncheck();
+
+        const tableRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Filter Sel Grid" }).filter({
+            has: page.locator(".type-badge.table"),
+        });
+        await expect(tableRow).toBeVisible();
+        const headerCheckbox = page.locator('thead .checkbox-col input[type="checkbox"]');
+
+        // Nothing visible is selected, so the header checkbox must not show checked.
+        await expect(headerCheckbox).not.toBeChecked();
+
+        // Activating it selects the visible Table, not clear the hidden Grid selection.
+        await headerCheckbox.check();
+        await expect(tableRow.locator('td.checkbox-col input[type="checkbox"]')).toBeChecked();
+
+        await page.getByLabel("Grid", { exact: true }).check();
+        await expect(gridRow(page, "Filter Sel Grid").locator('td.checkbox-col input[type="checkbox"]'))
+            .toBeChecked();
+    });
 });

@@ -101,6 +101,15 @@ let filteredObjects = $derived.by(() => {
     return filterObjects(objects, selectedTypes, searchQuery);
 });
 
+// Selection can include objects hidden by the current filter (selected
+// before narrowing it), so "select all" state must be judged against the
+// *visible* rows, not raw counts — otherwise the header checkbox can show
+// checked while none of the visible rows are selected, and activating it
+// clears the hidden selection instead of selecting what's shown.
+let selectedFilteredCount = $derived.by(() => {
+    return filteredObjects.filter(o => selectedObjectIds.has(o.id)).length;
+});
+
 let bulkPreview = $derived.by(() => {
     return generateBulkPreview(objects, selectedObjectIds, bulkFindText, bulkReplaceText);
 });
@@ -126,8 +135,8 @@ function toggleSelection(id: string) {
 }
 
 function selectAll() {
-    if (selectedObjectIds.size === filteredObjects.length && filteredObjects.length > 0) {
-        selectedObjectIds.clear();
+    if (filteredObjects.length > 0 && selectedFilteredCount === filteredObjects.length) {
+        for (const o of filteredObjects) selectedObjectIds.delete(o.id);
     } else {
         filteredObjects.forEach(o => selectedObjectIds.add(o.id));
     }
@@ -324,8 +333,8 @@ function executeDelete() {
                 <th class="checkbox-col">
                     <input
                         type="checkbox"
-                        checked={filteredObjects.length > 0 && selectedObjectIds.size === filteredObjects.length}
-                        indeterminate={selectedObjectIds.size > 0 && selectedObjectIds.size < filteredObjects.length}
+                        checked={filteredObjects.length > 0 && selectedFilteredCount === filteredObjects.length}
+                        indeterminate={selectedFilteredCount > 0 && selectedFilteredCount < filteredObjects.length}
                         onchange={selectAll}
                     />
                 </th>
