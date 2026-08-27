@@ -1,7 +1,7 @@
 /** @feature FTR-GRID-UI-EXPANSION
  *  Title   : Temporarily expand Layout Grid to full width while editing its UI definition
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { waitForGridColumns } from "../utils/tableColumnDragHelpers";
 import { TestHelpers } from "../utils/testHelpers";

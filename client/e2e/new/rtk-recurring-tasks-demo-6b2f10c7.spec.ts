@@ -5,7 +5,7 @@ registerCoverageHooks();
  *  Title   : Recurring task generation with schedule rules
  *  Source  : docs/client-features/rtk-recurring-task-generation-6b2f10c7.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 
 function utcDate(daysFromToday: number): string {
     const d = new Date();

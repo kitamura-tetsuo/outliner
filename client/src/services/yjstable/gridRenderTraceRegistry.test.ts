@@ -54,27 +54,42 @@ describe("gridRenderTraceRegistry", () => {
         expect(collectGridRenderTraces()).toEqual([]);
     });
 
-    it("replaces the source for a gridId when a second view registers for the same Grid", () => {
-        registerGridRenderTraceSource("grid-1", () => trace("grid-1"));
+    it("collects exactly one trace when two views are mounted for the same Grid id", () => {
+        unregisterFns.push(registerGridRenderTraceSource("grid-1", () => trace("grid-1")));
         unregisterFns.push(
-            registerGridRenderTraceSource("grid-1", () => ({ ...trace("grid-1"), sourceTableId: "replaced" })),
+            registerGridRenderTraceSource("grid-1", () => ({ ...trace("grid-1"), sourceTableId: "second-view" })),
         );
 
-        const [only] = collectGridRenderTraces();
-
-        expect(only.sourceTableId).toBe("replaced");
+        expect(collectGridRenderTraces()).toHaveLength(1);
     });
 
-    it("a stale unregister call does not remove a source that was since replaced", () => {
-        const staleUnregister = registerGridRenderTraceSource("grid-1", () => trace("grid-1"));
-        unregisterFns.push(
-            registerGridRenderTraceSource("grid-1", () => ({ ...trace("grid-1"), sourceTableId: "fresh" })),
+    it("keeps the other mounted view's trace collectible when one of two views for the same Grid id unmounts", () => {
+        // Regression test: pasting the same Grid twice (see
+        // clp-repeat-paste-binds-existing-grid-9c47b0e2.spec.ts) mounts two
+        // views under one gridId. Unmounting the second must not blind the
+        // registry to the first, which is still live.
+        unregisterFns.push(registerGridRenderTraceSource("grid-1", () => trace("grid-1")));
+        const unregisterSecond = registerGridRenderTraceSource(
+            "grid-1",
+            () => ({ ...trace("grid-1"), sourceTableId: "second-view" }),
         );
 
-        staleUnregister();
+        unregisterSecond();
 
-        const [only] = collectGridRenderTraces();
-        expect(only.sourceTableId).toBe("fresh");
+        expect(collectGridRenderTraces().map(t => t.gridId)).toEqual(["grid-1"]);
+    });
+
+    it("removes the gridId entirely once every mounted view for it has unregistered", () => {
+        const unregisterFirst = registerGridRenderTraceSource("grid-1", () => trace("grid-1"));
+        const unregisterSecond = registerGridRenderTraceSource(
+            "grid-1",
+            () => ({ ...trace("grid-1"), sourceTableId: "second-view" }),
+        );
+
+        unregisterFirst();
+        unregisterSecond();
+
+        expect(collectGridRenderTraces()).toEqual([]);
     });
 
     it("exposes the registry on window so Playwright's page.evaluate() can reach it", () => {
