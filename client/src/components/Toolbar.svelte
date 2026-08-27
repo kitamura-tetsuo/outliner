@@ -183,7 +183,7 @@ function handleRedo() {
 
 </script>
 
-<div class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} >
+<header class="main-toolbar" data-testid="main-toolbar" bind:this={toolbarEl} >
     <div class="main-toolbar-content" >
         <div class="toolbar-left">
             {#if projectTitle}
@@ -264,7 +264,7 @@ function handleRedo() {
             <LoginStatusIndicator />
         </div>
     </div>
-</div>
+</header>
 
 <style>
 .main-toolbar {
