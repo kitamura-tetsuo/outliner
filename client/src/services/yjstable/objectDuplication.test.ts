@@ -31,7 +31,61 @@ function scheduleRuleMap(doc: Y.Doc, ruleId: string): Y.Map<unknown> {
 }
 
 describe("dependency-aware Grid/Table duplication", () => {
-    it("collects recursively and deduplicates a shared Table", () => {
+    it("synchronizes every discovered Table before materializing the graph", async () => {
+        const source = new Y.Doc({ guid: "demo" });
+        const occurrences = table(source, "Routine Occurrences", "routine_occurrences");
+        const templates = createTable(source, "Routine Templates", "routine_templates");
+        const ruleId = schedule(
+            source,
+            occurrences,
+            "INSERT INTO routine_occurrences (id) SELECT id FROM routine_templates RETURNING *",
+        );
+        const synchronized: string[] = [];
+
+        const result = await duplicateObjects(source, source, { type: "table", id: occurrences }, "connected", {
+            sourceProjectId: "demo",
+            connect: async (_projectId, tableId, doc) => ({
+                waitForInitialSync: async () => {
+                    synchronized.push(tableId);
+                    if (tableId === templates) {
+                        doc.getText("schema").insert(
+                            0,
+                            "CREATE TABLE routine_templates (id TEXT PRIMARY KEY, title TEXT)",
+                        );
+                    }
+                    return { synced: true };
+                },
+                dispose: () => {},
+            }),
+        });
+
+        expect(synchronized).toEqual([occurrences, templates]);
+        expect(result.idMap.get(`schedule:${ruleId}`)).toBeDefined();
+        const copiedTemplates = result.idMap.get(`table:${templates}`)!;
+        expect(getTableHandles(source, copiedTemplates)?.schemaText.toString()).toContain(
+            "CREATE TABLE routine_templates_2",
+        );
+    });
+
+    it("does not mutate the destination when a dependency Table cannot synchronize", async () => {
+        const source = new Y.Doc({ guid: "demo" });
+        const occurrences = table(source, "Routine Occurrences", "routine_occurrences");
+        const templates = createTable(source, "Routine Templates", "routine_templates");
+        schedule(source, occurrences, "INSERT INTO routine_occurrences SELECT * FROM routine_templates");
+        const tableCount = listTables(source).length;
+        const scheduleCount = source.getMap("schedules").size;
+
+        await expect(duplicateObjects(source, source, { type: "table", id: occurrences }, "connected", {
+            sourceProjectId: "demo",
+            connect: async (_projectId, tableId) => ({
+                waitForInitialSync: async () => ({ synced: tableId !== templates }),
+                dispose: () => {},
+            }),
+        })).rejects.toThrow('Table "Routine Templates" could not be synchronized.');
+        expect(listTables(source)).toHaveLength(tableCount);
+        expect(source.getMap("schedules").size).toBe(scheduleCount);
+    });
+    it("collects recursively and deduplicates a shared Table", async () => {
         const doc = new Y.Doc();
         const tableId = table(doc, "Tasks", "tasks");
         const first = createGrid(doc, tableId, { name: "First" });
@@ -47,7 +101,7 @@ describe("dependency-aware Grid/Table duplication", () => {
         expect(connected.objects.filter(object => object.type === "grid")).toHaveLength(2);
     });
 
-    it("warns when a Grid's explicit Table reference is omitted", () => {
+    it("warns when a Grid's explicit Table reference is omitted", async () => {
         const doc = new Y.Doc();
         const tableId = table(doc, "Tasks", "tasks");
         const gridId = createGrid(doc, tableId);
@@ -55,7 +109,7 @@ describe("dependency-aware Grid/Table duplication", () => {
             .toBe(1);
     });
 
-    it("collects and rewrites every Table relation referenced by a Grid query", () => {
+    it("collects and rewrites every Table relation referenced by a Grid query", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
         const owners = table(doc, "Owners", "owners");
@@ -69,12 +123,12 @@ describe("dependency-aware Grid/Table duplication", () => {
             { type: "table", id: tasks },
             { type: "table", id: owners },
         ]);
-        const result = duplicateObjects(doc, doc, { type: "grid", id: gridId }, "referenced");
+        const result = await duplicateObjects(doc, doc, { type: "grid", id: gridId }, "referenced");
         const query = String(getGridHandles(doc, result.primaryId)?.entry.get("query"));
         expect(query).toContain("FROM tasks_2 JOIN owners_2");
     });
 
-    it("counts and clears omitted query relations in a cross-project copy", () => {
+    it("counts and clears omitted query relations in a cross-project copy", async () => {
         const source = new Y.Doc();
         const tasks = table(source, "Tasks", "tasks");
         table(source, "Owners", "owners");
@@ -83,41 +137,41 @@ describe("dependency-aware Grid/Table duplication", () => {
             .toBe(2);
 
         const destination = new Y.Doc();
-        const result = duplicateObjects(source, destination, { type: "grid", id: gridId }, "item-only");
+        const result = await duplicateObjects(source, destination, { type: "grid", id: gridId }, "item-only");
         expect(getGridHandles(destination, result.primaryId)?.entry.get("query")).toBe("");
         expect(result.removedReferenceCount).toBe(3);
     });
 
-    it("preserves a Y.Array-backed Grid column order", () => {
+    it("preserves a Y.Array-backed Grid column order", async () => {
         const source = new Y.Doc();
         const tableId = table(source, "Tasks", "tasks");
         const gridId = createGrid(source, tableId, { columnOrder: ["title", "id"] });
         const handles = getGridHandles(source, gridId)!;
         handles.entry.set("columnOrder", Y.Array.from(["id", "title"]));
 
-        const result = duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
+        const result = await duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
         expect(getGridColumnOrder(getGridHandles(source, result.primaryId)!)).toEqual(["id", "title"]);
     });
 
-    it("keeps an omitted reference in-project and clears it cross-project", () => {
+    it("keeps an omitted reference in-project and clears it cross-project", async () => {
         const source = new Y.Doc();
         const tableId = table(source, "Tasks", "tasks");
         const gridId = createGrid(source, tableId);
-        const local = duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
+        const local = await duplicateObjects(source, source, { type: "grid", id: gridId }, "item-only");
         expect(getGridSourceTableId(source, local.primaryId)).toBe(tableId);
 
         const destination = new Y.Doc();
-        const remote = duplicateObjects(source, destination, { type: "grid", id: gridId }, "item-only");
+        const remote = await duplicateObjects(source, destination, { type: "grid", id: gridId }, "item-only");
         expect(getGridSourceTableId(destination, remote.primaryId)).toBeUndefined();
         expect(remote.removedReferenceCount).toBe(1);
     });
 
-    it("rewrites shared references and assigns collision-safe names", () => {
+    it("rewrites shared references and assigns collision-safe names", async () => {
         const source = new Y.Doc();
         const tableId = table(source, "Tasks", "tasks");
         const first = createGrid(source, tableId, { name: "Board" });
         createGrid(source, tableId, { name: "Board copy" });
-        const result = duplicateObjects(source, source, { type: "grid", id: first }, "connected");
+        const result = await duplicateObjects(source, source, { type: "grid", id: first }, "connected");
         const copiedTableId = result.idMap.get(`table:${tableId}`)!;
         const copiedGridIds = [...result.idMap].filter(([id]) => id.startsWith("grid:")).map(([, id]) => id);
         expect(copiedGridIds.map(id => getGridSourceTableId(source, id))).toEqual([copiedTableId, copiedTableId]);
@@ -125,17 +179,17 @@ describe("dependency-aware Grid/Table duplication", () => {
         expect(listGrids(source).map(entry => entry.name)).toContain("Board copy 2");
     });
 
-    it("copies Table structure without rows by default and rows when requested", () => {
+    it("copies Table structure without rows by default and rows when requested", async () => {
         const source = new Y.Doc();
         const tableId = table(source, "Tasks", "tasks");
         addRecord(getTableHandles(source, tableId)!, { title: "one" }, "row-1");
 
         const withoutRows = new Y.Doc();
-        const structure = duplicateObjects(source, withoutRows, { type: "table", id: tableId }, "item-only");
+        const structure = await duplicateObjects(source, withoutRows, { type: "table", id: tableId }, "item-only");
         expect(getTableHandles(withoutRows, structure.primaryId)?.data.size).toBe(0);
 
         const withRows = new Y.Doc();
-        const data = duplicateObjects(source, withRows, { type: "table", id: tableId }, "item-only", {
+        const data = await duplicateObjects(source, withRows, { type: "table", id: tableId }, "item-only", {
             copyTableData: true,
         });
         expect(getTableHandles(withRows, data.primaryId)?.data.get("row-1")?.get("title")).toBe("one");
@@ -143,7 +197,7 @@ describe("dependency-aware Grid/Table duplication", () => {
 });
 
 describe("dependency-aware Schedule duplication", () => {
-    it("collects a Schedule's write-target and SQL-referenced Tables recursively", () => {
+    it("collects a Schedule's write-target and SQL-referenced Tables recursively", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const templates = table(doc, "Templates", "templates");
@@ -161,7 +215,7 @@ describe("dependency-aware Schedule duplication", () => {
         ]);
     });
 
-    it("does not treat a column or alias that shadows a Table's SQL name as a dependency", () => {
+    it("does not treat a column or alias that shadows a Table's SQL name as a dependency", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const tasks = table(doc, "Tasks", "tasks");
@@ -176,7 +230,7 @@ describe("dependency-aware Schedule duplication", () => {
         expect(preview.objects.some(o => o.type === "table" && o.id === statusTable)).toBe(false);
     });
 
-    it("warns when a Schedule's Table references are omitted", () => {
+    it("warns when a Schedule's Table references are omitted", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         table(doc, "Templates", "templates");
@@ -185,7 +239,7 @@ describe("dependency-aware Schedule duplication", () => {
             .toBe(2);
     });
 
-    it("discovers a Schedule referencing a Table when duplicating from that Table's referencing scope", () => {
+    it("discovers a Schedule referencing a Table when duplicating from that Table's referencing scope", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const templates = table(doc, "Templates", "templates");
@@ -201,7 +255,7 @@ describe("dependency-aware Schedule duplication", () => {
         ]);
     });
 
-    it("recursively pulls in every Table connected through a Schedule", () => {
+    it("recursively pulls in every Table connected through a Schedule", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const templates = table(doc, "Templates", "templates");
@@ -213,7 +267,7 @@ describe("dependency-aware Schedule duplication", () => {
         expect(connected.objects.filter(o => o.type === "schedule")).toHaveLength(1);
     });
 
-    it("collects every Table a Schedule references, regardless of write-target or read role", () => {
+    it("collects every Table a Schedule references, regardless of write-target or read role", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const templates = table(doc, "Templates", "templates");
@@ -228,7 +282,7 @@ describe("dependency-aware Schedule duplication", () => {
             .toEqual([occurrences, owners, templates].sort());
     });
 
-    it("dedups a Table shared between a Grid and a Schedule and terminates on a circular reference", () => {
+    it("dedups a Table shared between a Grid and a Schedule and terminates on a circular reference", async () => {
         const doc = new Y.Doc();
         const tasks = table(doc, "Tasks", "tasks");
         const gridId = createGrid(doc, tasks, { name: "Board" });
@@ -240,7 +294,7 @@ describe("dependency-aware Schedule duplication", () => {
         expect(connected.objects.filter(o => o.type === "schedule")).toHaveLength(1);
     });
 
-    it("rewrites a duplicated Schedule's target and SQL references to the copied Tables", () => {
+    it("rewrites a duplicated Schedule's target and SQL references to the copied Tables", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const templates = table(doc, "Templates", "templates");
@@ -251,7 +305,7 @@ describe("dependency-aware Schedule duplication", () => {
             { name: "Daily import" },
         );
 
-        const result = duplicateObjects(doc, doc, { type: "schedule", id: ruleId }, "referenced");
+        const result = await duplicateObjects(doc, doc, { type: "schedule", id: ruleId }, "referenced");
         const copiedOccurrences = result.idMap.get(`table:${occurrences}`)!;
         const copiedTemplates = result.idMap.get(`table:${templates}`)!;
         const copiedOccurrencesSqlName = listTables(doc).find(t => t.tableId === copiedOccurrences)!.sqlName;
@@ -265,40 +319,40 @@ describe("dependency-aware Schedule duplication", () => {
         expect(copiedRule.get("name")).toBe("Daily import copy");
     });
 
-    it("keeps an out-of-scope Schedule reference in-project and clears it cross-project", () => {
+    it("keeps an out-of-scope Schedule reference in-project and clears it cross-project", async () => {
         const source = new Y.Doc();
         const occurrences = table(source, "Occurrences", "occurrences");
         const ruleId = schedule(source, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *");
 
-        const local = duplicateObjects(source, source, { type: "schedule", id: ruleId }, "item-only");
+        const local = await duplicateObjects(source, source, { type: "schedule", id: ruleId }, "item-only");
         const localRule = scheduleRuleMap(source, local.primaryId);
         expect(localRule.get("targetTableId")).toBe(occurrences);
         expect(localRule.get("sql")).toBe("INSERT INTO occurrences (id) SELECT 1 RETURNING *");
 
         const destination = new Y.Doc();
-        const remote = duplicateObjects(source, destination, { type: "schedule", id: ruleId }, "item-only");
+        const remote = await duplicateObjects(source, destination, { type: "schedule", id: ruleId }, "item-only");
         const remoteRule = scheduleRuleMap(destination, remote.primaryId);
         expect(remoteRule.get("targetTableId")).toBe("");
         expect(remoteRule.get("sql")).toBe("");
         expect(remote.removedReferenceCount).toBe(2);
     });
 
-    it("preserves enabled state for a same-project copy and forces a cross-project copy disabled", () => {
+    it("preserves enabled state for a same-project copy and forces a cross-project copy disabled", async () => {
         const source = new Y.Doc();
         const occurrences = table(source, "Occurrences", "occurrences");
         const ruleId = schedule(source, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *", {
             enabled: true,
         });
 
-        const local = duplicateObjects(source, source, { type: "schedule", id: ruleId }, "referenced");
+        const local = await duplicateObjects(source, source, { type: "schedule", id: ruleId }, "referenced");
         expect(scheduleRuleMap(source, local.primaryId).get("enabled")).toBe(true);
 
         const destination = new Y.Doc();
-        const remote = duplicateObjects(source, destination, { type: "schedule", id: ruleId }, "referenced");
+        const remote = await duplicateObjects(source, destination, { type: "schedule", id: ruleId }, "referenced");
         expect(scheduleRuleMap(destination, remote.primaryId).get("enabled")).toBe(false);
     });
 
-    it("does not copy runtime/execution state onto the duplicated Schedule", () => {
+    it("does not copy runtime/execution state onto the duplicated Schedule", async () => {
         const source = new Y.Doc();
         const occurrences = table(source, "Occurrences", "occurrences");
         const ruleId = schedule(source, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *", {
@@ -308,7 +362,7 @@ describe("dependency-aware Schedule duplication", () => {
         });
         updateScheduleRule(Project.fromDoc(source), ruleId, { skippedOccurrences: 3, validationError: "bad sql" });
 
-        const result = duplicateObjects(source, source, { type: "schedule", id: ruleId }, "item-only");
+        const result = await duplicateObjects(source, source, { type: "schedule", id: ruleId }, "item-only");
         const copied = scheduleRuleMap(source, result.primaryId);
         expect(copied.get("lastRunAt")).toBeUndefined();
         expect(copied.get("lastRunStatus")).toBeUndefined();
@@ -318,7 +372,7 @@ describe("dependency-aware Schedule duplication", () => {
         expect(copied.get("validationError")).toBeUndefined();
     });
 
-    it("assigns collision-safe copy names to duplicated Schedules", () => {
+    it("assigns collision-safe copy names to duplicated Schedules", async () => {
         const doc = new Y.Doc();
         const occurrences = table(doc, "Occurrences", "occurrences");
         const ruleId = schedule(doc, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *", {
@@ -328,26 +382,32 @@ describe("dependency-aware Schedule duplication", () => {
             name: "Daily import copy",
         });
 
-        const first = duplicateObjects(doc, doc, { type: "schedule", id: ruleId }, "item-only");
+        const first = await duplicateObjects(doc, doc, { type: "schedule", id: ruleId }, "item-only");
         expect(scheduleRuleMap(doc, first.primaryId).get("name")).toBe("Daily import copy 2");
     });
 
-    it("references the newly created Table whether or not its data is copied", () => {
+    it("references the newly created Table whether or not its data is copied", async () => {
         const source = new Y.Doc();
         const occurrences = table(source, "Occurrences", "occurrences");
         addRecord(getTableHandles(source, occurrences)!, { title: "one" }, "row-1");
         const ruleId = schedule(source, occurrences, "INSERT INTO occurrences (id) SELECT 1 RETURNING *");
 
         const withoutData = new Y.Doc();
-        const noData = duplicateObjects(source, withoutData, { type: "schedule", id: ruleId }, "referenced");
+        const noData = await duplicateObjects(source, withoutData, { type: "schedule", id: ruleId }, "referenced");
         const noDataTableId = noData.idMap.get(`table:${occurrences}`)!;
         expect(getTableHandles(withoutData, noDataTableId)?.data.size).toBe(0);
         expect(scheduleRuleMap(withoutData, noData.primaryId).get("targetTableId")).toBe(noDataTableId);
 
         const withData = new Y.Doc();
-        const withDataResult = duplicateObjects(source, withData, { type: "schedule", id: ruleId }, "referenced", {
-            copyTableData: true,
-        });
+        const withDataResult = await duplicateObjects(
+            source,
+            withData,
+            { type: "schedule", id: ruleId },
+            "referenced",
+            {
+                copyTableData: true,
+            },
+        );
         const withDataTableId = withDataResult.idMap.get(`table:${occurrences}`)!;
         expect(getTableHandles(withData, withDataTableId)?.data.get("row-1")?.get("title")).toBe("one");
     });
