@@ -28,7 +28,7 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
             const queryInput = view.getByTestId("calendar-query-input");
             await queryInput.fill("SELECT id, title FROM dup_board");
             await queryInput.blur();
-            await expect(view.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 20000 });
+            await expect(view.getByTestId("calendar-query-error")).toHaveCount(0, { timeout: 20000 });
 
             const projectName = decodeURIComponent(new URL(page.url()).pathname.split("/")[1]);
 

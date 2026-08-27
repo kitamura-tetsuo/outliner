@@ -41,7 +41,10 @@ test.describe("FTR-8ac92ce2: Select related traverses the shared dependency grap
         const queryInput = view.getByTestId("calendar-query-input");
         await queryInput.fill("SELECT id, title FROM related_board");
         await queryInput.blur();
-        await expect(view.getByTestId("calendar-read-only-banner")).toHaveCount(0, { timeout: 20000 });
+        // The query need not be draggable/editable (that needs source_kind +
+        // source_id, unrelated to this spec) — it only needs to execute
+        // without a SQL error so the dependency edge it creates is real.
+        await expect(view.getByTestId("calendar-query-error")).toHaveCount(0, { timeout: 20000 });
 
         const sidebar = await openSidebar(page);
         await sidebar.getByRole("link", { name: "Object Manager" }).click();
