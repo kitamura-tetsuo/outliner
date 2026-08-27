@@ -30,7 +30,7 @@ class TestResizeObserver {
 }
 (globalThis as Record<string, unknown>).ResizeObserver = TestResizeObserver;
 
-const MULTILINE_SQL = "SELECT id, task_key\nFROM routine_occurrences r\nWHERE r.done = false";
+const MULTILINE_SQL = "SELECT id, template_id\nFROM routine_occurrences r\nWHERE r.done = false";
 
 /** Renders the editor and waits until the (fake) Monaco instance exists. */
 async function renderEditor(props: Record<string, unknown> = {}) {

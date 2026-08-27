@@ -1,6 +1,6 @@
 /** @feature FTR-2e6b9f14 */
 import "../utils/registerAfterEachSnapshot";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -35,5 +35,38 @@ test.describe("Standalone grid page", () => {
         await expect(gridView).toBeVisible({ timeout: 30000 });
         const grid = gridView.getByTestId("yjs-table-grid");
         await expect(grid.locator("th", { hasText: "cadence" })).toBeVisible({ timeout: 30000 });
+    });
+
+    test("can toggle the Add row button visibility from Grid UI", async ({ page }) => {
+        await page.goto("/grids/demo/demo-table-routine-occurrences-history-grid");
+
+        const gridView = page.getByTestId("yjs-table-view");
+        await expect(gridView).toBeVisible({ timeout: 30000 });
+
+        // Wait for table to render completely with the + Add row button
+        const addRowButton = gridView.getByTestId("yjs-table-add-row");
+        await expect(addRowButton).toBeVisible({ timeout: 30000 });
+
+        // Open UI editor panel
+        const uiToggleButton = gridView.getByTestId("yjs-table-toggle-ui");
+        await uiToggleButton.click();
+
+        const uiEditor = gridView.getByTestId("yjs-table-ui-editor");
+        await expect(uiEditor).toBeVisible({ timeout: 30000 });
+
+        // Uncheck the Show Add row button toggle
+        const toggleCheckbox = uiEditor.getByLabel("Show Add row button");
+        await expect(toggleCheckbox).toBeChecked();
+        await toggleCheckbox.uncheck();
+        await expect(toggleCheckbox).not.toBeChecked();
+
+        // Verify the Add row button is hidden
+        await expect(addRowButton).not.toBeVisible();
+
+        // Check the toggle again
+        await toggleCheckbox.check();
+
+        // Verify the Add row button comes back
+        await expect(addRowButton).toBeVisible();
     });
 });

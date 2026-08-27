@@ -40,7 +40,7 @@ function simpleSnapshot(
         name: sqlName.toUpperCase(),
         sqlName,
         schemaSql: `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY)`,
-        ui: { query, components: {}, columnOrder: ["id"] },
+        ui: { query, components: {}, columnOrder: ["id"], showAddRowButton: true },
     };
 }
 
@@ -94,6 +94,7 @@ describe("table structure export", () => {
                     + "FROM orders o JOIN customers c ON c.id = o.customer_id",
                 components: { amount: { type: "number", label: "金額 €", hidden: false } },
                 columnOrder: ["amount", "id"],
+                showAddRowButton: true,
             },
         });
         expect("data" in snapshot).toBe(false);

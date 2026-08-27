@@ -24,6 +24,7 @@ import { destroyTableUndoManager, type TableHandles } from "../../services/yjsta
 import {
     destroyGridUndoManager,
     getGridQuery,
+    getGridShowAddRowButton,
     type GridHandles,
     readGridComponents,
     retainGridUndoManager,
@@ -44,6 +45,10 @@ import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
+import { registerWebMCPGridTools } from "../../mcp/WebMCP";
+import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
+import { registerGridRenderTraceSource } from "../../services/yjstable/gridRenderTraceRegistry";
+import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
 
 const logger = getLogger("YjsTableView");
 
@@ -81,8 +86,11 @@ let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
+let showAddRowButton = $state(true);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
+let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+let clientRevision = $state(0);
 
 // View switching: panels can be toggled independently (parallel display).
 let showSchema = $state(false);
@@ -110,6 +118,7 @@ function refreshGridMirror() {
     componentTypes = settings.types;
     columnLabels = settings.labels;
     hiddenColumns = settings.hidden;
+    showAddRowButton = getGridShowAddRowButton(grid);
 }
 
 const gridMirrorObserver = () => refreshGridMirror();
@@ -134,6 +143,28 @@ const clipboardSource: TableClipboardSource = {
 const session = createTableEngineSession({ projectDoc, projectId });
 let unsubscribeAdapter: (() => void) | undefined;
 let unsubscribeRunner: (() => void) | undefined;
+let cleanupWebMCP: (() => void) | undefined;
+let unregisterGridRenderTraceSource: (() => void) | undefined;
+
+// Shared by the WebMCP tool and the always-on E2E diagnostics registry
+// (gridRenderTraceRegistry) so there is exactly one place that assembles a
+// trace snapshot from this view's current mirrors.
+function getGridRenderTrace() {
+    return buildGridRenderTrace({
+        gridId: grid.gridId,
+        sourceTableId: handles.tableId,
+        projectId,
+        projectDocumentId: projectDoc.guid,
+        tableDocumentId: handles.doc.guid,
+        configRevision: stateVectorRevision(projectDoc),
+        clientRevision,
+        query: gridQuery,
+        result,
+        execution: queryExecution,
+        columnOrder,
+        hiddenColumns,
+    });
+}
 
 onMount(() => {
     refreshGridMirror();
@@ -142,6 +173,23 @@ onMount(() => {
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
+
+    cleanupWebMCP = registerWebMCPGridTools(
+        () => ({
+            gridId: grid.gridId,
+            sourceTableId: handles.tableId,
+            query: gridQuery
+        }),
+        () => ({
+            gridId: grid.gridId,
+            sourceTableId: handles.tableId,
+            rows: result.rows,
+            columns: result.columns,
+            rowCount: result.rows.length
+        }),
+        getGridRenderTrace
+    );
+    unregisterGridRenderTraceSource = registerGridRenderTraceSource(grid.gridId, getGridRenderTrace);
 
     void (async () => {
         const acquired = await session.acquire(handles.tableId);
@@ -162,8 +210,10 @@ onMount(() => {
         });
         runner = new GridQueryRunner({ grid, sourceAdapter: acquired.adapter });
         unsubscribeRunner = runner.subscribe({
-            onResult: (r) => {
+            onResult: (r, execution) => {
                 result = r;
+                queryExecution = execution;
+                clientRevision++;
                 chartPanel?.update(r);
             },
             onError: (message) => {
@@ -184,7 +234,13 @@ onDestroy(() => {
     session.dispose();
     destroyTableUndoManager(handles.doc);
     destroyGridUndoManager(grid.entry);
+    if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
+    unregisterGridRenderTraceSource?.();
 });
+
+function stateVectorRevision(doc: Y.Doc): string {
+    return Array.from(Y.encodeStateVector(doc), byte => byte.toString(16).padStart(2, "0")).join("");
+}
 </script>
 
 <div
@@ -284,6 +340,7 @@ onDestroy(() => {
                 {hiddenColumns}
                 resultColumns={result.columns}
                 {columnOrder}
+                {showAddRowButton}
             />
         </section>
     {/if}
@@ -319,6 +376,7 @@ onDestroy(() => {
                     {columnOrder}
                     {columnLabels}
                     {hiddenColumns}
+                    {showAddRowButton}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

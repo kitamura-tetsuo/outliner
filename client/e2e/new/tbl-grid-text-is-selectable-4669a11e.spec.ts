@@ -1,5 +1,6 @@
 /** @feature TBL-53f59906 */
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { type Locator, type Page } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();

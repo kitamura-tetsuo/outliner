@@ -413,11 +413,11 @@ export function demoContentEn(): DemoLocaleContent {
                             },
                             {
                                 text:
-                                    "A recurring task is identified by its task_key, not by its title: renaming a task keeps its history together.",
+                                    "A recurring task is identified by its row id, not by its title: renaming a task keeps its history together.",
                             },
                             {
                                 text:
-                                    "The id of an occurrence is task_key + occurrence date, so re-running the same occurrence changes nothing and never clears a completed checkbox.",
+                                    "The id of an occurrence is template_id + occurrence date, so re-running the same occurrence changes nothing and never clears a completed checkbox.",
                             },
                             {
                                 text:

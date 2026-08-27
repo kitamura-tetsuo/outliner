@@ -14,14 +14,14 @@ vi.mock("../../lib/monaco/monacoLoader", () => ({
 }));
 
 // The demo Grid whose multiline query a single-line <input> used to corrupt.
-const ROUTINE_OCCURRENCES_QUERY = "SELECT id, task_key, title, cadence, occurrence_date, done\n"
+const ROUTINE_OCCURRENCES_QUERY = "SELECT id, template_id, title, cadence, occurrence_date, done\n"
     + "FROM routine_occurrences r\n"
     + "WHERE NOT EXISTS (\n"
     + "    SELECT 1 FROM routine_occurrences later\n"
-    + "    WHERE later.task_key = r.task_key\n"
+    + "    WHERE later.template_id = r.template_id\n"
     + "      AND later.occurrence_date > r.occurrence_date\n"
     + "  )\n"
-    + "ORDER BY cadence, task_key";
+    + "ORDER BY cadence, template_id";
 
 function makeGrid(query: string): GridHandles {
     const doc = new Y.Doc();

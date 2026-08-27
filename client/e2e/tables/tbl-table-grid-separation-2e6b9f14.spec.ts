@@ -1,6 +1,6 @@
 /** @feature FTR-2e6b9f14 */
 import "../utils/registerAfterEachSnapshot";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
@@ -19,7 +19,7 @@ test.describe("Standalone table page is about the table, not a grid", () => {
 
         // Every column of the table, in schema order — no Grid hid or renamed one.
         const grid = tableView.getByTestId("yjs-table-grid");
-        await expect(grid.locator("th", { hasText: "task_key" })).toBeVisible({ timeout: 30000 });
+        await expect(grid.locator("th", { hasText: "template_id" })).toBeVisible({ timeout: 30000 });
         await expect(grid.locator("th", { hasText: "occurrence_date" })).toBeVisible();
 
         // No Grid view is mounted on a Table page.

@@ -32,6 +32,8 @@ export interface GridRegistryEntry {
     name: string;
     /** The primary/writable Table this Grid targets. */
     sourceTableId: string;
+    /** Whether the Grid shows the "+ Add row" button when editable (default true). */
+    showAddRowButton?: boolean;
 }
 
 /** Structural handles for one Grid definition. */
@@ -71,6 +73,7 @@ export function listGrids(projectDoc: Y.Doc): GridRegistryEntry[] {
             gridId,
             name: String(entry.get("name") ?? ""),
             sourceTableId: String(entry.get("sourceTableId") ?? ""),
+            showAddRowButton: entry.get("showAddRowButton") !== false,
         });
     });
     return entries;
@@ -93,6 +96,8 @@ export interface CreateGridOptions {
     components?: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
     /** Deterministic id (for tests or duplication). */
     gridId?: string;
+    /** Defaults to true. Setting to false explicitly disables the Add row button. */
+    showAddRowButton?: boolean;
 }
 
 /**
@@ -113,6 +118,9 @@ export function createGrid(
         if (options.query !== undefined) entry.set("query", options.query);
         if (options.columnOrder && options.columnOrder.length > 0) {
             entry.set("columnOrder", [...options.columnOrder]);
+        }
+        if (options.showAddRowButton === false) {
+            entry.set("showAddRowButton", false);
         }
         const components = new Y.Map<Y.Map<unknown>>();
         for (const [column, cfg] of Object.entries(options.components ?? {})) {
@@ -224,6 +232,19 @@ export function setGridColumnOrder(handles: GridHandles, order: string[]): void 
     });
 }
 
+export function getGridShowAddRowButton(handles: GridHandles): boolean {
+    return handles.entry.get("showAddRowButton") !== false;
+}
+
+export function setGridShowAddRowButton(handles: GridHandles, show: boolean): void {
+    const current = getGridShowAddRowButton(handles);
+    if (show === current) return;
+    handles.projectDoc.transact(() => {
+        if (show) handles.entry.delete("showAddRowButton");
+        else handles.entry.set("showAddRowButton", false);
+    });
+}
+
 /** Snapshot the per-column UI settings into a plain record for the UI mirror. */
 export function readGridComponents(handles: GridHandles): {
     types: Record<string, string | undefined>;
@@ -272,6 +293,7 @@ interface GridEntrySnapshot {
     query: string;
     columnOrder: string[];
     components: Record<string, { type?: string; label?: string; hidden?: boolean; }>;
+    showAddRowButton?: boolean;
 }
 
 /** Read a Grid registry entry into a plain snapshot — shared by `duplicateGrid` and delete/undo. */
@@ -304,6 +326,7 @@ function readGridEntrySnapshot(entry: Y.Map<unknown>): GridEntrySnapshot {
         query: String(entry.get("query") ?? ""),
         columnOrder,
         components,
+        showAddRowButton: entry.get("showAddRowButton") !== false,
     };
 }
 
@@ -327,6 +350,7 @@ export function duplicateGrid(
         query: snapshot.query,
         columnOrder: snapshot.columnOrder,
         components: snapshot.components,
+        showAddRowButton: snapshot.showAddRowButton,
     });
 }
 

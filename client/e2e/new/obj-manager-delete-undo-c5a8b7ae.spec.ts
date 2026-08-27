@@ -4,7 +4,7 @@ registerCoverageHooks();
  *  Title   : Object Manager Delete removes placements and undoes as one step
  *  Source  : docs/client-features/obj-project-object-manager-8ac92ce2.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { createBlankGrid } from "../utils/crossProjectGridHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 

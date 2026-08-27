@@ -10,7 +10,8 @@ registerCoverageHooks();
  *  `FROM routine_occurrences r\nWHERE NOT EXISTS` into `rWHERE` and the Grid
  *  failed with `syntax error at or near "rWHERE"`.
  */
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { SqlEditorHelper } from "../utils/sqlEditorHelpers";
 
 const BOUNDARY = "FROM routine_occurrences r\nWHERE NOT EXISTS";
@@ -27,7 +28,7 @@ async function openRoutineOccurrences(page: Page) {
     }).first();
     await expect(view).toBeVisible({ timeout: 30000 });
     // PGlite loads lazily; the first query result can take a while.
-    await expect(view.getByTestId("yjs-table-grid").locator("th", { hasText: "task_key" }))
+    await expect(view.getByTestId("yjs-table-grid").locator("th", { hasText: "template_id" }))
         .toBeVisible({ timeout: 30000 });
     return view;
 }
