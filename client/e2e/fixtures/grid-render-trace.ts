@@ -17,7 +17,7 @@ export interface GridRenderTraceSnapshot {
     stages: readonly unknown[];
 }
 
-interface GridRenderTraceWindow {
+interface GridRenderTraceGlobal {
     __outlinerGridRenderTraces?: { collect: () => GridRenderTraceSnapshot[]; };
 }
 
@@ -26,10 +26,14 @@ interface GridRenderTraceWindow {
  * always-on bridge installed by `gridRenderTraceRegistry.ts`. Returns `[]`
  * when no Grid is mounted, or when running against a build that predates the
  * registry (older client bundle, or a non-Grid page).
+ *
+ * Reads `globalThis` rather than `window` (both are the same object in a
+ * page.evaluate callback): this file's e2e/ ESLint config bans the `window`
+ * identifier outright to keep tests from coupling to global state.
  */
 export async function collectGridRenderTraces(page: Page): Promise<GridRenderTraceSnapshot[]> {
     return page.evaluate(() =>
-        (window as unknown as GridRenderTraceWindow).__outlinerGridRenderTraces?.collect() ?? []
+        (globalThis as unknown as GridRenderTraceGlobal).__outlinerGridRenderTraces?.collect() ?? []
     );
 }
 
