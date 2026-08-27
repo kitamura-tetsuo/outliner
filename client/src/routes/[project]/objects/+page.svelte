@@ -9,6 +9,9 @@ import type { ObjectPlacement } from "../../../services/objectManager/objectPlac
 import { GRID_REGISTRY_KEY } from "../../../services/yjstable/gridDocs";
 import { TABLE_REGISTRY_KEY } from "../../../services/yjstable/tableDocs";
 import { userManager } from "../../../auth/UserManager";
+import Loader from "../../../components/Loader.svelte";
+import { yjsStore } from "../../../stores/yjsStore.svelte";
+import { isProvisionalProject } from "../../../stores/store.svelte";
 import { store } from "../../../stores/store.svelte";
 import {
     applyRename,
@@ -422,9 +425,17 @@ function executeDelete() {
                     </td>
                 </tr>
             {:else}
-                <tr>
-                    <td colspan="5" class="empty-state">No objects found matching your criteria.</td>
-                </tr>
+                {#if !project || !project.ydoc || isProvisionalProject(project) || yjsStore.notYetSynced}
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <Loader message="Loading objects..." />
+                        </td>
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan="5" class="empty-state">No objects found matching your criteria.</td>
+                    </tr>
+                {/if}
             {/each}
         </tbody>
     </table>
