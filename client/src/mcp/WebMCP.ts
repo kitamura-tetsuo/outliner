@@ -12,12 +12,19 @@ export interface WebMCPGridResult {
     rowCount: number;
 }
 
+export interface WebMCPGridTrace {
+    version: number;
+    gridId: string;
+    stages: readonly unknown[];
+}
+
 /**
  * Registers WebMCP tools for the browser-local Grid context.
  */
 export function registerWebMCPGridTools(
     getGridContext: () => WebMCPGridContext | undefined,
     getGridResult: () => WebMCPGridResult | undefined,
+    getGridTrace?: () => WebMCPGridTrace | undefined,
 ): () => void {
     if (typeof window === "undefined") {
         return () => {}; // SSR or non-browser environment
@@ -70,8 +77,29 @@ export function registerWebMCPGridTools(
         },
     });
 
+    const removeGetCurrentGridTrace = mcp.addTool({
+        name: "getCurrentGridTrace",
+        description: "Return bounded structured provenance for the current Grid from configuration through rendering.",
+        schema: {
+            type: "object",
+            properties: {},
+        },
+        handler: async () => {
+            const trace = getGridTrace?.();
+            if (!trace) {
+                return {
+                    content: [{ type: "text", text: "No Grid trace currently available." }],
+                };
+            }
+            return {
+                content: [{ type: "text", text: JSON.stringify(trace, null, 2) }],
+            };
+        },
+    });
+
     return () => {
         if (typeof removeGetCurrentGrid === "function") removeGetCurrentGrid();
         if (typeof removeGetGridResult === "function") removeGetGridResult();
+        if (typeof removeGetCurrentGridTrace === "function") removeGetCurrentGridTrace();
     };
 }

@@ -46,6 +46,8 @@ import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
 import { registerWebMCPGridTools } from "../../mcp/WebMCP";
+import { buildGridRenderTrace } from "../../services/yjstable/gridRenderTrace";
+import type { TableQueryExecution } from "../../services/yjstable/tableQueryRunner";
 
 const logger = getLogger("YjsTableView");
 
@@ -86,6 +88,8 @@ let hiddenColumns = $state<Record<string, boolean>>({});
 let showAddRowButton = $state(true);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
+let queryExecution = $state<TableQueryExecution | undefined>(undefined);
+let clientRevision = $state(0);
 
 // View switching: panels can be toggled independently (parallel display).
 let showSchema = $state(false);
@@ -160,6 +164,20 @@ onMount(() => {
             rows: result.rows,
             columns: result.columns,
             rowCount: result.rows.length
+        }),
+        () => buildGridRenderTrace({
+            gridId: grid.gridId,
+            sourceTableId: handles.tableId,
+            projectId,
+            projectDocumentId: projectDoc.guid,
+            tableDocumentId: handles.doc.guid,
+            configRevision: stateVectorRevision(projectDoc),
+            clientRevision,
+            query: gridQuery,
+            result,
+            execution: queryExecution,
+            columnOrder,
+            hiddenColumns,
         })
     );
 
@@ -182,8 +200,10 @@ onMount(() => {
         });
         runner = new GridQueryRunner({ grid, sourceAdapter: acquired.adapter });
         unsubscribeRunner = runner.subscribe({
-            onResult: (r) => {
+            onResult: (r, execution) => {
                 result = r;
+                queryExecution = execution;
+                clientRevision++;
                 chartPanel?.update(r);
             },
             onError: (message) => {
@@ -206,6 +226,10 @@ onDestroy(() => {
     destroyGridUndoManager(grid.entry);
     if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
 });
+
+function stateVectorRevision(doc: Y.Doc): string {
+    return Array.from(Y.encodeStateVector(doc), byte => byte.toString(16).padStart(2, "0")).join("");
+}
 </script>
 
 <div
