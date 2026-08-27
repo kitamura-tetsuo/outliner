@@ -24,6 +24,7 @@ import { destroyTableUndoManager, type TableHandles } from "../../services/yjsta
 import {
     destroyGridUndoManager,
     getGridQuery,
+    getGridShowAddRowButton,
     type GridHandles,
     readGridComponents,
     retainGridUndoManager,
@@ -82,6 +83,7 @@ let columnOrder = $state<string[]>([]);
 let componentTypes = $state<Record<string, string | undefined>>({});
 let columnLabels = $state<Record<string, string | undefined>>({});
 let hiddenColumns = $state<Record<string, boolean>>({});
+let showAddRowButton = $state(true);
 let adapterReady = $state(false);
 let isInitialSyncDone = $state(false);
 
@@ -111,6 +113,7 @@ function refreshGridMirror() {
     componentTypes = settings.types;
     columnLabels = settings.labels;
     hiddenColumns = settings.hidden;
+    showAddRowButton = getGridShowAddRowButton(grid);
 }
 
 const gridMirrorObserver = () => refreshGridMirror();
@@ -302,6 +305,7 @@ onDestroy(() => {
                 {hiddenColumns}
                 resultColumns={result.columns}
                 {columnOrder}
+                {showAddRowButton}
             />
         </section>
     {/if}
@@ -337,6 +341,7 @@ onDestroy(() => {
                     {columnOrder}
                     {columnLabels}
                     {hiddenColumns}
+                    {showAddRowButton}
                     loading={schema === undefined && !isInitialSyncDone}
                     {session}
                 />

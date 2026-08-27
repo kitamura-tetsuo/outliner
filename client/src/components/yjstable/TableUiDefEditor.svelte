@@ -10,6 +10,7 @@ import {
     type GridHandles,
     setGridComponentField,
     setGridQuery,
+    setGridShowAddRowButton,
 } from "../../services/yjstable/gridDocs";
 import { defaultCellType, isCellComponentType } from "./cellComponents";
 import SqlEditor from "./SqlEditor.svelte";
@@ -28,9 +29,10 @@ interface Props {
     resultColumns: string[];
     /** The column order stored in the Grid Definition. */
     columnOrder: string[];
+    showAddRowButton?: boolean;
 }
 
-let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder }: Props = $props();
+let { grid, schema, query, componentTypes, columnLabels, hiddenColumns, resultColumns, columnOrder, showAddRowButton = true }: Props = $props();
 
 const COMPONENT_TYPES = ["text", "number", "checkbox", "select", "date"] as const;
 
@@ -92,6 +94,17 @@ function setColumnHidden(column: string, hidden: boolean) {
         maxHeight={280}
         onBlur={commitQuery}
     />
+
+    <div class="editor-options">
+        <label class="option-label">
+            <input
+                type="checkbox"
+                checked={showAddRowButton}
+                onchange={(e) => setGridShowAddRowButton(grid, e.currentTarget.checked)}
+            />
+            Show Add row button
+        </label>
+    </div>
 
     {#if displayColumns.length > 0}
         <p class="editor-label">Cell components</p>
@@ -287,5 +300,23 @@ select {
 .hint {
     color: #6b7280;
     font-size: 0.8rem;
+}
+
+.editor-options {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.option-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    cursor: pointer;
+}
+
+.option-label input[type="checkbox"] {
+    margin: 0;
 }
 </style>

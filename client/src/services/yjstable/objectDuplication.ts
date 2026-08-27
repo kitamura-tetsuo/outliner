@@ -3,7 +3,14 @@ import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
-import { createGrid, getGridColumnOrder, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
+import {
+    createGrid,
+    getGridColumnOrder,
+    getGridHandles,
+    getGridRegistry,
+    getGridShowAddRowButton,
+    listGrids,
+} from "./gridDocs";
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import type { TableDocConnection } from "./tableEngine";
@@ -290,6 +297,7 @@ export async function duplicateObjects(
                 query: targetQuery,
                 columnOrder: getGridColumnOrder(handles),
                 components,
+                showAddRowButton: getGridShowAddRowButton(handles),
             });
             createdGrids.push(destinationId);
         }
