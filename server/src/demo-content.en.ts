@@ -305,6 +305,11 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Grid placement: choose a destination Page when duplicating, or drag a Grid's outline handle to a Page "
+                            + "in the sidebar. Hold Ctrl (Option on macOS) while dragging to copy instead of move.",
+                    },
+                    {
+                        text:
                             "Selecting across blocks: drag a selection from the text above, across the table, into this "
                             + "paragraph. The text keeps its character-level highlight at both ends, and the table between "
                             + "them is outlined as one selected block — a Layout is outlined as a single container rather "

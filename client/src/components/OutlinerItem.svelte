@@ -110,6 +110,9 @@ import OutlinerItemVoteCount from "./OutlinerItemVoteCount.svelte";
 import { nodeKindOfComponentType } from "$shared/services/outlineNodeKind";
 import { unwrapLayout } from "../services/layout/layoutTree";
 import { canPlaceBeside } from "../services/outline/nodeTree";
+import { GRID_PLACEMENT_MIME, pageContaining } from "../services/yjstable/gridPlacement";
+import { getItemGridId } from "../services/yjstable/itemBinding";
+import { Project } from "../schema/app-schema";
     import { projectPagePath } from "../lib/publicProject";
 
 // Optional functions for experimental features - defined as no-ops to avoid ESLint no-undef errors
@@ -1826,7 +1829,17 @@ function handleDragStart(event: DragEvent) {
     if (event.dataTransfer) {
         event.dataTransfer.setData("text/plain", textString);
         event.dataTransfer.setData("application/x-outliner-item", model.id);
-        event.dataTransfer.effectAllowed = "move";
+        const gridId = getItemGridId(model.original);
+        if (gridId) {
+            const sourcePage = pageContaining(Project.fromDoc(model.original.ydoc), model.original);
+            if (sourcePage) event.dataTransfer.setData(GRID_PLACEMENT_MIME, JSON.stringify({
+                itemId: model.id,
+                gridId,
+                sourcePageId: sourcePage.id,
+                sourceWritable: !isReadOnly,
+            }));
+            event.dataTransfer.effectAllowed = "copyMove";
+        } else event.dataTransfer.effectAllowed = "move";
         // Use the whole item row as the drag image for clearer feedback
         try {
             if (itemRef) event.dataTransfer.setDragImage(itemRef, 0, 0);
@@ -2376,7 +2389,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     title={isCollapsed ? "Expand" : "Collapse"}
                     aria-label={isCollapsed ? "Expand item" : "Collapse item"}
                     aria-expanded={!isCollapsed}
-                    draggable={!isReadOnly}
+                    draggable={!isReadOnly || compTypeValue === "yjstable"}
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
@@ -2407,7 +2420,7 @@ export function setSelectionPosition(start: number, end: number = start) {
                     class="bullet drag-handle"
                     {...{ [OUTLINE_ITEM_DRAG_HANDLE_ATTRIBUTE]: "" }}
                     role="presentation"
-                    draggable={!isReadOnly}
+                    draggable={!isReadOnly || compTypeValue === "yjstable"}
                     ondragstart={handleDragStart}
                     ondragend={handleDragEnd}
                     onmousedown={(e) => { e.stopPropagation(); }}
