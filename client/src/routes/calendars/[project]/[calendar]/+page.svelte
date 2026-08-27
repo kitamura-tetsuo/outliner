@@ -30,6 +30,13 @@
     let calendarId: string | undefined = $state(undefined);
     let calendarProject: Project | undefined = $state(undefined);
     let calendarProjectId: string | undefined = $state(undefined);
+    // The route param doubles as a lookup key (name, or an id as a fallback —
+    // see `loadCalendar`) and is not fit to display once it resolves through
+    // that id fallback: an id-addressed link (e.g. right after duplicating a
+    // Calendar) would otherwise show a raw UUID as the title/heading instead
+    // of the Calendar's actual name. This holds the resolved display name,
+    // reset on every load so a stale name never lingers across navigations.
+    let calendarDisplayName: string | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
     let showDuplicationDialog = $state(false);
@@ -39,6 +46,10 @@
     // callbacks below from clobbering it once Firebase resolves to no user.
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
+    // Demo projects stay writable for everyone (AGENTS.md §2/§6), mirroring
+    // the write-access rule the Grid/Table/Object Manager pages already use.
+    let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
+    let displayName = $derived(calendarDisplayName ?? calendarName ?? "Calendar");
 
     async function handleAuthSuccess() {
         isAuthenticated = true;
@@ -55,6 +66,7 @@
         isLoading = true;
         error = undefined;
         notFound = false;
+        calendarDisplayName = undefined;
 
         try {
             // Releases the previous reference before taking another, so a
@@ -87,6 +99,7 @@
             calendarProject = project;
             calendarId = entry.id;
             calendarProjectId = yjsStore.currentProjectId ?? undefined;
+            calendarDisplayName = entry.settings.name;
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load calendar page:");
@@ -116,7 +129,7 @@
 </script>
 
 <svelte:head>
-    <title>{calendarName ? calendarName : "Calendar"} | Outliner</title>
+    <title>{displayName} | Outliner</title>
 </svelte:head>
 
 <main class="w-full h-[calc(100vh-5rem)] max-w-7xl mx-auto px-4 py-8 md:px-8 flex flex-col">
@@ -125,14 +138,14 @@
             { label: "Home", href: "/" },
             { label: projectName || "Project", href: `/${encodeURIComponent(projectName)}` },
             { label: "Calendars" },
-            { label: calendarName || "Calendar" }
+            { label: displayName }
         ]} />
     </div>
     <div class="mb-4 flex items-center flex-shrink-0">
         <h1 class="text-2xl font-bold">
-            {calendarName || "Calendar"}
+            {displayName}
         </h1>
-        {#if isAuthenticated && !isLoading && calendarId && calendarProject}
+        {#if hasWriteAccess && !isLoading && calendarId && calendarProject}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                 onclick={() => { showDuplicationDialog = true; }}
