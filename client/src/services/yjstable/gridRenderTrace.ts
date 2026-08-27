@@ -133,9 +133,27 @@ function boundedValue(value: unknown): unknown {
     if (typeof value === "string" && value.length > MAX_VALUE_LENGTH) {
         return truncate(value, MAX_VALUE_LENGTH);
     }
+    // PostgreSQL bigint values can reach the client as JavaScript bigint,
+    // which JSON.stringify cannot serialize. Convert them before the trace
+    // crosses either the WebMCP or Playwright page boundary.
+    if (typeof value === "bigint") return value.toString();
     if (value === undefined || value === null || ["string", "number", "boolean"].includes(typeof value)) return value;
-    const serialized = JSON.stringify(value);
-    return serialized.length <= MAX_VALUE_LENGTH ? value : `${serialized.slice(0, MAX_VALUE_LENGTH)}…`;
+    let serialized: string | undefined;
+    try {
+        serialized = JSON.stringify(
+            value,
+            (_, nestedValue: unknown) => typeof nestedValue === "bigint" ? nestedValue.toString() : nestedValue,
+        );
+    } catch {
+        // A non-JSON value (for example a circular object supplied by an
+        // extension) must not prevent every render diagnostic from being
+        // collected after a failure.
+        return truncate(String(value), MAX_VALUE_LENGTH);
+    }
+    if (serialized === undefined) return truncate(String(value), MAX_VALUE_LENGTH);
+    return serialized.length <= MAX_VALUE_LENGTH
+        ? JSON.parse(serialized)
+        : `${serialized.slice(0, MAX_VALUE_LENGTH)}…`;
 }
 
 function truncate(value: string, length: number): string {
