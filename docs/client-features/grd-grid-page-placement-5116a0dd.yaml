@@ -7,8 +7,8 @@ status: implemented
 acceptance:
 - Append duplicated Grid blocks to the selected same-project Page
 - Move only the Grid placement while preserving the project-level Grid identity
-- Use Ctrl-drag on Windows and Linux or Option-drag on macOS to open the duplication confirmation for a fixed destination Page
 - Name the target Page and distinguish Move from Copy during a drag
 - Treat a same-Page Move as a no-op
+- Use Ctrl-drag on Windows and Linux or Option-drag on macOS to open the duplication confirmation for a fixed destination Page
 tests:
 - client/src/services/yjstable/gridPlacement.test.ts
