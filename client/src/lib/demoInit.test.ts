@@ -138,6 +138,32 @@ describe("demoInit", () => {
         expect(services.removeYjsClientByProjectId).not.toHaveBeenCalled();
     });
 
+    it("reports an unreachable backend before the connection settles", async () => {
+        // The Yjs connection waits for an initial sync that has its own
+        // multi-second timeout. A failed seed request already proves the backend
+        // is unreachable, so the route must hear about it without waiting.
+        (seedDemo as Mock).mockResolvedValue({ ok: false, reset: false, reason: "network" });
+        let finishConnect: (() => void) | undefined;
+        (services.acquireDemoClient as Mock).mockImplementation(() =>
+            new Promise(resolve => {
+                finishConnect = () => resolve(makeClient("first"));
+            })
+        );
+
+        const updates: { seedFailure?: string; }[] = [];
+        const init = initializeDemoProject("demo", { onValidated: (update) => updates.push(update) });
+
+        await vi.waitFor(() => expect(updates.length).toBe(1));
+        expect(updates[0].seedFailure).toBe("network");
+
+        finishConnect!();
+        const handle = await init;
+        expect((handle.client as unknown as { id: string; }).id).toBe("first");
+        // The verdict is reported once, not again once the connection resolved.
+        await vi.waitFor(() => expect(services.acquireDemoClient).toHaveBeenCalledTimes(1));
+        expect(updates).toHaveLength(1);
+    });
+
     it("reuses one validation request across demo routes", async () => {
         await initializeDemoProject("demo");
         await initializeDemoProject("demo");

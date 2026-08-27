@@ -1,0 +1,14 @@
+id: GRD-5116a0dd
+title: Grid destination Page and sidebar placement drag
+title-ja: Grid の移動先 Page 選択とサイドバーへのドラッグ配置
+description: Select a destination Page for a duplicated Grid, or move and copy a Grid placement by dropping its outline handle on a sidebar Page.
+category: tables
+status: implemented
+acceptance:
+- Append duplicated Grid blocks to the selected same-project Page
+- Move only the Grid placement while preserving the project-level Grid identity
+- Name the target Page and distinguish Move from Copy during a drag
+- Treat a same-Page Move as a no-op
+- Use Ctrl-drag on Windows and Linux or Option-drag on macOS to open the duplication confirmation for a fixed destination Page
+tests:
+- client/src/services/yjstable/gridPlacement.test.ts

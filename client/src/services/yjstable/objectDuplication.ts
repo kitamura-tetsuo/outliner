@@ -25,6 +25,18 @@ export interface DuplicationResult {
     idMap: ReadonlyMap<string, string>;
     primaryId: string;
     removedReferenceCount: number;
+    createdObjects: DuplicableObject[];
+}
+
+/** Remove every object materialized by one duplication attempt. */
+export function rollbackObjectDuplication(destination: Y.Doc, result: DuplicationResult): void {
+    destination.transact(() => {
+        for (const object of result.createdObjects.toReversed()) {
+            if (object.type === "grid") getGridRegistry(destination).delete(object.id);
+            else if (object.type === "table") removeTable(destination, object.id);
+            else schedulesMapOf(destination).delete(object.id);
+        }
+    });
 }
 
 function key(object: DuplicableObject): string {
@@ -337,5 +349,14 @@ export async function duplicateObjects(
         await Promise.allSettled(connections.map(connection => connection.dispose()));
     }
 
-    return { idMap, primaryId: idMap.get(key(primary))!, removedReferenceCount };
+    return {
+        idMap,
+        primaryId: idMap.get(key(primary))!,
+        removedReferenceCount,
+        createdObjects: [
+            ...createdTables.map(id => ({ type: "table" as const, id })),
+            ...createdGrids.map(id => ({ type: "grid" as const, id })),
+            ...createdSchedules.map(id => ({ type: "schedule" as const, id })),
+        ],
+    };
 }

@@ -143,6 +143,22 @@ export async function initializeDemoProject(
     const validation = startDemoValidation(project);
     const clientPromise = acquireDemoClient(project);
 
+    // A failed validation request already proves the backend is unreachable, and
+    // that verdict does not depend on the Yjs connection. Report it the moment
+    // it is known instead of after the connection settles: the initial sync has
+    // its own multi-second timeout, and waiting for it would keep an
+    // unreachable backend hidden behind the route's loading state.
+    let failureReported = false;
+    if (!options.waitForValidation && options.onValidated) {
+        void validation.then((seedResult) => {
+            if (seedResult.ok || failureReported || isDestroyed()) return;
+            failureReported = true;
+            options.onValidated?.({ reset: false, seedFailure: seedResult.reason });
+        }, () => {
+            // seedDemo resolves its failures; a rejection is already logged by withTimeout.
+        });
+    }
+
     const client = await clientPromise;
     if (isDestroyed()) {
         if (client) releaseDemoClient(project);
@@ -151,6 +167,10 @@ export async function initializeDemoProject(
     if (!client) {
         // Surface the validation failure when it explains the missing client.
         const seedResult = await withTimeout(validation, VALIDATION_TIMEOUT_MS);
+        // The thrown error becomes the route's blocking error state, which says
+        // the same thing as the warning reported above; withdraw the warning so
+        // the message is not rendered twice.
+        if (failureReported) options.onValidated?.({ reset: false });
         if (seedResult && !seedResult.ok && seedResult.reason === "network") {
             throw new Error("Can't reach the demo server — retrying...");
         }
@@ -204,6 +224,9 @@ export async function initializeDemoProject(
             return;
         }
         if (!seedResult.ok) {
+            // Already surfaced before the connection resolved; do not repeat it.
+            if (failureReported) return;
+            failureReported = true;
             options.onValidated?.({ handle, reset: false, seedFailure: seedResult.reason });
             return;
         }

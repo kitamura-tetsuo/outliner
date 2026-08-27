@@ -13,6 +13,13 @@
 import { onDestroy, onMount } from "svelte";
 import { rrulestr } from "rrule";
 import type * as Y from "yjs";
+import ObjectDuplicationDialog from "./yjstable/ObjectDuplicationDialog.svelte";
+import {
+    isGridPlacementDrag,
+    moveGridPlacement,
+    readGridPlacementDrag,
+    type GridPlacementDragData,
+} from "../services/yjstable/gridPlacement";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
@@ -47,6 +54,38 @@ import type * as Y from "yjs";
     };
 
     let observedDoc: Y.Doc | undefined;
+    let draggedGrid = $state<GridPlacementDragData | undefined>(undefined);
+    let copyDestinationPageId = $state<string | undefined>(undefined);
+    let dragTargetPageId = $state<string | undefined>(undefined);
+    let copyMode = $state(false);
+
+    function isCopyDrag(event: DragEvent): boolean {
+        return navigator.platform.toLowerCase().includes("mac") ? event.altKey : event.ctrlKey;
+    }
+
+    function handlePageDragOver(event: DragEvent, pageId: string) {
+        if (!isGridPlacementDrag(event)) return;
+        event.preventDefault();
+        const data = readGridPlacementDrag(event);
+        if (data) draggedGrid = data;
+        copyMode = isCopyDrag(event) || data?.sourceWritable === false;
+        dragTargetPageId = pageId;
+        if (event.dataTransfer) event.dataTransfer.dropEffect = copyMode ? "copy" : "move";
+    }
+
+    function handlePageDrop(event: DragEvent, pageId: string) {
+        const data = readGridPlacementDrag(event);
+        event.preventDefault();
+        dragTargetPageId = undefined;
+        if (!data || !store.project?.ydoc) return;
+        if (isCopyDrag(event) || !data.sourceWritable) {
+            draggedGrid = data;
+            copyDestinationPageId = pageId;
+        } else {
+            draggedGrid = undefined;
+            moveGridPlacement(store.project.ydoc, data.itemId, pageId);
+        }
+    }
 
     function ensureObserver(doc: Y.Doc | undefined) {
         if (doc === observedDoc) return;
@@ -325,6 +364,11 @@ import type * as Y from "yjs";
                                     href={pageHref}
                                     aria-current={$pageStore.url.pathname === pageHref ? "page" : undefined}
                                     class:active={$pageStore.url.pathname === pageHref}
+                                    class:grid-drop-target={dragTargetPageId === page.id}
+                                    ondragover={(event) => handlePageDragOver(event, page.id)}
+                                    ondrop={(event) => handlePageDrop(event, page.id)}
+                                    ondragleave={() => { if (dragTargetPageId === page.id) dragTargetPageId = undefined; }}
+                                    data-page-id={page.id}
                                 >
                                     <span class="item-content-wrapper">
                                         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="item-icon">
@@ -341,6 +385,11 @@ import type * as Y from "yjs";
                                     <span class="page-date"
                                         >{formatDate(page.lastChanged)}</span
                                     >
+                                    {#if dragTargetPageId === page.id && draggedGrid}
+                                        <span class="grid-drop-feedback" role="status">
+                                            {copyMode ? "+ Copy" : "Move"} to “{page.text || "Untitled page"}”
+                                        </span>
+                                    {/if}
                                 </a>
                             </li>
                         {/each}
@@ -596,6 +645,16 @@ import type * as Y from "yjs";
         </div>
     </div>
 </aside>
+
+{#if copyDestinationPageId && draggedGrid && store.project?.ydoc}
+    <ObjectDuplicationDialog
+        sourceDoc={store.project.ydoc}
+        sourceProject={currentProjectName}
+        object={{ type: "grid", id: draggedGrid.gridId }}
+        destinationPageId={copyDestinationPageId}
+        onclose={() => { copyDestinationPageId = undefined; draggedGrid = undefined; }}
+    />
+{/if}
 
 <style>
     .sidebar {
@@ -976,5 +1035,25 @@ import type * as Y from "yjs";
         cursor: pointer;
         text-align: left;
         color: inherit;
+    }
+
+    .page-item.grid-drop-target {
+        position: relative;
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+        background: #eff6ff;
+    }
+
+    .grid-drop-feedback {
+        position: absolute;
+        right: 0.5rem;
+        z-index: 2;
+        border-radius: 0.25rem;
+        background: #1d4ed8;
+        padding: 0.2rem 0.4rem;
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 600;
+        white-space: nowrap;
     }
 </style>

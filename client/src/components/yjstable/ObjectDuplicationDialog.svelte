@@ -1,10 +1,14 @@
 <script lang="ts">
     import { goto } from "$app/navigation";
     import type * as Y from "yjs";
+    import { Project } from "$shared/app-schema";
+    import { userManager } from "../../auth/UserManager";
+    import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
     import { getYjsClientByProjectTitle } from "../../services";
     import {
         duplicateObjects,
         previewObjectDuplication,
+        rollbackObjectDuplication,
         type DuplicableObject,
         type DuplicationPreview,
         type DuplicationScope,
@@ -15,11 +19,13 @@
         sourceProject,
         object,
         onclose,
+        destinationPageId: fixedDestinationPageId,
     }: {
         sourceDoc: Y.Doc;
         sourceProject: string;
         object: DuplicableObject;
         onclose: () => void;
+        destinationPageId?: string;
     } = $props();
 
     const scopes: { value: DuplicationScope; label: string; }[] = [
@@ -33,8 +39,13 @@
         return sourceProject;
     }
 
+    function initialDestinationPage(): string {
+        return fixedDestinationPageId ?? "";
+    }
+
     let scope = $state<DuplicationScope>("item-only");
     let destinationProject = $state(initialDestinationProject());
+    let destinationPageId = $state(initialDestinationPage());
     let copyTableData = $state(false);
     let isDuplicating = $state(false);
     let actionError = $state<string | undefined>(undefined);
@@ -56,6 +67,19 @@
                 copyTableData,
                 synchronizeTableSubdocs: true,
             });
+            if (object.type === "grid" && destinationTitle === sourceProject && destinationPageId) {
+                try {
+                    appendGridPlacement(
+                        destinationDoc,
+                        destinationPageId,
+                        result.primaryId,
+                        userManager.getCurrentUser()?.id ?? "anonymous",
+                    );
+                } catch (error) {
+                    rollbackObjectDuplication(destinationDoc, result);
+                    throw error;
+                }
+            }
             const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
             await goto(
                 `/${route}/${encodeURIComponent(destinationTitle)}/${encodeURIComponent(result.primaryId)}`,
@@ -91,6 +115,22 @@
                     disabled={isDuplicating}
                 />
             </label>
+            {#if object.type === "grid" && destinationProject.trim() === sourceProject}
+                <label class="block text-sm font-medium text-gray-700">
+                    Destination Page
+                    <select
+                        class="mt-1 w-full rounded border border-gray-300 px-3 py-2"
+                        bind:value={destinationPageId}
+                        disabled={isDuplicating || fixedDestinationPageId !== undefined}
+                        data-testid="duplicate-destination-page"
+                    >
+                        <option value="">Do not attach to a Page</option>
+                        {#each Array.from(Project.fromDoc(sourceDoc).items) as page (page.id)}
+                            <option value={page.id}>{page.text || "Untitled Page"}</option>
+                        {/each}
+                    </select>
+                </label>
+            {/if}
             <label class="block text-sm font-medium text-gray-700">
                 Duplication scope
                 <select

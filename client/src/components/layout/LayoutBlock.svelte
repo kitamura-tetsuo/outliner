@@ -39,6 +39,7 @@ import {
 import { store as generalStore } from "../../stores/store.svelte";
 import LayoutContextMenu from "./LayoutContextMenu.svelte";
 import { createVisualNodeUnderParent } from "../../services/outline/visualNodePlacement";
+import { writeGridPlacementDrag } from "../../services/yjstable/gridPlacement";
 
 /** `DataTransfer` type an OutlinerItem drag carries (OutlinerItem.handleDragStart). */
 const OUTLINER_ITEM_DND_TYPE = "application/x-outliner-item";
@@ -238,7 +239,7 @@ function handleChildDragStart(child: Item, event: DragEvent) {
     // dropping outside this Layout enters the normal TreeDnD controller.
     event.dataTransfer?.setData(OUTLINER_ITEM_DND_TYPE, child.id);
     event.dataTransfer?.setData("text/plain", childLabel(child));
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+    if (event.dataTransfer && !writeGridPlacementDrag(event, child, true)) event.dataTransfer.effectAllowed = "move";
 }
 
 function isLayoutChildDrag(event: DragEvent): boolean {
