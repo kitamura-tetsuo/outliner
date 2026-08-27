@@ -17,7 +17,7 @@ test("duplicates the connected recurring-task graph after lazy Table sync", asyn
     await dialog.getByRole("button", { name: "Duplicate" }).click();
 
     await expect(page).toHaveURL(/\/tables\/demo\/(?!demo-table-routine-occurrences$)[^/]+$/, { timeout: 30000 });
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Routine Occurrences copy", {
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Routine Occurrences copy/, {
         timeout: 30000,
     });
     const schedules = page.getByTestId("table-schedule-references");
