@@ -1,5 +1,3 @@
-import { registerCoverageHooks } from "../utils/registerCoverageHooks";
-registerCoverageHooks();
 /** @feature FTR-GRID-UI-EXPANSION
  *  Title   : Temporarily expand Layout Grid to full width while editing its UI definition
  */
