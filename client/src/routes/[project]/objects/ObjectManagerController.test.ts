@@ -1,5 +1,24 @@
+import { Project } from "$shared/app-schema";
 import { describe, expect, it } from "vitest";
-import { filterObjects, generateBulkPreview, type NamedObject, validateRename } from "./ObjectManagerController";
+import * as Y from "yjs";
+import { createCalendar } from "../../../services/calendar/calendarService";
+import { createScheduleRule } from "../../../services/schedule/scheduleRuleService";
+import { createGrid } from "../../../services/yjstable/gridDocs";
+import { createTable } from "../../../services/yjstable/tableDocs";
+import {
+    filterObjects,
+    generateBulkPreview,
+    getObjects,
+    type NamedObject,
+    selectRelatedObjects,
+    validateRename,
+} from "./ObjectManagerController";
+
+function table(doc: Y.Doc, name: string, sqlName: string): string {
+    return createTable(doc, name, sqlName, handles => {
+        handles.schemaText.insert(0, `CREATE TABLE ${sqlName} (id TEXT PRIMARY KEY, title TEXT)`);
+    });
+}
 
 describe("ObjectManagerController", () => {
     describe("filterObjects", () => {
@@ -100,6 +119,113 @@ describe("ObjectManagerController", () => {
 
         it("accepts a non-empty name, including one that duplicates another object's name", () => {
             expect(validateRename(undefined, "Grid", "g1", "Duplicate Name")).toBeNull();
+        });
+    });
+
+    describe("selectRelatedObjects", () => {
+        it("returns nothing when nothing is selected", () => {
+            const doc = new Y.Doc();
+            table(doc, "Tasks", "tasks");
+            const project = Project.fromDoc(doc);
+            expect(selectRelatedObjects(project, getObjects(project), new Set(), "dependencies")).toEqual([]);
+        });
+
+        it("Dependencies from one root returns the Table it references", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const objects = getObjects(project);
+
+            const related = new Set(selectRelatedObjects(project, objects, new Set([gridId]), "dependencies"));
+            expect(related).toEqual(new Set([gridId, tasksId]));
+        });
+
+        it("Dependents from one root returns every Grid/Schedule/Calendar referencing it", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const ruleId = createScheduleRule(project, {
+                targetTableId: tasksId,
+                sql: "INSERT INTO tasks (id) SELECT 1 RETURNING *",
+                rrule: "RRULE:FREQ=DAILY",
+            });
+            const calendarId = createCalendar(project, { name: "Team Calendar", query: "SELECT id FROM tasks" });
+            const objects = getObjects(project);
+
+            const related = new Set(selectRelatedObjects(project, objects, new Set([tasksId]), "dependents"));
+            expect(related).toEqual(new Set([tasksId, gridId, ruleId, calendarId]));
+        });
+
+        it("All connected recurses across the whole graph", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const calendarId = createCalendar(project, { name: "Team Calendar", query: "SELECT id FROM tasks" });
+            const objects = getObjects(project);
+
+            const related = new Set(selectRelatedObjects(project, objects, new Set([gridId]), "connected"));
+            expect(related).toEqual(new Set([gridId, tasksId, calendarId]));
+        });
+
+        it("unions multiple selected roots and selects a shared dependency once", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const first = createGrid(doc, tasksId, { name: "First" });
+            const second = createGrid(doc, tasksId, { name: "Second" });
+            const objects = getObjects(project);
+
+            const related = selectRelatedObjects(project, objects, new Set([first, second]), "dependencies");
+            expect(related.filter(id => id === tasksId)).toHaveLength(1);
+        });
+
+        it("is independent of the current search/type filter — the caller passes the full object list", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const fullObjects = getObjects(project);
+            // Simulates the Table being filtered out of view — it must still be
+            // discoverable because `selectRelatedObjects` reads the Yjs graph
+            // directly, not the filtered display list.
+            const filteredOutOfView = fullObjects.filter(o => o.id !== tasksId);
+
+            const related = selectRelatedObjects(project, fullObjects, new Set([gridId]), "dependencies");
+            expect(related).toContain(tasksId);
+            expect(filteredOutOfView.some(o => o.id === tasksId)).toBe(false);
+        });
+
+        it("returns an additive result: the caller is expected to union it into the existing selection", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            const owners = table(doc, "Owners", "owners");
+            const gridId = createGrid(doc, tasksId, { name: "Board" });
+            const objects = getObjects(project);
+
+            const existingSelection = new Set([gridId, owners]);
+            const related = selectRelatedObjects(project, objects, existingSelection, "dependencies");
+            const union = new Set([...existingSelection, ...related]);
+            expect(union).toEqual(new Set([gridId, owners, tasksId]));
+        });
+
+        it("terminates on a circular reference", () => {
+            const doc = new Y.Doc();
+            const project = Project.fromDoc(doc);
+            const tasksId = table(doc, "Tasks", "tasks");
+            createGrid(doc, tasksId, { name: "Board" });
+            createScheduleRule(project, {
+                targetTableId: tasksId,
+                sql: "INSERT INTO tasks (id) SELECT id FROM tasks RETURNING *",
+                rrule: "RRULE:FREQ=DAILY",
+            });
+            const objects = getObjects(project);
+
+            const related = selectRelatedObjects(project, objects, new Set([tasksId]), "connected");
+            expect(related.filter(id => id === tasksId)).toHaveLength(1);
         });
     });
 });

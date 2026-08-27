@@ -41,18 +41,29 @@ test.describe("FTR-8ac92ce2: bulk literal Find/Replace is visible and previews b
         await expect(alphaRow).toBeVisible({ timeout: 15000 });
         await expect(betaRow).toBeVisible();
 
-        // Discoverable without selecting anything: a standing hint is always shown.
+        // Discoverable without selecting anything: a standing hint and the
+        // compact bulk toolbar are always shown, before any selection exists.
         await expect(page.locator(".bulk-hint")).toBeVisible();
+        const toolbar = page.getByTestId("object-manager-bulk-toolbar");
+        await expect(toolbar).toBeVisible();
+        await expect(page.getByTestId("object-manager-selected-count")).toHaveText("0 selected");
+        await expect(page.getByTestId("object-manager-bulk-find")).toBeDisabled();
 
         await alphaRow.locator('td.checkbox-col input[type="checkbox"]').check();
         await betaRow.locator('td.checkbox-col input[type="checkbox"]').check();
 
-        const bulkPanel = page.locator(".bulk-rename-panel.active");
-        await expect(bulkPanel).toBeVisible();
+        // Selecting rows never toggles the toolbar's presence — only which
+        // controls are enabled (issue #5135 §1).
+        await expect(toolbar).toBeVisible();
+        await expect(page.getByTestId("object-manager-selected-count")).toHaveText("2 selected");
+        await expect(page.getByTestId("object-manager-bulk-find")).toBeEnabled();
 
         await page.getByTestId("object-manager-bulk-find").fill("Demo");
         await page.getByTestId("object-manager-bulk-replace").fill("Test");
 
+        // The preview is a popover, opened explicitly rather than expanding
+        // inline below the toolbar.
+        await page.getByTestId("object-manager-bulk-preview-open").click();
         const preview = page.getByTestId("object-manager-bulk-preview");
         await expect(preview).toBeVisible();
         await expect(preview).toContainText("Demo Alpha");
@@ -60,7 +71,10 @@ test.describe("FTR-8ac92ce2: bulk literal Find/Replace is visible and previews b
         await expect(preview).toContainText("Demo Beta");
         await expect(preview).toContainText("Test Beta");
 
-        await page.getByTestId("object-manager-bulk-apply").click();
+        // The overlay covers the toolbar behind it, so Apply is applied from
+        // the preview popover itself rather than the (currently obscured)
+        // toolbar button.
+        await page.getByTestId("object-manager-bulk-preview-apply").click();
 
         await expect(gridRow(page, "Test Alpha")).toBeVisible({ timeout: 10000 });
         await expect(gridRow(page, "Test Beta")).toBeVisible();

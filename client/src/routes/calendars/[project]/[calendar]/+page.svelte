@@ -14,6 +14,7 @@
     import { DemoInitAborted } from "../../../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../../../lib/routeProject";
     import { Project } from "$shared/app-schema";
+    import ObjectDuplicationDialog from "../../../../components/yjstable/ObjectDuplicationDialog.svelte";
 
     const logger = getLogger("CalendarStandalonePage");
 
@@ -31,6 +32,7 @@
     let calendarProjectId: string | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
+    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -130,6 +132,13 @@
         <h1 class="text-2xl font-bold">
             {calendarName || "Calendar"}
         </h1>
+        {#if isAuthenticated && !isLoading && calendarId && calendarProject}
+            <button
+                class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                onclick={() => { showDuplicationDialog = true; }}
+                data-testid="calendar-duplicate-button"
+            >Duplicate Calendar</button>
+        {/if}
     </div>
 
     <!-- Authentication component -->
@@ -213,3 +222,12 @@
         </div>
     {/if}
 </main>
+
+{#if showDuplicationDialog && calendarId && calendarProject}
+    <ObjectDuplicationDialog
+        sourceDoc={calendarProject.ydoc}
+        sourceProject={projectName}
+        object={{ type: "calendar", id: calendarId }}
+        onclose={() => { showDuplicationDialog = false; }}
+    />
+{/if}

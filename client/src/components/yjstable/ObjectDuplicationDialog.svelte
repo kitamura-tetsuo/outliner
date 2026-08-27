@@ -80,7 +80,13 @@
                     throw error;
                 }
             }
-            const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
+            const route = object.type === "grid"
+                ? "grids"
+                : object.type === "table"
+                ? "tables"
+                : object.type === "calendar"
+                ? "calendars"
+                : "schedules";
             await goto(
                 `/${route}/${encodeURIComponent(destinationTitle)}/${encodeURIComponent(result.primaryId)}`,
             );
@@ -103,7 +109,15 @@
     <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-dialog-title" class="text-lg font-bold text-gray-900">
-                Duplicate {object.type === "grid" ? "Grid" : object.type === "table" ? "Table" : "Schedule"}
+                Duplicate {
+                    object.type === "grid"
+                        ? "Grid"
+                        : object.type === "table"
+                        ? "Table"
+                        : object.type === "calendar"
+                        ? "Calendar"
+                        : "Schedule"
+                }
             </h2>
         </div>
         <div class="space-y-4 px-6 py-4">
