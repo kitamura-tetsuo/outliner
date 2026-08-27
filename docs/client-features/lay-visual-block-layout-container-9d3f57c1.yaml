@@ -16,6 +16,7 @@ services:
 - client/src/lib/TreeDnD.ts
 - shared/src/app-schema.ts
 tests:
+- client/e2e/new/lay-drag-drop-indicator-cleanup-9d3f57c1.spec.ts
 - client/e2e/new/lay-empty-layout-drop-rejects-text-9d3f57c1.spec.ts
 - client/e2e/new/lay-empty-layout-drop-target-9d3f57c1.spec.ts
 - client/e2e/new/lay-layout-span-and-unwrap-9d3f57c1.spec.ts
@@ -45,6 +46,7 @@ acceptance:
 - Grid and Calendar rendering outside a Layout is unaffected
 - No x/y, row, column-start, per-track fraction, row-span or pixel-width state is persisted
 - Removing the last child leaves an empty Layout that stays as an insertion/drop target
+- Reordering, moving in, and a cancelled drag all clear the Layout's drag/drop indicator, even when the terminal event is a drop with no following dragend (#5123)
 - Span changes made by a collaborator update the rendered layout reactively
 - Spans can be resized by dragging a whole-column handle and by keyboard (arrow keys, Home/End, and −/+ buttons)
 - The Layout renders a fixed 12-column equal-track CSS Grid

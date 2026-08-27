@@ -68,6 +68,7 @@ try {
 
 import { handleFileUploadFromDrop } from "../services";
 import { isBlockOwnedDragEvent } from "../services/dnd/blockDndOwnership";
+import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
 import { updateParentCheckboxStatus } from "../utils/checkboxHelpers";
 
 
@@ -1965,6 +1966,12 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     // Clear drop target flag
     isDropTarget = false;
 
+    // Snapshot the drop position now: the shared drag-session cleanup safety net
+    // (or this item's own dragend/dragleave handling) may reset the reactive
+    // `dropTargetPosition` state while this handler is still awaiting the
+    // file-upload check below, so every later read in this function must use
+    // this local copy instead of re-reading the live state.
+    const capturedDropPosition = dropTargetPosition;
 
     // Get drop data (provide fallback for missing event.dataTransfer in Playwright isolated world)
     const dt = hasDataTransfer(event) ? event.dataTransfer : null;
@@ -1995,7 +2002,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
     const fileHandled = await handleFileUploadFromDrop(
         dt,
         model.id,
-        dropTargetPosition,
+        capturedDropPosition,
         dispatch,
         addAttachmentToDomTargetOrModel,
         addAttachmentSafely as (modelOriginal: unknown, url: string, mime?: string, name?: string) => void,
@@ -2012,7 +2019,7 @@ async function handleDrop(event: DragEvent | CustomEvent) {
         // Fire drop event using the data we snapshotted earlier
         dispatch("drop", {
             targetItemId: model.id,
-            position: dropTargetPosition,
+            position: capturedDropPosition,
             text: plainText,
             selection: selectionData ? JSON.parse(selectionData) : null,
             sourceItemId: itemId || null,
@@ -2272,8 +2279,11 @@ function handleDragEnd() {
 }
 
 // Global cleanup: drag effects must never outlive the drag/mouse gesture.
-// dragend fires on the source only, so other items clear their indicators here;
-// mouseup may happen outside this item, so the selection-drag flags are cleared globally.
+// A completed move can reparent or remove DOM this item's own dragend/dragleave
+// handling depended on, so the shared drag-session safety net (any drop or
+// dragend anywhere in the document) is what actually guarantees this item's
+// indicator is cleared; mouseup may happen outside this item, so the
+// selection-drag flags are cleared globally too.
 onMount(() => {
     const clearDragIndicators = () => {
         isDragSource = false;
@@ -2284,10 +2294,10 @@ onMount(() => {
         selectionDragStartedHere = false;
         isDragging = false;
     };
-    window.addEventListener("dragend", clearDragIndicators);
+    const unsubscribeDragSession = onDragSessionClear(clearDragIndicators);
     window.addEventListener("mouseup", endSelectionDrag);
     return () => {
-        window.removeEventListener("dragend", clearDragIndicators);
+        unsubscribeDragSession();
         window.removeEventListener("mouseup", endSelectionDrag);
     };
 });
