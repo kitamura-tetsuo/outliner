@@ -630,7 +630,8 @@ function executeDelete() {
         position: absolute;
         top: calc(100% + 0.25rem);
         left: 0;
-        z-index: 50;
+        /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
+        z-index: 10050;
         display: flex;
         flex-direction: column;
         min-width: 10rem;
@@ -662,7 +663,7 @@ function executeDelete() {
     .menu-backdrop {
         position: fixed;
         inset: 0;
-        z-index: 40;
+        z-index: 10040;
     }
 
     .bulk-toolbar input {
@@ -679,7 +680,8 @@ function executeDelete() {
     .preview-overlay {
         position: fixed;
         inset: 0;
-        z-index: 60;
+        /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
+        z-index: 10060;
         display: flex;
         align-items: center;
         justify-content: center;
