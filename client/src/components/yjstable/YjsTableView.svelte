@@ -44,6 +44,7 @@ import TableChartPanel from "./TableChartPanel.svelte";
 import TableGrid from "./TableGrid.svelte";
 import TableSchemaEditor from "./TableSchemaEditor.svelte";
 import TableUiDefEditor from "./TableUiDefEditor.svelte";
+import { registerWebMCPGridTools } from "../../mcp/WebMCP";
 
 const logger = getLogger("YjsTableView");
 
@@ -134,6 +135,7 @@ const clipboardSource: TableClipboardSource = {
 const session = createTableEngineSession({ projectDoc, projectId });
 let unsubscribeAdapter: (() => void) | undefined;
 let unsubscribeRunner: (() => void) | undefined;
+let cleanupWebMCP: (() => void) | undefined;
 
 onMount(() => {
     refreshGridMirror();
@@ -142,6 +144,21 @@ onMount(() => {
     retainGridUndoManager(grid.entry);
     grid.entry.observeDeep(gridMirrorObserver);
     registerTableClipboardSource(handles.tableId, clipboardSource);
+
+    cleanupWebMCP = registerWebMCPGridTools(
+        () => ({
+            gridId: grid.gridId,
+            sourceTableId: handles.tableId,
+            query: gridQuery
+        }),
+        () => ({
+            gridId: grid.gridId,
+            sourceTableId: handles.tableId,
+            rows: result.rows,
+            columns: result.columns,
+            rowCount: result.rows.length
+        })
+    );
 
     void (async () => {
         const acquired = await session.acquire(handles.tableId);
@@ -184,6 +201,7 @@ onDestroy(() => {
     session.dispose();
     destroyTableUndoManager(handles.doc);
     destroyGridUndoManager(grid.entry);
+    if (typeof cleanupWebMCP !== "undefined") cleanupWebMCP();
 });
 </script>
 
