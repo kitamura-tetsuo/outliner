@@ -8,7 +8,7 @@ registerCoverageHooks();
 // Templates, because its unopened subdoc is the state under test.
 test("duplicates the connected recurring-task graph after lazy Table sync", async ({ page }) => {
     await page.goto("/tables/demo/demo-table-routine-occurrences");
-    await expect(page.getByTestId("yjs-table-name")).toContainText("Routine Occurrences", { timeout: 30000 });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Routine Occurrences", { timeout: 30000 });
 
     await page.getByRole("button", { name: "Duplicate Table" }).click();
     const dialog = page.getByTestId("object-duplication-dialog");
@@ -17,10 +17,10 @@ test("duplicates the connected recurring-task graph after lazy Table sync", asyn
     await dialog.getByRole("button", { name: "Duplicate" }).click();
 
     await expect(page).toHaveURL(/\/tables\/demo\/(?!demo-table-routine-occurrences$)[^/]+$/, { timeout: 30000 });
-    await expect(page.getByTestId("yjs-table-name")).toContainText("Routine Occurrences copy", {
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Routine Occurrences copy", {
         timeout: 30000,
     });
     const schedules = page.getByTestId("table-schedule-references");
-    await expect(schedules).toContainText("Daily routines copy", { timeout: 30000 });
-    await expect(schedules).toContainText("Weekly routines copy");
+    await expect(schedules).toContainText("Routine Occurrences · daily copy", { timeout: 30000 });
+    await expect(schedules).toContainText("Routine Occurrences · weekly copy");
 });
