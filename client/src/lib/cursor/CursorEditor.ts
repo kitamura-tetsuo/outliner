@@ -12,6 +12,7 @@ import { escapeId } from "../../utils/domUtils";
 import { allocatePageTitle } from "../../utils/pageUtils";
 import { ScrapboxFormatter } from "../../utils/ScrapboxFormatter";
 import { KeyEventHandler } from "../KeyEventHandler";
+import { isReservedPageSegment } from "../managementPaths";
 import { endpointOffsetInText } from "../selection/selectionContent";
 import {
     isNodeBoundaryEndpoint,
@@ -115,6 +116,8 @@ export class CursorEditor {
         let err = null;
         if (trimmed.includes("/")) {
             err = "Page title cannot contain '/'.";
+        } else if (isReservedPageSegment(trimmed)) {
+            err = '"-" is reserved for project management and cannot be used as a page title.';
         }
 
         if (err) {

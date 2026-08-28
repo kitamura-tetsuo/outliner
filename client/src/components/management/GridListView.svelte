@@ -32,6 +32,11 @@
     let projectHandle: RouteProjectHandle | undefined = undefined;
     let observedRegistry: ReturnType<typeof getGridRegistry> | undefined = undefined;
     const registryObserver = () => refresh();
+    // Bumped on every load; a response that resolves after a newer load has
+    // started is stale and must not overwrite the state that load produced
+    // (client-side navigation between two projects' grid lists can resolve
+    // the requests out of order).
+    let loadGeneration = 0;
 
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
@@ -59,6 +64,7 @@
 
     async function loadProject() {
         if (!projectName || !canAccess) return;
+        const generation = ++loadGeneration;
 
         isLoading = true;
         error = undefined;
@@ -67,7 +73,13 @@
         try {
             projectHandle?.release();
             projectHandle = undefined;
-            projectHandle = await openRouteProject(projectName, () => isDestroyed);
+            const handle = await openRouteProject(projectName, () => isDestroyed);
+            if (generation !== loadGeneration) {
+                // A newer load has since started; this response is stale.
+                handle?.release();
+                return;
+            }
+            projectHandle = handle;
             if (!projectHandle) {
                 notFound = true;
                 return;
@@ -83,10 +95,11 @@
             refresh();
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
+            if (generation !== loadGeneration) return;
             logger.error({ error: err }, "Failed to load project grids page:");
             error = err instanceof Error ? err.message : "An error occurred while loading grids.";
         } finally {
-            isLoading = false;
+            if (generation === loadGeneration) isLoading = false;
         }
     }
 
