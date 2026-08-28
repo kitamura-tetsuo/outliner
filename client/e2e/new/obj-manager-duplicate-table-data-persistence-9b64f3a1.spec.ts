@@ -49,6 +49,7 @@ test("copies Table rows to another project and reloads them from its Table room"
     const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
     await expect(sidebar).toBeVisible({ timeout: 10000 });
     await sidebar.getByRole("link", { name: "Board copy" }).click();
+    await expect(page).toHaveURL(/\/-\/tables\/[^/?]+$/, { timeout: 15000 });
 
     // Reload the Table route itself so both the project document and Table
     // subdoc are reconstructed through their normal synchronization paths.
