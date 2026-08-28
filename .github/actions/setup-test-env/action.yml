@@ -14,17 +14,18 @@ runs:
       run: |
         echo "::group::Restore dependencies from cache"
         start=$(date +%s)
-        # Symlink the pre-installed node_modules from the image cache instead
-        # of copying them: the checkout directory is a bind-mounted volume
-        # distinct from the image layer that /cache lives in, but a symlink
-        # resolves through the mount just fine and avoids recursively copying
-        # potentially gigabyte-sized dependency trees on every shard.
+        # Copy the pre-installed node_modules from the image cache. A symlink
+        # here is tempting (it would avoid copying potentially gigabyte-sized
+        # dependency trees) but Vite's dev server realpath-resolves symlinked
+        # node_modules and serves modules through /@fs/<real-path>, which
+        # broke module resolution for the integration/unit test suites that
+        # boot a Vite dev server -- so this stays a real copy.
         for dir in client server functions scripts; do
-          if [ -d "/cache/${dir}/node_modules" ] && [ ! -e "${dir}/node_modules" ]; then
-            ln -s "/cache/${dir}/node_modules" "${dir}/node_modules"
-            chmod +x "${dir}/node_modules/.bin/"* 2>/dev/null || true
+          if [ -d "/cache/${dir}/node_modules" ]; then
+            cp -r "/cache/${dir}/node_modules" "${dir}/"
           fi
         done
+        chmod +x client/node_modules/.bin/* server/node_modules/.bin/* functions/node_modules/.bin/* scripts/node_modules/.bin/* 2>/dev/null || true
         echo "Restore dependencies from cache took $(( $(date +%s) - start ))s"
         echo "::endgroup::"
 
