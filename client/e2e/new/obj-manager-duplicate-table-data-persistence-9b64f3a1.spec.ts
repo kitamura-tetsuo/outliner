@@ -56,7 +56,7 @@ test("copies Table rows to another project and reloads them from its Table room"
     // The management route is intentionally reached through Svelte-managed
     // navigation and is not a standalone hard-reload bootstrap route.
     await page.reload();
-    const copiedView = page.getByTestId("yjs-table-view");
-    await expect(copiedView).toBeVisible({ timeout: 30000 });
-    await expect(copiedView.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
+    const copiedGrid = page.getByTestId("yjs-table-grid");
+    await expect(copiedGrid).toBeVisible({ timeout: 30000 });
+    await expect(copiedGrid.locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
 });
