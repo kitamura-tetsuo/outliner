@@ -11,7 +11,6 @@ import { createScheduleRule, type ScheduleRule } from "../schedule/scheduleRuleS
 import { createGrid, getGridSourceTableId, listGrids } from "./gridDocs";
 import { duplicateObjectSet, previewObjectSetDuplication } from "./objectDuplication";
 import { addRecord, createTable, getTableHandles, listTables } from "./tableDocs";
-import type { TableDocConnector } from "./tableEngine";
 
 function table(doc: Y.Doc, name: string, sqlName: string): string {
     return createTable(doc, name, sqlName, handles => {
@@ -190,103 +189,6 @@ describe("explicit-selection duplication (Duplicate selected)", () => {
         const copiedOwnersId = result.idMap.get(`table:${owners}`)!;
         expect(getTableHandles(destination, copiedTasksId)?.data.get("row-1")?.get("title")).toBe("task-1");
         expect(getTableHandles(destination, copiedOwnersId)?.data.get("row-1")?.get("title")).toBe("owner-1");
-    });
-
-    it("persists every copied Table through destination rooms and disposes temporary connections", async () => {
-        const source = new Y.Doc({ guid: "source-project-id" });
-        const tasks = table(source, "Tasks", "tasks");
-        const owners = table(source, "Owners", "owners");
-        addRecord(getTableHandles(source, tasks)!, { title: "task-1" }, "task-record-id");
-        addRecord(getTableHandles(source, owners)!, { title: "owner-1" }, "owner-record-id");
-        const destination = new Y.Doc({ guid: "destination-project-id" });
-        const persistedRooms = new Map<string, Uint8Array>();
-        const connectedRooms: string[] = [];
-        let disposed = 0;
-        const connector: TableDocConnector = async (projectId, tableId, doc) => {
-            const room = `${projectId}/${tableId}`;
-            connectedRooms.push(room);
-            return {
-                waitForInitialSync: async () => {
-                    if (projectId === destination.guid) persistedRooms.set(room, Y.encodeStateAsUpdate(doc));
-                    return { synced: true };
-                },
-                dispose: () => {
-                    disposed++;
-                },
-            };
-        };
-
-        const result = await duplicateObjectSet(source, destination, [
-            { type: "table", id: tasks },
-            { type: "table", id: owners },
-        ], { copyTableData: true, synchronizeTableSubdocs: true, tableDocConnector: connector });
-
-        const copiedTasks = result.idMap.get(`table:${tasks}`)!;
-        const copiedOwners = result.idMap.get(`table:${owners}`)!;
-        expect(connectedRooms).toEqual([
-            `${source.guid}/${tasks}`,
-            `${source.guid}/${owners}`,
-            `${destination.guid}/${copiedTasks}`,
-            `${destination.guid}/${copiedOwners}`,
-        ]);
-        expect(disposed).toBe(4);
-
-        // Reconstruct each subdoc solely from what the destination connection
-        // persisted. This deliberately does not inspect the in-memory copies.
-        const freshTasks = new Y.Doc();
-        const freshOwners = new Y.Doc();
-        Y.applyUpdate(freshTasks, persistedRooms.get(`${destination.guid}/${copiedTasks}`)!);
-        Y.applyUpdate(freshOwners, persistedRooms.get(`${destination.guid}/${copiedOwners}`)!);
-        expect(freshTasks.getMap<Y.Map<unknown>>("data").get("task-record-id")?.get("title")).toBe("task-1");
-        expect(freshOwners.getMap<Y.Map<unknown>>("data").get("owner-record-id")?.get("title")).toBe("owner-1");
-    });
-
-    it("persists definition-only copies without Table data", async () => {
-        const source = new Y.Doc({ guid: "source-project-id" });
-        const tasks = table(source, "Tasks", "tasks");
-        addRecord(getTableHandles(source, tasks)!, { title: "task-1" }, "row-1");
-        const destination = new Y.Doc({ guid: "destination-project-id" });
-        let persisted: Uint8Array | undefined;
-        const connector: TableDocConnector = async (projectId, _tableId, doc) => ({
-            waitForInitialSync: async () => {
-                if (projectId === destination.guid) persisted = Y.encodeStateAsUpdate(doc);
-                return { synced: true };
-            },
-            dispose: () => {},
-        });
-
-        await duplicateObjectSet(source, destination, [{ type: "table", id: tasks }], {
-            synchronizeTableSubdocs: true,
-            tableDocConnector: connector,
-        });
-        const fresh = new Y.Doc();
-        Y.applyUpdate(fresh, persisted!);
-        expect(fresh.getMap("data").size).toBe(0);
-    });
-
-    it("rolls back the complete set and disposes connections when destination Table sync fails", async () => {
-        const source = new Y.Doc({ guid: "source-project-id" });
-        const tasks = table(source, "Tasks", "tasks");
-        const owners = table(source, "Owners", "owners");
-        const destination = new Y.Doc({ guid: "destination-project-id" });
-        let destinationAttempts = 0;
-        let disposed = 0;
-        const connector: TableDocConnector = async projectId => ({
-            waitForInitialSync: async () => ({
-                synced: projectId !== destination.guid || ++destinationAttempts < 2,
-            }),
-            dispose: () => {
-                disposed++;
-            },
-        });
-
-        await expect(duplicateObjectSet(source, destination, [
-            { type: "table", id: tasks },
-            { type: "table", id: owners },
-        ], { copyTableData: true, synchronizeTableSubdocs: true, tableDocConnector: connector }))
-            .rejects.toThrow('Table "Owners copy" could not be persisted.');
-        expect(listTables(destination)).toEqual([]);
-        expect(disposed).toBe(4);
     });
 
     it("rolls back every created object when materialization fails partway through", async () => {

@@ -19,6 +19,7 @@ tests:
 - client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-4812d1f3.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-cross-project-b850f92c.spec.ts
+- client/e2e/new/obj-manager-duplicate-table-data-persistence-9b64f3a1.spec.ts
 - client/e2e/schedule/dup-schedule-duplication-1f5f6ffd.spec.ts
 - client/e2e/tables/dup-grid-duplication-destination-page.spec.ts
 - client/e2e/tables/dup-lazy-table-dependency-sync-5090c0de.spec.ts

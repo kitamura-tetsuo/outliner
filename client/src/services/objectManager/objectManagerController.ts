@@ -386,10 +386,11 @@ export async function duplicateSelectedObjects(
                         sourceDoc,
                         destinationDoc,
                         created.sourceObjects,
-                        {
-                            copyTableData: options.copyTableData,
-                            synchronizeTableSubdocs: options.synchronizeTableSubdocs,
-                        },
+                        // The destination Table rooms already contain the first
+                        // successful materialization. Reconnecting freshly seeded
+                        // subdocs here would merge duplicate CRDT content; normal
+                        // Table loading hydrates the recreated registry entries.
+                        { copyTableData: options.copyTableData },
                         created.idMap,
                     );
                     sideEffect?.redo();

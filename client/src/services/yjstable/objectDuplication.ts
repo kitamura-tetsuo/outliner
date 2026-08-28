@@ -21,7 +21,6 @@ import {
 import { deriveSqlName } from "./sqlNames";
 import { createTable, getTableHandles, listTables, removeTable, type TableRecordValue } from "./tableDocs";
 import type { TableDocConnection } from "./tableEngine";
-import type { TableDocConnector } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
 export type DuplicableObject = GraphObject;
@@ -57,8 +56,6 @@ export interface DuplicationOptions {
     copyTableData?: boolean;
     /** Synchronize source and newly-created cross-project Table subdocs. */
     synchronizeTableSubdocs?: boolean;
-    /** Connector seam used by the Table engine and deterministic synchronization tests. */
-    tableDocConnector?: TableDocConnector;
 }
 
 /** Result of duplicating an explicit selection (issue #5153) — there is no single primary object. */
@@ -183,8 +180,7 @@ export async function materializeDuplicationPlan(
     // contents have arrived, so every Table in the completed graph must be
     // synchronized before schema rewriting or row copying starts.
     if (options.synchronizeTableSubdocs && tableObjects.length > 0) {
-        const connectTableDoc = options.tableDocConnector
-            ?? (await import("../../lib/yjs/connection")).connectTableDoc;
+        const { connectTableDoc } = await import("../../lib/yjs/connection");
         try {
             for (const object of tableObjects) {
                 const entry = listTables(source).find(table => table.tableId === object.id);
@@ -372,8 +368,7 @@ export async function materializeDuplicationPlan(
         // created Table to the *destination* project room and wait for the
         // provider's sync handshake before reporting success or navigating.
         if (options.synchronizeTableSubdocs && !sameProject) {
-            const connectTableDoc = options.tableDocConnector
-                ?? (await import("../../lib/yjs/connection")).connectTableDoc;
+            const { connectTableDoc } = await import("../../lib/yjs/connection");
             for (const tableId of createdTables) {
                 const entry = listTables(destination).find(table => table.tableId === tableId);
                 const handles = getTableHandles(destination, tableId);
