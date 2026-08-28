@@ -3,6 +3,8 @@ const logger = getLogger("Store");
 export interface UserPreferences {
     theme: "light" | "dark";
     collapsedItems?: Record<string, string[]>;
+    objectManagerColumns?: string[];
+    objectManagerSort?: { column: string; direction: "asc" | "desc"; };
 }
 
 const STORAGE_KEY = "user-preferences";
@@ -19,6 +21,8 @@ function loadPreferencesFromStorage(): UserPreferences {
             return {
                 theme: parsed.theme === "dark" ? "dark" : "light",
                 collapsedItems: parsed.collapsedItems || {},
+                objectManagerColumns: parsed.objectManagerColumns,
+                objectManagerSort: parsed.objectManagerSort,
             };
         }
     } catch (error) {
@@ -41,7 +45,7 @@ function savePreferencesToStorage(preferences: UserPreferences) {
 }
 
 export class UserPreferencesStore {
-    preferences: UserPreferences = loadPreferencesFromStorage();
+    preferences: UserPreferences = $state(loadPreferencesFromStorage());
 
     get theme() {
         return this.preferences.theme;
@@ -105,6 +109,24 @@ export class UserPreferencesStore {
         if (prunedIds.length !== currentIds.length) {
             this.setCollapsedState(pageId, prunedIds);
         }
+    }
+
+    get objectManagerColumns(): string[] {
+        return this.preferences.objectManagerColumns || ["Type", "Name", "Pages"];
+    }
+
+    setObjectManagerColumns(cols: string[]) {
+        this.preferences = { ...this.preferences, objectManagerColumns: cols };
+        savePreferencesToStorage(this.preferences);
+    }
+
+    get objectManagerSort(): { column: string; direction: "asc" | "desc"; } | undefined {
+        return this.preferences.objectManagerSort;
+    }
+
+    setObjectManagerSort(sort: { column: string; direction: "asc" | "desc"; } | undefined) {
+        this.preferences = { ...this.preferences, objectManagerSort: sort };
+        savePreferencesToStorage(this.preferences);
     }
 }
 
