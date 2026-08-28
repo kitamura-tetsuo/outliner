@@ -53,8 +53,8 @@ test.describe("DUP-6799a6e2: Duplicate selected across projects and Undo", () =>
                 new RegExp(`/${encodeURIComponent(fixture.destinationProject)}/-/objects\\?selected=`),
                 { timeout: 20000 },
             );
-            const copiedGridRow = rowByNameAndType(page, "Board copy", "grid");
-            const copiedTableRow = rowByNameAndType(page, "Board copy", "table");
+            const copiedGridRow = rowByNameAndType(page, "Board", "grid");
+            const copiedTableRow = rowByNameAndType(page, "Board", "table");
             await expect(copiedGridRow).toBeVisible({ timeout: 15000 });
             await expect(copiedTableRow).toBeVisible();
             await expect(copiedGridRow.locator('td.checkbox-col input[type="checkbox"]')).toBeChecked();
@@ -67,11 +67,11 @@ test.describe("DUP-6799a6e2: Duplicate selected across projects and Undo", () =>
                 const project = client?.getProject();
                 let sourceId: string | undefined;
                 project?.ydoc.getMap("yjsGrids").forEach((entry: any) => {
-                    if (entry.get("name") === "Board copy") sourceId = entry.get("sourceTableId");
+                    if (entry.get("name") === "Board") sourceId = entry.get("sourceTableId");
                 });
                 let tableId: string | undefined;
                 project?.ydoc.getMap("yjsTables").forEach((entry: any, key: string) => {
-                    if (entry.get("name") === "Board copy") tableId = key;
+                    if (entry.get("name") === "Board") tableId = key;
                 });
                 return { copiedGridSourceId: sourceId, copiedTableId: tableId };
             });
@@ -80,8 +80,8 @@ test.describe("DUP-6799a6e2: Duplicate selected across projects and Undo", () =>
 
             // One Undo removes the whole cross-project operation.
             await page.getByTestId("toolbar-undo").click();
-            await expect(rowByNameAndType(page, "Board copy", "grid")).toHaveCount(0, { timeout: 15000 });
-            await expect(rowByNameAndType(page, "Board copy", "table")).toHaveCount(0);
+            await expect(rowByNameAndType(page, "Board", "grid")).toHaveCount(0, { timeout: 15000 });
+            await expect(rowByNameAndType(page, "Board", "table")).toHaveCount(0);
         },
     );
 });
