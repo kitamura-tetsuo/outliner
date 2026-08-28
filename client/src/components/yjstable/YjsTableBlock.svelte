@@ -28,6 +28,8 @@ import {
     listGrids,
 } from "../../services/yjstable/gridDocs";
 import { createTableFromPreset, TABLE_PRESETS } from "../../services/yjstable/tablePresets";
+import { resolvePath } from "../../utils/pathUtils";
+import { projectTablePath } from "../../lib/managementPaths";
 import { deriveSqlName, sqlNameError } from "../../services/yjstable/sqlNames";
 import { page as pageStore } from "$app/stores";
 import { yjsStore } from "../../stores/yjsStore.svelte";
@@ -128,7 +130,7 @@ const routeProjectName = $derived(
 );
 const sourceTableHref = $derived(
     routeProjectName && sourceTableId
-        ? `/tables/${encodeURIComponent(routeProjectName)}/${encodeURIComponent(sourceTableId)}`
+        ? resolvePath(projectTablePath(routeProjectName, sourceTableId))
         : undefined,
 );
 

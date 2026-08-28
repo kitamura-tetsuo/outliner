@@ -157,5 +157,20 @@ describe("pageUtils", () => {
             expect(title2).toBe("Untitled_2");
             expect(title3).toBe("Untitled_3");
         });
+
+        it("suffixes '-', the reserved project-management path segment, instead of allocating it plain", () => {
+            const items = [] as unknown as Iterable<Item>;
+            expect(allocatePageTitle(items, "-")).toBe("-_2");
+        });
+
+        it("still resolves collisions among suffixed '-' titles", () => {
+            const items = [{ text: "-_2" }] as unknown as Iterable<Item>;
+            expect(allocatePageTitle(items, "-")).toBe("-_3");
+        });
+
+        it("does not reserve names that merely contain '-'", () => {
+            const items = [] as unknown as Iterable<Item>;
+            expect(allocatePageTitle(items, "well-known")).toBe("well-known");
+        });
     });
 });

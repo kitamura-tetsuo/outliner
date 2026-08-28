@@ -152,7 +152,7 @@ test.describe("Demo project feature tour", () => {
 
     test("public demo schedule loads without auth loading state", async ({ page }) => {
         // Navigate directly to the public demo's schedule rule editor
-        await page.goto("/schedules/demo/demo-rule-daily-routines");
+        await page.goto("/demo/-/schedules/demo-rule-daily-routines");
 
         // The form fields should be visible
         const targetTableSelect = page.getByTestId("target-table-select");

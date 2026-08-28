@@ -38,7 +38,7 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
         expect(gridId).toBeTruthy();
         expect(projectName).toBeTruthy();
 
-        await page.goto(`/grids/${encodeURIComponent(projectName!)}/${gridId}`);
+        await page.goto(`/${encodeURIComponent(projectName!)}/-/grids/${gridId}`);
 
         await expect(page.getByRole("button", { name: "Duplicate Grid" })).toBeVisible({ timeout: 15000 });
 
@@ -59,7 +59,7 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
 
         await dialog.getByRole("button", { name: "Duplicate" }).click();
 
-        await expect(page).toHaveURL(new RegExp(`/grids/${encodeURIComponent(projectName!)}/[a-zA-Z0-9_-]+`));
+        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(projectName!)}/-/grids/[a-zA-Z0-9_-]+`));
 
         await page.goto(`/${encodeURIComponent(projectName!)}/test-page-${projectName?.split(" ").pop()}`);
 

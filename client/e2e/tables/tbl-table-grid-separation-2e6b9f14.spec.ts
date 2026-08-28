@@ -4,13 +4,13 @@ import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-// FTR-2e6b9f14 (issue #5012): /tables/<project>/<tableId> is a page about the
+// FTR-2e6b9f14 (issue #5012): /:project/-/tables/:tableId is a page about the
 // Table entity — schema + raw data — and never renders one of its Grids as if
 // it were the table. The demo's occurrences table has two Grids, so picking
 // "the first one" would be visibly arbitrary.
 test.describe("Standalone table page is about the table, not a grid", () => {
     test("shows the implicit SELECT * raw data instead of a grid presentation", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-occurrences");
+        await page.goto("/demo/-/tables/demo-table-routine-occurrences");
 
         const tableView = page.getByTestId("table-entity-view");
         await expect(tableView).toBeVisible({ timeout: 30000 });
@@ -27,7 +27,7 @@ test.describe("Standalone table page is about the table, not a grid", () => {
     });
 
     test("lists every grid over the table as a link rather than a mounted result", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-occurrences");
+        await page.goto("/demo/-/tables/demo-table-routine-occurrences");
 
         const references = page.getByTestId("table-grid-references");
         await expect(references).toBeVisible({ timeout: 30000 });
@@ -40,7 +40,7 @@ test.describe("Standalone table page is about the table, not a grid", () => {
         await expect(historyGrid).toBeVisible();
         await expect(historyGrid).toHaveAttribute(
             "href",
-            "/grids/demo/demo-table-routine-occurrences-history-grid",
+            "/demo/-/grids/demo-table-routine-occurrences-history-grid",
         );
     });
 });

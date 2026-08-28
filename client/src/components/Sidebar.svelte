@@ -25,6 +25,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
     import { projectPagePath } from "../lib/publicProject";
+    import { projectObjectsPath, projectSchedulePath, projectTablePath } from "../lib/managementPaths";
 
 
     let { isOpen = $bindable(true) } = $props();
@@ -211,7 +212,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
             sql: defaultSql,
             rrule: "FREQ=DAILY;INTERVAL=1",
         });
-        goto(`/schedules/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(ruleId)}`);
+        goto(resolvePath(projectSchedulePath(currentProjectName, ruleId)));
     }
 
     // Collapsible state for Projects section
@@ -450,10 +451,10 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
                         {#each tables as table (table.tableId)}
                             <li>
                                 <a
-                                    href={`/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
+                                    href={resolvePath(projectTablePath(currentProjectName, table.tableId))}
                                     class="page-item table-link"
-                                    class:active={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}`}
-                                    aria-current={$pageStore.url.pathname === `/tables/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(table.tableId)}` ? 'page' : undefined}
+                                    class:active={$pageStore.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId))}
+                                    aria-current={$pageStore.url.pathname === resolvePath(projectTablePath(currentProjectName, table.tableId)) ? 'page' : undefined}
                                     data-table-id={table.tableId}
                                     onclick={closeSidebarIfMobile}
                                 >
@@ -477,7 +478,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
 
         <!-- Scheduled SQL section -->
         <div class="sidebar-section">
-            <a class="section-header" href={resolvePath(`/${currentProjectName}/objects`)} style="text-decoration: none;">
+            <a class="section-header" href={resolvePath(projectObjectsPath(currentProjectName))} style="text-decoration: none;">
                 <div class="section-header-content">
                     <h3 class="sidebar-section-title" style="margin-bottom: 0;">Object Manager</h3>
                 </div>
@@ -537,7 +538,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
                         <li class="sidebar-placeholder">No scheduled SQL</li>
                     {:else}
                         {#each schedules as schedule (schedule.id)}
-                            {@const scheduleHref = `/schedules/${encodeURIComponent(currentProjectName)}/${encodeURIComponent(schedule.id)}`}
+                            {@const scheduleHref = resolvePath(projectSchedulePath(currentProjectName, schedule.id))}
                             <li>
                                 <a
                                     class="page-item schedule-link"

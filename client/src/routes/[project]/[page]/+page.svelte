@@ -21,6 +21,7 @@ import { goto } from "$app/navigation";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
     import { findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
     import { projectPagePath } from "../../../lib/publicProject";
+    import { projectGraphPath } from "../../../lib/managementPaths";
     import { getYjsClientByProjectTitle } from "../../../services";
     const logger = getLogger("+page");
 
@@ -600,7 +601,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                     Search
                 </button>
                 <a href={resolvePath(`/${encodeURIComponent(projectName)}/${encodeURIComponent(pageName)}/schedule`)} class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Schedule</a>
-                <a href={resolvePath(`/${encodeURIComponent(projectName)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={resolvePath(projectGraphPath(projectName))} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
     </div>

@@ -9,19 +9,19 @@ registerCoverageHooks();
 // both tables list the same two schedules — as references, with no owner.
 test.describe("Schedules are referenced by tables, not owned by them", () => {
     test("the table a rule writes to reports it as a write reference", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-occurrences");
+        await page.goto("/demo/-/tables/demo-table-routine-occurrences");
 
         const references = page.getByTestId("table-schedule-references");
         await expect(references).toBeVisible({ timeout: 30000 });
 
         const daily = references.locator("[data-schedule-id='demo-rule-daily-routines']");
         await expect(daily).toBeVisible({ timeout: 30000 });
-        await expect(daily).toHaveAttribute("href", "/schedules/demo/demo-rule-daily-routines");
+        await expect(daily).toHaveAttribute("href", "/demo/-/schedules/demo-rule-daily-routines");
         await expect(references.locator("[data-reference-kind='write-target']").first()).toBeVisible();
     });
 
     test("the table a rule only reads reports the same rule as a read reference", async ({ page }) => {
-        await page.goto("/tables/demo/demo-table-routine-templates");
+        await page.goto("/demo/-/tables/demo-table-routine-templates");
 
         const references = page.getByTestId("table-schedule-references");
         await expect(references).toBeVisible({ timeout: 30000 });

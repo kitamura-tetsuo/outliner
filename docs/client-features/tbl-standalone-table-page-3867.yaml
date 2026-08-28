@@ -1,10 +1,10 @@
 id: TBL-3867
 title: Standalone Table Page
-description: A standalone page to view and interact with database tables, accessible via /tables/[project-name]/[table-name]. Navigation is supported from the Tables section in the sidebar. The page is about the Table entity itself — schema plus a raw editable SELECT * data browser — and lists the Grids and Schedules that reference it (see FTR-2e6b9f14).
+description: A standalone page to view and interact with database tables, accessible via /[project-name]/-/tables/[table-name]. Navigation is supported from the Tables section in the sidebar. The page is about the Table entity itself — schema plus a raw editable SELECT * data browser — and lists the Grids and Schedules that reference it (see FTR-2e6b9f14).
 category: client
 status: implemented
 tests:
 - client/e2e/tables/table-standalone-page-3867.spec.ts
 - client/e2e/tables/tbl-table-grid-separation-2e6b9f14.spec.ts
-- client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
+- client/src/routes/[project]/-/tables/[tableId]/page.svelte.test.ts
 title-ja: Standalone Table Page

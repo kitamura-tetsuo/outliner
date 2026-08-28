@@ -27,7 +27,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
         // Wait for at least 2 items (page header + "Child item")
         await TestHelpers.waitForOutlinerItems(page, 2, 45000);
 
-        await page.goto(`/${encoded}/settings`);
+        await page.goto(`/${encoded}/-/import-export`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
         // Setup debugger functions on the new page (since navigation clears globalThis context)
@@ -71,7 +71,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     test("import markdown", async ({ page }, testInfo) => {
         const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const encoded = encodeURIComponent(projectName);
-        await page.goto(`/${encoded}/settings`);
+        await page.goto(`/${encoded}/-/import-export`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
         // Wait for Yjs connection before import
@@ -180,7 +180,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     test("import opml", async ({ page }, testInfo) => {
         const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const encoded = encodeURIComponent(projectName);
-        await page.goto(`/${encoded}/settings`);
+        await page.goto(`/${encoded}/-/import-export`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
         // Wait for Yjs connection before import
@@ -254,7 +254,7 @@ test.describe("IMP-0001: OPML/Markdown import and export", () => {
     test("import nested markdown", async ({ page }, testInfo) => {
         const { projectName } = await TestHelpers.seedProjectAndNavigate(page, testInfo, []);
         const encoded = encodeURIComponent(projectName);
-        await page.goto(`/${encoded}/settings`);
+        await page.goto(`/${encoded}/-/import-export`);
         await expect(page.getByText("Import / Export")).toBeVisible();
 
         // Wait for Yjs connection before import

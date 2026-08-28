@@ -5,6 +5,8 @@
     import { userManager } from "../../auth/UserManager";
     import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
     import { getYjsClientByProjectTitle } from "../../services";
+    import { resolvePath } from "../../utils/pathUtils";
+    import { projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
     import {
         duplicateObjects,
         previewObjectDuplication,
@@ -80,10 +82,12 @@
                     throw error;
                 }
             }
-            const route = object.type === "grid" ? "grids" : object.type === "table" ? "tables" : "schedules";
-            await goto(
-                `/${route}/${encodeURIComponent(destinationTitle)}/${encodeURIComponent(result.primaryId)}`,
-            );
+            const destinationPath = object.type === "grid"
+                ? projectGridPath(destinationTitle, result.primaryId)
+                : object.type === "table"
+                ? projectTablePath(destinationTitle, result.primaryId)
+                : projectSchedulePath(destinationTitle, result.primaryId);
+            await goto(resolvePath(destinationPath));
             onclose();
         } catch (error) {
             actionError = error instanceof Error ? error.message : "Duplication failed.";

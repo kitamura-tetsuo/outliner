@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 // Schedules are project-level entities (issue #5012): they are created, listed
-// and deleted from /schedules/<project>, not from a panel inside a table view.
+// and deleted from /:project/-/schedules, not from a panel inside a table view.
 test.describe("Project Schedule Rule UI", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
@@ -31,7 +31,7 @@ test.describe("Project Schedule Rule UI", () => {
         await expect(tableBlock.locator("[data-testid='yjs-table-toggle-schedule']")).toHaveCount(0);
 
         const projectSegment = new URL(page.url()).pathname.split("/")[1];
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
 
         const list = page.getByTestId("project-schedule-list");
         await expect(list).toBeVisible({ timeout: 30000 });
@@ -39,20 +39,20 @@ test.describe("Project Schedule Rule UI", () => {
 
         // Creating goes straight to the rule's own page.
         await page.getByTestId("project-schedule-create").click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
         await expect(page.locator("text=SQL Statement")).toBeVisible({ timeout: 15000 });
 
         // The target table is a reference the rule picks, not an owner.
         await expect(page.getByTestId("target-table-select")).toBeVisible();
 
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         await expect(list.locator("text=every day")).toBeVisible({ timeout: 30000 });
 
         // Edit navigates to the rule page; the list is only a list.
         await list.locator("button:has-text('Edit')").first().click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         await expect(list.locator("text=every day")).toBeVisible({ timeout: 30000 });
 
         page.on("dialog", dialog => dialog.accept());

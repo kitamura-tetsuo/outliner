@@ -493,7 +493,7 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
             }),
             // A second, independent presentation of the same Table: the full
             // history rather than only the newest occurrence per task. Opening
-            // /tables/demo/demo-table-routine-occurrences shows the raw rows
+            // /demo/-/tables/demo-table-routine-occurrences shows the raw rows
             // plus links to *both* Grids; neither one is "the table".
             extraGrids: [
                 {
