@@ -179,10 +179,19 @@ export default defineConfig({
             testMatch: ["**/l*.spec.ts"],
         },
         {
-            // Core tests 4: slr only
+            // Core tests 4: slr a-p. Split from the rest of slr (core-4b) because the
+            // full slr* group (31 files) run sequentially in one worker was long enough
+            // to make the CI runner's browser tab stall under resource pressure near the
+            // end of the run (observed as a ~2 minute hang with no console output).
             name: "core-4",
             testDir: "./e2e/core",
-            testMatch: ["**/slr*.spec.ts"],
+            testMatch: ["**/slr-[a-p]*.spec.ts"],
+        },
+        {
+            // Core tests 4b: slr q-z (see core-4 above)
+            name: "core-4b",
+            testDir: "./e2e/core",
+            testMatch: ["**/slr-[q-z]*.spec.ts"],
         },
         {
             // Core tests 5: n, o, p

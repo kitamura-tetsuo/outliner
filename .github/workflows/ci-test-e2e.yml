@@ -86,7 +86,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [basic, core-1, core-2, core-3, core-4, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables, schedule]
+        project: [basic, core-1, core-2, core-3, core-4, core-4b, core-5, core-6, core-7, core-8, new-1, new-2, new-3, new-4, new-5, auth, utils, server, yjs, tables, schedule]
 
     steps:
       - name: Checkout code
