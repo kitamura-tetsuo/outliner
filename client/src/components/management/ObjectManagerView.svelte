@@ -13,6 +13,8 @@ import { yjsStore } from "../../stores/yjsStore.svelte";
 import { isProvisionalProject } from "../../stores/store.svelte";
 import { store } from "../../stores/store.svelte";
 import ObjectSetDuplicationDialog from "./ObjectSetDuplicationDialog.svelte";
+import ObjectPlacementDialog from "./ObjectPlacementDialog.svelte";
+import { writeObjectPlacementDrag, type PlaceableObjectType } from "../../services/objectManager/objectPlacement";
 import {
     applyRename,
     computePreselection,
@@ -58,6 +60,7 @@ let confirmOpen = $state(false);
 let bulkDeleteTargets = $state<NamedObject[]>([]);
 let duplicateTargets = $state<NamedObject[]>([]);
 let preselectionApplied = $state<string | null>(null);
+let placementTarget = $state<NamedObject | null>(null);
 
 // Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
 // delete) require write access; browsing and following placement links do
@@ -540,7 +543,16 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
         </thead>
         <tbody>
             {#each filteredObjects as object (object.id)}
-                <tr class:selected={selectedObjectIds.has(object.id)} data-testid={`object-row-${object.id}`}>
+                <tr
+                    class:selected={selectedObjectIds.has(object.id)}
+                    draggable={hasWriteAccess && (object.type === "Grid" || object.type === "Calendar")}
+                    ondragstart={(event) => {
+                        if (object.type === "Grid" || object.type === "Calendar") {
+                            writeObjectPlacementDrag(event, object.type.toLowerCase() as PlaceableObjectType, object.id);
+                        }
+                    }}
+                    data-testid={`object-row-${object.id}`}
+                >
                     <td class="checkbox-col">
                         <input
                             type="checkbox"
@@ -610,7 +622,17 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
                             </div>
                         {/if}
                     </td>
-                    <td>
+                    <td class="row-actions">
+                        {#if object.type === "Grid" || object.type === "Calendar"}
+                            <button
+                                type="button"
+                                class="btn-small"
+                                disabled={!hasWriteAccess}
+                                title={hasWriteAccess ? "Place this existing object on a Page" : "Read-only access"}
+                                onclick={() => { placementTarget = object; }}
+                                data-testid={`object-place-${object.id}`}
+                            >Place on Page…</button>
+                        {/if}
                         <button
                             type="button"
                             class="btn-small btn-delete"
@@ -639,6 +661,16 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
         </tbody>
     </table>
 </div>
+
+{#if placementTarget && project && (placementTarget.type === "Grid" || placementTarget.type === "Calendar")}
+    <ObjectPlacementDialog
+        {project}
+        objectType={placementTarget.type.toLowerCase() as PlaceableObjectType}
+        objectId={placementTarget.id}
+        objectName={placementTarget.name}
+        onclose={() => { placementTarget = null; }}
+    />
+{/if}
 
 {#if duplicateTargets.length > 0 && project}
     <ObjectSetDuplicationDialog
@@ -962,6 +994,10 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
         font-size: 0.75rem;
         margin-top: 0.25rem;
     }
+
+    .row-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+    tr[draggable="true"] { cursor: grab; }
 
     .placements-col {
         max-width: 260px;
