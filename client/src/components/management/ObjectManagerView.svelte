@@ -193,7 +193,7 @@ function commitEdit() {
 }
 
 function applyBulkRename() {
-    if (!project || !project.ydoc || !hasWriteAccess || bulkPreview.length === 0) return;
+    if (!project || !project.ydoc || !hasWriteAccess || bulkPreview.length === 0 || bulkPreviewErrors.size > 0) return;
 
     // Atomically apply changes using Y.Doc transact
     project.ydoc.transact(() => {
@@ -281,6 +281,8 @@ function requestBulkDelete() {
 }
 
 function bulkDeleteMessage(): string {
+    // Local calculation for a synchronous confirmation message; it is not UI state.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const counts = new Map<string, number>();
     let placements = 0;
     for (const object of bulkDeleteTargets) {
@@ -458,7 +460,7 @@ function executeBulkDelete() {
                         type="button"
                         class="btn-primary"
                         onclick={applyBulkRename}
-                        disabled={!hasWriteAccess}
+                        disabled={!hasWriteAccess || bulkPreviewErrors.size > 0}
                         data-testid="object-manager-bulk-preview-apply"
                     >
                         Apply Rename

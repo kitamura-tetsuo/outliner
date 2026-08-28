@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { Project } from "../../../../shared/src/app-schema";
 import { createScheduleRule, scheduleTableReferences } from "../schedule/scheduleRuleService";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { createGrid, listGrids } from "./gridDocs";
-import { getTableDependencies, removeTableWithPolicy } from "./tableDependencies";
+import { getTableDependencies, removeTableWithPolicy, removeTableWithPolicyUndoable } from "./tableDependencies";
 import { createTable, getTableRegistry } from "./tableDocs";
 
 describe("tableDependencies", () => {
@@ -82,6 +83,25 @@ describe("tableDependencies", () => {
         expect(nodeValue!.get("componentType")).toBeUndefined();
         expect(nodeValue!.get("yjsGridId")).toBeUndefined();
         // The Grid definition has also been removed together with the Table.
+        expect(listGrids(project.ydoc)).toEqual([]);
+    });
+
+    it("restores a Table and its dependent Grid in one undo", () => {
+        globalUndoRouter.clear();
+        const project = Project.createInstance("Test");
+        const tableId = createTable(project.ydoc, "T", "t");
+        const gridId = createGrid(project.ydoc, tableId, { name: "G", query: "SELECT * FROM t" });
+
+        expect(removeTableWithPolicyUndoable(project, tableId)).toBe(true);
+        expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);
+        expect(listGrids(project.ydoc)).toEqual([]);
+
+        globalUndoRouter.undo();
+        expect(getTableRegistry(project.ydoc).has(tableId)).toBe(true);
+        expect(listGrids(project.ydoc).map(grid => grid.gridId)).toEqual([gridId]);
+
+        globalUndoRouter.redo();
+        expect(getTableRegistry(project.ydoc).has(tableId)).toBe(false);
         expect(listGrids(project.ydoc)).toEqual([]);
     });
 });

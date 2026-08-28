@@ -3,7 +3,11 @@ import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
-import { getTableDependencies, removeTableWithPolicy, type TableDependencies } from "../yjstable/tableDependencies";
+import {
+    getTableDependencies,
+    removeTableWithPolicyUndoable,
+    type TableDependencies,
+} from "../yjstable/tableDependencies";
 import { listTables, renameTable } from "../yjstable/tableDocs";
 import {
     buildObjectDependencyGraph,
@@ -223,7 +227,7 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
         case "Calendar":
             return removeCalendarWithPlacements(project, object.id);
         case "Table":
-            return removeTableWithPolicy(project, object.id, "remove-direct-references") !== undefined;
+            return removeTableWithPolicyUndoable(project, object.id);
         case "Schedule":
             return deleteScheduleRuleWithUndo(project, object.id);
     }
@@ -232,9 +236,8 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
 /** Delete an exact, pre-snapshotted target set as one undo-router operation. */
 export function deleteObjects(project: Project | null | undefined, objects: NamedObject[]): boolean {
     if (!project?.ydoc || objects.length === 0) return false;
-    // Table deletion cannot currently be restored by its authoritative policy.
-    // Validate before mutation rather than creating a misleading partial undo.
-    if (objects.some(object => object.type === "Table")) return false;
+    const liveIds = new Set(getObjects(project).map(object => object.id));
+    if (objects.some(object => !liveIds.has(object.id))) return false;
     return globalUndoRouter.captureManualGroup(`Delete ${objects.length} objects`, () => {
         for (const object of objects) {
             if (!deleteObject(project, object)) return false;

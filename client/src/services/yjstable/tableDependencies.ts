@@ -8,10 +8,13 @@
 
 import * as Y from "yjs";
 import { type Item, Project } from "../../../../shared/src/app-schema";
+import type { ScheduleRuleValueType } from "../../../../shared/src/types/yjs-types";
 import { findSchedulesReferencingTable } from "../schedule/scheduleRuleService";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { destroyGridUndoManager, findGridsBySourceTable, getGridHandles, getGridRegistry, listGrids } from "./gridDocs";
 import { parseIdentifiers } from "./queryAnalysis";
 import { destroyTableUndoManager, getTableRegistry, listTables } from "./tableDocs";
+import { tableDocGuid } from "./tableDocs";
 
 export interface TableDependencies {
     directGridReferences: {
@@ -228,4 +231,68 @@ export function removeTableWithPolicy(
         deletedScheduleCount,
         remainingIndirectWarnings: deps.indirectSqlReferences.length,
     };
+}
+
+function yMapFromJson(value: Record<string, unknown>): Y.Map<unknown> {
+    const map = new Y.Map<unknown>();
+    for (const [key, child] of Object.entries(value)) {
+        if (child && typeof child === "object" && !Array.isArray(child)) {
+            map.set(key, yMapFromJson(child as Record<string, unknown>));
+        } else map.set(key, child);
+    }
+    return map;
+}
+
+/** The authoritative Table delete policy wrapped in a complete manual undo entry. */
+export function removeTableWithPolicyUndoable(project: Project, tableId: string): boolean {
+    const registry = getTableRegistry(project.ydoc);
+    const entry = registry.get(tableId);
+    if (!entry) return false;
+    const doc = entry.get("doc");
+    if (!(doc instanceof Y.Doc)) return false;
+    const metadata = entry.toJSON() as Record<string, unknown>;
+    delete metadata.doc;
+    const tableState = Y.encodeStateAsUpdate(doc);
+    const deps = getTableDependencies(project, tableId);
+    const gridRegistry = getGridRegistry(project.ydoc);
+    const grids = new Map(deps.dependentGridIds.flatMap(id => {
+        const grid = gridRegistry.get(id);
+        return grid ? [[id, grid.toJSON() as Record<string, unknown>] as const] : [];
+    }));
+    const schedules = new Map(deps.scheduledTargets.flatMap(({ ruleId }) => {
+        const rule = project.schedules.get(ruleId);
+        return rule ? [[ruleId, rule.toJSON() as Record<string, unknown>] as const] : [];
+    }));
+
+    const applyDelete = () => {
+        removeTableWithPolicy(project, tableId, "remove-direct-references");
+    };
+    const applyRestore = () =>
+        project.ydoc.transact(() => {
+            const restoredDoc = new Y.Doc({ guid: tableDocGuid(project.ydoc.guid, tableId), autoLoad: true });
+            Y.applyUpdate(restoredDoc, tableState);
+            const restoredEntry = yMapFromJson(metadata);
+            restoredEntry.set("doc", restoredDoc);
+            registry.set(tableId, restoredEntry);
+            for (const [id, snapshot] of grids) gridRegistry.set(id, yMapFromJson(snapshot));
+            for (const [id, snapshot] of schedules) {
+                project.schedules.set(id, yMapFromJson(snapshot) as Y.Map<ScheduleRuleValueType>);
+            }
+            for (const ref of deps.directGridReferences) {
+                try {
+                    const node = project.tree.getNodeValueFromKey(ref.itemKey) as Y.Map<unknown> | undefined;
+                    if (node && ref.gridId) {
+                        node.set("componentType", "yjstable");
+                        node.set("yjsGridId", ref.gridId);
+                    }
+                } catch (_error) { /* The placement may have been removed later. */ }
+            }
+        });
+    globalUndoRouter.captureManual(applyDelete, {
+        type: "manual",
+        label: `Delete Table "${String(metadata.name ?? tableId)}"`,
+        undo: applyRestore,
+        redo: applyDelete,
+    });
+    return true;
 }
