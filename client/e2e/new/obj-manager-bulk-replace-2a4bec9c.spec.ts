@@ -80,6 +80,37 @@ test.describe("FTR-8ac92ce2: bulk literal Find/Replace is visible and previews b
         await expect(gridRow(page, "Test Beta")).toBeVisible();
         await expect(gridRow(page, "Demo Alpha")).toHaveCount(0);
         await expect(gridRow(page, "Demo Beta")).toHaveCount(0);
+
+        // Inputs should retain their values after execution
+        await expect(page.getByTestId("object-manager-bulk-find")).toHaveValue("Demo");
+        await expect(page.getByTestId("object-manager-bulk-replace")).toHaveValue("Test");
+
+        // Selecting another object allows the same replacement to be previewed/applied
+        // Note: the test creates items at the main outliner page, so we need to go back to create more items
+        // or just rely on what is already available.
+        // Instead of creating a new grid which navigates away and fails the row lookup,
+        // we can simply use the rename inputs to rename "Test Beta" back to something else, or
+        // rename "Test Alpha".
+
+        const testAlphaRow = gridRow(page, "Test Alpha");
+        await expect(testAlphaRow).toBeVisible({ timeout: 15000 });
+
+        await testAlphaRow.locator('td.checkbox-col input[type="checkbox"]').check();
+
+        // Change the search parameters to match the newly renamed item
+        await page.getByTestId("object-manager-bulk-find").fill("Test");
+        await page.getByTestId("object-manager-bulk-replace").fill("Final");
+
+        await page.getByTestId("object-manager-bulk-preview-open").click();
+        const preview2 = page.getByTestId("object-manager-bulk-preview");
+        await expect(preview2).toBeVisible();
+        await expect(preview2).toContainText("Test Alpha");
+        await expect(preview2).toContainText("Final Alpha");
+
+        await page.getByTestId("object-manager-bulk-preview-apply").click();
+
+        await expect(gridRow(page, "Final Alpha")).toBeVisible({ timeout: 10000 });
+        await expect(gridRow(page, "Test Alpha")).toHaveCount(0);
     });
 
     test("select-all reflects only the currently visible rows, not a hidden selection", async ({ page }, testInfo) => {

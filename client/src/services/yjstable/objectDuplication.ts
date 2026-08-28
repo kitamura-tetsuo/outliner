@@ -82,8 +82,13 @@ export function rollbackObjectDuplication(
 
 const key = objectGraphKey;
 
-function allocateCopyName(name: string, taken: Set<string>): string {
-    let candidate = `${name || "Untitled"} copy`;
+function allocateCopyName(name: string, taken: Set<string>, sameProject: boolean): string {
+    let candidate = name || "Untitled";
+    if (!sameProject && !taken.has(candidate)) {
+        taken.add(candidate);
+        return candidate;
+    }
+    candidate = `${candidate} copy`;
     let suffix = 2;
     while (taken.has(candidate)) candidate = `${name || "Untitled"} copy ${suffix++}`;
     taken.add(candidate);
@@ -243,7 +248,7 @@ export async function materializeDuplicationPlan(
                 sourceEntry.sqlName,
                 destinationSqlName,
             ).sql;
-            createTable(destination, allocateCopyName(sourceEntry.name, tableNames), destinationSqlName, {
+            createTable(destination, allocateCopyName(sourceEntry.name, tableNames, sameProject), destinationSqlName, {
                 tableId: destinationId,
             }, handles => {
                 handles.schemaText.insert(0, schema);
@@ -282,7 +287,7 @@ export async function materializeDuplicationPlan(
             if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
             createGrid(destination, targetTableId, {
                 gridId: destinationId,
-                name: allocateCopyName(sourceGrid.name, gridNames),
+                name: allocateCopyName(sourceGrid.name, gridNames, sameProject),
                 query: targetQuery,
                 columnOrder: getGridColumnOrder(handles),
                 components,
@@ -320,7 +325,7 @@ export async function materializeDuplicationPlan(
             const timezone = ruleMap.get("timezone");
             createScheduleRule(destinationProject, {
                 ruleId: destinationId,
-                name: allocateCopyName(sourceName, scheduleNames),
+                name: allocateCopyName(sourceName, scheduleNames, sameProject),
                 targetTableId,
                 sql: targetSql,
                 rrule: String(ruleMap.get("rrule") ?? ""),
@@ -356,7 +361,7 @@ export async function materializeDuplicationPlan(
             createCalendar(destinationProject, {
                 ...sourceSettings,
                 calendarId: destinationId,
-                name: allocateCopyName(sourceSettings.name, calendarNames),
+                name: allocateCopyName(sourceSettings.name, calendarNames, sameProject),
                 query: targetQuery,
             });
             createdCalendars.push(destinationId);

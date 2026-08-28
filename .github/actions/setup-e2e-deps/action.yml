@@ -5,8 +5,19 @@ description: >-
   firebase-tools CLI, OS packages, and the Playwright browser. Uses
   GitHub Actions caching keyed on the lockfiles / pinned versions so a cache
   hit (the common case) restores in seconds instead of paying container pull
-  + `cp -r node_modules` costs. Called once from prepare-e2e-runtime (which
-  populates the caches) and once per matrix shard (which restores them).
+  + `cp -r node_modules` costs. Called independently by every E2E matrix
+  shard; the first shard to reach each `actions/cache` step on a miss
+  populates it, later shards on the same run reuse whatever finished first.
+
+inputs:
+  cache-key-suffix:
+    description: >-
+      Appended to every cache key used by this action. Used to force a
+      cache miss (a "cold" run) for A/B experiments without disturbing the
+      persistent cache namespace that normal runs rely on. Leave empty for
+      normal use.
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -43,7 +54,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.npm-global
-        key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools
+        key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools${{ inputs.cache-key-suffix }}
 
     - name: Install global npm tools
       if: steps.cache-global-tools.outputs.cache-hit != 'true'
@@ -59,7 +70,7 @@ runs:
           client/node_modules
           server/node_modules
           functions/node_modules
-        key: e2e-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json', 'client/package-lock.json', 'server/package-lock.json', 'functions/package-lock.json') }}
+        key: e2e-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json', 'client/package-lock.json', 'server/package-lock.json', 'functions/package-lock.json') }}${{ inputs.cache-key-suffix }}
 
     - name: Install npm dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -96,7 +107,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}
+        key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}${{ inputs.cache-key-suffix }}
 
     - name: Install OS packages and Playwright browser
       shell: bash

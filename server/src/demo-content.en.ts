@@ -354,7 +354,9 @@ export function demoContentEn(): DemoLocaleContent {
                             + 'that reads it. "Duplicate selected" then copies exactly that checked set — never a '
                             + "recomputed scope — into this or another project, with the same undo/redo as the rest "
                             + "of the toolbar; an individual Grid/Table/Schedule/Calendar page's own Duplicate button "
-                            + "opens Object Manager with it preselected instead of asking for a scope itself.",
+                            + "opens Object Manager with it preselected instead of asking for a scope itself. Use "
+                            + '"Place on Page…" or drag a Grid/Calendar row onto a sidebar Page to add another '
+                            + "placement of that existing object without duplicating its definition.",
                     },
                 ],
             },

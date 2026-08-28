@@ -142,6 +142,46 @@ describe("dependency-aware Grid/Table duplication", () => {
     });
 });
 
+describe("cross-project duplication naming rules", () => {
+    it("preserves object name on cross-project duplication", async () => {
+        const source = new Y.Doc();
+        const tableId = table(source, "Tasks", "tasks");
+
+        const destination = new Y.Doc();
+        await duplicateObjects(source, destination, { type: "table", id: tableId }, "item-only");
+
+        const tables = listTables(destination);
+        expect(tables).toHaveLength(1);
+        expect(tables[0].name).toBe("Tasks");
+    });
+
+    it("falls back to copy-style collision handling on cross-project duplication if name exists", async () => {
+        const source = new Y.Doc();
+        const tableId = table(source, "Tasks", "tasks");
+
+        const destination = new Y.Doc();
+        table(destination, "Tasks", "tasks_dest");
+
+        await duplicateObjects(source, destination, { type: "table", id: tableId }, "item-only");
+
+        const tables = listTables(destination);
+        expect(tables).toHaveLength(2);
+        // "Tasks" and "Tasks copy"
+        expect(tables.some(t => t.name === "Tasks copy")).toBe(true);
+    });
+
+    it("always appends 'copy' on same-project duplication", async () => {
+        const doc = new Y.Doc();
+        const tableId = table(doc, "Tasks", "tasks");
+
+        await duplicateObjects(doc, doc, { type: "table", id: tableId }, "item-only");
+
+        const tables = listTables(doc);
+        expect(tables).toHaveLength(2);
+        expect(tables.some(t => t.name === "Tasks copy")).toBe(true);
+    });
+});
+
 describe("dependency-aware Schedule duplication", () => {
     it("collects a Schedule's write-target and SQL-referenced Tables recursively", async () => {
         const doc = new Y.Doc();
