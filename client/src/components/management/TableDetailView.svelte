@@ -5,7 +5,6 @@
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
     import { store } from "../../stores/store.svelte";
-    import { yjsStore } from "../../stores/yjsStore.svelte";
     import Breadcrumb from "../Breadcrumb.svelte";
     import TableEntityView from "../yjstable/TableEntityView.svelte";
     import TableGridReferences from "../yjstable/TableGridReferences.svelte";
@@ -38,6 +37,7 @@
     let resolvedTableId: string | undefined = $state(undefined);
     let tableSqlName: string | undefined = $state(undefined);
     let tableProjectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
+    let tableProjectId: string | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
 
@@ -163,6 +163,12 @@
             // Held explicitly: the engine session needs the registry doc for
             // name lookups and conflict checks.
             tableProjectDoc = store.project.ydoc;
+            // Use the id returned by the project acquisition that supplied
+            // this document. Reading the global client during render can race
+            // a cold standalone-route initialization and would make the Table
+            // engine treat the subdoc as local-only, leaving persisted schema
+            // and rows in their remote table room unloaded.
+            tableProjectId = projectHandle.projectId;
         } catch (err) {
             if (err instanceof DemoInitAborted) return;
             logger.error({ error: err }, "Failed to load table page:");
@@ -310,7 +316,7 @@
                         <TableEntityView
                             handles={tableHandles}
                             projectDoc={tableProjectDoc}
-                            projectId={yjsStore.currentProjectId ?? undefined}
+                            projectId={tableProjectId}
                         />
                     {/if}
                 {/key}
