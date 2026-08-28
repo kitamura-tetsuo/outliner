@@ -230,8 +230,6 @@ function applyBulkRename() {
         }
     });
 
-    bulkFindText = "";
-    bulkReplaceText = "";
     previewOpen = false;
 }
 
