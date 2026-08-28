@@ -13,6 +13,7 @@ acceptance:
 - 'Duplicate selected is one undo-router step: Undo removes every object (and any destination-Page placement) the operation created, and Redo recreates them with the same ids.'
 - Duplicate selected never expands the selection through the dependency graph and never shows the old referenced/referencing/connected scope chooser.
 - The Table rows/data option applies to every selected Table; the destination-Page option appears only for a single-Grid, same-project selection.
+- Cross-project Table data copies connect every new subdoc with the destination project identity and wait for synchronization before success; failures dispose temporary connections and roll back the complete duplicated set, and definition-only copies remain empty.
 - The preview reflects the exact explicit selection (never a recomputed scope) with an object-count/type breakdown and destination project.
 tests:
 - client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts

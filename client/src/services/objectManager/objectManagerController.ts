@@ -386,7 +386,10 @@ export async function duplicateSelectedObjects(
                         sourceDoc,
                         destinationDoc,
                         created.sourceObjects,
-                        { copyTableData: options.copyTableData },
+                        {
+                            copyTableData: options.copyTableData,
+                            synchronizeTableSubdocs: options.synchronizeTableSubdocs,
+                        },
                         created.idMap,
                     );
                     sideEffect?.redo();
