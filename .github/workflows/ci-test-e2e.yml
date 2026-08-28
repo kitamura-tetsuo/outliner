@@ -3,44 +3,38 @@ name: Test E2E
 on:
   workflow_call:
   workflow_dispatch:
+    inputs:
+      cache_bust:
+        description: >-
+          Appended to the E2E dependency/tool/Playwright cache keys. Set to
+          a throwaway value (e.g. a run number) to force a cold-cache run
+          for A/B experiments without disturbing the persistent cache
+          namespace normal runs rely on. Leave empty for a normal run.
+        required: false
+        default: ''
 
 concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Direct ubuntu-latest architecture (issue #5166): no job-level container.
-  # A job-level `container:` pays ~100s to pull/start a large Docker image on
-  # every one of the 20 E2E shards before anything else can run, then another
-  # ~80s copying node_modules trees out of it. This job instead builds the
-  # server once and shares it as an artifact tied to the exact commit under
-  # test; matrix shards restore dependencies from GitHub Actions cache
-  # (populated here on a cache miss) which is materially cheaper than a
-  # container pull + `cp -r`.
-  prepare-e2e-runtime:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Setup E2E dependencies
-        uses: ./.github/actions/setup-e2e-deps
-
-      - name: Build server
-        run: |
-          cd server
-          npm run build
-          test -s dist/server/src/index.js
-
-      - name: Upload server build artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: e2e-server-dist
-          path: server/dist
-          retention-days: 1
-
+  # No serialized prepare job (issue #5169): each shard restores its own
+  # dependency / Playwright / global-tool caches and builds server/dist
+  # locally, instead of waiting on a single upstream job. Real GitHub
+  # Actions A/B measurements (see the PR description for #5169) showed
+  # this wins on total wall-clock in both the common warm-cache case
+  # (~6m38s vs ~10m3s, first Playwright start ~1m15s vs ~3m9s) and a
+  # forced cold-cache case (~9m41s vs ~11m2s), with no shard failures
+  # from the 20-way concurrent cache-miss "stampede". The one real
+  # trade-off: cold-cache aggregate runner-minutes are higher (~98 vs
+  # ~70 job-minutes) because every shard repeats `npm ci` / the
+  # Playwright install independently instead of once; this only bites
+  # on a lockfile change (rare) and wall-clock latency is what matters
+  # for shipping PRs faster, so it's accepted. `actions/cache` restores
+  # are safe to run concurrently across shards: on a cache miss,
+  # whichever shard finishes first just gets to populate the cache for
+  # later runs; there is no shared mutable state between shards.
   e2e-test:
-    needs: [prepare-e2e-runtime]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -60,12 +54,14 @@ jobs:
 
       - name: Setup E2E dependencies
         uses: ./.github/actions/setup-e2e-deps
-
-      - name: Download server build artifact
-        uses: actions/download-artifact@v6
         with:
-          name: e2e-server-dist
-          path: server/dist
+          cache-key-suffix: ${{ github.event.inputs.cache_bust && format('-{0}', github.event.inputs.cache_bust) || '' }}
+
+      - name: Build server
+        run: |
+          cd server
+          npm run build
+          test -s dist/server/src/index.js
 
       - name: Run E2E-specific startup (services + readiness)
         shell: bash
