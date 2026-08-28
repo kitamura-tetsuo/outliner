@@ -43,7 +43,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.npm-global
-        key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools
+        key: e2e-global-tools-${{ runner.os }}-v1-firebase-tools-issue5169-cbust1
 
     - name: Install global npm tools
       if: steps.cache-global-tools.outputs.cache-hit != 'true'
@@ -59,7 +59,7 @@ runs:
           client/node_modules
           server/node_modules
           functions/node_modules
-        key: e2e-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json', 'client/package-lock.json', 'server/package-lock.json', 'functions/package-lock.json') }}
+        key: e2e-node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json', 'client/package-lock.json', 'server/package-lock.json', 'functions/package-lock.json') }}-issue5169-cbust1
 
     - name: Install npm dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -96,7 +96,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
-        key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}
+        key: e2e-playwright-${{ runner.os }}-${{ hashFiles('client/package-lock.json') }}-issue5169-cbust1
 
     - name: Install OS packages and Playwright browser
       shell: bash
