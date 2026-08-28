@@ -351,7 +351,10 @@ export function demoContentEn(): DemoLocaleContent {
                             + 'undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the '
                             + "same dependency graph duplication uses — Dependencies, Dependents, or All connected — "
                             + "so selecting one Table and choosing Dependents adds every Grid, Schedule and Calendar "
-                            + "that reads it.",
+                            + 'that reads it. "Duplicate selected" then copies exactly that checked set — never a '
+                            + "recomputed scope — into this or another project, with the same undo/redo as the rest "
+                            + "of the toolbar; an individual Grid/Table/Schedule/Calendar page's own Duplicate button "
+                            + "opens Object Manager with it preselected instead of asking for a scope itself.",
                     },
                 ],
             },

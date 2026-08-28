@@ -19,7 +19,7 @@
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import ObjectDuplicationDialog from "../yjstable/ObjectDuplicationDialog.svelte";
+    import { projectObjectsPath } from "../../lib/managementPaths";
 
     const logger = getLogger("ProjectScheduleEditPage");
 
@@ -44,7 +44,6 @@
     let ruleLoaded = $state(false);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
-    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -167,6 +166,14 @@
         goto(resolvePath(projectBasePath(projectName)));
     }
 
+    // Duplicate now opens Object Manager with this Schedule preselected
+    // instead of the old per-object recursive dependency-scope chooser
+    // (issue #5153 §10): the user can duplicate it alone from there, or
+    // expand the set first via `Select related`.
+    function openDuplicate() {
+        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(ruleId)}`));
+    }
+
     function saveRule(ruleData: Partial<ScheduleRule> & { sql: string; rrule: string; targetTableId: string }) {
         if (!store.project) return;
 
@@ -238,7 +245,7 @@
                 {#if hasWriteAccess}
                     <button
                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-                        onclick={() => { showDuplicationDialog = true; }}
+                        onclick={openDuplicate}
                         data-testid="duplicate-schedule"
                     >
                         Duplicate Schedule
@@ -329,12 +336,3 @@
         </div>
     {/if}
 </main>
-
-{#if showDuplicationDialog && store.project?.ydoc}
-    <ObjectDuplicationDialog
-        sourceDoc={store.project.ydoc}
-        sourceProject={projectName}
-        object={{ type: "schedule", id: ruleId }}
-        onclose={() => { showDuplicationDialog = false; }}
-    />
-{/if}

@@ -17,8 +17,7 @@
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import { projectTablesPath } from "../../lib/managementPaths";
-    import ObjectDuplicationDialog from "../yjstable/ObjectDuplicationDialog.svelte";
+    import { projectObjectsPath, projectTablesPath } from "../../lib/managementPaths";
 
     const logger = getLogger("TableStandalonePage");
 
@@ -46,7 +45,6 @@
     let dependencies = $state<TableDependencies | undefined>(undefined);
     let deleteActionError = $state<string | undefined>(undefined);
     let isDeleting = $state(false);
-    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -54,6 +52,15 @@
     let isPublicDemo = $derived(isPublicProject(projectName));
     let hasWriteAccess = $derived(isAuthenticated || isPublicDemo);
     let canAccess = $derived(isAuthenticated || isPublicDemo);
+
+    // Duplicate now opens Object Manager with this Table preselected instead
+    // of the old per-object recursive dependency-scope chooser (issue #5153
+    // §10): the user can duplicate it alone from there, or expand the set
+    // first via `Select related`.
+    function openDuplicate() {
+        if (!resolvedTableId) return;
+        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(resolvedTableId)}`));
+    }
 
     function startDelete() {
         // The resolved id, not the route parameter: a Table URL may carry the
@@ -208,7 +215,8 @@
             <div class="ml-auto flex gap-2">
                 <button
                     class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-medium"
-                    onclick={() => { showDuplicationDialog = true; }}
+                    onclick={openDuplicate}
+                    data-testid="table-duplicate-button"
                 >Duplicate Table</button>
                 <button
                     class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 text-sm font-medium"
@@ -447,13 +455,4 @@
             </div>
         </div>
     </div>
-{/if}
-
-{#if showDuplicationDialog && tableProjectDoc && resolvedTableId}
-    <ObjectDuplicationDialog
-        sourceDoc={tableProjectDoc}
-        sourceProject={projectName}
-        object={{ type: "table", id: resolvedTableId }}
-        onclose={() => { showDuplicationDialog = false; }}
-    />
 {/if}

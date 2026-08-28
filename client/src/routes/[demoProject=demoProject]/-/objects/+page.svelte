@@ -4,8 +4,9 @@ import DemoProjectGate from "../../../../components/management/DemoProjectGate.s
 import ObjectManagerView from "../../../../components/management/ObjectManagerView.svelte";
 
 let projectName = $derived($page.params.demoProject ?? "");
+let preselectedIds = $derived(($page.url.searchParams.get("selected") ?? "").split(",").filter(Boolean));
 </script>
 
 <DemoProjectGate {projectName}>
-    <ObjectManagerView {projectName} />
+    <ObjectManagerView {projectName} {preselectedIds} />
 </DemoProjectGate>

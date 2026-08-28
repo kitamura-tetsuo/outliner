@@ -98,8 +98,19 @@ export class UndoRouter {
         (event: { undoStackCleared: boolean; redoStackCleared: boolean; }) => void
     >();
 
-    /** True while the router itself drives a scope, so its events are ignored. */
-    private routing = false;
+    /**
+     * >0 while the router itself drives a scope, so its events are ignored.
+     * A depth counter, not a boolean: `run()`'s own window and a
+     * `ManualUndoEntry`'s async `redo`/`undo` (via `runAsyncWithoutAutoCapture`)
+     * can overlap without nesting cleanly in time — `run()`'s synchronous body
+     * (and its own routing window) finishes and closes *before* an async
+     * entry's remaining awaited work does, even though that work logically
+     * started inside it. A plain boolean's "restore to the previous value"
+     * would have `run()`'s own `finally` clobber the flag back to `false`
+     * mid-flight; counting means each caller's own decrement only ever
+     * cancels its own increment.
+     */
+    private routingDepth = 0;
 
     public register(um: Y.UndoManager): void {
         if (this.registered.has(um)) return;
@@ -108,7 +119,7 @@ export class UndoRouter {
         const onAdded = (event: { type: "undo" | "redo"; }) => {
             // Events raised by our own undo()/redo() are already accounted for
             // by those methods.
-            if (this.routing) return;
+            if (this.routingDepth > 0) return;
 
             if (event.type === "undo") {
                 // A new operation. Yjs merges consecutive operations of the same
@@ -286,6 +297,63 @@ export class UndoRouter {
         this.redoStack = [];
     }
 
+    /**
+     * Async counterpart to `runWithoutAutoCapture`: `fn` performs one or more
+     * Yjs transactions across an awaited operation (e.g. duplication that
+     * synchronizes remote Table subdocs before writing, issue #5153 §9), after
+     * which whatever every registered `Y.UndoManager` auto-captured during it
+     * is purged. Exposed (not just used by `captureManualAsync` below) so a
+     * `ManualUndoEntry`'s own `redo`/`undo` can repeat an async Yjs mutation —
+     * e.g. re-running duplication's materialization — without leaving a
+     * second, untracked entry behind: the router's own `run()` only wraps the
+     * synchronous *start* of such a call, not whatever it still awaits after
+     * returning.
+     */
+    public async runAsyncWithoutAutoCapture(fn: () => Promise<void>): Promise<void> {
+        for (const um of this.registered) um.stopCapturing();
+        // Local bookkeeping for this one call, not component state.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const before = new Map<Y.UndoManager, { undo: number; redo: number; }>();
+        for (const um of this.registered) before.set(um, { undo: um.undoStack.length, redo: um.redoStack.length });
+        // `register()`'s own `stack-item-added` listener pushes straight onto
+        // `this.undoStack`/`this.redoStack` unless `routingDepth` is held
+        // above zero — see that field's own comment for why this increments
+        // rather than saves/restores a boolean: a caller driving this from
+        // inside a `ManualUndoEntry`'s `redo`/`undo` is invoked by `run()`
+        // while `run()`'s own window is open, but `run()`'s synchronous body
+        // (and that window) finishes and its own decrement fires *before*
+        // this call's remaining `await`s resolve.
+        this.routingDepth++;
+
+        // `finally`, not a plain trailing block: a caller that rolls back its
+        // own partial work and rethrows (e.g. a materialization failure) must
+        // still have every manager's auto-captured item purged, or that
+        // rollback's own transactions leave stray entries behind.
+        try {
+            await fn();
+        } finally {
+            this.routingDepth--;
+            for (const um of this.registered) um.stopCapturing();
+            for (const [um, lengths] of before) {
+                if (um.undoStack.length > lengths.undo) um.undoStack.length = lengths.undo;
+                if (um.redoStack.length > lengths.redo) um.redoStack.length = lengths.redo;
+            }
+        }
+    }
+
+    /**
+     * Async counterpart to `captureManual`: `mutate` performs one or more Yjs
+     * transactions across an awaited operation, after which whatever every
+     * registered `Y.UndoManager` (and the router's own stacks) auto-captured
+     * during it is purged (via `runAsyncWithoutAutoCapture`) and replaced by
+     * exactly one `entry` this caller fully controls.
+     */
+    public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
+        await this.runAsyncWithoutAutoCapture(mutate);
+        this.undoStack.push(entry);
+        this.redoStack = [];
+    }
+
     /** Combine several already-safe manual operations into one user-visible step. */
     public captureManualGroup(label: string, transact: () => boolean): boolean {
         const start = this.undoStack.length;
@@ -345,7 +413,7 @@ export class UndoRouter {
         apply: (um: Y.UndoManager) => unknown,
         isUndo: boolean,
     ): void {
-        this.routing = true;
+        this.routingDepth++;
         try {
             while (from.length > 0) {
                 const entry = from.pop();
@@ -405,7 +473,7 @@ export class UndoRouter {
                 }
             }
         } finally {
-            this.routing = false;
+            this.routingDepth--;
         }
     }
 }

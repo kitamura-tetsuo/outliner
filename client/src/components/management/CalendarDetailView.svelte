@@ -1,6 +1,7 @@
 <script lang="ts">
     import Loader from "../Loader.svelte";
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
@@ -11,11 +12,10 @@
     import CalendarView from "../calendar/CalendarView.svelte";
     import { listCalendars } from "../../services/calendar/calendarService";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectCalendarsPath } from "../../lib/managementPaths";
+    import { projectCalendarsPath, projectObjectsPath } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
     import { Project } from "$shared/app-schema";
-    import ObjectDuplicationDialog from "../yjstable/ObjectDuplicationDialog.svelte";
 
     const logger = getLogger("CalendarStandalonePage");
 
@@ -43,7 +43,6 @@
     let calendarDisplayName: string | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
-    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors. Deriving the gate
     // instead of folding the demo case into `isAuthenticated` keeps the auth
@@ -61,6 +60,15 @@
 
     function handleAuthLogout() {
         isAuthenticated = false;
+    }
+
+    // Duplicate now opens Object Manager with this Calendar preselected
+    // instead of the old per-object recursive dependency-scope chooser
+    // (issue #5153 §10): the user can duplicate it alone from there, or
+    // expand the set first via `Select related`.
+    function openDuplicate() {
+        if (!calendarId) return;
+        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(calendarId)}`));
     }
 
     async function loadCalendar() {
@@ -152,7 +160,7 @@
         {#if hasWriteAccess && !isLoading && calendarId && calendarProject}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                onclick={() => { showDuplicationDialog = true; }}
+                onclick={openDuplicate}
                 data-testid="calendar-duplicate-button"
             >Duplicate Calendar</button>
         {/if}
@@ -239,12 +247,3 @@
         </div>
     {/if}
 </main>
-
-{#if showDuplicationDialog && calendarId && calendarProject}
-    <ObjectDuplicationDialog
-        sourceDoc={calendarProject.ydoc}
-        sourceProject={projectName}
-        object={{ type: "calendar", id: calendarId }}
-        onclose={() => { showDuplicationDialog = false; }}
-    />
-{/if}

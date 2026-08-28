@@ -12,8 +12,10 @@ import Loader from "../Loader.svelte";
 import { yjsStore } from "../../stores/yjsStore.svelte";
 import { isProvisionalProject } from "../../stores/store.svelte";
 import { store } from "../../stores/store.svelte";
+import ObjectSetDuplicationDialog from "./ObjectSetDuplicationDialog.svelte";
 import {
     applyRename,
+    computePreselection,
     countHiddenSelected,
     deleteObject,
     deleteObjects,
@@ -30,12 +32,15 @@ import {
     type NamedObject,
     type RelatedSelectionScope,
 } from "../../services/objectManager/objectManagerController";
+import type { DuplicationSetResult } from "../../services/yjstable/objectDuplication";
 
 interface Props {
     projectName: string;
+    /** Object ids to preselect on load, e.g. from `?selected=` (issue #5153 §11). */
+    preselectedIds?: string[];
 }
 
-let { projectName }: Props = $props();
+let { projectName, preselectedIds }: Props = $props();
 
 let searchQuery = $state("");
 let selectedTypes = new SvelteSet<string>(OBJECT_TYPES);
@@ -51,6 +56,8 @@ let editInputEl = $state<HTMLInputElement | undefined>(undefined);
 let deleteTarget = $state<NamedObject | null>(null);
 let confirmOpen = $state(false);
 let bulkDeleteTargets = $state<NamedObject[]>([]);
+let duplicateTargets = $state<NamedObject[]>([]);
+let preselectionApplied = $state<string | null>(null);
 
 // Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
 // delete) require write access; browsing and following placement links do
@@ -115,6 +122,27 @@ let objects: NamedObject[] = $derived.by(() => {
 
 let filteredObjects = $derived.by(() => {
     return filterObjects(objects, selectedTypes, searchQuery);
+});
+
+// Once per distinct (project, preselected ids) request, not a true one-shot:
+// a cross-project Duplicate reuses this same mounted component for the
+// destination project's `?selected=` (SvelteKit does not remount on a
+// params-only route change), so keying only on "has this ever run" would
+// leave the destination's copies unselected. `objects` only becomes non-empty
+// once the project has synced, and there is no other reactive path to react
+// to that async load (AGENTS.md §8 allows `$effect` when nothing else
+// works). Widens the type filter so a preselected object's type is never
+// hidden, and clears an incompatible search query rather than leaving the
+// source silently unfindable (#5153 §11).
+$effect(() => {
+    if (!preselectedIds?.length || objects.length === 0) return;
+    const requestKey = `${projectName}:${preselectedIds.join(",")}`;
+    if (preselectionApplied === requestKey) return;
+    preselectionApplied = requestKey;
+    const { ids, types } = computePreselection(objects, preselectedIds);
+    for (const id of ids) selectedObjectIds.add(id);
+    for (const type of types) selectedTypes.add(type);
+    if (ids.some(id => !filterObjects(objects, selectedTypes, searchQuery).some(o => o.id === id))) searchQuery = "";
 });
 
 // Selection can include objects hidden by the current filter (selected
@@ -299,6 +327,22 @@ function executeBulkDelete() {
     for (const target of bulkDeleteTargets) selectedObjectIds.delete(target.id);
     bulkDeleteTargets = [];
 }
+
+// Snapshot at open time, exactly like `requestBulkDelete`: the dialog's own
+// selection is the complete current selection, including objects hidden by
+// the active filter (issue #5153 §7) — never just the visible rows.
+function requestDuplicate() {
+    if (selectedObjectIds.size === 0) return;
+    duplicateTargets = objects.filter(object => selectedObjectIds.has(object.id));
+}
+
+function handleDuplicated(result: DuplicationSetResult, destinationProject: string) {
+    if (destinationProject !== projectName) return;
+    // Same-project duplication: show the user what they just created instead
+    // of leaving the pre-duplication selection checked.
+    selectedObjectIds.clear();
+    for (const object of result.createdObjects) selectedObjectIds.add(object.id);
+}
 </script>
 
 <svelte:head>
@@ -414,6 +458,13 @@ function executeBulkDelete() {
             >
                 Apply Rename
             </button>
+            <button
+                type="button"
+                class="btn-small"
+                disabled={!hasWriteAccess || selectedObjectIds.size === 0}
+                onclick={requestDuplicate}
+                data-testid="object-manager-duplicate-selected"
+            >Duplicate selected ({selectedObjectIds.size})</button>
             <button
                 type="button"
                 class="btn-small btn-delete"
@@ -588,6 +639,17 @@ function executeBulkDelete() {
         </tbody>
     </table>
 </div>
+
+{#if duplicateTargets.length > 0 && project}
+    <ObjectSetDuplicationDialog
+        {project}
+        sourceProject={projectName}
+        selected={duplicateTargets}
+        {hiddenSelectedCount}
+        onDuplicated={handleDuplicated}
+        onclose={() => { duplicateTargets = []; }}
+    />
+{/if}
 
 <ConfirmDialog
     bind:isOpen={confirmOpen}

@@ -5,6 +5,8 @@
     import { userManager } from "../../auth/UserManager";
     import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
     import { getYjsClientByProjectTitle } from "../../services";
+    import { store } from "../../stores/store.svelte";
+    import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolvePath } from "../../utils/pathUtils";
     import { projectCalendarPath, projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
     import {
@@ -58,14 +60,21 @@
         if (!destinationTitle) return;
         isDuplicating = true;
         actionError = undefined;
+        // Captured before any `store.project` reassignment below: when a
+        // caller (e.g. Sidebar.svelte) binds `sourceDoc={store.project.ydoc}`
+        // reactively, publishing a different project there mid-function would
+        // otherwise silently swap this prop's value out from under the rest
+        // of this call.
+        const capturedSourceDoc = sourceDoc;
         try {
-            let destinationDoc = sourceDoc;
+            let destinationDoc = capturedSourceDoc;
+            let destinationClient: Awaited<ReturnType<typeof getYjsClientByProjectTitle>> | undefined;
             if (destinationTitle !== sourceProject) {
-                const client = await getYjsClientByProjectTitle(destinationTitle);
-                if (!client) throw new Error(`Project "${destinationTitle}" could not be opened.`);
-                destinationDoc = client.project.ydoc;
+                destinationClient = await getYjsClientByProjectTitle(destinationTitle);
+                if (!destinationClient) throw new Error(`Project "${destinationTitle}" could not be opened.`);
+                destinationDoc = destinationClient.project.ydoc;
             }
-            const result = await duplicateObjects(sourceDoc, destinationDoc, object, scope, {
+            const result = await duplicateObjects(capturedSourceDoc, destinationDoc, object, scope, {
                 copyTableData,
                 synchronizeTableSubdocs: true,
             });
@@ -81,6 +90,19 @@
                     rollbackObjectDuplication(destinationDoc, result);
                     throw error;
                 }
+            }
+            if (destinationClient) {
+                // Publish only now that duplication actually succeeded: the
+                // `[project]` layout only loads a project when no client is
+                // registered yet (see AuthenticatedHome.svelte's project
+                // switch), so the destination's client/project must be
+                // published before the `goto` below or that route would keep
+                // rendering the source project's data under the new URL —
+                // but publishing any earlier would leave the app pointed at
+                // the destination while the address bar (and a failure path)
+                // still said source.
+                yjsStore.yjsClient = destinationClient as unknown as NonNullable<typeof yjsStore.yjsClient>;
+                store.project = destinationClient.project as unknown as NonNullable<typeof store.project>;
             }
             const destinationPath = object.type === "grid"
                 ? projectGridPath(destinationTitle, result.primaryId)

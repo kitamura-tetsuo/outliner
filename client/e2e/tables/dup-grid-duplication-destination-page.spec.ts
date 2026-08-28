@@ -42,12 +42,19 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
 
         await expect(page.getByRole("button", { name: "Duplicate Grid" })).toBeVisible({ timeout: 15000 });
 
+        // Duplicate now opens Object Manager with this Grid preselected (#5153 §10).
         await page.getByRole("button", { name: "Duplicate Grid" }).click();
+        await expect(page).toHaveURL(/\/objects\?selected=/, { timeout: 15000 });
+        const gridRow = page.locator(`[data-testid="object-row-${gridId}"]`);
+        await expect(gridRow).toBeVisible({ timeout: 15000 });
+        await expect(gridRow.locator('td.checkbox-col input[type="checkbox"]')).toBeChecked();
 
-        const dialog = page.getByTestId("object-duplication-dialog");
+        await page.getByTestId("object-manager-duplicate-selected").click();
+        const dialog = page.getByTestId("object-manager-duplicate-dialog");
         await expect(dialog).toBeVisible();
 
-        const destinationPageSelect = page.getByTestId("duplicate-destination-page");
+        // Exactly one Grid, same-project: a destination Page is offered.
+        const destinationPageSelect = page.getByTestId("object-manager-duplicate-destination-page");
         await expect(destinationPageSelect).toBeVisible();
 
         await expect(destinationPageSelect.locator("option")).toHaveCount(2, { timeout: 15000 });
@@ -57,9 +64,8 @@ test.describe("FTR-5090: Grid duplication to a destination Page", () => {
             select.dispatchEvent(new Event("change", { bubbles: true }));
         }, page1Id!);
 
-        await dialog.getByRole("button", { name: "Duplicate" }).click();
-
-        await expect(page).toHaveURL(new RegExp(`/${encodeURIComponent(projectName!)}/-/grids/[a-zA-Z0-9_-]+`));
+        await dialog.getByTestId("object-manager-duplicate-apply").click();
+        await expect(dialog).toBeHidden({ timeout: 15000 });
 
         await page.goto(`/${encodeURIComponent(projectName!)}/test-page-${projectName?.split(" ").pop()}`);
 

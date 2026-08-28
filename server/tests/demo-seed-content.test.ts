@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(63);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(64);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -191,6 +191,16 @@ describe("Demo seed content", () => {
                 + "spreadsheet receives the Grid's rows as cells, a document receives them as a table, and "
                 + "with the Chart view open the picture travels with the numbers.",
         );
+    });
+
+    it("seeds Object Manager guidance mentioning Duplicate selected (issue #5153)", () => {
+        const advanced = findChildByText(project.items, "Advanced Features");
+        expect(advanced).to.not.equal(undefined);
+
+        const guidance = childTexts(advanced!.items).find(text => text.startsWith("Object Manager:"));
+        expect(guidance).to.not.equal(undefined);
+        expect(guidance).to.include('"Duplicate selected"');
+        expect(guidance).to.include("preselected");
     });
 
     it("seeds the guidance for selecting across a block (#5024)", () => {
