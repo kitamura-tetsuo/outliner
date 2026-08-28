@@ -20,14 +20,20 @@ concurrency:
 jobs:
   # No serialized prepare job (issue #5169): each shard restores its own
   # dependency / Playwright / global-tool caches and builds server/dist
-  # locally, instead of waiting on a single upstream job. Measurements
-  # (see the PR description for #5169) showed the previous prepare job's
-  # actual server build was ~5s -- the artifact round-trip and the serial
-  # `needs` gate cost far more than they saved, on both warm and cold
-  # caches. `actions/cache` restores are safe to run concurrently across
-  # shards: on a cache miss, whichever shard finishes `npm ci` /
-  # Playwright install first just gets to be "first"; there is no shared
-  # mutable state between shards.
+  # locally, instead of waiting on a single upstream job. Real GitHub
+  # Actions A/B measurements (see the PR description for #5169) showed
+  # this wins on total wall-clock in both the common warm-cache case
+  # (~6m38s vs ~10m3s, first Playwright start ~1m15s vs ~3m9s) and a
+  # forced cold-cache case (~9m41s vs ~11m2s), with no shard failures
+  # from the 20-way concurrent cache-miss "stampede". The one real
+  # trade-off: cold-cache aggregate runner-minutes are higher (~98 vs
+  # ~70 job-minutes) because every shard repeats `npm ci` / the
+  # Playwright install independently instead of once; this only bites
+  # on a lockfile change (rare) and wall-clock latency is what matters
+  # for shipping PRs faster, so it's accepted. `actions/cache` restores
+  # are safe to run concurrently across shards: on a cache miss,
+  # whichever shard finishes first just gets to populate the cache for
+  # later runs; there is no shared mutable state between shards.
   e2e-test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
