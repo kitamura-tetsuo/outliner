@@ -49,6 +49,11 @@ interface Props {
     hiddenColumns: Record<string, boolean>;
     /** Whether the Grid shows the "+ Add row" button when editable (default true). */
     showAddRowButton?: boolean;
+    /**
+     * "query" (default): row creation relies on the query result being editable and addressing rows by `id`.
+     * "table": row creation relies only on a valid, writable schema existing, used for raw table data browsers.
+     */
+    rowCreationMode?: "query" | "table";
     /** Whether the table is still loading initial data from the network/storage. */
     loading?: boolean;
     /** Resolves the relation provider a unioned row's `source_kind` names. */
@@ -67,6 +72,7 @@ let {
     columnLabels,
     hiddenColumns,
     showAddRowButton = true,
+    rowCreationMode = "query",
     loading = false,
     session,
 }: Props = $props();
@@ -327,16 +333,30 @@ function handleCancelDelete() {
             </tbody>
         </table>
     {:else if !schema}
-        <p class="empty-state">No query result. Apply a schema and set a query to see rows.</p>
+        <p class="empty-state">
+            {#if rowCreationMode === "table"}
+                No schema applied. Apply a schema to see rows.
+            {:else}
+                No query result. Apply a schema and set a query to see rows.
+            {/if}
+        </p>
     {:else}
-        <p class="empty-state">The query returned no rows.</p>
+        <p class="empty-state">
+            {#if rowCreationMode === "table"}
+                The table is empty.
+            {:else}
+                The query returned no rows.
+            {/if}
+        </p>
     {/if}
 
     {#if !editability.editable && editability.readOnlyReason && result.columns.length > 0}
         <p class="readonly-reason" data-testid="grid-readonly-reason">{editability.readOnlyReason}</p>
     {/if}
 
-    {#if schema && editability.editable && editability.rowIdentity === "id" && showAddRowButton !== false}
+    {#if (rowCreationMode === "table"
+        ? !!schema && (!editability.readOnlyReason || editability.readOnlyReason === "Query result has no id column")
+        : schema && editability.editable && editability.rowIdentity === "id") && showAddRowButton !== false}
         <button type="button" class="add-row" data-testid="yjs-table-add-row" onclick={addRow}>
             + Add row
         </button>

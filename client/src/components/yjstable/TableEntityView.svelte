@@ -251,6 +251,7 @@ onDestroy(() => {
                 {columnOrder}
                 columnLabels={NO_COLUMN_SETTINGS}
                 hiddenColumns={NO_HIDDEN_COLUMNS}
+                rowCreationMode="table"
                 onColumnOrderChange={(order) => {
                     columnOrder = order;
                 }}

@@ -112,4 +112,70 @@ describe("TableGrid", () => {
         expect(storedOrder).toEqual(["col_c", "id", "col_b", "col_a"]);
         expect(storedOrder.indexOf("col_b")).toBe(2);
     });
+
+    describe("rowCreationMode", () => {
+        it("renders '+ Add row' in table mode when schema is present, even with empty result", async () => {
+            const doc = new (await import("yjs")).Doc();
+            const tableId = createTable(doc, "test_table", "test_table");
+            const handles = getTableHandles(doc, tableId)!;
+            const schema: ParsedTableSchema = {
+                tableName: "test_table",
+                createSql: "CREATE TABLE test_table (id uuid, col_a text);",
+                columns: [
+                    {
+                        name: "id",
+                        dataType: "uuid",
+                        isNullable: false,
+                        isPrimaryKey: true,
+                        kind: "text",
+                        checkOptions: [],
+                    },
+                    {
+                        name: "col_a",
+                        dataType: "text",
+                        isNullable: true,
+                        isPrimaryKey: false,
+                        kind: "text",
+                        checkOptions: [],
+                    },
+                ],
+            };
+            const result: TableQueryResult = { columns: [], rows: [] }; // No query result yet
+
+            const { container, getByTestId, queryByTestId, rerender } = render(TableGrid, {
+                props: {
+                    handles,
+                    schema,
+                    query: "SELECT * FROM test",
+                    result,
+                    componentTypes: {},
+                    columnLabels: {},
+                    hiddenColumns: {},
+                    columnOrder: [],
+                    session: mockSession,
+                    rowCreationMode: "table",
+                },
+            });
+
+            expect(getByTestId("yjs-table-add-row")).toBeDefined();
+            expect(container.textContent).toContain("The table is empty.");
+
+            // without schema in table mode, cannot add row
+            await rerender({
+                handles,
+                schema: undefined,
+                query: "SELECT * FROM test",
+                result,
+                componentTypes: {},
+                columnLabels: {},
+                hiddenColumns: {},
+                columnOrder: [],
+                session: mockSession,
+                rowCreationMode: "table",
+            } as unknown as Record<string, unknown>);
+
+            expect(queryByTestId("yjs-table-add-row")).toBeNull();
+            expect(container.textContent).toContain("No schema applied. Apply a schema to see rows.");
+        });
+    });
 });
