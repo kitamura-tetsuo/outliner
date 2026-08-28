@@ -365,6 +365,13 @@ export function createDemoRouter(hocuspocus: HocuspocusInstance, config: Config)
                                     tables.delete(key);
                                 });
 
+                                // Clear the grids registry so visitor-created
+                                // grids or modified template grids are reset.
+                                const grids = ydoc.getMap("yjsGrids");
+                                Array.from(grids.keys()).forEach(key => {
+                                    grids.delete(key);
+                                });
+
                                 // Same for schedule rules: the template's own
                                 // rules are re-registered by populateDemoProject.
                                 const schedules = ydoc.getMap("schedules");

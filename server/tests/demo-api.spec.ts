@@ -56,6 +56,59 @@ describe("Demo API", () => {
         expect(mockDirectConnection.disconnect).toHaveBeenCalled();
     });
 
+    it("should clear visitor-created grids and restore template grids to template definitions", async () => {
+        const { Project } = await import("../src/schema/app-schema.js");
+        const { populateDemoProject, demoTablesFor, demoGridIdFor } = await import("../src/demo-content.js");
+        const demoTables = demoTablesFor("en");
+
+        mockDoc.transact(() => {
+            const project = Project.fromDoc(mockDoc);
+            populateDemoProject(project, "test-user");
+
+            // Mutate template grids
+            const yjsGrids = mockDoc.getMap("yjsGrids") as Y.Map<Y.Map<unknown>>;
+            for (const template of demoTables) {
+                const gridId = demoGridIdFor(template.tableId);
+                const gridEntry = yjsGrids.get(gridId);
+                if (gridEntry) {
+                    // modify it to differ from template
+                    gridEntry.set("queryText", "SELECT * FROM somewhere_else");
+                    gridEntry.set("columns", [{ name: "mutated", width: 100 }]);
+                }
+            }
+
+            // Add visitor created grid
+            const visitorGrid = new Y.Map<unknown>();
+            visitorGrid.set("queryText", "SELECT * FROM visitor");
+            yjsGrids.set("visitor-grid-1", visitorGrid);
+        });
+
+        // Set version old to force reset
+        mockDoc.getMap("metadata").set("templateVersion", 1);
+
+        const app = express();
+        app.use(express.json());
+        app.use("/api", createDemoRouter(mockHocuspocus));
+
+        const response = await request(app).post("/api/seed-demo");
+        expect(response.status).toBe(200);
+        expect(response.body.reset).toBe(true);
+
+        const yjsGrids = mockDoc.getMap("yjsGrids") as Y.Map<Y.Map<unknown>>;
+
+        // Visitor grid should be gone
+        expect(yjsGrids.has("visitor-grid-1")).toBe(false);
+
+        // Seeded grids should be restored
+        for (const template of demoTables) {
+            const gridId = demoGridIdFor(template.tableId);
+            const gridEntry = yjsGrids.get(gridId);
+            expect(gridEntry).toBeDefined();
+            // Should match template
+            expect(gridEntry?.get("queryText")).toBe(`SELECT * FROM "${template.sqlName}"`);
+        }
+    });
+
     it("should not reset if already seeded and not expired", async () => {
         const { Project } = await import("../src/schema/app-schema.js");
         const { populateDemoProject } = await import("../src/demo-content.js");
