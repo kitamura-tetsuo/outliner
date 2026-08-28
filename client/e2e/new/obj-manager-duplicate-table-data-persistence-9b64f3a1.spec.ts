@@ -42,13 +42,13 @@ test("copies Table rows to another project and reloads them from its Table room"
         new RegExp(`/${encodeURIComponent(fixture.destinationProject)}/-/objects\\?selected=`),
         { timeout: 30000 },
     );
-    await expect(tableRow(page, "Board copy")).toBeVisible({ timeout: 15000 });
+    await expect(tableRow(page, "Board")).toBeVisible({ timeout: 15000 });
 
     const showBtn = page.locator('button[aria-label="Show sidebar"]');
     if (await showBtn.isVisible().catch(() => false)) await showBtn.click();
     const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
     await expect(sidebar).toBeVisible({ timeout: 10000 });
-    await sidebar.getByRole("link", { name: "Board copy" }).click();
+    await sidebar.getByRole("link", { name: "Board" }).click();
     await expect(page).toHaveURL(/\/-\/tables\/[^/?]+$/, { timeout: 15000 });
 
     // Reload the Table route itself so both the project document and Table
