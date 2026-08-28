@@ -25,7 +25,7 @@ let isLoading = $state(true);
 let error: string | undefined = $state(undefined);
 let isDestroyed = false;
 let projectHandle: RouteProjectHandle | undefined = undefined;
-let connectedProject = "";
+let connectedProject = $state("");
 
 async function connect() {
     isLoading = true;
