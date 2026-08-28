@@ -3,6 +3,9 @@ import { onMount, tick } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
 import ConfirmDialog from "../ConfirmDialog.svelte";
 import { isPublicProject } from "../../lib/publicProject";
+import { resolvePath } from "../../utils/pathUtils";
+import { projectTablePath, projectGridPath, projectCalendarPath, projectSchedulePath } from "../../lib/managementPaths";
+import { userPreferencesStore } from "../../stores/UserPreferencesStore.svelte";
 import { navigateToOutlineItem } from "../../services/navigation/outlineItemNavigation";
 import type { ObjectPlacement } from "../../services/objectManager/objectPlacements";
 import { GRID_REGISTRY_KEY } from "../../services/yjstable/gridDocs";
@@ -58,6 +61,86 @@ let confirmOpen = $state(false);
 let bulkDeleteTargets = $state<NamedObject[]>([]);
 let duplicateTargets = $state<NamedObject[]>([]);
 let preselectionApplied = $state<string | null>(null);
+
+function getObjectHref(object: NamedObject): string {
+    if (object.type === "Table") return resolvePath(projectTablePath(projectName, object.id));
+    if (object.type === "Grid") return resolvePath(projectGridPath(projectName, object.id));
+    if (object.type === "Calendar") return resolvePath(projectCalendarPath(projectName, object.id));
+    if (object.type === "Schedule") return resolvePath(projectSchedulePath(projectName, object.id));
+    return "#";
+}
+
+function handleSortClick(col: string) {
+    const currentSort = userPreferencesStore.objectManagerSort;
+    if (currentSort && currentSort.column === col) {
+        if (currentSort.direction === "asc") {
+            userPreferencesStore.setObjectManagerSort({ column: col, direction: "desc" });
+        } else {
+            userPreferencesStore.setObjectManagerSort(undefined);
+        }
+    } else {
+        userPreferencesStore.setObjectManagerSort({ column: col, direction: "asc" });
+    }
+}
+
+function getSortIndicator(col: string) {
+    const currentSort = userPreferencesStore.objectManagerSort;
+    if (currentSort && currentSort.column === col) {
+        return currentSort.direction === "asc" ? " ↑" : " ↓";
+    }
+    return "";
+}
+
+let dragSourceCol = $state<string | null>(null);
+let dragTargetCol = $state<string | null>(null);
+
+function handleDragStart(e: DragEvent, col: string) {
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", col);
+    }
+    dragSourceCol = col;
+}
+
+function handleDragOver(e: DragEvent, col: string) {
+    e.preventDefault();
+    if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = "move";
+    }
+    if (dragSourceCol && dragSourceCol !== col) {
+        dragTargetCol = col;
+    }
+}
+
+function handleDragLeave(e: DragEvent, col: string) {
+    if (dragTargetCol === col) {
+        dragTargetCol = null;
+    }
+}
+
+function handleDrop(e: DragEvent, targetCol: string) {
+    e.preventDefault();
+    if (!dragSourceCol || dragSourceCol === targetCol) {
+        dragSourceCol = null;
+        dragTargetCol = null;
+        return;
+    }
+    const cols = [...userPreferencesStore.objectManagerColumns];
+    const sourceIdx = cols.indexOf(dragSourceCol);
+    const targetIdx = cols.indexOf(targetCol);
+    if (sourceIdx !== -1 && targetIdx !== -1) {
+        cols.splice(sourceIdx, 1);
+        cols.splice(targetIdx, 0, dragSourceCol);
+        userPreferencesStore.setObjectManagerColumns(cols);
+    }
+    dragSourceCol = null;
+    dragTargetCol = null;
+}
+
+function handleDragEnd() {
+    dragSourceCol = null;
+    dragTargetCol = null;
+}
 
 // Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
 // delete) require write access; browsing and following placement links do
@@ -124,6 +207,32 @@ let filteredObjects = $derived.by(() => {
     return filterObjects(objects, selectedTypes, searchQuery);
 });
 
+let sortedFilteredObjects = $derived.by(() => {
+    const sortPref = userPreferencesStore.objectManagerSort;
+    if (!sortPref) return filteredObjects;
+
+    const { column, direction } = sortPref;
+    const modifier = direction === "asc" ? 1 : -1;
+
+    return [...filteredObjects].sort((a, b) => {
+        if (column === "Name") {
+            return a.name.localeCompare(b.name) * modifier;
+        } else if (column === "Type") {
+            return a.type.localeCompare(b.type) * modifier;
+        } else if (column === "Pages") {
+            const aPlacements = a.placements.map((p) => p.pageTitle).join(",");
+            const bPlacements = b.placements.map((p) => p.pageTitle).join(",");
+
+            if (!aPlacements && bPlacements) return 1;
+            if (aPlacements && !bPlacements) return -1;
+            if (!aPlacements && !bPlacements) return 0;
+
+            return aPlacements.localeCompare(bPlacements) * modifier;
+        }
+        return 0;
+    });
+});
+
 // Once per distinct (project, preselected ids) request, not a true one-shot:
 // a cross-project Duplicate reuses this same mounted component for the
 // destination project's `?selected=` (SvelteKit does not remount on a
@@ -151,14 +260,14 @@ $effect(() => {
 // checked while none of the visible rows are selected, and activating it
 // clears the hidden selection instead of selecting what's shown.
 let selectedFilteredCount = $derived.by(() => {
-    return filteredObjects.filter(o => selectedObjectIds.has(o.id)).length;
+    return sortedFilteredObjects.filter(o => selectedObjectIds.has(o.id)).length;
 });
 
 let bulkPreview = $derived.by(() => {
     return generateBulkPreview(objects, selectedObjectIds, bulkFindText, bulkReplaceText);
 });
 let bulkPreviewErrors = $derived(validateBulkPreview(project, bulkPreview));
-let hiddenSelectedCount = $derived(countHiddenSelected(objects, filteredObjects, selectedObjectIds));
+let hiddenSelectedCount = $derived(countHiddenSelected(objects, sortedFilteredObjects, selectedObjectIds));
 
 let deleteImpact = $derived.by((): DeleteImpact | null => {
     return deleteTarget && project ? getDeleteImpact(project, deleteTarget) : null;
@@ -181,10 +290,10 @@ function toggleSelection(id: string) {
 }
 
 function selectAll() {
-    if (filteredObjects.length > 0 && selectedFilteredCount === filteredObjects.length) {
-        for (const o of filteredObjects) selectedObjectIds.delete(o.id);
+    if (sortedFilteredObjects.length > 0 && selectedFilteredCount === sortedFilteredObjects.length) {
+        for (const o of sortedFilteredObjects) selectedObjectIds.delete(o.id);
     } else {
-        filteredObjects.forEach(o => selectedObjectIds.add(o.id));
+        sortedFilteredObjects.forEach(o => selectedObjectIds.add(o.id));
     }
 }
 
@@ -527,19 +636,37 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
                 <th class="checkbox-col">
                     <input
                         type="checkbox"
-                        checked={filteredObjects.length > 0 && selectedFilteredCount === filteredObjects.length}
-                        indeterminate={selectedFilteredCount > 0 && selectedFilteredCount < filteredObjects.length}
+                        checked={sortedFilteredObjects.length > 0 && selectedFilteredCount === sortedFilteredObjects.length}
+                        indeterminate={selectedFilteredCount > 0 && selectedFilteredCount < sortedFilteredObjects.length}
                         onchange={selectAll}
                     />
                 </th>
-                <th>Type</th>
-                <th>Name</th>
-                <th>Pages</th>
+                {#each userPreferencesStore.objectManagerColumns as col (col)}
+                    <th
+                        draggable="true"
+                        ondragstart={(e) => handleDragStart(e, col)}
+                        ondragover={(e) => handleDragOver(e, col)}
+                        ondragenter={(e) => handleDragOver(e, col)}
+                        ondragleave={(e) => handleDragLeave(e, col)}
+                        ondrop={(e) => handleDrop(e, col)}
+                        ondragend={handleDragEnd}
+                        onclick={() => handleSortClick(col)}
+                        class:drag-source={dragSourceCol === col}
+                        class:drag-target={dragTargetCol === col}
+                        style="cursor: grab;"
+                        aria-sort={userPreferencesStore.objectManagerSort?.column === col ? (userPreferencesStore.objectManagerSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    >
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>{col}</span>
+                            <span style="width: 1em; text-align: center;">{getSortIndicator(col)}</span>
+                        </div>
+                    </th>
+                {/each}
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
-            {#each filteredObjects as object (object.id)}
+            {#each sortedFilteredObjects as object (object.id)}
                 <tr class:selected={selectedObjectIds.has(object.id)} data-testid={`object-row-${object.id}`}>
                     <td class="checkbox-col">
                         <input
@@ -548,69 +675,83 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
                             onchange={() => toggleSelection(object.id)}
                         />
                     </td>
-                    <td><span class="type-badge {object.type.toLowerCase()}">{object.type}</span></td>
-                    <td class="name-cell" class:invalid-preview={bulkPreviewErrors.has(object.id)}>
-                        <div class="name-primary">
-                        {#if editingObjectId === object.id}
-                            <!-- svelte-ignore a11y_autofocus -->
-                            <input
-                                type="text"
-                                bind:this={editInputEl}
-                                bind:value={editNameInput}
-                                onblur={commitEdit}
-                                onkeydown={(e) => {
-                                    if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
-                                    if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
-                                }}
-                                autofocus
-                                class="edit-input"
-                                class:has-error={!!editError}
-                                data-testid={`object-name-input-${object.id}`}
-                            />
-                            {#if editError}
-                                <span class="edit-error" role="alert" data-testid={`object-name-error-${object.id}`}>
-                                    {editError}
-                                </span>
-                            {/if}
-                        {:else if hasWriteAccess}
-                            <button
-                                type="button"
-                                class="name-button"
-                                onclick={() => startEditing(object)}
-                                data-testid={`object-name-${object.id}`}
-                            >
-                                {object.name}
-                            </button>
-                        {:else}
-                            <span data-testid={`object-name-${object.id}`}>{object.name}</span>
-                        {/if}
-                        </div>
-                        <div class="name-preview" data-testid={`object-name-preview-${object.id}`}>
-                            {bulkPreview.find(preview => preview.id === object.id)?.newName ?? ""}
-                        </div>
-                        {#if bulkPreviewErrors.has(object.id)}
-                            <span class="edit-error" role="alert">{bulkPreviewErrors.get(object.id)}</span>
-                        {/if}
-                    </td>
-                    <td class="placements-col">
-                        {#if object.placements.length === 0}
-                            <span class="placements-empty">—</span>
-                        {:else}
-                            <div class="placement-chips">
-                                {#each object.placements as placement, i (placement.itemKey)}
+                    {#each userPreferencesStore.objectManagerColumns as col (col)}
+                        {#if col === "Type"}
+                            <td><span class="type-badge {object.type.toLowerCase()}">{object.type}</span></td>
+                        {:else if col === "Name"}
+                            <td class="name-cell" class:invalid-preview={bulkPreviewErrors.has(object.id)}>
+                                <div class="name-primary">
+                                {#if editingObjectId === object.id}
+                                    <!-- svelte-ignore a11y_autofocus -->
+                                    <input
+                                        type="text"
+                                        bind:this={editInputEl}
+                                        bind:value={editNameInput}
+                                        onblur={commitEdit}
+                                        onkeydown={(e) => {
+                                            if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+                                            if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+                                        }}
+                                        autofocus
+                                        class="edit-input"
+                                        class:has-error={!!editError}
+                                        data-testid={`object-name-input-${object.id}`}
+                                    />
+                                    {#if editError}
+                                        <span class="edit-error" role="alert" data-testid={`object-name-error-${object.id}`}>
+                                            {editError}
+                                        </span>
+                                    {/if}
+                                {:else if hasWriteAccess}
                                     <button
                                         type="button"
-                                        class="placement-chip"
-                                        data-testid={`object-placement-${placement.itemKey}`}
-                                        onclick={() => goToPlacement(placement)}
+                                        class="name-button"
+                                        onclick={() => startEditing(object)}
+                                        data-testid={`object-name-${object.id}`}
                                     >
-                                        {placementLabel(object.placements, i)}
+                                        {object.name}
                                     </button>
-                                {/each}
-                            </div>
+                                {:else}
+                                    <span data-testid={`object-name-${object.id}`}>{object.name}</span>
+                                {/if}
+                                </div>
+                                <div class="name-preview" data-testid={`object-name-preview-${object.id}`}>
+                                    {bulkPreview.find(preview => preview.id === object.id)?.newName ?? ""}
+                                </div>
+                                {#if bulkPreviewErrors.has(object.id)}
+                                    <span class="edit-error" role="alert">{bulkPreviewErrors.get(object.id)}</span>
+                                {/if}
+                            </td>
+                        {:else if col === "Pages"}
+                            <td class="placements-col">
+                                {#if object.placements.length === 0}
+                                    <span class="placements-empty">—</span>
+                                {:else}
+                                    <div class="placement-chips">
+                                        {#each object.placements as placement, i (placement.itemKey)}
+                                            <button
+                                                type="button"
+                                                class="placement-chip"
+                                                data-testid={`object-placement-${placement.itemKey}`}
+                                                onclick={() => goToPlacement(placement)}
+                                            >
+                                                {placementLabel(object.placements, i)}
+                                            </button>
+                                        {/each}
+                                    </div>
+                                {/if}
+                            </td>
                         {/if}
-                    </td>
-                    <td>
+                    {/each}
+                    <td class="actions-col">
+                        <a
+                            href={getObjectHref(object)}
+                            class="btn-small btn-open"
+                            data-testid={`object-open-${object.id}`}
+                            title="Open in new page"
+                        >
+                            Open ↗
+                        </a>
                         <button
                             type="button"
                             class="btn-small btn-delete"
@@ -1120,5 +1261,8 @@ function handleDuplicated(result: DuplicationSetResult, destinationProject: stri
         background: #1f2937;
         border-color: #4b5563;
         color: #93c5fd;
+    }
+    .drag-target {
+        border-left: 2px solid #3b82f6 !important;
     }
 </style>
