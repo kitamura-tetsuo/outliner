@@ -52,6 +52,12 @@ export interface DuplicationResult extends MaterializedDuplication {
     primaryId: string;
 }
 
+export interface DuplicationOptions {
+    copyTableData?: boolean;
+    /** Synchronize source and newly-created cross-project Table subdocs. */
+    synchronizeTableSubdocs?: boolean;
+}
+
 /** Result of duplicating an explicit selection (issue #5153) — there is no single primary object. */
 export interface DuplicationSetResult extends MaterializedDuplication {
     /** The deduped source-side objects actually duplicated, in materialization order — reused to redo the operation with the same `idMap`. */
@@ -155,11 +161,7 @@ export async function materializeDuplicationPlan(
     source: Y.Doc,
     destination: Y.Doc,
     objects: DuplicableObject[],
-    options: {
-        copyTableData?: boolean;
-        /** Synchronize remote Table subdocs before reading the completed plan. */
-        synchronizeTableSubdocs?: boolean;
-    } = {},
+    options: DuplicationOptions = {},
     /**
      * Reuse a previously allocated id map instead of minting new destination
      * ids — how Object Manager's `Duplicate selected` redoes an undone
@@ -359,7 +361,35 @@ export async function materializeDuplicationPlan(
             });
             createdCalendars.push(destinationId);
         }
+
+        // A Table's registry entry belongs to the project doc, but its schema
+        // and rows belong to a separate room. In a cross-project operation the
+        // new subdoc is not otherwise mounted, so explicitly connect every
+        // created Table to the *destination* project room and wait for the
+        // provider's sync handshake before reporting success or navigating.
+        if (options.synchronizeTableSubdocs && !sameProject) {
+            const { connectTableDoc } = await import("../../lib/yjs/connection");
+            for (const tableId of createdTables) {
+                const entry = listTables(destination).find(table => table.tableId === tableId);
+                const handles = getTableHandles(destination, tableId);
+                if (!entry || !handles) throw new Error(`Table "${tableId}" no longer exists`);
+                try {
+                    const connection = await connectTableDoc(destination.guid, tableId, handles.doc);
+                    connections.push(connection);
+                    const { synced } = await connection.waitForInitialSync();
+                    if (!synced) throw new Error("initial synchronization timed out");
+                } catch (error) {
+                    throw new Error(
+                        `Table "${entry.name || entry.sqlName || tableId}" could not be persisted.`,
+                        { cause: error },
+                    );
+                }
+            }
+        }
     } catch (error) {
+        // Stop providers before destroying their subdocs during rollback.
+        await Promise.allSettled(connections.map(connection => connection.dispose()));
+        connections.length = 0;
         destination.transact(() => {
             for (const calendarId of createdCalendars) destinationProject.calendars.delete(calendarId);
             for (const ruleId of createdSchedules) schedulesMapOf(destination).delete(ruleId);
@@ -389,7 +419,7 @@ export async function duplicateObjects(
     destination: Y.Doc,
     primary: DuplicableObject,
     scope: DuplicationScope,
-    options: { copyTableData?: boolean; synchronizeTableSubdocs?: boolean; } = {},
+    options: DuplicationOptions = {},
 ): Promise<DuplicationResult> {
     const preview = previewObjectDuplication(source, primary, scope);
     const materialized = await materializeDuplicationPlan(source, destination, preview.objects, options);
@@ -412,7 +442,7 @@ export async function duplicateObjectSet(
     source: Y.Doc,
     destination: Y.Doc,
     selected: DuplicableObject[],
-    options: { copyTableData?: boolean; synchronizeTableSubdocs?: boolean; } = {},
+    options: DuplicationOptions = {},
 ): Promise<DuplicationSetResult> {
     const preview = previewObjectSetDuplication(source, selected);
     const materialized = await materializeDuplicationPlan(source, destination, preview.objects, options);

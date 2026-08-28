@@ -9,6 +9,7 @@ acceptance:
 - A reference from a selected object to another selected object is rewritten to the copy; a reference to an unselected object is preserved same-project and cleared-with-a-warning cross-project, for Grid, Schedule and Calendar alike.
 - A shared dependency reachable from multiple selected roots, or a cycle, is copied exactly once.
 - An individual Grid/Table/Schedule/Calendar page's Duplicate action opens Object Manager with that object preselected via `?selected=`, widening an incompatible type filter and clearing a search query that would otherwise hide it.
+- Cross-project Table data copies connect every new subdoc with the destination project identity and wait for synchronization before success; failures dispose temporary connections and roll back the complete duplicated set, and definition-only copies remain empty.
 - Duplicate selected is disabled with no selection and duplicates the exact current selection, including objects hidden by the active filter, with the count and hidden-selection warning matching bulk Rename/Delete.
 - 'Duplicate selected is one undo-router step: Undo removes every object (and any destination-Page placement) the operation created, and Redo recreates them with the same ids.'
 - Duplicate selected never expands the selection through the dependency graph and never shows the old referenced/referencing/connected scope chooser.
@@ -18,6 +19,7 @@ tests:
 - client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-4812d1f3.spec.ts
 - client/e2e/new/obj-manager-duplicate-selected-cross-project-b850f92c.spec.ts
+- client/e2e/new/obj-manager-duplicate-table-data-persistence-9b64f3a1.spec.ts
 - client/e2e/schedule/dup-schedule-duplication-1f5f6ffd.spec.ts
 - client/e2e/tables/dup-grid-duplication-destination-page.spec.ts
 - client/e2e/tables/dup-lazy-table-dependency-sync-5090c0de.spec.ts
