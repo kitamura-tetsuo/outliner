@@ -115,4 +115,33 @@ describe("buildGridRenderTrace", () => {
         expect(render.sampleTruncated).toBe(true);
         expect(String(render.sample[0].value).length).toBe(201);
     });
+
+    it("keeps samples JSON-serializable when query values include bigint or circular data", () => {
+        const circular: Record<string, unknown> = {};
+        circular.self = circular;
+        const trace = buildGridRenderTrace({
+            gridId: "grid-1",
+            sourceTableId: "table-1",
+            projectDocumentId: "project-doc",
+            tableDocumentId: "table-doc",
+            configRevision: "01",
+            clientRevision: 1,
+            query: "SELECT value, metadata FROM source",
+            result: {
+                columns: ["value", "metadata"],
+                rows: [{ value: 9_007_199_254_740_993n, metadata: circular }],
+            },
+            columnOrder: [],
+            hiddenColumns: {},
+        });
+
+        const render = trace.stages.find(stage => stage.stage === "render");
+        expect(render?.stage).toBe("render");
+        if (render?.stage !== "render") throw new Error("render stage missing");
+        expect(render.sample).toEqual([{
+            value: "9007199254740993",
+            metadata: "[object Object]",
+        }]);
+        expect(() => JSON.stringify(trace)).not.toThrow();
+    });
 });
