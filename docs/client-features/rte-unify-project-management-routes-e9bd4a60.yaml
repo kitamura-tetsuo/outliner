@@ -1,0 +1,19 @@
+id: FTR-e9bd4a60
+title: Unified project-management route namespace
+title-ja: プロジェクト管理ルートの統一名前空間
+description: 'Project-scoped management and admin tools live under a single project-first namespace, `/:project/-/...`, while ordinary user pages keep the short Scrapbox-style route `/:project/:page`. The literal page segment `-` is the one reserved name and the boundary between the two: `/:project/-` is a lightweight management landing page linking to Objects, Tables, Grids, Calendars, Schedules, Graph, Import/Export and Settings; `/:project/-/objects`, `/:project/-/tables[/:tableId]`, `/:project/-/grids[/:gridId]`, `/:project/-/calendars[/:calendar]`, `/:project/-/schedules[/:ruleId]`, `/:project/-/graph`, `/:project/-/import-export` and `/:project/-/settings` are the management tools themselves. Names such as `objects`, `tables`, `grids`, `calendars`, `schedules`, `graph` and `settings` stay usable as ordinary page titles because their management counterparts live one level deeper, under `/-/`. Page creation allocates around the reserved `-` title the same way it already resolves any other name collision, via the centralized `isReservedPageSegment` check in `client/src/lib/managementPaths.ts`. The demo project (`/demo`, `/demo-ja`, ...) exercises the same route model and the same management-tool view components as authenticated projects, minus the two tools that need project/account state the public demo has neither of (Import/Export, Settings). Internal navigation is centralized behind `client/src/lib/managementPaths.ts` helpers (`projectManagementPath`, `projectObjectsPath`, `projectTablePath`, etc.) rather than hand-rolled template strings. The former resource-first routes (`/tables/<project>/<tableId>`, `/grids/<project>/<gridId>`, `/calendars/<project>/<calendar>`, `/schedules/<project>[/<ruleId>]`, `/settings/<project>`, `/<project>/objects`, `/<project>/settings`, `/<project>/graph`) are removed outright, with no redirects or aliases kept for backward compatibility.'
+category: client
+status: implemented
+acceptance:
+- /:project/- opens a lightweight management landing page linking to every available management tool for that project.
+- All project-scoped management pages resolve at /:project/-/... and the former resource-first routes no longer exist.
+- Internal links and programmatic navigation to management tools go through the centralized path helpers in client/src/lib/managementPaths.ts.
+- Ordinary pages titled objects, tables, grids, calendars, schedules, graph or settings render as normal outline pages at /:project/:page rather than being shadowed by a management route.
+- Page creation treats the literal title "-" as already taken, the same way any other name collision is resolved, so a page can never claim the reserved management path segment.
+- The public demo project exercises the same /demo/-/... route tree and the same management-tool components as authenticated projects.
+tests:
+- client/e2e/core/dmo-demo-public-standalone-routes-4b1f80e2.spec.ts
+- client/e2e/core/dmo-demo-shared-initialization-3c7e5b12.spec.ts
+- client/e2e/new/rte-management-namespace-routing-e9bd4a60.spec.ts
+- client/src/lib/managementPaths.test.ts
+- client/src/tests/unit/utils/pageUtils.spec.ts

@@ -31,18 +31,18 @@ test.describe("Schedule duplication", () => {
         const projectSegment = new URL(page.url()).pathname.split("/")[1];
 
         // Create a Schedule rule targeting that table, from the project schedules page.
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         await page.getByTestId("project-schedule-create").click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
         await page.locator("#name-input").fill("Daily import");
         await page.locator("button:has-text('Save')").click();
-        await expect(page).not.toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).not.toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
 
         // Re-open the rule from the schedules list.
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         await page.locator("button:has-text('Edit')").first().click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
         const sourceUrl = page.url();
 
         // Duplicate it into the same project via the Duplicate Schedule dialog.
@@ -53,7 +53,7 @@ test.describe("Schedule duplication", () => {
         await dialog.locator("button:has-text('Duplicate')").click();
 
         // The dialog navigates to the copy's own Schedule route, distinct from the source.
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
         expect(page.url()).not.toBe(sourceUrl);
         await expect(page.getByTestId("target-table-select")).toBeVisible({ timeout: 15000 });
 
@@ -62,7 +62,7 @@ test.describe("Schedule duplication", () => {
         await expect(page.getByTestId("target-table-select")).not.toHaveValue("");
 
         // The original rule is untouched and still lists alongside its copy.
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         const list = page.getByTestId("project-schedule-list");
         await expect(list).toBeVisible({ timeout: 30000 });
         await expect(list.locator(".schedule-rule-list li")).toHaveCount(2);

@@ -50,7 +50,7 @@ test.describe("FTR-8ac92ce2: Object Manager lists Grid, Calendar, Table and Sche
         // row is addressed by type, not by name, for this case).
         let sidebar = await openSidebar(page);
         await sidebar.locator('button[aria-label="Add new scheduled SQL"]').click();
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await page.goBack();
 
         // Object Manager.

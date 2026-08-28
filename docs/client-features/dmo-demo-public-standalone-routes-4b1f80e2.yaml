@@ -5,16 +5,16 @@ category: demo
 status: implemented
 components:
 - client/src/lib/publicProject.ts
-- client/src/routes/calendars/[project]/[calendar]/+page.svelte
-- client/src/routes/grids/[project]/[gridId]/+page.svelte
-- client/src/routes/schedules/[project]/+page.svelte
-- client/src/routes/schedules/[project]/[ruleId]/+page.svelte
-- client/src/routes/tables/[project]/[tableId]/+page.svelte
-- client/src/routes/tables/[project]/[tableId]/schedule/+page.svelte
+- client/src/routes/[project]/-/calendars/[calendar]/+page.svelte
+- client/src/routes/[project]/-/grids/[gridId]/+page.svelte
+- client/src/routes/[project]/-/schedules/+page.svelte
+- client/src/routes/[project]/-/schedules/[ruleId]/+page.svelte
+- client/src/routes/[project]/-/tables/[tableId]/+page.svelte
+- client/src/routes/[project]/-/tables/[tableId]/schedule/+page.svelte
 tests:
 - client/e2e/core/dmo-demo-public-standalone-routes-4b1f80e2.spec.ts
 - client/src/lib/publicProject.test.ts
-- client/src/routes/tables/[project]/[tableId]/page.svelte.test.ts
+- client/src/routes/[project]/-/tables/[tableId]/page.svelte.test.ts
 acceptance:
 - /calendars/demo/<calendar> opens the calendar for a signed-out visitor
 - /grids/demo/<gridId> opens the grid for a signed-out visitor

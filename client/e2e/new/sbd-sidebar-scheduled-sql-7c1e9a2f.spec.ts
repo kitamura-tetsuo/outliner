@@ -35,7 +35,7 @@ test.describe("Sidebar Scheduled SQL Section (SBD-7c1e9a2f)", () => {
         // Click the "+" to add a new scheduled SQL -> navigates to the editor
         await sidebar.locator('button[aria-label="Add new scheduled SQL"]').click();
 
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await expect(page.getByRole("heading", { name: "Edit Scheduled SQL" })).toBeVisible({ timeout: 15000 });
         await expect(page.getByTestId("delete-schedule")).toBeVisible();
 
@@ -47,7 +47,7 @@ test.describe("Sidebar Scheduled SQL Section (SBD-7c1e9a2f)", () => {
 
         // Clicking the listed entry navigates to the editor screen
         await sidebar2.locator("#sidebar-schedules-list li a.schedule-link").first().click();
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await expect(page.getByRole("heading", { name: "Edit Scheduled SQL" })).toBeVisible({ timeout: 15000 });
     });
 });

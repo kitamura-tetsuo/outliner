@@ -15,7 +15,7 @@ test.describe("Grid render trace E2E failure artifact", () => {
     test(
         "collects a real Grid's render trace and attaches it as a correlated JSON artifact",
         async ({ page }, testInfo) => {
-            await page.goto("/grids/demo/demo-table-routine-occurrences-history-grid");
+            await page.goto("/demo/-/grids/demo-table-routine-occurrences-history-grid");
             await expect(page.getByTestId("yjs-table-view")).toBeVisible({ timeout: 30000 });
             await expect(page.getByTestId("yjs-table-grid")).toBeVisible({ timeout: 30000 });
 
@@ -35,7 +35,7 @@ test.describe("Grid render trace E2E failure artifact", () => {
             expect(index).toBeDefined();
             const indexBody = JSON.parse(await fs.readFile(index!.path!, "utf8"));
             expect(indexBody.gridIds).toContain("demo-table-routine-occurrences-history-grid");
-            expect(indexBody.url).toContain("/grids/demo/demo-table-routine-occurrences-history-grid");
+            expect(indexBody.url).toContain("/demo/-/grids/demo-table-routine-occurrences-history-grid");
 
             const gridAttachment = testInfo.attachments.find(
                 a => a.name === "grid-render-trace-demo-table-routine-occurrences-history-grid.json",

@@ -32,7 +32,7 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
 
             const projectName = decodeURIComponent(new URL(page.url()).pathname.split("/")[1]);
 
-            await page.goto(`/calendars/${encodeURIComponent(projectName)}/${encodeURIComponent("Dup Calendar")}`);
+            await page.goto(`/${encodeURIComponent(projectName)}/-/calendars/${encodeURIComponent("Dup Calendar")}`);
             const standaloneView = page.getByTestId("calendar-view");
             await expect(standaloneView).toBeVisible({ timeout: 20000 });
             // The settings panel (which hosts the query input) starts collapsed
@@ -48,7 +48,7 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
             await expect(dialog).toContainText("2 objects will be duplicated");
             await dialog.getByRole("button", { name: "Duplicate" }).click();
 
-            await expect(page).toHaveURL(/\/calendars\/[^/]+\/[0-9a-f-]+$/, { timeout: 20000 });
+            await expect(page).toHaveURL(/\/-\/calendars\/[0-9a-f-]+$/, { timeout: 20000 });
             await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 20000 });
             await page.getByTestId("calendar-toggle-settings").click();
             const copiedQueryInput = page.getByTestId("calendar-query-input");

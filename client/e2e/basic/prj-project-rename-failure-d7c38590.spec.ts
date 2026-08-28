@@ -48,7 +48,7 @@ test.describe("Project Rename Failure Handling", () => {
             }
         }, { projectName });
 
-        await page.goto(`/settings/${encodeURIComponent(projectName)}`);
+        await page.goto(`/${encodeURIComponent(projectName)}/-/settings`);
 
         await expect(page.locator("h1")).toContainText(`Settings`, { timeout: 15000 });
 
@@ -109,6 +109,6 @@ test.describe("Project Rename Failure Handling", () => {
         await expect(page.getByRole("button", { name: "Save Changes" })).toBeVisible();
 
         // Ensure we didn't redirect.
-        expect(page.url()).toContain(`/settings/${encodeURIComponent(projectName)}`);
+        expect(page.url()).toContain(`/${encodeURIComponent(projectName)}/-/settings`);
     });
 });

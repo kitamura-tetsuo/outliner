@@ -1,6 +1,7 @@
 import { getLogger } from "../lib/logger";
 const logger = getLogger("pageUtils");
 
+import { isReservedPageSegment } from "../lib/managementPaths";
 import type { Item } from "../schema/app-schema";
 import { iterateItems } from "./itemTraversal";
 import { safeDecodeURIComponent } from "./urlUtils";
@@ -106,6 +107,13 @@ export function allocatePageTitle(
     for (const p of iterateItems(items) as Iterable<Item>) {
         if (!p || (currentItemId && (p.id === currentItemId || p.key === currentItemId))) continue;
         existingNames.add(readItemText(p).trim().toLowerCase());
+    }
+    // `-` is the reserved project-management path segment (`/:project/-/...`);
+    // treating it as already taken makes a page titled "-" fall through to the
+    // same suffixing every other name collision gets, rather than becoming an
+    // ordinary page that the router can never route to.
+    if (isReservedPageSegment(baseTitle)) {
+        existingNames.add(baseTitle.toLowerCase());
     }
 
     let allocatedTitle = baseTitle;
