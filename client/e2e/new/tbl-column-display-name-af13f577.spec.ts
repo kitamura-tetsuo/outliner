@@ -2,7 +2,7 @@
  * @feature TBL-af13f577
  */
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
 registerCoverageHooks();

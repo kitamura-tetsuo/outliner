@@ -6,7 +6,7 @@
     import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
     import { getYjsClientByProjectTitle } from "../../services";
     import { resolvePath } from "../../utils/pathUtils";
-    import { projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
+    import { projectCalendarPath, projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
     import {
         duplicateObjects,
         previewObjectDuplication,
@@ -86,6 +86,8 @@
                 ? projectGridPath(destinationTitle, result.primaryId)
                 : object.type === "table"
                 ? projectTablePath(destinationTitle, result.primaryId)
+                : object.type === "calendar"
+                ? projectCalendarPath(destinationTitle, result.primaryId)
                 : projectSchedulePath(destinationTitle, result.primaryId);
             await goto(resolvePath(destinationPath));
             onclose();
@@ -107,7 +109,15 @@
     <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
         <div class="border-b border-gray-200 px-6 py-4">
             <h2 id="duplicate-dialog-title" class="text-lg font-bold text-gray-900">
-                Duplicate {object.type === "grid" ? "Grid" : object.type === "table" ? "Table" : "Schedule"}
+                Duplicate {
+                    object.type === "grid"
+                        ? "Grid"
+                        : object.type === "table"
+                        ? "Table"
+                        : object.type === "calendar"
+                        ? "Calendar"
+                        : "Schedule"
+                }
             </h2>
         </div>
         <div class="space-y-4 px-6 py-4">

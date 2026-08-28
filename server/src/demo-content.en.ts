@@ -297,11 +297,12 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
-                            "Dependency-aware duplication: Grid, Table, and Schedule copies can include referenced, referencing, "
-                            + "or all connected objects recursively—a duplicated Schedule brings along the Tables it reads and "
-                            + "writes. The confirmation previews the object count and omitted references; Table copies can include "
-                            + "or omit their rows, cross-project Schedule copies start disabled, and cross-project copies clear "
-                            + "excluded links.",
+                            "Dependency-aware duplication: Grid, Table, Schedule, and Calendar copies can include referenced, "
+                            + "referencing, or all connected objects recursively—a duplicated Schedule brings along the Tables "
+                            + "it reads and writes, and a duplicated Calendar brings along every Table its query reads. The "
+                            + "confirmation previews the object count and omitted references; Table copies can include or omit "
+                            + "their rows, cross-project Schedule copies start disabled, and cross-project copies clear "
+                            + "excluded links (a Calendar's query included).",
                     },
                     {
                         text:
@@ -345,8 +346,12 @@ export function demoContentEn(): DemoLocaleContent {
                         text: "Object Manager: open it from the sidebar to browse every Grid, Calendar, Table and "
                             + "Schedule in this project. Each Grid/Calendar row lists the Pages it is directly placed "
                             + "on — click one to jump straight to that block. Click a name to rename it in place; "
-                            + "select several objects for a literal find/replace with a before/after preview; delete "
-                            + "is undoable with Ctrl/Cmd+Z.",
+                            + "select several objects and use the compact toolbar's literal find/replace, whose "
+                            + "before/after preview opens as a popover so the object list never shifts; delete is "
+                            + 'undoable with Ctrl/Cmd+Z. "Select related" expands the current selection over the '
+                            + "same dependency graph duplication uses — Dependencies, Dependents, or All connected — "
+                            + "so selecting one Table and choosing Dependents adds every Grid, Schedule and Calendar "
+                            + "that reads it.",
                     },
                 ],
             },
@@ -413,11 +418,11 @@ export function demoContentEn(): DemoLocaleContent {
                             },
                             {
                                 text:
-                                    "A recurring task is identified by its task_key, not by its title: renaming a task keeps its history together.",
+                                    "A recurring task is identified by its row id, not by its title: renaming a task keeps its history together.",
                             },
                             {
                                 text:
-                                    "The id of an occurrence is task_key + occurrence date, so re-running the same occurrence changes nothing and never clears a completed checkbox.",
+                                    "The id of an occurrence is template_id + occurrence date, so re-running the same occurrence changes nothing and never clears a completed checkbox.",
                             },
                             {
                                 text:

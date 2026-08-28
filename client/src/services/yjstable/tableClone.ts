@@ -1,7 +1,7 @@
 import type { PGlite } from "@electric-sql/pglite";
 import * as Y from "yjs";
 import { type GridTableSnapshot, type GridUiComponentDto, isGridTableSnapshot } from "../clipboard/itemClipboard";
-import { createGrid, findGridsBySourceTable, getGridHandles } from "./gridDocs";
+import { createGrid, findGridsBySourceTable, getGridHandles, getGridShowAddRowButton } from "./gridDocs";
 import { ITEMS_RELATION_CREATE_SQL } from "./itemsRelation";
 import { enqueueWrite } from "./pgliteService";
 import { assertSelectQuery } from "./queryAnalysis";
@@ -142,7 +142,8 @@ function exportGridSlice(projectDoc: Y.Doc, tableId: string, preferGridId?: stri
         : columnOrderValue instanceof Y.Array
         ? (columnOrderValue.toArray() as string[])
         : [];
-    const ui = { query, components, columnOrder };
+    const showAddRowButton = getGridShowAddRowButton(handles);
+    const ui = { query, components, columnOrder, showAddRowButton };
     const candidate = {
         sourceTableId: "validation",
         name: "",
@@ -505,6 +506,7 @@ export async function importTableStructures(
                     components: Object.fromEntries(
                         Object.entries(plan.snapshot.ui.components).map(([column, cfg]) => [column, { ...cfg }]),
                     ),
+                    showAddRowButton: plan.snapshot.ui.showAddRowButton,
                 });
                 gridIdMap[sourceTableId] = newGridId;
                 created.push(destinationTableId);

@@ -117,7 +117,7 @@ describe("Demo routine schedule rule SQL", function() {
         // Every schema column is parsed despite the CHECK constraints.
         expect([...columnTypes.keys()]).to.deep.equal([
             "id",
-            "task_key",
+            "template_id",
             "title",
             "cadence",
             "occurrence_date",
@@ -150,9 +150,9 @@ describe("Demo routine schedule rule SQL", function() {
         const result = await runRule(DEMO_DAILY_RULE_ID, occurrences.query, "2026-03-05T00:00:00Z");
 
         expect(result.success, result.error).to.equal(true);
-        const taskKeys = result.rows.map((r: any) => r.task_key);
-        expect(new Set(taskKeys).size, "one row per recurring task").to.equal(taskKeys.length);
-        expect(taskKeys.sort()).to.deep.equal([
+        const templateIds = result.rows.map((r: any) => r.template_id);
+        expect(new Set(templateIds).size, "one row per recurring task").to.equal(templateIds.length);
+        expect(templateIds.sort()).to.deep.equal([
             "daily-inbox",
             "daily-standup",
             "weekly-report",
@@ -163,7 +163,7 @@ describe("Demo routine schedule rule SQL", function() {
 
         for (const row of result.rows) {
             const newest = seededRecords
-                .filter((r) => r.task_key === row.task_key)
+                .filter((r) => r.template_id === row.template_id)
                 .map((r) => String(r.occurrence_date))
                 .sort()
                 .at(-1);

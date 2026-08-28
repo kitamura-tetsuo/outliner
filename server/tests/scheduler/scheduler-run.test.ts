@@ -134,7 +134,7 @@ describe("Job scheduler run", function() {
 
         expect(record, `occurrence ${generatedId} was created`).to.be.instanceOf(Y.Map);
         expect(record!.get("id")).to.equal(generatedId);
-        expect(record!.get("task_key")).to.equal("daily-standup");
+        expect(record!.get("template_id")).to.equal("daily-standup");
         // The title comes from the definition row of the templates table.
         expect(record!.get("title")).to.equal("Write the standup note");
         expect(record!.get("cadence")).to.equal("daily");

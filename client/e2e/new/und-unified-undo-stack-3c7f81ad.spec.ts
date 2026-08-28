@@ -5,7 +5,7 @@ registerCoverageHooks();
  *  Title   : Unified undo stack across scopes
  *  Source  : docs/client-features/und-unified-undo-stack-3c7f81ad.yaml
  */
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/grid-render-trace";
 import { TestHelpers } from "../utils/testHelpers";
 
 /**

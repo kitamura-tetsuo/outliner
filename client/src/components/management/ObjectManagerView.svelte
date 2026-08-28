@@ -8,6 +8,9 @@ import type { ObjectPlacement } from "../../services/objectManager/objectPlaceme
 import { GRID_REGISTRY_KEY } from "../../services/yjstable/gridDocs";
 import { TABLE_REGISTRY_KEY } from "../../services/yjstable/tableDocs";
 import { userManager } from "../../auth/UserManager";
+import Loader from "../Loader.svelte";
+import { yjsStore } from "../../stores/yjsStore.svelte";
+import { isProvisionalProject } from "../../stores/store.svelte";
 import { store } from "../../stores/store.svelte";
 import {
     applyRename,
@@ -17,9 +20,12 @@ import {
     getObjects,
     filterObjects,
     OBJECT_TYPES,
+    RELATED_SELECTION_SCOPES,
+    selectRelatedObjects,
     validateRename,
     type DeleteImpact,
     type NamedObject,
+    type RelatedSelectionScope,
 } from "../../services/objectManager/objectManagerController";
 
 interface Props {
@@ -33,6 +39,8 @@ let selectedTypes = new SvelteSet<string>(OBJECT_TYPES);
 let selectedObjectIds = new SvelteSet<string>();
 let bulkFindText = $state("");
 let bulkReplaceText = $state("");
+let relatedMenuOpen = $state(false);
+let previewOpen = $state(false);
 let editingObjectId = $state<string | null>(null);
 let editNameInput = $state("");
 let editError = $state<string | null>(null);
@@ -191,6 +199,20 @@ function applyBulkRename() {
     bulkFindText = "";
     bulkReplaceText = "";
     selectedObjectIds.clear();
+    previewOpen = false;
+}
+
+// Executes immediately on menu-item click rather than binding a passive
+// dropdown value: "Select related" is a one-shot command, not a setting that
+// silently changes the selection on some later read (issue #5135 §2). The
+// full (unfiltered) object list is passed through so an object hidden by the
+// current search/type filter is still discoverable and gets selected.
+function applySelectRelated(scope: RelatedSelectionScope) {
+    relatedMenuOpen = false;
+    if (selectedObjectIds.size === 0) return;
+    for (const id of selectRelatedObjects(project, objects, selectedObjectIds, scope)) {
+        selectedObjectIds.add(id);
+    }
 }
 
 function placementLabel(placements: ObjectPlacement[], index: number): string {
@@ -286,50 +308,120 @@ function executeDelete() {
 
         <p class="bulk-hint">Select one or more objects below to bulk find &amp; replace their names.</p>
 
-        <div class="bulk-rename-panel" class:active={selectedObjectIds.size > 0}>
-            <h3>Bulk Rename ({selectedObjectIds.size} selected)</h3>
-            <div class="bulk-inputs">
-                <input
-                    type="text"
-                    bind:value={bulkFindText}
-                    placeholder="Find literal text"
-                    disabled={!hasWriteAccess}
-                    data-testid="object-manager-bulk-find"
-                />
-                <span>→</span>
-                <input
-                    type="text"
-                    bind:value={bulkReplaceText}
-                    placeholder="Replace with"
-                    disabled={!hasWriteAccess}
-                    data-testid="object-manager-bulk-replace"
-                />
+        <!-- Always mounted at a fixed height (issue #5135 §1): selecting or
+             unselecting rows only toggles which controls are disabled, never
+             this element's presence, so the object table below it never
+             shifts. The rename preview lives in a fixed-position popover
+             (below) instead of expanding inline, for the same reason. -->
+        <div class="bulk-toolbar" data-testid="object-manager-bulk-toolbar">
+            <span class="bulk-count" data-testid="object-manager-selected-count">
+                {selectedObjectIds.size} selected
+            </span>
+
+            <div class="select-related">
                 <button
-                    onclick={applyBulkRename}
-                    disabled={!hasWriteAccess || bulkPreview.length === 0}
-                    class="btn-primary"
-                    data-testid="object-manager-bulk-apply"
+                    type="button"
+                    class="btn-small"
+                    onclick={() => { relatedMenuOpen = !relatedMenuOpen; }}
+                    disabled={selectedObjectIds.size === 0}
+                    aria-haspopup="menu"
+                    aria-expanded={relatedMenuOpen}
+                    data-testid="object-manager-select-related"
                 >
-                    Apply Rename
+                    Select related ▾
                 </button>
+                {#if relatedMenuOpen}
+                    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+                    <div class="menu-backdrop" onclick={() => { relatedMenuOpen = false; }}></div>
+                    <div class="related-menu" role="menu" data-testid="object-manager-select-related-menu">
+                        {#each RELATED_SELECTION_SCOPES as option (option.value)}
+                            <button
+                                type="button"
+                                role="menuitem"
+                                disabled={selectedObjectIds.size === 0}
+                                onclick={() => applySelectRelated(option.value)}
+                                data-testid={`object-manager-select-related-${option.value}`}
+                            >
+                                {option.label}
+                            </button>
+                        {/each}
+                    </div>
+                {/if}
             </div>
 
-            {#if bulkPreview.length > 0}
-                <div class="bulk-preview" data-testid="object-manager-bulk-preview">
-                    <h4>Preview Changes:</h4>
-                    <ul>
-                        {#each bulkPreview as preview (preview.id)}
-                            <li>
-                                <span class="old-name">{preview.name}</span>
-                                <span>→</span>
-                                <span class="new-name">{preview.newName}</span>
-                            </li>
-                        {/each}
-                    </ul>
-                </div>
-            {/if}
+            <input
+                type="text"
+                bind:value={bulkFindText}
+                placeholder="Find literal text"
+                disabled={!hasWriteAccess || selectedObjectIds.size === 0}
+                data-testid="object-manager-bulk-find"
+            />
+            <span>→</span>
+            <input
+                type="text"
+                bind:value={bulkReplaceText}
+                placeholder="Replace with"
+                disabled={!hasWriteAccess || selectedObjectIds.size === 0}
+                data-testid="object-manager-bulk-replace"
+            />
+            <button
+                type="button"
+                class="btn-small"
+                onclick={() => { previewOpen = true; }}
+                disabled={bulkPreview.length === 0}
+                data-testid="object-manager-bulk-preview-open"
+            >
+                Preview
+            </button>
+            <button
+                onclick={applyBulkRename}
+                disabled={!hasWriteAccess || bulkPreview.length === 0}
+                class="btn-primary"
+                data-testid="object-manager-bulk-apply"
+            >
+                Apply Rename
+            </button>
         </div>
     </div>
+
+    {#if previewOpen && bulkPreview.length > 0}
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+        <div class="preview-overlay" onclick={() => { previewOpen = false; }}>
+            <div
+                class="bulk-preview"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Bulk rename preview"
+                data-testid="object-manager-bulk-preview"
+                onclick={(e) => e.stopPropagation()}
+            >
+                <h4>Preview Changes ({bulkPreview.length})</h4>
+                <ul>
+                    {#each bulkPreview as preview (preview.id)}
+                        <li>
+                            <span class="old-name">{preview.name}</span>
+                            <span>→</span>
+                            <span class="new-name">{preview.newName}</span>
+                        </li>
+                    {/each}
+                </ul>
+                <div class="preview-actions">
+                    <button type="button" class="btn-small" onclick={() => { previewOpen = false; }}>
+                        Close
+                    </button>
+                    <button
+                        type="button"
+                        class="btn-primary"
+                        onclick={applyBulkRename}
+                        disabled={!hasWriteAccess}
+                        data-testid="object-manager-bulk-preview-apply"
+                    >
+                        Apply Rename
+                    </button>
+                </div>
+            </div>
+        </div>
+    {/if}
 
     <table class="objects-table">
         <thead>
@@ -426,9 +518,17 @@ function executeDelete() {
                     </td>
                 </tr>
             {:else}
-                <tr>
-                    <td colspan="5" class="empty-state">No objects found matching your criteria.</td>
-                </tr>
+                {#if !project || !project.ydoc || isProvisionalProject(project) || yjsStore.notYetSynced}
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <Loader message="Loading objects..." />
+                        </td>
+                    </tr>
+                {:else}
+                    <tr>
+                        <td colspan="5" class="empty-state">No objects found matching your criteria.</td>
+                    </tr>
+                {/if}
             {/each}
         </tbody>
     </table>
@@ -514,55 +614,117 @@ function executeDelete() {
         color: #6b7280;
     }
 
-    .bulk-rename-panel {
+    /* Always mounted with a fixed height (issue #5135 §1) — selecting or
+       unselecting rows must never move the object table below it, so this
+       toolbar's presence, height and control layout never depend on
+       `selectedObjectIds.size`; only each control's `disabled` state does. */
+    .bulk-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem;
         background: #f9fafb;
         border: 1px solid #e5e7eb;
         border-radius: 6px;
-        padding: 1rem;
-        display: none;
+        padding: 0.625rem 1rem;
+        min-height: 3rem;
     }
 
-    .bulk-rename-panel.active {
-        display: block;
-    }
-
-    .bulk-rename-panel h3 {
-        font-size: 1rem;
+    .bulk-count {
+        font-size: 0.8125rem;
         font-weight: 500;
-        margin-bottom: 1rem;
+        color: #374151;
+        white-space: nowrap;
     }
 
-    .bulk-inputs {
+    .select-related {
+        position: relative;
+    }
+
+    .related-menu {
+        position: absolute;
+        top: calc(100% + 0.25rem);
+        left: 0;
+        /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
+        z-index: 10050;
         display: flex;
-        align-items: center;
-        gap: 1rem;
+        flex-direction: column;
+        min-width: 10rem;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        overflow: hidden;
     }
 
-    .bulk-inputs input {
+    .related-menu button {
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+        background: none;
+        border: none;
+        font-size: 0.8125rem;
+        cursor: pointer;
+    }
+
+    .related-menu button:hover:not(:disabled) {
+        background: #f3f4f6;
+    }
+
+    .related-menu button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .menu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10040;
+    }
+
+    .bulk-toolbar input {
         padding: 0.5rem;
         border: 1px solid #d1d5db;
         border-radius: 4px;
         flex-grow: 1;
+        min-width: 8rem;
+    }
+
+    /* Fixed-position popover (issue #5135 §1): the preview never expands
+       inline below the toolbar, so opening/closing it can never reflow the
+       object table underneath. */
+    .preview-overlay {
+        position: fixed;
+        inset: 0;
+        /* Above the app's own fixed toolbar (z-index: 10000, Toolbar.svelte). */
+        z-index: 10060;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(17, 24, 39, 0.4);
+        padding: 1rem;
     }
 
     .bulk-preview {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid #e5e7eb;
+        width: 100%;
+        max-width: 32rem;
+        max-height: 80vh;
+        overflow-y: auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        padding: 1.25rem;
     }
 
     .bulk-preview h4 {
         font-size: 0.875rem;
         font-weight: 500;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
     }
 
     .bulk-preview ul {
         list-style: none;
         padding: 0;
         margin: 0;
-        max-height: 200px;
-        overflow-y: auto;
     }
 
     .bulk-preview li {
@@ -570,6 +732,12 @@ function executeDelete() {
         padding: 0.25rem 0;
         display: flex;
         gap: 1rem;
+    }
+
+    .preview-actions {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: flex-end;
     }
 
     .old-name {
@@ -742,24 +910,37 @@ function executeDelete() {
     }
 
     :global(html.dark) .search-input,
-    :global(html.dark) .bulk-inputs input,
+    :global(html.dark) .bulk-toolbar input,
     :global(html.dark) .edit-input {
         background: #374151;
         border-color: #4b5563;
         color: #f9fafb;
     }
 
-    :global(html.dark) .bulk-rename-panel {
+    :global(html.dark) .bulk-toolbar {
         background: #1f2937;
         border-color: #374151;
     }
 
-    :global(html.dark) .bulk-rename-panel h3 {
+    :global(html.dark) .bulk-count {
         color: #f9fafb;
     }
 
+    :global(html.dark) .related-menu {
+        background: #1f2937;
+        border-color: #374151;
+    }
+
+    :global(html.dark) .related-menu button {
+        color: #e5e7eb;
+    }
+
+    :global(html.dark) .related-menu button:hover:not(:disabled) {
+        background: #374151;
+    }
+
     :global(html.dark) .bulk-preview {
-        border-top-color: #374151;
+        background: #1f2937;
     }
 
     :global(html.dark) .bulk-preview h4 {

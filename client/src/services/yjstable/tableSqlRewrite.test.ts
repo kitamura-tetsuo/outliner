@@ -149,10 +149,10 @@ describe("rewriteTableQuerySql on data-modifying statements", () => {
     // Schedule rules are the only SQL that writes; a copied rule has to point
     // at the destination's relations, target included.
     const routineRuleSql = `WITH inserted AS (
-    INSERT INTO routine_occurrences (id, task_key, title, cadence, occurrence_date, done)
+    INSERT INTO routine_occurrences (id, template_id, title, cadence, occurrence_date, done)
     SELECT
-        t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
-        t.task_key,
+        t.id || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
+        t.id,
         t.title,
         t.cadence,
         (current_setting('job.occurrence')::timestamptz)::date,
@@ -162,7 +162,7 @@ describe("rewriteTableQuerySql on data-modifying statements", () => {
     ON CONFLICT (id) DO NOTHING
     RETURNING *
 )
-SELECT id, task_key, title, cadence, done FROM inserted`;
+SELECT id, template_id, title, cadence, done FROM inserted`;
 
     it("rewrites the INSERT target and the relations a data-modifying CTE reads", () => {
         const result = rewriteTableQuerySql(routineRuleSql, {
@@ -170,7 +170,7 @@ SELECT id, task_key, title, cadence, done FROM inserted`;
             routine_templates: "routine_templates_2",
         });
 
-        expect(result.sql).toContain("INSERT INTO routine_occurrences_2 (id, task_key");
+        expect(result.sql).toContain("INSERT INTO routine_occurrences_2 (id, template_id");
         expect(result.sql).toContain("FROM routine_templates_2 t");
         // The CTE name is not a relation of the project and must survive.
         expect(result.sql).toContain("FROM inserted");

@@ -28,7 +28,7 @@ describe("Grid registry", () => {
         });
 
         expect(listGrids(projectDoc)).toEqual([
-            { gridId, name: "Open tasks", sourceTableId: tableId },
+            { gridId, name: "Open tasks", sourceTableId: tableId, showAddRowButton: true },
         ]);
         expect(getGridSourceTableId(projectDoc, gridId)).toBe(tableId);
     });
@@ -102,6 +102,42 @@ describe("Grid registry", () => {
         expect(getGridColumnOrder(dupHandles)).toEqual(["id"]);
         expect(readGridComponents(dupHandles).labels.id).toBe("Id");
         expect(listTables(projectDoc)).toHaveLength(1);
+    });
+
+    it("preserves showAddRowButton flag on duplicateGrid", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+
+        const originalId = createGrid(projectDoc, tableId, {
+            name: "Original",
+            showAddRowButton: false,
+        });
+
+        const dupId = duplicateGrid(projectDoc, originalId)!;
+        const dupHandles = getGridHandles(projectDoc, dupId)!;
+        expect(dupHandles.entry.get("showAddRowButton")).toBe(false);
+    });
+
+    it("sets and gets showAddRowButton correctly", () => {
+        const projectDoc = new Y.Doc();
+        const tableId = createTable(projectDoc, "Tasks", "tasks");
+        const gridId = createGrid(projectDoc, tableId, { name: "G" });
+        const handles = getGridHandles(projectDoc, gridId)!;
+
+        // Default is true
+        expect(handles.entry.get("showAddRowButton")).toBeUndefined();
+
+        // Update to false
+        handles.projectDoc.transact(() => {
+            handles.entry.set("showAddRowButton", false);
+        });
+        expect(handles.entry.get("showAddRowButton")).toBe(false);
+
+        // Update back to true deletes the field
+        handles.projectDoc.transact(() => {
+            handles.entry.delete("showAddRowButton");
+        });
+        expect(handles.entry.get("showAddRowButton")).toBeUndefined();
     });
 
     it("undo/redo covers only the Grid definition, not the source Table data", () => {

@@ -21,7 +21,7 @@ import { Item, Items, Project } from "./schema/app-schema.js";
 // documents are re-seeded on the next /api/seed-demo call. One number covers
 // every locale: each document stores its own `metadata.templateVersion`, so a
 // single bump reseeds them all on their next visit.
-export const DEMO_TEMPLATE_VERSION = 61;
+export const DEMO_TEMPLATE_VERSION = 63;
 
 // Must match the demo room id (`projects/demo`) so that internal links
 // rendered from `project.title` resolve to /demo/<page> URLs. Localized demos
@@ -187,7 +187,7 @@ export function demoGridIdFor(tableId: string): string {
 // becomes a row of the routine templates table; the seeded schedule rules read
 // that table and turn its rows into dated occurrences in the occurrences table.
 export interface DemoRoutineTemplate {
-    taskKey: string;
+    id: string;
     // Localized. Copied into both routine tables, and from there into the rows
     // the schedule rules generate (see routineOccurrenceSql).
     title: string;
@@ -195,10 +195,10 @@ export interface DemoRoutineTemplate {
 }
 
 const demoRoutineTemplatesEn: DemoRoutineTemplate[] = [
-    { taskKey: "daily-standup", title: "Write the standup note", cadence: "daily" },
-    { taskKey: "daily-inbox", title: "Empty the inbox", cadence: "daily" },
-    { taskKey: "weekly-review", title: "Weekly review", cadence: "weekly" },
-    { taskKey: "weekly-report", title: "Send the weekly report", cadence: "weekly" },
+    { id: "daily-standup", title: "Write the standup note", cadence: "daily" },
+    { id: "daily-inbox", title: "Empty the inbox", cadence: "daily" },
+    { id: "weekly-review", title: "Weekly review", cadence: "weekly" },
+    { id: "weekly-report", title: "Send the weekly report", cadence: "weekly" },
 ];
 
 /**
@@ -410,27 +410,22 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
             // The definitions of the recurring tasks: what repeats, and how often.
             // Occurrences live in their own table (see below) so that a definition
             // is edited in one place while its generated history grows separately.
-            // `task_key` is the stable identity of a recurring task: its
-            // occurrences share it whatever their title says.
             tableId: DEMO_ROUTINE_TEMPLATES_TABLE_ID,
             name: "Routine Templates",
             sqlName: "routine_templates",
             schemaSql: "CREATE TABLE routine_templates (\n"
                 + "  id TEXT PRIMARY KEY,\n"
-                + "  task_key TEXT NOT NULL,\n"
                 + "  title TEXT NOT NULL,\n"
                 + "  cadence TEXT CHECK (cadence IN ('daily', 'weekly'))\n"
                 + ")",
-            query: "SELECT id, task_key, title, cadence FROM routine_templates ORDER BY cadence, task_key",
+            query: "SELECT id, title, cadence FROM routine_templates ORDER BY cadence, id",
             components: {
-                task_key: "text",
                 title: "text",
                 cadence: "select",
             },
             records: routineTemplates.map((template) => ({
-                id: `routine-template-${template.taskKey}`,
+                id: template.id,
                 values: {
-                    task_key: template.taskKey,
                     title: template.title,
                     cadence: template.cadence,
                 },
@@ -438,34 +433,34 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
         },
         {
             // The dated occurrences generated from the templates table. The id of
-            // an occurrence is `<task_key>-<YYYY-MM-DD>`, which makes the
+            // an occurrence is `<template_id>-<YYYY-MM-DD>`, which makes the
             // generating INSERT idempotent.
             tableId: DEMO_ROUTINE_OCCURRENCES_TABLE_ID,
             name: "Routine Occurrences",
             sqlName: "routine_occurrences",
             schemaSql: "CREATE TABLE routine_occurrences (\n"
                 + "  id TEXT PRIMARY KEY,\n"
-                + "  task_key TEXT NOT NULL,\n"
+                + "  template_id TEXT NOT NULL,\n"
                 + "  title TEXT NOT NULL,\n"
                 + "  cadence TEXT CHECK (cadence IN ('daily', 'weekly')),\n"
                 + "  occurrence_date DATE,\n"
                 + "  done BOOLEAN\n"
                 + ")",
             // Display only the newest occurrence of each recurring task: a row is
-            // shown when no later occurrence with the same task_key exists. The
+            // shown when no later occurrence with the same template_id exists. The
             // correlated NOT EXISTS keeps the result editable (DISTINCT ON and
             // aggregates would make the grid read-only), so `done` stays a
             // writable checkbox.
-            query: "SELECT id, task_key, title, cadence, occurrence_date, done\n"
+            query: "SELECT id, template_id, title, cadence, occurrence_date, done\n"
                 + "FROM routine_occurrences r\n"
                 + "WHERE NOT EXISTS (\n"
                 + "    SELECT 1 FROM routine_occurrences later\n"
-                + "    WHERE later.task_key = r.task_key\n"
+                + "    WHERE later.template_id = r.template_id\n"
                 + "      AND later.occurrence_date > r.occurrence_date\n"
                 + "  )\n"
-                + "ORDER BY cadence, task_key",
+                + "ORDER BY cadence, template_id",
             components: {
-                task_key: "text",
+                template_id: "text",
                 title: "text",
                 cadence: "select",
                 occurrence_date: "date",
@@ -479,9 +474,9 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                     ? [demoUtcDate(-1), demoUtcDate(0)]
                     : [demoUtcWeekStart(1), demoUtcWeekStart(0)];
                 return dates.map((date, index) => ({
-                    id: `${template.taskKey}-${date}`,
+                    id: `${template.id}-${date}`,
                     values: {
-                        task_key: template.taskKey,
+                        template_id: template.id,
                         title: template.title,
                         cadence: template.cadence,
                         occurrence_date: date,
@@ -499,11 +494,11 @@ function buildDemoTables(routineTemplates: DemoRoutineTemplate[]): DemoTableTemp
                 {
                     gridId: DEMO_ROUTINE_HISTORY_GRID_ID,
                     name: "Routine Occurrences · full history",
-                    query: "SELECT id, task_key, title, occurrence_date, done\n"
+                    query: "SELECT id, template_id, title, occurrence_date, done\n"
                         + "FROM routine_occurrences\n"
-                        + "ORDER BY occurrence_date DESC, task_key",
+                        + "ORDER BY occurrence_date DESC, template_id",
                     components: {
-                        task_key: "text",
+                        template_id: "text",
                         title: "text",
                         occurrence_date: { type: "date", label: "Date" },
                         done: "checkbox",
@@ -550,7 +545,7 @@ export const DEMO_WEEKLY_RULE_ID = "demo-rule-weekly-routines";
  *   one it writes to.
  * - `current_setting('job.occurrence')` (never `now()`) is the scheduled time,
  *   so a catch-up run produces the row it would have produced on time.
- * - the id is derived from the task's `task_key` and that date, so re-running
+ * - the id is derived from the task's row id and that date, so re-running
  *   the same occurrence is a no-op (`ON CONFLICT DO NOTHING`) and a completed
  *   checkbox is never reset.
  * - the outer SELECT renders the date as text: values written back into Yjs
@@ -558,10 +553,10 @@ export const DEMO_WEEKLY_RULE_ID = "demo-rule-weekly-routines";
  */
 export function routineOccurrenceSql(cadence: "daily" | "weekly"): string {
     return `WITH inserted AS (
-    INSERT INTO routine_occurrences (id, task_key, title, cadence, occurrence_date, done)
+    INSERT INTO routine_occurrences (id, template_id, title, cadence, occurrence_date, done)
     SELECT
-        t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
-        t.task_key,
+        t.id || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
+        t.id,
         t.title,
         t.cadence,
         (current_setting('job.occurrence')::timestamptz)::date,
@@ -573,7 +568,7 @@ export function routineOccurrenceSql(cadence: "daily" | "weekly"): string {
 )
 SELECT
     id,
-    task_key,
+    template_id,
     title,
     cadence,
     to_char(occurrence_date, 'YYYY-MM-DD') AS occurrence_date,
@@ -1063,7 +1058,7 @@ export function demoRoutineTemplatesFor(locale: DemoLocale): DemoRoutineTemplate
     const { routineTitles = {} } = localeContent(locale);
     return demoRoutineTemplatesEn.map(template => ({
         ...template,
-        title: routineTitles[template.taskKey] ?? template.title,
+        title: routineTitles[template.id] ?? template.title,
     }));
 }
 

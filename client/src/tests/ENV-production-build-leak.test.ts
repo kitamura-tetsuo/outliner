@@ -31,6 +31,7 @@ const forbiddenGlobals = [
     "__selectionList",
     "__GRAPH_CHART__",
     "__pollingMonitor",
+    "__outlinerGridRenderTraces",
 ];
 
 const forbiddenStrings = [

@@ -170,7 +170,7 @@ describe("Demo seed content", () => {
     });
 
     it("seeds the current Grid clipboard guidance", () => {
-        expect(DEMO_TEMPLATE_VERSION).to.equal(61);
+        expect(DEMO_TEMPLATE_VERSION).to.equal(63);
 
         const advanced = findChildByText(project.items, "Advanced Features");
         expect(advanced).to.not.equal(undefined);
@@ -487,11 +487,8 @@ describe("Demo seed content", () => {
         expect(templates.schemaSql).to.not.contain("kind");
         expect(occurrencesTable.schemaSql).to.not.contain("kind");
 
-        expect(templates.records.map((r) => r.values.task_key)).to.deep.equal(
-            demoRoutineTemplates.map((t) => t.taskKey),
-        );
         expect(templates.records.map((r) => r.id)).to.deep.equal(
-            demoRoutineTemplates.map((t) => `routine-template-${t.taskKey}`),
+            demoRoutineTemplates.map((t) => t.id),
         );
         expect(
             demoRoutineTemplates.some((t) => t.cadence === "daily")
@@ -507,11 +504,11 @@ describe("Demo seed content", () => {
         // Two occurrences per task, so the display query has something to hide.
         expect(occurrences.length).to.equal(demoRoutineTemplates.length * 2);
         for (const definition of demoRoutineTemplates) {
-            const mine = occurrences.filter((r) => r.values.task_key === definition.taskKey);
-            expect(mine.length, `${definition.taskKey} has a history`).to.equal(2);
+            const mine = occurrences.filter((r) => r.values.template_id === definition.id);
+            expect(mine.length, `${definition.id} has a history`).to.equal(2);
             // The id identifies the occurrence: task identity + its date.
             for (const record of mine) {
-                expect(record.id).to.equal(`${definition.taskKey}-${record.values.occurrence_date}`);
+                expect(record.id).to.equal(`${definition.id}-${record.values.occurrence_date}`);
             }
         }
 
@@ -524,7 +521,7 @@ describe("Demo seed content", () => {
         const template = demoTables.find((t) => t.tableId === DEMO_ROUTINE_OCCURRENCES_TABLE_ID)!;
 
         expect(template.query).to.contain("NOT EXISTS");
-        expect(template.query).to.contain("later.task_key = r.task_key");
+        expect(template.query).to.contain("later.template_id = r.template_id");
         expect(template.query).to.contain("later.occurrence_date > r.occurrence_date");
         // DISTINCT / GROUP BY / aggregates would make the grid read-only, so
         // the checkbox could no longer be ticked (see queryAnalysis.ts).
@@ -581,7 +578,7 @@ describe("Demo seed content", () => {
             expect(/\bnow\s*\(\)/i.test(sql)).to.equal(false);
             // A deterministic id per task and occurrence keeps retries harmless.
             expect(sql).to.contain("ON CONFLICT (id) DO NOTHING");
-            expect(sql).to.contain("t.task_key || '-' || to_char(");
+            expect(sql).to.contain("t.id || '-' || to_char(");
             expect(sql).to.contain(`t.cadence = '${cadence}'`);
             // The rule reads the definitions from the templates table and
             // writes into the occurrences one.

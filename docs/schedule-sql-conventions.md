@@ -47,14 +47,14 @@ For aggregations, it's safer to use the occurrence time itself as part of the ID
 
 ### Worked example: recurring tasks
 
-The demo's recurring tasks (`Recurring Tasks` page, see `server/src/demo-content.ts`) follow this pattern. The definitions live in one table (`routine_templates`) and the generated rows in another (`routine_occurrences`), so a definition is edited in one place while its history grows separately. A stable `task_key` column identifies the recurring task — not its title, which the user may edit — and the id of a generated row combines that key with the occurrence date:
+The demo's recurring tasks (`Recurring Tasks` page, see `server/src/demo-content.ts`) follow this pattern. The definitions live in one table (`routine_templates`) and the generated rows in another (`routine_occurrences`), so a definition is edited in one place while its history grows separately. The stable template row `id` identifies the recurring task — not its title, which the user may edit — and the id of a generated row combines that key with the occurrence date:
 
 ```sql
 WITH inserted AS (
-    INSERT INTO routine_occurrences (id, task_key, title, cadence, occurrence_date, done)
+    INSERT INTO routine_occurrences (id, template_id, title, cadence, occurrence_date, done)
     SELECT
-        t.task_key || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
-        t.task_key, t.title, t.cadence,
+        t.id || '-' || to_char(current_setting('job.occurrence')::timestamptz, 'YYYY-MM-DD'),
+        t.id, t.title, t.cadence,
         (current_setting('job.occurrence')::timestamptz)::date,
         false
     FROM routine_templates t
@@ -62,7 +62,7 @@ WITH inserted AS (
     ON CONFLICT (id) DO NOTHING
     RETURNING *
 )
-SELECT id, task_key, title, cadence,
+SELECT id, template_id, title, cadence,
        to_char(occurrence_date, 'YYYY-MM-DD') AS occurrence_date, done
 FROM inserted
 ```
@@ -79,14 +79,14 @@ Three further conventions matter here:
 A table that accumulates one row per occurrence usually wants to show only the newest row per recurring item. Express that with a correlated `NOT EXISTS` rather than `DISTINCT ON` or `MAX(...)`: the grid is read-only for queries using DISTINCT, JOINs, GROUP BY or aggregates (see `client/src/services/yjstable/queryAnalysis.ts`), which would take the completion checkbox with it.
 
 ```sql
-SELECT id, task_key, title, cadence, occurrence_date, done
+SELECT id, template_id, title, cadence, occurrence_date, done
 FROM routine_occurrences r
 WHERE NOT EXISTS (
     SELECT 1 FROM routine_occurrences later
-    WHERE later.task_key = r.task_key
+    WHERE later.template_id = r.template_id
       AND later.occurrence_date > r.occurrence_date
   )
-ORDER BY cadence, task_key
+ORDER BY cadence, template_id
 ```
 
 ## Timezones
