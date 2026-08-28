@@ -1,8 +1,19 @@
 import type { Project } from "$shared/app-schema";
+import type * as Y from "yjs";
+import { getLogger } from "../../lib/logger";
 import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../calendar/calendarService";
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
 import { globalUndoRouter } from "../undo/undoRouter.svelte";
+import type { ManualUndoEntry } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
+import {
+    type DuplicableObject,
+    duplicateObjectSet,
+    type DuplicationSetResult,
+    materializeDuplicationPlan,
+    previewObjectSetDuplication,
+    rollbackObjectDuplication,
+} from "../yjstable/objectDuplication";
 import {
     getTableDependencies,
     removeTableWithPolicyUndoable,
@@ -16,6 +27,8 @@ import {
     traverseObjectGraph,
 } from "./objectDependencyGraph";
 import { collectAllPlacements, type ObjectPlacement } from "./objectPlacements";
+
+const logger = getLogger("objectManagerController");
 
 export type ObjectType = "Table" | "Grid" | "Schedule" | "Calendar";
 
@@ -120,6 +133,25 @@ export function selectRelatedObjects(
 
     const graph = buildObjectDependencyGraph(project.ydoc);
     return traverseObjectGraph(graph, roots, scope).map(object => object.id);
+}
+
+export interface Preselection {
+    /** Ids from `preselectedIds` that actually exist right now. */
+    ids: string[];
+    /** Their types, so the caller can widen the type filter to keep them visible (issue #5153 §11). */
+    types: ObjectType[];
+}
+
+/**
+ * Resolve a route's `?selected=` object ids (issue #5153 §11 — an individual
+ * object's Duplicate action opens Object Manager with it preselected) against
+ * the live object list. Ids that no longer exist are silently dropped rather
+ * than left dangling in the selection.
+ */
+export function computePreselection(objects: NamedObject[], preselectedIds: readonly string[]): Preselection {
+    const requested = new Set(preselectedIds);
+    const found = objects.filter(object => requested.has(object.id));
+    return { ids: found.map(object => object.id), types: [...new Set(found.map(object => object.type))] };
 }
 
 export function generateBulkPreview(
@@ -244,4 +276,105 @@ export function deleteObjects(project: Project | null | undefined, objects: Name
         }
         return true;
     });
+}
+
+/** Convert Object Manager's display objects to the dependency-graph/duplication service's shape. */
+export function toDuplicableObjects(objects: NamedObject[]): DuplicableObject[] {
+    return objects.map(object => ({ type: OBJECT_TYPE_TO_KIND[object.type], id: object.id }));
+}
+
+export interface DuplicationSetPreview {
+    /** The exact, deduped selection that will be duplicated — never expanded through the dependency graph (issue #5153 §2). */
+    objects: NamedObject[];
+    countsByType: Partial<Record<ObjectType, number>>;
+    /** References from a selected object to an object outside the selection (see `previewObjectSetDuplication`). */
+    omittedReferenceCount: number;
+}
+
+/**
+ * Preview for Object Manager's `Duplicate selected` (issue #5153 §8): the
+ * selection itself is the authoritative scope, so this only classifies it —
+ * it never traverses the dependency graph to add anything, unlike
+ * `selectRelatedObjects`.
+ */
+export function buildDuplicationSetPreview(
+    project: Project | null | undefined,
+    selected: NamedObject[],
+): DuplicationSetPreview | null {
+    if (!project?.ydoc || selected.length === 0) return null;
+    const preview = previewObjectSetDuplication(project.ydoc, toDuplicableObjects(selected));
+    const byId = new Map(selected.map(object => [object.id, object]));
+    const objects = preview.objects
+        .map(graphObject => byId.get(graphObject.id))
+        .filter((object): object is NamedObject => object !== undefined);
+    const countsByType: Partial<Record<ObjectType, number>> = {};
+    for (const object of objects) countsByType[object.type] = (countsByType[object.type] ?? 0) + 1;
+    return { objects, countsByType, omittedReferenceCount: preview.omittedReferenceCount };
+}
+
+/** A caller-supplied side effect folded into `duplicateSelectedObjects`'s single undo step — see `afterMaterialize`. */
+export interface DuplicationSideEffect {
+    undo: () => void;
+    redo: () => void;
+}
+
+/**
+ * Duplicate an exact, pre-snapshotted selection into `destinationDoc` as one
+ * undo-router operation (issue #5153 §9): the selection is never expanded
+ * through the dependency graph (that is `Select related`'s job, done before
+ * this is called), materialization allocates every destination id up front so
+ * a mid-operation failure cannot leave a partial copy (`duplicateObjectSet`
+ * already rolls itself back on error), and the whole thing collapses to one
+ * router entry via `captureManualAsync` so a single Undo removes every object
+ * it created. Redo replays `materializeDuplicationPlan` with that same id
+ * map, so anything created keeps the same identity across an undo/redo cycle.
+ */
+export async function duplicateSelectedObjects(
+    sourceDoc: Y.Doc,
+    destinationDoc: Y.Doc,
+    selected: NamedObject[],
+    options: {
+        copyTableData?: boolean;
+        synchronizeTableSubdocs?: boolean;
+        /**
+         * Runs once materialization succeeds, before the undo entry is
+         * sealed — e.g. attaching the one copied Grid to a destination Page
+         * (issue #5153 §5). Any Yjs edits it makes are folded into the same
+         * undo step; its own `undo`/`redo` are called in the right order
+         * around the object graph's (placement after creation, before removal).
+         */
+        afterMaterialize?: (result: DuplicationSetResult) => DuplicationSideEffect | void;
+    },
+): Promise<DuplicationSetResult | null> {
+    if (selected.length === 0) return null;
+    let result: DuplicationSetResult | undefined;
+    let sideEffect: DuplicationSideEffect | void;
+    await globalUndoRouter.captureManualAsync(
+        async () => {
+            result = await duplicateObjectSet(sourceDoc, destinationDoc, toDuplicableObjects(selected), options);
+            sideEffect = options.afterMaterialize?.(result);
+        },
+        {
+            type: "manual",
+            label: `Duplicate ${selected.length} objects`,
+            undo: () => {
+                sideEffect?.undo();
+                if (result) rollbackObjectDuplication(destinationDoc, result);
+            },
+            redo: () => {
+                if (!result) return;
+                const created = result;
+                void materializeDuplicationPlan(
+                    sourceDoc,
+                    destinationDoc,
+                    created.sourceObjects,
+                    { copyTableData: options.copyTableData },
+                    created.idMap,
+                )
+                    .then(() => sideEffect?.redo())
+                    .catch(error => logger.error({ error }, "Redo of Duplicate selected failed"));
+            },
+        } satisfies ManualUndoEntry,
+    );
+    return result ?? null;
 }

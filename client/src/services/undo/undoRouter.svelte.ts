@@ -286,6 +286,34 @@ export class UndoRouter {
         this.redoStack = [];
     }
 
+    /**
+     * Async counterpart to `captureManual`: `mutate` performs one or more Yjs
+     * transactions across an awaited operation (e.g. duplication that
+     * synchronizes remote Table subdocs before writing, issue #5153 §9), after
+     * which whatever every registered `Y.UndoManager` auto-captured during it
+     * is purged (mirrors `runWithoutAutoCapture`) and replaced by exactly one
+     * `entry` this caller fully controls.
+     */
+    public async captureManualAsync(mutate: () => Promise<void>, entry: ManualUndoEntry): Promise<void> {
+        for (const um of this.registered) um.stopCapturing();
+        // Local bookkeeping for this one call, not component state.
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity
+        const before = new Map<Y.UndoManager, { undo: number; redo: number; }>();
+        for (const um of this.registered) before.set(um, { undo: um.undoStack.length, redo: um.redoStack.length });
+        const preTransactUndoDepth = this.undoStack.length;
+
+        await mutate();
+
+        for (const um of this.registered) um.stopCapturing();
+        for (const [um, lengths] of before) {
+            if (um.undoStack.length > lengths.undo) um.undoStack.length = lengths.undo;
+            if (um.redoStack.length > lengths.redo) um.redoStack.length = lengths.redo;
+        }
+        if (this.undoStack.length > preTransactUndoDepth) this.undoStack.length = preTransactUndoDepth;
+        this.undoStack.push(entry);
+        this.redoStack = [];
+    }
+
     /** Combine several already-safe manual operations into one user-visible step. */
     public captureManualGroup(label: string, transact: () => boolean): boolean {
         const start = this.undoStack.length;

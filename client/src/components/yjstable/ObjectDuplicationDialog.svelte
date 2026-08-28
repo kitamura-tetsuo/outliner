@@ -5,6 +5,8 @@
     import { userManager } from "../../auth/UserManager";
     import { appendGridPlacement } from "../../services/yjstable/gridPlacement";
     import { getYjsClientByProjectTitle } from "../../services";
+    import { store } from "../../stores/store.svelte";
+    import { yjsStore } from "../../stores/yjsStore.svelte";
     import { resolvePath } from "../../utils/pathUtils";
     import { projectCalendarPath, projectGridPath, projectSchedulePath, projectTablePath } from "../../lib/managementPaths";
     import {
@@ -58,14 +60,27 @@
         if (!destinationTitle) return;
         isDuplicating = true;
         actionError = undefined;
+        // Captured before any `store.project` reassignment below: when a
+        // caller (e.g. Sidebar.svelte) binds `sourceDoc={store.project.ydoc}`
+        // reactively, publishing a different project there mid-function would
+        // otherwise silently swap this prop's value out from under the rest
+        // of this call.
+        const capturedSourceDoc = sourceDoc;
         try {
-            let destinationDoc = sourceDoc;
+            let destinationDoc = capturedSourceDoc;
             if (destinationTitle !== sourceProject) {
                 const client = await getYjsClientByProjectTitle(destinationTitle);
                 if (!client) throw new Error(`Project "${destinationTitle}" could not be opened.`);
                 destinationDoc = client.project.ydoc;
+                // The `[project]` layout only loads a project when no client is
+                // registered yet (see AuthenticatedHome.svelte's project switch),
+                // so a client-side `goto` to another project's route must publish
+                // its client and project here first or the destination route
+                // would keep rendering the source project's data under the new URL.
+                yjsStore.yjsClient = client as unknown as NonNullable<typeof yjsStore.yjsClient>;
+                store.project = client.project as unknown as NonNullable<typeof store.project>;
             }
-            const result = await duplicateObjects(sourceDoc, destinationDoc, object, scope, {
+            const result = await duplicateObjects(capturedSourceDoc, destinationDoc, object, scope, {
                 copyTableData,
                 synchronizeTableSubdocs: true,
             });

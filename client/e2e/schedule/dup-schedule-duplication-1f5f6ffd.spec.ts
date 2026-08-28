@@ -6,8 +6,10 @@ import { expect, test } from "@playwright/test";
 import { TestHelpers } from "../utils/testHelpers";
 
 // Schedule duplication (issue #5102) extends the Grid/Table dependency-aware
-// duplication feature (#5090/#5092) so a Schedule can be duplicated directly
-// from its own edit page, through the same ObjectDuplicationDialog.
+// duplication feature (#5090/#5092). Since issue #5153, the Schedule edit
+// page's "Duplicate Schedule" button routes into Object Manager with the
+// Schedule preselected instead of opening its own dialog — Object Manager's
+// `Duplicate selected` is now the single duplication entry point.
 test.describe("Schedule duplication", () => {
     test.beforeEach(async ({ page }, testInfo) => {
         await TestHelpers.seedProjectAndNavigate(page, testInfo);
@@ -43,25 +45,30 @@ test.describe("Schedule duplication", () => {
         await page.goto(`/${projectSegment}/-/schedules`);
         await page.locator("button:has-text('Edit')").first().click();
         await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
-        const sourceUrl = page.url();
 
-        // Duplicate it into the same project via the Duplicate Schedule dialog.
+        // Duplicate opens Object Manager with the Schedule preselected (#5153 §10).
         await page.getByTestId("duplicate-schedule").click();
-        const dialog = page.getByTestId("object-duplication-dialog");
+        await expect(page).toHaveURL(/\/objects\?selected=/, { timeout: 15000 });
+        const scheduleRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Daily import" }).filter({
+            has: page.locator(".type-badge.schedule"),
+        });
+        await expect(scheduleRow).toBeVisible({ timeout: 15000 });
+        await expect(scheduleRow.locator('td.checkbox-col input[type="checkbox"]')).toBeChecked();
+
+        // Duplicate selected into the same project via Object Manager's dialog.
+        await page.getByTestId("object-manager-duplicate-selected").click();
+        const dialog = page.getByTestId("object-manager-duplicate-dialog");
         await expect(dialog).toBeVisible();
-        await expect(dialog.locator("h2")).toHaveText("Duplicate Schedule");
-        await dialog.locator("button:has-text('Duplicate')").click();
+        await dialog.getByTestId("object-manager-duplicate-apply").click();
+        await expect(dialog).toBeHidden({ timeout: 15000 });
 
-        // The dialog navigates to the copy's own Schedule route, distinct from the source.
-        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
-        expect(page.url()).not.toBe(sourceUrl);
-        await expect(page.getByTestId("target-table-select")).toBeVisible({ timeout: 15000 });
+        // The copy carries the collision-safe "copy" name and appears alongside the original.
+        const copyRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Daily import copy" })
+            .filter({ has: page.locator(".type-badge.schedule") });
+        await expect(copyRow).toBeVisible({ timeout: 15000 });
 
-        // The copy carries the collision-safe "copy" name and its own target table selection.
-        await expect(page.locator("#name-input")).toHaveValue("Daily import copy");
-        await expect(page.getByTestId("target-table-select")).not.toHaveValue("");
-
-        // The original rule is untouched and still lists alongside its copy.
+        // The original rule is untouched and still lists alongside its copy
+        // (the list itself shows no name, only rrule/status/table references).
         await page.goto(`/${projectSegment}/-/schedules`);
         const list = page.getByTestId("project-schedule-list");
         await expect(list).toBeVisible({ timeout: 30000 });

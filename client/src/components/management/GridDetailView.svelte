@@ -8,6 +8,7 @@
     // the same Table data, because Table data is Table-owned.
     import Loader from "../Loader.svelte";
     import { onMount } from "svelte";
+    import { goto } from "$app/navigation";
     import { userManager } from "../../auth/UserManager";
     import AuthComponent from "../AuthComponent.svelte";
     import { getLogger } from "../../lib/logger";
@@ -21,10 +22,9 @@
     // and the Table's for its own lifetime, so this page only resolves handles.
     import { type GridHandles, getGridHandles, getGridSourceTableId } from "../../services/yjstable/gridDocs";
     import { isPublicProject, projectBasePath } from "../../lib/publicProject";
-    import { projectGridsPath, projectTablePath } from "../../lib/managementPaths";
+    import { projectGridsPath, projectObjectsPath, projectTablePath } from "../../lib/managementPaths";
     import { DemoInitAborted } from "../../lib/demoInit";
     import { openRouteProject, type RouteProjectHandle } from "../../lib/routeProject";
-    import ObjectDuplicationDialog from "../yjstable/ObjectDuplicationDialog.svelte";
 
     const logger = getLogger("GridStandalonePage");
 
@@ -52,12 +52,19 @@
     let projectDoc: NonNullable<typeof store.project>["ydoc"] | undefined = $state(undefined);
     let isDestroyed = false;
     let projectHandle: RouteProjectHandle | undefined = undefined;
-    let showDuplicationDialog = $state(false);
 
     // Public projects stay readable for anonymous visitors, matching the
     // standalone Table and Calendar routes.
     let isPublicDemo = $derived(isPublicProject(projectName));
     let canAccess = $derived(isAuthenticated || isPublicDemo);
+
+    // Duplicate now opens Object Manager with this Grid preselected instead of
+    // the old per-object recursive dependency-scope chooser (issue #5153 §10):
+    // the user can duplicate it alone from there, or expand the set first via
+    // `Select related`.
+    function openDuplicate() {
+        goto(resolvePath(`${projectObjectsPath(projectName)}?selected=${encodeURIComponent(routeGridId)}`));
+    }
 
     let sourceTableHref = $derived(
         sourceTableId ? resolvePath(projectTablePath(projectName, sourceTableId)) : undefined,
@@ -182,7 +189,8 @@
         {#if isAuthenticated && !isLoading && gridHandles && projectDoc}
             <button
                 class="ml-auto rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                onclick={() => { showDuplicationDialog = true; }}
+                onclick={openDuplicate}
+                data-testid="grid-duplicate-button"
             >Duplicate Grid</button>
         {/if}
     </div>
@@ -248,12 +256,3 @@
         </div>
     {/if}
 </main>
-
-{#if showDuplicationDialog && projectDoc}
-    <ObjectDuplicationDialog
-        sourceDoc={projectDoc}
-        sourceProject={projectName}
-        object={{ type: "grid", id: routeGridId }}
-        onclose={() => { showDuplicationDialog = false; }}
-    />
-{/if}

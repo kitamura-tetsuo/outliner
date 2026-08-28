@@ -42,15 +42,27 @@ export interface DuplicationPreview {
     omittedReferenceCount: number;
 }
 
-export interface DuplicationResult {
+interface MaterializedDuplication {
     idMap: ReadonlyMap<string, string>;
-    primaryId: string;
     removedReferenceCount: number;
     createdObjects: DuplicableObject[];
 }
 
+export interface DuplicationResult extends MaterializedDuplication {
+    primaryId: string;
+}
+
+/** Result of duplicating an explicit selection (issue #5153) — there is no single primary object. */
+export interface DuplicationSetResult extends MaterializedDuplication {
+    /** The deduped source-side objects actually duplicated, in materialization order — reused to redo the operation with the same `idMap`. */
+    sourceObjects: DuplicableObject[];
+}
+
 /** Remove every object materialized by one duplication attempt. */
-export function rollbackObjectDuplication(destination: Y.Doc, result: DuplicationResult): void {
+export function rollbackObjectDuplication(
+    destination: Y.Doc,
+    result: Pick<MaterializedDuplication, "createdObjects">,
+): void {
     const destinationProject = Project.fromDoc(destination);
     destination.transact(() => {
         for (const object of result.createdObjects.toReversed()) {
@@ -72,6 +84,21 @@ function allocateCopyName(name: string, taken: Set<string>): string {
     return candidate;
 }
 
+/** Every reference from `objects` that points outside the set counts once toward the returned preview. */
+function toPreview(
+    objects: DuplicableObject[],
+    graph: ReturnType<typeof buildObjectDependencyGraph>,
+): DuplicationPreview {
+    const visitedKeys = new Set(objects.map(key));
+    let omittedReferenceCount = 0;
+    for (const object of objects) {
+        for (const dependency of graph.dependenciesOf(object)) {
+            if (!visitedKeys.has(key(dependency))) omittedReferenceCount++;
+        }
+    }
+    return { objects, omittedReferenceCount };
+}
+
 /**
  * Collect the complete object graph before mutation, via the shared
  * dependency-graph service (issue #5135 §3) so duplication and Object
@@ -89,36 +116,61 @@ export function previewObjectDuplication(
     const objects = scope === "item-only"
         ? [primary]
         : traverseObjectGraph(graph, [primary], DIRECTION_BY_SCOPE[scope]);
+    return toPreview(objects, graph);
+}
 
-    const visitedKeys = new Set(objects.map(key));
-    let omittedReferenceCount = 0;
-    for (const object of objects) {
-        for (const dependency of graph.dependenciesOf(object)) {
-            if (!visitedKeys.has(key(dependency))) omittedReferenceCount++;
-        }
-    }
-    return { objects, omittedReferenceCount };
+/**
+ * Preview for an explicit, caller-provided object set (issue #5153) rather
+ * than a graph traversal from one primary object — the selection itself is
+ * the authoritative duplication scope, so this never expands it. A reference
+ * from a selected object to another selected object will be rewritten to the
+ * copy during materialization; a reference to an object outside the set is
+ * counted here exactly like `previewObjectDuplication`'s omitted references,
+ * so a caller can warn about it before the same-project-preserve /
+ * cross-project-clear policy in `duplicateObjectSet` applies it.
+ */
+export function previewObjectSetDuplication(source: Y.Doc, selected: DuplicableObject[]): DuplicationPreview {
+    const graph = buildObjectDependencyGraph(source);
+    const seen = new Set<string>();
+    const objects = selected.filter(object => {
+        const objectKey = key(object);
+        if (seen.has(objectKey)) return false;
+        seen.add(objectKey);
+        return true;
+    });
+    return toPreview(objects, graph);
 }
 
 /**
  * Materialize a previously previewed graph. IDs are allocated up front and
  * references are rewritten only against that map. On failure all registry
  * entries made by this invocation are removed, so observers never retain a
- * partially copied graph.
+ * partially copied graph. Shared by both the single-primary recursive
+ * duplication flow and the explicit-selection flow (issue #5153) — neither
+ * re-expands `objects`, so a reference to something outside it is always
+ * either rewritten (if included) or handled by the existing same-project
+ * preserve / cross-project clear-and-warn policy below.
  */
-export async function duplicateObjects(
+export async function materializeDuplicationPlan(
     source: Y.Doc,
     destination: Y.Doc,
-    primary: DuplicableObject,
-    scope: DuplicationScope,
+    objects: DuplicableObject[],
     options: {
         copyTableData?: boolean;
         /** Synchronize remote Table subdocs before reading the completed plan. */
         synchronizeTableSubdocs?: boolean;
     } = {},
-): Promise<DuplicationResult> {
-    const preview = previewObjectDuplication(source, primary, scope);
-    const tableObjects = preview.objects.filter(object => object.type === "table");
+    /**
+     * Reuse a previously allocated id map instead of minting new destination
+     * ids — how Object Manager's `Duplicate selected` redoes an undone
+     * operation (issue #5153 §9): every id stays the same across an
+     * undo/redo cycle, so anything a user pointed at a duplicated object
+     * (e.g. by hand) between the redo and any later undo keeps resolving.
+     * Every entry in `objects` must have a matching `objectGraphKey` here.
+     */
+    existingIdMap?: ReadonlyMap<string, string>,
+): Promise<MaterializedDuplication> {
+    const tableObjects = objects.filter(object => object.type === "table");
     const connections: TableDocConnection[] = [];
 
     // Discovery is deliberately complete before any connection or destination
@@ -152,8 +204,8 @@ export async function duplicateObjects(
             throw error;
         }
     }
-    const idMap = new Map<string, string>();
-    for (const object of preview.objects) idMap.set(key(object), uuidv4());
+    const idMap = new Map<string, string>(existingIdMap);
+    for (const object of objects) if (!idMap.has(key(object))) idMap.set(key(object), uuidv4());
 
     const sameProject = source === destination;
     const createdTables: string[] = [];
@@ -176,7 +228,7 @@ export async function duplicateObjects(
 
     try {
         // Tables precede Grids, but both kinds already have destination IDs.
-        for (const object of preview.objects.filter(object => object.type === "table")) {
+        for (const object of objects.filter(object => object.type === "table")) {
             const sourceEntry = listTables(source).find(table => table.tableId === object.id);
             const sourceHandles = getTableHandles(source, object.id);
             if (!sourceEntry || !sourceHandles) throw new Error(`Table "${object.id}" no longer exists`);
@@ -204,7 +256,7 @@ export async function duplicateObjects(
             createdTables.push(destinationId);
         }
 
-        for (const object of preview.objects.filter(object => object.type === "grid")) {
+        for (const object of objects.filter(object => object.type === "grid")) {
             const sourceGrid = listGrids(source).find(grid => grid.gridId === object.id);
             const handles = getGridHandles(source, object.id);
             if (!sourceGrid || !handles) throw new Error(`Grid "${object.id}" no longer exists`);
@@ -242,7 +294,7 @@ export async function duplicateObjects(
         // its write target through `idMap`, and any relation its SQL names
         // through `sqlNameMap` (issue #5102). Runtime/execution state is
         // deliberately not read here — the copy is a new, unrun instance.
-        for (const object of preview.objects.filter(object => object.type === "schedule")) {
+        for (const object of objects.filter(object => object.type === "schedule")) {
             const ruleMap = schedulesMapOf(source).get(object.id);
             if (!ruleMap) throw new Error(`Schedule "${object.id}" no longer exists`);
 
@@ -290,7 +342,7 @@ export async function duplicateObjects(
         // definition, and a destination Page is attached only by a caller
         // that explicitly asks for one (mirroring how a Grid's placement is
         // appended by `ObjectDuplicationDialog`, not by this function).
-        for (const object of preview.objects.filter(object => object.type === "calendar")) {
+        for (const object of objects.filter(object => object.type === "calendar")) {
             const sourceSettings = getCalendar(sourceProject, object.id);
             if (!sourceSettings) throw new Error(`Calendar "${object.id}" no longer exists`);
             const destinationId = idMap.get(key(object))!;
@@ -321,7 +373,6 @@ export async function duplicateObjects(
 
     return {
         idMap,
-        primaryId: idMap.get(key(primary))!,
         removedReferenceCount,
         createdObjects: [
             ...createdTables.map(id => ({ type: "table" as const, id })),
@@ -330,4 +381,40 @@ export async function duplicateObjects(
             ...createdCalendars.map(id => ({ type: "calendar" as const, id })),
         ],
     };
+}
+
+/** Duplicate one primary object and everything `scope` pulls in via the shared dependency graph. */
+export async function duplicateObjects(
+    source: Y.Doc,
+    destination: Y.Doc,
+    primary: DuplicableObject,
+    scope: DuplicationScope,
+    options: { copyTableData?: boolean; synchronizeTableSubdocs?: boolean; } = {},
+): Promise<DuplicationResult> {
+    const preview = previewObjectDuplication(source, primary, scope);
+    const materialized = await materializeDuplicationPlan(source, destination, preview.objects, options);
+    return { ...materialized, primaryId: materialized.idMap.get(key(primary))! };
+}
+
+/**
+ * Duplicate an explicit, caller-provided object set (issue #5153 — Object
+ * Manager's `Duplicate selected`). Unlike `duplicateObjects`, the set is never
+ * expanded through the dependency graph: a reference from a selected object
+ * to another selected object is rewritten to the copy (via `idMap`, exactly
+ * like the single-primary flow), while a reference to an object outside the
+ * selection follows the existing same-project-preserve /
+ * cross-project-clear-and-warn policy already implemented in
+ * `materializeDuplicationPlan`. Callers that want related objects included
+ * must add them to `selected` themselves (e.g. via Object Manager's
+ * `Select related`) before calling this.
+ */
+export async function duplicateObjectSet(
+    source: Y.Doc,
+    destination: Y.Doc,
+    selected: DuplicableObject[],
+    options: { copyTableData?: boolean; synchronizeTableSubdocs?: boolean; } = {},
+): Promise<DuplicationSetResult> {
+    const preview = previewObjectSetDuplication(source, selected);
+    const materialized = await materializeDuplicationPlan(source, destination, preview.objects, options);
+    return { ...materialized, sourceObjects: preview.objects };
 }

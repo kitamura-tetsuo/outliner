@@ -9,6 +9,19 @@ import { createBlankGrid } from "../utils/crossProjectGridHelpers";
 import { createBlockFromItem } from "../utils/nodeKindHelpers";
 import { TestHelpers } from "../utils/testHelpers";
 
+async function findCalendarIdByName(page: import("@playwright/test").Page, name: string): Promise<string | undefined> {
+    return page.evaluate((calendarName) => {
+        // eslint-disable-next-line no-restricted-globals
+        const client = (window as any).__YJS_STORE__?.yjsClient;
+        const project = client?.getProject();
+        let found: string | undefined;
+        project?.calendars?.forEach((value: any, key: string) => {
+            if (value.get("name") === calendarName) found = key;
+        });
+        return found;
+    }, name);
+}
+
 test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
     test(
         "duplicating a Calendar with a connected Table copies both and rewrites the query",
@@ -41,28 +54,28 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
             const standaloneQueryInput = page.getByTestId("calendar-query-input");
             await expect(standaloneQueryInput).toHaveValue("SELECT id, title FROM dup_board", { timeout: 20000 });
 
+            // Duplicate opens Object Manager with the Calendar preselected
+            // (#5153 §10) instead of the old per-object recursive scope
+            // chooser. `Select related → Dependencies` pulls in the Table it
+            // reads, matching the old "referenced" scope's object set.
             await page.getByTestId("calendar-duplicate-button").click();
-            const dialog = page.getByTestId("object-duplication-dialog");
+            await expect(page).toHaveURL(/\/objects\?selected=/, { timeout: 15000 });
+            const calendarRow = page.locator('[data-testid^="object-row-"]').filter({ hasText: "Dup Calendar" })
+                .filter({ has: page.locator(".type-badge.calendar") });
+            await expect(calendarRow).toBeVisible({ timeout: 15000 });
+            await expect(calendarRow.locator('td.checkbox-col input[type="checkbox"]')).toBeChecked();
+
+            await page.getByTestId("object-manager-select-related").click();
+            await page.getByTestId("object-manager-select-related-dependencies").click();
+            await expect(page.getByTestId("object-manager-selected-count")).toHaveText("2 selected");
+
+            await page.getByTestId("object-manager-duplicate-selected").click();
+            const dialog = page.getByTestId("object-manager-duplicate-dialog");
             await expect(dialog).toBeVisible();
-            await dialog.getByLabel("Duplication scope").selectOption("referenced");
             await expect(dialog).toContainText("2 objects will be duplicated");
-            await dialog.getByRole("button", { name: "Duplicate" }).click();
+            await dialog.getByTestId("object-manager-duplicate-apply").click();
+            await expect(dialog).toBeHidden({ timeout: 20000 });
 
-            await expect(page).toHaveURL(/\/-\/calendars\/[0-9a-f-]+$/, { timeout: 20000 });
-            await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 20000 });
-            await page.getByTestId("calendar-toggle-settings").click();
-            const copiedQueryInput = page.getByTestId("calendar-query-input");
-            // The source query's columns were unqualified, so only the FROM
-            // relation name is rewritten (the SQL-name remapping rewrites
-            // relation identifiers, not unqualified column references).
-            await expect(copiedQueryInput).toHaveValue("SELECT id, title FROM dup_board_2", { timeout: 20000 });
-
-            const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
-            if (!await sidebar.isVisible().catch(() => false)) {
-                await page.locator('button[aria-label="Show sidebar"]').click();
-            }
-            await sidebar.getByRole("link", { name: "Object Manager" }).click();
-            await expect(page).toHaveURL(/\/objects$/, { timeout: 15000 });
             await expect(
                 page.locator('[data-testid^="object-row-"]').filter({ hasText: "Dup Board" }).filter({
                     has: page.locator(".type-badge.table"),
@@ -73,6 +86,19 @@ test.describe("FTR-8ac92ce2: recursive duplication supports Calendar", () => {
                     has: page.locator(".type-badge.calendar"),
                 }),
             ).toHaveCount(2);
+
+            // The copied Calendar's query was rewritten to the copied Table's
+            // SQL name, not left pointing at the original.
+            const copiedCalendarId = await findCalendarIdByName(page, "Dup Calendar copy");
+            expect(copiedCalendarId).toBeTruthy();
+            await page.goto(`/${encodeURIComponent(projectName)}/-/calendars/${copiedCalendarId}`);
+            await expect(page.getByTestId("calendar-view")).toBeVisible({ timeout: 20000 });
+            await page.getByTestId("calendar-toggle-settings").click();
+            const copiedQueryInput = page.getByTestId("calendar-query-input");
+            // The source query's columns were unqualified, so only the FROM
+            // relation name is rewritten (the SQL-name remapping rewrites
+            // relation identifiers, not unqualified column references).
+            await expect(copiedQueryInput).toHaveValue("SELECT id, title FROM dup_board_2", { timeout: 20000 });
         },
     );
 });
