@@ -1,6 +1,7 @@
 import type { Project } from "$shared/app-schema";
 import { listCalendars, removeCalendarWithPlacements, renameCalendar } from "../calendar/calendarService";
 import { deleteScheduleRuleWithUndo, listSchedules, renameSchedule } from "../schedule/scheduleRuleService";
+import { globalUndoRouter } from "../undo/undoRouter.svelte";
 import { listGrids, removeGridWithPlacements, renameGrid } from "../yjstable/gridDocs";
 import { getTableDependencies, removeTableWithPolicy, type TableDependencies } from "../yjstable/tableDependencies";
 import { listTables, renameTable } from "../yjstable/tableDocs";
@@ -138,6 +139,28 @@ export function generateBulkPreview(
         .filter(p => p.willChange);
 }
 
+export function countHiddenSelected(
+    objects: NamedObject[],
+    visibleObjects: NamedObject[],
+    selectedIds: ReadonlySet<string>,
+): number {
+    const existing = new Set(objects.map(object => object.id));
+    const visible = new Set(visibleObjects.map(object => object.id));
+    return [...selectedIds].filter(id => existing.has(id) && !visible.has(id)).length;
+}
+
+export function validateBulkPreview(
+    project: Project | null | undefined,
+    previews: BulkPreviewItem[],
+): Map<string, string> {
+    const errors = new Map<string, string>();
+    for (const preview of previews) {
+        const error = validateRename(project, preview.type, preview.id, preview.newName);
+        if (error) errors.set(preview.id, error);
+    }
+    return errors;
+}
+
 /**
  * Rename validation. Duplicate display names across objects are explicitly
  * allowed (#5103) — the only thing this rejects is an edit that would leave
@@ -204,4 +227,18 @@ export function deleteObject(project: Project | null | undefined, object: NamedO
         case "Schedule":
             return deleteScheduleRuleWithUndo(project, object.id);
     }
+}
+
+/** Delete an exact, pre-snapshotted target set as one undo-router operation. */
+export function deleteObjects(project: Project | null | undefined, objects: NamedObject[]): boolean {
+    if (!project?.ydoc || objects.length === 0) return false;
+    // Table deletion cannot currently be restored by its authoritative policy.
+    // Validate before mutation rather than creating a misleading partial undo.
+    if (objects.some(object => object.type === "Table")) return false;
+    return globalUndoRouter.captureManualGroup(`Delete ${objects.length} objects`, () => {
+        for (const object of objects) {
+            if (!deleteObject(project, object)) return false;
+        }
+        return true;
+    });
 }

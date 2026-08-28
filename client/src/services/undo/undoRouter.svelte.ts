@@ -286,6 +286,30 @@ export class UndoRouter {
         this.redoStack = [];
     }
 
+    /** Combine several already-safe manual operations into one user-visible step. */
+    public captureManualGroup(label: string, transact: () => boolean): boolean {
+        const start = this.undoStack.length;
+        const succeeded = transact();
+        const additions = this.undoStack.slice(start);
+        if (!succeeded || additions.some(entry => !("type" in entry) || entry.type !== "manual")) {
+            return false;
+        }
+        const entries = additions as ManualUndoEntry[];
+        this.undoStack.length = start;
+        this.undoStack.push({
+            type: "manual",
+            label,
+            undo: () => {
+                for (const entry of entries.toReversed()) entry.undo();
+            },
+            redo: () => {
+                for (const entry of entries) entry.redo();
+            },
+        });
+        this.redoStack = [];
+        return true;
+    }
+
     public canUndo(): boolean {
         return this.undoStack.length > 0;
     }
