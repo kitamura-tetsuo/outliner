@@ -21,6 +21,13 @@ import {
     type GridPlacementDragData,
 } from "../services/yjstable/gridPlacement";
 import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
+import {
+    isObjectPlacementDrag,
+    placeObjectOnPage,
+    readObjectPlacementDrag,
+    type ObjectPlacementDragData,
+} from "../services/objectManager/objectPlacement";
+import { isPublicProject } from "../lib/publicProject";
     import { authStore } from "../stores/authStore.svelte";
     import { userManager } from "../auth/UserManager";
     import { formatDate } from "../utils/dateUtils";
@@ -57,6 +64,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
 
     let observedDoc: Y.Doc | undefined;
     let draggedGrid = $state<GridPlacementDragData | undefined>(undefined);
+    let draggedObject = $state<ObjectPlacementDragData | undefined>(undefined);
     let copyDestinationPageId = $state<string | undefined>(undefined);
     let dragTargetPageId = $state<string | undefined>(undefined);
     let copyMode = $state(false);
@@ -66,26 +74,46 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
     }
 
     function handlePageDragOver(event: DragEvent, pageId: string) {
-        if (!isGridPlacementDrag(event)) return;
+        const objectPlacement = isObjectPlacementDrag(event);
+        if (!objectPlacement && !isGridPlacementDrag(event)) return;
+        if (objectPlacement && !(authStore.isAuthenticated || isPublicProject(currentProjectName))) return;
         event.preventDefault();
-        const data = readGridPlacementDrag(event);
-        if (data) draggedGrid = data;
-        copyMode = isCopyDrag(event) || data?.sourceWritable === false;
+        if (objectPlacement) {
+            const data = readObjectPlacementDrag(event);
+            if (data) draggedObject = data;
+            copyMode = true;
+        } else {
+            const data = readGridPlacementDrag(event);
+            if (data) draggedGrid = data;
+            copyMode = isCopyDrag(event) || data?.sourceWritable === false;
+        }
         dragTargetPageId = pageId;
         if (event.dataTransfer) event.dataTransfer.dropEffect = copyMode ? "copy" : "move";
     }
 
     function handlePageDrop(event: DragEvent, pageId: string) {
-        const data = readGridPlacementDrag(event);
+        // Native DataTransfer data is only guaranteed during this synchronous event.
+        const objectData = readObjectPlacementDrag(event);
+        const gridData = objectData ? undefined : readGridPlacementDrag(event);
         event.preventDefault();
         dragTargetPageId = undefined;
-        if (!data || !store.project?.ydoc) return;
-        if (isCopyDrag(event) || !data.sourceWritable) {
-            draggedGrid = data;
+        if (!store.project?.ydoc) return;
+        if (objectData) {
+            if (!(authStore.isAuthenticated || isPublicProject(currentProjectName))) return;
+            placeObjectOnPage(
+                store.project.ydoc,
+                pageId,
+                objectData.objectType,
+                objectData.objectId,
+                userManager.getCurrentUser()?.id ?? "anonymous",
+            );
+            draggedObject = undefined;
+        } else if (gridData && (isCopyDrag(event) || !gridData.sourceWritable)) {
+            draggedGrid = gridData;
             copyDestinationPageId = pageId;
-        } else {
+        } else if (gridData) {
             draggedGrid = undefined;
-            moveGridPlacement(store.project.ydoc, data.itemId, pageId);
+            moveGridPlacement(store.project.ydoc, gridData.itemId, pageId);
         }
     }
 
@@ -380,6 +408,7 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
                                     aria-current={$pageStore.url.pathname === pageHref ? "page" : undefined}
                                     class:active={$pageStore.url.pathname === pageHref}
                                     class:grid-drop-target={dragTargetPageId === page.id}
+                                    class:object-drop-target={dragTargetPageId === page.id && !!draggedObject}
                                     ondragover={(event) => handlePageDragOver(event, page.id)}
                                     ondrop={(event) => handlePageDrop(event, page.id)}
                                     ondragleave={() => { if (dragTargetPageId === page.id) dragTargetPageId = undefined; }}
@@ -400,9 +429,9 @@ import { onDragSessionClear } from "../services/dnd/dragSessionCleanup";
                                     <span class="page-date"
                                         >{formatDate(page.lastChanged)}</span
                                     >
-                                    {#if dragTargetPageId === page.id && draggedGrid}
+                                    {#if dragTargetPageId === page.id && (draggedGrid || draggedObject)}
                                         <span class="grid-drop-feedback" role="status">
-                                            {copyMode ? "+ Copy" : "Move"} to “{page.text || "Untitled page"}”
+                                            {draggedObject ? "+ Place" : copyMode ? "+ Copy" : "Move"} on “{page.text || "Untitled page"}”
                                         </span>
                                     {/if}
                                 </a>

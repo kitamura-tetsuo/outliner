@@ -1,0 +1,11 @@
+id: FTR-b94e5175
+title: Place visual objects on Pages from Object Manager
+title-ja: オブジェクトマネージャーからページへビジュアルオブジェクトを配置
+description: Grid and Calendar rows in Object Manager expose a Place on Page picker and a distinct native drag payload that can be dropped only on sidebar Page entries. Both paths append a placement referencing the existing definition, support repeated placements, respect project write access, and use the outline's existing undo history. Table and Schedule remain non-placeable.
+acceptance:
+  - Grid and Calendar rows offer Place on Page when the project is writable, while read-only viewers cannot mutate placements.
+  - Dropping an Object Manager placement payload on a valid sidebar Page appends the existing object and does not affect Page/tree drag-and-drop payloads.
+  - Placement payload data is read synchronously in the native drop handler before any asynchronous work.
+  - Existing definitions are never duplicated and multiple placements, including on one Page, remain supported.
+tests:
+  - client/src/services/objectManager/objectPlacement.test.ts
