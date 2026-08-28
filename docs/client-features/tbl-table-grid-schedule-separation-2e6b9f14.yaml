@@ -25,6 +25,7 @@ acceptance:
 - A Grid page links back to its source Table and shows an explicit missing-source state when the Table is gone
 - A Schedule is addressable at the project level and may reference several Tables without one owning it
 - A Table with zero Grid entities is still viewable and editable
+- A persisted Table opened directly on a cold standalone route restores its schema and rows from its Table subdoc room
 - A public-demo visitor may read the project schedule list but cannot run or delete a rule
 - Edits made in the raw data browser write directly to the Table through the Table write paths
 - Every Table a Schedule references reports it in its dependency/reference list

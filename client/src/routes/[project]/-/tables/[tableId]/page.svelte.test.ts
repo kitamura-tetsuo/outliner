@@ -52,7 +52,7 @@ vi.mock("../../../../../lib/routeProject", async () => {
                 ydoc: projectDoc,
                 schedules: projectDoc.getMap("schedules"),
             } as unknown as NonNullable<typeof store.project>;
-            return { release: vi.fn() };
+            return { projectId: "cold-project-id", release: vi.fn() };
         }),
     };
 });
@@ -140,6 +140,15 @@ describe("standalone table route", () => {
     // Issue #5012: the URL subject and the page subject must match. A Table URL
     // is about the Table, so opening it may not reach into the Grid registry.
     describe("never resolves a Grid", () => {
+        it("passes the acquired project id to the Table subdoc connection on a cold route load", async () => {
+            render(TableStandalonePage);
+
+            await waitFor(() => {
+                expect(screen.getByTestId("table-view-stub").getAttribute("data-project-id"))
+                    .toBe("cold-project-id");
+            });
+        });
+
         it("creates no Grid when the table has none", async () => {
             render(TableStandalonePage);
 

@@ -5,11 +5,11 @@ import { initializeDemoProject, releaseDemoProject } from "./demoInit";
 import { isPublicProject } from "./publicProject";
 
 export interface RouteProjectHandle {
+    /** Stable project id used by project-owned subdoc rooms. */
+    projectId: string;
     /** Drops this route's reference to the project, if it holds one. */
     release: () => void;
 }
-
-const NOOP_HANDLE: RouteProjectHandle = { release: () => {} };
 
 /**
  * Connect the standalone table, schedule and calendar routes to their project
@@ -29,8 +29,8 @@ export async function openRouteProject(
     if (isPublicProject(projectName)) {
         // Sets `yjsStore.yjsClient` and `store.project` itself, and seeds the
         // demo document when the template is missing or stale.
-        await initializeDemoProject(projectName, { isDestroyed, waitForValidation: true });
-        return { release: () => releaseDemoProject(projectName) };
+        const handle = await initializeDemoProject(projectName, { isDestroyed, waitForValidation: true });
+        return { projectId: handle.client.containerId, release: () => releaseDemoProject(projectName) };
     }
 
     const client = await getYjsClientByProjectTitle(projectName);
@@ -41,5 +41,5 @@ export async function openRouteProject(
     if (projectDoc) {
         store.project = projectDoc as unknown as NonNullable<typeof store.project>;
     }
-    return NOOP_HANDLE;
+    return { projectId: client.containerId, release: () => {} };
 }
