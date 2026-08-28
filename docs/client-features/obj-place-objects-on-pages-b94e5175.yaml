@@ -9,3 +9,4 @@ acceptance:
   - Existing definitions are never duplicated and multiple placements, including on one Page, remain supported.
 tests:
   - client/src/services/objectManager/objectPlacement.test.ts
+  - client/e2e/new/obj-place-on-page-b94e5175.spec.ts

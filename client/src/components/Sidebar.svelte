@@ -85,6 +85,7 @@ import { isPublicProject } from "../lib/publicProject";
         } else {
             const data = readGridPlacementDrag(event);
             if (data) draggedGrid = data;
+            draggedObject = undefined;
             copyMode = isCopyDrag(event) || data?.sourceWritable === false;
         }
         dragTargetPageId = pageId;
@@ -127,6 +128,7 @@ import { isPublicProject } from "../lib/publicProject";
     onMount(() =>
         onDragSessionClear(() => {
             dragTargetPageId = undefined;
+            draggedObject = undefined;
         })
     );
 
