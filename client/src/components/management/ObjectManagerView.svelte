@@ -14,7 +14,9 @@ import { isProvisionalProject } from "../../stores/store.svelte";
 import { store } from "../../stores/store.svelte";
 import {
     applyRename,
+    countHiddenSelected,
     deleteObject,
+    deleteObjects,
     generateBulkPreview,
     getDeleteImpact,
     getObjects,
@@ -23,6 +25,7 @@ import {
     RELATED_SELECTION_SCOPES,
     selectRelatedObjects,
     validateRename,
+    validateBulkPreview,
     type DeleteImpact,
     type NamedObject,
     type RelatedSelectionScope,
@@ -47,6 +50,7 @@ let editError = $state<string | null>(null);
 let editInputEl = $state<HTMLInputElement | undefined>(undefined);
 let deleteTarget = $state<NamedObject | null>(null);
 let confirmOpen = $state(false);
+let bulkDeleteTargets = $state<NamedObject[]>([]);
 
 // Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
 // delete) require write access; browsing and following placement links do
@@ -125,6 +129,8 @@ let selectedFilteredCount = $derived.by(() => {
 let bulkPreview = $derived.by(() => {
     return generateBulkPreview(objects, selectedObjectIds, bulkFindText, bulkReplaceText);
 });
+let bulkPreviewErrors = $derived(validateBulkPreview(project, bulkPreview));
+let hiddenSelectedCount = $derived(countHiddenSelected(objects, filteredObjects, selectedObjectIds));
 
 let deleteImpact = $derived.by((): DeleteImpact | null => {
     return deleteTarget && project ? getDeleteImpact(project, deleteTarget) : null;
@@ -187,7 +193,7 @@ function commitEdit() {
 }
 
 function applyBulkRename() {
-    if (!project || !project.ydoc || !hasWriteAccess || bulkPreview.length === 0) return;
+    if (!project || !project.ydoc || !hasWriteAccess || bulkPreview.length === 0 || bulkPreviewErrors.size > 0) return;
 
     // Atomically apply changes using Y.Doc transact
     project.ydoc.transact(() => {
@@ -198,7 +204,6 @@ function applyBulkRename() {
 
     bulkFindText = "";
     bulkReplaceText = "";
-    selectedObjectIds.clear();
     previewOpen = false;
 }
 
@@ -229,6 +234,7 @@ async function goToPlacement(placement: ObjectPlacement) {
 
 function requestDelete(object: NamedObject) {
     if (!hasWriteAccess) return;
+    bulkDeleteTargets = [];
     deleteTarget = object;
     confirmOpen = true;
 }
@@ -265,6 +271,33 @@ function executeDelete() {
     deleteObject(project, deleteTarget);
     selectedObjectIds.delete(deleteTarget.id);
     deleteTarget = null;
+}
+
+function requestBulkDelete() {
+    if (!hasWriteAccess) return;
+    // Snapshot identities and object metadata at confirmation-open time.
+    bulkDeleteTargets = objects.filter(object => selectedObjectIds.has(object.id));
+    if (bulkDeleteTargets.length > 0) confirmOpen = true;
+}
+
+function bulkDeleteMessage(): string {
+    // Local calculation for a synchronous confirmation message; it is not UI state.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
+    const counts = new Map<string, number>();
+    let placements = 0;
+    for (const object of bulkDeleteTargets) {
+        counts.set(object.type, (counts.get(object.type) ?? 0) + 1);
+        placements += getDeleteImpact(project, object).placements.length;
+    }
+    const breakdown = [...counts].map(([type, count]) => `${count} ${type}`).join(", ");
+    const hidden = bulkDeleteTargets.filter(target => !filteredObjects.some(object => object.id === target.id)).length;
+    return `${bulkDeleteTargets.length} objects will be deleted (${breakdown}). ${hidden ? `${hidden} are hidden by the current filter. ` : ""}${placements ? `${placements} Page placement(s) will be removed. ` : ""}This is one undoable operation.`;
+}
+
+function executeBulkDelete() {
+    if (!project || !deleteObjects(project, bulkDeleteTargets)) return;
+    for (const target of bulkDeleteTargets) selectedObjectIds.delete(target.id);
+    bulkDeleteTargets = [];
 }
 </script>
 
@@ -375,12 +408,25 @@ function executeDelete() {
             </button>
             <button
                 onclick={applyBulkRename}
-                disabled={!hasWriteAccess || bulkPreview.length === 0}
+                disabled={!hasWriteAccess || bulkPreview.length === 0 || bulkPreviewErrors.size > 0}
                 class="btn-primary"
                 data-testid="object-manager-bulk-apply"
             >
                 Apply Rename
             </button>
+            <button
+                type="button"
+                class="btn-small btn-delete"
+                disabled={!hasWriteAccess || selectedObjectIds.size === 0}
+                onclick={requestBulkDelete}
+                data-testid="object-manager-bulk-delete"
+            >Delete selected ({selectedObjectIds.size})</button>
+            <span
+                class="hidden-selection-warning"
+                class:visible={hiddenSelectedCount > 0}
+                role={hiddenSelectedCount > 0 ? "status" : undefined}
+                data-testid="object-manager-hidden-selection-warning"
+            >{hiddenSelectedCount} selected {hiddenSelectedCount === 1 ? "object is" : "objects are"} hidden by the current filter.</span>
         </div>
     </div>
 
@@ -414,7 +460,7 @@ function executeDelete() {
                         type="button"
                         class="btn-primary"
                         onclick={applyBulkRename}
-                        disabled={!hasWriteAccess}
+                        disabled={!hasWriteAccess || bulkPreviewErrors.size > 0}
                         data-testid="object-manager-bulk-preview-apply"
                     >
                         Apply Rename
@@ -452,7 +498,8 @@ function executeDelete() {
                         />
                     </td>
                     <td><span class="type-badge {object.type.toLowerCase()}">{object.type}</span></td>
-                    <td>
+                    <td class="name-cell" class:invalid-preview={bulkPreviewErrors.has(object.id)}>
+                        <div class="name-primary">
                         {#if editingObjectId === object.id}
                             <!-- svelte-ignore a11y_autofocus -->
                             <input
@@ -485,6 +532,13 @@ function executeDelete() {
                             </button>
                         {:else}
                             <span data-testid={`object-name-${object.id}`}>{object.name}</span>
+                        {/if}
+                        </div>
+                        <div class="name-preview" data-testid={`object-name-preview-${object.id}`}>
+                            {bulkPreview.find(preview => preview.id === object.id)?.newName ?? ""}
+                        </div>
+                        {#if bulkPreviewErrors.has(object.id)}
+                            <span class="edit-error" role="alert">{bulkPreviewErrors.get(object.id)}</span>
                         {/if}
                     </td>
                     <td class="placements-col">
@@ -537,13 +591,13 @@ function executeDelete() {
 
 <ConfirmDialog
     bind:isOpen={confirmOpen}
-    title={deleteTarget ? `Delete ${deleteTarget.type} "${deleteTarget.name}"?` : "Delete object?"}
-    message={deleteMessage()}
+    title={bulkDeleteTargets.length > 0 ? `Delete selected (${bulkDeleteTargets.length})?` : deleteTarget ? `Delete ${deleteTarget.type} "${deleteTarget.name}"?` : "Delete object?"}
+    message={bulkDeleteTargets.length > 0 ? bulkDeleteMessage() : deleteMessage()}
     confirmText="Delete"
     cancelText="Cancel"
     isDestructive
-    onConfirm={executeDelete}
-    onCancel={() => (deleteTarget = null)}
+    onConfirm={bulkDeleteTargets.length > 0 ? executeBulkDelete : executeDelete}
+    onCancel={() => { deleteTarget = null; bulkDeleteTargets = []; }}
 />
 
 <style>
@@ -628,8 +682,17 @@ function executeDelete() {
         border: 1px solid #e5e7eb;
         border-radius: 6px;
         padding: 0.625rem 1rem;
-        min-height: 3rem;
+        min-height: 5.25rem;
     }
+
+    .hidden-selection-warning {
+        flex-basis: 100%;
+        min-height: 1.125rem;
+        color: transparent;
+        font-size: 0.8125rem;
+    }
+
+    .hidden-selection-warning.visible { color: #b45309; }
 
     .bulk-count {
         font-size: 0.8125rem;
@@ -762,6 +825,7 @@ function executeDelete() {
         padding: 0.75rem 1rem;
         text-align: left;
         border-bottom: 1px solid #e5e7eb;
+        vertical-align: top;
     }
 
     .objects-table th {
@@ -803,6 +867,16 @@ function executeDelete() {
         cursor: text;
         border-radius: 4px;
     }
+
+    .name-cell { min-width: 12rem; }
+    .name-primary, .name-preview {
+        min-height: 1.5rem;
+        line-height: 1.5rem;
+        overflow-wrap: anywhere;
+        text-align: left;
+    }
+    .name-preview { color: #2563eb; }
+    .name-cell.invalid-preview { background: #fef2f2; }
 
     .name-button:hover {
         background: #f3f4f6;

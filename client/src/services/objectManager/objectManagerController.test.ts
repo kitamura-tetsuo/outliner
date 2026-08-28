@@ -6,11 +6,13 @@ import { createScheduleRule } from "../schedule/scheduleRuleService";
 import { createGrid } from "../yjstable/gridDocs";
 import { createTable } from "../yjstable/tableDocs";
 import {
+    countHiddenSelected,
     filterObjects,
     generateBulkPreview,
     getObjects,
     type NamedObject,
     selectRelatedObjects,
+    validateBulkPreview,
     validateRename,
 } from "./objectManagerController";
 
@@ -105,6 +107,16 @@ describe("ObjectManagerController", () => {
             const selectedObjectIds = new Set(["5"]);
             const result = generateBulkPreview(mockObjects, selectedObjectIds, "Template ", "");
             expect(result[0].newName).toBe("Calendar");
+        });
+
+        it("counts only existing selected objects hidden by filters", () => {
+            const visible = mockObjects.filter(object => object.id === "1");
+            expect(countHiddenSelected(mockObjects, visible, new Set(["1", "2", "missing"]))).toBe(1);
+        });
+
+        it("validates every preview before apply", () => {
+            const previews = generateBulkPreview(mockObjects, new Set(["1"]), "Template Users", " ");
+            expect(validateBulkPreview(undefined, previews).get("1")).toBe("Name cannot be empty.");
         });
     });
 

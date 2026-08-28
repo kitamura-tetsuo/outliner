@@ -5,6 +5,8 @@ description: 'A project-level screen (`/<project>/-/objects`, linked from the si
 category: client
 status: implemented
 acceptance:
+- Bulk rename preserves the complete selection, shows validated second-line previews in reserved Name-cell space, and includes selected objects hidden by filters.
+- A warning reports hidden selected objects, and the snapshotted bulk-delete confirmation summarizes visible and hidden targets before one grouped undoable delete.
 - A Grid or Calendar delete and its placement removal undo as a single logical operation.
 - Bulk literal Find/Replace is reachable without a hidden menu; its before/after preview opens as a fixed-position popover rather than expanding inline.
 - Checking/unchecking Object Manager rows, and opening/closing the rename preview popover, never move the object table below the bulk toolbar; the toolbar is always mounted at a fixed height and only its controls' disabled state changes.
