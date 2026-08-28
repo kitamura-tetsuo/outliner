@@ -129,7 +129,7 @@ Type `[` once, then enter a page name to create a link to another page (e.g., `[
 - You can also link to a page in another project with `[/project/page]` syntax.
 - **Link Previews:** Hovering over an internal link displays a preview of the page content.
 - **Backlinks:** Pages that link to the current page are listed in the backlink panel at the bottom.
-- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the header of an individual page to access it.
+- **Graph view:** The graph view visualizes how the pages of a project are connected. Click the **Graph View** button in the top right corner of the page to access it.
 
 ### External Links
 
@@ -142,7 +142,7 @@ Paste any URL to automatically create an external link.
 Easily find content and execute actions within Outliner.
 
 - **Search:** Use the "Search pages" input field at the top of the screen to quickly search across the whole project. Recent searches are remembered for quick access.
-- **Search and Replace:** Click the **Search** button in the page header to open the Search and Replace panel. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
+- **Search and Replace:** Click the **Search** button in the top right corner of the page to open the Search and Replace panel. Replace only rewrites item text; page titles stay untouched unless you tick "Include page titles". With that option on, renaming a page is confirmed first, and the open page follows its new name.
 - **Command Palette:** The inline command palette opens when you type `/` inside an item. Available options include inserting a Database or an Alias.
 - **Breadcrumbs:** Breadcrumbs at the top of each page let you jump back to the project or home.
 
