@@ -21,6 +21,10 @@ WORKDIR /cache
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY scripts/ scripts/
+# Bake the scripts/ CLI dependencies (playwright, pm2, dprint, ...) into the
+# image too: the E2E setup-test-env action symlinks this into the checkout
+# instead of running `npm ci` in scripts/ on every matrix shard.
+RUN cd scripts && npm ci
 COPY firebase.json firebase.emulator.json .firebaserc ecosystem.config.cjs ./
 COPY client/package.json client/package-lock.json ./client/
 COPY server/package.json server/package-lock.json ./server/
