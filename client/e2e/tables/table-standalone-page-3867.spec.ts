@@ -64,5 +64,21 @@ test.describe("Standalone Table Page (#3867)", () => {
 
         // Check breadcrumb
         await expect(page.locator("nav, .breadcrumb")).toContainText(tableName);
+
+        // 4. Verify empty state behavior and row creation
+        // Ensure + Add row is visible despite table being empty (0 records)
+        const addRowButton = page.getByTestId("yjs-table-add-row");
+        await expect(addRowButton).toBeVisible();
+        await expect(page.getByText("The table is empty.")).toBeVisible();
+
+        // 5. Add a record
+        await addRowButton.click();
+
+        // Ensure row is added and rendered
+        await expect(page.locator("tbody tr")).toHaveCount(1, { timeout: 15000 });
+
+        // Reload the page and ensure the row persists
+        await page.reload();
+        await expect(page.locator("tbody tr")).toHaveCount(1, { timeout: 15000 });
     });
 });
