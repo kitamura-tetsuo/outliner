@@ -4,78 +4,49 @@ description: 'Sets up the environment for testing (install dependencies, restore
 runs:
   using: "composite"
   steps:
-    - name: Install Java 21
-      shell: bash
-      run: |
-        sudo apt-get update -o Acquire::Retries=3 || true
-        sudo apt-get install -y openjdk-21-jre-headless
+    # Java 21, xvfb, lsof, netcat, etc. are already installed by
+    # .github/container/Dockerfile when it builds the E2E image, so there is
+    # nothing to install here. Re-running `apt-get install` on every matrix
+    # shard only pays an `apt-get update` network round trip for no effect.
 
     - name: Restore dependencies from cache
       shell: bash
       run: |
-        # Copy pre-installed node_modules from cache
-        if [ -d "/cache/client/node_modules" ]; then
-          cp -r /cache/client/node_modules client/
-        fi
-        if [ -d "/cache/server/node_modules" ]; then
-          cp -r /cache/server/node_modules server/
-        fi
-        if [ -d "/cache/functions/node_modules" ]; then
-          cp -r /cache/functions/node_modules functions/
-        fi
-        
-        # Ensure binaries are executable
-        chmod +x client/node_modules/.bin/* || true
-        chmod +x server/node_modules/.bin/* || true
-        chmod +x functions/node_modules/.bin/* || true
-
-    - name: Install scripts dependencies
-      shell: bash
-      run: |
-        cd scripts
-        # Retry npm ci up to 3 times
-        count=0
-        MAX_RETRIES=3
-        RETRY_DELAY=5
-        success=false
-        
-        while [ $count -lt $MAX_RETRIES ]; do
-          if npm ci; then
-            success=true
-            break
-          else
-            count=$((count + 1))
-            if [ $count -lt $MAX_RETRIES ]; then
-              echo "npm ci failed. Retrying in $RETRY_DELAY seconds... (Attempt $count/$MAX_RETRIES)"
-              sleep $RETRY_DELAY
-            else
-              echo "npm ci failed after $MAX_RETRIES attempts."
-            fi
+        echo "::group::Restore dependencies from cache"
+        start=$(date +%s)
+        # Copy the pre-installed node_modules from the image cache. A symlink
+        # here is tempting (it would avoid copying potentially gigabyte-sized
+        # dependency trees) but Vite's dev server realpath-resolves symlinked
+        # node_modules and serves modules through /@fs/<real-path>, which
+        # broke module resolution for the integration/unit test suites that
+        # boot a Vite dev server -- so this stays a real copy.
+        for dir in client server functions scripts; do
+          if [ -d "/cache/${dir}/node_modules" ]; then
+            cp -r "/cache/${dir}/node_modules" "${dir}/"
           fi
         done
-        
-        if [ "$success" = "false" ]; then
-          exit 1
-        fi
+        chmod +x client/node_modules/.bin/* server/node_modules/.bin/* functions/node_modules/.bin/* scripts/node_modules/.bin/* 2>/dev/null || true
+        echo "Restore dependencies from cache took $(( $(date +%s) - start ))s"
+        echo "::endgroup::"
 
     - name: Setup test environment
       shell: bash
       run: |
-        # Clean up any existing processes on test ports
-        echo "Cleaning up existing processes..."
-        cd "$(pwd)"
+        echo "::group::Clean up existing processes"
+        start=$(date +%s)
+        # The container is freshly created for this shard, so there is
+        # nothing left running from a previous job -- no fixed sleep needed,
+        # only the (cheap, already-fast) best-effort cleanup in case the base
+        # image ever starts shipping a leftover process.
         if [ -f "scripts/kill-tinylicious.js" ]; then
           node scripts/kill-tinylicious.js || echo "Process cleanup script failed, continuing..."
         fi
-
-        # Manual cleanup as fallback
         pkill -f "port 7090" || true
         pkill -f "tinylicious" || true
         pkill -f "firebase" || true
         pkill -f "vite" || true
-
-        # Wait for ports to be freed
-        sleep 5
+        echo "Clean up existing processes took $(( $(date +%s) - start ))s"
+        echo "::endgroup::"
 
     - name: Run setup script
       shell: bash
@@ -90,15 +61,17 @@ runs:
         SKIP_SERVER_START: "0"
         SKIP_PORT_WAIT: "0"
       run: |
+        echo "::group::Run setup script"
+        start=$(date +%s)
         # Create sentinel file to skip dependency installation in setup.sh
         touch .setup-installed
-        
+
         # Retry setup.sh up to 3 times
         MAX_RETRIES=3
         RETRY_DELAY=10
         count=0
         success=false
-        
+
         while [ $count -lt $MAX_RETRIES ]; do
           if bash scripts/setup.sh; then
             success=true
@@ -113,7 +86,9 @@ runs:
             fi
           fi
         done
-        
+        echo "Run setup script took $(( $(date +%s) - start ))s"
+        echo "::endgroup::"
+
         if [ "$success" = "false" ]; then
           exit 1
         fi
