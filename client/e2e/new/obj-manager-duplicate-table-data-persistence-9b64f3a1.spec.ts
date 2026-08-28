@@ -44,13 +44,15 @@ test("copies Table rows to another project and reloads them from its Table room"
     );
     await expect(tableRow(page, "Board copy")).toBeVisible({ timeout: 15000 });
 
-    // Discard the in-memory destination graph. Opening the copied Table after
-    // reload connects its fresh subdoc through the normal Table engine path.
-    await page.reload();
-    await expect(tableRow(page, "Board copy")).toBeVisible({ timeout: 30000 });
     const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
     await sidebar.getByRole("link", { name: "Tables" }).click();
     await page.getByRole("link", { name: "Board copy" }).click();
+
+    // Reload the Table route itself so both the project document and Table
+    // subdoc are reconstructed through their normal synchronization paths.
+    // The management route is intentionally reached through Svelte-managed
+    // navigation and is not a standalone hard-reload bootstrap route.
+    await page.reload();
     const copiedView = page.getByTestId("yjs-table-view");
     await expect(copiedView).toBeVisible({ timeout: 30000 });
     await expect(copiedView.getByTestId("yjs-table-grid").locator("tbody tr")).toHaveCount(1, { timeout: 30000 });
