@@ -607,6 +607,208 @@ install_all_dependencies() {
   cd "${ROOT_DIR}"
 }
 
+# Start the PM2-managed test services (yjs-server, vite-server,
+# firebase-emulators) and block until they report ready, then initialize the
+# Firebase emulator (test users, etc.). Shared by scripts/setup.sh (developer
+# machines / the container-image bake) and scripts/ci-e2e-start.sh (the
+# minimal CI E2E startup path) so the readiness logic only lives once.
+# Honors SKIP_SERVER_START=1 to no-op, matching setup.sh's existing behavior.
+start_and_wait_for_services() {
+  if [ "${SKIP_SERVER_START:-0}" -eq 1 ]; then
+    echo "Skipping server start as requested"
+    return 0
+  fi
+
+  echo "Starting PM2-managed services (yjs-server, vite-server, firebase-emulators)..."
+  pm2 start "${ROOT_DIR}/ecosystem.config.cjs"
+
+  # Loop to check services and ports in parallel
+  echo "Waiting for services to be ready (checking PM2 status and ports in parallel)..."
+  local MAX_WAIT_SECONDS=300
+  local START_TIME
+  START_TIME=$(date +%s)
+
+  _check_pm2_status() {
+    # Check if key PM2 processes are running
+    # Returns 0 if all good, 1 if any failed
+    node -e '
+      try {
+        const exec = require("child_process").execSync;
+        const list = JSON.parse(exec("pm2 jlist").toString());
+        const apps = ["yjs-server", "vite-server", "firebase-emulators"];
+        const failed = list.filter(p => apps.includes(p.name) &&
+                                     p.pm2_env.status !== "online" &&
+                                     p.pm2_env.status !== "launching");
+        if (failed.length > 0) {
+          console.log("Error: One or more PM2 services are not running:");
+          failed.forEach(p => console.log(`- ${p.name}: ${p.pm2_env.status}`));
+          process.exit(1);
+        }
+      } catch (e) {
+        console.error("Failed to check PM2 status:", e.message);
+        // If we cant check PM2, we process to port check assuming it might be fine or we fail later
+        // But if pm2 command failed, likely something is wrong.
+      }
+    '
+  }
+
+  _is_service_ready() {
+    local verbose="${1:-false}"
+    local all_ready=true
+    local missing_services=()
+
+    # Check all required ports
+    for port in "${REQUIRED_PORTS[@]}"; do
+      if ! port_is_open "${port}"; then
+        all_ready=false
+        missing_services+=("Port ${port}")
+      fi
+    done
+
+    # Check Firebase Functions API Health (Directly via Functions Emulator)
+    # Checks http://127.0.0.1:57070/outliner-d57b0/us-central1/health
+    # We use direct URL because Hosting Emulator rewrite sometimes duplicates paths causing 404
+    if port_is_open "${FIREBASE_FUNCTIONS_PORT}"; then
+       # Default project ID if not set
+       local PROJECT_ID="${FIREBASE_PROJECT_ID:-outliner-d57b0}"
+       local FUNC_URL="http://127.0.0.1:${FIREBASE_FUNCTIONS_PORT}/${PROJECT_ID}/us-central1/health"
+
+       local HTTP_CODE
+       HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$FUNC_URL" 2>/dev/null || echo "000")
+       if [ "$HTTP_CODE" != "200" ]; then
+         all_ready=false
+         local MSG="Firebase Function Health [Code: $HTTP_CODE] (URL: $FUNC_URL)"
+         if [ "$verbose" = "true" ]; then
+            # Capture start of body for debugging
+            local BODY
+            BODY=$(curl -s "$FUNC_URL" | head -c 200)
+            MSG="$MSG [Body: $BODY]"
+         fi
+         missing_services+=("$MSG")
+       fi
+    fi
+
+    # Check Yjs WebSocket (if port is open)
+    if port_is_open "${TEST_YJS_PORT}"; then
+       if ! curl -s --connect-timeout 2 --max-time 5 "http://127.0.0.1:${TEST_YJS_PORT}/" >/dev/null 2>&1 && ! nc -z 127.0.0.1 ${TEST_YJS_PORT} 2>/dev/null; then
+          all_ready=false
+          missing_services+=("Yjs WebSocket")
+       fi
+    fi
+
+    if [ "$all_ready" = true ]; then
+      return 0
+    else
+      if [ "$verbose" = "true" ] && [ ${#missing_services[@]} -gt 0 ]; then
+        echo "Still waiting for: ${missing_services[*]}"
+      fi
+      return 1
+    fi
+  }
+
+  while true; do
+    local CURRENT_TIME ELAPSED
+    CURRENT_TIME=$(date +%s)
+    ELAPSED=$((CURRENT_TIME - START_TIME))
+
+    if [ $ELAPSED -gt $MAX_WAIT_SECONDS ]; then
+      echo "Timeout waiting for services after ${MAX_WAIT_SECONDS} seconds."
+      echo "State of services:"
+      pm2 list
+      echo "--- PM2 Logs (tail) ---"
+      pm2 logs --lines 50 --nostream
+      exit 1
+    fi
+
+    # 1. Check PM2 status - Fail fast if crashed
+    if ! _check_pm2_status; then
+      echo "Detected crashed services via PM2. Exiting setup."
+      pm2 logs --lines 50 --nostream
+      # Force log dumping specifically for server applications
+      echo "[TAILING] Tailing last 50 lines for [all] processes (change the value with --lines option)"
+      if [ -f "${ROOT_DIR}/server/logs/yjs-server.log" ]; then
+         echo "/__w/outliner/outliner/logs/yjs-server.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/yjs-server.log" || true
+      fi
+      if [ -f "${ROOT_DIR}/server/logs/log-service.log" ]; then
+         echo "/__w/outliner/outliner/logs/log-service.log last 50 lines:"
+         tail -n 50 "${ROOT_DIR}/server/logs/log-service.log" || true
+      fi
+      exit 1
+    fi
+
+    # 2. Check if services are ready
+    # Check with verbose logging every 10 seconds
+    local log_status=false
+    if [ $((ELAPSED % 10)) -eq 0 ]; then
+       echo "Waiting for services... (${ELAPSED}s / ${MAX_WAIT_SECONDS}s)"
+       log_status=true
+    fi
+
+    if _is_service_ready "$log_status"; then
+      echo "=== All test services are ready! ==="
+      break
+    fi
+
+    sleep 2
+  done
+
+  # Initialize Firebase emulator (creates test users, etc.)
+  echo "Initializing Firebase emulator..."
+  export FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
+  export AUTH_EMULATOR_HOST="127.0.0.1:${FIREBASE_AUTH_PORT}"
+  export FIRESTORE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FIRESTORE_PORT}"
+  export FIREBASE_EMULATOR_HOST="127.0.0.1:${FIREBASE_FUNCTIONS_PORT}"
+  cd "${ROOT_DIR}/server/scripts"
+  node init-firebase-emulator.js || echo "Warning: Firebase emulator initialization had issues"
+  cd "${ROOT_DIR}"
+}
+
+# Kill any process bound to REQUIRED_PORTS and wait for them to be free.
+# Shared by scripts/setup.sh and scripts/ci-e2e-start.sh.
+cleanup_ports() {
+  echo "Cleaning up ports: ${REQUIRED_PORTS[*]}"
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+      # Find processes using the port
+      local pids
+      pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+
+      if [ -n "$pids" ]; then
+        echo "Killing processes on port $port: $pids"
+        # Try SIGTERM first
+        kill $pids 2>/dev/null || true
+        sleep 1
+
+        # Check if still running and force kill
+        pids=$(lsof -t -i :"$port" 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+             echo "Force killing processes on port $port: $pids"
+             kill -9 $pids 2>/dev/null || true
+        fi
+      fi
+    fi
+  done
+
+  # Wait for ports to be free
+  for port in "${REQUIRED_PORTS[@]}"; do
+    if [ -n "$port" ]; then
+        local wait_count=0
+        while lsof -t -i :"$port" >/dev/null 2>&1; do
+            echo "Waiting for port $port to be free... (attempt $wait_count)"
+            sleep 1
+            wait_count=$((wait_count + 1))
+            if [ "$wait_count" -gt 30 ]; then
+                echo "Warning: Port $port is still in use after 30 seconds."
+                # Try force kill again just in case
+                lsof -t -i :"$port" | xargs kill -9 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+  done
+}
+
 # Wait for all required ports
 wait_for_all_ports() {
   local failed_ports=()
