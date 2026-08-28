@@ -1,5 +1,6 @@
 import { getLogger } from "../lib/logger";
 import { Item, Items, Project } from "../schema/app-schema";
+import { allocatePageTitle } from "../utils/pageUtils";
 
 const logger = getLogger("importExportService");
 
@@ -71,13 +72,17 @@ export function importOpmlIntoProject(opml: string, project: Project) {
 
     const build = (parent: Items, el: Element, isRootLevel = false) => {
         const text = el.getAttribute("text") || "";
+        // A page title can't be the reserved management-route segment
+        // ("-"); a regular item's text has no such restriction.
+        const isPage = isRootLevel && isFirstRootItem;
+        const nodeText = isPage ? allocatePageTitle(project.items as Items, text) : text;
 
         // Create only the first root-level item as a page
-        const node = (isRootLevel && isFirstRootItem)
-            ? project.addPage(text, "import")
+        const node = isPage
+            ? project.addPage(nodeText, "import")
             : parent.addNode("import");
 
-        node.updateText(text);
+        node.updateText(nodeText);
 
         // Update flag after the first root item is processed
         if (isRootLevel && isFirstRootItem) {
@@ -136,9 +141,11 @@ export function importMarkdownIntoProject(md: string, project: Project) {
 
         let node;
         if (isFirstRootItem && indent === 0) {
-            // Create only the first root-level item as a page
-            logger.debug(undefined, `importMarkdownIntoProject: Creating page "${text}"`);
-            node = project.addPage(text, "import");
+            // Create only the first root-level item as a page. A page title
+            // can't be the reserved management-route segment ("-").
+            const pageTitle = allocatePageTitle(project.items as Items, text);
+            logger.debug(undefined, `importMarkdownIntoProject: Creating page "${pageTitle}"`);
+            node = project.addPage(pageTitle, "import");
             firstPageItems = node.items as Items;
             isFirstRootItem = false;
         } else if (indent === 0 && firstPageItems) {

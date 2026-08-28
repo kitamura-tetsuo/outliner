@@ -31,7 +31,7 @@ test.describe("Schedule Rule Editor UI", () => {
 
         // Schedules live at the project level (issue #5012): a table does not
         // own them, so the list is addressed by project alone.
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
 
         await expect(page.getByTestId("project-schedule-list")).toBeVisible({ timeout: 30000 });
         await expect(page.locator("h1")).toHaveText("Schedules");

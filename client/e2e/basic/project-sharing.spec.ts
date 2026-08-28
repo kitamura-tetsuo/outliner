@@ -66,8 +66,8 @@ test.describe("Project Sharing E2E", () => {
 
         // Navigate to settings page
         // Ensure we encode the project name for the URL
-        console.log(`[User A] Navigating to /settings/${encodeURIComponent(projectName)}`);
-        await page.goto(`/settings/${encodeURIComponent(projectName)}`);
+        console.log(`[User A] Navigating to /${encodeURIComponent(projectName)}/-/settings`);
+        await page.goto(`/${encodeURIComponent(projectName)}/-/settings`);
         console.log(`[User A] Navigated to settings. Current URL: ${page.url()}`);
 
         // Click Generate Invitation Link

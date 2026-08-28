@@ -9,7 +9,8 @@ import { goto } from "$app/navigation";
     import SearchPanel from "../../../components/SearchPanel.svelte";
     import { DemoInitAborted, initializeDemoProject, releaseDemoProject } from "../../../lib/demoInit";
     import { getLogger } from "../../../lib/logger";
-    import { projectBasePath, projectPagePath } from "../../../lib/publicProject";
+    import { projectPagePath } from "../../../lib/publicProject";
+    import { projectGraphPath } from "../../../lib/managementPaths";
     import type { Item } from "../../../schema/app-schema";
 import { findPageByKey, isPageNamed, findPageByName as sharedFindPageByName } from "../../../utils/pageUtils";
 import { safeDecodeURIComponent } from "../../../utils/urlUtils";
@@ -260,7 +261,7 @@ import { safeDecodeURIComponent } from "../../../utils/urlUtils";
                 >
                     Search
                 </button>
-                <a href={resolvePath(`${projectBasePath(demoProject)}/graph`)} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
+                <a href={resolvePath(projectGraphPath(demoProject))} data-testid="graph-view-button" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 inline-block text-center" style="text-decoration:none; display:inline-flex; align-items:center;">Graph View</a>
             </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">

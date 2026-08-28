@@ -25,7 +25,7 @@ async function seedTableAndOpenSchedules(page: import("@playwright/test").Page):
     await expect(tableBlock.locator("[data-testid='yjs-table-toggle-grid']")).toBeVisible();
 
     const projectSegment = new URL(page.url()).pathname.split("/")[1];
-    await page.goto(`/schedules/${projectSegment}`);
+    await page.goto(`/${projectSegment}/-/schedules`);
     await expect(page.getByTestId("project-schedule-list")).toBeVisible({ timeout: 30000 });
     return projectSegment;
 }
@@ -40,9 +40,9 @@ test.describe("Schedule Rule Run Now", () => {
         const projectSegment = await seedTableAndOpenSchedules(page);
 
         await page.getByTestId("project-schedule-create").click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         const list = page.getByTestId("project-schedule-list");
         const ruleItem = list.locator(".schedule-rule-list li").first();
         await ruleItem.waitFor({ state: "visible", timeout: 30000 });
@@ -77,9 +77,9 @@ test.describe("Schedule Rule Run Now", () => {
         const projectSegment = await seedTableAndOpenSchedules(page);
 
         await page.getByTestId("project-schedule-create").click();
-        await expect(page).toHaveURL(new RegExp(`/schedules/${projectSegment}/[^/]+$`), { timeout: 15000 });
+        await expect(page).toHaveURL(new RegExp(`/${projectSegment}/-/schedules/[^/]+$`), { timeout: 15000 });
 
-        await page.goto(`/schedules/${projectSegment}`);
+        await page.goto(`/${projectSegment}/-/schedules`);
         const list = page.getByTestId("project-schedule-list");
         const ruleItem = list.locator(".schedule-rule-list li").first();
         await ruleItem.waitFor({ state: "visible", timeout: 30000 });

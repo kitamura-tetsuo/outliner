@@ -40,4 +40,23 @@ describe("importExportService", () => {
         importOpmlIntoProject(xml, project);
         expect(project.items.length).toBe(1);
     });
+
+    // A page titled "-" would be unreachable through /:project/-/... routing
+    // (issue: unify project-scoped management routes), so the first root
+    // node's title is reallocated the same way any other name collision is,
+    // instead of being created verbatim from the imported text.
+    it("reallocates an imported page title of '-' away from the reserved segment", () => {
+        const project = Project.createInstance("Test");
+        importMarkdownIntoProject("- -\n  - child", project);
+        expect(project.items.length).toBe(1);
+        expect(project.items.at(0)?.text.toString()).toBe("-_2");
+    });
+
+    it("reallocates an imported OPML page title of '-' away from the reserved segment", () => {
+        const project = Project.createInstance("Test");
+        const xml = '<opml><body><outline text="-"><outline text="child"/></outline></body></opml>';
+        importOpmlIntoProject(xml, project);
+        expect(project.items.length).toBe(1);
+        expect(project.items.at(0)?.text.toString()).toBe("-_2");
+    });
 });

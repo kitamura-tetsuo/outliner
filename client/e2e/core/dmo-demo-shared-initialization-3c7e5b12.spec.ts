@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 registerCoverageHooks();
 
-// FTR-3c7e5b12: /demo, /demo/[page] and /demo/graph share one initialization
+// FTR-3c7e5b12: /demo, /demo/[page] and /demo/-/graph share one initialization
 // workflow, so Svelte-managed navigation inside the demo reuses the synced
 // project client instead of repeating the seed/connect waterfall.
 test.describe("Demo routes share one initialization workflow", () => {
@@ -17,8 +17,8 @@ test.describe("Demo routes share one initialization workflow", () => {
             .toBeVisible({ timeout: 30000 });
     });
 
-    test("direct navigation to /demo/graph renders the graph view", async ({ page }) => {
-        await page.goto("/demo/graph");
+    test("direct navigation to /demo/-/graph renders the graph view", async ({ page }) => {
+        await page.goto("/demo/-/graph");
 
         await expect(page.locator(".graph-view")).toBeVisible({ timeout: 60000 });
     });
@@ -44,7 +44,7 @@ test.describe("Demo routes share one initialization workflow", () => {
         await expect(page.getByTestId("demo-page-toolbar")).toBeVisible({ timeout: 30000 });
 
         await page.getByTestId("graph-view-button").click();
-        await expect(page).toHaveURL(/\/demo\/graph$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/demo\/-\/graph$/, { timeout: 15000 });
         await expect(page.locator(".graph-view")).toBeVisible({ timeout: 30000 });
 
         expect(seedRequests).toBe(afterInitialLoad);

@@ -11,7 +11,18 @@ const routeFiles = [
     "+page.svelte",
     "[page]/+page.svelte",
     "[page]/diff/+page.svelte",
-    "graph/+page.svelte",
+    "-/+page.svelte",
+    "-/objects/+page.svelte",
+    "-/graph/+page.svelte",
+    "-/tables/+page.svelte",
+    "-/tables/[tableId]/+page.svelte",
+    "-/tables/[tableId]/schedule/+page.svelte",
+    "-/grids/+page.svelte",
+    "-/grids/[gridId]/+page.svelte",
+    "-/calendars/+page.svelte",
+    "-/calendars/[calendar]/+page.svelte",
+    "-/schedules/+page.svelte",
+    "-/schedules/[ruleId]/+page.svelte",
 ];
 
 // vitest runs from the client package root.

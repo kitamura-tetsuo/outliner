@@ -38,7 +38,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await sidebar.locator('button[aria-label="Add new scheduled SQL"]').click();
 
         // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await expect(page.getByRole("heading", { name: "Edit Scheduled SQL" })).toBeVisible({ timeout: 15000 });
 
         // Assert Run now precedes Delete in DOM
@@ -62,7 +62,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await saveBtn.click();
 
         // Wait for navigation back to project
-        await expect(page).not.toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).not.toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
 
         // Re-open sidebar and click the rule
         if (await showBtn.isVisible().catch(() => false)) {
@@ -74,7 +74,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await ruleLink.click();
 
         // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         await expect(runNowBtn).toBeVisible({ timeout: 15000 });
 
         // Mock the run-now endpoint to prevent flakey db execution from holding up UI tests, just like the core sch-schedule-rule-run-now-3a4b5c6d.spec.ts does. We assert the reachable states.
@@ -124,7 +124,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await sidebar.locator('button[aria-label="Add new scheduled SQL"]').click();
 
         // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
 
         // Fill SQL with INVALID syntax
         const sqlInput = page.locator("textarea").first();
@@ -145,7 +145,7 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await ruleLink.click();
 
         // Wait for navigation to the edit page
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/, { timeout: 15000 });
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/, { timeout: 15000 });
         const runNowBtn = page.locator("[data-testid='run-now-schedule']");
         await expect(runNowBtn).toBeVisible({ timeout: 15000 });
 
@@ -161,6 +161,6 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
         await expect(errorBox).toBeVisible({ timeout: 15000 });
 
         // Assert we stay on the page
-        await expect(page).toHaveURL(/\/schedules\/[^/]+\/[^/]+$/);
+        await expect(page).toHaveURL(/\/-\/schedules\/[^/]+$/);
     });
 });
