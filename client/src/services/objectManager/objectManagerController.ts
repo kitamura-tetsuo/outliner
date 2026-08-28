@@ -352,7 +352,18 @@ export async function duplicateSelectedObjects(
     await globalUndoRouter.captureManualAsync(
         async () => {
             result = await duplicateObjectSet(sourceDoc, destinationDoc, toDuplicableObjects(selected), options);
-            sideEffect = options.afterMaterialize?.(result);
+            try {
+                sideEffect = options.afterMaterialize?.(result);
+            } catch (error) {
+                // A side effect (e.g. attaching the copied Grid to a
+                // destination Page) that fails after materialization
+                // succeeded must not strand the created objects with no
+                // undo entry pointing at them — this catch is what makes
+                // that rollback unconditional even on this failure path.
+                rollbackObjectDuplication(destinationDoc, result);
+                result = undefined;
+                throw error;
+            }
         },
         {
             type: "manual",
@@ -364,15 +375,22 @@ export async function duplicateSelectedObjects(
             redo: () => {
                 if (!result) return;
                 const created = result;
-                void materializeDuplicationPlan(
-                    sourceDoc,
-                    destinationDoc,
-                    created.sourceObjects,
-                    { copyTableData: options.copyTableData },
-                    created.idMap,
-                )
-                    .then(() => sideEffect?.redo())
-                    .catch(error => logger.error({ error }, "Redo of Duplicate selected failed"));
+                // `runAsyncWithoutAutoCapture`, not a bare call: this redo
+                // re-runs Yjs transactions (materialization, then the
+                // placement side effect) after the router's own synchronous
+                // wrapper around `entry.redo()` has already returned, so
+                // without it every registered Y.UndoManager would auto-capture
+                // these as a second, untracked entry (issue #5153 §9 review).
+                void globalUndoRouter.runAsyncWithoutAutoCapture(async () => {
+                    await materializeDuplicationPlan(
+                        sourceDoc,
+                        destinationDoc,
+                        created.sourceObjects,
+                        { copyTableData: options.copyTableData },
+                        created.idMap,
+                    );
+                    sideEffect?.redo();
+                }).catch(error => logger.error({ error }, "Redo of Duplicate selected failed"));
             },
         } satisfies ManualUndoEntry,
     );

@@ -184,5 +184,66 @@ describe("ObjectManagerController — Duplicate selected", () => {
             expect(getGridHandles(project.ydoc, recopiedGridId)).toBeDefined();
             expect([...page.items].some(item => item.componentType === "yjstable")).toBe(true);
         });
+
+        it("survives a second undo after redo — the redo does not leave an orphaned, untracked auto-capture", async () => {
+            const tableId = table(project.ydoc, "Tasks", "tasks");
+            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const page = project.addPage("Dashboard", "test");
+            const objects = getObjects(project);
+            const selected = objects.filter(o => o.id === gridId);
+
+            const depthBefore = globalUndoRouter.undoDepth;
+            const result = await duplicateSelectedObjects(project.ydoc, project.ydoc, selected, {
+                afterMaterialize: created => {
+                    const copiedGridId = created.createdObjects.find(o => o.type === "grid")!.id;
+                    let placement = appendGridPlacement(project.ydoc, page.id, copiedGridId, "test");
+                    return {
+                        undo: () => placement.delete(),
+                        redo: () => {
+                            placement = appendGridPlacement(project.ydoc, page.id, copiedGridId, "test");
+                        },
+                    };
+                },
+            });
+            const copiedGridId = result!.createdObjects.find(o => o.type === "grid")!.id;
+
+            globalUndoRouter.undo();
+            globalUndoRouter.redo();
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(globalUndoRouter.undoDepth).toBe(depthBefore + 1);
+
+            // If redo's materialization/placement mutations were not purged
+            // from every registered Y.UndoManager, they would sit as a stray
+            // second entry and this second undo would pop only the placement,
+            // leaving the copied Grid behind (issue #5153 review comment).
+            globalUndoRouter.undo();
+            expect(getGridHandles(project.ydoc, copiedGridId)).toBeUndefined();
+            expect([...page.items].some(item => item.componentType === "yjstable")).toBe(false);
+            expect(globalUndoRouter.undoDepth).toBe(depthBefore);
+        });
+
+        it("rolls back the duplicated objects when afterMaterialize throws", async () => {
+            const tableId = table(project.ydoc, "Tasks", "tasks");
+            const gridId = createGrid(project.ydoc, tableId, { name: "Board" });
+            const objects = getObjects(project);
+            const selected = objects.filter(o => o.id === gridId);
+
+            const depthBefore = globalUndoRouter.undoDepth;
+            const tablesBefore = listTables(project.ydoc).length;
+            const gridsBefore = listGrids(project.ydoc).length;
+
+            await expect(
+                duplicateSelectedObjects(project.ydoc, project.ydoc, selected, {
+                    afterMaterialize: () => {
+                        throw new Error("destination Page was deleted concurrently");
+                    },
+                }),
+            ).rejects.toThrow("destination Page was deleted concurrently");
+
+            // No orphaned copies and no undo entry pointing at them.
+            expect(listTables(project.ydoc)).toHaveLength(tablesBefore);
+            expect(listGrids(project.ydoc)).toHaveLength(gridsBefore);
+            expect(globalUndoRouter.undoDepth).toBe(depthBefore);
+        });
     });
 });

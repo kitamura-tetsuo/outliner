@@ -57,7 +57,7 @@ let deleteTarget = $state<NamedObject | null>(null);
 let confirmOpen = $state(false);
 let bulkDeleteTargets = $state<NamedObject[]>([]);
 let duplicateTargets = $state<NamedObject[]>([]);
-let preselectionApplied = $state(false);
+let preselectionApplied = $state<string | null>(null);
 
 // Permissions (AGENTS.md §6/§2): mutating controls (rename, bulk replace,
 // delete) require write access; browsing and following placement links do
@@ -124,14 +124,21 @@ let filteredObjects = $derived.by(() => {
     return filterObjects(objects, selectedTypes, searchQuery);
 });
 
-// One-shot: `objects` only becomes non-empty once the project has synced, and
-// there is no other reactive path to react to that async load (AGENTS.md §8
-// allows `$effect` when nothing else works). Widens the type filter so a
-// preselected object's type is never hidden, and clears an incompatible
-// search query rather than leaving the source silently unfindable (#5153 §11).
+// Once per distinct (project, preselected ids) request, not a true one-shot:
+// a cross-project Duplicate reuses this same mounted component for the
+// destination project's `?selected=` (SvelteKit does not remount on a
+// params-only route change), so keying only on "has this ever run" would
+// leave the destination's copies unselected. `objects` only becomes non-empty
+// once the project has synced, and there is no other reactive path to react
+// to that async load (AGENTS.md §8 allows `$effect` when nothing else
+// works). Widens the type filter so a preselected object's type is never
+// hidden, and clears an incompatible search query rather than leaving the
+// source silently unfindable (#5153 §11).
 $effect(() => {
-    if (preselectionApplied || !preselectedIds?.length || objects.length === 0) return;
-    preselectionApplied = true;
+    if (!preselectedIds?.length || objects.length === 0) return;
+    const requestKey = `${projectName}:${preselectedIds.join(",")}`;
+    if (preselectionApplied === requestKey) return;
+    preselectionApplied = requestKey;
     const { ids, types } = computePreselection(objects, preselectedIds);
     for (const id of ids) selectedObjectIds.add(id);
     for (const type of types) selectedTypes.add(type);
