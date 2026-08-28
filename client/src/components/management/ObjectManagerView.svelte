@@ -392,6 +392,7 @@ function executeDelete() {
                 role="dialog"
                 aria-modal="true"
                 aria-label="Bulk rename preview"
+                tabindex="-1"
                 data-testid="object-manager-bulk-preview"
                 onclick={(e) => e.stopPropagation()}
             >
