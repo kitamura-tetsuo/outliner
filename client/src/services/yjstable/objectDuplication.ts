@@ -2,6 +2,13 @@ import { Project } from "$shared/app-schema";
 import type { ScheduleRuleValueType } from "$shared/types/yjs-types";
 import { v4 as uuidv4 } from "uuid";
 import * as Y from "yjs";
+import { createCalendar, getCalendar, listCalendars } from "../calendar/calendarService";
+import {
+    buildObjectDependencyGraph,
+    type GraphObject,
+    objectGraphKey,
+    traverseObjectGraph,
+} from "../objectManager/objectDependencyGraph";
 import { createScheduleRule } from "../schedule/scheduleRuleService";
 import {
     createGrid,
@@ -16,12 +23,19 @@ import { createTable, getTableHandles, listTables, removeTable, type TableRecord
 import type { TableDocConnection } from "./tableEngine";
 import { rewriteCreateTableSql, rewriteTableQuerySql } from "./tableSqlRewrite";
 
-export type DuplicableObject = { type: "grid" | "table" | "schedule"; id: string; };
+export type DuplicableObject = GraphObject;
 export type DuplicationScope = "item-only" | "referenced" | "referencing" | "connected";
 
 function schedulesMapOf(doc: Y.Doc): Y.Map<Y.Map<ScheduleRuleValueType>> {
     return doc.getMap("schedules") as Y.Map<Y.Map<ScheduleRuleValueType>>;
 }
+
+const DIRECTION_BY_SCOPE: Record<Exclude<DuplicationScope, "item-only">, "dependencies" | "dependents" | "connected"> =
+    {
+        referenced: "dependencies",
+        referencing: "dependents",
+        connected: "connected",
+    };
 
 export interface DuplicationPreview {
     objects: DuplicableObject[];
@@ -37,18 +51,18 @@ export interface DuplicationResult {
 
 /** Remove every object materialized by one duplication attempt. */
 export function rollbackObjectDuplication(destination: Y.Doc, result: DuplicationResult): void {
+    const destinationProject = Project.fromDoc(destination);
     destination.transact(() => {
         for (const object of result.createdObjects.toReversed()) {
             if (object.type === "grid") getGridRegistry(destination).delete(object.id);
             else if (object.type === "table") removeTable(destination, object.id);
+            else if (object.type === "calendar") destinationProject.calendars.delete(object.id);
             else schedulesMapOf(destination).delete(object.id);
         }
     });
 }
 
-function key(object: DuplicableObject): string {
-    return `${object.type}:${object.id}`;
-}
+const key = objectGraphKey;
 
 function allocateCopyName(name: string, taken: Set<string>): string {
     let candidate = `${name || "Untitled"} copy`;
@@ -59,113 +73,31 @@ function allocateCopyName(name: string, taken: Set<string>): string {
 }
 
 /**
- * Collect the complete object graph before mutation. The visited set makes
- * shared Tables and cycles safe and guarantees that every source object is
- * represented at most once in the resulting duplication plan.
+ * Collect the complete object graph before mutation, via the shared
+ * dependency-graph service (issue #5135 §3) so duplication and Object
+ * Manager's related selection can never disagree about what an object
+ * references. The visited set makes shared Tables and cycles safe and
+ * guarantees that every source object is represented at most once in the
+ * resulting duplication plan.
  */
 export function previewObjectDuplication(
     source: Y.Doc,
     primary: DuplicableObject,
     scope: DuplicationScope,
 ): DuplicationPreview {
-    const grids = listGrids(source);
-    const tableEntries = listTables(source);
-    const tables = new Set(tableEntries.map(table => table.tableId));
-    const tableBySqlName = new Map(tableEntries.map(table => [table.sqlName, table.tableId]));
-    const referencesByGrid = new Map<string, Set<string>>();
-    const byTable = new Map<string, string[]>();
-    for (const grid of grids) {
-        const references = new Set<string>();
-        if (grid.sourceTableId) references.add(grid.sourceTableId);
-        const handles = getGridHandles(source, grid.gridId);
-        try {
-            const query = String(handles?.entry.get("query") ?? "");
-            for (const sqlName of rewriteTableQuerySql(query, new Map()).relationDependencies) {
-                const tableId = tableBySqlName.get(sqlName);
-                if (tableId) references.add(tableId);
-            }
-        } catch {
-            // An invalid query remains copyable; its explicit source reference
-            // is still included and the editor can report the SQL error.
-        }
-        referencesByGrid.set(grid.gridId, references);
-        for (const tableId of references) {
-            const ids = byTable.get(tableId) ?? [];
-            ids.push(grid.gridId);
-            byTable.set(tableId, ids);
-        }
-    }
+    const graph = buildObjectDependencyGraph(source);
+    const objects = scope === "item-only"
+        ? [primary]
+        : traverseObjectGraph(graph, [primary], DIRECTION_BY_SCOPE[scope]);
 
-    // A Schedule references Tables the same way a Grid does — as an explicit
-    // write target plus whatever its statement reads — so it is discovered
-    // and traversed by the same recursive rules (issue #5102). Relation names
-    // come from `rewriteTableQuerySql`'s FROM/JOIN/DML-target scan, not from
-    // matching every bare identifier in the SQL: a column or alias that
-    // happens to share a Table's SQL name (e.g. a `status` column read from a
-    // Table also named `status`) must never be mistaken for a dependency.
-    const referencesBySchedule = new Map<string, Set<string>>();
-    const scheduleByTable = new Map<string, string[]>();
-    schedulesMapOf(source).forEach((rule, ruleId) => {
-        const references = new Set<string>();
-        const targetTableId = rule.get("targetTableId");
-        if (typeof targetTableId === "string" && targetTableId && tables.has(targetTableId)) {
-            references.add(targetTableId);
-        }
-        const sql = rule.get("sql");
-        try {
-            for (const sqlName of rewriteTableQuerySql(String(sql ?? ""), new Map()).relationDependencies) {
-                const tableId = tableBySqlName.get(sqlName);
-                if (tableId) references.add(tableId);
-            }
-        } catch {
-            // An invalid statement remains copyable; its explicit write-target
-            // reference is still included and the editor can report the error.
-        }
-        referencesBySchedule.set(ruleId, references);
-        for (const tableId of references) {
-            const ids = scheduleByTable.get(tableId) ?? [];
-            ids.push(ruleId);
-            scheduleByTable.set(tableId, ids);
-        }
-    });
-
-    const visited = new Map<string, DuplicableObject>();
-    const queue = [primary];
-    while (queue.length > 0) {
-        const current = queue.shift()!;
-        if (visited.has(key(current))) continue;
-        visited.set(key(current), current);
-
-        if (scope === "referenced" || scope === "connected") {
-            if (current.type === "grid") {
-                for (const tableId of referencesByGrid.get(current.id) ?? []) {
-                    if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
-                }
-            }
-            if (current.type === "schedule") {
-                for (const tableId of referencesBySchedule.get(current.id) ?? []) {
-                    if (tables.has(tableId)) queue.push({ type: "table", id: tableId });
-                }
-            }
-        }
-        if ((scope === "referencing" || scope === "connected") && current.type === "table") {
-            for (const gridId of byTable.get(current.id) ?? []) queue.push({ type: "grid", id: gridId });
-            for (const ruleId of scheduleByTable.get(current.id) ?? []) queue.push({ type: "schedule", id: ruleId });
-        }
-    }
-
+    const visitedKeys = new Set(objects.map(key));
     let omittedReferenceCount = 0;
-    for (const object of visited.values()) {
-        const references = object.type === "grid"
-            ? referencesByGrid.get(object.id)
-            : object.type === "schedule"
-            ? referencesBySchedule.get(object.id)
-            : undefined;
-        for (const tableId of references ?? []) {
-            if (!visited.has(key({ type: "table", id: tableId }))) omittedReferenceCount++;
+    for (const object of objects) {
+        for (const dependency of graph.dependenciesOf(object)) {
+            if (!visitedKeys.has(key(dependency))) omittedReferenceCount++;
         }
     }
-    return { objects: [...visited.values()], omittedReferenceCount };
+    return { objects, omittedReferenceCount };
 }
 
 /**
@@ -227,6 +159,7 @@ export async function duplicateObjects(
     const createdTables: string[] = [];
     const createdGrids: string[] = [];
     const createdSchedules: string[] = [];
+    const createdCalendars: string[] = [];
     const tableNames = new Set(listTables(destination).map(table => table.name));
     const gridNames = new Set(listGrids(destination).map(grid => grid.name));
     const sqlNames = new Set(listTables(destination).map(table => table.sqlName));
@@ -236,7 +169,9 @@ export async function duplicateObjects(
         if (typeof name === "string" && name) scheduleNames.add(name);
     });
     const sqlNameMap = new Map<string, string>();
+    const sourceProject = Project.fromDoc(source);
     const destinationProject = Project.fromDoc(destination);
+    const calendarNames = new Set(listCalendars(destinationProject).map(entry => entry.settings.name));
     let removedReferenceCount = 0;
 
     try {
@@ -346,8 +281,35 @@ export async function duplicateObjects(
             });
             createdSchedules.push(destinationId);
         }
+
+        // A Calendar owns no row data of its own — its definition/view
+        // settings are copied wholesale, and its only Table reference is the
+        // relations its query reads, rewritten through `sqlNameMap` exactly
+        // like a Grid's query (issue #5135 §5). Placement is deliberately
+        // never copied here: duplication only ever creates the Calendar
+        // definition, and a destination Page is attached only by a caller
+        // that explicitly asks for one (mirroring how a Grid's placement is
+        // appended by `ObjectDuplicationDialog`, not by this function).
+        for (const object of preview.objects.filter(object => object.type === "calendar")) {
+            const sourceSettings = getCalendar(sourceProject, object.id);
+            if (!sourceSettings) throw new Error(`Calendar "${object.id}" no longer exists`);
+            const destinationId = idMap.get(key(object))!;
+            const queryRewrite = rewriteTableQuerySql(sourceSettings.query, sqlNameMap);
+            const omittedQueryReferences = queryRewrite.relationDependencies
+                .filter(sqlName => !sqlNameMap.has(sqlName));
+            const targetQuery = !sameProject && omittedQueryReferences.length > 0 ? "" : queryRewrite.sql;
+            if (!sameProject) removedReferenceCount += omittedQueryReferences.length;
+            createCalendar(destinationProject, {
+                ...sourceSettings,
+                calendarId: destinationId,
+                name: allocateCopyName(sourceSettings.name, calendarNames),
+                query: targetQuery,
+            });
+            createdCalendars.push(destinationId);
+        }
     } catch (error) {
         destination.transact(() => {
+            for (const calendarId of createdCalendars) destinationProject.calendars.delete(calendarId);
             for (const ruleId of createdSchedules) schedulesMapOf(destination).delete(ruleId);
             for (const gridId of createdGrids) getGridRegistry(destination).delete(gridId);
             for (const tableId of createdTables) removeTable(destination, tableId);
@@ -365,6 +327,7 @@ export async function duplicateObjects(
             ...createdTables.map(id => ({ type: "table" as const, id })),
             ...createdGrids.map(id => ({ type: "grid" as const, id })),
             ...createdSchedules.map(id => ({ type: "schedule" as const, id })),
+            ...createdCalendars.map(id => ({ type: "calendar" as const, id })),
         ],
     };
 }

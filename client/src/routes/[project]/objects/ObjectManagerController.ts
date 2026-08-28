@@ -4,6 +4,12 @@ import {
     removeCalendarWithPlacements,
     renameCalendar,
 } from "../../../services/calendar/calendarService";
+import {
+    buildObjectDependencyGraph,
+    type GraphDirection,
+    type ObjectKind,
+    traverseObjectGraph,
+} from "../../../services/objectManager/objectDependencyGraph";
 import { collectAllPlacements, type ObjectPlacement } from "../../../services/objectManager/objectPlacements";
 import {
     deleteScheduleRuleWithUndo,
@@ -21,6 +27,22 @@ import { listTables, renameTable } from "../../../services/yjstable/tableDocs";
 export type ObjectType = "Table" | "Grid" | "Schedule" | "Calendar";
 
 export const OBJECT_TYPES: ObjectType[] = ["Table", "Grid", "Calendar", "Schedule"];
+
+/** Object Manager's related-selection scope, matching duplication's directional semantics (issue #5135 §2). */
+export type RelatedSelectionScope = GraphDirection;
+
+export const RELATED_SELECTION_SCOPES: { value: RelatedSelectionScope; label: string; }[] = [
+    { value: "dependencies", label: "Dependencies" },
+    { value: "dependents", label: "Dependents" },
+    { value: "connected", label: "All connected" },
+];
+
+const OBJECT_TYPE_TO_KIND: Record<ObjectType, ObjectKind> = {
+    Table: "table",
+    Grid: "grid",
+    Calendar: "calendar",
+    Schedule: "schedule",
+};
 
 export interface NamedObject {
     id: string;
@@ -77,6 +99,34 @@ export function filterObjects(objects: NamedObject[], selectedTypes: Set<string>
         selectedTypes.has(o.type)
         && o.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
+}
+
+/**
+ * Expand the current selection to include every object related to it, via
+ * the shared dependency-graph service (issue #5135 §2/§3) — the same graph
+ * recursive duplication traverses. Every currently selected object is a
+ * traversal root, the result is the union of all traversals, and each object
+ * appears at most once; existing selections are always kept since this only
+ * ever returns ids to add, never to remove. `objects` must be the full
+ * (unfiltered) list so an object hidden by the current search/type filter can
+ * still be discovered and selected.
+ */
+export function selectRelatedObjects(
+    project: Project | null | undefined,
+    objects: NamedObject[],
+    selectedObjectIds: ReadonlySet<string>,
+    scope: RelatedSelectionScope,
+): string[] {
+    if (!project?.ydoc || selectedObjectIds.size === 0) return [];
+    const byId = new Map(objects.map(o => [o.id, o]));
+    const roots = [...selectedObjectIds]
+        .map(id => byId.get(id))
+        .filter((object): object is NamedObject => object !== undefined)
+        .map(object => ({ type: OBJECT_TYPE_TO_KIND[object.type], id: object.id }));
+    if (roots.length === 0) return [];
+
+    const graph = buildObjectDependencyGraph(project.ydoc);
+    return traverseObjectGraph(graph, roots, scope).map(object => object.id);
 }
 
 export function generateBulkPreview(

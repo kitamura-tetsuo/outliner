@@ -1,0 +1,20 @@
+id: DUP-825d7a4c
+title: Include Calendar in the shared object dependency graph and recursive duplication
+title-ja: 共有オブジェクト依存グラフと再帰的複製に Calendar を含める
+description: 'Extract the Grid/Table/Schedule dependency traversal (DUP-5090c0de, DUP-1f5f6ffd) into a reusable object-dependency-graph service (`client/src/services/objectManager/objectDependencyGraph.ts`) shared by recursive duplication and Object Manager''s related-object selection, and extend that graph — and duplication — to Calendar. A Calendar owns no row data of its own; its only dependency is the Table(s) its `query` reads, discovered the same way a Grid or Schedule''s relations are (`rewriteTableQuerySql`''s FROM/JOIN/DML-target scan, never bare identifier matching), so a Calendar reading multiple Tables creates one edge per Table and a Table''s reverse/dependent edges span every Grid, Schedule and Calendar that reads it. Calendar is now a first-class `DuplicableObject`, discovered and duplicated through the same item-only/referenced/referencing/connected scopes as Grid/Table/Schedule: its full persistent settings (name, query, view type, timezone, role mappings, grouping/lane settings, week start, working-hours band, Gantt scale) are copied, its query is rewritten to duplicated Tables'' SQL names through the existing id/SQL-name remapping, same-project duplication with an omitted Table preserves the existing reference, and cross-project duplication with an omitted Table clears the query rather than leaving it pointing at a source-project relation that will not exist at the destination (reported through the existing omitted/removed-reference count). Duplicating a Calendar creates only its definition — it never copies its existing outline Page placements, mirroring how a Grid''s placement is only ever added by a caller that explicitly asks for one. The standalone Calendar page (`/calendars/<project>/<calendar>`) gained a "Duplicate Calendar" action using the same `ObjectDuplicationDialog` Grid/Table/Schedule already share.'
+category: tables
+status: implemented
+acceptance:
+- A Calendar's forward dependency is exactly the Table(s) its query reads, one edge per relation, using relation-level SQL parsing that ignores unrelated identifiers/column names
+- A Table's dependents include every Grid, Schedule and Calendar that references it
+- A shared `objectDependencyGraph.ts` service is the single implementation of dependency traversal used by both recursive duplication and Object Manager's related-object selection
+- Calendar is duplicable directly and through item-only/referenced/referencing/connected scopes, alongside Grid/Table/Schedule
+- Cross-project duplication with an omitted dependency Table clears the Calendar's query rather than leaving an invalid source-project reference; same-project duplication with an omitted Table keeps the existing reference
+- Duplicating a Calendar never automatically duplicates its existing outline Page placements
+- Duplicating a Calendar preserves every persistent setting and applies collision-safe copy naming
+- Page placements never participate in the dependency graph
+tests:
+- client/e2e/new/obj-manager-calendar-duplicate-3235bc3d.spec.ts
+- client/src/services/objectManager/objectDependencyGraph.test.ts
+- client/src/services/yjstable/objectDuplication.calendar.test.ts
+- client/src/services/yjstable/objectDuplication.test.ts
