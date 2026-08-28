@@ -44,7 +44,10 @@ test("copies Table rows to another project and reloads them from its Table room"
     );
     await expect(tableRow(page, "Board copy")).toBeVisible({ timeout: 15000 });
 
+    const showBtn = page.locator('button[aria-label="Show sidebar"]');
+    if (await showBtn.isVisible().catch(() => false)) await showBtn.click();
     const sidebar = page.locator('aside.sidebar[aria-label="Main Sidebar"]');
+    await expect(sidebar).toBeVisible({ timeout: 10000 });
     await sidebar.getByRole("link", { name: "Tables" }).click();
     await page.getByRole("link", { name: "Board copy" }).click();
 
