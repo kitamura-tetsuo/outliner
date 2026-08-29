@@ -754,11 +754,11 @@ let hasFormatting = $derived(ScrapboxFormatter.hasFormatting(textString));
 let formattedHtml = $derived(
     (() => {
         let html = hasFormatting
-            ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive }) : ScrapboxFormatter.formatToHtml(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive }))
+            ? (isItemActive ? ScrapboxFormatter.formatWithControlChars(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive, wholeWord: searchHighlightStore.isWholeWord }) : ScrapboxFormatter.formatToHtml(textString, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive, wholeWord: searchHighlightStore.isWholeWord }))
             : ScrapboxFormatter.escapeHtml(textString);
 
         if (!hasFormatting && searchHighlightStore.searchQuery) {
-            html = ScrapboxFormatter.applySearchHighlight(html, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive });
+            html = ScrapboxFormatter.applySearchHighlight(html, searchHighlightStore.searchQuery, { regex: searchHighlightStore.isRegexMode, caseSensitive: searchHighlightStore.isCaseSensitive, wholeWord: searchHighlightStore.isWholeWord });
         }
         return html;
     })()

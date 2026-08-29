@@ -5,7 +5,7 @@ describe("unified Grid search", () => {
     const cleanups: Array<() => void> = [];
     afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()));
 
-    function register(selection?: { regions: Array<{ kind: "columns"; columnIds: string[]; }>; }) {
+    function register(selection?: import("../../services/yjstable/gridSelection").GridSelectionSnapshot) {
         let navigated = "";
         cleanups.push(registerGridSearchProvider({
             snapshot: () => ({
@@ -40,6 +40,17 @@ describe("unified Grid search", () => {
     it("constrains Selection scope without expanding DOM ranges", () => {
         register({ regions: [{ kind: "columns", columnIds: ["computed"] }] });
         expect(gridSearchMatches("page-1", "alpha", {}, true)).toEqual([]);
+        expect(gridSearchMatches("page-1", "42", {}, true)).toHaveLength(1);
+    });
+
+    it("gives explicitly re-added cells precedence over broad exclusions", () => {
+        register({
+            regions: [
+                { kind: "columns", columnIds: ["computed"] },
+                { kind: "exclude-rows", rowIds: ["stable-a"] },
+                { kind: "include-cells", rowIds: ["stable-a"], columnIds: ["computed"] },
+            ],
+        });
         expect(gridSearchMatches("page-1", "42", {}, true)).toHaveLength(1);
     });
 

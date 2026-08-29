@@ -4,3 +4,4 @@ title-ja: テキスト項目とグリッドセルの統合検索
 description: The page Find session traverses outline text and logical Grid query results together, including read-only values and selection-scoped cells.
 tests:
   - client/src/lib/search/unifiedSearch.test.ts
+  - client/e2e/new/fnd-unified-text-grid-find-5193aace.spec.ts

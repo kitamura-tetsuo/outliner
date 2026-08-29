@@ -55,6 +55,7 @@ const logger = getLogger("SearchPanel");
         searchHighlightStore.searchQuery = searchQuery;
         searchHighlightStore.isRegexMode = isRegexMode;
         searchHighlightStore.isCaseSensitive = isCaseSensitive;
+        searchHighlightStore.isWholeWord = isWholeWord;
     });
     let matchCount = $state(0);
     let inputEl: HTMLInputElement | undefined = $state();
@@ -172,8 +173,13 @@ const logger = getLogger("SearchPanel");
         return {
             regex: isRegexMode,
             caseSensitive: isCaseSensitive,
+            wholeWord: isWholeWord,
             skipRoot: !includePageTitles,
         };
+    }
+
+    function replacementRoots(): Item[] {
+        return searchScope === "project" ? getPagesToSearch() : pageItem ? [pageItem] : [];
     }
 
     /** Pages whose title the pending replacement would rewrite (i.e. rename). */
@@ -216,7 +222,7 @@ const logger = getLogger("SearchPanel");
 
     function handleReplace() {
         const options = replaceOptions();
-        const pages = getPagesToSearch();
+        const pages = replacementRoots();
         const roots = pages.length ? pages : pageItem ? [pageItem] : [];
         if (!roots.length || !searchQuery) return;
 
@@ -247,7 +253,7 @@ const logger = getLogger("SearchPanel");
     function confirmReplaceAll() {
         showReplaceAllConfirm = false;
         const options = replaceOptions();
-        const pages = getPagesToSearch();
+        const pages = replacementRoots();
         const roots = pages.length ? pages : pageItem ? [pageItem] : [];
         if (!roots.length) return;
 
