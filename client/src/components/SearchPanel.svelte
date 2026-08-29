@@ -122,7 +122,7 @@ const logger = getLogger("SearchPanel");
                     for (const range of m.matches) {
                         newMatches.push({
                             kind: "text-item",
-                            pageId: p.id,
+                            pageId: pageIdentity(p),
                             pageTitle: textOf(p),
                             itemId: m.item.id,
                             text,
@@ -137,7 +137,7 @@ const logger = getLogger("SearchPanel");
                     visualOrder[item.key] = rank++;
                 }
                 newMatches.push(
-                    ...gridSearchMatches(p.id, searchQuery, options, searchScope === "selection")
+                    ...gridSearchMatches(pageIdentity(p), searchQuery, options, searchScope === "selection")
                         .filter(match => visualOrder[match.placementId] !== undefined),
                 );
                 newMatches.sort((a, b) => {
@@ -167,6 +167,10 @@ const logger = getLogger("SearchPanel");
     function textOf(item: { text?: unknown } | null | undefined): string {
         const t = (item as { text?: { toString?: () => string } } | null | undefined)?.text;
         return t?.toString?.() ?? String(t ?? "");
+    }
+
+    function pageIdentity(item: Item): string {
+        return item.id || item.key;
     }
 
     function replaceOptions(): ReplaceOptions {
