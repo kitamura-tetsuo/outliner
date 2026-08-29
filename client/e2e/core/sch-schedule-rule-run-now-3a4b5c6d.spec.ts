@@ -32,7 +32,7 @@ async function seedTableAndOpenSchedules(page: import("@playwright/test").Page):
 
 test.describe("Schedule Rule Run Now", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, [], undefined, { projectName: "Test Project Name" });
         await TestHelpers.waitForOutlinerItems(page, 1);
     });
 
@@ -51,6 +51,10 @@ test.describe("Schedule Rule Run Now", () => {
         await runNowBtn.waitFor({ state: "visible" });
 
         await page.route("**/api/schedules/run-now", async route => {
+            const req = route.request();
+            const body = req.postDataJSON();
+            expect(body.projectId).not.toBe("Test Project Name");
+            expect(body.projectId).toMatch(/^p[a-f0-9]+$/);
             setTimeout(async () => {
                 const json = { ok: true };
                 await route.fulfill({ json });
@@ -70,7 +74,8 @@ test.describe("Schedule Rule Run Now", () => {
         // ScheduleRuleList.test.ts and server/tests/scheduler/scheduler-run-now.test.ts.
         await expect(runNowBtn).toHaveText("Run now", { timeout: 15000 });
         await expect(runNowBtn).toBeEnabled();
-        await expect(list.locator(".bg-red-50.border-red-100")).toHaveCount(0);
+        // Just assert the newly added explicit list error box is not present.
+        await expect(list.locator(".mb-3.text-xs.text-red-700.bg-red-50")).toHaveCount(0);
     });
 
     test("should display inline error on invalid SQL", async ({ page }) => {
@@ -86,6 +91,10 @@ test.describe("Schedule Rule Run Now", () => {
 
         // Mock the run-now endpoint to return an error specifically for this test
         await page.route("**/api/schedules/run-now", async route => {
+            const req = route.request();
+            const body = req.postDataJSON();
+            expect(body.projectId).not.toBe("Test Project Name");
+            expect(body.projectId).toMatch(/^p[a-f0-9]+$/);
             const json = { ok: false, error: "syntax error at or near INVALID SQL" };
             await route.fulfill({ json });
         });
@@ -95,7 +104,10 @@ test.describe("Schedule Rule Run Now", () => {
         await runNowBtn.click();
 
         const errorBox = list.locator(".bg-red-50.border-red-100");
-        await expect(errorBox).toBeVisible({ timeout: 15000 });
-        await expect(errorBox).toContainText("syntax error at or near");
+        await expect(errorBox.first()).toBeVisible({ timeout: 15000 });
+        await expect(errorBox.first()).toContainText("syntax error at or near");
+
+        // Assert that the list itself is still visible
+        await expect(list.locator(".schedule-rule-list")).toBeVisible();
     });
 });

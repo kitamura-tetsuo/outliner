@@ -7,7 +7,9 @@ import { TestHelpers } from "../utils/testHelpers";
 
 test.describe("Schedule Rule Run Now on Edit Page", () => {
     test.beforeEach(async ({ page }, testInfo) => {
-        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Test Table Item"]);
+        await TestHelpers.seedProjectAndNavigate(page, testInfo, ["Test Table Item"], undefined, {
+            projectName: "Test Project Name",
+        });
         await TestHelpers.waitForOutlinerItems(page, 1);
     });
 
@@ -79,6 +81,10 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
 
         // Mock the run-now endpoint to prevent flakey db execution from holding up UI tests, just like the core sch-schedule-rule-run-now-3a4b5c6d.spec.ts does. We assert the reachable states.
         await page.route("**/api/schedules/run-now", async route => {
+            const req = route.request();
+            const body = req.postDataJSON();
+            expect(body.projectId).not.toBe("Test Project Name");
+            expect(body.projectId).toMatch(/^p[a-f0-9]+$/);
             setTimeout(async () => {
                 const json = { ok: true };
                 await route.fulfill({ json });
@@ -151,6 +157,10 @@ test.describe("Schedule Rule Run Now on Edit Page", () => {
 
         // Mock the run-now endpoint to return an error specifically for this test
         await page.route("**/api/schedules/run-now", async route => {
+            const req = route.request();
+            const body = req.postDataJSON();
+            expect(body.projectId).not.toBe("Test Project Name");
+            expect(body.projectId).toMatch(/^p[a-f0-9]+$/);
             const json = { ok: false, error: "syntax error at or near INVALID SQL" };
             await route.fulfill({ json });
         });

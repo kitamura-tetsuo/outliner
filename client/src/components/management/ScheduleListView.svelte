@@ -223,11 +223,11 @@
         // Running a rule executes its SQL against project data. A public-demo
         // visitor may read this page but must never trigger that, matching the
         // gate the single-rule editor page already applies.
-        if (!projectName || !hasWriteAccess) return;
+        if (!projectName || !hasWriteAccess || !projectHandle) return;
         runError = undefined;
         runningRuleId = id;
         try {
-            const res = await runScheduleRuleNow(projectName, id);
+            const res = await runScheduleRuleNow(projectHandle.projectId, id);
             if (!res.ok) {
                 runError = res.error || "Failed to run rule";
             }
