@@ -1,0 +1,13 @@
+id: FTR-5212face
+title: MCP dry-run Table and Grid validation
+title-ja: MCPによるテーブルとグリッドのドライラン検証
+status: implemented
+description: >-
+  Authorized MCP clients can validate proposed Table schemas and Grid SELECT
+  queries in isolated scratch SQL state. Validation reports migration and
+  record compatibility warnings, dependencies, bounded sample results,
+  editability, ordering, and structured diagnostics without changing Yjs,
+  persistent SQL state, revisions, or undo history.
+tests:
+  - server/tests/mcp-relation-service.test.ts
+  - server/tests/mcp-mutation-contract.test.ts

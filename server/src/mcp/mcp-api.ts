@@ -239,6 +239,23 @@ export function createMcpRouter(
                 gridId: z.string(),
                 maxRows: z.number().int().optional(),
             }, args => relationService.traceGrid(uid, args.projectId, args.gridId, args.maxRows));
+            tool("validate_table_schema", "Dry-run a Table schema migration without changing project state.", {
+                projectId: z.string(),
+                tableId: z.string(),
+                schemaSql: z.string(),
+            }, args => relationService.validateTableSchema(uid, args.projectId, args.tableId, args.schemaSql));
+            tool(
+                "validate_grid_query",
+                "Dry-run a Grid SELECT without changing its saved query or project state.",
+                {
+                    projectId: z.string(),
+                    gridId: z.string(),
+                    query: z.string(),
+                    resultLimit: z.number().int().optional(),
+                },
+                args =>
+                    relationService.validateGridQuery(uid, args.projectId, args.gridId, args.query, args.resultLimit),
+            );
             tool("list_relations", "List SQL-visible relations in an authorized project.", {
                 projectId: z.string(),
             }, args => relationService.listRelations(uid, args.projectId));

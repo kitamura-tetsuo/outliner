@@ -465,6 +465,202 @@ export class OutlinerRelationService {
         return "other";
     }
 
+    /** Validate a proposed schema against real Table records in scratch SQL state only. */
+    validateTableSchema(uid: string, projectId: string, tableId: string, schemaSql: string) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(tableId)) {
+            throw new McpReadError("invalid_argument", "Invalid table ID");
+        }
+        if (Buffer.byteLength(schemaSql, "utf8") > MAX_QUERY_BYTES) {
+            throw new McpReadError("size_limit", "Schema definition exceeds the 16 KiB limit");
+        }
+        return this.withProject(uid, projectId, async doc => {
+            if (!doc.getMap("yjsTables").has(tableId)) throw new McpReadError("not_found", "Table not found");
+            const source = await this.openTable(uid, projectId, tableId);
+            const lease = await acquireDb();
+            try {
+                const current = await this.inspectTableSchema(lease.db, source.schema);
+                await this.clearScratchDatabase(lease.db);
+                const parsedSchema = await this.inspectTableSchema(lease.db, schemaSql);
+                if (parsedSchema.status === "invalid") {
+                    return {
+                        accepted: false,
+                        parsedSchema,
+                        migrationDiff: { addedColumns: [], removedColumns: [], changedColumns: [] },
+                        affectedRecords: { total: source.data.size, incompatible: 0 },
+                        warnings: [],
+                        errors: [this.schemaDiagnostic(parsedSchema.error)],
+                    };
+                }
+                const oldColumns = new Map(current.columns.map(column => [column.name, column]));
+                const newColumns = new Map(parsedSchema.columns.map(column => [column.name, column]));
+                const addedColumns = parsedSchema.columns.filter(column => !oldColumns.has(column.name)).map(c =>
+                    c.name
+                );
+                const removedColumns = current.columns.filter(column => !newColumns.has(column.name)).map(c => c.name);
+                const changedColumns = parsedSchema.columns.flatMap(column => {
+                    const before = oldColumns.get(column.name);
+                    return before && (before.dataType !== column.dataType || before.isNullable !== column.isNullable)
+                        ? [{
+                            name: column.name,
+                            fromType: before.dataType,
+                            toType: column.dataType,
+                            fromNullable: before.isNullable,
+                            toNullable: column.isNullable,
+                        }]
+                        : [];
+                });
+                const ids = [...source.data.keys()];
+                const recordErrors = await this.inspectRecordErrors(
+                    lease.db,
+                    parsedSchema.tableName,
+                    parsedSchema.columns,
+                    source.data,
+                    ids,
+                );
+                const incompatible = new Set(recordErrors.map(error => error.recordId)).size;
+                const warnings = [
+                    ...removedColumns.map(name => `Column "${name}" would be removed`),
+                    ...changedColumns.map(change =>
+                        `Column "${change.name}" would change from ${change.fromType} to ${change.toType}`
+                    ),
+                    ...(incompatible ? [`${incompatible} record(s) are incompatible with the proposed schema`] : []),
+                ];
+                return {
+                    accepted: recordErrors.length === 0,
+                    parsedSchema,
+                    migrationDiff: { addedColumns, removedColumns, changedColumns },
+                    affectedRecords: { total: source.data.size, incompatible, recordErrors },
+                    warnings,
+                    errors: recordErrors.map(error => ({
+                        phase: "data-validation",
+                        message: error.message,
+                        ...(error.column
+                            ? { hint: `Repair column "${error.column}" in record "${error.recordId}"` }
+                            : {}),
+                    })),
+                };
+            } finally {
+                lease.release();
+                await source.disconnect();
+            }
+        });
+    }
+
+    /** Execute a proposed Grid query through the production validator and materializer without saving it. */
+    validateGridQuery(uid: string, projectId: string, gridId: string, query: string, resultLimit = 25) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(gridId)) throw new McpReadError("invalid_argument", "Invalid Grid ID");
+        if (!Number.isInteger(resultLimit) || resultLimit < 1 || resultLimit > 100) {
+            throw new McpReadError("invalid_argument", "resultLimit must be an integer from 1 to 100");
+        }
+        return this.withProject(uid, projectId, async doc => {
+            const grid = doc.getMap<Y.Map<unknown>>("yjsGrids").get(gridId);
+            if (!grid) throw new McpReadError("not_found", "Grid not found");
+            let normalizedQuery: string;
+            try {
+                normalizedQuery = validateReadOnlySelect(query);
+            } catch (error) {
+                return {
+                    accepted: false,
+                    query,
+                    dependencies: [],
+                    resultColumns: [],
+                    sampleRows: [],
+                    editability: { editable: false, readOnlyReason: "Query validation failed", editableColumns: [] },
+                    errors: [this.sqlDiagnostic(error, "validation")],
+                };
+            }
+            const lease = await acquireDb();
+            const opened: TableDoc[] = [];
+            try {
+                await lease.db.exec(SYSTEM_SCHEMA);
+                await this.loadOutlineItems(lease.db, Project.fromDoc(doc));
+                const schemaColumns = new Map<string, string[]>();
+                for (const table of this.tables(doc)) {
+                    const source = await this.openTable(uid, projectId, table.tableId);
+                    opened.push(source);
+                    if (!source.schema.trim()) continue;
+                    await lease.db.exec(source.schema);
+                    await this.loadRecords(lease.db, table.relation, source.data);
+                    const schema = await lease.db.query<{ column_name: string; }>(
+                        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
+                        [table.relation],
+                    );
+                    schemaColumns.set(table.relation, schema.rows.map(row => row.column_name));
+                }
+                const bounded = normalizedQuery.replace(/;\s*$/, "");
+                const result = await lease.db.query<Record<string, unknown>>(
+                    `SELECT * FROM (${bounded}\n) AS mcp_grid_validation LIMIT ${resultLimit + 1}`,
+                );
+                const resultColumns = (result.fields ?? []).map(field => ({
+                    name: field.name,
+                    type: String(field.dataTypeID),
+                }));
+                const dependencies = this.queryDependencies(normalizedQuery, [
+                    "outline_items",
+                    ...schemaColumns.keys(),
+                ]);
+                const sourceColumns = dependencies.length === 1 ? schemaColumns.get(dependencies[0]) ?? [] : [];
+                const columnNames = resultColumns.map(column => column.name);
+                const analyzed = stripSqlNoise(normalizedQuery);
+                return {
+                    accepted: true,
+                    normalizedQuery,
+                    dependencies,
+                    resultColumns,
+                    sampleRows: result.rows.slice(0, resultLimit).map(row => this.boundedTraceRow(row, columnNames)),
+                    truncated: result.rows.length > resultLimit,
+                    editability: this.gridEditability(normalizedQuery, sourceColumns, columnNames),
+                    inferredOrdering: /\border\s+by\b/i.test(analyzed) ? "sql-order-by" : "incidental-source-order",
+                    errors: [],
+                };
+            } catch (error) {
+                return {
+                    accepted: false,
+                    normalizedQuery,
+                    dependencies: [],
+                    resultColumns: [],
+                    sampleRows: [],
+                    editability: { editable: false, readOnlyReason: "Query execution failed", editableColumns: [] },
+                    errors: [this.sqlDiagnostic(error, "execution")],
+                };
+            } finally {
+                for (const source of opened) await source.disconnect();
+                lease.release();
+            }
+        });
+    }
+
+    private queryDependencies(query: string, relations: string[]): string[] {
+        // Remove comments and string literals, but deliberately preserve quoted
+        // identifiers: `tasks` and `"tasks"` must identify the same dependency.
+        const noiseFree = query
+            .replace(/--[^\n]*/g, " ")
+            .replace(/\/\*[\s\S]*?\*\//g, " ")
+            .replace(/'(?:[^']|'')*'/g, "''");
+        return relations.filter(relation =>
+            new RegExp(`\\b(?:from|join)\\s+"?${relation.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"?\\b`, "i")
+                .test(noiseFree)
+        );
+    }
+
+    private schemaDiagnostic(error: { code: string; message: string; }) {
+        return {
+            phase: "schema-parse",
+            message: error.message,
+            code: error.code,
+            hint: "Provide exactly one valid CREATE TABLE statement",
+        };
+    }
+
+    private async clearScratchDatabase(db: PGlite) {
+        const tables = await db.query<{ tablename: string; }>(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'",
+        );
+        for (const { tablename } of tables.rows) {
+            await db.exec(`DROP TABLE IF EXISTS "${tablename.replace(/"/g, '""')}" CASCADE`);
+        }
+    }
+
     getRelationSchema(uid: string, projectId: string, relation: string) {
         return this.withProject(uid, projectId, async doc => {
             const table = this.tables(doc).find(value => value.relation === relation);

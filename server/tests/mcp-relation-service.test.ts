@@ -195,6 +195,94 @@ describe("Outliner MCP relation service", function() {
         await expectFailure(service.querySql("uid", "project-1", "SELECT 1; SELECT 2"), "exactly one");
     });
 
+    it("dry-runs Table schema migrations with diffs, warnings, and no project mutation", async () => {
+        const { service, project, table } = fixture();
+        const projectBefore = Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64");
+        const tableBefore = Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64");
+        const valid = await service.validateTableSchema(
+            "uid",
+            "project-1",
+            "table-1",
+            'CREATE TABLE tasks (id TEXT PRIMARY KEY, title INTEGER, "order" INTEGER)',
+        );
+        expect(valid.parsedSchema).to.deep.include({ status: "valid", tableName: "tasks" });
+        expect(valid.migrationDiff.addedColumns).to.deep.equal(["order"]);
+        expect(valid.migrationDiff.removedColumns).to.deep.equal(["done"]);
+        expect(valid.migrationDiff.changedColumns.find(change => change.name === "title")).to.deep.include({
+            name: "title",
+            fromType: "text",
+            toType: "integer",
+        });
+        expect(valid.accepted).to.equal(false);
+        expect(valid.affectedRecords).to.deep.include({ total: 1, incompatible: 1 });
+        expect(valid.warnings.join(" ")).to.include("would be removed");
+
+        const invalid = await service.validateTableSchema(
+            "uid",
+            "project-1",
+            "table-1",
+            "DROP TABLE tasks",
+        );
+        expect(invalid.accepted).to.equal(false);
+        expect(invalid.errors[0]).to.deep.include({ phase: "schema-parse", code: "invalid_schema" });
+        expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(projectBefore);
+        expect(Buffer.from(Y.encodeStateAsUpdate(table)).toString("base64")).to.equal(tableBefore);
+        expect(table.getText("schema").toString()).to.include("done BOOLEAN");
+    });
+
+    it("validates Grid SELECTs, preserves quoted identifiers, and never saves the proposal", async () => {
+        const { service, project, table } = fixture();
+        table.getText("schema").delete(0, table.getText("schema").length);
+        table.getText("schema").insert(0, 'CREATE TABLE tasks (id TEXT PRIMARY KEY, "order" INTEGER, title TEXT)');
+        const first = table.getMap<Y.Map<unknown>>("data").get("r1")!;
+        first.delete("done");
+        first.set("order", 2);
+        const grid = project.ydoc.getMap<Y.Map<unknown>>("yjsGrids").get("grid-1")!;
+        const savedQuery = String(grid.get("query"));
+        const before = Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64");
+
+        const quoted = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            'SELECT id, "order" FROM "tasks" ORDER BY "order"',
+            1,
+        );
+        expect(quoted).to.deep.include({
+            accepted: true,
+            normalizedQuery: 'SELECT id, "order" FROM "tasks" ORDER BY "order"',
+            dependencies: ["tasks"],
+            inferredOrdering: "sql-order-by",
+        });
+        expect(quoted.resultColumns.map(column => column.name)).to.deep.equal(["id", "order"]);
+        expect(quoted.sampleRows).to.deep.equal([{ id: "r1", order: 2 }]);
+        expect(quoted.editability).to.deep.include({ editable: true, rowIdentity: "id" });
+
+        const reserved = await service.validateGridQuery(
+            "uid",
+            "project-1",
+            "grid-1",
+            "SELECT id, order FROM tasks ORDER BY order",
+        );
+        expect(reserved.accepted).to.equal(false);
+        expect(reserved.errors[0]).to.include({ phase: "execution" });
+        expect(reserved.errors[0]).to.have.property("position");
+        for (
+            const rejected of [
+                "SELECT 1; SELECT 2",
+                "UPDATE tasks SET title = 'changed'",
+                "CREATE TABLE poison (id TEXT)",
+            ]
+        ) {
+            const result = await service.validateGridQuery("uid", "project-1", "grid-1", rejected);
+            expect(result.accepted, rejected).to.equal(false);
+            expect(result.errors[0]).to.include({ phase: "validation" });
+        }
+        expect(grid.get("query")).to.equal(savedQuery);
+        expect(Buffer.from(Y.encodeStateAsUpdate(project.ydoc)).toString("base64")).to.equal(before);
+        expect(first.get("title")).to.equal("First");
+    });
+
     it("traces bounded Grid results, identities, ordering, and presentation transforms", async () => {
         const { service, project, table } = fixture();
         table.getText("schema").delete(0, table.getText("schema").length);
