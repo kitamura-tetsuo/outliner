@@ -282,6 +282,12 @@ export function demoContentEn(): DemoLocaleContent {
                     },
                     {
                         text:
+                            "Grid selection: click a numbered row header or a column header; Shift-click extends a contiguous "
+                            + "range and Ctrl/Cmd-click toggles identities. The corner header selects the complete current query "
+                            + "result, including rows outside the viewport. Sorting keeps selected records attached to their ids.",
+                    },
+                    {
+                        text:
                             "Clipboard: within one project, copying and pasting a selection that crosses a Grid creates another "
                             + "live view of the same table and Data Storage. Across projects, paste instead creates an independent "
                             + "Grid with a fresh identity, copied schema, UI settings, and a paste-time snapshot of its rows; conflicting SQL "

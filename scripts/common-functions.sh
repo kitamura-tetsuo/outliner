@@ -131,10 +131,10 @@ wait_for_port() {
 # Quick check: is a port open without waiting (no dependency on nc)
 port_is_open() {
   local port="$1"
-  if nc -z localhost "${port}" >/dev/null 2>&1; then
+  if nc -z 127.0.0.1 "${port}" >/dev/null 2>&1; then
     return 0
   fi
-  if curl -s --connect-timeout 2 "http://localhost:${port}/" >/dev/null 2>&1; then
+  if curl -s --connect-timeout 2 "http://127.0.0.1:${port}/" >/dev/null 2>&1; then
     return 0
   fi
   if command -v lsof >/dev/null 2>&1 && lsof -i ":${port}" >/dev/null 2>&1; then

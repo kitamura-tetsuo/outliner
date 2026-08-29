@@ -92,6 +92,11 @@ describe("MCP mutation safety contract", () => {
             .set("Accept", "application/json, text/event-stream")
             .send(rpc("tools/list"));
         const tools = bodyOf(listed).result.tools as { name: string; annotations: Record<string, boolean>; }[];
+        expect(tools.find(t => t.name === "get_table")?.annotations).to.include({
+            readOnlyHint: true,
+            destructiveHint: false,
+            idempotentHint: true,
+        });
         expect(tools.find(t => t.name === "write_relation")?.annotations).to.include({
             readOnlyHint: false,
             destructiveHint: true,

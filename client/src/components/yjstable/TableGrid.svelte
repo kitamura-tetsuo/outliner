@@ -180,12 +180,59 @@ function reconcileSelection(rows: TableQueryResult["rows"], columns: string[]): 
 
 function selectCell(event: MouseEvent, cell: GridCellAddress): void {
     if (event.shiftKey) selection.extend(cell, rowIdsOf(result.rows), displayColumns);
+    else if (event.ctrlKey || event.metaKey) selection.toggleCell(cell);
     else selection.select(cell);
     selectionRevision++;
     // A mouse click always picks its own target; never let a stale keyboard
     // edit session steal focus back onto a different cell afterwards.
     editingCell = undefined;
     pendingEditSeed = undefined;
+}
+
+function headerOptions(event: MouseEvent | KeyboardEvent) {
+    return { extend: event.shiftKey, toggle: event.ctrlKey || event.metaKey };
+}
+
+function selectRowHeader(event: MouseEvent | KeyboardEvent, rowId: string): void {
+    selection.selectRow(rowId, rowIdsOf(result.rows), headerOptions(event));
+    selectionRevision++;
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+}
+
+function selectColumnHeader(event: MouseEvent | KeyboardEvent, columnId: string): void {
+    selection.selectColumn(columnId, displayColumns, headerOptions(event));
+    selectionRevision++;
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+}
+
+function selectAllResult(): void {
+    selection.selectAll();
+    selectionRevision++;
+    editingCell = undefined;
+    pendingEditSeed = undefined;
+}
+
+function rowSelected(rowId: string): boolean {
+    void selectionRevision;
+    return selection.containsRow(rowId);
+}
+
+function columnSelected(columnId: string): boolean {
+    void selectionRevision;
+    return selection.containsColumn(columnId);
+}
+
+function allSelected(): boolean {
+    void selectionRevision;
+    return selection.isAllSelected();
+}
+
+function activateHeader(event: KeyboardEvent, action: () => void): void {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    action();
 }
 
 function cellSelected(cell: GridCellAddress): boolean {
@@ -438,12 +485,30 @@ function handleCancelDelete() {
         <table role="grid" onkeydown={handleGridKeyDown}>
             <thead>
                 <tr>
+                    <th
+                        class="selection-header corner-header"
+                        class:header-selected={allSelected()}
+                        scope="col"
+                        role="columnheader"
+                        tabindex="0"
+                        aria-label="Select current query result"
+                        aria-selected={allSelected()}
+                        onclick={selectAllResult}
+                        onkeydown={(event) => activateHeader(event, selectAllResult)}
+                    >▦</th>
                     {#each displayColumns as column, index (column)}
                         <th
                             scope="col"
                             role="columnheader"
                             tabindex="0"
                             data-col={column}
+                            aria-selected={columnSelected(column)}
+                            class:header-selected={columnSelected(column)}
+                            onclick={(event) => {
+                                if (!(event.target as HTMLElement).closest(".column-drag-handle")) {
+                                    selectColumnHeader(event, column);
+                                }
+                            }}
                             title={columnLabels[column] ? column : undefined}
                             class:drop-target-left={dropTargetColumn?.column === column && dropTargetColumn.position === "left"}
                             class:drop-target-right={dropTargetColumn?.column === column && dropTargetColumn.position === "right"}
@@ -482,6 +547,10 @@ function handleCancelDelete() {
                                 draggedColumnName = undefined;
                             }}
                             onkeydown={(e) => {
+                                if ((e.key === "Enter" || e.key === " ") && !e.altKey) {
+                                    activateHeader(e, () => selectColumnHeader(e, column));
+                                    return;
+                                }
                                 if (e.altKey) {
                                     if (e.key === "ArrowLeft" && index > 0) {
                                         e.preventDefault();
@@ -537,6 +606,18 @@ function handleCancelDelete() {
                     {@const source = sourceOf(row)}
                     {@const logicalRowId = selectableRowId(row)}
                     <tr data-record-id={recordId ?? (source ? `${source.sourceKind}:${source.sourceId}` : undefined)}>
+                        <th
+                            class="selection-header row-header"
+                            class:header-selected={logicalRowId !== undefined && rowSelected(logicalRowId)}
+                            scope="row"
+                            role="rowheader"
+                            tabindex={logicalRowId === undefined ? undefined : 0}
+                            aria-label={`Select row ${rowIndex + 1}`}
+                            aria-selected={logicalRowId !== undefined ? rowSelected(logicalRowId) : undefined}
+                            onclick={(event) => logicalRowId && selectRowHeader(event, logicalRowId)}
+                            onkeydown={(event) => logicalRowId
+                                && activateHeader(event, () => selectRowHeader(event, logicalRowId))}
+                        >{rowIndex + 1}</th>
                         {#each displayColumns as column (column)}
                             {@const logicalCell = logicalRowId ? { rowId: logicalRowId, columnId: column } : undefined}
                             {@const schemaColumn = columnByName.get(column)}
@@ -666,6 +747,32 @@ td {
 
 td.grid-selected {
     background-color: rgb(37 99 235 / 12%);
+}
+
+td.grid-selected:not(.grid-active) {
+    box-shadow: inset 0 0 0 1px rgb(37 99 235 / 35%);
+}
+
+.selection-header {
+    width: 2.5rem;
+    min-width: 2.5rem;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    color: #4b5563;
+}
+
+th.header-selected {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
+}
+
+tr:has(> .row-header.header-selected) > td,
+table:has(.corner-header.header-selected) tbody td,
+table:has(th[role="columnheader"].header-selected) td.grid-selected {
+    background-color: rgb(14 116 144 / 14%);
 }
 
 td.grid-active {

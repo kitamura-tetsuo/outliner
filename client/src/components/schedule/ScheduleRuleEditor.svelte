@@ -2,6 +2,7 @@
 import { RRule, rrulestr } from "rrule";
 import { untrack } from "svelte";
 import type { ScheduleRule } from "../../services/schedule/scheduleRuleService";
+import SqlEditor from "../yjstable/SqlEditor.svelte";
 
 interface Props {
     rule?: Partial<ScheduleRule>;
@@ -277,12 +278,12 @@ function handleSave() {
 
     <div class="mb-4">
         <label class="block text-sm font-medium mb-1" for="sql-input">SQL Statement</label>
-        <textarea
-            id="sql-input"
-            class="w-full p-2 border rounded font-mono text-sm h-32"
-            bind:value={sql}
-            placeholder="INSERT INTO my_table ..."
-        ></textarea>
+        <SqlEditor
+            value={sql}
+            ariaLabel="SQL Statement"
+            testId="schedule-sql-editor"
+            onChange={(value) => sql = value}
+        />
         {#if sqlError}
             <p class="text-red-500 text-sm mt-1">{sqlError}</p>
         {/if}

@@ -99,4 +99,35 @@ describe("TableGrid logical selection", () => {
         await waitFor(() => expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(0));
         expect(updates).toBe(0);
     });
+
+    it("selects row ranges, multiple rows, columns and the entire result from accessible headers", async () => {
+        const { view } = setup(initial);
+        const rowA = view.getByRole("rowheader", { name: "Select row 1" });
+        const rowC = view.getByRole("rowheader", { name: "Select row 3" });
+        await fireEvent.click(rowA);
+        await fireEvent.click(rowC, { shiftKey: true });
+        expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(3);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(9);
+
+        await fireEvent.click(view.getByRole("rowheader", { name: "Select row 2" }), { ctrlKey: true });
+        expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(2);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(6);
+
+        const idHeader = view.getByRole("columnheader", { name: "id" });
+        const statusHeader = view.getByRole("columnheader", { name: "status" });
+        await fireEvent.click(idHeader);
+        await fireEvent.click(statusHeader, { shiftKey: true });
+        expect(view.container.querySelectorAll('th[role="columnheader"].header-selected')).toHaveLength(3);
+
+        const corner = view.getByRole("columnheader", { name: "Select current query result" });
+        await fireEvent.keyDown(corner, { key: "Enter" });
+        expect(corner.getAttribute("aria-selected")).toBe("true");
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(9);
+        expect(view.container.querySelectorAll("td.grid-active")).toHaveLength(0);
+
+        await fireEvent.click(view.getByRole("rowheader", { name: "Select row 2" }), { ctrlKey: true });
+        expect(corner.getAttribute("aria-selected")).toBe("false");
+        expect(view.container.querySelectorAll("th.row-header.header-selected")).toHaveLength(2);
+        expect(view.container.querySelectorAll("td.grid-selected")).toHaveLength(6);
+    });
 });

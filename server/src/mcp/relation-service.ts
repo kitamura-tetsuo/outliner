@@ -50,8 +50,11 @@ interface TableEntry {
     kind: "table";
     tableId: string;
     displayName: string;
+    sourceProjectId?: string;
+    sourceTableId?: string;
 }
 interface TableDoc {
+    doc: Y.Doc;
     schema: string;
     data: Y.Map<Y.Map<RelationValue>>;
     disconnect(): Promise<void> | void;
@@ -99,6 +102,7 @@ export class OutlinerRelationService {
         );
         const doc = connection.document as unknown as Y.Doc;
         return {
+            doc,
             schema: doc.getText("schema").toString(),
             data: doc.getMap("data"),
             disconnect: connection.disconnect,
@@ -109,6 +113,354 @@ export class OutlinerRelationService {
         return this.withProject(uid, projectId, doc => ({
             relations: [...this.tables(doc), { relation: "outline_items", kind: "system" as const }],
         }));
+    }
+
+    /**
+     * Inspect one Table by its stable registry id. Record ids are sorted before
+     * paging so Y.Map insertion order can never become an accidental row API.
+     */
+    getTable(
+        uid: string,
+        projectId: string,
+        tableId: string,
+        includeRecords = false,
+        recordLimit = 25,
+        cursor?: string,
+    ) {
+        if (!/^[A-Za-z0-9_-]{1,200}$/.test(tableId)) {
+            throw new McpReadError("invalid_argument", "Invalid table ID");
+        }
+        if (!Number.isInteger(recordLimit) || recordLimit < 1 || recordLimit > 100) {
+            throw new McpReadError("invalid_argument", "recordLimit must be an integer from 1 to 100");
+        }
+        return this.withProject(uid, projectId, async doc => {
+            // Look up by registry id directly rather than through tables(),
+            // which intentionally omits unapplied/invalid SQL names from the
+            // query surface. Those are precisely the Tables this diagnostic
+            // tool must still be able to inspect.
+            const entry = doc.getMap<Y.Map<unknown>>("yjsTables").get(tableId);
+            if (!entry) throw new McpReadError("not_found", "Table not found");
+            const table: TableEntry = {
+                tableId,
+                kind: "table",
+                displayName: String(entry.get("name") ?? ""),
+                relation: String(entry.get("sqlName") ?? ""),
+                ...(typeof entry.get("sourceProjectId") === "string"
+                    ? { sourceProjectId: entry.get("sourceProjectId") as string }
+                    : {}),
+                ...(typeof entry.get("sourceTableId") === "string"
+                    ? { sourceTableId: entry.get("sourceTableId") as string }
+                    : {}),
+            };
+            const source = await this.openTable(uid, projectId, tableId);
+            const lease = await acquireDb();
+            try {
+                const schema = await this.inspectTableSchema(lease.db, source.schema);
+                const recordIds = [...source.data.keys()].sort((a, b) => a.localeCompare(b));
+                const after = cursor === undefined ? undefined : this.decodeTableCursor(cursor);
+                const start = after === undefined ? 0 : recordIds.findIndex(id => id.localeCompare(after) > 0);
+                const pageStart = start < 0 ? recordIds.length : start;
+                const pageIds = includeRecords ? recordIds.slice(pageStart, pageStart + recordLimit) : [];
+                const records = pageIds.map(recordId => ({
+                    recordId,
+                    values: this.serializeRecord(source.data.get(recordId), schema.columns),
+                    revision: this.rowRevision(source.data.get(recordId)),
+                }));
+                const recordErrors = includeRecords && schema.status === "valid"
+                    ? await this.inspectRecordErrors(lease.db, schema.tableName, schema.columns, source.data, pageIds)
+                    : [];
+                const truncated = includeRecords && pageStart + pageIds.length < recordIds.length;
+                const revisionValue = {
+                    tableId,
+                    displayName: table.displayName,
+                    sqlName: table.relation,
+                    rawSchemaSql: source.schema,
+                    tableStateVector: Buffer.from(Y.encodeStateVector(source.doc)).toString("base64url"),
+                };
+                return {
+                    tableId,
+                    displayName: table.displayName,
+                    sqlName: table.relation,
+                    rawSchemaSql: source.schema,
+                    schema,
+                    recordCount: recordIds.length,
+                    ...(includeRecords
+                        ? {
+                            records,
+                            recordErrors,
+                            page: {
+                                limit: recordLimit,
+                                truncated,
+                                nextCursor: truncated ? this.encodeTableCursor(pageIds[pageIds.length - 1]) : undefined,
+                            },
+                        }
+                        : {}),
+                    revision: revisionOf(revisionValue),
+                    provenance: {
+                        sourceProjectId: table.sourceProjectId,
+                        sourceTableId: table.sourceTableId,
+                    },
+                };
+            } finally {
+                lease.release();
+                await source.disconnect();
+            }
+        });
+    }
+
+    private encodeTableCursor(recordId: string): string {
+        return Buffer.from(JSON.stringify({ after: recordId }), "utf8").toString("base64url");
+    }
+
+    private decodeTableCursor(cursor: string): string {
+        try {
+            if (!/^[A-Za-z0-9_-]{1,500}$/.test(cursor)) throw new Error("invalid cursor");
+            const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as unknown;
+            if (!parsed || typeof parsed !== "object" || typeof (parsed as { after?: unknown; }).after !== "string") {
+                throw new Error("invalid cursor");
+            }
+            const after = (parsed as { after: string; }).after;
+            if (!/^[\x20-\x7E]{1,500}$/.test(after) || this.encodeTableCursor(after) !== cursor) {
+                throw new Error("invalid cursor");
+            }
+            return after;
+        } catch {
+            throw new McpReadError("invalid_argument", "Invalid record cursor");
+        }
+    }
+
+    private serializeRecord(
+        record: Y.Map<RelationValue> | undefined,
+        columns: { name: string; kind: string; }[],
+    ): Record<string, RelationValue> {
+        const kinds = new Map(columns.map(column => [column.name, column.kind]));
+        return Object.fromEntries(
+            [...(record?.entries() ?? [])]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([name, value]) => {
+                    const kind = kinds.get(name);
+                    if (typeof value === "string" && kind === "date") {
+                        const date = /^\d{4}-\d{2}-\d{2}/.exec(value)?.[0];
+                        return [name, date ?? value];
+                    }
+                    if (typeof value === "string" && kind === "timestamp") {
+                        const epoch = Date.parse(value);
+                        return [name, Number.isNaN(epoch) ? value : new Date(epoch).toISOString()];
+                    }
+                    return [name, value];
+                }),
+        );
+    }
+
+    private async inspectRecordErrors(
+        db: PGlite,
+        relation: string,
+        columns: { name: string; dataType: string; kind: string; }[],
+        data: Y.Map<Y.Map<RelationValue>>,
+        pageIds: string[],
+    ): Promise<{ recordId: string; column?: string; message: string; }[]> {
+        const errors: { recordId: string; column?: string; message: string; }[] = [];
+        const page = new Set(pageIds);
+        // The client adapter materializes every record into one relation. Do
+        // the same here so UNIQUE/FK constraints spanning pages are diagnosed
+        // correctly, while returning only errors for the requested page.
+        for (const [recordId, record] of data) {
+            const values: unknown[] = [];
+            let castFailed = false;
+            for (const column of columns) {
+                const raw = column.name === "id" ? recordId : record.get(column.name);
+                try {
+                    values.push(this.castRecordValue(raw, column));
+                } catch (error) {
+                    castFailed = true;
+                    if (page.has(recordId)) {
+                        errors.push({
+                            recordId,
+                            column: column.name,
+                            message: error instanceof Error ? error.message : "Record value could not be cast",
+                        });
+                    }
+                    break;
+                }
+            }
+            if (castFailed) continue;
+            try {
+                await db.query(
+                    `INSERT INTO "${relation.replace(/"/g, '""')}" (${
+                        columns.map(column => `"${column.name.replace(/"/g, '""')}"`).join(",")
+                    }) VALUES (${columns.map((_, index) => `$${index + 1}`).join(",")})`,
+                    values,
+                );
+            } catch (error) {
+                if (page.has(recordId)) {
+                    errors.push({
+                        recordId,
+                        message: error instanceof Error ? error.message : "Record could not be synchronized",
+                    });
+                }
+            }
+        }
+        return errors;
+    }
+
+    private castRecordValue(value: unknown, column: { name: string; dataType: string; kind: string; }): unknown {
+        if (value === null || value === undefined) return null;
+        if (typeof value === "string" && value === "" && column.kind !== "text") return null;
+        const invalid = (expected: string) => {
+            throw new Error(
+                `Value ${
+                    JSON.stringify(value)
+                } is not a valid ${expected} for column "${column.name}" (${column.dataType})`,
+            );
+        };
+        if (column.kind === "text") {
+            if (["string", "number", "boolean"].includes(typeof value)) return String(value);
+            return invalid("text");
+        }
+        if (column.kind === "integer") {
+            if (typeof value === "number" && Number.isInteger(value)) return value;
+            if (typeof value === "string" && /^[+-]?\d+$/.test(value.trim())) return Number.parseInt(value.trim(), 10);
+            return invalid("integer");
+        }
+        if (column.kind === "number") {
+            if (typeof value === "number" && Number.isFinite(value)) return value;
+            if (typeof value === "string" && value.trim() && Number.isFinite(Number(value.trim()))) {
+                return Number(value.trim());
+            }
+            return invalid("number");
+        }
+        if (column.kind === "boolean") {
+            if (typeof value === "boolean") return value;
+            if (value === "true") return true;
+            if (value === "false") return false;
+            return invalid("boolean");
+        }
+        if (column.kind === "date") {
+            if (typeof value === "string" && this.isCalendarDate(value)) return value;
+            return invalid("date (YYYY-MM-DD)");
+        }
+        if (column.kind === "timestamp") {
+            if (typeof value === "string" && this.isTimestamp(value)) return value;
+            return invalid("timestamp (YYYY-MM-DDTHH:MM[:SS])");
+        }
+        if (typeof value === "string") return value;
+        return invalid(column.dataType);
+    }
+
+    private isCalendarDate(value: string): boolean {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const [year, month, day] = value.split("-").map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+    }
+
+    private isTimestamp(value: string): boolean {
+        const match = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?Z?$/.exec(value);
+        return Boolean(
+            match && this.isCalendarDate(match[1]) && Number(match[2]) <= 23 && Number(match[3]) <= 59
+                && Number(match[4] ?? 0) < 60,
+        );
+    }
+
+    private async inspectTableSchema(db: PGlite, rawSql: string) {
+        const empty = {
+            status: "invalid" as const,
+            columns: [] as {
+                name: string;
+                dataType: string;
+                kind: string;
+                isNullable: boolean;
+                isPrimaryKey: boolean;
+                checkOptions?: string[];
+            }[],
+        };
+        if (!rawSql.trim()) {
+            return { ...empty, error: { code: "invalid_schema", message: "Schema definition is empty" } };
+        }
+        try {
+            await db.exec(this.assertSingleCreateTable(rawSql));
+            const tables = await db.query<{ table_name: string; }>(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'",
+            );
+            if (tables.rows.length !== 1) throw new Error("Schema definition must create exactly one table");
+            const tableName = tables.rows[0].table_name;
+            const columns = await db.query<{ column_name: string; data_type: string; is_nullable: string; }>(
+                "SELECT column_name, data_type, is_nullable FROM information_schema.columns "
+                    + "WHERE table_schema = 'public' AND table_name = $1 ORDER BY ordinal_position",
+                [tableName],
+            );
+            if (columns.rows.length === 0) throw new Error("Table must define at least one column");
+            const primaryKeys = await db.query<{ column_name: string; }>(
+                "SELECT kcu.column_name FROM information_schema.table_constraints tc "
+                    + "JOIN information_schema.key_column_usage kcu ON kcu.constraint_name = tc.constraint_name "
+                    + "AND kcu.table_schema = tc.table_schema WHERE tc.table_schema = 'public' "
+                    + "AND tc.table_name = $1 AND tc.constraint_type = 'PRIMARY KEY'",
+                [tableName],
+            );
+            const checks = await db.query<{ def: string; }>(
+                "SELECT pg_get_constraintdef(c.oid) AS def FROM pg_constraint c "
+                    + "JOIN pg_class t ON t.oid = c.conrelid JOIN pg_namespace n ON n.oid = t.relnamespace "
+                    + "WHERE n.nspname = 'public' AND t.relname = $1 AND c.contype = 'c'",
+                [tableName],
+            );
+            const options = new Map<string, string[]>();
+            for (const { def } of checks.rows) {
+                const column = def.match(/CHECK\s*\(+\s*(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))/i);
+                const array = def.match(/ARRAY\s*\[([\s\S]*?)\]/i);
+                if (!column || !array || !/=\s*ANY\s*\(/i.test(def)) continue;
+                const values = [...array[1].matchAll(/'((?:[^']|'')*)'/g)].map(match => match[1].replace(/''/g, "'"));
+                if (values.length) options.set(column[1] ?? column[2], values);
+            }
+            const pk = new Set(primaryKeys.rows.map(row => row.column_name));
+            return {
+                status: "valid" as const,
+                tableName,
+                columns: columns.rows.map(column => ({
+                    name: column.column_name,
+                    dataType: column.data_type,
+                    kind: this.columnKind(column.data_type),
+                    isNullable: column.is_nullable !== "NO",
+                    isPrimaryKey: pk.has(column.column_name),
+                    checkOptions: options.get(column.column_name),
+                })),
+            };
+        } catch (error) {
+            return {
+                ...empty,
+                error: { code: "invalid_schema", message: error instanceof Error ? error.message : "Invalid schema" },
+            };
+        }
+    }
+
+    /** Keep MCP schema acceptance aligned with the client schema parser. */
+    private assertSingleCreateTable(sql: string): string {
+        const trimmed = sql.trim();
+        const stripped = trimmed
+            .replace(/--[^\n]*/g, "")
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .replace(/'(?:[^']|'')*'/g, "''")
+            .replace(/"(?:[^"]|"")*"/g, '""');
+        if (!/^\s*create\s+table\b/i.test(stripped)) {
+            throw new Error("Schema definition must be a single CREATE TABLE statement");
+        }
+        if (stripped.replace(/;\s*$/, "").includes(";")) {
+            throw new Error("Schema definition must contain exactly one statement");
+        }
+        if (/^\s*create\s+table\s+[^\s(]+\./i.test(stripped)) {
+            throw new Error("Schema-qualified table names are not supported");
+        }
+        return trimmed;
+    }
+
+    private columnKind(dataType: string): string {
+        const type = dataType.toLowerCase();
+        if (type === "boolean") return "boolean";
+        if (["smallint", "integer", "bigint"].includes(type)) return "integer";
+        if (["numeric", "real", "double precision", "money"].includes(type)) return "number";
+        if (type === "date") return "date";
+        if (type.startsWith("timestamp")) return "timestamp";
+        if (type === "text" || type.startsWith("character") || type === "uuid" || type.includes("char")) return "text";
+        return "other";
     }
 
     getRelationSchema(uid: string, projectId: string, relation: string) {

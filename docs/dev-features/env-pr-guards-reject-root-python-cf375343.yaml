@@ -1,0 +1,11 @@
+id: ENV-cf375343
+title: PR guards reject root-level Python files
+title-ja: PRガードがルートレベルのPythonファイルを拒否する
+description: The debris guard in scripts/ci/pr-guards.sh rejects any root-level Python file (*.py). These are treated as agent scratch/debris rather than allowing any root-level python scripts. Legitimate Python code/scripts must be placed under an appropriate directory such as scripts/. .gitignore covers the same pattern so the files cannot be staged by accident.
+category: environment
+status: implemented
+components:
+- .gitignore
+- scripts/ci/pr-guards.sh
+tests:
+- scripts/tests/env-pr-guards-reject-root-python-cf375343.spec.ts

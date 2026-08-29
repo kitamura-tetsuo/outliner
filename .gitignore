@@ -132,6 +132,7 @@ docs/.vitepress/dist/
 /demo_*.png
 /error.png
 /observe_*.mjs
+/*.py
 /fix_*.cjs
 /fix_*.js
 /get-*.cjs
