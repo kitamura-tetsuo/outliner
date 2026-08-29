@@ -18,7 +18,7 @@ Do not commit secrets. Keep the short access-token lifetime and persistent refre
 
 ## Tool catalog
 
-All successful results are JSON in the MCP text result. All tools require `outliner.read`; only the final two also require `outliner.write`.
+All successful results are JSON in the MCP text result. All tools require `outliner.read`; only the final five (`write_relation`, `set_view_query`, `update_grid_query`, `update_table_schema`, `update_table_records`) also require `outliner.write`.
 
 | Tool                       | Purpose and representative input                                                           | Result                                                                                   | Annotation                                                    |
 | -------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
