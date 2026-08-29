@@ -179,7 +179,6 @@
 
         try {
             updateScheduleRule(store.project, ruleId, { ...ruleData, targetTableId: selectedTableId });
-            backToProject();
         } catch (err) {
             logger.error({ error: err }, "Failed to save schedule rule:");
             error = err instanceof Error ? err.message : "Failed to save schedule rule.";
