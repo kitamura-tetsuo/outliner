@@ -4,7 +4,11 @@ import crypto from "crypto";
 import * as Y from "yjs";
 import { validateReadOnlySelect } from "../../../shared/src/services/readOnlySql.js";
 import { type Item, Project } from "../schema/app-schema.js";
+import { assertRevision, IdempotencyCache, type MutationPrecondition, revisionOf } from "./mutation-contract.js";
 import { McpReadError } from "./outliner-read-service.js";
+
+const MAX_WRITE_PAYLOAD_BYTES = 32 * 1024;
+const MAX_QUERY_BYTES = 16 * 1024;
 
 export type RelationValue = string | number | boolean | null;
 export type RelationWrite =
@@ -48,6 +52,8 @@ interface TableDoc {
 }
 
 export class OutlinerRelationService {
+    private readonly idempotency = new IdempotencyCache();
+
     constructor(
         private readonly hocuspocus: Pick<Hocuspocus, "openDirectConnection">,
         private readonly canAccess: (uid: string, projectId: string) => Promise<boolean>,
@@ -185,53 +191,149 @@ export class OutlinerRelationService {
         });
     }
 
-    writeRelation(uid: string, projectId: string, relation: string, write: RelationWrite) {
+    private assertWriteSize(write: RelationWrite): void {
+        const bytes = Buffer.byteLength(JSON.stringify(write), "utf8");
+        if (bytes > MAX_WRITE_PAYLOAD_BYTES) {
+            throw new McpReadError(
+                "size_limit",
+                `Write payload of ${bytes} bytes exceeds the ${MAX_WRITE_PAYLOAD_BYTES}-byte limit`,
+                { actualBytes: bytes, limitBytes: MAX_WRITE_PAYLOAD_BYTES },
+            );
+        }
+    }
+
+    private rowRevision(record: Y.Map<RelationValue> | undefined): string {
+        return revisionOf(record ? Object.fromEntries(record.entries()) : null);
+    }
+
+    writeRelation(
+        uid: string,
+        projectId: string,
+        relation: string,
+        write: RelationWrite,
+        precondition: MutationPrecondition = {},
+    ) {
+        this.assertWriteSize(write);
         return this.withProject(uid, projectId, async doc => {
-            const table = this.tables(doc).find(value => value.relation === relation);
-            if (!table && relation !== "outline_items") throw new McpReadError("not_found", "Relation not found");
-            if (!table) return this.writeOutline(Project.fromDoc(doc), write);
-            const source = await this.openTable(uid, projectId, table.tableId);
-            try {
-                let rowId = "rowId" in write ? write.rowId : String(write.values.id ?? crypto.randomUUID());
-                await this.validateTableWrite(table.relation, source, write, rowId);
-                source.data.doc?.transact(() => {
-                    if (write.op === "INSERT") {
-                        if (source.data.has(rowId)) throw new Error(`Record "${rowId}" already exists`);
-                        const record = new Y.Map<RelationValue>();
-                        for (const [key, value] of Object.entries({ ...write.values, id: rowId })) {
-                            record.set(key, value);
-                        }
-                        source.data.set(rowId, record);
-                    } else if (write.op === "UPDATE") {
-                        const record = source.data.get(rowId);
-                        if (!record) throw new Error(`Record "${rowId}" does not exist`);
-                        record.set(write.column, write.value);
-                    } else {
-                        if (!source.data.has(rowId)) throw new Error(`Record "${rowId}" does not exist`);
-                        source.data.delete(rowId);
-                    }
-                }, "mcp-relation-write");
-                return { relation, op: write.op, rowId };
-            } catch (error) {
-                throw new McpReadError("invalid_argument", error instanceof Error ? error.message : String(error));
-            } finally {
-                await source.disconnect();
-            }
+            const cacheKey = this.idempotency.key(
+                "write_relation",
+                uid,
+                projectId,
+                relation,
+                precondition.dryRun ? undefined : precondition.operationId,
+            );
+            return this.idempotency.run(cacheKey, async () => {
+                const table = this.tables(doc).find(value => value.relation === relation);
+                if (!table && relation !== "outline_items") throw new McpReadError("not_found", "Relation not found");
+                if (!table) return this.writeOutline(Project.fromDoc(doc), write, precondition);
+                return this.writeTableRelation(uid, projectId, table, write, precondition);
+            });
         });
     }
 
-    setViewQuery(uid: string, projectId: string, kind: "grid" | "calendar", viewId: string, query: string) {
+    private async writeTableRelation(
+        uid: string,
+        projectId: string,
+        table: TableEntry,
+        write: RelationWrite,
+        precondition: MutationPrecondition,
+    ) {
+        const source = await this.openTable(uid, projectId, table.tableId);
+        try {
+            const rowId = "rowId" in write ? write.rowId : String(write.values.id ?? crypto.randomUUID());
+            await this.validateTableWrite(table.relation, source, write, rowId);
+            const existing = source.data.get(rowId);
+            const priorRevision = this.rowRevision(existing);
+            if (write.op !== "INSERT") {
+                if (!existing) throw new McpReadError("not_found", `Record "${rowId}" does not exist`);
+                if (precondition.expectedRevision !== undefined) {
+                    assertRevision(precondition.expectedRevision, priorRevision, { relation: table.relation, rowId });
+                }
+            }
+            if (precondition.dryRun) {
+                return {
+                    relation: table.relation,
+                    op: write.op,
+                    rowId,
+                    applied: false,
+                    priorRevision,
+                    revision: priorRevision,
+                };
+            }
+            source.data.doc?.transact(() => {
+                if (write.op === "INSERT") {
+                    if (source.data.has(rowId)) {
+                        throw new McpReadError("validation_failed", `Record "${rowId}" already exists`);
+                    }
+                    const record = new Y.Map<RelationValue>();
+                    for (const [key, value] of Object.entries({ ...write.values, id: rowId })) {
+                        record.set(key, value);
+                    }
+                    source.data.set(rowId, record);
+                } else if (write.op === "UPDATE") {
+                    existing!.set(write.column, write.value);
+                } else {
+                    source.data.delete(rowId);
+                }
+            }, "mcp-relation-write");
+            return {
+                relation: table.relation,
+                op: write.op,
+                rowId,
+                applied: true,
+                priorRevision,
+                revision: this.rowRevision(source.data.get(rowId)),
+            };
+        } catch (error) {
+            if (error instanceof McpReadError) throw error;
+            throw new McpReadError("internal_failure", error instanceof Error ? error.message : String(error));
+        } finally {
+            await source.disconnect();
+        }
+    }
+
+    setViewQuery(
+        uid: string,
+        projectId: string,
+        kind: "grid" | "calendar",
+        viewId: string,
+        query: string,
+        precondition: MutationPrecondition = {},
+    ) {
         try {
             validateReadOnlySelect(query);
         } catch (error) {
             throw new McpReadError("invalid_argument", error instanceof Error ? error.message : String(error));
         }
+        const bytes = Buffer.byteLength(query, "utf8");
+        if (bytes > MAX_QUERY_BYTES) {
+            throw new McpReadError("size_limit", `Query of ${bytes} bytes exceeds the ${MAX_QUERY_BYTES}-byte limit`, {
+                actualBytes: bytes,
+                limitBytes: MAX_QUERY_BYTES,
+            });
+        }
         return this.withProject(uid, projectId, doc => {
-            const registry = doc.getMap<Y.Map<unknown>>(kind === "grid" ? "yjsGrids" : "calendars");
-            const view = registry.get(viewId);
-            if (!view) throw new McpReadError("not_found", `${kind === "grid" ? "Grid" : "Calendar"} not found`);
-            doc.transact(() => view.set("query", query), "mcp-view-query");
-            return { kind, viewId, query };
+            const cacheKey = this.idempotency.key(
+                "set_view_query",
+                uid,
+                projectId,
+                `${kind}:${viewId}`,
+                precondition.dryRun ? undefined : precondition.operationId,
+            );
+            return this.idempotency.run(cacheKey, () => {
+                const registry = doc.getMap<Y.Map<unknown>>(kind === "grid" ? "yjsGrids" : "calendars");
+                const view = registry.get(viewId);
+                if (!view) throw new McpReadError("not_found", `${kind === "grid" ? "Grid" : "Calendar"} not found`);
+                const priorRevision = revisionOf(String(view.get("query") ?? ""));
+                if (precondition.expectedRevision !== undefined) {
+                    assertRevision(precondition.expectedRevision, priorRevision, { kind, viewId });
+                }
+                if (precondition.dryRun) {
+                    return { kind, viewId, query, applied: false, priorRevision, revision: priorRevision };
+                }
+                doc.transact(() => view.set("query", query), "mcp-view-query");
+                return { kind, viewId, query, applied: true, priorRevision, revision: revisionOf(query) };
+            });
         });
     }
 
@@ -270,7 +372,7 @@ export class OutlinerRelationService {
                 );
             }
         } catch (error) {
-            throw this.sqlError(error);
+            throw this.sqlError(error, "validation_failed");
         } finally {
             lease.release();
         }
@@ -329,7 +431,24 @@ export class OutlinerRelationService {
         }
     }
 
-    private writeOutline(project: Project, write: RelationWrite) {
+    private itemRevision(item: Item): string {
+        const value = item.yMap;
+        return revisionOf({
+            text: item.text,
+            done: value.get("done"),
+            tags: item.tags,
+            due: value.get("due"),
+            start: value.get("start"),
+            allDay: value.get("allDay"),
+            duration: value.get("duration"),
+            rrule: value.get("rrule"),
+            recurrenceDtstart: value.get("recurrenceDtstart"),
+            recurrenceTimezone: value.get("recurrenceTimezone"),
+        });
+    }
+
+    private writeOutline(project: Project, write: RelationWrite, precondition: MutationPrecondition) {
+        this.assertWriteSize(write);
         if (write.op === "INSERT" && !write.destination) {
             throw new McpReadError("invalid_argument", "INSERT into outline_items requires an explicit destination");
         }
@@ -341,20 +460,76 @@ export class OutlinerRelationService {
             this.assertItemColumns(write.values);
             const parent = items.find(item => item.key === write.destination!.parentKey);
             if (!parent) throw new McpReadError("invalid_argument", "INSERT destination does not exist");
+            if (precondition.dryRun) {
+                return {
+                    relation: "outline_items",
+                    op: write.op,
+                    rowId: undefined,
+                    applied: false,
+                    revision: revisionOf(null),
+                };
+            }
             const created = parent.items.addNode("mcp-relation-write");
             this.setItemValues(created, write.values);
-            return { relation: "outline_items", op: write.op, rowId: created.key };
+            return {
+                relation: "outline_items",
+                op: write.op,
+                rowId: created.key,
+                applied: true,
+                revision: this.itemRevision(created),
+            };
         }
         const item = items.find(candidate => candidate.key === write.rowId);
-        if (!item) throw new McpReadError("invalid_argument", `Item "${write.rowId}" does not exist`);
+        if (!item) throw new McpReadError("not_found", `Item "${write.rowId}" does not exist`);
+        const rowId = item.key;
+        const priorRevision = this.itemRevision(item);
+        if (precondition.expectedRevision !== undefined) {
+            assertRevision(precondition.expectedRevision, priorRevision, { relation: "outline_items", rowId });
+        }
+        if (precondition.dryRun) {
+            return {
+                relation: "outline_items",
+                op: write.op,
+                rowId,
+                applied: false,
+                priorRevision,
+                revision: priorRevision,
+            };
+        }
         if (write.op === "UPDATE") {
             this.assertItemColumns({ [write.column]: write.value });
             this.setItemValues(item, { [write.column]: write.value });
-        } else if (write.disposition === "delete-source") item.delete();
-        else {for (const field of ["due", "start", "allDay", "rrule", "recurrenceDtstart", "recurrenceTimezone"]) {
-                item.yMap.delete(field);
-            }}
-        return { relation: "outline_items", op: write.op, rowId: item.key };
+            return {
+                relation: "outline_items",
+                op: write.op,
+                rowId,
+                applied: true,
+                priorRevision,
+                revision: this.itemRevision(item),
+            };
+        }
+        if (write.disposition === "delete-source") {
+            item.delete();
+            return {
+                relation: "outline_items",
+                op: write.op,
+                rowId,
+                applied: true,
+                priorRevision,
+                revision: revisionOf(null),
+            };
+        }
+        for (const field of ["due", "start", "allDay", "rrule", "recurrenceDtstart", "recurrenceTimezone"]) {
+            item.yMap.delete(field);
+        }
+        return {
+            relation: "outline_items",
+            op: write.op,
+            rowId,
+            applied: true,
+            priorRevision,
+            revision: this.itemRevision(item),
+        };
     }
 
     private setItemValues(item: Item, values: Record<string, RelationValue>) {
@@ -389,7 +564,7 @@ export class OutlinerRelationService {
                     ? item.yMap.delete(fields[column])
                     : item.yMap.set(fields[column], String(value));
             } else if (column !== "id") {
-                throw new McpReadError("invalid_argument", `Column "${column}" is not writable`);
+                throw new McpReadError("validation_failed", `Column "${column}" is not writable`);
             }
         }
     }
@@ -410,7 +585,7 @@ export class OutlinerRelationService {
             "recurrence_timezone",
         ]);
         const invalid = Object.keys(values).find(column => !writable.has(column));
-        if (invalid) throw new McpReadError("invalid_argument", `Column "${invalid}" is not writable`);
+        if (invalid) throw new McpReadError("validation_failed", `Column "${invalid}" is not writable`);
     }
 
     private toBoolean(value: RelationValue): boolean {
@@ -430,10 +605,13 @@ export class OutlinerRelationService {
         item.tags = tags;
     }
 
-    private sqlError(error: unknown): McpReadError {
+    private sqlError(
+        error: unknown,
+        code: "invalid_argument" | "validation_failed" = "invalid_argument",
+    ): McpReadError {
         if (error instanceof McpReadError) return error;
         const sqlMessage = error instanceof Error ? error.message : String(error);
-        return new McpReadError("invalid_argument", `SQL query failed: ${sqlMessage}`, {
+        return new McpReadError(code, `SQL query failed: ${sqlMessage}`, {
             stage: "sql_execution",
             sqlMessage,
         });

@@ -398,6 +398,39 @@ describe("oauth: end-to-end authorization-code + PKCE flow", () => {
         expect(reuseRes.body.error).to.equal("invalid_grant");
     });
 
+    it("never widens scope on refresh, even if the request body asks for more", async () => {
+        // Regression test for issue #5208 (mutation safety contract): a
+        // refresh token must only ever re-mint the scope it was originally
+        // issued with. The token endpoint's schema for the refresh_token
+        // grant does not even accept a scope field, so an attacker who
+        // steals a read-only refresh token cannot smuggle in
+        // "outliner.write" by adding it to the request body.
+        const { requestId, verifier } = await startAuthorization();
+        const callbackRes = await request(app)
+            .post("/oauth/authorize/callback")
+            .send({ requestId, idToken: "good-google-token" });
+        const code = new URL(callbackRes.body.redirectTo).searchParams.get("code")!;
+
+        const tokenRes = await request(app).post("/oauth/token").send({
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: REDIRECT_URI,
+            client_id: CLIENT_ID,
+            code_verifier: verifier,
+        });
+        expect(tokenRes.body.scope).to.equal("outliner.read");
+
+        const refreshRes = await request(app).post("/oauth/token").send({
+            grant_type: "refresh_token",
+            refresh_token: tokenRes.body.refresh_token,
+            client_id: CLIENT_ID,
+            scope: "outliner.read outliner.write",
+        });
+        expect(refreshRes.status).to.equal(200);
+        expect(refreshRes.body.scope).to.equal("outliner.read");
+        expect(verifyAccessToken(refreshRes.body.access_token).scope).to.equal("outliner.read");
+    });
+
     it("rejects an invalid/unknown refresh token", async () => {
         const res = await request(app).post("/oauth/token").send({
             grant_type: "refresh_token",

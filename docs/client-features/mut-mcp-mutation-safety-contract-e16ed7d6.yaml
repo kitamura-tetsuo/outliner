@@ -1,0 +1,11 @@
+id: FTR-e16ed7d6
+title: MCP mutation safety contract
+title-ja: MCP変更操作の安全性契約
+status: implemented
+description: Every MCP write tool (write_relation, set_view_query) shares one optimistic-concurrency and idempotency contract — an expectedRevision precondition that rejects stale writes with a structured stale_revision conflict, an operationId that makes a retried call replay its prior result instead of duplicating the mutation, and a dryRun mode that validates a write without persisting it. Errors use a consistent structured contract (invalid_argument, forbidden, not_found, stale_revision, validation_failed, size_limit, internal_failure) surfaced as JSON in the tool result. Every mutation attempt, success or failure, is recorded to a durable audit log (uid fingerprint, project/entity/tool, operation ID, prior/new revision, dry-run vs apply, outcome) without secrets or full write payloads. A refresh token can never re-mint a wider scope than it was originally issued.
+tests:
+- server/tests/mcp-http-e2e.test.ts
+- server/tests/mcp-logging.test.ts
+- server/tests/mcp-mutation-contract.test.ts
+- server/tests/mcp-relation-service.test.ts
+- server/tests/oauth/oauth-flow.test.ts

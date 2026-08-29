@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { registerCoverageHooks } from "../utils/registerCoverageHooks";
 import { TestHelpers } from "../utils/testHelpers";
+registerCoverageHooks();
 
 test.describe("Object Manager - Layout, Reorder, and Sort", () => {
     test.beforeEach(async ({ page }) => {
