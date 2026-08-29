@@ -1,0 +1,15 @@
+id: GRD-c2a91e6f
+title: Grid logical row, column, and all-result selection
+title-ja: Grid の論理的な行・列・全結果選択
+description: Select stable rows, visible result columns, or the complete current Grid query result from spreadsheet-style headers without enumerating cells.
+category: tables
+status: implemented
+acceptance:
+- Clicking row or column headers selects logical identities, Shift-click selects contiguous header ranges, and Ctrl/Cmd-click toggles identities
+- The corner header represents the complete current query result, including unmounted rows, with no artificial active cell
+- Sorting preserves stable row identities while query refresh removes identities no longer in the result
+- Header states are keyboard operable, expose aria-selected, and are visually distinct from cell ranges
+- Cell, row, column, and all-result selection remain distinguishable to later bulk commands
+tests:
+- client/src/services/yjstable/gridSelection.test.ts
+- client/src/components/yjstable/TableGrid.selection.test.ts

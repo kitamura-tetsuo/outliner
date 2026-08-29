@@ -43,7 +43,7 @@ describe("GridSelection", () => {
         selection.select({ rowId: "row-a", columnId: "name" });
         selection.extend({ rowId: "row-c", columnId: "status" }, rows, columns);
         selection.reconcile(["row-a", "row-b"], columns);
-        expect(selection.regions[0].rowIds).toEqual(["row-a", "row-b"]);
+        expect(selection.regions[0]).toMatchObject({ rowIds: ["row-a", "row-b"] });
         expect(selection.activeCell).toEqual({ rowId: "row-a", columnId: "name" });
     });
 
@@ -60,8 +60,55 @@ describe("GridSelection", () => {
         const selection = new GridSelection();
         selection.select({ rowId: manyRows[0], columnId: manyColumns[0] });
         selection.extend({ rowId: manyRows.at(-1)!, columnId: manyColumns.at(-1)! }, manyRows, manyColumns);
-        expect(selection.regions[0].rowIds).toHaveLength(10_000);
-        expect(selection.regions[0].columnIds).toHaveLength(100);
+        expect(selection.regions[0]).toMatchObject({
+            rowIds: expect.arrayContaining([manyRows[0], manyRows.at(-1)]),
+            columnIds: expect.arrayContaining([manyColumns[0], manyColumns.at(-1)]),
+        });
         expect(Object.keys(selection.regions[0])).toEqual(["kind", "rowIds", "columnIds"]);
+    });
+
+    it("selects row ranges and toggles multiple stable row identities", () => {
+        const selection = new GridSelection();
+        selection.selectRow("row-a", rows);
+        selection.selectRow("row-c", rows, { extend: true });
+        expect(selection.regions).toEqual([{ kind: "rows", rowIds: rows }]);
+        expect(selection.activeCell).toBeUndefined();
+        expect(selection.containsRow("row-b")).toBe(true);
+
+        selection.selectRow("row-b", rows, { toggle: true });
+        expect(selection.regions).toEqual([{ kind: "rows", rowIds: ["row-a", "row-c"] }]);
+        selection.reconcile(["row-c", "row-b"], columns);
+        expect(selection.regions).toEqual([{ kind: "rows", rowIds: ["row-c"] }]);
+    });
+
+    it("selects column ranges and toggles multiple result columns", () => {
+        const selection = new GridSelection();
+        selection.selectColumn("name", columns);
+        selection.selectColumn("owner", columns, { extend: true });
+        expect(selection.regions).toEqual([{ kind: "columns", columnIds: columns }]);
+        selection.selectColumn("status", columns, { toggle: true });
+        expect(selection.regions).toEqual([{ kind: "columns", columnIds: ["name", "owner"] }]);
+        expect(selection.containsColumn("owner")).toBe(true);
+    });
+
+    it("represents the entire changing query result with one logical region", () => {
+        const selection = new GridSelection();
+        selection.selectAll();
+        expect(selection.regions).toEqual([{ kind: "all" }]);
+        expect(selection.contains({ rowId: "unmounted-row", columnId: "name" })).toBe(true);
+        selection.reconcile(["another-row"], ["visible-column"]);
+        expect(selection.regions).toEqual([{ kind: "all" }]);
+        expect(selection.activeCell).toBeUndefined();
+    });
+
+    it("composes modifier-selected cells with logical row selections", () => {
+        const selection = new GridSelection();
+        selection.select({ rowId: "row-a", columnId: "name" });
+        selection.selectRow("row-c", rows, { toggle: true });
+        expect(selection.regions).toEqual([
+            { kind: "cells", rowIds: ["row-a"], columnIds: ["name"] },
+            { kind: "rows", rowIds: ["row-c"] },
+        ]);
+        expect(selection.contains({ rowId: "row-c", columnId: "owner" })).toBe(true);
     });
 });
