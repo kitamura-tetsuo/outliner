@@ -67,7 +67,7 @@ export function demoContentEn(): DemoLocaleContent {
                     "Text, Grid, Calendar, and Layout remain distinct semantic node kinds instead of being flattened into fake text.",
                     "Every project read uses the signed-in user's existing project access, and large structural reads are bounded.",
                     "MCP can discover SQL relations, inspect schemas, and run bounded read-only SELECT queries.",
-                    "Structured relation writes mutate Yjs—not disposable PGlite—and Grid or Calendar SELECT state can be updated safely.",
+                    "Structured relation writes mutate Yjs—not disposable PGlite—and Grid or Calendar SELECT state can be updated safely. In a Grid, click a cell or Shift-click another cell to highlight a logical range that follows its records when results reorder.",
                 ],
             },
             {
