@@ -36,6 +36,7 @@
     let notFound = $state(false);
     let isLoading = $state(true);
     let isRunning = $state(false);
+    let runError: string | undefined = $state(undefined);
 
     // Editor state
     let tables = $state<TableRegistryEntry[]>([]);
@@ -195,13 +196,13 @@
     }
 
     async function handleRunNow() {
-        if (!store.project) return;
+        if (!store.project || !projectHandle) return;
         isRunning = true;
-        error = undefined;
+        runError = undefined;
         try {
-            const res = await runScheduleRuleNow(projectName, ruleId);
+            const res = await runScheduleRuleNow(projectHandle.projectId, ruleId);
             if (!res.ok) {
-                error = res.error || "Failed to run rule";
+                runError = res.error || "Failed to run rule";
             }
         } finally {
             isRunning = false;
@@ -289,6 +290,12 @@
         </div>
     {:else if ruleLoaded}
         <div class="flex-grow min-h-0 overflow-y-auto bg-white">
+            {#if runError}
+                <div class="mb-4 text-sm text-red-700 bg-red-50 p-3 rounded border border-red-100 font-mono">
+                    {runError}
+                </div>
+            {/if}
+
             {#if currentRule?.lastRunAt}
                 <div class="mb-6 p-4 border rounded bg-gray-50 flex flex-col space-y-2">
                     <div class="text-sm">
